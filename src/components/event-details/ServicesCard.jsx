@@ -280,7 +280,7 @@ const handleCopyTransport = (service, serviceDetails) => {
     let fullText = "";
     units.forEach((unit, uIdx) => {
       if (fullText) fullText += "\n\n";
-      if (units.length > 1) fullText += `--- רכב ${uIdx + 1} ---\n`;
+      if (units.length > 1) fullText += `--- נסיעה ${uIdx + 1} ---\n`;
       unit.pickupPoints.forEach((point, pIdx) => {
         const time = point.time || '';
         const loc = point.location || '';
@@ -602,7 +602,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                       return units.map((unit, uIdx) => (
                         <div key={uIdx} className="p-4 border-2 border-red-100 rounded-xl bg-red-50/20 space-y-4">
                           <h3 className="font-bold text-red-900 flex justify-between items-center text-sm">
-                            {units.length > 1 ? `רכב ${uIdx + 1}` : 'פרטי מסלול'}
+                            {units.length > 1 ? `נסיעה ${uIdx + 1}` : 'פרטי מסלול'}
                           </h3>
 
                           {unit.pickupPoints.map((point, pIdx) => (
