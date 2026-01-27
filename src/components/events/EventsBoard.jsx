@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChevronDown, ChevronUp, Loader2, Settings, Save, X, ArrowRight, Edit, Trash2, UserPlus, Filter, Table2, GripVertical, Plus, Copy, HelpCircle, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Settings, Save, X, ArrowRight, Edit, Trash2, UserPlus, Filter, Table2, GripVertical, Plus, Copy, HelpCircle, Check, Search } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isBefore, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -848,10 +848,12 @@ export default function EventsBoard() {
             {editingService && (
     <Dialog open={!!editingService} onOpenChange={() => setEditingService(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>ניהול שירות</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>ניהול שירות ופרטי נסיעה</DialogTitle></DialogHeader>
             <div className="flex border-b mb-4">
                 <button onClick={() => setActiveTab('assignment')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'assignment' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>ניהול שיבוץ</button>
-                <button onClick={() => setActiveTab('transport')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'transport' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>פרטי נסיעה</button>
+                {editingService.category === 'נסיעות' && (
+                    <button onClick={() => setActiveTab('transport')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'transport' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>פרטי נסיעה</button>
+                )}
             </div>
             <div className="space-y-4 py-2">
                 {activeTab === 'assignment' ? (
@@ -859,7 +861,56 @@ export default function EventsBoard() {
                         <div className="space-y-2 bg-gray-50 p-3 rounded-lg"><div className="text-sm text-gray-700"><span className="font-semibold">אירוע:</span> {editingService.eventName}</div><div className="text-sm text-gray-700"><span className="font-semibold">שירות:</span> {editingService.serviceName}</div></div>
                         <div className="space-y-2"><Label>שיבוצים נדרשים</Label><Select value={String(editingService.minSuppliers || 0)} onValueChange={(v) => setEditingService(p => ({ ...p, minSuppliers: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (<SelectItem key={n} value={String(n)}>{n}</SelectItem>))}</SelectContent></Select></div>
                         <div className="space-y-2"><Label>הערות לשירות</Label><Textarea value={editingService.serviceNotes} onChange={(e) => setEditingService(p => ({ ...p, serviceNotes: e.target.value }))} className="resize-none" /></div>
-                        <div className="border-t pt-4"><Label className="font-semibold mb-3 block">ספקים משובצים</Label><div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-lg p-3 bg-gray-50">{filteredSuppliersInDialog.map(s => (<div key={s.id} className="p-3 rounded-lg border bg-white flex items-center gap-3"><Checkbox checked={editingService.supplierIds.includes(s.id)} onCheckedChange={() => handleToggleSupplier(s.id)} /><div className="text-sm">{s.supplier_name}</div></div>))}</div></div>
+                        <div className="border-t pt-4">
+                            <Label className="font-semibold mb-3 block">שיבוץ ספקים</Label>
+                            
+                            <div className="flex gap-2 mb-3">
+                                <div className="relative flex-1">
+                                    <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input 
+                                        placeholder="חיפוש ספקים..." 
+                                        value={supplierSearchInDialog} 
+                                        onChange={(e) => setSupplierSearchInDialog(e.target.value)}
+                                        className="pr-9 h-9"
+                                    />
+                                </div>
+                                <Button size="icon" className="h-9 w-9" onClick={() => setShowNewSupplierDialog(true)} title="צור ספק חדש">
+                                    <Plus className="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                                {/* Assigned Suppliers */}
+                                {suppliers.filter(s => editingService.supplierIds.includes(s.id)).length > 0 && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-gray-500 font-medium">ספקים משובצים</Label>
+                                        {suppliers.filter(s => editingService.supplierIds.includes(s.id)).map(s => (
+                                            <div key={s.id} className="p-2 rounded-lg border bg-green-50 border-green-200 flex items-center justify-between group">
+                                                <div className="text-sm font-medium text-green-900">{s.supplier_name}</div>
+                                                <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Available Suppliers */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-gray-500 font-medium">ספקים זמינים</Label>
+                                    {filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).length === 0 ? (
+                                        <div className="text-sm text-gray-400 italic text-center py-4 border border-dashed rounded-lg">לא נמצאו ספקים</div>
+                                    ) : (
+                                        filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).map(s => (
+                                            <div key={s.id} className="p-2 rounded-lg border bg-white flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                                                <Checkbox id={`sup-${s.id}`} checked={false} onCheckedChange={() => handleToggleSupplier(s.id)} />
+                                                <Label htmlFor={`sup-${s.id}`} className="text-sm cursor-pointer flex-1 py-1">{s.supplier_name}</Label>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </>
                 ) : (
                     <div className="space-y-6">
