@@ -7,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Trash2, Edit, Plus, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Trash2, Edit, Plus, Building, Briefcase, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,

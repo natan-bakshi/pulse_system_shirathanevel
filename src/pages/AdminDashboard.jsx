@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, Search, Filter } from "lucide-react";
+import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, ArrowRight, Search, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link, useNavigate } from "react-router-dom";

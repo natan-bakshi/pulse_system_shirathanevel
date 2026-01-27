@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { X, FileText, Shield, AlertCircle, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { signAgreement } from '@/functions/signAgreement';
 

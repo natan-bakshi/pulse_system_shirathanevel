@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, User as UserIcon, Calendar, Download, Home } from "lucide-react";
+import { Search, User as UserIcon, Calendar, Phone, Mail, Download, MessageCircle, MoreHorizontal, Home } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from "date-fns";

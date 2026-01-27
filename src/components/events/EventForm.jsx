@@ -8,7 +8,7 @@ import { AppSettings } from "@/entities/AppSettings";
 import { Event } from "@/entities/Event";
 import { EventService } from "@/entities/EventService";
 import { Payment } from "@/entities/Payment";
-import { CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,11 +16,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste } from "lucide-react";import { format } from "date-fns";
+import { X, Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste } from "lucide-react";import { format } from "date-fns";
 import EventServicesManager from "./EventServicesManager";
 import PaymentManager from "./PaymentManager";
 import ContactPicker from "../ui/ContactPicker";
 import { calculateEventFinancials } from "@/components/utils/eventFinancials";
+import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QuoteTemplate } from "@/entities/QuoteTemplate";
 

@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react"; // הוספתי useEffect
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, setMonth, setYear } from "date-fns";
+import { he } from "date-fns/locale";
 
 export default function EventsCalendar({ events, onDateClick, onEventClick }) {
   const [currentDate, setCurrentDate] = useState(new Date());

@@ -9,13 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Search, Edit, Trash2, Save, Loader2, ChevronDown, ChevronUp, Calendar, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Phone, Mail, Save, Loader2, Users, ChevronDown, ChevronUp, Link as LinkIcon, Calendar, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import ContactPicker from "../components/ui/ContactPicker";
 import PhoneNumber from "../components/ui/PhoneNumber";
 import EmailAddress from "../components/ui/EmailAddress";
 import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 import ExportDialog from "../components/export/ExportDialog";
 
 const SupplierEventsList = ({ supplierId }) => {
