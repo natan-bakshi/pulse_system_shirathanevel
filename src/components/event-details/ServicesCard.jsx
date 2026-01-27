@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Service } from '@/entities/Service';
 import { Supplier } from '@/entities/Supplier';
 import { base44 } from '@/api/base44Client';
@@ -197,6 +198,8 @@ export default function ServicesCard({
     }
   };
 
+  const [localTransportUnits, setLocalTransportUnits] = useState([]);
+
   const handleOpenLocalSupplierDialog = (service) => {
     let currentNotes = {};
     let supplierIds = [];
@@ -208,6 +211,30 @@ export default function ServicesCard({
     setLocalSelectedService(service);
     setLocalSupplierFormData({ supplierIds, notes: currentNotes });
     setLocalSupplierSearchTerm("");
+
+    // אתחול נתוני נסיעות לעריכה בדיאלוג
+    let units = [];
+    try {
+      const parsed = JSON.parse(service.pickup_point || '[]');
+      units = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      units = [{
+        pickupPoints: [{
+          time: service.standing_time || '',
+          location: service.pickup_point || '',
+          contact: service.on_site_contact_details || { name: '', phone: '' }
+        }]
+      }];
+    }
+    // סנכרון כמות יחידות לכמות השירות
+    const quantity = parseInt(String(service.quantity || 1)) || 1;
+    if (units.length < quantity) {
+      while (units.length < quantity) {
+        units.push({ pickupPoints: [{ time: '', location: '', contact: { name: '', phone: '' } }] });
+      }
+    }
+    setLocalTransportUnits(units);
+
     setShowLocalSupplierDialog(true);
   };
 
@@ -215,20 +242,32 @@ export default function ServicesCard({
     if (!localSelectedService) return;
     
     try {
-      await base44.entities.EventService.update(localSelectedService.id, {
+      const updateData = {
         supplier_ids: JSON.stringify(localSupplierFormData.supplierIds),
         supplier_notes: JSON.stringify(localSupplierFormData.notes)
-      });
+      };
+
+      // שמירת נתוני נסיעות אם רלוונטי
+      if (localSelectedService.category === 'נסיעות') {
+        updateData.pickup_point = JSON.stringify(localTransportUnits);
+        // סנכרון שדות לגאסי
+        const firstPoint = localTransportUnits[0]?.pickupPoints[0] || {};
+        updateData.standing_time = firstPoint.time || '';
+        updateData.on_site_contact_details = firstPoint.contact || { name: '', phone: '' };
+      }
+
+      await base44.entities.EventService.update(localSelectedService.id, updateData);
 
       setShowLocalSupplierDialog(false);
       setLocalSelectedService(null);
       setLocalSupplierFormData({ supplierIds: [], notes: {} });
+      setLocalTransportUnits([]);
       setLocalSupplierSearchTerm("");
       await base44.functions.invoke('checkEventStatus', { eventId: event.id }).catch(console.error);
       await loadEventData();
     } catch (error) {
-      console.error("Failed to assign suppliers:", error);
-      alert("שגיאה בשיבוץ הספקים");
+      console.error("Failed to save service details:", error);
+      alert("שגיאה בשמירת הפרטים");
     }
   };
 
@@ -1179,68 +1218,212 @@ const handleCopyTransport = (service, serviceDetails) => {
       </CardContent>
       
       <Dialog open={showLocalSupplierDialog} onOpenChange={setShowLocalSupplierDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
           <DialogHeader>
-            <DialogTitle>שיבוץ ספקים</DialogTitle>
+            <DialogTitle>ניהול שירות ופרטי נסיעה</DialogTitle>
+            {localSelectedService && (
+              <div className="text-sm text-gray-500">
+                <div>אירוע: משפחת {event?.family_name}</div>
+                <div>שירות: {localSelectedService?.service_name}</div>
+              </div>
+            )}
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="חיפוש ספקים..."
-                value={localSupplierSearchTerm}
-                onChange={(e) => setLocalSupplierSearchTerm(e.target.value)}
-                className="pr-10"
-              />
-            </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {filteredLocalSuppliers.map(supplier => (
-                <div key={supplier.id} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={localSupplierFormData.supplierIds.includes(supplier.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setLocalSupplierFormData({ ...localSupplierFormData, supplierIds: [...localSupplierFormData.supplierIds, supplier.id] });
-                        } else {
-                          const newNotes = { ...localSupplierFormData.notes };
-                          delete newNotes[supplier.id];
-                          setLocalSupplierFormData({ 
-                            ...localSupplierFormData, 
-                            supplierIds: localSupplierFormData.supplierIds.filter(id => id !== supplier.id),
-                            notes: newNotes
-                          });
-                        }
-                      }}
+          
+          <Tabs defaultValue="assignment" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="assignment">ניהול שיבוץ</TabsTrigger>
+              {localSelectedService?.category === 'נסיעות' && (
+                <TabsTrigger value="transport">פרטי נסיעה</TabsTrigger>
+              )}
+            </TabsList>
+
+            <TabsContent value="assignment" className="space-y-4 py-4">
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="חיפוש ספקים..."
+                      value={localSupplierSearchTerm}
+                      onChange={(e) => setLocalSupplierSearchTerm(e.target.value)}
+                      className="pr-10"
                     />
-                    <Label>{supplier.supplier_name}</Label>
                   </div>
-                  {localSupplierFormData.supplierIds.includes(supplier.id) && (
-                    <div className="mr-6">
-                      <Label className="text-xs">הערה לספק</Label>
-                      <Input
-                        placeholder="הערה ספציפית לספק זה..."
-                        value={localSupplierFormData.notes[supplier.id] || ''}
-                        onChange={(e) => {
-                          setLocalSupplierFormData({
-                            ...localSupplierFormData,
-                            notes: {
-                              ...localSupplierFormData.notes,
-                              [supplier.id]: e.target.value
-                            }
-                          });
-                        }}
-                        className="text-sm"
-                      />
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowNewSupplierDialog(localSelectedService?.id)}
+                    className="shrink-0"
+                  >
+                    <Plus className="h-4 w-4 ml-2" />
+                    צור ספק חדש
+                  </Button>
+                </div>
+
+                {/* ספקים משובצים בראש הרשימה */}
+                {localSupplierFormData.supplierIds.length > 0 && (
+                  <div className="bg-blue-50 p-3 rounded-lg space-y-2 border border-blue-100">
+                    <Label className="text-blue-800 font-semibold text-xs">ספקים משובצים ({localSupplierFormData.supplierIds.length})</Label>
+                    <div className="space-y-2">
+                      {localSupplierFormData.supplierIds.map(supplierId => {
+                        const supplier = allSuppliers.find(s => s.id === supplierId);
+                        if (!supplier) return null;
+                        return (
+                          <div key={supplierId} className="flex items-start gap-2 bg-white p-2 rounded border border-blue-200 shadow-sm">
+                            <div className="flex-1">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-medium text-sm">{supplier.supplier_name}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 hover:bg-red-50 hover:text-red-600 -ml-1"
+                                  onClick={() => {
+                                    const newNotes = { ...localSupplierFormData.notes };
+                                    delete newNotes[supplierId];
+                                    setLocalSupplierFormData({ 
+                                      ...localSupplierFormData, 
+                                      supplierIds: localSupplierFormData.supplierIds.filter(id => id !== supplierId),
+                                      notes: newNotes
+                                    });
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <Input
+                                placeholder="הערה לספק..."
+                                value={localSupplierFormData.notes[supplierId] || ''}
+                                onChange={(e) => {
+                                  setLocalSupplierFormData({
+                                    ...localSupplierFormData,
+                                    notes: {
+                                      ...localSupplierFormData.notes,
+                                      [supplierId]: e.target.value
+                                    }
+                                  });
+                                }}
+                                className="text-xs h-7"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
+                  </div>
+                )}
+
+                {/* רשימת חיפוש */}
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  <Label className="text-xs font-semibold text-gray-500">תוצאות חיפוש</Label>
+                  {filteredLocalSuppliers
+                    .filter(s => !localSupplierFormData.supplierIds.includes(s.id))
+                    .map(supplier => (
+                    <div key={supplier.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
+                      <Checkbox
+                        checked={false}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setLocalSupplierFormData({ ...localSupplierFormData, supplierIds: [...localSupplierFormData.supplierIds, supplier.id] });
+                          }
+                        }}
+                      />
+                      <Label className="cursor-pointer flex-1">{supplier.supplier_name}</Label>
+                    </div>
+                  ))}
+                  {filteredLocalSuppliers.filter(s => !localSupplierFormData.supplierIds.includes(s.id)).length === 0 && (
+                    <div className="text-center text-gray-500 text-sm py-4">לא נמצאו ספקים נוספים</div>
                   )}
                 </div>
-              ))}
-            </div>
-          </div>
-          <DialogFooter>
+              </div>
+            </TabsContent>
+
+            {localSelectedService?.category === 'נסיעות' && (
+              <TabsContent value="transport" className="space-y-4 py-4">
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                  {localTransportUnits.map((unit, uIdx) => (
+                    <div key={uIdx} className="p-4 border-2 border-gray-100 rounded-xl bg-gray-50/50 space-y-4">
+                      <h3 className="font-bold text-gray-900 flex justify-between items-center text-sm">
+                        {localTransportUnits.length > 1 ? `נסיעה ${uIdx + 1}` : 'פרטי מסלול'}
+                      </h3>
+
+                      {unit.pickupPoints.map((point, pIdx) => (
+                        <div key={pIdx} className="bg-white p-3 rounded-lg border shadow-sm space-y-3">
+                          <div className="flex justify-between items-center">
+                            <Label className="text-xs font-bold text-gray-500">נקודה {pIdx + 1}</Label>
+                            {pIdx > 0 && (
+                              <Button type="button" variant="ghost" size="sm" className="text-red-500 h-6 w-6 p-0" onClick={() => {
+                                const newUnits = [...localTransportUnits];
+                                newUnits[uIdx].pickupPoints.splice(pIdx, 1);
+                                setLocalTransportUnits(newUnits);
+                              }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">שעה</Label>
+                              <Input type="time" value={point.time || ''} onChange={(e) => {
+                                const newUnits = [...localTransportUnits];
+                                newUnits[uIdx].pickupPoints[pIdx].time = e.target.value;
+                                setLocalTransportUnits(newUnits);
+                              }} className="text-sm h-8" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">מיקום</Label>
+                              <Input value={point.location || ''} onChange={(e) => {
+                                const newUnits = [...localTransportUnits];
+                                newUnits[uIdx].pickupPoints[pIdx].location = e.target.value;
+                                setLocalTransportUnits(newUnits);
+                              }} className="text-sm h-8" />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">איש קשר</Label>
+                            <div className="flex gap-2">
+                              <Input placeholder="שם" value={point.contact?.name || ''} onChange={(e) => {
+                                const newUnits = [...localTransportUnits];
+                                if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
+                                newUnits[uIdx].pickupPoints[pIdx].contact.name = e.target.value;
+                                setLocalTransportUnits(newUnits);
+                              }} className="text-sm h-8" />
+                              <Input placeholder="טלפון" value={point.contact?.phone || ''} onChange={(e) => {
+                                const newUnits = [...localTransportUnits];
+                                if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
+                                newUnits[uIdx].pickupPoints[pIdx].contact.phone = e.target.value;
+                                setLocalTransportUnits(newUnits);
+                              }} className="text-sm h-8" />
+                              <ContactPicker onContactSelect={(c) => {
+                                const newUnits = [...localTransportUnits];
+                                if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
+                                newUnits[uIdx].pickupPoints[pIdx].contact.name = c.name;
+                                newUnits[uIdx].pickupPoints[pIdx].contact.phone = c.phone;
+                                setLocalTransportUnits(newUnits);
+                              }} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      <Button type="button" variant="outline" size="sm" className="w-full border-dashed text-xs" onClick={() => {
+                        const newUnits = [...localTransportUnits];
+                        newUnits[uIdx].pickupPoints.push({ time: '', location: '', contact: { name: '', phone: '' } });
+                        setLocalTransportUnits(newUnits);
+                      }}>
+                        <Plus className="h-3 w-3 ml-1" />
+                        הוסף נקודה
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => { setShowLocalSupplierDialog(false); setLocalSupplierSearchTerm(""); }}>ביטול</Button>
-            <Button onClick={handleAssignLocalSuppliers}>שמור</Button>
+            <Button onClick={handleAssignLocalSuppliers}>שמור שינויים</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
