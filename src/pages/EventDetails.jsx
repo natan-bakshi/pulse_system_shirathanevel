@@ -1199,6 +1199,10 @@ export default function EventDetails() {
     
     setIsSavingPackageEdit(true);
     try {
+      console.log("[DEBUG] Starting package save. ID:", editingPackage, "Is New Structure:", isNewStructure);
+      console.log("[DEBUG] Services to update:", servicesToUpdate.map(s => s.id));
+      console.log("[DEBUG] Form data:", editPackageForm);
+
       // Parallel updates
       await Promise.all(servicesToUpdate.map(service => {
         const updates = {
@@ -1214,6 +1218,7 @@ export default function EventDetails() {
             updates.includes_vat = editPackageForm.package_includes_vat;
         }
 
+        console.log(`[DEBUG] Sending update for service ${service.id}:`, updates);
         return base44.entities.EventService.update(service.id, updates);
       }));
 
@@ -1227,7 +1232,7 @@ export default function EventDetails() {
       loadEventData(); // Background refresh
     } catch (error) {
       console.error("Failed to update package:", error);
-      alert("שגיאה בעדכון החבילה");
+      alert("שגיאה בעדכון החבילה: " + (error.message || JSON.stringify(error)));
       loadEventData(); // Revert
     } finally {
       setIsSavingPackageEdit(false);

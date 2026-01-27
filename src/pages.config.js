@@ -1,31 +1,31 @@
 import AdminDashboard from './pages/AdminDashboard';
-import EventManagement from './pages/EventManagement';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientGallery from './pages/ClientGallery';
-import UserManagement from './pages/UserManagement';
-import EventDetails from './pages/EventDetails';
-import SupplierManagement from './pages/SupplierManagement';
-import ServiceManagement from './pages/ServiceManagement';
 import ClientManagement from './pages/ClientManagement';
+import EventDetails from './pages/EventDetails';
+import EventManagement from './pages/EventManagement';
+import QuoteTemplateManagement from './pages/QuoteTemplateManagement';
+import ServiceManagement from './pages/ServiceManagement';
 import SettingsPage from './pages/SettingsPage';
 import SupplierDashboard from './pages/SupplierDashboard';
-import QuoteTemplateManagement from './pages/QuoteTemplateManagement';
+import SupplierManagement from './pages/SupplierManagement';
+import UserManagement from './pages/UserManagement';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AdminDashboard": AdminDashboard,
-    "EventManagement": EventManagement,
     "ClientDashboard": ClientDashboard,
     "ClientGallery": ClientGallery,
-    "UserManagement": UserManagement,
-    "EventDetails": EventDetails,
-    "SupplierManagement": SupplierManagement,
-    "ServiceManagement": ServiceManagement,
     "ClientManagement": ClientManagement,
+    "EventDetails": EventDetails,
+    "EventManagement": EventManagement,
+    "QuoteTemplateManagement": QuoteTemplateManagement,
+    "ServiceManagement": ServiceManagement,
     "SettingsPage": SettingsPage,
     "SupplierDashboard": SupplierDashboard,
-    "QuoteTemplateManagement": QuoteTemplateManagement,
+    "SupplierManagement": SupplierManagement,
+    "UserManagement": UserManagement,
 }
 
 export const pagesConfig = {
