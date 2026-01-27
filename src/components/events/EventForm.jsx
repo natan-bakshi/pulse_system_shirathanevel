@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { base44 } from "@/api/base44Client";
@@ -16,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { X, Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste } from "lucide-react";import { format } from "date-fns";
+import { X, Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste } from "lucide-react";
+import { format } from "date-fns";
 import EventServicesManager from "./EventServicesManager";
 import PaymentManager from "./PaymentManager";
 import ContactPicker from "../ui/ContactPicker";
