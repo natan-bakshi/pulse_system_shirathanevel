@@ -492,16 +492,16 @@ for (const serviceItem of formData.services) {
     const isPkgMain = !!serviceItem.is_package_main_item;
     
     // מחיר
-    const finalPrice = Number(isPkgMain ? (serviceItem.package_price ?? serviceItem.custom_price ?? 0) : (serviceItem.custom_price ?? 0));
+    const finalPrice = Number(isPkgMain ? (serviceItem.custom_price ?? serviceItem.package_price ?? 0) : (serviceItem.custom_price ?? 0));
     
     // מע"מ
-    const finalVat = Boolean(isPkgMain ? (serviceItem.package_includes_vat ?? serviceItem.includes_vat ?? false) : (serviceItem.includes_vat ?? false));
+    const finalVat = Boolean(isPkgMain ? (serviceItem.includes_vat ?? serviceItem.package_includes_vat ?? false) : (serviceItem.includes_vat ?? false));
     
     // תיאור
-    const finalDesc = isPkgMain ? (serviceItem.package_description ?? serviceItem.service_description ?? '') : (serviceItem.service_description ?? serviceDetails?.service_description ?? '');
+    const finalDesc = isPkgMain ? (serviceItem.service_description ?? serviceItem.package_description ?? '') : (serviceItem.service_description ?? serviceDetails?.service_description ?? '');
     
     // שם חבילה
-    const finalPkgName = isPkgMain ? (serviceItem.package_name ?? serviceItem.service_name ?? '') : serviceItem.package_name;
+    const finalPkgName = isPkgMain ? (serviceItem.service_name ?? serviceItem.package_name ?? '') : serviceItem.package_name;
     // ----------------------------
 
     // עדכון תיאור השירות המקורי (רק אם זה לא חבילה ראשית)
