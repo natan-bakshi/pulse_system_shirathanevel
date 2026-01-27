@@ -848,7 +848,7 @@ export default function EventsBoard() {
             {editingService && (
     <Dialog open={!!editingService} onOpenChange={() => setEditingService(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>ניהול שירות ופרטי נסיעה</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>ניהול שירות</DialogTitle></DialogHeader>
             <div className="flex border-b mb-4">
                 <button onClick={() => setActiveTab('assignment')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'assignment' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>ניהול שיבוץ</button>
                 <button onClick={() => setActiveTab('transport')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'transport' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>פרטי נסיעה</button>
