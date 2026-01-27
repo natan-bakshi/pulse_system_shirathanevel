@@ -501,7 +501,7 @@ for (const serviceItem of formData.services) {
     const finalDesc = isPkgMain ? (serviceItem.package_description ?? serviceItem.service_description ?? '') : (serviceItem.service_description ?? serviceDetails?.service_description ?? '');
     
     // שם חבילה
-    const finalPkgName = isPkgMain ? (serviceItem.package_name ?? serviceItem.service_name ?? '') : serviceItem.packagename;
+    const finalPkgName = isPkgMain ? (serviceItem.package_name ?? serviceItem.service_name ?? '') : serviceItem.package_name;
     // ----------------------------
 
     // עדכון תיאור השירות המקורי (רק אם זה לא חבילה ראשית)
