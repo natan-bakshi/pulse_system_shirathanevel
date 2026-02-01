@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { base44 } from "@/api/base44Client";
@@ -502,8 +501,8 @@ for (const serviceItem of formData.services) {
     // תיאור
     const finalDesc = isPkgMain ? (serviceItem.service_description ?? serviceItem.package_description ?? '') : (serviceItem.service_description ?? serviceDetails?.service_description ?? '');
     
-    // שם חבילה
-    const finalPkgName = isPkgMain ? (serviceItem.service_name ?? serviceItem.package_name ?? '') : serviceItem.package_name;
+    // שם חבילה - רק עבור Main Package Item, ילדים לא צריכים package_name
+    const finalPkgName = isPkgMain ? (serviceItem.package_name ?? serviceItem.service_name ?? '') : undefined;
     // ----------------------------
 
     // עדכון תיאור השירות המקורי (רק אם זה לא חבילה ראשית)
