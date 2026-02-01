@@ -81,7 +81,8 @@ export default function EventServicesManager({
     package_name: '',
     package_description: '',
     package_price: '',
-    package_includes_vat: false
+    package_includes_vat: false,
+    is_new_structure: false
   });
   
   const [selectedExistingPackage, setSelectedExistingPackage] = useState(null);
@@ -445,7 +446,8 @@ export default function EventServicesManager({
       package_name: pkg.package_name,
       package_description: pkg.package_description || '',
       package_price: pkg.package_price || '',
-      package_includes_vat: pkg.package_includes_vat || false
+      package_includes_vat: pkg.package_includes_vat || false,
+      is_new_structure: pkg.is_new_structure || false
     });
     setShowEditPackageDialog(true);
   };
@@ -457,14 +459,38 @@ export default function EventServicesManager({
     }
 
     const updatedServices = selectedServices.map(s => {
-      if (s.package_id === editingPackage) {
-        return {
-          ...s,
-          package_name: editPackageForm.package_name,
-          package_description: editPackageForm.package_description,
-          package_price: parseFloat(editPackageForm.package_price) || 0,
-          package_includes_vat: editPackageForm.package_includes_vat
-        };
+      // טיפול במבנה החדש (new structure)
+      if (editPackageForm.is_new_structure) {
+        if (s.id === editingPackage) {
+          // עדכון ה-Main Package Item
+          return {
+            ...s,
+            package_name: editPackageForm.package_name,
+            service_name: editPackageForm.package_name,
+            package_description: editPackageForm.package_description,
+            service_description: editPackageForm.package_description,
+            custom_price: parseFloat(editPackageForm.package_price) || 0,
+            includes_vat: editPackageForm.package_includes_vat
+          };
+        } else if (s.parent_package_event_service_id === editingPackage) {
+          // עדכון שירותי הילדים - רק מע"מ
+          return {
+            ...s,
+            includes_vat: editPackageForm.package_includes_vat
+          };
+        }
+      } 
+      // טיפול במבנה הישן (legacy structure)
+      else {
+        if (s.package_id === editingPackage) {
+          return {
+            ...s,
+            package_name: editPackageForm.package_name,
+            package_description: editPackageForm.package_description,
+            package_price: parseFloat(editPackageForm.package_price) || 0,
+            package_includes_vat: editPackageForm.package_includes_vat
+          };
+        }
       }
       return s;
     });
