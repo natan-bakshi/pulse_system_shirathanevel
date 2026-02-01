@@ -451,7 +451,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {(filteredRejectedAssignments.length > 0 || filteredPendingAssignments.length > 0) &&
+      {(rejectedAssignments.length > 0 || pendingAssignments.length > 0) &&
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
           <CardHeader>
             <div className="flex flex-col gap-4">
@@ -534,6 +534,12 @@ export default function AdminDashboard() {
                       </div>
                 )}
                   </div>
+                </div>
+            }
+
+              {filteredPendingAssignments.length === 0 && filteredRejectedAssignments.length === 0 && debouncedAssignmentSearch &&
+            <div className="text-center text-gray-500 py-8">
+                  לא נמצאו שיבוצים התואמים את החיפוש "{assignmentSearchTerm}"
                 </div>
             }
 
