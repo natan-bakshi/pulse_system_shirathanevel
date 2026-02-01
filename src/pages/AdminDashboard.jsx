@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, ArrowRight, Search, Filter } from "lucide-react";
+import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, ArrowRight, Search, Filter, Edit } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link, useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ import CalendarSettings from "../components/admin/CalendarSettings";
 import EventForm from "../components/events/EventForm";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import SupplierAssignmentDialog from "../components/assignments/SupplierAssignmentDialog";
 
 const DEFAULT_VISIBLE_STATUSES = ["confirmed", "in_progress"];
 
@@ -28,6 +29,7 @@ export default function AdminDashboard() {
   const [assignmentSearchTerm, setAssignmentSearchTerm] = useState('');
   const [debouncedAssignmentSearch, setDebouncedAssignmentSearch] = useState('');
   const [assignmentSortBy, setAssignmentSortBy] = useState('event');
+  const [editingAssignmentDialog, setEditingAssignmentDialog] = useState(null);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -505,7 +507,9 @@ export default function AdminDashboard() {
                     שיבוצים שנדחו ({filteredRejectedAssignments.length})
                   </h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {filteredRejectedAssignments.map(({ event, supplier, eventServiceId, serviceName, supplierId }) =>
+                    {filteredRejectedAssignments.map(({ event, supplier, eventServiceId, serviceName, supplierId }) => {
+                      const eventServiceData = eventServices.find((es) => es.id === eventServiceId);
+                      return (
                 <div key={`rejected-${eventServiceId}-${supplierId}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-red-50 rounded-lg border border-red-200 gap-2">
                         <div className="flex-1 min-w-0 w-full">
                           <Link to={createPageUrl(`EventDetails?id=${event.id}`)} className="font-semibold text-blue-600 hover:underline break-words block">
@@ -515,6 +519,19 @@ export default function AdminDashboard() {
                           <p className="text-sm text-gray-500 break-words">שירות: {serviceName}</p>
                         </div>
                         <div className="flex gap-2 items-center mt-2 sm:mt-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7"
+                            onClick={() => setEditingAssignmentDialog({
+                              eventServiceData,
+                              eventName: event.event_name,
+                              serviceName
+                            })}
+                            title="ניהול שיבוץ ספקים"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="outline" className="h-7">
@@ -532,7 +549,8 @@ export default function AdminDashboard() {
                           </DropdownMenu>
                         </div>
                       </div>
-                )}
+                      );
+                })}
                   </div>
                 </div>
             }
@@ -598,6 +616,21 @@ export default function AdminDashboard() {
         event={editingEvent}
         initialDate={formInitialDate} />
 
+      }
+
+      {editingAssignmentDialog &&
+      <SupplierAssignmentDialog
+        isOpen={!!editingAssignmentDialog}
+        onClose={() => setEditingAssignmentDialog(null)}
+        eventServiceData={editingAssignmentDialog.eventServiceData}
+        eventName={editingAssignmentDialog.eventName}
+        serviceName={editingAssignmentDialog.serviceName}
+        allServices={services}
+        suppliers={suppliers}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['eventServices'] });
+        }}
+      />
       }
     </div>);
 
