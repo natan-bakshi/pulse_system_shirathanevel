@@ -123,24 +123,71 @@ Deno.serve(async (req) => {
 
     const vatRate = parseFloat(appSettings.vat_rate) / 100 || 0.18;
     
-    // Logic aligned with EventManagement.js calculateTotals
+    // Helper to safely parse numbers (aligned with eventFinancials.js)
+    const safeFloat = (val) => {
+        if (val === null || val === undefined || val === '') return 0;
+        const num = parseFloat(val);
+        return isNaN(num) ? 0 : num;
+    };
+    
+    // Logic aligned with eventFinancials.js
     let totalCostWithoutVat = 0;
-    // New logic: Sum only main package items and standalone items
-    const servicesToSum = populatedServices.filter(s => s.is_package_main_item || (!s.is_package_main_item && !s.parent_package_event_service_id));
+    
+    const isAllInclusive = event.all_inclusive === true || event.all_inclusive === 'true';
+    const allInclusivePrice = safeFloat(event.all_inclusive_price);
+    const totalOverride = safeFloat(event.total_override);
 
-    if (event.all_inclusive && event.all_inclusive_price) {
-        totalCostWithoutVat = event.all_inclusive_price;
+    if (isAllInclusive && allInclusivePrice > 0) {
+        let price = allInclusivePrice;
         if (event.all_inclusive_includes_vat) {
-            totalCostWithoutVat /= (1 + vatRate);
+            price = price / (1 + vatRate);
         }
-    } else if (event.total_override) {
-        const overrideWithVat = parseFloat(event.total_override);
-        totalCostWithoutVat = overrideWithVat / (1 + vatRate);
+        totalCostWithoutVat = price;
+    } else if (event.total_override !== null && event.total_override !== undefined && event.total_override !== "" && totalOverride !== 0) {
+        let price = totalOverride;
+        const overrideIncludesVat = event.total_override_includes_vat !== false;
+        
+        if (overrideIncludesVat) {
+            price = price / (1 + vatRate);
+        }
+        totalCostWithoutVat = price;
     } else {
-        totalCostWithoutVat = servicesToSum.reduce((sum, s) => {
-            const price = parseFloat(s.custom_price) || 0;
-            const quantity = parseFloat(s.quantity) || 1;
-            let serviceTotal = price * quantity; 
+        const processedLegacyPackages = new Set();
+
+        totalCostWithoutVat = populatedServices.reduce((sum, s) => {
+            const quantity = safeFloat(s.quantity) || 1;
+            
+            // 1. New Structure: Main Package Item
+            if (s.is_package_main_item) {
+                const price = safeFloat(s.custom_price);
+                let itemTotal = price * quantity;
+                if (s.includes_vat) itemTotal = itemTotal / (1 + vatRate);
+                return sum + itemTotal;
+            }
+
+            // 2. New Structure: Child Item (Skip)
+            if (s.parent_package_event_service_id) {
+                return sum;
+            }
+
+            // 3. Legacy Structure: Item in a package
+            if (s.package_id) {
+                if (processedLegacyPackages.has(s.package_id)) {
+                    return sum;
+                }
+                processedLegacyPackages.add(s.package_id);
+                
+                const price = safeFloat(s.package_price);
+                let pkgTotal = price;
+                if (s.package_includes_vat) {
+                    pkgTotal = pkgTotal / (1 + vatRate);
+                }
+                return sum + pkgTotal;
+            }
+
+            // 4. Standalone Service
+            const price = safeFloat(s.custom_price);
+            let serviceTotal = price * quantity;
             
             if (s.includes_vat) {
                 serviceTotal = serviceTotal / (1 + vatRate);
@@ -149,13 +196,34 @@ Deno.serve(async (req) => {
         }, 0);
     }
 
-    const vatAmount = totalCostWithoutVat * vatRate;
-    const totalCostWithVat = totalCostWithoutVat + vatAmount;
-    const eventDiscountAmount = parseFloat(event.discount_amount) || 0;
-    const finalTotal = totalCostWithVat - eventDiscountAmount;
+    // Apply Discount BEFORE VAT if applicable (aligned with eventFinancials.js)
+    let eventDiscountAmount = safeFloat(event.discount_amount);
+    let baseForVat = totalCostWithoutVat;
+    
+    if (event.discount_before_vat) {
+        baseForVat = Math.max(0, totalCostWithoutVat - eventDiscountAmount);
+    }
+
+    // Calculate VAT
+    const vatAmount = baseForVat * vatRate;
+    
+    // Calculate Total With VAT
+    let totalCostWithVat = 0;
+    
+    if (event.discount_before_vat) {
+        totalCostWithVat = baseForVat + vatAmount;
+    } else {
+        totalCostWithVat = totalCostWithoutVat + vatAmount;
+    }
+
+    // Apply Discount AFTER VAT if applicable
+    let finalTotal = totalCostWithVat;
+    if (!event.discount_before_vat) {
+        finalTotal = Math.max(0, totalCostWithVat - eventDiscountAmount);
+    }
     
     const baseTotalWithoutDiscount = totalCostWithoutVat; // For display compatibility
-    const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+    const totalPaid = payments.reduce((sum, p) => sum + safeFloat(p.amount), 0);
     
     // Group services by new and legacy structure
     const structuredServices = [];
