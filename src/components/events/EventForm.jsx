@@ -505,11 +505,6 @@ for (const serviceItem of formData.services) {
     const finalPkgName = isPkgMain ? (serviceItem.package_name ?? serviceItem.service_name ?? '') : undefined;
     // ----------------------------
 
-    // עדכון תיאור השירות המקורי (רק אם זה לא חבילה ראשית)
-    if (!isPkgMain && serviceDetails && serviceItem.service_description && serviceItem.service_description !== serviceDetails.service_description) {
-        await Service.update(serviceItem.service_id, { service_description: serviceItem.service_description });
-    }
-
     const data = {
         event_id: savedEvent.id,
         service_id: serviceItem.service_id,
