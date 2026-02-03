@@ -199,6 +199,9 @@ export default function Layout({ children }) {
     "/SupplierManagement", "/ServiceManagement", "/QuoteTemplateManagement",
     "/UserManagement", "/SettingsPage"];
 
+    // Allow all users to access MyNotificationSettings
+    const isAccessingNotificationSettings = pathname.includes('MyNotificationSettings');
+
 
     const isTryingToAccessAdminPage = adminOnlyPages.some((p) => pathname.startsWith(createPageUrl(p.substring(1))));
 
@@ -212,7 +215,7 @@ export default function Layout({ children }) {
     const isOnCorrectDashboard = pathname.startsWith(homePage);
     const isAccessingSpecificEvent = pathname.includes('EventDetails');
 
-    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage) {
+    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings) {
       navigate(homePage, { replace: true });
     }
 

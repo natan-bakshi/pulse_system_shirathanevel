@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { 
   Bell, Plus, Pencil, Trash2, Save, Loader2, 
-  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy
+  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy, Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +21,23 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/components/ui/use-toast";
 
+// סוגי טריגרים עם תיאורים מפורטים
 const TRIGGER_TYPES = {
-  entity_create: 'יצירת רשומה',
-  entity_update: 'עדכון רשומה',
-  scheduled_check: 'בדיקה מתוזמנת',
-  manual: 'ידני'
+  entity_create: {
+    label: 'יצירת רשומה חדשה',
+    description: 'נשלחת כאשר נוצרת רשומה חדשה (למשל: שיבוץ ספק חדש לאירוע)',
+    example: 'שיבוץ ספק לאירוע'
+  },
+  entity_update: {
+    label: 'עדכון רשומה',
+    description: 'נשלחת כאשר רשומה קיימת מתעדכנת (למשל: שינוי סטטוס שיבוץ)',
+    example: 'ביטול שיבוץ ספק'
+  },
+  scheduled_check: {
+    label: 'בדיקה מתוזמנת',
+    description: 'נשלחת לפי תזמון שנקבע מראש (למשל: תזכורת 7 ימים לפני האירוע)',
+    example: 'תזכורת לפני אירוע'
+  }
 };
 
 const TIMING_UNITS = {
@@ -44,11 +56,24 @@ const CATEGORIES = {
   system: 'מערכת'
 };
 
+// קהלי יעד עם תיאורים
 const AUDIENCES = {
-  supplier: 'ספקים',
-  client: 'לקוחות',
-  admin: 'מנהלים',
-  system_creator: 'יוצר המערכת'
+  supplier: {
+    label: 'ספקים',
+    description: 'ספקים המשובצים לאירוע הרלוונטי'
+  },
+  client: {
+    label: 'לקוחות', 
+    description: 'הלקוח שהאירוע שייך לו'
+  },
+  admin: {
+    label: 'מנהלים',
+    description: 'כל המשתמשים עם הרשאת מנהל'
+  },
+  system_creator: {
+    label: 'יוצר המערכת',
+    description: 'המנהל הראשי של המערכת בלבד'
+  }
 };
 
 const AVAILABLE_VARIABLES = {
@@ -73,6 +98,31 @@ const DEEP_LINK_PAGES = [
   'EventDetails',
   'EventManagement'
 ];
+
+// רכיב עזר להצגת תיאור עם טולטיפ
+function FieldLabel({ label, tooltip, required }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Label className={required ? "after:content-['*'] after:text-red-500 after:mr-0.5" : ""}>
+        {label}
+      </Label>
+      {tooltip && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="text-gray-400 hover:text-gray-600">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs text-right">
+              <p className="text-sm">{tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
+  );
+}
 
 export default function NotificationManagementTab() {
   const queryClient = useQueryClient();
@@ -100,10 +150,19 @@ export default function NotificationManagementTab() {
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] });
       setIsDialogOpen(false);
       setEditingTemplate(null);
-      toast({ title: "נשמר בהצלחה", description: "תבנית ההתראה עודכנה" });
+      toast({ 
+        title: "נשמר בהצלחה", 
+        description: "תבנית ההתראה עודכנה",
+        duration: 3000 
+      });
     },
     onError: (error) => {
-      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "שגיאה", 
+        description: error.message, 
+        variant: "destructive",
+        duration: 5000 
+      });
     }
   });
 
@@ -112,7 +171,11 @@ export default function NotificationManagementTab() {
     mutationFn: (id) => base44.entities.NotificationTemplate.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] });
-      toast({ title: "נמחק", description: "תבנית ההתראה נמחקה" });
+      toast({ 
+        title: "נמחק", 
+        description: "תבנית ההתראה נמחקה",
+        duration: 3000 
+      });
     }
   });
 
@@ -163,7 +226,12 @@ export default function NotificationManagementTab() {
 
   const handleSave = () => {
     if (!editingTemplate.type || !editingTemplate.name || !editingTemplate.title_template) {
-      toast({ title: "שגיאה", description: "נא למלא את כל השדות החובה", variant: "destructive" });
+      toast({ 
+        title: "שגיאה", 
+        description: "נא למלא את כל השדות החובה", 
+        variant: "destructive",
+        duration: 4000 
+      });
       return;
     }
     saveMutation.mutate(editingTemplate);
@@ -171,7 +239,11 @@ export default function NotificationManagementTab() {
 
   const copyVariable = (variable) => {
     navigator.clipboard.writeText(`{{${variable}}}`);
-    toast({ title: "הועתק", description: `{{${variable}}} הועתק ללוח` });
+    toast({ 
+      title: "הועתק", 
+      description: `{{${variable}}} הועתק ללוח`,
+      duration: 2000 
+    });
   };
 
   return (
@@ -191,6 +263,19 @@ export default function NotificationManagementTab() {
           תבנית חדשה
         </Button>
       </div>
+
+      {/* הסבר על זיהוי קהל יעד */}
+      <Alert className="bg-blue-50 border-blue-200">
+        <Info className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-800 text-sm">
+          <strong>איך המערכת מזהה את הנמענים?</strong>
+          <ul className="mt-2 list-disc mr-4 space-y-1">
+            <li><strong>ספקים:</strong> המערכת מזהה את הספקים המשובצים לאירוע הרלוונטי לפי השיבוצים ב-EventService</li>
+            <li><strong>לקוחות:</strong> המערכת מזהה את הלקוח לפי שדה parents באירוע או לפי המשתמש שיצר את האירוע</li>
+            <li><strong>התראות על יתרות:</strong> נשלחות ללקוחות שיש להם אירועים עם יתרה פתוחה לאחר שהאירוע הושלם</li>
+          </ul>
+        </AlertDescription>
+      </Alert>
 
       {/* Help Section */}
       <Collapsible open={expandedHelp} onOpenChange={setExpandedHelp}>
@@ -278,11 +363,11 @@ export default function NotificationManagementTab() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{template.name}</span>
                             <Badge variant="outline" className="text-xs">
-                              {TRIGGER_TYPES[template.trigger_type]}
+                              {TRIGGER_TYPES[template.trigger_type]?.label || template.trigger_type}
                             </Badge>
                             {template.target_audiences?.map(a => (
                               <Badge key={a} variant="secondary" className="text-xs">
-                                {AUDIENCES[a]}
+                                {AUDIENCES[a]?.label || a}
                               </Badge>
                             ))}
                           </div>
@@ -380,243 +465,339 @@ export default function NotificationManagementTab() {
 
           {editingTemplate && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="type">קוד זיהוי (type) *</Label>
+              {/* פרטים בסיסיים */}
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <h3 className="font-medium text-sm text-gray-700 mb-3">פרטים בסיסיים</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <FieldLabel 
+                      label="קוד זיהוי" 
+                      tooltip="קוד ייחודי לזיהוי התבנית במערכת. יכול להכיל רק אותיות גדולות באנגלית וקו תחתון. למשל: SUPPLIER_NEW_ASSIGNMENT"
+                      required
+                    />
+                    <Input
+                      value={editingTemplate.type}
+                      onChange={(e) => setEditingTemplate({
+                        ...editingTemplate, 
+                        type: e.target.value.toUpperCase().replace(/[^A-Z_]/g, '')
+                      })}
+                      placeholder="SUPPLIER_NEW_ASSIGNMENT"
+                      className="font-mono text-sm mt-1"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel 
+                      label="שם התבנית" 
+                      tooltip="שם ידידותי שיעזור לך לזהות את התבנית ברשימה"
+                      required
+                    />
+                    <Input
+                      value={editingTemplate.name}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, name: e.target.value})}
+                      placeholder="שיבוץ חדש לספק"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <FieldLabel 
+                    label="תיאור" 
+                    tooltip="תיאור פנימי לשימושך - לא יוצג למשתמשים"
+                  />
                   <Input
-                    id="type"
-                    value={editingTemplate.type}
-                    onChange={(e) => setEditingTemplate({
-                      ...editingTemplate, 
-                      type: e.target.value.toUpperCase().replace(/[^A-Z_]/g, '')
-                    })}
-                    placeholder="SUPPLIER_NEW_ASSIGNMENT"
-                    className="font-mono text-sm"
+                    value={editingTemplate.description || ''}
+                    onChange={(e) => setEditingTemplate({...editingTemplate, description: e.target.value})}
+                    placeholder="תיאור התבנית לשימוש פנימי"
+                    className="mt-1"
                   />
                 </div>
+              </div>
+
+              {/* תוכן ההתראה */}
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <h3 className="font-medium text-sm text-gray-700 mb-3">תוכן ההתראה</h3>
                 <div>
-                  <Label htmlFor="name">שם התבנית *</Label>
+                  <FieldLabel 
+                    label="כותרת ההתראה" 
+                    tooltip="הכותרת שתופיע בהתראה. ניתן להשתמש במשתנים כמו {{event_name}}"
+                    required
+                  />
                   <Input
-                    id="name"
-                    value={editingTemplate.name}
-                    onChange={(e) => setEditingTemplate({...editingTemplate, name: e.target.value})}
-                    placeholder="שיבוץ חדש לספק"
+                    value={editingTemplate.title_template}
+                    onChange={(e) => setEditingTemplate({...editingTemplate, title_template: e.target.value})}
+                    placeholder="שיבוץ חדש לאירוע {{event_name}}"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="mt-3">
+                  <FieldLabel 
+                    label="תוכן ההודעה" 
+                    tooltip="גוף ההודעה המלא. ניתן להשתמש במשתנים כמו {{supplier_name}}, {{event_date}}"
+                    required
+                  />
+                  <Textarea
+                    value={editingTemplate.body_template}
+                    onChange={(e) => setEditingTemplate({...editingTemplate, body_template: e.target.value})}
+                    placeholder="שלום {{supplier_name}}, שובצת לאירוע {{event_name}}..."
+                    rows={3}
+                    className="mt-1"
                   />
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="description">תיאור</Label>
-                <Input
-                  id="description"
-                  value={editingTemplate.description || ''}
-                  onChange={(e) => setEditingTemplate({...editingTemplate, description: e.target.value})}
-                  placeholder="תיאור התבנית למנהל"
-                />
-              </div>
-
-              <Separator />
-
-              <div>
-                <Label htmlFor="title_template">כותרת ההתראה *</Label>
-                <Input
-                  id="title_template"
-                  value={editingTemplate.title_template}
-                  onChange={(e) => setEditingTemplate({...editingTemplate, title_template: e.target.value})}
-                  placeholder="שיבוץ חדש לאירוע {{event_name}}"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="body_template">תוכן ההודעה *</Label>
-                <Textarea
-                  id="body_template"
-                  value={editingTemplate.body_template}
-                  onChange={(e) => setEditingTemplate({...editingTemplate, body_template: e.target.value})}
-                  placeholder="שלום {{supplier_name}}, שובצת לאירוע {{event_name}}..."
-                  rows={3}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">קטגוריה</Label>
-                  <Select 
-                    value={editingTemplate.category || 'system'} 
-                    onValueChange={(v) => setEditingTemplate({...editingTemplate, category: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(CATEGORIES).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="trigger_type">סוג טריגר</Label>
-                  <Select 
-                    value={editingTemplate.trigger_type} 
-                    onValueChange={(v) => setEditingTemplate({...editingTemplate, trigger_type: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(TRIGGER_TYPES).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label>קהל יעד</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {Object.entries(AUDIENCES).map(([value, label]) => (
-                    <Button
-                      key={value}
-                      type="button"
-                      variant={editingTemplate.target_audiences?.includes(value) ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        const audiences = editingTemplate.target_audiences || [];
-                        if (audiences.includes(value)) {
-                          setEditingTemplate({
-                            ...editingTemplate,
-                            target_audiences: audiences.filter(a => a !== value)
-                          });
-                        } else {
-                          setEditingTemplate({
-                            ...editingTemplate,
-                            target_audiences: [...audiences, value]
-                          });
-                        }
-                      }}
+              {/* הגדרות טריגר */}
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <h3 className="font-medium text-sm text-gray-700 mb-3">מתי לשלוח?</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <FieldLabel 
+                      label="קטגוריה" 
+                      tooltip="קטגוריה לסיווג התבנית - משמשת לארגון וסינון"
+                    />
+                    <Select 
+                      value={editingTemplate.category || 'system'} 
+                      onValueChange={(v) => setEditingTemplate({...editingTemplate, category: v})}
                     >
-                      {label}
-                    </Button>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(CATEGORIES).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <FieldLabel 
+                      label="סוג טריגר" 
+                      tooltip="מה יגרום לשליחת ההתראה"
+                    />
+                    <Select 
+                      value={editingTemplate.trigger_type} 
+                      onValueChange={(v) => setEditingTemplate({...editingTemplate, trigger_type: v})}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(TRIGGER_TYPES).map(([value, info]) => (
+                          <SelectItem key={value} value={value}>
+                            <div className="text-right">
+                              <div>{info.label}</div>
+                              <div className="text-xs text-gray-500">{info.example}</div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* הסבר על הטריגר הנבחר */}
+                {editingTemplate.trigger_type && TRIGGER_TYPES[editingTemplate.trigger_type] && (
+                  <Alert className="mt-3 bg-blue-50 border-blue-100">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-700 text-sm">
+                      {TRIGGER_TYPES[editingTemplate.trigger_type].description}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              {/* קהל יעד */}
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <FieldLabel 
+                  label="למי לשלוח?" 
+                  tooltip="בחר את קהלי היעד שיקבלו את ההתראה הזו"
+                />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(AUDIENCES).map(([value, info]) => (
+                    <TooltipProvider key={value}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant={editingTemplate.target_audiences?.includes(value) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                              const audiences = editingTemplate.target_audiences || [];
+                              if (audiences.includes(value)) {
+                                setEditingTemplate({
+                                  ...editingTemplate,
+                                  target_audiences: audiences.filter(a => a !== value)
+                                });
+                              } else {
+                                setEditingTemplate({
+                                  ...editingTemplate,
+                                  target_audiences: [...audiences, value]
+                                });
+                              }
+                            }}
+                          >
+                            {info.label}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p className="text-sm">{info.description}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ))}
                 </div>
               </div>
 
-              <Separator />
+              {/* הגדרות תזמון - רק לטריגר מתוזמן */}
+              {editingTemplate.trigger_type === 'scheduled_check' && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium text-sm text-gray-700 mb-3">הגדרות תזמון</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <FieldLabel 
+                        label="כמה זמן לפני האירוע" 
+                        tooltip="כמה זמן לפני האירוע לשלוח את ההתראה הראשונה"
+                      />
+                      <Input
+                        type="number"
+                        value={editingTemplate.timing_value || ''}
+                        onChange={(e) => setEditingTemplate({
+                          ...editingTemplate, 
+                          timing_value: e.target.value ? parseInt(e.target.value) : null
+                        })}
+                        placeholder="7"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel label="יחידת זמן" />
+                      <Select 
+                        value={editingTemplate.timing_unit || 'days'} 
+                        onValueChange={(v) => setEditingTemplate({...editingTemplate, timing_unit: v})}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(TIMING_UNITS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <FieldLabel 
+                        label="מקסימום תזכורות" 
+                        tooltip="כמה תזכורות חוזרות לשלוח אם לא בוצעה פעולה"
+                      />
+                      <Input
+                        type="number"
+                        value={editingTemplate.max_reminders || ''}
+                        onChange={(e) => setEditingTemplate({
+                          ...editingTemplate, 
+                          max_reminders: e.target.value ? parseInt(e.target.value) : 3
+                        })}
+                        placeholder="3"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>תזמון (לפני)</Label>
-                  <Input
-                    type="number"
-                    value={editingTemplate.timing_value || ''}
-                    onChange={(e) => setEditingTemplate({
-                      ...editingTemplate, 
-                      timing_value: e.target.value ? parseInt(e.target.value) : null
-                    })}
-                    placeholder="7"
-                  />
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <FieldLabel 
+                        label="תזכורת חוזרת כל" 
+                        tooltip="כל כמה זמן לשלוח תזכורת חוזרת (השאר ריק לביטול תזכורות חוזרות)"
+                      />
+                      <Input
+                        type="number"
+                        value={editingTemplate.reminder_interval_value || ''}
+                        onChange={(e) => setEditingTemplate({
+                          ...editingTemplate, 
+                          reminder_interval_value: e.target.value ? parseInt(e.target.value) : null
+                        })}
+                        placeholder="24"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel label="יחידת זמן לתזכורת" />
+                      <Select 
+                        value={editingTemplate.reminder_interval_unit || 'hours'} 
+                        onValueChange={(v) => setEditingTemplate({...editingTemplate, reminder_interval_unit: v})}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hours">שעות</SelectItem>
+                          <SelectItem value="days">ימים</SelectItem>
+                          <SelectItem value="weeks">שבועות</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label>יחידה</Label>
-                  <Select 
-                    value={editingTemplate.timing_unit || 'days'} 
-                    onValueChange={(v) => setEditingTemplate({...editingTemplate, timing_unit: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(TIMING_UNITS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>מקסימום תזכורות</Label>
-                  <Input
-                    type="number"
-                    value={editingTemplate.max_reminders || ''}
-                    onChange={(e) => setEditingTemplate({
-                      ...editingTemplate, 
-                      max_reminders: e.target.value ? parseInt(e.target.value) : 3
-                    })}
-                    placeholder="3"
-                  />
-                </div>
-              </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>תזכורת חוזרת כל</Label>
-                  <Input
-                    type="number"
-                    value={editingTemplate.reminder_interval_value || ''}
-                    onChange={(e) => setEditingTemplate({
-                      ...editingTemplate, 
-                      reminder_interval_value: e.target.value ? parseInt(e.target.value) : null
-                    })}
-                    placeholder="24"
-                  />
-                </div>
-                <div>
-                  <Label>יחידת תזכורת</Label>
-                  <Select 
-                    value={editingTemplate.reminder_interval_unit || 'hours'} 
-                    onValueChange={(v) => setEditingTemplate({...editingTemplate, reminder_interval_unit: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hours">שעות</SelectItem>
-                      <SelectItem value="days">ימים</SelectItem>
-                      <SelectItem value="weeks">שבועות</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              {/* הגדרות מתקדמות */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between text-gray-600">
+                    <span>הגדרות מתקדמות</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="p-3 bg-gray-50 rounded-lg mt-2 space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel 
+                          label="דף יעד" 
+                          tooltip="לאיזה דף לנווט כשלוחצים על ההתראה"
+                        />
+                        <Select 
+                          value={editingTemplate.deep_link_base || ''} 
+                          onValueChange={(v) => setEditingTemplate({...editingTemplate, deep_link_base: v})}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="בחר דף" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DEEP_LINK_PAGES.map((page) => (
+                              <SelectItem key={page} value={page}>{page}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <FieldLabel 
+                          label="פרמטרים" 
+                          tooltip='פרמטרים להעברה לדף היעד בפורמט JSON. למשל: {"id": "{{event_id}}"}'
+                        />
+                        <Input
+                          value={editingTemplate.deep_link_params_map || ''}
+                          onChange={(e) => setEditingTemplate({...editingTemplate, deep_link_params_map: e.target.value})}
+                          placeholder='{"id": "{{event_id}}"}'
+                          className="font-mono text-sm mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>דף יעד (Deep Link)</Label>
-                  <Select 
-                    value={editingTemplate.deep_link_base || ''} 
-                    onValueChange={(v) => setEditingTemplate({...editingTemplate, deep_link_base: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="בחר דף" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEEP_LINK_PAGES.map((page) => (
-                        <SelectItem key={page} value={page}>{page}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>פרמטרים (JSON)</Label>
-                  <Input
-                    value={editingTemplate.deep_link_params_map || ''}
-                    onChange={(e) => setEditingTemplate({...editingTemplate, deep_link_params_map: e.target.value})}
-                    placeholder='{"id": "{{event_id}}"}'
-                    className="font-mono text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
+              {/* מצב פעיל */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <Switch
                   checked={editingTemplate.is_active}
                   onCheckedChange={(checked) => setEditingTemplate({...editingTemplate, is_active: checked})}
                 />
-                <Label>התראה פעילה</Label>
+                <div>
+                  <Label>התראה פעילה</Label>
+                  <p className="text-xs text-gray-500">כבה כדי להשבית זמנית את ההתראה מבלי למחוק אותה</p>
+                </div>
               </div>
             </div>
           )}
