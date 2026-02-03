@@ -385,6 +385,13 @@ export default function Layout({ children }) {
                                       <Calendar className="h-4 w-4 ml-2" />
                                       חיבור יומן Google
                                     </Button> */}
+                <Link
+                  to={createPageUrl("MyNotificationSettings")}
+                  className="flex items-center w-full justify-start text-sm lg:text-base border border-red-200 text-red-800 hover:bg-red-50 rounded-md px-4 py-2 mb-2"
+                  onClick={() => setSidebarOpen(false)}>
+                  <Bell className="h-4 w-4 ml-2" />
+                  הגדרות התראות
+                </Link>
                 <Button
                   variant="outline"
                   className="w-full justify-start text-sm lg:text-base border-red-200 text-red-800 hover:bg-red-50"
