@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { createNotification } from "@/functions/createNotification";
 import { 
   Bell, Plus, Pencil, Trash2, Save, Loader2, 
-  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy, Info
+  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy, Info, Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,6 +131,13 @@ export default function NotificationManagementTab() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('templates');
   const [expandedHelp, setExpandedHelp] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+
+  // Get current user for test sending
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => base44.auth.me()
+  });
 
   // Fetch templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -235,6 +243,78 @@ export default function NotificationManagementTab() {
       return;
     }
     saveMutation.mutate(editingTemplate);
+  };
+
+  // שליחת התראת בדיקה לעצמי
+  const handleSendTestNotification = async () => {
+    if (!currentUser || !editingTemplate) return;
+    
+    setSendingTest(true);
+    try {
+      // החלפת משתנים בערכי דוגמה
+      let testTitle = editingTemplate.title_template || 'התראת בדיקה';
+      let testMessage = editingTemplate.body_template || 'זוהי התראת בדיקה';
+      
+      // החלפת משתנים נפוצים בדוגמאות
+      const testVariables = {
+        event_name: 'אירוע לדוגמה',
+        family_name: 'ישראלי',
+        event_date: '15/03/2025',
+        event_time: '19:00',
+        event_location: 'אולמי הזהב',
+        supplier_name: 'ספק לדוגמה',
+        service_name: 'צילום',
+        balance: '5,000',
+        days_open: '7',
+        min_suppliers: '2',
+        current_suppliers: '1',
+        event_id: 'test-123'
+      };
+      
+      Object.entries(testVariables).forEach(([key, value]) => {
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        testTitle = testTitle.replace(regex, value);
+        testMessage = testMessage.replace(regex, value);
+      });
+      
+      const response = await createNotification({
+        target_user_id: currentUser.id,
+        target_user_email: currentUser.email,
+        title: `[בדיקה] ${testTitle}`,
+        message: testMessage,
+        link: '',
+        template_type: editingTemplate.type || 'TEST',
+        send_push: true,
+        check_quiet_hours: false // לא לבדוק שעות שקט לבדיקה
+      });
+      
+      if (response.data?.success) {
+        toast({ 
+          title: "נשלח בהצלחה!", 
+          description: response.data?.push?.sent 
+            ? "התראה נשלחה - בדוק את ההתראות שלך ואת ה-Push" 
+            : "התראה פנימית נוצרה (Push לא נשלח)",
+          duration: 5000 
+        });
+      } else {
+        toast({ 
+          title: "שגיאה בשליחה", 
+          description: response.data?.error || "לא ניתן לשלוח התראת בדיקה",
+          variant: "destructive",
+          duration: 5000 
+        });
+      }
+    } catch (error) {
+      console.error('Test notification error:', error);
+      toast({ 
+        title: "שגיאה", 
+        description: error.message || "לא ניתן לשלוח התראת בדיקה",
+        variant: "destructive",
+        duration: 5000 
+      });
+    } finally {
+      setSendingTest(false);
+    }
   };
 
   const copyVariable = (variable) => {
@@ -802,18 +882,33 @@ export default function NotificationManagementTab() {
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              ביטול
-            </Button>
-            <Button onClick={handleSave} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? (
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="secondary" 
+              onClick={handleSendTestNotification} 
+              disabled={sendingTest || !editingTemplate?.title_template}
+              className="w-full sm:w-auto"
+            >
+              {sendingTest ? (
                 <Loader2 className="h-4 w-4 animate-spin ml-2" />
               ) : (
-                <Save className="h-4 w-4 ml-2" />
+                <Send className="h-4 w-4 ml-2" />
               )}
-              שמור
+              שלח לי בדיקה
             </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                ביטול
+              </Button>
+              <Button onClick={handleSave} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                ) : (
+                  <Save className="h-4 w-4 ml-2" />
+                )}
+                שמור
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
