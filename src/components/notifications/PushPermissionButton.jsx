@@ -148,18 +148,23 @@ export default function PushPermissionButton({ user }) {
       window.OneSignalDeferred.push(async (OneSignal) => {
         try {
           // Check if already initialized
-          const isInitialized = OneSignal.Notifications.isPushSupported();
+          let needsInit = false;
+          try {
+            needsInit = !OneSignal.Notifications.isPushSupported();
+          } catch {
+            needsInit = true;
+          }
           
-          if (!isInitialized) {
-            // Initialize OneSignal
+          if (needsInit) {
             await OneSignal.init({
               appId: ONESIGNAL_APP_ID,
               allowLocalhostAsSecureOrigin: true,
+              serviceWorkerParam: { scope: '/' },
               promptOptions: {
                 slidedown: {
                   prompts: [{
                     type: "push",
-                    autoPrompt: false, // We manually prompt
+                    autoPrompt: false,
                     text: {
                       actionMessage: "רוצה לקבל עדכונים ותזכורות חשובות?",
                       acceptButton: "כן, תודה",
@@ -176,14 +181,21 @@ export default function PushPermissionButton({ user }) {
             });
           }
 
-          // Login with user ID
+          // Login with user ID - critical for targeting
           if (user?.id) {
             await OneSignal.login(user.id);
             console.log('[OneSignal] User logged in:', user.id);
           }
 
-          // Opt-in to push
-          await OneSignal.User.PushSubscription.optIn();
+          // Opt-in to push notifications
+          const pushSub = OneSignal.User.PushSubscription;
+          await pushSub.optIn();
+          
+          // Verify subscription
+          const subscriptionId = pushSub.id;
+          const isOptedIn = pushSub.optedIn;
+          
+          console.log('[OneSignal] Subscription complete. ID:', subscriptionId, 'OptedIn:', isOptedIn);
           
           setIsSubscribed(true);
           resolve();
