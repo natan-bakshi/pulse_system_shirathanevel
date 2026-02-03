@@ -44,7 +44,7 @@ const getAdminNavItems = (userEmail) => {
   
   // Only system creator can see settings
   if (userEmail === SYSTEM_CREATOR_EMAIL) {
-    items.push({ title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings });
+    items.push({ title: "הגדרות", url: "/SettingsPage", icon: Settings });
   }
   
   return items;
