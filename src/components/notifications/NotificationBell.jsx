@@ -99,20 +99,20 @@ export default function NotificationBell({ user }) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-white hover:bg-white/20"
+        <button
+          type="button"
+          className="relative flex items-center justify-center w-12 h-12 min-w-[48px] min-h-[48px] rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
+          aria-label="התראות"
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-6 w-6" />
           {unreadCount > 0 && (
             <Badge
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 hover:bg-red-600"
+              className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 hover:bg-red-600"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
           )}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
