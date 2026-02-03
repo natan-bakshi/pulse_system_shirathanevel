@@ -451,51 +451,50 @@ export default function Layout({ children }) {
           }
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <header className="flex items-center justify-between p-2 sm:p-4 border-b border-white/20">
-  {/* כפתור תפריט - צד ימין ב-RTL */}
-  <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(!sidebarOpen)} className="text-red-800 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-10 hover:bg-white/20 w-10 shrink-0">
+          <header className="flex items-center justify-between p-2 sm:p-4 border-b border-white/20 gap-2">
+          {/* כפתור תפריט - צד ימין ב-RTL */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="flex items-center justify-center w-12 h-12 min-w-[48px] min-h-[48px] rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
+            aria-label="פתח תפריט"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
 
+          {/* מיכל לוגו מרכזי - ממורכז בין הכפתור לדיב הריק */}
+          <div className="flex-1 flex justify-center items-center overflow-hidden px-2">
+            <img
+              src={companyLogo}
+              alt={companyName}
+              className="h-9 w-auto object-contain opacity-90 shrink-0"
+            />
+            <span className="text-white font-medium text-sm hidden sm:block mr-3 truncate">
+              {companyName}
+            </span>
+          </div>
 
-    <Menu className="h-6 w-6" />
-  </Button>
+          {/* פעמון התראות */}
+          <NotificationBell user={user} />
 
-  {/* מיכל לוגו מרכזי - ממורכז בין הכפתור לדיב הריק */}
-  <div className="flex-1 flex justify-center items-center overflow-hidden px-2">
-    <img
-                  src={companyLogo}
-                  alt={companyName}
-                  className="h-9 w-auto object-contain opacity-90 shrink-0" />
-
-    <span className="text-white font-medium text-sm hidden sm:block mr-3 truncate">
-      {companyName}
-    </span>
-  </div>
-
-  {/* פעמון התראות */}
-  <NotificationBell user={user} />
-
-  {/* כפתור חזרה אחורה - מופיע רק אם אנחנו לא בדף הראשי/דשבורד */}
-  {location.pathname !== "/" && !location.pathname.endsWith("Dashboard") ?
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(-1);
-                }} className="text-red-800 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-10 hover:bg-white/20 w-10 shrink-0"
-
-                title="חזור למסך הקודם">
-
-      <ArrowRight className="h-6 w-6" />
-    </Button> : (
-
-              /* אלמנט ריק לאיזון המרכוז כשאנחנו בדשבורד */
-              <div className="w-10 shrink-0"></div>)
-              }
-            </header>
+          {/* כפתור חזרה אחורה - מופיע רק אם אנחנו לא בדף הראשי/דשבורד */}
+          {location.pathname !== "/" && !location.pathname.endsWith("Dashboard") ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(-1);
+              }}
+              className="flex items-center justify-center w-12 h-12 min-w-[48px] min-h-[48px] rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
+              aria-label="חזור למסך הקודם"
+            >
+              <ArrowRight className="h-6 w-6" />
+            </button>
+          ) : (
+            /* אלמנט ריק לאיזון המרכוז כשאנחנו בדשבורד */
+            <div className="w-12 shrink-0"></div>
+          )}
+        </header>
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative">
             <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full box-border overflow-x-hidden">
