@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import PushNotificationManager from "@/components/notifications/PushNotificationManager";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import TermsPopup from "@/components/legal/TermsPopup";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
@@ -423,6 +424,9 @@ export default function Layout({ children }) {
       {companyName}
     </span>
   </div>
+
+  {/* פעמון התראות */}
+  <NotificationBell user={user} />
 
   {/* כפתור חזרה אחורה - מופיע רק אם אנחנו לא בדף הראשי/דשבורד */}
   {location.pathname !== "/" && !location.pathname.endsWith("Dashboard") ?
