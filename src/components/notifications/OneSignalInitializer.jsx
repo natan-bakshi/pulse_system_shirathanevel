@@ -95,6 +95,9 @@ export default function OneSignalInitializer({ user }) {
               await OneSignal.login(user.id);
               console.log('[OneSignal] User logged in:', user.id);
               
+              // Wait a moment for subscription to propagate
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
               // Check subscription status
               const permission = await OneSignal.Notifications.permission;
               const pushSubscription = OneSignal.User.PushSubscription;
@@ -108,14 +111,25 @@ export default function OneSignalInitializer({ user }) {
               // If user has permission but is not opted in, opt them in
               if (permission && !isOptedIn) {
                 console.log('[OneSignal] User has permission but not opted in. Opting in...');
-                await pushSubscription.optIn();
+                try {
+                  await pushSubscription.optIn();
+                  console.log('[OneSignal] Opted in successfully');
+                } catch (optInErr) {
+                  console.warn('[OneSignal] OptIn failed:', optInErr);
+                }
               }
+              
+              // Check final status after opt-in
+              const finalOptedIn = pushSubscription.optedIn;
+              const finalSubId = pushSubscription.id;
+              console.log('[OneSignal] Final status - OptedIn:', finalOptedIn, 'SubID:', finalSubId);
               
               // Save push status to user profile
               try {
                 await base44.auth.updateMe({ 
                   onesignal_external_id: user.id,
-                  push_enabled: permission && isOptedIn
+                  push_enabled: permission && finalOptedIn,
+                  onesignal_subscription_id: finalSubId
                 });
               } catch (e) {
                 // Ignore update errors
