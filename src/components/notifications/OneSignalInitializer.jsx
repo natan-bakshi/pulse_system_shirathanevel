@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 
 /**
@@ -10,7 +10,7 @@ export default function OneSignalInitializer({ user }) {
   const initialized = useRef(false);
 
   // Update browser badge when unread count changes
-  const updateBadge = (count) => {
+  const updateBadge = useCallback((count) => {
     try {
       if ('setAppBadge' in navigator) {
         if (count > 0) {
@@ -22,10 +22,10 @@ export default function OneSignalInitializer({ user }) {
     } catch (e) {
       console.log('[Badge] Badge API not supported:', e);
     }
-  };
+  }, []);
 
   // Fetch unread count and update badge
-  const updateUnreadBadge = async () => {
+  const updateUnreadBadge = useCallback(async () => {
     if (!user?.id) return;
     try {
       const notifications = await base44.entities.InAppNotification.filter(
@@ -37,40 +37,34 @@ export default function OneSignalInitializer({ user }) {
     } catch (e) {
       console.warn('[Badge] Failed to fetch unread count:', e);
     }
-  };
+  }, [user?.id, updateBadge]);
 
   useEffect(() => {
     if (!user || initialized.current) return;
 
     const initOneSignal = async () => {
       try {
-        // Check if OneSignal is already loaded
+        // Check if running in browser
         if (typeof window === 'undefined') return;
 
         // Load OneSignal SDK if not already loaded
         if (!window.OneSignalDeferred) {
-          window.OneSignalDeferred = window.OneSignalDeferred || [];
+          window.OneSignalDeferred = [];
           
-          // Create and append the script
           const script = document.createElement('script');
           script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
           script.defer = true;
           document.head.appendChild(script);
         }
 
-        // OneSignal App ID - hardcoded for reliability
         const ONESIGNAL_APP_ID = '4490c0d9-4205-4d6e-8143-39c0aa00b183';
-        
-        if (!ONESIGNAL_APP_ID) {
-          console.log('[OneSignal] App ID not configured');
-          return;
-        }
 
         window.OneSignalDeferred.push(async function(OneSignal) {
           try {
+            // Initialize OneSignal
             await OneSignal.init({
               appId: ONESIGNAL_APP_ID,
-              allowLocalhostAsSecureOrigin: true, // For development
+              allowLocalhostAsSecureOrigin: true,
               serviceWorkerParam: { scope: '/' },
               promptOptions: {
                 slidedown: {
@@ -89,32 +83,48 @@ export default function OneSignalInitializer({ user }) {
                   }]
                 }
               },
-              notifyButton: {
-                enable: false // We use our own notification bell
-              },
+              notifyButton: { enable: false },
               welcomeNotification: {
                 title: "התראות הופעלו!",
                 message: "תקבל עדכונים חשובים ותזכורות על האירועים שלך"
               }
             });
 
-            // Link user to OneSignal using their Base44 user ID
+            // Link user to OneSignal
             if (user.id) {
               await OneSignal.login(user.id);
               console.log('[OneSignal] User logged in:', user.id);
               
-              // Optionally save the OneSignal external ID to user profile
+              // Check subscription status
+              const permission = await OneSignal.Notifications.permission;
+              const pushSubscription = OneSignal.User.PushSubscription;
+              const isOptedIn = pushSubscription.optedIn;
+              const subscriptionId = pushSubscription.id;
+              
+              console.log('[OneSignal] Permission:', permission);
+              console.log('[OneSignal] OptedIn:', isOptedIn);
+              console.log('[OneSignal] Subscription ID:', subscriptionId);
+              
+              // If user has permission but is not opted in, opt them in
+              if (permission && !isOptedIn) {
+                console.log('[OneSignal] User has permission but not opted in. Opting in...');
+                await pushSubscription.optIn();
+              }
+              
+              // Save push status to user profile
               try {
-                await base44.auth.updateMe({ onesignal_external_id: user.id });
+                await base44.auth.updateMe({ 
+                  onesignal_external_id: user.id,
+                  push_enabled: permission && isOptedIn
+                });
               } catch (e) {
-                // Ignore if update fails
+                // Ignore update errors
               }
             }
 
             initialized.current = true;
-            
-            // Update badge after init
             updateUnreadBadge();
+            
           } catch (error) {
             console.warn('[OneSignal] Init error:', error);
           }
@@ -136,20 +146,11 @@ export default function OneSignalInitializer({ user }) {
       });
     }
 
-    // Cleanup on unmount
     return () => {
       if (unsubscribe) unsubscribe();
-      if (window.OneSignalDeferred && initialized.current) {
-        window.OneSignalDeferred.push(async function(OneSignal) {
-          try {
-            await OneSignal.logout();
-          } catch (e) {
-            // Ignore logout errors
-          }
-        });
-      }
+      // Don't logout on unmount - user should stay logged in to OneSignal
     };
-  }, [user]);
+  }, [user, updateUnreadBadge]);
 
-  return null; // This component doesn't render anything
+  return null;
 }
