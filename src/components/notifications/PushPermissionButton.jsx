@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Bell, BellOff, Check, AlertTriangle, Loader2, Smartphone, Monitor, Info } from "lucide-react";
+import { Bell, BellOff, Check, AlertTriangle, Loader2, Smartphone, Monitor, Info, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { base44 } from "@/api/base44Client";
 
 // OneSignal App ID
 const ONESIGNAL_APP_ID = '4490c0d9-4205-4d6e-8143-39c0aa00b183';
@@ -14,6 +15,7 @@ export default function PushPermissionButton({ user }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [deviceType, setDeviceType] = useState('desktop');
+  const [debugInfo, setDebugInfo] = useState(null);
 
   // Detect device type
   useEffect(() => {
@@ -57,17 +59,25 @@ export default function PushPermissionButton({ user }) {
             const optedIn = pushSub.optedIn;
             const subscriptionId = pushSub.id;
             
-            console.log('[Push] Permission:', permission, 'OptedIn:', optedIn, 'SubID:', subscriptionId);
+            setDebugInfo({
+              permission,
+              optedIn,
+              subscriptionId: subscriptionId ? subscriptionId.substring(0, 10) + '...' : 'none',
+              nativePermission: Notification.permission
+            });
             
-            // User is subscribed if they have permission AND are opted in
-            setIsSubscribed(permission && optedIn);
+            console.log('[Push] Status check:', { permission, optedIn, subscriptionId });
+            
+            // User is subscribed if they have permission AND are opted in AND have a subscription ID
+            setIsSubscribed(permission && optedIn && !!subscriptionId);
             
             // If they have permission but aren't opted in, try to opt them in
             if (permission && !optedIn) {
               console.log('[Push] User has permission but not opted in. Attempting opt-in...');
               try {
                 await pushSub.optIn();
-                setIsSubscribed(true);
+                // Re-check after opt-in
+                setTimeout(() => checkPermissionStatus(), 1000);
               } catch (optInError) {
                 console.warn('[Push] Opt-in failed:', optInError);
               }
@@ -191,6 +201,9 @@ export default function PushPermissionButton({ user }) {
           const pushSub = OneSignal.User.PushSubscription;
           await pushSub.optIn();
           
+          // Wait for subscription to propagate
+          await new Promise(r => setTimeout(r, 1000));
+          
           // Verify subscription
           const subscriptionId = pushSub.id;
           const isOptedIn = pushSub.optedIn;
@@ -198,6 +211,23 @@ export default function PushPermissionButton({ user }) {
           console.log('[OneSignal] Subscription complete. ID:', subscriptionId, 'OptedIn:', isOptedIn);
           
           setIsSubscribed(true);
+          
+          // Update user profile with subscription info
+          if (user?.id) {
+            try {
+              await base44.auth.updateMe({
+                onesignal_external_id: user.id,
+                push_enabled: true,
+                onesignal_subscription_id: subscriptionId || ''
+              });
+            } catch (e) {
+              // Ignore
+            }
+          }
+          
+          // Re-check status
+          setTimeout(() => checkPermissionStatus(), 500);
+          
           resolve();
         } catch (error) {
           console.error('[OneSignal] Subscribe error:', error);
@@ -324,14 +354,20 @@ export default function PushPermissionButton({ user }) {
             <Button 
               variant="outline"
               size="sm"
-              onClick={requestPermission} 
+              onClick={() => {
+                setIsLoading(true);
+                checkPermissionStatus();
+                setTimeout(() => setIsLoading(false), 1500);
+              }} 
               disabled={isLoading}
               className="w-full"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin ml-2" />
-              ) : null}
-              רענן רישום Push
+              ) : (
+                <RefreshCw className="h-4 w-4 ml-2" />
+              )}
+              בדוק מחדש סטטוס
             </Button>
           </div>
         ) : (
@@ -354,6 +390,15 @@ export default function PushPermissionButton({ user }) {
         <p className="text-xs text-gray-500 text-center">
           התראות Push מאפשרות לקבל עדכונים גם כשהאתר סגור
         </p>
+        
+        {debugInfo && (
+          <details className="text-xs text-gray-400">
+            <summary className="cursor-pointer">מידע טכני</summary>
+            <pre className="mt-1 p-2 bg-gray-100 rounded text-left direction-ltr overflow-x-auto">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+          </details>
+        )}
       </CardContent>
     </Card>
   );
