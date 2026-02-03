@@ -101,13 +101,24 @@ export default function NotificationBell({ user }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="relative flex items-center justify-center w-12 h-12 min-w-[48px] min-h-[48px] rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
+          style={{ 
+            width: '44px', 
+            height: '44px', 
+            minWidth: '44px', 
+            minHeight: '44px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            position: 'relative'
+          }}
+          className="rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0"
           aria-label="התראות"
         >
-          <Bell className="h-6 w-6" />
+          <Bell className="h-6 w-6 pointer-events-none" />
           {unreadCount > 0 && (
             <Badge
-              className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 hover:bg-red-600"
+              className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 hover:bg-red-600 pointer-events-none"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>

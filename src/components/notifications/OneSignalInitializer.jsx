@@ -3,8 +3,7 @@ import { base44 } from '@/api/base44Client';
 
 /**
  * OneSignal Web SDK Initializer
- * This component initializes OneSignal for web push notifications
- * and links the current user to their OneSignal player ID
+ * Based on OneSignal AI recommendations for proper subscription handling
  */
 export default function OneSignalInitializer({ user }) {
   const initialized = useRef(false);
@@ -60,7 +59,7 @@ export default function OneSignalInitializer({ user }) {
 
         window.OneSignalDeferred.push(async function(OneSignal) {
           try {
-            // Initialize OneSignal
+            // Step 1: Initialize OneSignal first
             await OneSignal.init({
               appId: ONESIGNAL_APP_ID,
               allowLocalhostAsSecureOrigin: true,
@@ -69,15 +68,11 @@ export default function OneSignalInitializer({ user }) {
                 slidedown: {
                   prompts: [{
                     type: "push",
-                    autoPrompt: true,
+                    autoPrompt: false, // Don't auto-prompt, we'll handle it
                     text: {
                       actionMessage: "רוצה לקבל עדכונים ותזכורות חשובות?",
                       acceptButton: "כן, תודה",
                       cancelButton: "לא עכשיו"
-                    },
-                    delay: {
-                      pageViews: 1,
-                      timeDelay: 2
                     }
                   }]
                 }
@@ -91,78 +86,76 @@ export default function OneSignalInitializer({ user }) {
 
             console.log('[OneSignal] SDK initialized');
 
-            // Link user to OneSignal with external_id
+            // Step 2: Login the user with external_id
             if (user.id) {
-              // Login the user
               await OneSignal.login(user.id);
-              console.log('[OneSignal] User logged in:', user.id);
-              
-              // Wait for subscription to propagate
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              
-              // Check if we have notification permission
-              const nativePermission = Notification.permission;
-              console.log('[OneSignal] Native permission:', nativePermission);
-              
-              // Get OneSignal permission and subscription status
-              const permission = await OneSignal.Notifications.permission;
-              const pushSubscription = OneSignal.User.PushSubscription;
-              
-              console.log('[OneSignal] OneSignal permission:', permission);
-              console.log('[OneSignal] Push subscription object:', {
-                optedIn: pushSubscription.optedIn,
-                id: pushSubscription.id,
-                token: pushSubscription.token?.substring(0, 20) + '...'
+              console.log('[OneSignal] User logged in with external_id:', user.id);
+            }
+
+            // Step 3: Set up subscription change listener (as recommended by OneSignal AI)
+            OneSignal.User.PushSubscription.addEventListener('change', async (event) => {
+              console.log('[OneSignal] Subscription changed:', {
+                id: event.current.id,
+                optedIn: event.current.optedIn,
+                token: event.current.token ? 'exists' : 'none'
               });
               
-              // If native permission is granted but not opted in, try to opt in
-              if (nativePermission === 'granted' && !pushSubscription.optedIn) {
-                console.log('[OneSignal] Native permission granted but not opted in. Opting in...');
+              // When subscription becomes ready, save to user profile
+              if (event.current.id && event.current.optedIn) {
+                console.log('[OneSignal] User is now fully targetable via external_id');
                 try {
-                  await pushSubscription.optIn();
-                  
-                  // Wait for opt-in to complete
-                  await new Promise(resolve => setTimeout(resolve, 500));
-                  
-                  console.log('[OneSignal] After optIn:', {
-                    optedIn: pushSubscription.optedIn,
-                    id: pushSubscription.id
+                  await base44.auth.updateMe({
+                    onesignal_external_id: user.id,
+                    push_enabled: true,
+                    onesignal_subscription_id: event.current.id
                   });
-                } catch (optInErr) {
-                  console.warn('[OneSignal] OptIn error:', optInErr);
+                } catch (e) {
+                  // Ignore update errors
                 }
               }
-              
-              // If still not subscribed and permission is default, show the prompt
-              if (nativePermission === 'default') {
-                console.log('[OneSignal] Showing notification prompt...');
+            });
+
+            // Step 4: Check if we need to request permission
+            const nativePermission = Notification.permission;
+            const pushSubscription = OneSignal.User.PushSubscription;
+            
+            console.log('[OneSignal] Current state:', {
+              nativePermission,
+              optedIn: pushSubscription.optedIn,
+              subscriptionId: pushSubscription.id
+            });
+
+            // If permission not yet granted, show the prompt after a short delay
+            if (nativePermission === 'default') {
+              // Wait for user to settle on page before prompting
+              setTimeout(async () => {
                 try {
+                  console.log('[OneSignal] Showing permission prompt...');
                   await OneSignal.Slidedown.promptPush();
-                } catch (promptErr) {
-                  // User may have dismissed - that's ok
-                  console.log('[OneSignal] Prompt dismissed or failed:', promptErr);
+                } catch (e) {
+                  console.log('[OneSignal] Prompt dismissed or failed');
                 }
-              }
-              
-              // Final status check
-              const finalOptedIn = pushSubscription.optedIn;
-              const finalSubId = pushSubscription.id;
-              
-              console.log('[OneSignal] Final subscription status:', { 
-                optedIn: finalOptedIn, 
-                id: finalSubId 
-              });
-              
-              // Save status to user profile
+              }, 3000);
+            }
+            // If permission granted but not opted in, opt them in
+            else if (nativePermission === 'granted' && !pushSubscription.optedIn) {
+              console.log('[OneSignal] Permission granted, opting in...');
               try {
-                await base44.auth.updateMe({ 
-                  onesignal_external_id: user.id,
-                  push_enabled: finalOptedIn,
-                  onesignal_subscription_id: finalSubId || ''
-                });
+                await pushSubscription.optIn();
               } catch (e) {
-                // Ignore update errors
+                console.warn('[OneSignal] OptIn failed:', e);
               }
+            }
+
+            // Save initial status
+            try {
+              await base44.auth.updateMe({
+                onesignal_external_id: user.id,
+                push_enabled: pushSubscription.optedIn && !!pushSubscription.id,
+                onesignal_subscription_id: pushSubscription.id || ''
+              });
+            } catch (e) {
+              // Ignore
             }
 
             initialized.current = true;

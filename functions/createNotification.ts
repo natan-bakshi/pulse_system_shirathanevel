@@ -151,11 +151,13 @@ Deno.serve(async (req) => {
                         console.log(`[Notification] Sending push via OneSignal to user ${target_user_id}`);
                         console.log(`[Notification] OneSignal payload:`, JSON.stringify(onesignalPayload));
                         
+                        // Use the correct API endpoint as per OneSignal AI recommendation
                         const response = await fetch('https://api.onesignal.com/notifications', {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
                             },
                             body: JSON.stringify(onesignalPayload)
                         });
@@ -163,6 +165,11 @@ Deno.serve(async (req) => {
                         const result = await response.json();
                         
                         console.log(`[Notification] OneSignal response:`, JSON.stringify(result));
+                        
+                        // Log warnings if any (helps debug invalid_external_user_ids)
+                        if (result.errors) {
+                            console.warn(`[Notification] OneSignal errors:`, result.errors);
+                        }
                         
                         if (response.ok && result.recipients > 0) {
                             await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {

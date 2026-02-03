@@ -451,19 +451,29 @@ export default function Layout({ children }) {
           }
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <header className="flex items-center justify-between p-2 sm:p-4 border-b border-white/20 gap-2">
+          <header className="flex items-center justify-between p-2 sm:p-4 border-b border-white/20 gap-1">
           {/* כפתור תפריט - צד ימין ב-RTL */}
           <button
             type="button"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex items-center justify-center w-12 h-12 min-w-[48px] min-h-[48px] rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
+            style={{ 
+              width: '44px', 
+              height: '44px', 
+              minWidth: '44px', 
+              minHeight: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0
+            }}
+            className="rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0"
             aria-label="פתח תפריט"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6 pointer-events-none" />
           </button>
 
           {/* מיכל לוגו מרכזי - ממורכז בין הכפתור לדיב הריק */}
-          <div className="flex-1 flex justify-center items-center overflow-hidden px-2">
+          <div className="flex-1 flex justify-center items-center overflow-hidden px-1">
             <img
               src={companyLogo}
               alt={companyName}
@@ -485,14 +495,24 @@ export default function Layout({ children }) {
                 e.preventDefault();
                 navigate(-1);
               }}
-              className="flex items-center justify-center w-12 h-12 min-w-[48px] min-h-[48px] rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
+              style={{ 
+                width: '44px', 
+                height: '44px', 
+                minWidth: '44px', 
+                minHeight: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0
+              }}
+              className="rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0"
               aria-label="חזור למסך הקודם"
             >
-              <ArrowRight className="h-6 w-6" />
+              <ArrowRight className="h-6 w-6 pointer-events-none" />
             </button>
           ) : (
             /* אלמנט ריק לאיזון המרכוז כשאנחנו בדשבורד */
-            <div className="w-12 shrink-0"></div>
+            <div style={{ width: '44px' }} className="shrink-0"></div>
           )}
         </header>
 
