@@ -36,8 +36,7 @@ const navigationItems = {
   { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star },
   { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText },
   { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck },
-  { title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings },
-  { title: "ניהול התראות", url: createPageUrl("NotificationSettings"), icon: Bell }],
+  { title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings }],
 
   client: [
   { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home }],

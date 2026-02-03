@@ -2,9 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { 
-  Bell, Plus, Pencil, Trash2, Save, X, Loader2, 
-  AlertCircle, Info, Clock, Users, Zap, RefreshCw,
-  ChevronDown, ChevronUp, HelpCircle, Copy
+  Bell, Plus, Pencil, Trash2, Save, Loader2, 
+  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,43 +74,17 @@ const DEEP_LINK_PAGES = [
   'EventManagement'
 ];
 
-export default function NotificationSettings() {
+export default function NotificationManagementTab() {
   const queryClient = useQueryClient();
-  const [isCreator, setIsCreator] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('templates');
   const [expandedHelp, setExpandedHelp] = useState(false);
 
-  // Check if user is system creator
-  const { data: currentUser, isLoading: userLoading } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me()
-  });
-
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    enabled: !!currentUser
-  });
-
-  // Verify system creator
-  useEffect(() => {
-    if (currentUser && allUsers.length > 0) {
-      const admins = allUsers.filter(u => u.role === 'admin');
-      const sortedAdmins = admins.sort((a, b) => 
-        new Date(a.created_date) - new Date(b.created_date)
-      );
-      const creator = sortedAdmins[0];
-      setIsCreator(creator?.id === currentUser.id || creator?.email === currentUser.email);
-    }
-  }, [currentUser, allUsers]);
-
   // Fetch templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ['notificationTemplates'],
-    queryFn: () => base44.entities.NotificationTemplate.list(),
-    enabled: isCreator
+    queryFn: () => base44.entities.NotificationTemplate.list()
   });
 
   // Create/Update mutation
@@ -151,29 +124,6 @@ export default function NotificationSettings() {
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] });
     }
   });
-
-  // Loading state
-  if (userLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  // Access denied
-  if (!isCreator) {
-    return (
-      <div className="max-w-2xl mx-auto mt-10">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            אין לך הרשאה לצפות בדף זה. רק יוצר המערכת יכול לנהל את הגדרות ההתראות.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
 
   // Group templates by category
   const templatesByCategory = templates.reduce((acc, t) => {
@@ -225,13 +175,13 @@ export default function NotificationSettings() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Bell className="h-6 w-6" />
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Bell className="h-5 w-5" />
             ניהול התראות
-          </h1>
+          </h2>
           <p className="text-gray-500 text-sm mt-1">
             הגדרת תבניות התראות, תזמונים וקהלי יעד
           </p>
@@ -244,7 +194,7 @@ export default function NotificationSettings() {
 
       {/* Help Section */}
       <Collapsible open={expandedHelp} onOpenChange={setExpandedHelp}>
-        <Card>
+        <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
           <CollapsibleTrigger asChild>
             <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
               <div className="flex items-center justify-between">
@@ -301,7 +251,7 @@ export default function NotificationSettings() {
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : templates.length === 0 ? (
-            <Card>
+            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
               <CardContent className="py-8 text-center text-gray-500">
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-30" />
                 <p>אין תבניות התראה. לחץ על "תבנית חדשה" ליצירת תבנית ראשונה.</p>
@@ -309,7 +259,7 @@ export default function NotificationSettings() {
             </Card>
           ) : (
             Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
-              <Card key={category}>
+              <Card key={category} className="bg-white/95 backdrop-blur-sm shadow-xl">
                 <CardHeader className="py-3">
                   <CardTitle className="text-base">
                     {CATEGORIES[category] || category}
@@ -325,7 +275,7 @@ export default function NotificationSettings() {
                         }`}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{template.name}</span>
                             <Badge variant="outline" className="text-xs">
                               {TRIGGER_TYPES[template.trigger_type]}
@@ -381,7 +331,7 @@ export default function NotificationSettings() {
         </TabsContent>
 
         <TabsContent value="stats">
-          <Card>
+          <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
             <CardHeader>
               <CardTitle>סטטיסטיקות התראות</CardTitle>
               <CardDescription>סקירת פעילות מערכת ההתראות</CardDescription>

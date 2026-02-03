@@ -1,22 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, UploadCloud, Loader2, Save, Building, MessageSquare, Lock, Calculator, FileText, LayoutGrid, HardDrive } from "lucide-react";
+import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BackupManager from "@/components/backup/BackupManager";
+import NotificationManagementTab from "@/components/admin/NotificationManagementTab";
 
 const settingKeys = [
     'background_image_url', 
     'company_name', 
     'company_logo_url', 
-    'supplier_reminder_template',
-    'client_reminder_template',
     'vat_rate',
     'quote_body_font_size',
     'quote_title_font_size',
@@ -27,18 +28,18 @@ export default function SettingsPage() {
     const [isCreator, setIsCreator] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [activeTab, setActiveTab] = useState('general');
     const [settings, setSettings] = useState({
         background_image_url: "",
         company_name: "",
         company_logo_url: "",
-        supplier_reminder_template: "",
-        client_reminder_template: "",
         vat_rate: "18",
         quote_body_font_size: "15",
         quote_title_font_size: "16",
         show_events_board_tab: "false"
         });
     const queryClient = useQueryClient();
+    const location = useLocation();
 
     // React Query for current user
     const { data: user, isLoading: userLoading } = useQuery({
@@ -48,40 +49,37 @@ export default function SettingsPage() {
         cacheTime: 10 * 60 * 1000
     });
 
-    // React Query for all users (to check creator)
-    const { data: allUsers = [], isLoading: usersLoading } = useQuery({
-        queryKey: ['allUsers'],
-        queryFn: () => base44.entities.User.filter({ role: 'admin' }, 'created_date', 1),
-        enabled: !!user,
-        staleTime: 5 * 60 * 1000,
-        cacheTime: 10 * 60 * 1000
-    });
-
-    // React Query for app settings
+    // React Query for app settings - always fetch if user is logged in
     const { data: appSettings = [], isLoading: settingsLoading } = useQuery({
         queryKey: ['appSettings'],
         queryFn: () => base44.entities.AppSettings.list(),
-        enabled: isCreator,
+        enabled: !!user,
         staleTime: 10 * 60 * 1000,
         cacheTime: 30 * 60 * 1000
     });
 
-    // React Query for services (to get categories)
-    const { data: allServices = [] } = useQuery({
-        queryKey: ['services'],
-        queryFn: () => base44.entities.Service.list(),
-        enabled: isCreator,
-        staleTime: 5 * 60 * 1000
-    });
+    const loading = userLoading || settingsLoading;
 
-    const loading = userLoading || usersLoading || settingsLoading;
-
-    // Check if current user is creator
+    // Check if current user is creator based on AppSettings created_by or admin role
     useEffect(() => {
-        if (user && allUsers.length > 0) {
-            setIsCreator(allUsers[0].id === user.id);
+        if (user && appSettings.length > 0) {
+            // Check if user created the first app setting
+            const creatorEmail = appSettings[0]?.created_by;
+            setIsCreator(user.email === creatorEmail || user.role === 'admin');
+        } else if (user && appSettings.length === 0 && user.role === 'admin') {
+            // If no settings exist and current user is admin, they can access
+            setIsCreator(true);
         }
-    }, [user, allUsers]);
+    }, [user, appSettings]);
+
+    // Handle URL tab parameter
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('tab');
+        if (tab && ['general', 'notifications', 'backup'].includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [location.search]);
 
     // Populate settings from query data
     useEffect(() => {
@@ -129,8 +127,6 @@ export default function SettingsPage() {
         setSettings(prev => ({ ...prev, [key]: value }));
     }, []);
 
-
-
     const handleSaveSettings = useCallback(async () => {
         setIsSaving(true);
         try {
@@ -170,7 +166,7 @@ export default function SettingsPage() {
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center text-white">
             <Lock className="h-16 w-16 mb-4" />
             <h1 className="text-2xl font-bold">הגישה נדחתה</h1>
-            <p>רק יוצר המערכת הראשי מורשה לגשת לדף ההגדרות.</p>
+            <p>רק יוצר המערכת הראשי או מנהל מורשה לגשת לדף ההגדרות.</p>
           </div>
         );
     }
@@ -179,142 +175,148 @@ export default function SettingsPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-white">הגדרות מערכת</h1>
-                <Button onClick={handleSaveSettings} disabled={isSaving}>
-                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-                    שמור הגדרות
-                </Button>
+                {activeTab === 'general' && (
+                    <Button onClick={handleSaveSettings} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
+                        שמור הגדרות
+                    </Button>
+                )}
             </div>
-            
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader><CardTitle className="flex items-center gap-2"><Building className="h-5 w-5" />פרטים כלליים</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="company_name">שם החברה</Label>
-                        <Input id="company_name" value={settings.company_name} onChange={e => handleSettingChange('company_name', e.target.value)} />
-                    </div>
-                    <div>
-                        <Label htmlFor="logo-upload">לוגו (URL או העלאה)</Label>
-                        <div className="mt-2 flex items-center gap-4">
-                            <Input id="company_logo_url" value={settings.company_logo_url} onChange={e => handleSettingChange('company_logo_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
-                            <Input id="logo-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'company_logo_url')} disabled={isUploading} className="hidden" />
-                            <Label htmlFor="logo-upload" className="cursor-pointer">
-                                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
-                            </Label>
-                        </div>
-                        {settings.company_logo_url && <img src={settings.company_logo_url} alt="לוגו" className="h-16 w-auto mt-2 rounded border" />}
-                    </div>
-                </CardContent>
-            </Card>
 
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader><CardTitle className="flex items-center gap-2"><Image className="h-5 w-5" />הגדרות תצוגה</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="bg-upload">תמונת רקע</Label>
-                        <div className="mt-2 flex items-center gap-4">
-                            <Input id="background_image_url" value={settings.background_image_url} onChange={e => handleSettingChange('background_image_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
-                             <Input id="bg-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'background_image_url')} disabled={isUploading} className="hidden" />
-                             <Label htmlFor="bg-upload" className="cursor-pointer">
-                                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
-                            </Label>
-                        </div>
-                        {settings.background_image_url && <img src={settings.background_image_url} alt="רקע" className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
-                    </div>
-                </CardContent>
-            </Card>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="general">הגדרות כלליות</TabsTrigger>
+                    <TabsTrigger value="notifications" className="flex items-center gap-1">
+                        <Bell className="h-4 w-4" />
+                        ניהול התראות
+                    </TabsTrigger>
+                    <TabsTrigger value="backup">גיבוי ושחזור</TabsTrigger>
+                </TabsList>
 
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader><CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" />הגדרות פיננסיות</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="vat_rate">אחוז מע"מ (%)</Label>
-                        <Input 
-                            id="vat_rate" 
-                            type="number" 
-                            min="0" 
-                            max="100" 
-                            step="0.01"
-                            value={settings.vat_rate} 
-                            onChange={e => handleSettingChange('vat_rate', e.target.value)} 
-                            placeholder="18"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">אחוז המע"מ שישמש בכל חישובי המערכת (ברירת מחדל: 18%)</p>
-                    </div>
-                </CardContent>
-            </Card>
+                <TabsContent value="general" className="space-y-6 mt-6">
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Building className="h-5 w-5" />פרטים כלליים</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label htmlFor="company_name">שם החברה</Label>
+                                <Input id="company_name" value={settings.company_name} onChange={e => handleSettingChange('company_name', e.target.value)} />
+                            </div>
+                            <div>
+                                <Label htmlFor="logo-upload">לוגו (URL או העלאה)</Label>
+                                <div className="mt-2 flex items-center gap-4">
+                                    <Input id="company_logo_url" value={settings.company_logo_url} onChange={e => handleSettingChange('company_logo_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
+                                    <Input id="logo-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'company_logo_url')} disabled={isUploading} className="hidden" />
+                                    <Label htmlFor="logo-upload" className="cursor-pointer">
+                                        {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
+                                    </Label>
+                                </div>
+                                {settings.company_logo_url && <img src={settings.company_logo_url} alt="לוגו" className="h-16 w-auto mt-2 rounded border" />}
+                            </div>
+                        </CardContent>
+                    </Card>
 
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />הגדרות הצעת מחיר</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="quote_body_font_size">גודל פונט גוף הטקסט (px)</Label>
-                        <Input 
-                            id="quote_body_font_size" 
-                            type="number" 
-                            min="8" 
-                            max="72" 
-                            step="1"
-                            value={settings.quote_body_font_size} 
-                            onChange={e => handleSettingChange('quote_body_font_size', e.target.value)} 
-                            placeholder="15"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">גודל הפונט של תוכן ההצעה (ברירת מחדל: 15px, מומלץ: 8-72)</p>
-                    </div>
-                    <div>
-                        <Label htmlFor="quote_title_font_size">גודל פונט כותרות (px)</Label>
-                        <Input 
-                            id="quote_title_font_size" 
-                            type="number" 
-                            min="8" 
-                            max="72" 
-                            step="1"
-                            value={settings.quote_title_font_size} 
-                            onChange={e => handleSettingChange('quote_title_font_size', e.target.value)} 
-                            placeholder="16"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">גודל הפונט של כותרות בהצעה (ברירת מחדל: 16px, מומלץ: 8-72)</p>
-                    </div>
-                </CardContent>
-            </Card>
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Image className="h-5 w-5" />הגדרות תצוגה</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label htmlFor="bg-upload">תמונת רקע</Label>
+                                <div className="mt-2 flex items-center gap-4">
+                                    <Input id="background_image_url" value={settings.background_image_url} onChange={e => handleSettingChange('background_image_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
+                                     <Input id="bg-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'background_image_url')} disabled={isUploading} className="hidden" />
+                                     <Label htmlFor="bg-upload" className="cursor-pointer">
+                                        {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
+                                    </Label>
+                                </div>
+                                {settings.background_image_url && <img src={settings.background_image_url} alt="רקע" className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
+                            </div>
+                        </CardContent>
+                    </Card>
 
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader><CardTitle className="flex items-center gap-2"><LayoutGrid className="h-5 w-5" />הגדרות ממשק</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between pb-4 border-b">
-                        <div>
-                            <Label htmlFor="show_events_board_tab">הצגת לשונית לוח אירועים</Label>
-                            <p className="text-xs text-gray-500 mt-1">הפעל תצוגת לוח שיבוצים טבלאי בעמוד ניהול אירועים</p>
-                        </div>
-                        <Switch 
-                            id="show_events_board_tab"
-                            checked={settings.show_events_board_tab === "true"}
-                            onCheckedChange={(checked) => handleSettingChange('show_events_board_tab', checked ? "true" : "false")}
-                        />
-                    </div>
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" />הגדרות פיננסיות</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label htmlFor="vat_rate">אחוז מע"מ (%)</Label>
+                                <Input 
+                                    id="vat_rate" 
+                                    type="number" 
+                                    min="0" 
+                                    max="100" 
+                                    step="0.01"
+                                    value={settings.vat_rate} 
+                                    onChange={e => handleSettingChange('vat_rate', e.target.value)} 
+                                    placeholder="18"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">אחוז המע"מ שישמש בכל חישובי המערכת (ברירת מחדל: 18%)</p>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                </CardContent>
-            </Card>
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />הגדרות הצעת מחיר</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label htmlFor="quote_body_font_size">גודל פונט גוף הטקסט (px)</Label>
+                                <Input 
+                                    id="quote_body_font_size" 
+                                    type="number" 
+                                    min="8" 
+                                    max="72" 
+                                    step="1"
+                                    value={settings.quote_body_font_size} 
+                                    onChange={e => handleSettingChange('quote_body_font_size', e.target.value)} 
+                                    placeholder="15"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">גודל הפונט של תוכן ההצעה (ברירת מחדל: 15px, מומלץ: 8-72)</p>
+                            </div>
+                            <div>
+                                <Label htmlFor="quote_title_font_size">גודל פונט כותרות (px)</Label>
+                                <Input 
+                                    id="quote_title_font_size" 
+                                    type="number" 
+                                    min="8" 
+                                    max="72" 
+                                    step="1"
+                                    value={settings.quote_title_font_size} 
+                                    onChange={e => handleSettingChange('quote_title_font_size', e.target.value)} 
+                                    placeholder="16"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">גודל הפונט של כותרות בהצעה (ברירת מחדל: 16px, מומלץ: 8-72)</p>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5" />תבניות הודעות</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="client_reminder_template">תזכורת ללקוח</Label>
-                        <Textarea id="client_reminder_template" rows={4} value={settings.client_reminder_template} onChange={e => handleSettingChange('client_reminder_template', e.target.value)} placeholder="שלום {שם_לקוח}, תזכורת לגבי אירוע {שם_אירוע} בתאריך {תאריך_אירוע}..." />
-                    </div>
-                    <div>
-                        <Label htmlFor="supplier_reminder_template">תזכורת לספק</Label>
-                        <Textarea id="supplier_reminder_template" rows={4} value={settings.supplier_reminder_template} onChange={e => handleSettingChange('supplier_reminder_template', e.target.value)} placeholder="שלום {שם_ספק}, תזכורת לגבי אירוע {שם_אירוע} בתאריך {תאריך_אירוע}..." />
-                    </div>
-                </CardContent>
-            </Card>
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><LayoutGrid className="h-5 w-5" />הגדרות ממשק</CardTitle></CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between pb-4 border-b">
+                                <div>
+                                    <Label htmlFor="show_events_board_tab">הצגת לשונית לוח אירועים</Label>
+                                    <p className="text-xs text-gray-500 mt-1">הפעל תצוגת לוח שיבוצים טבלאי בעמוד ניהול אירועים</p>
+                                </div>
+                                <Switch 
+                                    id="show_events_board_tab"
+                                    checked={settings.show_events_board_tab === "true"}
+                                    onCheckedChange={(checked) => handleSettingChange('show_events_board_tab', checked ? "true" : "false")}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader><CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" />גיבוי ושחזור</CardTitle></CardHeader>
-                <CardContent>
-                    <BackupManager />
-                </CardContent>
-            </Card>
+                <TabsContent value="notifications" className="mt-6">
+                    <NotificationManagementTab />
+                </TabsContent>
+
+                <TabsContent value="backup" className="mt-6">
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" />גיבוי ושחזור</CardTitle></CardHeader>
+                        <CardContent>
+                            <BackupManager />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
