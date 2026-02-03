@@ -132,9 +132,13 @@ Deno.serve(async (req) => {
                         console.warn('[Notification] OneSignal not configured');
                         pushResult = { sent: false, error: 'OneSignal not configured' };
                     } else {
+                        // Use include_aliases with external_id (new API format)
                         const onesignalPayload = {
                             app_id: ONESIGNAL_APP_ID,
-                            include_external_user_ids: [target_user_id],
+                            include_aliases: {
+                                external_id: [target_user_id]
+                            },
+                            target_channel: "push",
                             contents: { "he": message, "en": message },
                             headings: { "he": title, "en": title },
                             data: { notification_id: inAppNotification.id }
@@ -157,6 +161,8 @@ Deno.serve(async (req) => {
                         
                         const result = await response.json();
                         
+                        console.log(`[Notification] OneSignal response:`, JSON.stringify(result));
+                        
                         if (response.ok && result.recipients > 0) {
                             await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
                                 push_sent: true
@@ -164,8 +170,15 @@ Deno.serve(async (req) => {
                             pushResult = { sent: true, recipients: result.recipients };
                             console.log(`[Notification] Push sent successfully. Recipients: ${result.recipients}`);
                         } else {
-                            pushResult = { sent: false, error: result.errors || 'No recipients', recipients: result.recipients || 0 };
-                            console.warn('[Notification] Push failed or no recipients:', result);
+                            // Log more details about why it failed
+                            const errorDetails = result.errors || result.warnings || 'No recipients';
+                            pushResult = { 
+                                sent: false, 
+                                error: errorDetails, 
+                                recipients: result.recipients || 0,
+                                warnings: result.warnings
+                            };
+                            console.warn('[Notification] Push failed or no recipients:', JSON.stringify(result));
                         }
                     }
                 } catch (pushError) {
