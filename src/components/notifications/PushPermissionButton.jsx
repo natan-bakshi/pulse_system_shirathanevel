@@ -53,8 +53,25 @@ export default function PushPermissionButton({ user }) {
             }
             
             const permission = await OneSignal.Notifications.permission;
-            const optedIn = await OneSignal.User.PushSubscription.optedIn;
+            const pushSub = OneSignal.User.PushSubscription;
+            const optedIn = pushSub.optedIn;
+            const subscriptionId = pushSub.id;
+            
+            console.log('[Push] Permission:', permission, 'OptedIn:', optedIn, 'SubID:', subscriptionId);
+            
+            // User is subscribed if they have permission AND are opted in
             setIsSubscribed(permission && optedIn);
+            
+            // If they have permission but aren't opted in, try to opt them in
+            if (permission && !optedIn) {
+              console.log('[Push] User has permission but not opted in. Attempting opt-in...');
+              try {
+                await pushSub.optIn();
+                setIsSubscribed(true);
+              } catch (optInError) {
+                console.warn('[Push] Opt-in failed:', optInError);
+              }
+            }
           } catch (e) {
             console.warn('[Push] OneSignal check failed:', e);
           }
