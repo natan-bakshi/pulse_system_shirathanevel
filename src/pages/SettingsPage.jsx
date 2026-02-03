@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, UploadCloud, Loader2, Save, Building, MessageSquare, Lock, Calculator, FileText, LayoutGrid } from "lucide-react";
+import { Image, UploadCloud, Loader2, Save, Building, MessageSquare, Lock, Calculator, FileText, LayoutGrid, HardDrive } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import BackupManager from "@/components/backup/BackupManager";
 
 const settingKeys = [
     'background_image_url', 
@@ -305,6 +306,13 @@ export default function SettingsPage() {
                         <Label htmlFor="supplier_reminder_template">תזכורת לספק</Label>
                         <Textarea id="supplier_reminder_template" rows={4} value={settings.supplier_reminder_template} onChange={e => handleSettingChange('supplier_reminder_template', e.target.value)} placeholder="שלום {שם_ספק}, תזכורת לגבי אירוע {שם_אירוע} בתאריך {תאריך_אירוע}..." />
                     </div>
+                </CardContent>
+            </Card>
+
+            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                <CardHeader><CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" />גיבוי ושחזור</CardTitle></CardHeader>
+                <CardContent>
+                    <BackupManager />
                 </CardContent>
             </Card>
         </div>
