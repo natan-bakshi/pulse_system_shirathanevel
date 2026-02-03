@@ -316,9 +316,23 @@ export default function PushPermissionButton({ user }) {
         )}
 
         {isSubscribed ? (
-          <div className="flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded-lg">
-            <Check className="h-5 w-5" />
-            <span className="text-sm font-medium">התראות Push פעילות! תקבל עדכונים חשובים.</span>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded-lg">
+              <Check className="h-5 w-5" />
+              <span className="text-sm font-medium">התראות Push פעילות! תקבל עדכונים חשובים.</span>
+            </div>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={requestPermission} 
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin ml-2" />
+              ) : null}
+              רענן רישום Push
+            </Button>
           </div>
         ) : (
           permissionStatus !== 'unsupported' && permissionStatus !== 'denied' && (
