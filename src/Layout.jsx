@@ -15,7 +15,8 @@ import {
   Home,
   FileText,
   UserCheck,
-  ArrowRight } from
+  ArrowRight,
+  Bell } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -34,7 +35,8 @@ const navigationItems = {
   { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star },
   { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText },
   { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck },
-  { title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings }],
+  { title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings },
+  { title: "ניהול התראות", url: createPageUrl("NotificationSettings"), icon: Bell }],
 
   client: [
   { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home }],
