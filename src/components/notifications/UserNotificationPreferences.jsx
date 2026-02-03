@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import PushPermissionButton from "./PushPermissionButton";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => ({
@@ -82,18 +82,11 @@ export default function UserNotificationPreferences({ user, onClose }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       setHasChanges(false);
-      toast({
-        title: "הגדרות נשמרו",
-        description: "העדפות ההתראות שלך עודכנו בהצלחה",
-      });
+      toast.success("הגדרות נשמרו", { description: "העדפות ההתראות שלך עודכנו בהצלחה" });
       if (onClose) onClose();
     },
     onError: (error) => {
-      toast({
-        title: "שגיאה",
-        description: "לא ניתן לשמור את ההגדרות: " + error.message,
-        variant: "destructive"
-      });
+      toast.error("שגיאה", { description: "לא ניתן לשמור את ההגדרות: " + error.message });
     }
   });
 

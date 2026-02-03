@@ -9,6 +9,36 @@ import { base44 } from '@/api/base44Client';
 export default function OneSignalInitializer({ user }) {
   const initialized = useRef(false);
 
+  // Update browser badge when unread count changes
+  const updateBadge = (count) => {
+    try {
+      if ('setAppBadge' in navigator) {
+        if (count > 0) {
+          navigator.setAppBadge(count);
+        } else {
+          navigator.clearAppBadge();
+        }
+      }
+    } catch (e) {
+      console.log('[Badge] Badge API not supported:', e);
+    }
+  };
+
+  // Fetch unread count and update badge
+  const updateUnreadBadge = async () => {
+    if (!user?.id) return;
+    try {
+      const notifications = await base44.entities.InAppNotification.filter(
+        { user_id: user.id, is_read: false },
+        '-created_date',
+        100
+      );
+      updateBadge(notifications.length);
+    } catch (e) {
+      console.warn('[Badge] Failed to fetch unread count:', e);
+    }
+  };
+
   useEffect(() => {
     if (!user || initialized.current) return;
 
@@ -41,6 +71,7 @@ export default function OneSignalInitializer({ user }) {
             await OneSignal.init({
               appId: ONESIGNAL_APP_ID,
               allowLocalhostAsSecureOrigin: true, // For development
+              serviceWorkerParam: { scope: '/' },
               promptOptions: {
                 slidedown: {
                   prompts: [{
@@ -53,7 +84,7 @@ export default function OneSignalInitializer({ user }) {
                     },
                     delay: {
                       pageViews: 1,
-                      timeDelay: 5
+                      timeDelay: 3
                     }
                   }]
                 }
@@ -62,7 +93,7 @@ export default function OneSignalInitializer({ user }) {
                 enable: false // We use our own notification bell
               },
               welcomeNotification: {
-                title: "תודה שנרשמת!",
+                title: "התראות הופעלו!",
                 message: "תקבל עדכונים חשובים ותזכורות על האירועים שלך"
               }
             });
@@ -81,6 +112,9 @@ export default function OneSignalInitializer({ user }) {
             }
 
             initialized.current = true;
+            
+            // Update badge after init
+            updateUnreadBadge();
           } catch (error) {
             console.warn('[OneSignal] Init error:', error);
           }
@@ -92,8 +126,19 @@ export default function OneSignalInitializer({ user }) {
 
     initOneSignal();
 
+    // Subscribe to notification changes to update badge
+    let unsubscribe;
+    if (user?.id) {
+      unsubscribe = base44.entities.InAppNotification.subscribe((event) => {
+        if (event.data?.user_id === user.id || event.data?.user_email === user.email) {
+          updateUnreadBadge();
+        }
+      });
+    }
+
     // Cleanup on unmount
     return () => {
+      if (unsubscribe) unsubscribe();
       if (window.OneSignalDeferred && initialized.current) {
         window.OneSignalDeferred.push(async function(OneSignal) {
           try {

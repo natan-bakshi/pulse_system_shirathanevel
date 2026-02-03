@@ -128,7 +128,7 @@ export default function NotificationBell({ user }) {
           )}
         </div>
 
-        <ScrollArea className="max-h-[400px]">
+        <ScrollArea className="h-[350px]">
           {isLoading ? (
             <div className="p-4 text-center text-gray-500 text-sm">
               טוען התראות...
