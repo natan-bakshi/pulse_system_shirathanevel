@@ -44,7 +44,7 @@ const getAdminNavItems = (userEmail) => {
   
   // Only system creator can see settings
   if (userEmail === SYSTEM_CREATOR_EMAIL) {
-    items.push({ title: "הגדרות", url: "/SettingsPage", icon: Settings });
+    items.push({ title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings });
   }
   
   return items;
@@ -223,6 +223,10 @@ export default function Layout({ children }) {
     // Allow all users to access MyNotificationSettings
     const isAccessingNotificationSettings = pathname.includes('MyNotificationSettings');
 
+    // Allow system creator to access SettingsPage
+    if (isAccessingSettingsPage && user.email === SYSTEM_CREATOR_EMAIL) {
+      return; // Allow access, don't redirect
+    }
 
     const isTryingToAccessAdminPage = adminOnlyPages.some((p) => pathname.startsWith(createPageUrl(p.substring(1))));
 
@@ -236,7 +240,7 @@ export default function Layout({ children }) {
     const isOnCorrectDashboard = pathname.startsWith(homePage);
     const isAccessingSpecificEvent = pathname.includes('EventDetails');
 
-    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings) {
+    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage) {
       navigate(homePage, { replace: true });
     }
 

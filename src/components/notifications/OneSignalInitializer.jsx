@@ -28,11 +28,11 @@ export default function OneSignalInitializer({ user }) {
           document.head.appendChild(script);
         }
 
-        // Get OneSignal App ID from environment or use the secret
-        const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
+        // OneSignal App ID - hardcoded for reliability
+        const ONESIGNAL_APP_ID = '4490c0d9-4205-4d6e-8143-39c0aa00b183';
         
         if (!ONESIGNAL_APP_ID) {
-          console.log('[OneSignal] App ID not configured in frontend');
+          console.log('[OneSignal] App ID not configured');
           return;
         }
 
