@@ -135,8 +135,14 @@ Deno.serve(async (req) => {
         
         // יצירת גיליון חדש
         const spreadsheet = await createSpreadsheet(sheetsAccessToken, sheetTitle);
+        
+        if (!spreadsheet.spreadsheetId) {
+            console.error('[Sheets Backup] Failed to create spreadsheet:', spreadsheet);
+            return Response.json({ error: 'Failed to create spreadsheet', details: spreadsheet }, { status: 500 });
+        }
+        
         const spreadsheetId = spreadsheet.spreadsheetId;
-        const sheetId = spreadsheet.sheets[0].properties.sheetId;
+        const sheetId = spreadsheet.sheets?.[0]?.properties?.sheetId || 0;
         
         console.log(`[Sheets Backup] Created spreadsheet: ${spreadsheetId}`);
 
