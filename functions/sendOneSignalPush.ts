@@ -43,10 +43,15 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'OneSignal not configured' }, { status: 500 });
         }
         
-        // Build the OneSignal notification payload
+        // Build the OneSignal notification payload using the NEW API format
+        // Note: include_aliases is the new format (since API v11)
+        // include_external_user_ids is deprecated
         const onesignalPayload = {
             app_id: ONESIGNAL_APP_ID,
-            include_external_user_ids: user_ids, // Target by Base44 user IDs
+            target_channel: "push",
+            include_aliases: {
+                external_id: user_ids // Array of Base44 user IDs
+            },
             contents: { "he": message, "en": message },
             headings: { "he": title, "en": title },
         };
@@ -61,9 +66,10 @@ Deno.serve(async (req) => {
             onesignalPayload.data = data;
         }
         
-        console.log(`[OneSignal] Sending push to ${user_ids.length} users:`, { title });
+        console.log(`[OneSignal] Sending push to ${user_ids.length} users:`, { title, user_ids });
+        console.log(`[OneSignal] Payload:`, JSON.stringify(onesignalPayload));
         
-        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+        const response = await fetch('https://api.onesignal.com/notifications', {
             method: 'POST',
             headers: {
                 'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
