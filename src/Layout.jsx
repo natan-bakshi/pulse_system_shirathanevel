@@ -300,6 +300,16 @@ export default function Layout({ children }) {
     <>
     {/* הזרקת CSS לתיקון גלובלי במובייל - פתרון חכם לכפתורים חורגים */}
     <style>{`
+      /* Sonner toast RTL fixes and swipe */
+      [data-sonner-toast] {
+        direction: rtl !important;
+        text-align: right !important;
+      }
+      [data-sonner-toast] [data-close-button] {
+        left: 0 !important;
+        right: auto !important;
+      }
+
       @media (max-width: 640px) {
         /* 1. כיווץ כפתורים: רק כאלו שיש בתוכם אייקון (svg) */
         main button.inline-flex.items-center:has(svg),
