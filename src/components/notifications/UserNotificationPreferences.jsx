@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
+import PushPermissionButton from "./PushPermissionButton";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => ({
   value: i,
@@ -146,6 +147,11 @@ export default function UserNotificationPreferences({ user, onClose }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Push Permission Section */}
+        <PushPermissionButton user={user} />
+
+        <Separator />
+
         {/* Quiet Hours Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium">
