@@ -123,23 +123,50 @@ Deno.serve(async (req) => {
                 
                 pushResult = { sent: false, scheduled: true, scheduled_for: scheduledFor.toISOString() };
             } else {
-                // Send push immediately
+                // Send push immediately using OneSignal API directly
                 try {
-                    const pushResponse = await base44.functions.invoke('sendOneSignalPush', {
-                        user_ids: [target_user_id],
-                        title,
-                        message,
-                        link,
-                        data: { notification_id: inAppNotification.id }
-                    });
+                    const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
+                    const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
                     
-                    if (pushResponse.success) {
-                        await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
-                            push_sent: true
-                        });
-                        pushResult = { sent: true, recipients: pushResponse.recipients };
+                    if (!ONESIGNAL_API_KEY || !ONESIGNAL_APP_ID) {
+                        console.warn('[Notification] OneSignal not configured');
+                        pushResult = { sent: false, error: 'OneSignal not configured' };
                     } else {
-                        pushResult = { sent: false, error: pushResponse.error };
+                        const onesignalPayload = {
+                            app_id: ONESIGNAL_APP_ID,
+                            include_external_user_ids: [target_user_id],
+                            contents: { "he": message, "en": message },
+                            headings: { "he": title, "en": title },
+                            data: { notification_id: inAppNotification.id }
+                        };
+                        
+                        if (link) {
+                            onesignalPayload.url = link;
+                        }
+                        
+                        console.log(`[Notification] Sending push via OneSignal to user ${target_user_id}`);
+                        
+                        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(onesignalPayload)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.ok && result.recipients > 0) {
+                            await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
+                                push_sent: true
+                            });
+                            pushResult = { sent: true, recipients: result.recipients };
+                            console.log(`[Notification] Push sent successfully. Recipients: ${result.recipients}`);
+                        } else {
+                            pushResult = { sent: false, error: result.errors || 'No recipients', recipients: result.recipients || 0 };
+                            console.warn('[Notification] Push failed or no recipients:', result);
+                        }
                     }
                 } catch (pushError) {
                     console.error('[Notification] Push send error:', pushError);
