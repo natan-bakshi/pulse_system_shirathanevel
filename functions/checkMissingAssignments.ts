@@ -149,17 +149,20 @@ Deno.serve(async (req) => {
                 // Send to all admins
                 for (const admin of adminUsers) {
                     try {
-                        await base44.functions.invoke('createNotification', {
-                            target_user_id: admin.id,
-                            target_user_email: admin.email,
+                        // Create in-app notification directly using service role
+                        await base44.asServiceRole.entities.InAppNotification.create({
+                            user_id: admin.id,
+                            user_email: admin.email,
                             title,
                             message,
                             link,
+                            is_read: false,
                             template_type: 'ADMIN_MISSING_ASSIGNMENT',
                             related_event_id: event.id,
                             related_event_service_id: eventService?.id || '',
-                            send_push: true,
-                            check_quiet_hours: true
+                            push_sent: false,
+                            reminder_count: 0,
+                            is_resolved: false
                         });
                         sentCount++;
                     } catch (error) {

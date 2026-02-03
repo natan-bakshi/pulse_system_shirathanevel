@@ -129,18 +129,21 @@ Deno.serve(async (req) => {
                             const link = buildDeepLink(supplierTemplate.deep_link_base, supplierTemplate.deep_link_params_map, contextData);
                             
                             try {
-                                await base44.functions.invoke('createNotification', {
-                                    target_user_id: supplierUser.id,
-                                    target_user_email: supplierUser.email,
+                                // Create in-app notification directly using service role
+                                await base44.asServiceRole.entities.InAppNotification.create({
+                                    user_id: supplierUser.id,
+                                    user_email: supplierUser.email,
                                     title,
                                     message,
                                     link,
+                                    is_read: false,
                                     template_type: 'SUPPLIER_EVENT_REMINDER',
                                     related_event_id: event.id,
                                     related_event_service_id: es.id,
                                     related_supplier_id: supplierId,
-                                    send_push: true,
-                                    check_quiet_hours: true
+                                    push_sent: false,
+                                    reminder_count: 0,
+                                    is_resolved: false
                                 });
                                 sentCount++;
                             } catch (error) {
@@ -191,16 +194,19 @@ Deno.serve(async (req) => {
                         const link = buildDeepLink(adminTemplate.deep_link_base, adminTemplate.deep_link_params_map, contextData);
                         
                         try {
-                            await base44.functions.invoke('createNotification', {
-                                target_user_id: admin.id,
-                                target_user_email: admin.email,
+                            // Create in-app notification directly using service role
+                            await base44.asServiceRole.entities.InAppNotification.create({
+                                user_id: admin.id,
+                                user_email: admin.email,
                                 title,
                                 message,
                                 link,
+                                is_read: false,
                                 template_type: 'ADMIN_EVENT_REMINDER',
                                 related_event_id: event.id,
-                                send_push: true,
-                                check_quiet_hours: true
+                                push_sent: false,
+                                reminder_count: 0,
+                                is_resolved: false
                             });
                             sentCount++;
                         } catch (error) {

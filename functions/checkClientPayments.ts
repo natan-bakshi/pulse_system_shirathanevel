@@ -176,16 +176,19 @@ Deno.serve(async (req) => {
                 const link = buildDeepLink(template.deep_link_base, template.deep_link_params_map, contextData);
                 
                 try {
-                    await base44.functions.invoke('createNotification', {
-                        target_user_id: clientUser.id,
-                        target_user_email: clientUser.email,
+                    // Create in-app notification directly using service role
+                    await base44.asServiceRole.entities.InAppNotification.create({
+                        user_id: clientUser.id,
+                        user_email: clientUser.email,
                         title,
                         message,
                         link,
+                        is_read: false,
                         template_type: 'CLIENT_PAYMENT_REMINDER',
                         related_event_id: event.id,
-                        send_push: true,
-                        check_quiet_hours: true
+                        push_sent: false,
+                        reminder_count: existingNotification ? (existingNotification.reminder_count || 0) + 1 : 0,
+                        is_resolved: false
                     });
                     sentCount++;
                     console.log(`[ClientPayments] Sent payment reminder to ${clientUser.email} for event ${event.event_name}, balance: ${balance}`);
