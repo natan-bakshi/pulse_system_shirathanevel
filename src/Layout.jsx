@@ -24,7 +24,7 @@ import PushNotificationManager from "@/components/notifications/PushNotification
 import NotificationBell from "@/components/notifications/NotificationBell";
 import OneSignalInitializer from "@/components/notifications/OneSignalInitializer";
 import TermsPopup from "@/components/legal/TermsPopup";
-import { Toaster } from "sonner";
+import { Toaster as SonnerToaster } from "sonner";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
 // System creator email - only this user can access settings
@@ -511,14 +511,17 @@ export default function Layout({ children }) {
              )} */}
         </>
         }
-      <Toaster 
+      <SonnerToaster 
         position="top-center" 
         dir="rtl" 
         closeButton 
         richColors 
         duration={4000}
+        expand={true}
+        visibleToasts={3}
         toastOptions={{
-          style: { direction: 'rtl' }
+          style: { direction: 'rtl', textAlign: 'right' },
+          className: 'sonner-toast-rtl'
         }}
       />
     </div>
