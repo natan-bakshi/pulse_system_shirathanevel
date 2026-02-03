@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 // סוגי טריגרים עם תיאורים מפורטים
 const TRIGGER_TYPES = {
@@ -158,19 +158,10 @@ export default function NotificationManagementTab() {
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] });
       setIsDialogOpen(false);
       setEditingTemplate(null);
-      toast({ 
-        title: "נשמר בהצלחה", 
-        description: "תבנית ההתראה עודכנה",
-        duration: 3000 
-      });
+      toast.success("נשמר בהצלחה", { description: "תבנית ההתראה עודכנה" });
     },
     onError: (error) => {
-      toast({ 
-        title: "שגיאה", 
-        description: error.message, 
-        variant: "destructive",
-        duration: 5000 
-      });
+      toast.error("שגיאה", { description: error.message });
     }
   });
 
@@ -179,11 +170,7 @@ export default function NotificationManagementTab() {
     mutationFn: (id) => base44.entities.NotificationTemplate.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] });
-      toast({ 
-        title: "נמחק", 
-        description: "תבנית ההתראה נמחקה",
-        duration: 3000 
-      });
+      toast.success("נמחק", { description: "תבנית ההתראה נמחקה" });
     }
   });
 
@@ -234,12 +221,7 @@ export default function NotificationManagementTab() {
 
   const handleSave = () => {
     if (!editingTemplate.type || !editingTemplate.name || !editingTemplate.title_template) {
-      toast({ 
-        title: "שגיאה", 
-        description: "נא למלא את כל השדות החובה", 
-        variant: "destructive",
-        duration: 4000 
-      });
+      toast.error("שגיאה", { description: "נא למלא את כל השדות החובה" });
       return;
     }
     saveMutation.mutate(editingTemplate);
@@ -289,28 +271,20 @@ export default function NotificationManagementTab() {
       });
       
       if (response.data?.success) {
-        toast({ 
-          title: "נשלח בהצלחה!", 
+        toast.success("נשלח בהצלחה!", { 
           description: response.data?.push?.sent 
             ? "התראה נשלחה - בדוק את ההתראות שלך ואת ה-Push" 
-            : "התראה פנימית נוצרה (Push לא נשלח)",
-          duration: 5000 
+            : "התראה פנימית נוצרה (Push לא נשלח)"
         });
       } else {
-        toast({ 
-          title: "שגיאה בשליחה", 
-          description: response.data?.error || "לא ניתן לשלוח התראת בדיקה",
-          variant: "destructive",
-          duration: 5000 
+        toast.error("שגיאה בשליחה", { 
+          description: response.data?.error || "לא ניתן לשלוח התראת בדיקה"
         });
       }
     } catch (error) {
       console.error('Test notification error:', error);
-      toast({ 
-        title: "שגיאה", 
-        description: error.message || "לא ניתן לשלוח התראת בדיקה",
-        variant: "destructive",
-        duration: 5000 
+      toast.error("שגיאה", { 
+        description: error.message || "לא ניתן לשלוח התראת בדיקה"
       });
     } finally {
       setSendingTest(false);
@@ -319,11 +293,7 @@ export default function NotificationManagementTab() {
 
   const copyVariable = (variable) => {
     navigator.clipboard.writeText(`{{${variable}}}`);
-    toast({ 
-      title: "הועתק", 
-      description: `{{${variable}}} הועתק ללוח`,
-      duration: 2000 
-    });
+    toast.success("הועתק", { description: `{{${variable}}} הועתק ללוח` });
   };
 
   return (
