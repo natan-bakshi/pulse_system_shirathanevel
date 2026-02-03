@@ -240,7 +240,7 @@ async function createSpreadsheet(accessToken, title) {
         body: JSON.stringify({
             properties: {
                 title: title,
-                locale: 'he_IL'
+                locale: 'iw_IL'
             },
             sheets: [{
                 properties: {
