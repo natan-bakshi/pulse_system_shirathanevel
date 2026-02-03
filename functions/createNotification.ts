@@ -149,8 +149,9 @@ Deno.serve(async (req) => {
                         }
                         
                         console.log(`[Notification] Sending push via OneSignal to user ${target_user_id}`);
+                        console.log(`[Notification] OneSignal payload:`, JSON.stringify(onesignalPayload));
                         
-                        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+                        const response = await fetch('https://api.onesignal.com/notifications', {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
