@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import PushNotificationManager from "@/components/notifications/PushNotificationManager";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import OneSignalInitializer from "@/components/notifications/OneSignalInitializer";
 import TermsPopup from "@/components/legal/TermsPopup";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
@@ -465,6 +466,7 @@ export default function Layout({ children }) {
         <>
           <TermsPopup user={user} />
           <PushNotificationManager />
+          <OneSignalInitializer user={user} />
           {/* {showCalendarConnect && (
               <GoogleCalendarConnect 
                 user={user} 
