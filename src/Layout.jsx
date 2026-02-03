@@ -26,17 +26,30 @@ import OneSignalInitializer from "@/components/notifications/OneSignalInitialize
 import TermsPopup from "@/components/legal/TermsPopup";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
+// System creator email - only this user can access settings
+const SYSTEM_CREATOR_EMAIL = 'natib8000@gmail.com';
+
+const getAdminNavItems = (userEmail) => {
+  const items = [
+    { title: "דשבורד", url: createPageUrl("AdminDashboard"), icon: Home },
+    { title: "לוח אירועים", url: createPageUrl("EventManagement") + "?tab=board", icon: Calendar },
+    { title: "אירועים", url: createPageUrl("EventManagement"), icon: Calendar },
+    { title: "לקוחות", url: createPageUrl("ClientManagement"), icon: Users },
+    { title: "ספקים", url: createPageUrl("SupplierManagement"), icon: Truck },
+    { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star },
+    { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText },
+    { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck },
+  ];
+  
+  // Only system creator can see settings
+  if (userEmail === SYSTEM_CREATOR_EMAIL) {
+    items.push({ title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings });
+  }
+  
+  return items;
+};
+
 const navigationItems = {
-  admin: [
-  { title: "דשבורד", url: createPageUrl("AdminDashboard"), icon: Home },
-  { title: "לוח אירועים", url: createPageUrl("EventManagement") + "?tab=board", icon: Calendar },
-  { title: "אירועים", url: createPageUrl("EventManagement"), icon: Calendar },
-  { title: "לקוחות", url: createPageUrl("ClientManagement"), icon: Users },
-  { title: "ספקים", url: createPageUrl("SupplierManagement"), icon: Truck },
-  { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star },
-  { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText },
-  { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck },
-  { title: "הגדרות", url: createPageUrl("SettingsPage"), icon: Settings }],
 
   client: [
   { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home }],
@@ -197,7 +210,14 @@ export default function Layout({ children }) {
     const adminOnlyPages = [
     "/AdminDashboard", "/EventManagement", "/ClientManagement",
     "/SupplierManagement", "/ServiceManagement", "/QuoteTemplateManagement",
-    "/UserManagement", "/SettingsPage"];
+    "/UserManagement"];
+    
+    // Settings page is only for system creator
+    const isAccessingSettingsPage = pathname.includes('SettingsPage');
+    if (isAccessingSettingsPage && user.email !== SYSTEM_CREATOR_EMAIL) {
+      navigate(homePage, { replace: true });
+      return;
+    }
 
     // Allow all users to access MyNotificationSettings
     const isAccessingNotificationSettings = pathname.includes('MyNotificationSettings');
@@ -266,7 +286,9 @@ export default function Layout({ children }) {
 
   }
 
-  const currentNavItems = navigationItems[user.user_type] || navigationItems.client;
+  const currentNavItems = user.user_type === 'admin' 
+    ? getAdminNavItems(user.email) 
+    : (navigationItems[user.user_type] || navigationItems.client);
 
 
   return (

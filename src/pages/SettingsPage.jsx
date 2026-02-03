@@ -60,17 +60,15 @@ export default function SettingsPage() {
 
     const loading = userLoading || settingsLoading;
 
-    // Check if current user is creator based on AppSettings created_by or admin role
+    // System creator email - hardcoded for security
+    const SYSTEM_CREATOR_EMAIL = 'natib8000@gmail.com';
+    
+    // Check if current user is the system creator
     useEffect(() => {
-        if (user && appSettings.length > 0) {
-            // Check if user created the first app setting
-            const creatorEmail = appSettings[0]?.created_by;
-            setIsCreator(user.email === creatorEmail || user.role === 'admin');
-        } else if (user && appSettings.length === 0 && user.role === 'admin') {
-            // If no settings exist and current user is admin, they can access
-            setIsCreator(true);
+        if (user) {
+            setIsCreator(user.email === SYSTEM_CREATOR_EMAIL);
         }
-    }, [user, appSettings]);
+    }, [user]);
 
     // Handle URL tab parameter
     useEffect(() => {
