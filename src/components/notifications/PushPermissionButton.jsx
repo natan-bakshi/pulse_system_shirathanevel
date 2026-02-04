@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Bell, BellOff, Check, AlertTriangle, Loader2, Smartphone, Monitor, Info, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,8 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
 
-// OneSignal App ID
-const ONESIGNAL_APP_ID = '4490c0d9-4205-4d6e-8143-39c0aa00b183';
+const FIREBASE_PROXY_ORIGIN = 'https://pulse-notifications-6886e.web.app';
 
 export default function PushPermissionButton({ user }) {
   const [permissionStatus, setPermissionStatus] = useState('unknown');
@@ -34,7 +33,7 @@ export default function PushPermissionButton({ user }) {
     checkPermissionStatus();
   }, []);
 
-  const checkPermissionStatus = async () => {
+  const checkPermissionStatus = useCallback(async () => {
     try {
       // Check native Notification API permission
       if ('Notification' in window) {
@@ -44,55 +43,30 @@ export default function PushPermissionButton({ user }) {
         return;
       }
 
-      // Check OneSignal subscription status
-      if (window.OneSignalDeferred) {
-        window.OneSignalDeferred.push(async (OneSignal) => {
-          try {
-            const isPushSupported = OneSignal.Notifications.isPushSupported();
-            if (!isPushSupported) {
-              setPermissionStatus('unsupported');
-              return;
-            }
-            
-            const permission = await OneSignal.Notifications.permission;
-            const pushSub = OneSignal.User.PushSubscription;
-            const optedIn = pushSub.optedIn;
-            const subscriptionId = pushSub.id;
-            
-            setDebugInfo({
-              permission,
-              optedIn,
-              subscriptionId: subscriptionId ? subscriptionId.substring(0, 10) + '...' : 'none',
-              nativePermission: Notification.permission
-            });
-            
-            console.log('[Push] Status check:', { permission, optedIn, subscriptionId });
-            
-            // User is subscribed if they have permission AND are opted in AND have a subscription ID
-            setIsSubscribed(permission && optedIn && !!subscriptionId);
-            
-            // If they have permission but aren't opted in, try to opt them in
-            if (permission && !optedIn) {
-              console.log('[Push] User has permission but not opted in. Attempting opt-in...');
-              try {
-                await pushSub.optIn();
-                // Re-check after opt-in
-                setTimeout(() => checkPermissionStatus(), 1000);
-              } catch (optInError) {
-                console.warn('[Push] Opt-in failed:', optInError);
-              }
-            }
-          } catch (e) {
-            console.warn('[Push] OneSignal check failed:', e);
-          }
+      // Check subscription status from user profile
+      if (user?.push_enabled && user?.onesignal_subscription_id) {
+        setIsSubscribed(true);
+        setDebugInfo({
+          permission: Notification.permission,
+          push_enabled: user.push_enabled,
+          subscriptionId: user.onesignal_subscription_id ? user.onesignal_subscription_id.substring(0, 10) + '...' : 'none',
+          nativePermission: Notification.permission
+        });
+      } else if (Notification.permission === 'granted') {
+        // Permission granted but not yet subscribed via proxy
+        setDebugInfo({
+          permission: Notification.permission,
+          push_enabled: user?.push_enabled || false,
+          subscriptionId: 'pending',
+          nativePermission: Notification.permission
         });
       }
     } catch (e) {
       console.warn('[Push] Permission check failed:', e);
     }
-  };
+  }, [user]);
 
-  const requestPermission = async () => {
+  const requestPermission = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
@@ -116,126 +90,84 @@ export default function PushPermissionButton({ user }) {
         }
       }
 
-      // Request native notification permission
-      const permission = await Notification.requestPermission();
-      setPermissionStatus(permission);
-
-      if (permission === 'granted') {
-        // Initialize OneSignal if not already done
-        await initOneSignalAndSubscribe();
-      } else if (permission === 'denied') {
-        setError('הגישה להתראות נדחתה. יש לשנות את ההגדרות בדפדפן.');
+      // Find the iframe
+      const frame = document.getElementById('onesignal-subscribe-frame');
+      if (!frame) {
+        setError('שגיאה בטעינת מערכת ההתראות. נא לרענן את הדף.');
+        setIsLoading(false);
+        return;
       }
+
+      // Set up message listener for the result
+      const handleResult = (event) => {
+        if (event.origin !== FIREBASE_PROXY_ORIGIN) return;
+
+        if (event.data.type === 'permission_result') {
+          window.removeEventListener('message', handleResult);
+          setIsLoading(false);
+
+          if (event.data.granted) {
+            console.log('[Push] Subscription successful via Firebase proxy');
+            setPermissionStatus('granted');
+            setIsSubscribed(true);
+            
+            // Update user profile
+            base44.auth.updateMe({
+              push_enabled: true,
+              onesignal_external_id: user?.id,
+              onesignal_subscription_id: event.data.subscriptionId || ''
+            }).catch(() => {
+              // Ignore update errors
+            });
+
+            setDebugInfo({
+              permission: 'granted',
+              push_enabled: true,
+              subscriptionId: event.data.subscriptionId ? event.data.subscriptionId.substring(0, 10) + '...' : 'new',
+              nativePermission: 'granted'
+            });
+          } else {
+            console.log('[Push] Permission denied by user');
+            setPermissionStatus('denied');
+            setError('הגישה להתראות נדחתה. יש לשנות את ההגדרות בדפדפן.');
+          }
+        }
+
+        if (event.data.type === 'permission_error') {
+          window.removeEventListener('message', handleResult);
+          setIsLoading(false);
+          console.error('[Push] Error:', event.data.error);
+          setError('שגיאה בהרשמה: ' + event.data.error);
+        }
+      };
+
+      window.addEventListener('message', handleResult);
+
+      // Request permission via iframe (postMessage)
+      // The iframe will trigger the browser's native permission dialog
+      // which appears on Base44 domain (current page), not Firebase domain
+      frame.contentWindow.postMessage({
+        action: 'requestPermission',
+        userId: user?.id
+      }, FIREBASE_PROXY_ORIGIN);
+
+      console.log('[Push] Permission request sent to Firebase proxy iframe');
+
+      // Timeout safety - 30 seconds
+      setTimeout(() => {
+        window.removeEventListener('message', handleResult);
+        if (isLoading) {
+          setIsLoading(false);
+          console.warn('[Push] Request timeout');
+        }
+      }, 30000);
+
     } catch (e) {
       console.error('[Push] Request error:', e);
       setError('שגיאה בבקשת הרשאות: ' + e.message);
-    } finally {
       setIsLoading(false);
     }
-  };
-
-  const initOneSignalAndSubscribe = async () => {
-    return new Promise((resolve, reject) => {
-      if (!window.OneSignalDeferred) {
-        window.OneSignalDeferred = [];
-        
-        // Load OneSignal SDK
-        const script = document.createElement('script');
-        script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-        script.defer = true;
-        script.onload = () => {
-          subscribeToOneSignal().then(resolve).catch(reject);
-        };
-        document.head.appendChild(script);
-      } else {
-        subscribeToOneSignal().then(resolve).catch(reject);
-      }
-    });
-  };
-
-  const subscribeToOneSignal = () => {
-    return new Promise((resolve, reject) => {
-      window.OneSignalDeferred.push(async (OneSignal) => {
-        try {
-          // Check if already initialized
-          let needsInit = false;
-          try {
-            needsInit = !OneSignal.Notifications.isPushSupported();
-          } catch {
-            needsInit = true;
-          }
-          
-          if (needsInit) {
-            await OneSignal.init({
-              appId: ONESIGNAL_APP_ID,
-              allowLocalhostAsSecureOrigin: true,
-              serviceWorkerParam: { scope: '/' },
-              promptOptions: {
-                slidedown: {
-                  prompts: [{
-                    type: "push",
-                    autoPrompt: false,
-                    text: {
-                      actionMessage: "רוצה לקבל עדכונים ותזכורות חשובות?",
-                      acceptButton: "כן, תודה",
-                      cancelButton: "לא עכשיו"
-                    }
-                  }]
-                }
-              },
-              notifyButton: { enable: false },
-              welcomeNotification: {
-                title: "התראות הופעלו בהצלחה!",
-                message: "תקבל עדכונים חשובים ותזכורות על האירועים שלך"
-              }
-            });
-          }
-
-          // Login with user ID - critical for targeting
-          if (user?.id) {
-            await OneSignal.login(user.id);
-            console.log('[OneSignal] User logged in:', user.id);
-          }
-
-          // Opt-in to push notifications
-          const pushSub = OneSignal.User.PushSubscription;
-          await pushSub.optIn();
-          
-          // Wait for subscription to propagate
-          await new Promise(r => setTimeout(r, 1000));
-          
-          // Verify subscription
-          const subscriptionId = pushSub.id;
-          const isOptedIn = pushSub.optedIn;
-          
-          console.log('[OneSignal] Subscription complete. ID:', subscriptionId, 'OptedIn:', isOptedIn);
-          
-          setIsSubscribed(true);
-          
-          // Update user profile with subscription info
-          if (user?.id) {
-            try {
-              await base44.auth.updateMe({
-                onesignal_external_id: user.id,
-                push_enabled: true,
-                onesignal_subscription_id: subscriptionId || ''
-              });
-            } catch (e) {
-              // Ignore
-            }
-          }
-          
-          // Re-check status
-          setTimeout(() => checkPermissionStatus(), 500);
-          
-          resolve();
-        } catch (error) {
-          console.error('[OneSignal] Subscribe error:', error);
-          reject(error);
-        }
-      });
-    });
-  };
+  }, [deviceType, user?.id, isLoading]);
 
   const getStatusBadge = () => {
     if (permissionStatus === 'unsupported') {
