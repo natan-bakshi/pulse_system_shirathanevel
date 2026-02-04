@@ -35,34 +35,50 @@ export default function PushPermissionButton({ user }) {
 
   const checkPermissionStatus = useCallback(async () => {
     try {
-      // Check native Notification API permission
-      if ('Notification' in window) {
-        setPermissionStatus(Notification.permission);
-      } else {
+      // Check if Notification API is supported
+      if (!('Notification' in window)) {
         setPermissionStatus('unsupported');
+        setIsSubscribed(false);
         return;
       }
 
-      // Check subscription status from user profile
-      if (user?.push_enabled && user?.onesignal_subscription_id) {
+      // Priority: Check user profile first (push_enabled is the source of truth)
+      // because the iframe runs on Firebase domain, not Base44 domain
+      if (user?.push_enabled === true) {
+        setPermissionStatus('granted');
         setIsSubscribed(true);
         setDebugInfo({
-          permission: Notification.permission,
-          push_enabled: user.push_enabled,
-          subscriptionId: user.onesignal_subscription_id ? user.onesignal_subscription_id.substring(0, 10) + '...' : 'none',
+          permission: 'granted (via profile)',
+          push_enabled: true,
+          subscriptionId: user.onesignal_subscription_id ? user.onesignal_subscription_id.substring(0, 10) + '...' : 'synced',
           nativePermission: Notification.permission
         });
-      } else if (Notification.permission === 'granted') {
-        // Permission granted but not yet subscribed via proxy
-        setDebugInfo({
-          permission: Notification.permission,
-          push_enabled: user?.push_enabled || false,
-          subscriptionId: 'pending',
-          nativePermission: Notification.permission
-        });
+        return;
       }
+
+      // If not subscribed via profile, check native permission for display purposes
+      // but don't rely on it being 'denied' since iframe is on different domain
+      const nativePerm = Notification.permission;
+      
+      // Only show as 'denied' if user explicitly set push_enabled to false
+      if (user?.push_enabled === false) {
+        setPermissionStatus('denied');
+        setIsSubscribed(false);
+      } else {
+        // User hasn't subscribed yet - show button to enable
+        setPermissionStatus(nativePerm === 'denied' ? 'default' : nativePerm);
+        setIsSubscribed(false);
+      }
+
+      setDebugInfo({
+        permission: nativePerm,
+        push_enabled: user?.push_enabled ?? 'not set',
+        subscriptionId: user?.onesignal_subscription_id || 'none',
+        nativePermission: nativePerm
+      });
     } catch (e) {
       console.warn('[Push] Permission check failed:', e);
+      setIsSubscribed(false);
     }
   }, [user]);
 
