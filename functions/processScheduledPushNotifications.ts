@@ -1,11 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-const FIREBASE_FUNCTION_URL = 'https://us-central1-pulse-notifications-6886e.cloudfunctions.net/sendPush';
+const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 
 /**
  * Processes pending push notifications that were delayed due to quiet hours
  * Should be run periodically (e.g., every 15 minutes) via scheduled automation
- * Uses Firebase Function proxy for OneSignal push delivery
+ * Uses OneSignal REST API directly
  */
 Deno.serve(async (req) => {
     try {
@@ -47,6 +48,15 @@ Deno.serve(async (req) => {
                     console.warn(`[ScheduledPush] Could not fetch user ${pending.user_id}:`, e.message);
                 }
                 
+                // Check if user has push enabled
+                if (!targetUser?.push_enabled || !targetUser?.onesignal_subscription_id) {
+                    console.log(`[ScheduledPush] User ${pending.user_id} has no push subscription, marking as sent`);
+                    await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
+                        is_sent: true
+                    });
+                    continue;
+                }
+                
                 // Verify user is no longer in quiet hours before sending
                 if (targetUser?.quiet_start_hour !== undefined && targetUser?.quiet_end_hour !== undefined) {
                     if (isInQuietHours(targetUser.quiet_start_hour, targetUser.quiet_end_hour)) {
@@ -60,11 +70,18 @@ Deno.serve(async (req) => {
                     }
                 }
                 
-                // Send the push notification via Firebase Function proxy
-                const firebasePayload = {
-                    userId: pending.user_id,
-                    title: pending.title,
-                    message: pending.message,
+                // Send the push notification via OneSignal REST API
+                const oneSignalPayload = {
+                    app_id: ONESIGNAL_APP_ID,
+                    include_subscription_ids: [targetUser.onesignal_subscription_id],
+                    contents: { 
+                        en: pending.message,
+                        he: pending.message
+                    },
+                    headings: { 
+                        en: pending.title,
+                        he: pending.title
+                    },
                     data: {
                         notification_id: pending.in_app_notification_id,
                         link: pending.link || '',
@@ -72,16 +89,21 @@ Deno.serve(async (req) => {
                     }
                 };
                 
-                const pushResponse = await fetch(FIREBASE_FUNCTION_URL, {
+                if (pending.link) {
+                    oneSignalPayload.url = pending.link;
+                }
+                
+                const pushResponse = await fetch('https://onesignal.com/api/v1/notifications', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Basic ${ONESIGNAL_API_KEY}`
                     },
-                    body: JSON.stringify(firebasePayload)
+                    body: JSON.stringify(oneSignalPayload)
                 });
                 
                 const pushResult = await pushResponse.json();
-                console.log(`[ScheduledPush] Firebase proxy response for user ${pending.user_id}:`, JSON.stringify(pushResult));
+                console.log(`[ScheduledPush] OneSignal response for user ${pending.user_id}:`, JSON.stringify(pushResult));
                 
                 // Mark as sent
                 await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
