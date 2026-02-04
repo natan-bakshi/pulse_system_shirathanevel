@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-const FIREBASE_FUNCTION_URL = 'https://us-central1-pulse-notifications-6886e.cloudfunctions.net/sendPush';
+const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 
 /**
- * Sends a push notification via Firebase Function proxy to OneSignal
- * Supports targeting by external user IDs (Base44 user IDs)
+ * Sends a push notification via OneSignal REST API
+ * Supports targeting by Base44 user IDs (looks up subscription IDs from user profiles)
  */
 Deno.serve(async (req) => {
     try {
@@ -37,54 +38,90 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'title and message are required' }, { status: 400 });
         }
         
-        console.log(`[OneSignal] Sending push via Firebase proxy to ${user_ids.length} users:`, { title, user_ids });
+        console.log(`[OneSignal] Sending push to ${user_ids.length} users:`, { title, user_ids });
         
-        // Send push notifications via Firebase Function proxy
-        let totalRecipients = 0;
-        const errors = [];
+        // Get subscription IDs for all target users
+        const subscriptionIds = [];
+        const skippedUsers = [];
         
         for (const userId of user_ids) {
             try {
-                const firebasePayload = {
-                    userId: userId,
-                    title: title,
-                    message: message,
-                    data: {
-                        ...(data || {}),
-                        link: link || ''
-                    }
-                };
+                const users = await base44.asServiceRole.entities.User.filter({ id: userId });
+                const targetUser = users.length > 0 ? users[0] : null;
                 
-                const response = await fetch(FIREBASE_FUNCTION_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(firebasePayload)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    totalRecipients += result.recipients || 1;
-                    console.log(`[OneSignal] Push sent to user ${userId}. Recipients: ${result.recipients || 1}`);
+                if (targetUser?.push_enabled && targetUser?.onesignal_subscription_id) {
+                    subscriptionIds.push(targetUser.onesignal_subscription_id);
+                    console.log(`[OneSignal] User ${userId} has subscription: ${targetUser.onesignal_subscription_id.substring(0, 10)}...`);
                 } else {
-                    console.warn(`[OneSignal] Failed for user ${userId}:`, result.error);
-                    errors.push({ userId, error: result.error });
+                    skippedUsers.push({ userId, reason: 'No push subscription' });
+                    console.log(`[OneSignal] User ${userId} skipped - no push subscription`);
                 }
-            } catch (error) {
-                console.error(`[OneSignal] Error sending to user ${userId}:`, error.message);
-                errors.push({ userId, error: error.message });
+            } catch (e) {
+                skippedUsers.push({ userId, reason: e.message });
+                console.warn(`[OneSignal] Could not fetch user ${userId}:`, e.message);
             }
         }
         
-        console.log(`[OneSignal] Push completed. Total recipients: ${totalRecipients}, Errors: ${errors.length}`);
+        if (subscriptionIds.length === 0) {
+            return Response.json({
+                success: false,
+                error: 'No valid push subscriptions found',
+                skipped: skippedUsers
+            });
+        }
         
-        return Response.json({
-            success: true,
-            recipients: totalRecipients,
-            errors: errors.length > 0 ? errors : undefined
+        // Send push via OneSignal REST API
+        const oneSignalPayload = {
+            app_id: ONESIGNAL_APP_ID,
+            include_subscription_ids: subscriptionIds,
+            contents: { 
+                en: message,
+                he: message
+            },
+            headings: { 
+                en: title,
+                he: title
+            },
+            data: {
+                ...(data || {}),
+                link: link || ''
+            }
+        };
+        
+        if (link) {
+            oneSignalPayload.url = link;
+        }
+        
+        console.log(`[OneSignal] Sending to ${subscriptionIds.length} subscriptions`);
+        
+        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${ONESIGNAL_API_KEY}`
+            },
+            body: JSON.stringify(oneSignalPayload)
         });
+        
+        const result = await response.json();
+        
+        console.log(`[OneSignal] Response:`, JSON.stringify(result));
+        
+        if (result.id) {
+            console.log(`[OneSignal] Push completed. Recipients: ${result.recipients || 0}`);
+            return Response.json({
+                success: true,
+                recipients: result.recipients || 0,
+                onesignal_id: result.id,
+                skipped: skippedUsers.length > 0 ? skippedUsers : undefined
+            });
+        } else {
+            return Response.json({
+                success: false,
+                error: result.errors || 'Unknown error',
+                skipped: skippedUsers
+            });
+        }
         
     } catch (error) {
         console.error('[OneSignal] Error:', error);
