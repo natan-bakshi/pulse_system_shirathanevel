@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
 
-const FIREBASE_PROXY_ORIGIN = 'https://pulse-notifications-6886e.web.app';
+const FIREBASE_PROXY_URL = 'https://pulse-notifications-6886e.web.app';
 
 export default function PushPermissionButton({ user }) {
   const [permissionStatus, setPermissionStatus] = useState('unknown');
@@ -73,8 +73,6 @@ export default function PushPermissionButton({ user }) {
       }
 
       // User hasn't subscribed yet - show button to enable
-      // IMPORTANT: Do NOT rely on Notification.permission here because iframe is on Firebase domain
-      // Only show as 'denied' if user explicitly set push_enabled to false
       if (user?.push_enabled === false) {
         setPermissionStatus('denied');
         setIsSubscribed(false);
@@ -120,33 +118,40 @@ export default function PushPermissionButton({ user }) {
         }
       }
 
-      // Find the iframe
-      const frame = document.getElementById('onesignal-subscribe-frame');
-      if (!frame) {
-        setError('שגיאה בטעינת מערכת ההתראות. נא לרענן את הדף.');
+      // Open popup window to Firebase domain for permission request
+      const popup = window.open(
+        `${FIREBASE_PROXY_URL}?auto=true`,
+        'onesignal_popup',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      if (!popup) {
+        setError('החלון נחסם. אנא אפשר חלונות קופצים עבור אתר זה ונסה שוב.');
         setIsLoading(false);
         return;
       }
 
-      // Set up message listener for the result
-      const handleResult = (event) => {
-        if (event.origin !== FIREBASE_PROXY_ORIGIN) return;
+      console.log('[Push] Opened popup window for permission request');
 
-        if (event.data.type === 'permission_result') {
-          window.removeEventListener('message', handleResult);
+      // Listen for result from popup
+      const handleMessage = (event) => {
+        if (event.origin !== FIREBASE_PROXY_URL) return;
+        
+        if (event.data.type === 'push_enabled') {
+          window.removeEventListener('message', handleMessage);
           setIsLoading(false);
 
-          if (event.data.granted) {
+          if (event.data.success && event.data.subscriptionId) {
             const subscriptionId = event.data.subscriptionId;
-            console.log('[Push] Subscription successful via Firebase proxy. Subscription ID:', subscriptionId);
+            console.log('[Push] Subscription successful! Subscription ID:', subscriptionId);
             setPermissionStatus('granted');
             setIsSubscribed(true);
             
-            // Update user profile with subscription ID - this is critical for push delivery
+            // Update user profile with subscription ID
             base44.auth.updateMe({
               push_enabled: true,
               onesignal_external_id: user?.id,
-              onesignal_subscription_id: subscriptionId || ''
+              onesignal_subscription_id: subscriptionId
             }).then(() => {
               console.log('[Push] User profile updated with subscription ID');
             }).catch((err) => {
@@ -156,50 +161,35 @@ export default function PushPermissionButton({ user }) {
             setDebugInfo({
               permission: 'granted',
               push_enabled: true,
-              subscriptionId: subscriptionId ? subscriptionId.substring(0, 10) + '...' : 'none',
+              subscriptionId: subscriptionId.substring(0, 10) + '...',
               nativePermission: 'granted'
             });
+
+            // Close popup if still open
+            if (popup && !popup.closed) {
+              popup.close();
+            }
           } else {
             console.log('[Push] Permission denied by user');
             setPermissionStatus('denied');
-            // Update user profile to reflect denied state
             base44.auth.updateMe({
               push_enabled: false
             }).catch(() => {});
-            setError('הגישה להתראות נדחתה. יש לשנות את ההגדרות בדפדפן.');
+            setError('הגישה להתראות נדחתה. ניתן לנסות שוב.');
           }
-        }
-
-        if (event.data.type === 'permission_error') {
-          window.removeEventListener('message', handleResult);
-          setIsLoading(false);
-          console.error('[Push] Error:', event.data.error);
-          setError('שגיאה בהרשמה: ' + event.data.error);
         }
       };
 
-      window.addEventListener('message', handleResult);
+      window.addEventListener('message', handleMessage);
 
-      // Request permission via iframe (postMessage)
-      // IMPORTANT: The permission dialog appears for the Firebase domain, not Base44 domain
-      // This is because the Service Worker is registered on Firebase domain
-      // The user needs to allow notifications for pulse-notifications-6886e.web.app
-      frame.contentWindow.postMessage({
-        action: 'requestPermission',
-        userId: user?.id
-      }, FIREBASE_PROXY_ORIGIN);
-
-      console.log('[Push] Permission request sent to Firebase proxy iframe');
-      console.log('[Push] NOTE: Permission dialog will appear for Firebase domain (pulse-notifications-6886e.web.app)');
-
-      // Timeout safety - 30 seconds
+      // Timeout safety - 60 seconds
       setTimeout(() => {
-        window.removeEventListener('message', handleResult);
+        window.removeEventListener('message', handleMessage);
         if (isLoading) {
           setIsLoading(false);
           console.warn('[Push] Request timeout');
         }
-      }, 30000);
+      }, 60000);
 
     } catch (e) {
       console.error('[Push] Request error:', e);
