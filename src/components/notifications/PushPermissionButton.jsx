@@ -319,7 +319,7 @@ export default function PushPermissionButton({ user }) {
             </Button>
           </div>
         ) : (
-          permissionStatus !== 'unsupported' && permissionStatus !== 'denied' && (
+          permissionStatus !== 'unsupported' && (
             <Button 
               onClick={requestPermission} 
               disabled={isLoading}
