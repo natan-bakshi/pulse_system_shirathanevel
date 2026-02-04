@@ -76,10 +76,10 @@ export default function OneSignalInitializer({ user }) {
         }
       }
 
+      // Handle subscription status response
       if (event.data.type === 'subscription_status') {
         console.log('[OneSignal] Subscription status received:', event.data);
         
-        // Update user profile with subscription status - CRITICAL for push delivery
         if (event.data.subscribed && event.data.subscriptionId) {
           console.log('[OneSignal] Saving subscription ID to profile:', event.data.subscriptionId);
           base44.auth.updateMe({
@@ -93,6 +93,33 @@ export default function OneSignalInitializer({ user }) {
         } else if (event.data.subscribed === false) {
           console.log('[OneSignal] User not subscribed');
         }
+      }
+
+      // Handle permission_result from requestPermission action
+      if (event.data.type === 'permission_result' && event.data.subscriptionId) {
+        console.log('[OneSignal] Permission granted, saving subscription ID:', event.data.subscriptionId);
+        base44.auth.updateMe({
+          push_enabled: true,
+          onesignal_external_id: user.id,
+          onesignal_subscription_id: event.data.subscriptionId
+        }).then(() => {
+          console.log('[OneSignal] User profile updated from permission_result');
+        }).catch((err) => {
+          console.error('[OneSignal] Failed to update user profile:', err);
+        });
+      }
+
+      // Handle user_set response (when setUser completes with subscription)
+      if (event.data.type === 'user_set' && event.data.subscriptionId) {
+        console.log('[OneSignal] User set complete, saving subscription ID:', event.data.subscriptionId);
+        base44.auth.updateMe({
+          push_enabled: true,
+          onesignal_subscription_id: event.data.subscriptionId
+        }).then(() => {
+          console.log('[OneSignal] User profile updated from user_set');
+        }).catch((err) => {
+          console.error('[OneSignal] Failed to update user profile:', err);
+        });
       }
     };
 
