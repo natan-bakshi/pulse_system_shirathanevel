@@ -181,14 +181,16 @@ export default function PushPermissionButton({ user }) {
       window.addEventListener('message', handleResult);
 
       // Request permission via iframe (postMessage)
-      // The iframe will trigger the browser's native permission dialog
-      // which appears on Base44 domain (current page), not Firebase domain
+      // IMPORTANT: The permission dialog appears for the Firebase domain, not Base44 domain
+      // This is because the Service Worker is registered on Firebase domain
+      // The user needs to allow notifications for pulse-notifications-6886e.web.app
       frame.contentWindow.postMessage({
         action: 'requestPermission',
         userId: user?.id
       }, FIREBASE_PROXY_ORIGIN);
 
       console.log('[Push] Permission request sent to Firebase proxy iframe');
+      console.log('[Push] NOTE: Permission dialog will appear for Firebase domain (pulse-notifications-6886e.web.app)');
 
       // Timeout safety - 30 seconds
       setTimeout(() => {
