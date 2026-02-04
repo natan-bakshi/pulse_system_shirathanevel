@@ -43,14 +43,30 @@ export default function PushPermissionButton({ user }) {
       }
 
       // Priority: Check user profile first (push_enabled is the source of truth)
-      // because the iframe runs on Firebase domain, not Base44 domain
-      if (user?.push_enabled === true) {
+      // User must have both push_enabled=true AND a valid subscription ID
+      const hasValidSubscription = user?.push_enabled === true && user?.onesignal_subscription_id && user.onesignal_subscription_id.length > 10;
+      
+      if (hasValidSubscription) {
         setPermissionStatus('granted');
         setIsSubscribed(true);
         setDebugInfo({
           permission: 'granted (via profile)',
           push_enabled: true,
-          subscriptionId: user.onesignal_subscription_id ? user.onesignal_subscription_id.substring(0, 10) + '...' : 'synced',
+          subscriptionId: user.onesignal_subscription_id.substring(0, 10) + '...',
+          nativePermission: Notification.permission
+        });
+        return;
+      }
+
+      // If push_enabled is true but no subscription ID, need to re-subscribe
+      if (user?.push_enabled === true && !hasValidSubscription) {
+        console.log('[Push] User has push_enabled but no valid subscription ID, needs re-subscription');
+        setPermissionStatus('default');
+        setIsSubscribed(false);
+        setDebugInfo({
+          permission: 'needs_resubscription',
+          push_enabled: true,
+          subscriptionId: user?.onesignal_subscription_id || 'missing',
           nativePermission: Notification.permission
         });
         return;
@@ -66,7 +82,7 @@ export default function PushPermissionButton({ user }) {
         setIsSubscribed(false);
       } else {
         // User hasn't subscribed yet - show button to enable
-        setPermissionStatus(nativePerm === 'denied' ? 'default' : nativePerm);
+        setPermissionStatus('default');
         setIsSubscribed(false);
       }
 
