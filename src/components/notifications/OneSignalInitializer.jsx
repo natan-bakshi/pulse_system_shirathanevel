@@ -77,21 +77,26 @@ export default function OneSignalInitializer({ user }) {
       }
 
       // Handle subscription status response
+      // Note: Firebase returns 'enabled' field, not 'subscribed'
       if (event.data.type === 'subscription_status') {
         console.log('[OneSignal] Subscription status received:', event.data);
         
-        if (event.data.subscribed && event.data.subscriptionId) {
-          console.log('[OneSignal] Saving subscription ID to profile:', event.data.subscriptionId);
+        // Check for both 'enabled' (from Firebase) and 'subscribed' (for compatibility)
+        const isSubscribed = event.data.enabled === true || event.data.subscribed === true;
+        const subscriptionId = event.data.subscriptionId;
+        
+        if (isSubscribed && subscriptionId) {
+          console.log('[OneSignal] Saving subscription ID to profile:', subscriptionId);
           base44.auth.updateMe({
             push_enabled: true,
-            onesignal_subscription_id: event.data.subscriptionId
+            onesignal_subscription_id: subscriptionId
           }).then(() => {
             console.log('[OneSignal] User profile updated with subscription ID');
           }).catch((err) => {
             console.error('[OneSignal] Failed to update user profile:', err);
           });
-        } else if (event.data.subscribed === false) {
-          console.log('[OneSignal] User not subscribed');
+        } else {
+          console.log('[OneSignal] User not subscribed or no subscription ID. enabled:', event.data.enabled, 'subscriptionId:', subscriptionId);
         }
       }
 
