@@ -1,11 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-const FIREBASE_FUNCTION_URL = 'https://us-central1-pulse-notifications-6886e.cloudfunctions.net/sendPush';
+const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 
 /**
  * Creates an in-app notification and optionally sends a push notification
  * Handles quiet hours by scheduling push for later
- * Uses Firebase Function proxy for OneSignal push delivery
+ * Uses OneSignal REST API directly with external_id targeting
  */
 Deno.serve(async (req) => {
     try {
@@ -62,6 +63,10 @@ Deno.serve(async (req) => {
             }
         }
         
+        // Check if user has push enabled
+        const userHasPushEnabled = targetUser?.push_enabled === true && targetUser?.onesignal_subscription_id;
+        console.log(`[Notification] User push status - push_enabled: ${targetUser?.push_enabled}, subscription_id: ${targetUser?.onesignal_subscription_id ? 'exists' : 'none'}`);
+        
         // Create the in-app notification
         const inAppNotification = await base44.asServiceRole.entities.InAppNotification.create({
             user_id: target_user_id,
@@ -84,7 +89,7 @@ Deno.serve(async (req) => {
         // Handle push notification
         let pushResult = { sent: false };
         
-        if (send_push) {
+        if (send_push && userHasPushEnabled) {
             // Check Shabbat first (system-wide, non-configurable)
             let shouldDelayPush = false;
             let scheduledFor = null;
@@ -126,42 +131,68 @@ Deno.serve(async (req) => {
                 
                 pushResult = { sent: false, scheduled: true, scheduled_for: scheduledFor.toISOString() };
             } else {
-                // Send push immediately via Firebase Function proxy
+                // Send push immediately via OneSignal REST API
                 try {
-                    console.log(`[Notification] Sending push via Firebase proxy to user ${target_user_id}`);
+                    // Use subscription_id if available, otherwise fall back to external_id
+                    const subscriptionId = targetUser?.onesignal_subscription_id;
                     
-                    const firebasePayload = {
-                        userId: target_user_id,
-                        title: title,
-                        message: message,
+                    console.log(`[Notification] Sending push via OneSignal to subscription ${subscriptionId}`);
+                    
+                    const oneSignalPayload = {
+                        app_id: ONESIGNAL_APP_ID,
+                        // Target by subscription ID for reliable delivery
+                        include_subscription_ids: [subscriptionId],
+                        contents: { 
+                            en: message,
+                            he: message
+                        },
+                        headings: { 
+                            en: title,
+                            he: title
+                        },
                         data: {
                             notification_id: inAppNotification.id,
                             link: link || ''
                         }
                     };
                     
-                    const response = await fetch(FIREBASE_FUNCTION_URL, {
+                    // Add URL if link is provided
+                    if (link) {
+                        oneSignalPayload.url = link;
+                    }
+                    
+                    console.log(`[Notification] OneSignal payload:`, JSON.stringify(oneSignalPayload));
+                    
+                    const response = await fetch('https://onesignal.com/api/v1/notifications', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Authorization': `Basic ${ONESIGNAL_API_KEY}`
                         },
-                        body: JSON.stringify(firebasePayload)
+                        body: JSON.stringify(oneSignalPayload)
                     });
                     
                     const result = await response.json();
                     
-                    console.log(`[Notification] Firebase proxy response:`, JSON.stringify(result));
+                    console.log(`[Notification] OneSignal response:`, JSON.stringify(result));
                     
-                    if (result.success && result.recipients > 0) {
+                    if (result.id && result.recipients > 0) {
                         await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
                             push_sent: true
                         });
-                        pushResult = { sent: true, recipients: result.recipients };
+                        pushResult = { sent: true, recipients: result.recipients, onesignal_id: result.id };
                         console.log(`[Notification] Push sent successfully. Recipients: ${result.recipients}`);
+                    } else if (result.errors) {
+                        console.warn('[Notification] OneSignal errors:', result.errors);
+                        pushResult = { 
+                            sent: false, 
+                            error: result.errors,
+                            recipients: result.recipients || 0
+                        };
                     } else {
                         pushResult = { 
                             sent: false, 
-                            error: result.error || 'No recipients',
+                            error: 'No recipients or unknown error',
                             recipients: result.recipients || 0
                         };
                         console.warn('[Notification] Push failed or no recipients:', JSON.stringify(result));
@@ -171,6 +202,9 @@ Deno.serve(async (req) => {
                     pushResult = { sent: false, error: pushError.message };
                 }
             }
+        } else if (send_push && !userHasPushEnabled) {
+            pushResult = { sent: false, reason: 'User has not enabled push notifications' };
+            console.log(`[Notification] Skipping push - user has not enabled push notifications`);
         }
         
         return Response.json({
