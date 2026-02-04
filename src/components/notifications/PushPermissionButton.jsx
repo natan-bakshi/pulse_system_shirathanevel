@@ -189,14 +189,11 @@ export default function PushPermissionButton({ user }) {
     if (permissionStatus === 'unsupported') {
       return <Badge variant="destructive" className="gap-1"><BellOff className="h-3 w-3" />לא נתמך</Badge>;
     }
-    if (permissionStatus === 'denied') {
-      return <Badge variant="destructive" className="gap-1"><BellOff className="h-3 w-3" />חסום</Badge>;
-    }
     if (isSubscribed) {
       return <Badge className="gap-1 bg-green-600"><Check className="h-3 w-3" />פעיל</Badge>;
     }
-    if (permissionStatus === 'granted') {
-      return <Badge variant="secondary" className="gap-1"><Bell className="h-3 w-3" />מאושר (ממתין לרישום)</Badge>;
+    if (user?.push_enabled === false) {
+      return <Badge variant="destructive" className="gap-1"><BellOff className="h-3 w-3" />חסום</Badge>;
     }
     return <Badge variant="outline" className="gap-1"><Bell className="h-3 w-3" />לא פעיל</Badge>;
   };
