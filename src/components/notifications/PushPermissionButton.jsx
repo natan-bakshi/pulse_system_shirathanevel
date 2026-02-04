@@ -257,7 +257,8 @@ export default function PushPermissionButton({ user }) {
           </Alert>
         )}
 
-        {permissionStatus === 'denied' && user?.push_enabled === false && (
+        {/* Error message only if there was an actual denial from the iframe */}
+        {error && error.includes('נדחתה') && (
           <Alert className="bg-red-50 border-red-200">
             <BellOff className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800 text-sm">
@@ -272,15 +273,18 @@ export default function PushPermissionButton({ user }) {
                 </ol>
               ) : deviceType === 'android' ? (
                 <ol className="list-decimal mr-4 mt-1 space-y-1">
+                  <li>גש ל: pulse-notifications-6886e.web.app</li>
                   <li>לחץ על הנעילה/מידע בשורת הכתובת</li>
                   <li>בחר "הגדרות אתר"</li>
                   <li>הפעל את "התראות"</li>
+                  <li>חזור לאפליקציה ולחץ שוב על "הפעל התראות"</li>
                 </ol>
               ) : (
                 <ol className="list-decimal mr-4 mt-1 space-y-1">
+                  <li>גש ל: pulse-notifications-6886e.web.app</li>
                   <li>לחץ על הנעילה ליד שורת הכתובת</li>
                   <li>מצא את "התראות" ובחר "אפשר"</li>
-                  <li>רענן את הדף</li>
+                  <li>חזור לאפליקציה ולחץ שוב על "הפעל התראות"</li>
                 </ol>
               )}
             </AlertDescription>
