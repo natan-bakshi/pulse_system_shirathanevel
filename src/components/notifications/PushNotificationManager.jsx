@@ -32,14 +32,18 @@ export default function PushNotificationManager() {
           setLoading(false);
 
           if (event.data.granted) {
-            console.log('[OneSignal] Subscription successful');
+            const subscriptionId = event.data.subscriptionId;
+            console.log('[OneSignal] Subscription successful. ID:', subscriptionId);
             setPermissionStatus('granted');
             
-            // Update user profile
+            // Update user profile with subscription ID - CRITICAL for push delivery
             base44.auth.updateMe({
-              push_enabled: true
-            }).catch(() => {
-              // Ignore update errors
+              push_enabled: true,
+              onesignal_subscription_id: subscriptionId || ''
+            }).then(() => {
+              console.log('[OneSignal] User profile updated with subscription');
+            }).catch((err) => {
+              console.error('[OneSignal] Failed to update profile:', err);
             });
           } else {
             console.log('[OneSignal] Permission denied by user');
