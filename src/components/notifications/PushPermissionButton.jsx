@@ -123,28 +123,35 @@ export default function PushPermissionButton({ user }) {
           setIsLoading(false);
 
           if (event.data.granted) {
-            console.log('[Push] Subscription successful via Firebase proxy');
+            const subscriptionId = event.data.subscriptionId;
+            console.log('[Push] Subscription successful via Firebase proxy. Subscription ID:', subscriptionId);
             setPermissionStatus('granted');
             setIsSubscribed(true);
             
-            // Update user profile
+            // Update user profile with subscription ID - this is critical for push delivery
             base44.auth.updateMe({
               push_enabled: true,
               onesignal_external_id: user?.id,
-              onesignal_subscription_id: event.data.subscriptionId || ''
-            }).catch(() => {
-              // Ignore update errors
+              onesignal_subscription_id: subscriptionId || ''
+            }).then(() => {
+              console.log('[Push] User profile updated with subscription ID');
+            }).catch((err) => {
+              console.error('[Push] Failed to update user profile:', err);
             });
 
             setDebugInfo({
               permission: 'granted',
               push_enabled: true,
-              subscriptionId: event.data.subscriptionId ? event.data.subscriptionId.substring(0, 10) + '...' : 'new',
+              subscriptionId: subscriptionId ? subscriptionId.substring(0, 10) + '...' : 'none',
               nativePermission: 'granted'
             });
           } else {
             console.log('[Push] Permission denied by user');
             setPermissionStatus('denied');
+            // Update user profile to reflect denied state
+            base44.auth.updateMe({
+              push_enabled: false
+            }).catch(() => {});
             setError('הגישה להתראות נדחתה. יש לשנות את ההגדרות בדפדפן.');
           }
         }
