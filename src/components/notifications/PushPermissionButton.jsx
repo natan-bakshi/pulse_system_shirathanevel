@@ -31,7 +31,7 @@ export default function PushPermissionButton({ user }) {
   // Check current permission status
   useEffect(() => {
     checkPermissionStatus();
-  }, []);
+  }, [user?.push_enabled, user?.onesignal_subscription_id]);
 
   const checkPermissionStatus = useCallback(async () => {
     try {
@@ -72,31 +72,29 @@ export default function PushPermissionButton({ user }) {
         return;
       }
 
-      // If not subscribed via profile, check native permission for display purposes
-      // but don't rely on it being 'denied' since iframe is on different domain
-      const nativePerm = Notification.permission;
-      
+      // User hasn't subscribed yet - show button to enable
+      // IMPORTANT: Do NOT rely on Notification.permission here because iframe is on Firebase domain
       // Only show as 'denied' if user explicitly set push_enabled to false
       if (user?.push_enabled === false) {
         setPermissionStatus('denied');
         setIsSubscribed(false);
       } else {
-        // User hasn't subscribed yet - show button to enable
+        // Default state - user hasn't set up push yet, show enable button
         setPermissionStatus('default');
         setIsSubscribed(false);
       }
 
       setDebugInfo({
-        permission: nativePerm,
+        permission: 'not_set',
         push_enabled: user?.push_enabled ?? 'not set',
         subscriptionId: user?.onesignal_subscription_id || 'none',
-        nativePermission: nativePerm
+        nativePermission: Notification.permission
       });
     } catch (e) {
       console.warn('[Push] Permission check failed:', e);
       setIsSubscribed(false);
     }
-  }, [user]);
+  }, [user?.push_enabled, user?.onesignal_subscription_id]);
 
   const requestPermission = useCallback(async () => {
     setIsLoading(true);
