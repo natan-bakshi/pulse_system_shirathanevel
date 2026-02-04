@@ -374,6 +374,9 @@ export default function NotificationManagementTab() {
         </Card>
       </Collapsible>
 
+      {/* Manual Push Sender */}
+      <ManualPushSender />
+
       {/* Templates List */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
