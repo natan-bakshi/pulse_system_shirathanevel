@@ -51,7 +51,7 @@ export default function OneSignalInitializer({ user }) {
         console.log('[OneSignal] Ready via Firebase proxy');
         setOneSignalReady(true);
 
-        // Immediately sync user ID with OneSignal
+        // Immediately sync user ID with OneSignal and request subscription status
         const frame = document.getElementById('onesignal-subscribe-frame');
         if (frame?.contentWindow) {
           frame.contentWindow.postMessage({
@@ -61,29 +61,37 @@ export default function OneSignalInitializer({ user }) {
           
           console.log('[OneSignal] User ID synced:', user.id);
           
-          // Save to user profile
+          // Save external_id to user profile
           base44.auth.updateMe({
             onesignal_external_id: user.id
-          }).catch(() => {
-            // Ignore update errors
-          });
+          }).catch(() => {});
+
+          // Request current subscription status to sync
+          setTimeout(() => {
+            frame.contentWindow.postMessage({
+              action: 'getSubscriptionStatus',
+              userId: user.id
+            }, FIREBASE_PROXY_ORIGIN);
+          }, 1000);
         }
       }
 
       if (event.data.type === 'subscription_status') {
-        console.log('[OneSignal] Subscription status:', event.data);
+        console.log('[OneSignal] Subscription status received:', event.data);
         
         // Update user profile with subscription status - CRITICAL for push delivery
         if (event.data.subscribed && event.data.subscriptionId) {
-          console.log('[OneSignal] Updating user profile with subscription ID:', event.data.subscriptionId);
+          console.log('[OneSignal] Saving subscription ID to profile:', event.data.subscriptionId);
           base44.auth.updateMe({
             push_enabled: true,
             onesignal_subscription_id: event.data.subscriptionId
           }).then(() => {
-            console.log('[OneSignal] User profile updated successfully');
+            console.log('[OneSignal] User profile updated with subscription ID');
           }).catch((err) => {
             console.error('[OneSignal] Failed to update user profile:', err);
           });
+        } else if (event.data.subscribed === false) {
+          console.log('[OneSignal] User not subscribed');
         }
       }
     };
