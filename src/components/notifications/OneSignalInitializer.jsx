@@ -73,13 +73,16 @@ export default function OneSignalInitializer({ user }) {
       if (event.data.type === 'subscription_status') {
         console.log('[OneSignal] Subscription status:', event.data);
         
-        // Update user profile with subscription status
-        if (event.data.subscribed) {
+        // Update user profile with subscription status - CRITICAL for push delivery
+        if (event.data.subscribed && event.data.subscriptionId) {
+          console.log('[OneSignal] Updating user profile with subscription ID:', event.data.subscriptionId);
           base44.auth.updateMe({
             push_enabled: true,
-            onesignal_subscription_id: event.data.subscriptionId || ''
-          }).catch(() => {
-            // Ignore update errors
+            onesignal_subscription_id: event.data.subscriptionId
+          }).then(() => {
+            console.log('[OneSignal] User profile updated successfully');
+          }).catch((err) => {
+            console.error('[OneSignal] Failed to update user profile:', err);
           });
         }
       }
