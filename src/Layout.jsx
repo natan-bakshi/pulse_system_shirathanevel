@@ -529,10 +529,11 @@ export default function Layout({ children }) {
       </div>
       
       {user &&
-        <>
-          <TermsPopup user={user} />
-          <PushNotificationManager />
-          <OneSignalInitializer user={user} />
+                <>
+                  <TermsPopup user={user} />
+                  <PushNotificationManager />
+                  <OneSignalInitializer user={user} />
+                  <PushNotificationPrompt user={user} />
           {/* {showCalendarConnect && (
               <GoogleCalendarConnect 
                 user={user} 
