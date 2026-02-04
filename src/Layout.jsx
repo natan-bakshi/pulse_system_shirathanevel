@@ -23,6 +23,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import PushNotificationManager from "@/components/notifications/PushNotificationManager";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import OneSignalInitializer from "@/components/notifications/OneSignalInitializer";
+import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import TermsPopup from "@/components/legal/TermsPopup";
 import { Toaster as SonnerToaster } from "sonner";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
