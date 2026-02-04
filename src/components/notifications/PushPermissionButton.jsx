@@ -239,7 +239,7 @@ export default function PushPermissionButton({ user }) {
           </Alert>
         )}
 
-        {permissionStatus === 'denied' && (
+        {permissionStatus === 'denied' && user?.push_enabled === false && (
           <Alert className="bg-red-50 border-red-200">
             <BellOff className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800 text-sm">
