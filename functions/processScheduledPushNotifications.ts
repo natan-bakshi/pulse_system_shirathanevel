@@ -1,8 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+const FIREBASE_FUNCTION_URL = 'https://us-central1-pulse-notifications-6886e.cloudfunctions.net/sendPush';
+
 /**
  * Processes pending push notifications that were delayed due to quiet hours
  * Should be run periodically (e.g., every 15 minutes) via scheduled automation
+ * Uses Firebase Function proxy for OneSignal push delivery
  */
 Deno.serve(async (req) => {
     try {
@@ -57,17 +60,28 @@ Deno.serve(async (req) => {
                     }
                 }
                 
-                // Send the push notification
-                const pushResponse = await base44.functions.invoke('sendOneSignalPush', {
-                    user_ids: [pending.user_id],
+                // Send the push notification via Firebase Function proxy
+                const firebasePayload = {
+                    userId: pending.user_id,
                     title: pending.title,
                     message: pending.message,
-                    link: pending.link,
-                    data: { 
+                    data: {
                         notification_id: pending.in_app_notification_id,
-                        delayed: true 
+                        link: pending.link || '',
+                        delayed: true
                     }
+                };
+                
+                const pushResponse = await fetch(FIREBASE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(firebasePayload)
                 });
+                
+                const pushResult = await pushResponse.json();
+                console.log(`[ScheduledPush] Firebase proxy response for user ${pending.user_id}:`, JSON.stringify(pushResult));
                 
                 // Mark as sent
                 await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {

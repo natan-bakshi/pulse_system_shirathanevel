@@ -553,7 +553,15 @@ export default function Layout({ children }) {
           className: 'sonner-toast-rtl'
         }}
       />
-    </div>
-  </>);
+
+      {/* OneSignal Firebase Proxy Bridge */}
+      <iframe 
+        id="onesignal-subscribe-frame"
+        src="https://pulse-notifications-6886e.web.app/subscribe.html"
+        style={{ display: 'none' }}
+        title="OneSignal Bridge"
+      />
+      </div>
+      </>);
 
 }

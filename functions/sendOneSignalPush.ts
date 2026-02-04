@@ -1,7 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+const FIREBASE_FUNCTION_URL = 'https://us-central1-pulse-notifications-6886e.cloudfunctions.net/sendPush';
+
 /**
- * Sends a push notification via OneSignal API
+ * Sends a push notification via Firebase Function proxy to OneSignal
  * Supports targeting by external user IDs (Base44 user IDs)
  */
 Deno.serve(async (req) => {
@@ -35,66 +37,53 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'title and message are required' }, { status: 400 });
         }
         
-        const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
-        const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+        console.log(`[OneSignal] Sending push via Firebase proxy to ${user_ids.length} users:`, { title, user_ids });
         
-        if (!ONESIGNAL_API_KEY) {
-            console.error('[OneSignal] Missing ONESIGNAL_API_KEY');
-            return Response.json({ error: 'OneSignal not configured' }, { status: 500 });
+        // Send push notifications via Firebase Function proxy
+        let totalRecipients = 0;
+        const errors = [];
+        
+        for (const userId of user_ids) {
+            try {
+                const firebasePayload = {
+                    userId: userId,
+                    title: title,
+                    message: message,
+                    data: {
+                        ...(data || {}),
+                        link: link || ''
+                    }
+                };
+                
+                const response = await fetch(FIREBASE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(firebasePayload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    totalRecipients += result.recipients || 1;
+                    console.log(`[OneSignal] Push sent to user ${userId}. Recipients: ${result.recipients || 1}`);
+                } else {
+                    console.warn(`[OneSignal] Failed for user ${userId}:`, result.error);
+                    errors.push({ userId, error: result.error });
+                }
+            } catch (error) {
+                console.error(`[OneSignal] Error sending to user ${userId}:`, error.message);
+                errors.push({ userId, error: error.message });
+            }
         }
         
-        // Build the OneSignal notification payload using the NEW API format
-        // Note: include_aliases is the new format (since API v11)
-        // include_external_user_ids is deprecated
-        const onesignalPayload = {
-            app_id: ONESIGNAL_APP_ID,
-            target_channel: "push",
-            include_aliases: {
-                external_id: user_ids // Array of Base44 user IDs
-            },
-            contents: { "he": message, "en": message },
-            headings: { "he": title, "en": title },
-        };
-        
-        // Add URL if provided
-        if (link) {
-            onesignalPayload.url = link;
-        }
-        
-        // Add additional data if provided
-        if (data) {
-            onesignalPayload.data = data;
-        }
-        
-        console.log(`[OneSignal] Sending push to ${user_ids.length} users:`, { title, user_ids });
-        console.log(`[OneSignal] Payload:`, JSON.stringify(onesignalPayload));
-        
-        const response = await fetch('https://api.onesignal.com/notifications', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(onesignalPayload)
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            console.error('[OneSignal] API Error:', result);
-            return Response.json({ 
-                success: false, 
-                error: result.errors || 'OneSignal API error',
-                details: result
-            }, { status: response.status });
-        }
-        
-        console.log(`[OneSignal] Push sent successfully. Recipients: ${result.recipients || 0}`);
+        console.log(`[OneSignal] Push completed. Total recipients: ${totalRecipients}, Errors: ${errors.length}`);
         
         return Response.json({
             success: true,
-            notification_id: result.id,
-            recipients: result.recipients || 0
+            recipients: totalRecipients,
+            errors: errors.length > 0 ? errors : undefined
         });
         
     } catch (error) {
