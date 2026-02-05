@@ -67,18 +67,16 @@ export default function PushNotificationPrompt({ user }) {
   const handleEnable = () => {
     setIsLoading(true);
 
-    // Detect iOS - requires manual button click, don't use auto=true
+    // Detect iOS - requires manual button click AND opening in external browser (_blank)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const popupUrl = isIOS 
       ? FIREBASE_PROXY_URL 
       : `${FIREBASE_PROXY_URL}?auto=true`;
 
-    // Open popup window to Firebase domain for permission request
-    const popup = window.open(
-      popupUrl,
-      'onesignal_popup',
-      'width=500,height=600,scrollbars=yes,resizable=yes'
-    );
+    // iOS: open in external browser (_blank), others: popup window
+    const popup = isIOS
+      ? window.open(popupUrl, '_blank')
+      : window.open(popupUrl, 'onesignal_popup', 'width=500,height=600,scrollbars=yes,resizable=yes');
 
     if (!popup) {
       alert('החלון נחסם. אנא אפשר חלונות קופצים עבור אתר זה ונסה שוב.');

@@ -119,16 +119,15 @@ export default function PushPermissionButton({ user }) {
       }
 
       // Open popup window to Firebase domain for permission request
-      // iOS requires manual button click - don't use auto=true
+      // iOS requires manual button click AND opening in external browser (_blank)
       const popupUrl = deviceType === 'ios' 
         ? FIREBASE_PROXY_URL 
         : `${FIREBASE_PROXY_URL}?auto=true`;
       
-      const popup = window.open(
-        popupUrl,
-        'onesignal_popup',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      );
+      // iOS: open in external browser (_blank), others: popup window
+      const popup = deviceType === 'ios'
+        ? window.open(popupUrl, '_blank')
+        : window.open(popupUrl, 'onesignal_popup', 'width=500,height=600,scrollbars=yes,resizable=yes');
 
       if (!popup) {
         setError('החלון נחסם. אנא אפשר חלונות קופצים עבור אתר זה ונסה שוב.');
