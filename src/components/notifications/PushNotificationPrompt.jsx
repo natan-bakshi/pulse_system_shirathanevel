@@ -67,9 +67,15 @@ export default function PushNotificationPrompt({ user }) {
   const handleEnable = () => {
     setIsLoading(true);
 
+    // Detect iOS - requires manual button click, don't use auto=true
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const popupUrl = isIOS 
+      ? FIREBASE_PROXY_URL 
+      : `${FIREBASE_PROXY_URL}?auto=true`;
+
     // Open popup window to Firebase domain for permission request
     const popup = window.open(
-      `${FIREBASE_PROXY_URL}?auto=true`,
+      popupUrl,
       'onesignal_popup',
       'width=500,height=600,scrollbars=yes,resizable=yes'
     );

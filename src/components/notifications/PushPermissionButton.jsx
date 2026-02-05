@@ -119,8 +119,13 @@ export default function PushPermissionButton({ user }) {
       }
 
       // Open popup window to Firebase domain for permission request
+      // iOS requires manual button click - don't use auto=true
+      const popupUrl = deviceType === 'ios' 
+        ? FIREBASE_PROXY_URL 
+        : `${FIREBASE_PROXY_URL}?auto=true`;
+      
       const popup = window.open(
-        `${FIREBASE_PROXY_URL}?auto=true`,
+        popupUrl,
         'onesignal_popup',
         'width=500,height=600,scrollbars=yes,resizable=yes'
       );
