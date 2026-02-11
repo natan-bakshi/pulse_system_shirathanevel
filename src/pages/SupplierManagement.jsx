@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Search, Edit, Trash2, Phone, Mail, Save, Loader2, Users, ChevronDown, ChevronUp, Link as LinkIcon, Calendar, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Phone, Mail, Save, Loader2, Users, ChevronDown, ChevronUp, Link as LinkIcon, Calendar, Download, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import ContactPicker from "../components/ui/ContactPicker";
@@ -117,7 +118,10 @@ export default function SupplierManagement() {
     contact_person: "",
     phone: "",
     contact_emails: "",
-    services_provided: ""
+    services_provided: "",
+    whatsapp_group_url: "",
+    whatsapp_enabled: true,
+    preferred_channel: "phone"
   });
 
   // Debouncing effect for search
@@ -154,7 +158,10 @@ export default function SupplierManagement() {
       contact_person: "",
       phone: "",
       contact_emails: "",
-      services_provided: ""
+      services_provided: "",
+      whatsapp_group_url: "",
+      whatsapp_enabled: true,
+      preferred_channel: "phone"
     });
     setIsDialogOpen(true);
   }, []);
@@ -166,7 +173,10 @@ export default function SupplierManagement() {
       contact_person: supplier.contact_person,
       phone: supplier.phone,
       contact_emails: (supplier.contact_emails || []).join(', '),
-      services_provided: (supplier.services_provided || []).join(', ')
+      services_provided: (supplier.services_provided || []).join(', '),
+      whatsapp_group_url: supplier.whatsapp_group_url || "",
+      whatsapp_enabled: supplier.whatsapp_enabled ?? true,
+      preferred_channel: supplier.preferred_channel || "phone"
     });
     setIsDialogOpen(true);
   }, []);
@@ -190,6 +200,9 @@ export default function SupplierManagement() {
         ...formData,
         contact_emails: formData.contact_emails.split(',').map(s => s.trim()).filter(Boolean),
         services_provided: formData.services_provided.split(',').map(s => s.trim()).filter(Boolean),
+        whatsapp_group_url: formData.whatsapp_group_url,
+        whatsapp_enabled: formData.whatsapp_enabled,
+        preferred_channel: formData.preferred_channel
       };
       
       if (editingSupplier) {
@@ -302,6 +315,12 @@ export default function SupplierManagement() {
                         ))}
                     </div>
                 </div>
+                {supplier.whatsapp_enabled && (
+                  <div className="pt-2 flex items-center gap-2 text-green-600 text-xs font-medium">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <span>WhatsApp פעיל ({supplier.preferred_channel === 'group' ? 'קבוצה' : supplier.preferred_channel === 'both' ? 'קבוצה + פרטי' : 'פרטי'})</span>
+                  </div>
+                )}
               </div>
               {expandedSuppliers[supplier.id] && <SupplierEventsList supplierId={supplier.id} />}
             </CardContent>
@@ -335,7 +354,61 @@ export default function SupplierManagement() {
             <div><Label htmlFor="s_contact">איש קשר</Label><Input id="s_contact" value={formData.contact_person} onChange={e => setFormData({...formData, contact_person: e.target.value})} /></div>
             <div><Label htmlFor="s_phone">טלפון</Label><Input id="s_phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
             <div><Label htmlFor="s_emails">אימיילים (מופרדים בפסיק)</Label><Input id="s_emails" value={formData.contact_emails} onChange={e => setFormData({...formData, contact_emails: e.target.value})} /></div>
-            <div><Label htmlFor="s_services">שירותים (מופרדים בפסיק)</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
+            
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center gap-2 mb-4">
+                <MessageCircle className="h-5 w-5 text-green-600" />
+                <h3 className="font-semibold text-gray-900">הגדרות WhatsApp</h3>
+              </div>
+              
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between border p-3 rounded-md bg-green-50/50">
+                  <Label htmlFor="s_wa_enabled" className="cursor-pointer flex-1">הפעל התראות WhatsApp</Label>
+                  <Switch 
+                    id="s_wa_enabled" 
+                    checked={formData.whatsapp_enabled} 
+                    onCheckedChange={checked => setFormData({...formData, whatsapp_enabled: checked})} 
+                  />
+                </div>
+
+                {formData.whatsapp_enabled && (
+                  <>
+                    <div>
+                      <Label htmlFor="s_wa_channel">ערוץ מועדף</Label>
+                      <Select 
+                        value={formData.preferred_channel} 
+                        onValueChange={val => setFormData({...formData, preferred_channel: val})}
+                      >
+                        <SelectTrigger id="s_wa_channel">
+                          <SelectValue placeholder="בחר ערוץ" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="phone">טלפון ישיר</SelectItem>
+                          <SelectItem value="group">קבוצת WhatsApp</SelectItem>
+                          <SelectItem value="both">גם וגם</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="s_wa_group">קישור לקבוצת WhatsApp</Label>
+                      <div className="relative">
+                        <LinkIcon className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input 
+                          id="s_wa_group" 
+                          value={formData.whatsapp_group_url} 
+                          onChange={e => setFormData({...formData, whatsapp_group_url: e.target.value})} 
+                          placeholder="https://chat.whatsapp.com/..."
+                          className="pr-10 dir-ltr text-left"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4"><Label htmlFor="s_services">שירותים (מופרדים בפסיק)</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>ביטול</Button>
