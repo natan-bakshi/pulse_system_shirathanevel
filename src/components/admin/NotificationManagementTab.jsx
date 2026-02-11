@@ -215,7 +215,9 @@ export default function NotificationManagementTab() {
       entity_name: '',
       deep_link_base: '',
       deep_link_params_map: '',
-      category: 'system'
+      category: 'system',
+      whatsapp_body_template: '',
+      allowed_channels: ['push']
     });
     setIsDialogOpen(true);
   };
@@ -587,7 +589,7 @@ export default function NotificationManagementTab() {
 
                 <div className="mt-3">
                   <FieldLabel 
-                    label="תוכן ההודעה" 
+                    label="תוכן ההודעה (Push/In-App)" 
                     tooltip="גוף ההודעה המלא. ניתן להשתמש במשתנים כמו {{supplier_name}}, {{event_date}}"
                     required
                   />
@@ -598,6 +600,60 @@ export default function NotificationManagementTab() {
                     rows={3}
                     className="mt-1"
                   />
+                </div>
+
+                <div className="mt-3 border-t pt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FieldLabel 
+                      label="הודעת וואטסאפ" 
+                      tooltip="תוכן ההודעה שתשלח בוואטסאפ (אם פעיל)"
+                    />
+                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                      WhatsApp
+                    </Badge>
+                  </div>
+                  <Textarea
+                    value={editingTemplate.whatsapp_body_template || ''}
+                    onChange={(e) => setEditingTemplate({...editingTemplate, whatsapp_body_template: e.target.value})}
+                    placeholder="היי {{supplier_name}}, יש עדכון לגבי האירוע..."
+                    rows={3}
+                    className="mt-1 border-green-200 focus-visible:ring-green-500"
+                  />
+                </div>
+                
+                <div className="mt-3">
+                  <FieldLabel 
+                    label="ערוצי שליחה מותרים" 
+                    tooltip="באילו ערוצים מותר לשלוח התראה זו"
+                  />
+                  <div className="flex gap-4 mt-2">
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <Switch
+                        id="channel-push"
+                        checked={editingTemplate.allowed_channels?.includes('push')}
+                        onCheckedChange={(checked) => {
+                          const channels = new Set(editingTemplate.allowed_channels || []);
+                          if (checked) channels.add('push');
+                          else channels.delete('push');
+                          setEditingTemplate({...editingTemplate, allowed_channels: Array.from(channels)});
+                        }}
+                      />
+                      <Label htmlFor="channel-push">Push / אפליקציה</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <Switch
+                        id="channel-whatsapp"
+                        checked={editingTemplate.allowed_channels?.includes('whatsapp')}
+                        onCheckedChange={(checked) => {
+                          const channels = new Set(editingTemplate.allowed_channels || []);
+                          if (checked) channels.add('whatsapp');
+                          else channels.delete('whatsapp');
+                          setEditingTemplate({...editingTemplate, allowed_channels: Array.from(channels)});
+                        }}
+                      />
+                      <Label htmlFor="channel-whatsapp">WhatsApp</Label>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Bell, Clock, Moon, Save, Loader2 } from "lucide-react";
+import { Bell, Clock, Moon, Save, Loader2, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -36,6 +36,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
   const [preferences, setPreferences] = useState({});
   const [quietStartHour, setQuietStartHour] = useState(null);
   const [quietEndHour, setQuietEndHour] = useState(null);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch notification templates
@@ -51,6 +52,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
       setPreferences(user.notification_preferences || {});
       setQuietStartHour(user.quiet_start_hour ?? null);
       setQuietEndHour(user.quiet_end_hour ?? null);
+      setWhatsappEnabled(user.whatsapp_enabled ?? true);
     }
   }, [user]);
 
@@ -76,7 +78,8 @@ export default function UserNotificationPreferences({ user, onClose }) {
       await base44.auth.updateMe({
         notification_preferences: preferences,
         quiet_start_hour: quietStartHour,
-        quiet_end_hour: quietEndHour
+        quiet_end_hour: quietEndHour,
+        whatsapp_enabled: whatsappEnabled
       });
     },
     onSuccess: () => {
@@ -142,6 +145,28 @@ export default function UserNotificationPreferences({ user, onClose }) {
       <CardContent className="space-y-6">
         {/* Push Permission Section */}
         <PushPermissionButton user={user} />
+
+        <div className="p-4 border rounded-lg bg-green-50/50 border-green-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-green-100 p-2 rounded-full">
+                <MessageCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <Label htmlFor="whatsapp-toggle" className="text-base font-medium">התראות WhatsApp</Label>
+                <p className="text-sm text-gray-500">קבלת עדכונים חשובים ישירות לווואטסאפ שלך</p>
+              </div>
+            </div>
+            <Switch
+              id="whatsapp-toggle"
+              checked={whatsappEnabled}
+              onCheckedChange={(checked) => {
+                setWhatsappEnabled(checked);
+                setHasChanges(true);
+              }}
+            />
+          </div>
+        </div>
 
         <Separator />
 
