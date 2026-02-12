@@ -180,7 +180,8 @@ const OPERATORS = {
   less_than: 'קטן מ-',
   contains: 'מכיל',
   is_empty: 'ריק',
-  is_not_empty: 'לא ריק'
+  is_not_empty: 'לא ריק',
+  changed: 'השתנה (Changed)'
 };
 
 // הגדרת דפים לפי הרשאות
@@ -1236,7 +1237,7 @@ export default function NotificationManagementTab() {
                       <div>
                         <FieldLabel 
                           label="סוג קישור חכם" 
-                          tooltip="בחר לאיזה סוג דף ההתראה תוביל באופן דינמי"
+                          tooltip="יוצר באופן אוטומטי קישור ישיר לדף הרלוונטי (למשל: לאירוע הספציפי שהפעיל את ההתראה). מומלץ להשתמש בזה כדי לחסוך הגדרת פרמטרים ידנית."
                         />
                         <Select 
                           value={editingTemplate.dynamic_url_type || 'none'} 

@@ -1,0 +1,270 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+
+/**
+ * Handle Entity Events (Create/Update) for Notification Triggers
+ * 
+ * Triggered by: Entity Automation (Event/EventService create/update)
+ * Purpose: Check 'entity_create' and 'entity_update' notification templates and send alerts.
+ * Supports: 'changed' operator to detect specific field updates.
+ */
+Deno.serve(async (req) => {
+    try {
+        const base44 = createClientFromRequest(req);
+        const payload = await req.json();
+        
+        // Payload: { event: { type, entity_name, entity_id }, data: {...}, old_data: {...} }
+        const { event, data, old_data } = payload;
+        
+        if (!event || !data) {
+            return Response.json({ skipped: true, reason: 'Invalid payload' });
+        }
+        
+        const triggerType = event.type === 'create' ? 'entity_create' : 'entity_update';
+        console.log(`[HandleEntityEvents] Processing ${event.entity_name} ${triggerType}`);
+        
+        // 1. Fetch relevant templates
+        // We filter by trigger_type AND entity_name (if we added entity_name to template schema, which we did)
+        // If entity_name is empty in template, it might be a general one (rare) or scheduled.
+        // We only want templates for THIS entity type.
+        
+        const templates = await base44.asServiceRole.entities.NotificationTemplate.filter({
+            is_active: true,
+            trigger_type: triggerType,
+            entity_name: event.entity_name
+        });
+        
+        console.log(`[HandleEntityEvents] Found ${templates.length} templates for ${event.entity_name}`);
+        
+        let notificationsSent = 0;
+        
+        for (const template of templates) {
+            try {
+                // Check Conditions
+                const conditionsMet = await checkConditions(base44, template, data, old_data, event);
+                
+                if (conditionsMet) {
+                    await sendNotification(base44, template, data, event);
+                    notificationsSent++;
+                }
+            } catch (e) {
+                console.error(`[HandleEntityEvents] Error processing template ${template.type}:`, e);
+            }
+        }
+        
+        return Response.json({ success: true, notifications_sent: notificationsSent });
+        
+    } catch (error) {
+        console.error('[HandleEntityEvents] Error:', error);
+        return Response.json({ error: error.message }, { status: 500 });
+    }
+});
+
+async function checkConditions(base44, template, data, oldData, event) {
+    // 1. Legacy & New Condition Logic (AND/OR)
+    const logic = template.condition_logic || 'and';
+    let result = logic === 'and' ? true : false;
+    
+    let allConditions = [];
+    if (template.condition_field && template.condition_value) {
+        allConditions.push({
+            field: template.condition_field,
+            operator: template.condition_operator || 'equals',
+            value: template.condition_value
+        });
+    }
+    if (template.event_filter_condition) {
+        try {
+            const parsed = JSON.parse(template.event_filter_condition);
+            if (Array.isArray(parsed)) allConditions = [...allConditions, ...parsed];
+        } catch (e) {}
+    }
+    
+    if (allConditions.length === 0) return true; // No conditions = pass
+    
+    // Evaluate
+    for (const cond of allConditions) {
+        let met = false;
+        
+        // Handle 'changed' operator specially
+        if (cond.operator === 'changed') {
+            if (event.type === 'create') {
+                met = true; // Everything "changed" from null to something on create
+            } else if (event.type === 'update' && oldData) {
+                const newVal = data[cond.field];
+                const oldVal = oldData[cond.field];
+                // Check if value actually changed (loose equality for strings/numbers)
+                met = newVal != oldVal && JSON.stringify(newVal) !== JSON.stringify(oldVal);
+            }
+        } else {
+            // Standard check against CURRENT data
+            met = await checkSingleCondition(base44, data, cond);
+        }
+        
+        if (logic === 'and') {
+            if (!met) return false;
+        } else {
+            if (met) return true;
+        }
+    }
+    
+    return logic === 'and' ? true : false; // If AND loop finished, all passed. If OR loop finished, none passed.
+}
+
+async function checkSingleCondition(base44, entityData, condition) {
+    let val = entityData[condition.field];
+    const reqVal = condition.value;
+    const op = condition.operator || 'equals';
+    
+    // Simple comparisons
+    switch (op) {
+        case 'equals': return String(val) == String(reqVal);
+        case 'not_equals': return String(val) != String(reqVal);
+        case 'greater_than': return parseFloat(val) > parseFloat(reqVal);
+        case 'less_than': return parseFloat(val) < parseFloat(reqVal);
+        case 'contains': return String(val || '').includes(reqVal);
+        case 'is_empty': return !val || val === '' || (Array.isArray(val) && val.length === 0);
+        case 'is_not_empty': return !!val && val !== '' && (!Array.isArray(val) || val.length > 0);
+        default: return false;
+    }
+}
+
+async function sendNotification(base44, template, entityData, event) {
+    // Resolve Context (Event, Supplier, User) based on Entity Type
+    let relatedEventId = '';
+    let relatedSupplierId = '';
+    let relatedServiceId = '';
+    
+    let eventObj = null;
+    let supplierObj = null;
+    
+    if (event.entity_name === 'Event') {
+        relatedEventId = entityData.id;
+        eventObj = entityData;
+    } else if (event.entity_name === 'EventService') {
+        relatedEventId = entityData.event_id;
+        relatedServiceId = entityData.id;
+        // Fetch Event
+        const evs = await base44.asServiceRole.entities.Event.filter({ id: relatedEventId });
+        eventObj = evs[0];
+        
+        // Try to get supplier from list (first one) if exists
+        if (entityData.supplier_ids) {
+            let ids = [];
+            try { ids = typeof entityData.supplier_ids === 'string' ? JSON.parse(entityData.supplier_ids) : entityData.supplier_ids; } catch(e){}
+            if (ids.length > 0) relatedSupplierId = ids[0];
+        }
+    } else if (event.entity_name === 'Supplier') {
+        relatedSupplierId = entityData.id;
+        supplierObj = entityData;
+    }
+    
+    // Determine Audience & Send
+    const audiences = template.target_audiences || [];
+    
+    // 1. Supplier Audience
+    if (audiences.includes('supplier')) {
+        let suppliersToSend = [];
+        if (relatedSupplierId) {
+            suppliersToSend.push(relatedSupplierId);
+        } else if (eventObj && event.entity_name === 'Event') {
+            // Send to ALL suppliers of this event? Or triggers usually specific?
+            // If template is "Event Time Changed", we probably want to notify ALL suppliers.
+            // Fetch all event services -> suppliers
+            // TODO: Optimize if needed. For now simple:
+            const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventObj.id });
+            for (const s of services) {
+                let ids = [];
+                try { ids = typeof s.supplier_ids === 'string' ? JSON.parse(s.supplier_ids) : s.supplier_ids; } catch(e){}
+                suppliersToSend.push(...ids);
+            }
+        }
+        
+        // Unique suppliers
+        suppliersToSend = [...new Set(suppliersToSend)];
+        
+        for (const supId of suppliersToSend) {
+            if (!supplierObj || supplierObj.id !== supId) {
+                const s = await base44.asServiceRole.entities.Supplier.filter({ id: supId });
+                supplierObj = s[0];
+            }
+            if (!supplierObj) continue;
+            
+            // Find User(s) for Supplier
+            if (supplierObj.contact_emails && Array.isArray(supplierObj.contact_emails)) {
+                for (const email of supplierObj.contact_emails) {
+                    const users = await base44.asServiceRole.entities.User.filter({ email: email });
+                    for (const user of users) {
+                        await trigger(base44, template, user, eventObj, supplierObj, null);
+                    }
+                }
+            }
+        }
+    }
+    
+    // 2. Client Audience
+    if (audiences.includes('client') && eventObj) {
+        if (eventObj.parents && Array.isArray(eventObj.parents)) {
+            for (const p of eventObj.parents) {
+                if (p.email) {
+                    const users = await base44.asServiceRole.entities.User.filter({ email: p.email });
+                    for (const user of users) {
+                        await trigger(base44, template, user, eventObj, null, null);
+                    }
+                }
+            }
+        }
+    }
+    
+    // 3. Admin Audience
+    if (audiences.includes('admin')) {
+        const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+        for (const admin of admins) {
+            await trigger(base44, template, admin, eventObj, null, null);
+        }
+    }
+}
+
+async function trigger(base44, template, user, eventObj, supplierObj, serviceObj) {
+    // Variable Replacement
+    let title = template.title_template;
+    let message = template.body_template;
+    let whatsapp_message = template.whatsapp_body_template || message;
+    
+    const vars = {
+        event_name: eventObj ? eventObj.event_name : '',
+        event_date: eventObj ? eventObj.event_date : '',
+        event_time: eventObj ? eventObj.event_time : '',
+        event_location: eventObj ? eventObj.location : '',
+        supplier_name: supplierObj ? supplierObj.supplier_name : '',
+        user_name: user.full_name
+    };
+    
+    for (const [k, v] of Object.entries(vars)) {
+        const regex = new RegExp(`{{${k}}}`, 'g');
+        title = title.replace(regex, v || '');
+        message = message.replace(regex, v || '');
+        whatsapp_message = whatsapp_message.replace(regex, v || '');
+    }
+    
+    try {
+        // Base URL for links (Assuming hardcoded app URL or similar)
+        // Since we are in backend automation, we don't have window.location
+        const baseUrl = 'https://app.base44.com/preview'; // TODO: Update with real domain
+        
+        await base44.asServiceRole.functions.invoke('createNotification', {
+            target_user_id: user.id,
+            target_user_email: user.email,
+            title,
+            message,
+            whatsapp_message,
+            template_type: template.type,
+            related_event_id: eventObj ? eventObj.id : undefined,
+            related_supplier_id: supplierObj ? supplierObj.id : undefined,
+            base_url: baseUrl,
+            // Let createNotification handle channels based on template
+        });
+        console.log(`[HandleEntityEvents] Triggered for ${user.email}`);
+    } catch (e) {
+        console.error('Trigger failed', e);
+    }
+}
