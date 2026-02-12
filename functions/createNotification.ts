@@ -33,6 +33,9 @@ Deno.serve(async (req) => {
             check_quiet_hours = true
         } = payload;
         
+        // WhatsApp message override (optional) - defaults to standard message
+        const whatsapp_message = payload.whatsapp_message || message;
+        
         if (!target_user_id || !title || !message) {
             return Response.json({ error: 'target_user_id, title, and message are required' }, { status: 400 });
         }
@@ -85,6 +88,8 @@ Deno.serve(async (req) => {
             related_event_service_id: related_event_service_id || '',
             related_supplier_id: related_supplier_id || '',
             push_sent: false,
+            whatsapp_sent: false,
+            whatsapp_message_id: '',
             reminder_count: 0,
             is_resolved: false
         });
@@ -112,7 +117,9 @@ Deno.serve(async (req) => {
                 }
 
                 const chatId = `${cleanPhone}@c.us`;
-                const whatsappMessage = `*${title}*\n\n${message}${link ? `\n\n${link}` : ''}`;
+                // Use whatsapp_message if specific one provided, otherwise use generic message
+                const contentToSend = whatsapp_message || message;
+                const whatsappContent = `*${title}*\n\n${contentToSend}${link ? `\n\n${link}` : ''}`;
 
                 console.log(`[Notification] Sending WhatsApp to ${chatId}`);
 
@@ -121,7 +128,7 @@ Deno.serve(async (req) => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chatId: chatId,
-                        message: whatsappMessage
+                        message: whatsappContent
                     })
                 });
 
@@ -130,6 +137,16 @@ Deno.serve(async (req) => {
                 if (waResponse.ok) {
                     whatsappResult = { sent: true, id: waData.idMessage };
                     console.log(`[Notification] WhatsApp sent successfully: ${waData.idMessage}`);
+                    
+                    // Update the notification record with WhatsApp status
+                    try {
+                        await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
+                            whatsapp_sent: true,
+                            whatsapp_message_id: waData.idMessage || ''
+                        });
+                    } catch (updateError) {
+                        console.warn('[Notification] Failed to update whatsapp status in DB:', updateError);
+                    }
                 } else {
                     whatsappResult = { sent: false, error: waData };
                     console.warn(`[Notification] WhatsApp failed:`, waData);
