@@ -991,10 +991,6 @@ export default function NotificationManagementTab() {
                         </Select>
                       </div>
                       )}
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
                       <div>
                         <FieldLabel 
                           label="פרמטרים" 
