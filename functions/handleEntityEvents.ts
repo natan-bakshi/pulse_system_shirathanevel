@@ -27,13 +27,44 @@ Deno.serve(async (req) => {
         // If entity_name is empty in template, it might be a general one (rare) or scheduled.
         // We only want templates for THIS entity type.
         
-        const templates = await base44.asServiceRole.entities.NotificationTemplate.filter({
-            is_active: true,
-            trigger_type: triggerType,
-            entity_name: event.entity_name
-        });
+        // Determine extra trigger types based on logic (e.g., assignment create/delete)
+        let triggerTypesToFetch = [triggerType]; // Default: entity_create or entity_update
+
+        // Special logic for EventService (Supplier Assignments)
+        if (event.entity_name === 'EventService' && triggerType === 'entity_update') {
+            const oldIds = old_data?.supplier_ids ? JSON.parse(old_data.supplier_ids || '[]') : [];
+            const newIds = data?.supplier_ids ? JSON.parse(data.supplier_ids || '[]') : [];
+
+            // Check if supplier added
+            const added = newIds.filter(id => !oldIds.includes(id));
+            if (added.length > 0) {
+                triggerTypesToFetch.push('supplier_assignment_create');
+                console.log(`[HandleEntityEvents] Detected supplier assignment creation. Added suppliers: ${added.join(', ')}`);
+            }
+
+            // Check if supplier removed
+            const removed = oldIds.filter(id => !newIds.includes(id));
+            if (removed.length > 0) {
+                triggerTypesToFetch.push('supplier_assignment_delete');
+                console.log(`[HandleEntityEvents] Detected supplier assignment deletion. Removed suppliers: ${removed.join(', ')}`);
+            }
+        }
+
+        // Fetch all matching templates
+        // We use $in operator if available, otherwise multiple queries
+        // Assuming base44.entities.filter supports simple key-value, we might need multiple calls or a more complex query if SDK supports it.
+        // For simplicity and reliability, let's fetch for each trigger type and combine.
+        let templates = [];
+        for (const type of triggerTypesToFetch) {
+            const res = await base44.asServiceRole.entities.NotificationTemplate.filter({
+                is_active: true,
+                trigger_type: type,
+                entity_name: event.entity_name
+            });
+            templates = [...templates, ...res];
+        }
         
-        console.log(`[HandleEntityEvents] Found ${templates.length} templates for ${event.entity_name}`);
+        console.log(`[HandleEntityEvents] Found ${templates.length} templates for ${event.entity_name} (Types: ${triggerTypesToFetch.join(', ')})`);
         
         let notificationsSent = 0;
         
@@ -194,7 +225,12 @@ async function sendNotification(base44, template, entityData, event) {
                 for (const email of supplierObj.contact_emails) {
                     const users = await base44.asServiceRole.entities.User.filter({ email: email });
                     for (const user of users) {
-                        await trigger(base44, template, user, eventObj, supplierObj, null);
+                        // Pass serviceObj if we detected it earlier (relatedServiceId)
+                        let serviceObj = null;
+                        if (relatedServiceId) {
+                            try { serviceObj = await base44.asServiceRole.entities.EventService.get(relatedServiceId); } catch(e){}
+                        }
+                        await trigger(base44, template, user, eventObj, supplierObj, serviceObj);
                     }
                 }
             }
@@ -219,7 +255,7 @@ async function sendNotification(base44, template, entityData, event) {
     if (audiences.includes('admin')) {
         const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
         for (const admin of admins) {
-            await trigger(base44, template, admin, eventObj, null, null);
+            await trigger(base44, template, admin, eventObj, supplierObj, null);
         }
     }
 }
@@ -235,8 +271,36 @@ async function trigger(base44, template, user, eventObj, supplierObj, serviceObj
         event_date: eventObj ? eventObj.event_date : '',
         event_time: eventObj ? eventObj.event_time : '',
         event_location: eventObj ? eventObj.location : '',
+        event_type: eventObj ? eventObj.event_type : '',
+        guest_count: eventObj ? eventObj.guest_count : '',
+        city: eventObj ? eventObj.city : '',
+        family_name: eventObj ? eventObj.family_name : '',
+        child_name: eventObj ? eventObj.child_name : '',
+        event_id: eventObj ? eventObj.id : '',
+        
+        // Client details (from parents array if available)
+        client_name: eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].name : '',
+        client_phone: eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].phone : '',
+        client_email: eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].email : '',
+        
+        // Supplier details
         supplier_name: supplierObj ? supplierObj.supplier_name : '',
-        user_name: user.full_name
+        supplier_phone: supplierObj ? supplierObj.phone : '',
+        supplier_email: supplierObj && supplierObj.contact_emails ? supplierObj.contact_emails[0] : '',
+        
+        // Service details (if related to assignment)
+        service_name: serviceObj ? serviceObj.service_name : (eventObj && eventObj.serviceName ? eventObj.serviceName : ''),
+        
+        // Assignment details
+        assignment_status: serviceObj && supplierObj && serviceObj.supplier_statuses ? JSON.parse(serviceObj.supplier_statuses)[supplierObj.id] : '',
+        
+        // Financials (Basic logic, can be expanded)
+        total_price: eventObj ? (eventObj.total_price || eventObj.all_inclusive_price) : '',
+        discount_amount: eventObj ? eventObj.discount_amount : '',
+        
+        // User & System
+        user_name: user.full_name,
+        admin_name: 'מנהל המערכת' 
     };
     
     for (const [k, v] of Object.entries(vars)) {

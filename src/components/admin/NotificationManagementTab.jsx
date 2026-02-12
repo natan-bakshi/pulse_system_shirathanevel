@@ -33,13 +33,28 @@ const TRIGGER_TYPES = {
   },
   entity_update: {
     label: 'עדכון רשומה',
-    description: 'נשלחת כאשר רשומה קיימת מתעדכנת (למשל: שינוי סטטוס שיבוץ)',
-    example: 'ביטול שיבוץ ספק'
+    description: 'נשלחת כאשר רשומה קיימת מתעדכנת (למשל: שינוי פרטי אירוע)',
+    example: 'שינוי מיקום אירוע'
+  },
+  supplier_assignment_create: {
+    label: 'שיבוץ חדש לספק',
+    description: 'נשלחת כאשר ספק משובץ לשירות באירוע',
+    example: 'שיבוץ צלם לאירוע'
+  },
+  supplier_assignment_delete: {
+    label: 'ביטול שיבוץ ספק',
+    description: 'נשלחת כאשר ספק מוסר משירות באירוע',
+    example: 'ביטול שיבוץ צלם'
   },
   scheduled_check: {
     label: 'בדיקה מתוזמנת',
     description: 'נשלחת לפי תזמון שנקבע מראש (למשל: תזכורת 7 ימים לפני האירוע)',
     example: 'תזכורת לפני אירוע'
+  },
+  custom_trigger: {
+    label: 'טריגר מותאם אישית',
+    description: 'טריגר המופעל ידנית או ע"י קוד חיצוני',
+    example: 'אירוע חיצוני'
   }
 };
 
@@ -1026,10 +1041,15 @@ export default function NotificationManagementTab() {
                     </div>
                   </div>
 
-                  <div className="mt-3 pt-3 border-t">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <h4 className="text-xs font-semibold text-gray-500">תנאים נוספים</h4>
+                  </div>
+                </div>
+              )}
+
+              {/* תנאים נוספים - זמין לכל הטריגרים */}
+              <div className="p-3 bg-gray-50 rounded-lg mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <h4 className="font-medium text-sm text-gray-700">תנאים נוספים</h4>
                         <div className="flex bg-gray-100 rounded p-0.5">
                           <button
                             type="button"
@@ -1142,6 +1162,7 @@ export default function NotificationManagementTab() {
                                 placeholder={CONDITION_FIELDS[condition.field]?.description || 'ערך'}
                                 className="h-8 text-xs"
                                 value={condition.value}
+                                disabled={condition.operator === 'changed'}
                                 onChange={(e) => {
                                   const newConds = [...getConditions(editingTemplate)];
                                   newConds[idx] = { ...newConds[idx], value: e.target.value };
@@ -1166,62 +1187,7 @@ export default function NotificationManagementTab() {
                       ))}
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-3">
-                    <div>
-                      <FieldLabel 
-                        label="מקסימום תזכורות" 
-                        tooltip="כמה תזכורות חוזרות לשלוח אם לא בוצעה פעולה"
-                      />
-                      <Input
-                        type="number"
-                        value={editingTemplate.max_reminders || ''}
-                        onChange={(e) => setEditingTemplate({
-                          ...editingTemplate, 
-                          max_reminders: e.target.value ? parseInt(e.target.value) : 3
-                        })}
-                        placeholder="3"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-3">
-                    <div>
-                      <FieldLabel 
-                        label="תזכורת חוזרת כל" 
-                        tooltip="כל כמה זמן לשלוח תזכורת חוזרת (השאר ריק לביטול תזכורות חוזרות)"
-                      />
-                      <Input
-                        type="number"
-                        value={editingTemplate.reminder_interval_value || ''}
-                        onChange={(e) => setEditingTemplate({
-                          ...editingTemplate, 
-                          reminder_interval_value: e.target.value ? parseInt(e.target.value) : null
-                        })}
-                        placeholder="24"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <FieldLabel label="יחידת זמן לתזכורת" />
-                      <Select 
-                        value={editingTemplate.reminder_interval_unit || 'hours'} 
-                        onValueChange={(v) => setEditingTemplate({...editingTemplate, reminder_interval_unit: v})}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hours">שעות</SelectItem>
-                          <SelectItem value="days">ימים</SelectItem>
-                          <SelectItem value="weeks">שבועות</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* הגדרות מתקדמות */}
               <Collapsible>
