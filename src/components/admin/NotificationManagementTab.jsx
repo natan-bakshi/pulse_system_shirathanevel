@@ -139,8 +139,9 @@ const AVAILABLE_VARIABLES = {
   supplier_link: { description: 'קישור לפורטל ספקים', example: 'https://...' }
 };
 
-// הגדרת שדות זמינים לתנאים
+// הגדרת שדות זמינים לתנאים - מורחב משמעותית
 const CONDITION_FIELDS = {
+  // --- שדות בסיסיים של אירוע ---
   status: { 
     label: 'סטטוס אירוע', 
     type: 'select', 
@@ -152,17 +153,6 @@ const CONDITION_FIELDS = {
       { value: 'cancelled', label: 'בוטל' }
     ]
   },
-  assignment_status: {
-    label: 'סטטוס שיבוץ (ספקים)',
-    type: 'select',
-    options: [
-      { value: 'pending', label: 'ממתין לאישור' },
-      { value: 'approved', label: 'אושר ע״י ספק' },
-      { value: 'rejected', label: 'נדחה ע״י ספק' },
-      { value: 'signed', label: 'נחתם חוזה' }
-    ],
-    description: 'בודק האם קיים ספק כלשהו באירוע עם סטטוס זה'
-  },
   event_type: { 
     label: 'סוג אירוע', 
     type: 'select', 
@@ -173,19 +163,83 @@ const CONDITION_FIELDS = {
       { value: 'other', label: 'אחר' }
     ]
   },
-  guest_count: { label: 'מספר אורחים', type: 'number' },
+  location: { label: 'מיקום האירוע', type: 'text', description: 'שם האולם או המקום' },
+  concept: { label: 'קונספט', type: 'text', description: 'קונספט האירוע' },
   city: { label: 'עיר', type: 'text' },
-  balance: { label: 'יתרה לתשלום (מחושב)', type: 'number', description: 'סכום כולל פחות תשלומים שבוצעו' },
+  guest_count: { label: 'מספר אורחים', type: 'number' },
+  family_name: { label: 'שם משפחה', type: 'text' },
+  child_name: { label: 'שם הילד/ה', type: 'text' },
+  notes: { label: 'הערות לאירוע', type: 'text' },
+  
+  // --- שדות פיננסיים (מחושבים) ---
   total_price: { label: 'מחיר כולל', type: 'number' },
-  discount_amount: { label: 'סכום הנחה', type: 'number' },
-  has_missing_suppliers: { 
-    label: 'חסרים ספקים?', 
+  total_paid: { label: 'סה"כ שולם', type: 'number' },
+  balance: { label: 'יתרה לתשלום', type: 'number', description: 'חוב פתוח' },
+  payment_percentage: { label: 'אחוז שולם', type: 'number', description: '0 עד 100' },
+  is_fully_paid: { 
+    label: 'האם שולם במלואו?', 
     type: 'select', 
     options: [
       { value: 'true', label: 'כן' },
       { value: 'false', label: 'לא' }
     ] 
-  }
+  },
+  discount_amount: { label: 'סכום הנחה', type: 'number' },
+  is_all_inclusive: { 
+    label: 'האם הכל כלול?', 
+    type: 'select', 
+    options: [
+      { value: 'true', label: 'כן' },
+      { value: 'false', label: 'לא' }
+    ] 
+  },
+
+  // --- שדות ספקים ושיבוצים ---
+  supplier_count: { label: 'מספר ספקים משובצים', type: 'number' },
+  has_missing_suppliers: { 
+    label: 'האם חסרים ספקים?', 
+    type: 'select', 
+    options: [
+      { value: 'true', label: 'כן' },
+      { value: 'false', label: 'לא' }
+    ] 
+  },
+  assignment_status: {
+    label: 'סטטוס שיבוץ (כלשהו)',
+    type: 'select',
+    options: [
+      { value: 'pending', label: 'ממתין לאישור' },
+      { value: 'approved', label: 'אושר ע״י ספק' },
+      { value: 'rejected', label: 'נדחה ע״י ספק' },
+      { value: 'signed', label: 'נחתם חוזה' }
+    ]
+  },
+
+  // --- שדות תזמון ותאריכים ---
+  days_until_event: { label: 'ימים עד האירוע', type: 'number', description: 'חיובי = עתיד, שלילי = עבר' },
+  creation_date_age: { label: 'ימים מאז יצירת האירוע', type: 'number' },
+  event_month: { 
+    label: 'חודש האירוע', 
+    type: 'select',
+    options: [
+      { value: '1', label: 'ינואר' }, { value: '2', label: 'פברואר' }, { value: '3', label: 'מרץ' },
+      { value: '4', label: 'אפריל' }, { value: '5', label: 'מאי' }, { value: '6', label: 'יוני' },
+      { value: '7', label: 'יולי' }, { value: '8', label: 'אוגוסט' }, { value: '9', label: 'ספטמבר' },
+      { value: '10', label: 'אוקטובר' }, { value: '11', label: 'נובמבר' }, { value: '12', label: 'דצמבר' }
+    ]
+  },
+  is_weekend: { 
+    label: 'האם סופ"ש?', 
+    type: 'select', 
+    options: [
+      { value: 'true', label: 'כן (שישי/שבת)' },
+      { value: 'false', label: 'לא (אמצ"ש)' }
+    ] 
+  },
+
+  // --- פרטי לקוח ---
+  client_email: { label: 'אימייל לקוח', type: 'text' },
+  client_phone: { label: 'טלפון לקוח', type: 'text' }
 };
 
 const OPERATORS = {
@@ -1040,6 +1094,41 @@ export default function NotificationManagementTab() {
                       </Select>
                     </div>
                   </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <FieldLabel 
+                        label="תזכורת חוזרת כל" 
+                        tooltip="כל כמה זמן לשלוח תזכורת חוזרת (השאר ריק לביטול תזכורות חוזרות)"
+                      />
+                      <Input
+                        type="number"
+                        value={editingTemplate.reminder_interval_value || ''}
+                        onChange={(e) => setEditingTemplate({
+                          ...editingTemplate, 
+                          reminder_interval_value: e.target.value ? parseInt(e.target.value) : null
+                        })}
+                        placeholder="24"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel label="יחידת זמן לתזכורת" />
+                      <Select 
+                        value={editingTemplate.reminder_interval_unit || 'hours'} 
+                        onValueChange={(v) => setEditingTemplate({...editingTemplate, reminder_interval_unit: v})}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hours">שעות</SelectItem>
+                          <SelectItem value="days">ימים</SelectItem>
+                          <SelectItem value="weeks">שבועות</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1048,142 +1137,142 @@ export default function NotificationManagementTab() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <h4 className="font-medium text-sm text-gray-700">תנאים נוספים</h4>
-                        <div className="flex bg-gray-100 rounded p-0.5">
-                          <button
-                            type="button"
-                            onClick={() => setEditingTemplate({...editingTemplate, condition_logic: 'and'})}
-                            className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                              (editingTemplate.condition_logic || 'and') === 'and' 
-                                ? 'bg-white shadow text-blue-600 font-medium' 
-                                : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                          >
-                            גם (AND)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingTemplate({...editingTemplate, condition_logic: 'or'})}
-                            className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                              editingTemplate.condition_logic === 'or' 
-                                ? 'bg-white shadow text-blue-600 font-medium' 
-                                : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                          >
-                            או (OR)
-                          </button>
+                    <div className="flex bg-gray-100 rounded p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTemplate({...editingTemplate, condition_logic: 'and'})}
+                        className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                          (editingTemplate.condition_logic || 'and') === 'and' 
+                            ? 'bg-white shadow text-blue-600 font-medium' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        גם (AND)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingTemplate({...editingTemplate, condition_logic: 'or'})}
+                        className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                          editingTemplate.condition_logic === 'or' 
+                            ? 'bg-white shadow text-blue-600 font-medium' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        או (OR)
+                      </button>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-blue-600 hover:bg-blue-50"
+                    onClick={() => {
+                      const current = getConditions(editingTemplate);
+                      updateConditions([...current, { field: 'status', operator: 'equals', value: '' }]);
+                    }}
+                  >
+                    <Plus className="h-3 w-3 ml-1" />
+                    הוסף תנאי
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {getConditions(editingTemplate).length === 0 && (
+                    <p className="text-xs text-gray-400 italic">לא הוגדרו תנאים נוספים</p>
+                  )}
+                  
+                  {getConditions(editingTemplate).map((condition, idx) => (
+                    <div key={idx} className="flex gap-2 items-start bg-white p-2 rounded border">
+                      <div className="grid grid-cols-3 gap-2 flex-1">
+                        {/* Field Selector (Editable) */}
+                        <div className="relative">
+                          <Input
+                            list={`fields-list-${idx}`}
+                            className="h-8 text-xs pr-2"
+                            placeholder="שדה"
+                            value={condition.field}
+                            onChange={(e) => {
+                              const newConds = [...getConditions(editingTemplate)];
+                              newConds[idx] = { ...newConds[idx], field: e.target.value }; // Don't reset value aggressively to allow typing
+                              updateConditions(newConds);
+                            }}
+                          />
+                          <datalist id={`fields-list-${idx}`}>
+                            {Object.entries(CONDITION_FIELDS).map(([key, info]) => (
+                              <option key={key} value={key}>{info.label}</option>
+                            ))}
+                          </datalist>
                         </div>
+
+                        {/* Operator Selector */}
+                        <Select
+                          value={condition.operator}
+                          onValueChange={(v) => {
+                            const newConds = [...getConditions(editingTemplate)];
+                            newConds[idx] = { ...newConds[idx], operator: v };
+                            updateConditions(newConds);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(OPERATORS).map(([op, label]) => (
+                              <SelectItem key={op} value={op}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {/* Value Input */}
+                        {CONDITION_FIELDS[condition.field]?.type === 'select' ? (
+                          <Select
+                            value={condition.value}
+                            onValueChange={(v) => {
+                              const newConds = [...getConditions(editingTemplate)];
+                              newConds[idx] = { ...newConds[idx], value: v };
+                              updateConditions(newConds);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="בחר ערך" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CONDITION_FIELDS[condition.field].options.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            type={CONDITION_FIELDS[condition.field]?.type === 'number' ? 'number' : 'text'}
+                            placeholder={CONDITION_FIELDS[condition.field]?.description || 'ערך'}
+                            className="h-8 text-xs"
+                            value={condition.value}
+                            disabled={condition.operator === 'changed'}
+                            onChange={(e) => {
+                              const newConds = [...getConditions(editingTemplate)];
+                              newConds[idx] = { ...newConds[idx], value: e.target.value };
+                              updateConditions(newConds);
+                            }}
+                          />
+                        )}
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs text-blue-600 hover:bg-blue-50"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:bg-red-50 shrink-0"
                         onClick={() => {
-                          const current = getConditions(editingTemplate);
-                          updateConditions([...current, { field: 'status', operator: 'equals', value: '' }]);
+                          const newConds = getConditions(editingTemplate).filter((_, i) => i !== idx);
+                          updateConditions(newConds);
                         }}
                       >
-                        <Plus className="h-3 w-3 ml-1" />
-                        הוסף תנאי
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
-                    
-                    <div className="space-y-2">
-                      {getConditions(editingTemplate).length === 0 && (
-                        <p className="text-xs text-gray-400 italic">לא הוגדרו תנאים נוספים</p>
-                      )}
-                      
-                      {getConditions(editingTemplate).map((condition, idx) => (
-                        <div key={idx} className="flex gap-2 items-start bg-white p-2 rounded border">
-                          <div className="grid grid-cols-3 gap-2 flex-1">
-                            {/* Field Selector (Editable) */}
-                            <div className="relative">
-                              <Input
-                                list={`fields-list-${idx}`}
-                                className="h-8 text-xs pr-2"
-                                placeholder="שדה"
-                                value={condition.field}
-                                onChange={(e) => {
-                                  const newConds = [...getConditions(editingTemplate)];
-                                  newConds[idx] = { ...newConds[idx], field: e.target.value }; // Don't reset value aggressively to allow typing
-                                  updateConditions(newConds);
-                                }}
-                              />
-                              <datalist id={`fields-list-${idx}`}>
-                                {Object.entries(CONDITION_FIELDS).map(([key, info]) => (
-                                  <option key={key} value={key}>{info.label}</option>
-                                ))}
-                              </datalist>
-                            </div>
-
-                            {/* Operator Selector */}
-                            <Select
-                              value={condition.operator}
-                              onValueChange={(v) => {
-                                const newConds = [...getConditions(editingTemplate)];
-                                newConds[idx] = { ...newConds[idx], operator: v };
-                                updateConditions(newConds);
-                              }}
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(OPERATORS).map(([op, label]) => (
-                                  <SelectItem key={op} value={op}>{label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-
-                            {/* Value Input */}
-                            {CONDITION_FIELDS[condition.field]?.type === 'select' ? (
-                              <Select
-                                value={condition.value}
-                                onValueChange={(v) => {
-                                  const newConds = [...getConditions(editingTemplate)];
-                                  newConds[idx] = { ...newConds[idx], value: v };
-                                  updateConditions(newConds);
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="בחר ערך" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {CONDITION_FIELDS[condition.field].options.map(opt => (
-                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input
-                                type={CONDITION_FIELDS[condition.field]?.type === 'number' ? 'number' : 'text'}
-                                placeholder={CONDITION_FIELDS[condition.field]?.description || 'ערך'}
-                                className="h-8 text-xs"
-                                value={condition.value}
-                                disabled={condition.operator === 'changed'}
-                                onChange={(e) => {
-                                  const newConds = [...getConditions(editingTemplate)];
-                                  newConds[idx] = { ...newConds[idx], value: e.target.value };
-                                  updateConditions(newConds);
-                                }}
-                              />
-                            )}
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-500 hover:bg-red-50 shrink-0"
-                            onClick={() => {
-                              const newConds = getConditions(editingTemplate).filter((_, i) => i !== idx);
-                              updateConditions(newConds);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* הגדרות מתקדמות */}

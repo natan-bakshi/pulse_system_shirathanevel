@@ -50,6 +50,69 @@ Deno.serve(async (req) => {
             }
         }
 
+        // Enrich Data with Calculated Fields (for Events)
+        let enrichedData = { ...data };
+        
+        if (event.entity_name === 'Event') {
+            try {
+                // Fetch context
+                const [payments, services] = await Promise.all([
+                    base44.asServiceRole.entities.Payment.filter({ event_id: data.id }),
+                    base44.asServiceRole.entities.EventService.filter({ event_id: data.id })
+                ]);
+
+                // Financials
+                const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                const totalPrice = data.total_override || data.all_inclusive_price || data.total_price || 0;
+                const balance = totalPrice - totalPaid;
+                const paymentPercentage = totalPrice > 0 ? (totalPaid / totalPrice) * 100 : 0;
+                
+                // Suppliers
+                const assignedSupplierIds = new Set();
+                services.forEach(s => {
+                    if (s.supplier_ids) {
+                        try {
+                            const ids = typeof s.supplier_ids === 'string' ? JSON.parse(s.supplier_ids) : s.supplier_ids;
+                            ids.forEach(id => assignedSupplierIds.add(id));
+                        } catch (e) {}
+                    }
+                });
+                
+                // Dates
+                const eventDate = new Date(data.event_date);
+                const now = new Date();
+                const daysUntil = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+                const daysSinceCreated = Math.ceil((now - new Date(data.created_date)) / (1000 * 60 * 60 * 24));
+                const month = eventDate.getMonth() + 1;
+                const dayOfWeek = eventDate.getDay(); // 0-6
+                const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; // Fri/Sat
+
+                enrichedData = {
+                    ...enrichedData,
+                    total_paid: totalPaid,
+                    balance: balance,
+                    payment_percentage: paymentPercentage,
+                    is_fully_paid: balance <= 0,
+                    supplier_count: assignedSupplierIds.size,
+                    has_missing_suppliers: services.some(s => {
+                        const required = s.min_suppliers || 0;
+                        let current = 0;
+                        try {
+                            const ids = typeof s.supplier_ids === 'string' ? JSON.parse(s.supplier_ids) : s.supplier_ids;
+                            current = ids.length;
+                        } catch (e) {}
+                        return current < required;
+                    }),
+                    days_until_event: daysUntil,
+                    creation_date_age: daysSinceCreated,
+                    event_month: month,
+                    is_weekend: isWeekend
+                };
+            } catch (e) {
+                console.error('[HandleEntityEvents] Error enriching event data:', e);
+            }
+        }
+
         // Fetch all matching templates
         // We use $in operator if available, otherwise multiple queries
         // Assuming base44.entities.filter supports simple key-value, we might need multiple calls or a more complex query if SDK supports it.
@@ -70,11 +133,11 @@ Deno.serve(async (req) => {
         
         for (const template of templates) {
             try {
-                // Check Conditions
-                const conditionsMet = await checkConditions(base44, template, data, old_data, event);
+                // Check Conditions (pass enrichedData instead of raw data)
+                const conditionsMet = await checkConditions(base44, template, enrichedData, old_data, event);
                 
                 if (conditionsMet) {
-                    await sendNotification(base44, template, data, event);
+                    await sendNotification(base44, template, enrichedData, event); // Pass enrichedData to sendNotification too for variables
                     notificationsSent++;
                 }
             } catch (e) {
@@ -294,9 +357,11 @@ async function trigger(base44, template, user, eventObj, supplierObj, serviceObj
         // Assignment details
         assignment_status: serviceObj && supplierObj && serviceObj.supplier_statuses ? JSON.parse(serviceObj.supplier_statuses)[supplierObj.id] : '',
         
-        // Financials (Basic logic, can be expanded)
+        // Financials
         total_price: eventObj ? (eventObj.total_price || eventObj.all_inclusive_price) : '',
         discount_amount: eventObj ? eventObj.discount_amount : '',
+        balance: eventObj && eventObj.balance !== undefined ? eventObj.balance : '', // Use enriched balance if available
+        total_paid: eventObj && eventObj.total_paid !== undefined ? eventObj.total_paid : '',
         
         // User & System
         user_name: user.full_name,
