@@ -95,38 +95,60 @@ async function processTemplate(base44, template, results) {
     console.log(`[AutomatedTriggers] Found ${events.length} candidate events`);
     
     for (const event of events) {
-        // --- Condition Logic Update ---
-        let allConditionsMet = true;
-
-        // 1. Support Legacy Single Condition
+        // --- Condition Logic Update (Support AND / OR) ---
+        const logic = template.condition_logic || 'and';
+        let conditionResult = logic === 'and' ? true : false; 
+        
+        // Combine Legacy + New conditions into one array for processing
+        let allConditions = [];
+        
+        // 1. Legacy
         if (template.condition_field && template.condition_value) {
-            const met = await checkSingleCondition(base44, event, {
+            allConditions.push({
                 field: template.condition_field,
                 operator: template.condition_operator || 'equals',
                 value: template.condition_value
             });
-            if (!met) allConditionsMet = false;
+        }
+        
+        // 2. New Conditions
+        if (template.event_filter_condition) {
+            try {
+                const parsed = JSON.parse(template.event_filter_condition);
+                if (Array.isArray(parsed)) {
+                    allConditions = [...allConditions, ...parsed];
+                }
+            } catch (e) {}
         }
 
-        // 2. Support New Multiple Conditions (JSON Array)
-        if (allConditionsMet && template.event_filter_condition) {
-            try {
-                const conditions = JSON.parse(template.event_filter_condition);
-                if (Array.isArray(conditions) && conditions.length > 0) {
-                    for (const cond of conditions) {
-                        const met = await checkSingleCondition(base44, event, cond);
-                        if (!met) {
-                            allConditionsMet = false;
-                            break;
-                        }
+        // Process Logic
+        if (allConditions.length > 0) {
+            if (logic === 'and') {
+                // AND: All must be true. If one fails, result is false.
+                for (const cond of allConditions) {
+                    const met = await checkSingleCondition(base44, event, cond);
+                    if (!met) {
+                        conditionResult = false;
+                        break;
                     }
                 }
-            } catch (e) {
-                console.warn(`[AutomatedTriggers] Failed to parse conditions for template ${template.type}`, e);
+            } else {
+                // OR: Any must be true. If one succeeds, result is true.
+                // Start with false (set above).
+                for (const cond of allConditions) {
+                    const met = await checkSingleCondition(base44, event, cond);
+                    if (met) {
+                        conditionResult = true;
+                        break;
+                    }
+                }
             }
+        } else {
+            // No conditions = pass
+            conditionResult = true;
         }
 
-        if (!allConditionsMet) continue;
+        if (!conditionResult) continue;
         
         // Check duplication
         const existingNotifs = await base44.asServiceRole.entities.InAppNotification.filter({
@@ -168,14 +190,46 @@ async function checkSingleCondition(base44, event, condition) {
         }
     } else if (condition.field === 'has_missing_suppliers') {
         // Logic to check if suppliers are missing
-        // This is complex, might be expensive in a loop. 
-        // Simple check: check services without suppliers
         try {
             const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
             const missing = eventServices.some(es => !es.supplier_ids || es.supplier_ids === '[]' || JSON.parse(es.supplier_ids || '[]').length === 0);
             eventValue = missing ? 'true' : 'false';
         } catch (e) {
             eventValue = 'false';
+        }
+    } else if (condition.field === 'assignment_status') {
+        // Logic: Does ANY supplier assignment for this event match the requested status?
+        // Note: Supplier statuses are stored in EventService.supplier_statuses (JSON object: {supplier_id: status})
+        try {
+            const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
+            let foundStatus = false;
+            
+            // We iterate all services and all suppliers in them to see if ANY matches the condition value
+            for (const es of eventServices) {
+                if (es.supplier_statuses) {
+                    let statuses = {};
+                    try {
+                        statuses = typeof es.supplier_statuses === 'string' ? JSON.parse(es.supplier_statuses) : es.supplier_statuses;
+                    } catch (e) {}
+                    
+                    // Check if any value in the statuses object matches condition.value
+                    if (Object.values(statuses).some(s => s === requiredValue)) {
+                        foundStatus = true;
+                        break;
+                    }
+                }
+            }
+            // If we found the status, we set eventValue to requiredValue to make the 'equals' check pass
+            // Or we handle the logic here and return directly
+            if (operator === 'equals') return foundStatus;
+            if (operator === 'not_equals') return !foundStatus;
+            
+            // For other operators, let's treat it as a string check on "true"/"false" if found? 
+            // Simplest is to return the boolean result directly for equals/not_equals which are 99% of use cases for status
+            return foundStatus;
+            
+        } catch (e) {
+            return false;
         }
     }
 

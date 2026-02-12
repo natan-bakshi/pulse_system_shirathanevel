@@ -80,18 +80,48 @@ const AUDIENCES = {
 };
 
 const AVAILABLE_VARIABLES = {
+  // אירוע
   event_name: { description: 'שם האירוע', example: 'חתונה של משפחת כהן' },
-  family_name: { description: 'שם המשפחה', example: 'כהן' },
   event_date: { description: 'תאריך האירוע', example: '15/03/2024' },
   event_time: { description: 'שעת האירוע', example: '19:00' },
   event_location: { description: 'מיקום האירוע', example: 'אולמי הגן' },
-  supplier_name: { description: 'שם הספק', example: 'סטודיו צילום' },
-  service_name: { description: 'שם השירות', example: 'צילום' },
-  balance: { description: 'יתרה לתשלום', example: '5,000' },
-  days_open: { description: 'מספר ימים פתוח', example: '14' },
-  min_suppliers: { description: 'מספר ספקים נדרש', example: '2' },
-  current_suppliers: { description: 'מספר ספקים משובצים', example: '1' },
-  event_id: { description: 'מזהה האירוע', example: 'abc123' }
+  event_type: { description: 'סוג אירוע', example: 'חתונה' },
+  guest_count: { description: 'מספר אורחים', example: '300' },
+  city: { description: 'עיר', example: 'תל אביב' },
+  event_id: { description: 'מזהה האירוע', example: 'evt_123' },
+  
+  // משפחה / לקוח
+  family_name: { description: 'שם משפחה', example: 'כהן' },
+  child_name: { description: 'שם הילד/ה', example: 'נועה' },
+  client_name: { description: 'שם הלקוח (הורה ראשי)', example: 'משה כהן' },
+  client_phone: { description: 'טלפון הלקוח', example: '050-1234567' },
+  client_email: { description: 'אימייל הלקוח', example: 'moshe@example.com' },
+  
+  // ספק ושיבוץ
+  supplier_name: { description: 'שם הספק', example: 'דיג׳יי אלי' },
+  supplier_phone: { description: 'טלפון הספק', example: '052-9876543' },
+  supplier_email: { description: 'אימייל הספק', example: 'eli@dj.com' },
+  service_name: { description: 'שם השירות', example: 'תקליטן' },
+  assignment_status: { description: 'סטטוס שיבוץ', example: 'אושר' },
+  
+  // פיננסי
+  balance: { description: 'יתרה לתשלום (מחושב)', example: '5,000' },
+  total_price: { description: 'מחיר כולל לאירוע', example: '15,000' },
+  total_paid: { description: 'סה״כ שולם', example: '10,000' },
+  discount_amount: { description: 'גובה הנחה', example: '500' },
+  quote_total: { description: 'סה״כ הצעת מחיר', example: '15,500' },
+  
+  // מערכת
+  user_name: { description: 'שם המשתמש המקבל', example: 'ישראל ישראלי' },
+  admin_name: { description: 'שם המנהל', example: 'מנהל ראשי' },
+  days_open: { description: 'ימים מאז פתיחת האירוע', example: '14' },
+  min_suppliers: { description: 'מינימום ספקים נדרש', example: '5' },
+  current_suppliers: { description: 'מספר ספקים נוכחי', example: '3' },
+  
+  // קישורים
+  event_link: { description: 'קישור לאירוע', example: 'https://...' },
+  payment_link: { description: 'קישור לתשלום', example: 'https://...' },
+  supplier_link: { description: 'קישור לפורטל ספקים', example: 'https://...' }
 };
 
 // הגדרת שדות זמינים לתנאים
@@ -106,6 +136,17 @@ const CONDITION_FIELDS = {
       { value: 'completed', label: 'הושלם' },
       { value: 'cancelled', label: 'בוטל' }
     ]
+  },
+  assignment_status: {
+    label: 'סטטוס שיבוץ (ספקים)',
+    type: 'select',
+    options: [
+      { value: 'pending', label: 'ממתין לאישור' },
+      { value: 'approved', label: 'אושר ע״י ספק' },
+      { value: 'rejected', label: 'נדחה ע״י ספק' },
+      { value: 'signed', label: 'נחתם חוזה' }
+    ],
+    description: 'בודק האם קיים ספק כלשהו באירוע עם סטטוס זה'
   },
   event_type: { 
     label: 'סוג אירוע', 
@@ -287,6 +328,7 @@ export default function NotificationManagementTab() {
       category: 'system',
       whatsapp_body_template: '',
       allowed_channels: ['push'],
+      condition_logic: 'and',
       event_filter_condition: '[]' // Initialize as empty array string
     });
     setIsDialogOpen(true);
@@ -985,7 +1027,33 @@ export default function NotificationManagementTab() {
 
                   <div className="mt-3 pt-3 border-t">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-semibold text-gray-500">תנאים נוספים (AND)</h4>
+                      <div className="flex items-center gap-3">
+                        <h4 className="text-xs font-semibold text-gray-500">תנאים נוספים</h4>
+                        <div className="flex bg-gray-100 rounded p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTemplate({...editingTemplate, condition_logic: 'and'})}
+                            className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                              (editingTemplate.condition_logic || 'and') === 'and' 
+                                ? 'bg-white shadow text-blue-600 font-medium' 
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            גם (AND)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingTemplate({...editingTemplate, condition_logic: 'or'})}
+                            className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                              editingTemplate.condition_logic === 'or' 
+                                ? 'bg-white shadow text-blue-600 font-medium' 
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            או (OR)
+                          </button>
+                        </div>
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
@@ -1009,24 +1077,25 @@ export default function NotificationManagementTab() {
                       {getConditions(editingTemplate).map((condition, idx) => (
                         <div key={idx} className="flex gap-2 items-start bg-white p-2 rounded border">
                           <div className="grid grid-cols-3 gap-2 flex-1">
-                            {/* Field Selector */}
-                            <Select
-                              value={condition.field}
-                              onValueChange={(v) => {
-                                const newConds = [...getConditions(editingTemplate)];
-                                newConds[idx] = { ...newConds[idx], field: v, value: '' }; // Reset value on field change
-                                updateConditions(newConds);
-                              }}
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="בחר שדה" />
-                              </SelectTrigger>
-                              <SelectContent>
+                            {/* Field Selector (Editable) */}
+                            <div className="relative">
+                              <Input
+                                list={`fields-list-${idx}`}
+                                className="h-8 text-xs pr-2"
+                                placeholder="שדה"
+                                value={condition.field}
+                                onChange={(e) => {
+                                  const newConds = [...getConditions(editingTemplate)];
+                                  newConds[idx] = { ...newConds[idx], field: e.target.value }; // Don't reset value aggressively to allow typing
+                                  updateConditions(newConds);
+                                }}
+                              />
+                              <datalist id={`fields-list-${idx}`}>
                                 {Object.entries(CONDITION_FIELDS).map(([key, info]) => (
-                                  <SelectItem key={key} value={key}>{info.label}</SelectItem>
+                                  <option key={key} value={key}>{info.label}</option>
                                 ))}
-                              </SelectContent>
-                            </Select>
+                              </datalist>
+                            </div>
 
                             {/* Operator Selector */}
                             <Select
