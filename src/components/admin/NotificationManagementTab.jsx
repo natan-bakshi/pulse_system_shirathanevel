@@ -94,13 +94,80 @@ const AVAILABLE_VARIABLES = {
   event_id: { description: 'מזהה האירוע', example: 'abc123' }
 };
 
-const DEEP_LINK_PAGES = [
-  'SupplierDashboard',
-  'ClientDashboard',
-  'AdminDashboard',
-  'EventDetails',
-  'EventManagement'
-];
+// הגדרת שדות זמינים לתנאים
+const CONDITION_FIELDS = {
+  status: { 
+    label: 'סטטוס אירוע', 
+    type: 'select', 
+    options: [
+      { value: 'quote', label: 'הצעת מחיר' },
+      { value: 'confirmed', label: 'מאושר' },
+      { value: 'in_progress', label: 'בביצוע' },
+      { value: 'completed', label: 'הושלם' },
+      { value: 'cancelled', label: 'בוטל' }
+    ]
+  },
+  event_type: { 
+    label: 'סוג אירוע', 
+    type: 'select', 
+    options: [
+      { value: 'bar_mitzvah', label: 'בר מצווה' },
+      { value: 'bat_mitzvah', label: 'בת מצווה' },
+      { value: 'wedding', label: 'חתונה' },
+      { value: 'other', label: 'אחר' }
+    ]
+  },
+  guest_count: { label: 'מספר אורחים', type: 'number' },
+  city: { label: 'עיר', type: 'text' },
+  balance: { label: 'יתרה לתשלום (מחושב)', type: 'number', description: 'סכום כולל פחות תשלומים שבוצעו' },
+  total_price: { label: 'מחיר כולל', type: 'number' },
+  discount_amount: { label: 'סכום הנחה', type: 'number' },
+  has_missing_suppliers: { 
+    label: 'חסרים ספקים?', 
+    type: 'select', 
+    options: [
+      { value: 'true', label: 'כן' },
+      { value: 'false', label: 'לא' }
+    ] 
+  }
+};
+
+const OPERATORS = {
+  equals: 'שווה ל-',
+  not_equals: 'שונה מ-',
+  greater_than: 'גדול מ-',
+  less_than: 'קטן מ-',
+  contains: 'מכיל',
+  is_empty: 'ריק',
+  is_not_empty: 'לא ריק'
+};
+
+// הגדרת דפים לפי הרשאות
+const PAGES_BY_ROLE = {
+  admin: [
+    { value: 'AdminDashboard', label: 'דשבורד מנהל' },
+    { value: 'EventManagement', label: 'ניהול אירועים' },
+    { value: 'EventManagement?tab=board', label: 'לוח אירועים' },
+    { value: 'ClientManagement', label: 'ניהול לקוחות' },
+    { value: 'SupplierManagement', label: 'ניהול ספקים' },
+    { value: 'ServiceManagement', label: 'ניהול שירותים' },
+    { value: 'QuoteTemplateManagement', label: 'תבניות הצעת מחיר' },
+    { value: 'UserManagement', label: 'ניהול משתמשים' }
+  ],
+  client: [
+    { value: 'ClientDashboard', label: 'האירועים שלי' },
+    { value: 'EventDetails', label: 'פרטי אירוע' },
+    { value: 'EventDetails?tab=payments', label: 'תשלומים' },
+    { value: 'ClientGallery', label: 'גלריה' }
+  ],
+  supplier: [
+    { value: 'SupplierDashboard', label: 'האירועים שלי' },
+    { value: 'EventDetails', label: 'פרטי אירוע (מוגבל)' }
+  ],
+  system_creator: [
+    { value: 'SettingsPage', label: 'הגדרות מערכת' }
+  ]
+};
 
 // רכיב עזר להצגת תיאור עם טולטיפ
 function FieldLabel({ label, tooltip, required }) {
@@ -219,9 +286,77 @@ export default function NotificationManagementTab() {
       deep_link_params_map: '',
       category: 'system',
       whatsapp_body_template: '',
-      allowed_channels: ['push']
+      allowed_channels: ['push'],
+      event_filter_condition: '[]' // Initialize as empty array string
     });
     setIsDialogOpen(true);
+  };
+
+  // Helper to parse conditions safely
+  const getConditions = (template) => {
+    try {
+      if (!template.event_filter_condition) return [];
+      const parsed = JSON.parse(template.event_filter_condition);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // Helper to update conditions
+  const updateConditions = (newConditions) => {
+    setEditingTemplate({
+      ...editingTemplate,
+      event_filter_condition: JSON.stringify(newConditions)
+    });
+  };
+
+  // Get relevant pages based on selected audiences
+  const getRelevantPages = () => {
+    if (!editingTemplate?.target_audiences) return [];
+    
+    const audiences = editingTemplate.target_audiences;
+    const pages = new Set();
+    const result = [];
+
+    // Always include System Creator pages if that role is targeted (though usually specific)
+    if (audiences.includes('system_creator')) {
+      PAGES_BY_ROLE.system_creator.forEach(p => {
+        if (!pages.has(p.value)) {
+          pages.add(p.value);
+          result.push({ ...p, role: 'יוצר המערכת' });
+        }
+      });
+    }
+
+    if (audiences.includes('admin')) {
+      PAGES_BY_ROLE.admin.forEach(p => {
+        if (!pages.has(p.value)) {
+          pages.add(p.value);
+          result.push({ ...p, role: 'מנהל' });
+        }
+      });
+    }
+
+    if (audiences.includes('client')) {
+      PAGES_BY_ROLE.client.forEach(p => {
+        if (!pages.has(p.value)) {
+          pages.add(p.value);
+          result.push({ ...p, role: 'לקוח' });
+        }
+      });
+    }
+
+    if (audiences.includes('supplier')) {
+      PAGES_BY_ROLE.supplier.forEach(p => {
+        if (!pages.has(p.value)) {
+          pages.add(p.value);
+          result.push({ ...p, role: 'ספק' });
+        }
+      });
+    }
+
+    return result;
   };
 
   const handleSave = () => {
@@ -849,34 +984,116 @@ export default function NotificationManagementTab() {
                   </div>
 
                   <div className="mt-3 pt-3 border-t">
-                    <h4 className="text-xs font-semibold text-gray-500 mb-2">תנאים נוספים</h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Input 
-                        placeholder="שדה (למשל status)" 
-                        className="h-8 text-xs"
-                        value={editingTemplate.condition_field || ''}
-                        onChange={(e) => setEditingTemplate({...editingTemplate, condition_field: e.target.value})}
-                      />
-                      <Select 
-                        value={editingTemplate.condition_operator || 'equals'} 
-                        onValueChange={(v) => setEditingTemplate({...editingTemplate, condition_operator: v})}
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-gray-500">תנאים נוספים (AND)</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs text-blue-600 hover:bg-blue-50"
+                        onClick={() => {
+                          const current = getConditions(editingTemplate);
+                          updateConditions([...current, { field: 'status', operator: 'equals', value: '' }]);
+                        }}
                       >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="equals">שווה ל-</SelectItem>
-                          <SelectItem value="not_equals">שונה מ-</SelectItem>
-                          <SelectItem value="greater_than">גדול מ-</SelectItem>
-                          <SelectItem value="less_than">קטן מ-</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input 
-                        placeholder="ערך (למשל confirmed)" 
-                        className="h-8 text-xs"
-                        value={editingTemplate.condition_value || ''}
-                        onChange={(e) => setEditingTemplate({...editingTemplate, condition_value: e.target.value})}
-                      />
+                        <Plus className="h-3 w-3 ml-1" />
+                        הוסף תנאי
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {getConditions(editingTemplate).length === 0 && (
+                        <p className="text-xs text-gray-400 italic">לא הוגדרו תנאים נוספים</p>
+                      )}
+                      
+                      {getConditions(editingTemplate).map((condition, idx) => (
+                        <div key={idx} className="flex gap-2 items-start bg-white p-2 rounded border">
+                          <div className="grid grid-cols-3 gap-2 flex-1">
+                            {/* Field Selector */}
+                            <Select
+                              value={condition.field}
+                              onValueChange={(v) => {
+                                const newConds = [...getConditions(editingTemplate)];
+                                newConds[idx] = { ...newConds[idx], field: v, value: '' }; // Reset value on field change
+                                updateConditions(newConds);
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="בחר שדה" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(CONDITION_FIELDS).map(([key, info]) => (
+                                  <SelectItem key={key} value={key}>{info.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            {/* Operator Selector */}
+                            <Select
+                              value={condition.operator}
+                              onValueChange={(v) => {
+                                const newConds = [...getConditions(editingTemplate)];
+                                newConds[idx] = { ...newConds[idx], operator: v };
+                                updateConditions(newConds);
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(OPERATORS).map(([op, label]) => (
+                                  <SelectItem key={op} value={op}>{label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            {/* Value Input */}
+                            {CONDITION_FIELDS[condition.field]?.type === 'select' ? (
+                              <Select
+                                value={condition.value}
+                                onValueChange={(v) => {
+                                  const newConds = [...getConditions(editingTemplate)];
+                                  newConds[idx] = { ...newConds[idx], value: v };
+                                  updateConditions(newConds);
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="בחר ערך" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CONDITION_FIELDS[condition.field].options.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                type={CONDITION_FIELDS[condition.field]?.type === 'number' ? 'number' : 'text'}
+                                placeholder={CONDITION_FIELDS[condition.field]?.description || 'ערך'}
+                                className="h-8 text-xs"
+                                value={condition.value}
+                                onChange={(e) => {
+                                  const newConds = [...getConditions(editingTemplate)];
+                                  newConds[idx] = { ...newConds[idx], value: e.target.value };
+                                  updateConditions(newConds);
+                                }}
+                              />
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:bg-red-50 shrink-0"
+                            onClick={() => {
+                              const newConds = getConditions(editingTemplate).filter((_, i) => i !== idx);
+                              updateConditions(newConds);
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -974,8 +1191,11 @@ export default function NotificationManagementTab() {
                       <div>
                         <FieldLabel 
                           label="דף יעד ידני" 
-                          tooltip="לאיזה דף לנווט (אם לא נבחר קישור חכם)"
+                          tooltip="בחר דף מתוך הדפים הזמינים לקהל היעד הנבחר"
                         />
+                        <div className="text-xs text-gray-500 mb-1">
+                          הדפים מוצגים בהתאם לקהלי היעד שנבחרו ({editingTemplate.target_audiences?.map(a => AUDIENCES[a]?.label).join(', ')})
+                        </div>
                         <Select 
                           value={editingTemplate.deep_link_base || ''} 
                           onValueChange={(v) => setEditingTemplate({...editingTemplate, deep_link_base: v})}
@@ -984,8 +1204,13 @@ export default function NotificationManagementTab() {
                             <SelectValue placeholder="בחר דף" />
                           </SelectTrigger>
                           <SelectContent>
-                            {DEEP_LINK_PAGES.map((page) => (
-                              <SelectItem key={page} value={page}>{page}</SelectItem>
+                            {getRelevantPages().map((page, i) => (
+                              <SelectItem key={`${page.value}-${i}`} value={page.value}>
+                                <span className="flex justify-between w-full gap-2">
+                                  <span>{page.label}</span>
+                                  <span className="text-gray-400 text-[10px]">{page.role}</span>
+                                </span>
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

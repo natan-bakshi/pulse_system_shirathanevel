@@ -58,11 +58,6 @@ async function processTemplate(base44, template, results) {
     
     const multiplier = template.timing_direction === 'before' ? 1 : (template.timing_direction === 'after' ? -1 : 0);
     
-    // Logic: 
-    // If 'before', we look for events in FUTURE (Today + X). 
-    // If 'after', we look for events in PAST (Today - X).
-    // If 'during', we look for events TODAY.
-    
     const offset = template.timing_value * (template.timing_direction === 'after' ? -1 : 1);
     
     if (template.timing_direction === 'during') {
@@ -75,7 +70,6 @@ async function processTemplate(base44, template, results) {
             targetDateStart.setDate(targetDateStart.getDate() + (offset * 7));
             targetDateEnd.setDate(targetDateEnd.getDate() + (offset * 7));
         } else if (template.timing_unit === 'hours') {
-            // For hours, use tighter window
             const now = new Date();
             now.setHours(now.getHours() + offset);
             targetDateStart.setTime(now.getTime() - 30 * 60000);
@@ -85,7 +79,6 @@ async function processTemplate(base44, template, results) {
     
     const dateStr = targetDateStart.toISOString().split('T')[0];
     
-    // Fetch candidate events based on Reference
     let events = [];
     
     if (template.timing_reference === 'event_date' || !template.timing_reference) {
@@ -94,36 +87,46 @@ async function processTemplate(base44, template, results) {
             event_date: dateStr
         });
     } else if (template.timing_reference === 'event_end_time') {
-        // Logic for event end time would be similar but checking date/time
-        // Simplified to event date for now as we store end time as string usually
-        // If we strictly want AFTER event, looking at past events is enough
         events = await base44.asServiceRole.entities.Event.filter({
             event_date: dateStr
         });
-    } 
-    // Add logic for Payment/Assignment dates if they were indexed fields on Event or separate entities
+    }
     
     console.log(`[AutomatedTriggers] Found ${events.length} candidate events`);
     
     for (const event of events) {
-        // Check Conditions
+        // --- Condition Logic Update ---
+        let allConditionsMet = true;
+
+        // 1. Support Legacy Single Condition
         if (template.condition_field && template.condition_value) {
-            const eventValue = event[template.condition_field];
-            const requiredValue = template.condition_value;
-            const operator = template.condition_operator || 'equals';
-            
-            let conditionMet = false;
-            switch (operator) {
-                case 'equals': conditionMet = eventValue === requiredValue; break;
-                case 'not_equals': conditionMet = eventValue !== requiredValue; break;
-                // Basic string comparison for greater/less
-                case 'greater_than': conditionMet = eventValue > requiredValue; break;
-                case 'less_than': conditionMet = eventValue < requiredValue; break;
-                default: conditionMet = eventValue == requiredValue;
-            }
-            
-            if (!conditionMet) continue;
+            const met = await checkSingleCondition(base44, event, {
+                field: template.condition_field,
+                operator: template.condition_operator || 'equals',
+                value: template.condition_value
+            });
+            if (!met) allConditionsMet = false;
         }
+
+        // 2. Support New Multiple Conditions (JSON Array)
+        if (allConditionsMet && template.event_filter_condition) {
+            try {
+                const conditions = JSON.parse(template.event_filter_condition);
+                if (Array.isArray(conditions) && conditions.length > 0) {
+                    for (const cond of conditions) {
+                        const met = await checkSingleCondition(base44, event, cond);
+                        if (!met) {
+                            allConditionsMet = false;
+                            break;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn(`[AutomatedTriggers] Failed to parse conditions for template ${template.type}`, e);
+            }
+        }
+
+        if (!allConditionsMet) continue;
         
         // Check duplication
         const existingNotifs = await base44.asServiceRole.entities.InAppNotification.filter({
@@ -132,12 +135,68 @@ async function processTemplate(base44, template, results) {
         });
         
         if (existingNotifs.length > 0) {
-            // Already sent
+            // Already sent logic (omitted for brevity)
             continue; 
         }
         
         // Determine Recipients & Send
         await sendToAudiences(base44, template, event, results);
+    }
+}
+
+// Helper to check a single condition against an event
+async function checkSingleCondition(base44, event, condition) {
+    let eventValue = event[condition.field];
+    const requiredValue = condition.value;
+    const operator = condition.operator || 'equals';
+
+    // --- Special Computed Fields ---
+    if (condition.field === 'balance') {
+        // Calculate balance: Total Price (with override) - Paid Payments
+        try {
+            const payments = await base44.asServiceRole.entities.Payment.filter({ event_id: event.id, payment_status: 'completed' });
+            const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            
+            // Logic for total price (simplified)
+            let totalPrice = event.total_override || event.all_inclusive_price || 0;
+            // TODO: Add complex VAT logic if needed, currently raw numbers
+            
+            eventValue = totalPrice - totalPaid;
+        } catch (e) {
+            console.warn('Error calculating balance', e);
+            eventValue = 0;
+        }
+    } else if (condition.field === 'has_missing_suppliers') {
+        // Logic to check if suppliers are missing
+        // This is complex, might be expensive in a loop. 
+        // Simple check: check services without suppliers
+        try {
+            const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
+            const missing = eventServices.some(es => !es.supplier_ids || es.supplier_ids === '[]' || JSON.parse(es.supplier_ids || '[]').length === 0);
+            eventValue = missing ? 'true' : 'false';
+        } catch (e) {
+            eventValue = 'false';
+        }
+    }
+
+    // --- Comparisons ---
+    // Handle numeric comparisons safely
+    if (['greater_than', 'less_than'].includes(operator)) {
+        const numEvent = parseFloat(eventValue);
+        const numReq = parseFloat(requiredValue);
+        if (!isNaN(numEvent) && !isNaN(numReq)) {
+            if (operator === 'greater_than') return numEvent > numReq;
+            if (operator === 'less_than') return numEvent < numReq;
+        }
+    }
+
+    switch (operator) {
+        case 'equals': return String(eventValue) == String(requiredValue);
+        case 'not_equals': return String(eventValue) != String(requiredValue);
+        case 'contains': return String(eventValue || '').includes(requiredValue);
+        case 'is_empty': return !eventValue || eventValue === '';
+        case 'is_not_empty': return !!eventValue && eventValue !== '';
+        default: return String(eventValue) == String(requiredValue);
     }
 }
 
