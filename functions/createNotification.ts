@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
             related_event_service_id,
             related_supplier_id,
             send_push = true,
+            send_whatsapp = false,
             check_quiet_hours = true
         } = payload;
         
@@ -66,6 +67,10 @@ Deno.serve(async (req) => {
         // Check if user has push enabled
         const userHasPushEnabled = targetUser?.push_enabled === true && targetUser?.onesignal_subscription_id;
         console.log(`[Notification] User push status - push_enabled: ${targetUser?.push_enabled}, subscription_id: ${targetUser?.onesignal_subscription_id ? 'exists' : 'none'}`);
+
+        // Check if user has whatsapp enabled
+        const userHasWhatsAppEnabled = targetUser?.whatsapp_enabled !== false && targetUser?.phone; // Default to true if not set, but must have phone
+        console.log(`[Notification] User whatsapp status - whatsapp_enabled: ${targetUser?.whatsapp_enabled}, phone: ${targetUser?.phone ? 'exists' : 'missing'}`);
         
         // Create the in-app notification
         const inAppNotification = await base44.asServiceRole.entities.InAppNotification.create({
@@ -86,6 +91,58 @@ Deno.serve(async (req) => {
         
         console.log(`[Notification] In-app notification created: ${inAppNotification.id}`);
         
+        // Handle WhatsApp notification
+        let whatsappResult = { sent: false };
+
+        if (send_whatsapp && userHasWhatsAppEnabled) {
+            try {
+                const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+                const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+
+                if (!GREEN_API_INSTANCE_ID || !GREEN_API_TOKEN) {
+                    throw new Error("Missing Green API Credentials");
+                }
+
+                // Clean phone number
+                let cleanPhone = targetUser.phone.replace(/[^0-9]/g, '');
+                if (cleanPhone.startsWith('05')) {
+                    cleanPhone = '972' + cleanPhone.substring(1);
+                } else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) {
+                    cleanPhone = '972' + cleanPhone;
+                }
+
+                const chatId = `${cleanPhone}@c.us`;
+                const whatsappMessage = `*${title}*\n\n${message}${link ? `\n\n${link}` : ''}`;
+
+                console.log(`[Notification] Sending WhatsApp to ${chatId}`);
+
+                const waResponse = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatId: chatId,
+                        message: whatsappMessage
+                    })
+                });
+
+                const waData = await waResponse.json();
+                
+                if (waResponse.ok) {
+                    whatsappResult = { sent: true, id: waData.idMessage };
+                    console.log(`[Notification] WhatsApp sent successfully: ${waData.idMessage}`);
+                } else {
+                    whatsappResult = { sent: false, error: waData };
+                    console.warn(`[Notification] WhatsApp failed:`, waData);
+                }
+            } catch (waError) {
+                console.error('[Notification] WhatsApp error:', waError);
+                whatsappResult = { sent: false, error: waError.message };
+            }
+        } else if (send_whatsapp && !userHasWhatsAppEnabled) {
+            whatsappResult = { sent: false, reason: !targetUser?.phone ? 'Missing phone number' : 'WhatsApp disabled by user' };
+            console.log(`[Notification] Skipping WhatsApp - ${whatsappResult.reason}`);
+        }
+
         // Handle push notification
         let pushResult = { sent: false };
         
@@ -210,7 +267,8 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             notification_id: inAppNotification.id,
-            push: pushResult
+            push: pushResult,
+            whatsapp: whatsappResult
         });
         
     } catch (error) {

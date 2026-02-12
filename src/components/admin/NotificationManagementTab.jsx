@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import ManualPushSender from "./ManualPushSender";
+import ManualWhatsAppSender from "./ManualWhatsAppSender";
 
 // סוגי טריגרים עם תיאורים מפורטים
 const TRIGGER_TYPES = {
@@ -376,8 +377,11 @@ export default function NotificationManagementTab() {
         </Card>
       </Collapsible>
 
-      {/* Manual Push Sender */}
-      <ManualPushSender />
+      {/* Manual Sender Tools */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ManualPushSender />
+        <ManualWhatsAppSender />
+      </div>
 
       {/* Templates List */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>

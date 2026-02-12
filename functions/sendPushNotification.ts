@@ -51,8 +51,60 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing required parameters: userIds, title, body' }), { status: 400, headers: { "Content-Type": "application/json" } });
     }
     
-    const usersWithTokens = (await base44.asServiceRole.entities.User.list())
-        .filter(u => userIds.includes(u.id) && u.push_tokens && u.push_tokens.length > 0);
+    // Fetch all targeted users to check for WhatsApp capability as well
+    const allTargetUsers = await base44.asServiceRole.entities.User.list();
+    const targetedUsers = allTargetUsers.filter(u => userIds.includes(u.id));
+
+    // --- WhatsApp Logic Start ---
+    const whatsappResults = [];
+    const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+    const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+
+    if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+        const whatsappUsers = targetedUsers.filter(u => u.phone && u.whatsapp_enabled !== false);
+        
+        for (const u of whatsappUsers) {
+            try {
+                // Clean phone number
+                let cleanPhone = u.phone.replace(/[^0-9]/g, '');
+                if (cleanPhone.startsWith('05')) {
+                    cleanPhone = '972' + cleanPhone.substring(1);
+                } else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) {
+                    cleanPhone = '972' + cleanPhone;
+                }
+
+                const chatId = `${cleanPhone}@c.us`;
+                // If there's a link in data (e.g. click_action or link), append it
+                const link = data.link || data.click_action || '';
+                const whatsappMessage = `*${title}*\n\n${body}${link ? `\n\n${link}` : ''}`;
+
+                console.log(`[sendPushNotification] Sending WhatsApp to ${u.full_name} (${chatId})`);
+
+                const waResponse = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatId: chatId,
+                        message: whatsappMessage
+                    })
+                });
+                
+                if (waResponse.ok) {
+                    whatsappResults.push({ userId: u.id, success: true });
+                } else {
+                    const errData = await waResponse.json();
+                    console.warn(`[sendPushNotification] WhatsApp failed for ${u.id}:`, errData);
+                    whatsappResults.push({ userId: u.id, success: false, error: errData });
+                }
+            } catch (waError) {
+                console.error(`[sendPushNotification] WhatsApp error for ${u.id}:`, waError);
+                whatsappResults.push({ userId: u.id, success: false, error: waError.message });
+            }
+        }
+    }
+    // --- WhatsApp Logic End ---
+
+    const usersWithTokens = targetedUsers.filter(u => u.push_tokens && u.push_tokens.length > 0);
 
     const allTokens = usersWithTokens.flatMap(u => u.push_tokens);
 
@@ -96,7 +148,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, successCount: response.successCount, failureCount: response.failureCount }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ 
+        success: true, 
+        push: { successCount: response.successCount, failureCount: response.failureCount },
+        whatsapp: { count: whatsappResults.length, results: whatsappResults }
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
 
   } catch (error) {
     console.error('Push notification sending error:', error);
