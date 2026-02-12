@@ -1040,8 +1040,6 @@ export default function NotificationManagementTab() {
                       </Select>
                     </div>
                   </div>
-
-                  </div>
                 </div>
               )}
 
