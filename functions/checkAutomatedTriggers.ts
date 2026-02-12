@@ -9,10 +9,6 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        // This function should be protected or run via scheduler with a secret/internal role
-        // For now, we assume it's triggered by a scheduler which might pass a secret or be admin
-        // We'll use service role for all operations.
-        
         console.log('[AutomatedTriggers] Starting check...');
         
         // 1. Fetch active scheduled templates
@@ -48,53 +44,69 @@ Deno.serve(async (req) => {
 });
 
 async function processTemplate(base44, template, results) {
-    // Only supporting Event-based triggers for now as per requirements
-    // (Expanding to Payments/Assignments requires similar logic mapping)
-    
     if (!template.timing_value || !template.timing_unit || !template.timing_direction) {
         console.warn(`[AutomatedTriggers] Template ${template.type} missing timing configuration`);
         return;
     }
     
-    // Calculate the target date range
+    // Determine Target Date Range
     const targetDateStart = new Date();
     const targetDateEnd = new Date();
     
-    // Normalize to start of day for 'days' unit to avoid hour mismatches
     targetDateStart.setHours(0,0,0,0);
     targetDateEnd.setHours(23,59,59,999);
     
-    const multiplier = template.timing_direction === 'before' ? 1 : -1;
-    const offset = template.timing_value * multiplier;
+    const multiplier = template.timing_direction === 'before' ? 1 : (template.timing_direction === 'after' ? -1 : 0);
     
-    if (template.timing_unit === 'days') {
-        targetDateStart.setDate(targetDateStart.getDate() + offset);
-        targetDateEnd.setDate(targetDateEnd.getDate() + offset);
-    } else if (template.timing_unit === 'weeks') {
-        targetDateStart.setDate(targetDateStart.getDate() + (offset * 7));
-        targetDateEnd.setDate(targetDateEnd.getDate() + (offset * 7));
-    } else if (template.timing_unit === 'hours') {
-        // For hours, we need tighter windows, maybe run hourly
-        const now = new Date();
-        now.setHours(now.getHours() + offset);
-        // Window of 1 hour
-        targetDateStart.setTime(now.getTime() - 30 * 60000);
-        targetDateEnd.setTime(now.getTime() + 30 * 60000);
+    // Logic: 
+    // If 'before', we look for events in FUTURE (Today + X). 
+    // If 'after', we look for events in PAST (Today - X).
+    // If 'during', we look for events TODAY.
+    
+    const offset = template.timing_value * (template.timing_direction === 'after' ? -1 : 1);
+    
+    if (template.timing_direction === 'during') {
+        // No offset needed
+    } else {
+        if (template.timing_unit === 'days') {
+            targetDateStart.setDate(targetDateStart.getDate() + offset);
+            targetDateEnd.setDate(targetDateEnd.getDate() + offset);
+        } else if (template.timing_unit === 'weeks') {
+            targetDateStart.setDate(targetDateStart.getDate() + (offset * 7));
+            targetDateEnd.setDate(targetDateEnd.getDate() + (offset * 7));
+        } else if (template.timing_unit === 'hours') {
+            // For hours, use tighter window
+            const now = new Date();
+            now.setHours(now.getHours() + offset);
+            targetDateStart.setTime(now.getTime() - 30 * 60000);
+            targetDateEnd.setTime(now.getTime() + 30 * 60000);
+        }
     }
     
     const dateStr = targetDateStart.toISOString().split('T')[0];
-    console.log(`[AutomatedTriggers] Processing ${template.type}: Looking for events around ${dateStr} (${template.timing_direction} ${template.timing_value} ${template.timing_unit})`);
     
-    // Fetch candidate events
-    // Assuming 'event_date' is stored as YYYY-MM-DD string
-    const events = await base44.asServiceRole.entities.Event.filter({
-        event_date: dateStr
-    });
+    // Fetch candidate events based on Reference
+    let events = [];
+    
+    if (template.timing_reference === 'event_date' || !template.timing_reference) {
+        console.log(`[AutomatedTriggers] Processing ${template.type}: Checking Event Date around ${dateStr}`);
+        events = await base44.asServiceRole.entities.Event.filter({
+            event_date: dateStr
+        });
+    } else if (template.timing_reference === 'event_end_time') {
+        // Logic for event end time would be similar but checking date/time
+        // Simplified to event date for now as we store end time as string usually
+        // If we strictly want AFTER event, looking at past events is enough
+        events = await base44.asServiceRole.entities.Event.filter({
+            event_date: dateStr
+        });
+    } 
+    // Add logic for Payment/Assignment dates if they were indexed fields on Event or separate entities
     
     console.log(`[AutomatedTriggers] Found ${events.length} candidate events`);
     
     for (const event of events) {
-        // Check Conditions (e.g. Status == 'confirmed')
+        // Check Conditions
         if (template.condition_field && template.condition_value) {
             const eventValue = event[template.condition_field];
             const requiredValue = template.condition_value;
@@ -104,14 +116,16 @@ async function processTemplate(base44, template, results) {
             switch (operator) {
                 case 'equals': conditionMet = eventValue === requiredValue; break;
                 case 'not_equals': conditionMet = eventValue !== requiredValue; break;
-                // Add more operators as needed
+                // Basic string comparison for greater/less
+                case 'greater_than': conditionMet = eventValue > requiredValue; break;
+                case 'less_than': conditionMet = eventValue < requiredValue; break;
                 default: conditionMet = eventValue == requiredValue;
             }
             
             if (!conditionMet) continue;
         }
         
-        // Check if notification already sent for this event + template
+        // Check duplication
         const existingNotifs = await base44.asServiceRole.entities.InAppNotification.filter({
             related_event_id: event.id,
             template_type: template.type
@@ -119,11 +133,10 @@ async function processTemplate(base44, template, results) {
         
         if (existingNotifs.length > 0) {
             // Already sent
-            // TODO: Handle reminder logic here (check reminder_interval)
             continue; 
         }
         
-        // Determine Recipients
+        // Determine Recipients & Send
         await sendToAudiences(base44, template, event, results);
     }
 }
@@ -133,7 +146,6 @@ async function sendToAudiences(base44, template, event, results) {
     
     // 1. Supplier Audience
     if (audiences.includes('supplier')) {
-        // Fetch suppliers for this event
         const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
         for (const es of eventServices) {
             if (es.supplier_ids) {
@@ -144,31 +156,16 @@ async function sendToAudiences(base44, template, event, results) {
                 
                 if (Array.isArray(supplierIds)) {
                     for (const supplierId of supplierIds) {
-                        // Find User linked to Supplier
-                        // This is tricky. Suppliers are entities. Users are auth entities.
-                        // We need to find the User that corresponds to this Supplier to send notification.
-                        // Strategy: Find User where email matches Supplier contact_emails
-                        
                         const supplier = (await base44.asServiceRole.entities.Supplier.filter({ id: supplierId }))[0];
                         if (!supplier) continue;
                         
                         let targetUsers = [];
                         if (supplier.contact_emails && supplier.contact_emails.length > 0) {
-                             // Find users with these emails
-                             // Since we can't OR in filter easily in all implementations, iterate
                              for (const email of supplier.contact_emails) {
                                  const users = await base44.asServiceRole.entities.User.filter({ email: email });
                                  targetUsers.push(...users);
                              }
                         }
-                        
-                        // Fallback: If no user found, we can't send In-App, but maybe we can send WhatsApp to Supplier Phone?
-                        // The createNotification function expects target_user_id.
-                        // If no user exists, we skip for now, or create a "shadow" notification if we supported it.
-                        // Requirement: "Everything working end-to-end". 
-                        // If a supplier has no user, they can't login to see InApp. But they CAN receive WhatsApp.
-                        // We need a dummy user ID or handle "Supplier Only" notifications.
-                        // Current createNotification requires target_user_id.
                         
                         for (const user of targetUsers) {
                             await triggerNotification(base44, template, event, user, supplier, es, results);
@@ -181,7 +178,6 @@ async function sendToAudiences(base44, template, event, results) {
     
     // 2. Client Audience
     if (audiences.includes('client')) {
-        // Find client users based on Event.parents emails
         if (event.parents && Array.isArray(event.parents)) {
             for (const parent of event.parents) {
                 if (parent.email) {
@@ -207,7 +203,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
     // Replace variables
     let title = template.title_template;
     let message = template.body_template;
-    let whatsapp_message = template.whatsapp_body_template || message; // Use specific template if exists
+    let whatsapp_message = template.whatsapp_body_template || message;
     
     const variables = {
         event_name: event.event_name,
@@ -218,7 +214,6 @@ async function triggerNotification(base44, template, event, user, supplier, even
         supplier_name: supplier ? supplier.supplier_name : '',
         service_name: eventService ? eventService.service_name : '',
         user_name: user.full_name,
-        // Add more variables as needed
     };
     
     for (const [key, val] of Object.entries(variables)) {
@@ -228,21 +223,22 @@ async function triggerNotification(base44, template, event, user, supplier, even
         whatsapp_message = whatsapp_message.replace(regex, val || '');
     }
     
-    // Call createNotification function
-    // We invoke it via SDK
     try {
+        // Base URL for links - assuming generic app URL or handling in createNotification
+        const baseUrl = 'https://app.base44.com'; 
+        
         await base44.asServiceRole.functions.invoke('createNotification', {
             target_user_id: user.id,
             target_user_email: user.email,
             title: title,
             message: message,
-            whatsapp_message: whatsapp_message, // Pass the specialized message
-            link: '', // Dynamic link handled in createNotification
+            whatsapp_message: whatsapp_message,
+            link: '', 
             template_type: template.type,
             related_event_id: event.id,
             related_supplier_id: supplier ? supplier.id : undefined,
             related_event_service_id: eventService ? eventService.id : undefined,
-            // Channels handled by createNotification based on template
+            base_url: baseUrl 
         });
         results.notifications_created++;
         console.log(`[AutomatedTriggers] Triggered for user ${user.email}`);

@@ -161,15 +161,24 @@ export default function ManualWhatsAppSender() {
                   </div>
                   {typeUsers.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full justify-between">
                         <span>{user.full_name || user.email}</span>
-                        {user.phone ? (
-                          <span className="text-xs text-gray-400">({user.phone})</span>
-                        ) : (
-                          <Badge variant="outline" className="text-xs bg-red-50 text-red-500 border-red-200">
-                            אין טלפון
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {user.phone ? (
+                            <span className="text-xs text-gray-400 flex items-center">
+                              {user.phone}
+                              {user.phoneSource === 'supplier' && (
+                                <Badge variant="outline" className="mr-1 text-[10px] h-4 bg-purple-50 text-purple-700 border-purple-200">
+                                  ספק
+                                </Badge>
+                              )}
+                            </span>
+                          ) : (
+                            <Badge variant="outline" className="text-xs bg-red-50 text-red-500 border-red-200">
+                              אין טלפון
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </SelectItem>
                   ))}

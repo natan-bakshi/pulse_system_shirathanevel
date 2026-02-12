@@ -134,6 +134,7 @@ export default function NotificationManagementTab() {
   const [activeTab, setActiveTab] = useState('templates');
   const [expandedHelp, setExpandedHelp] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
+  const [testPhoneNumber, setTestPhoneNumber] = useState('');
 
   // Get current user for test sending
   const { data: currentUser } = useQuery({
@@ -271,6 +272,9 @@ export default function NotificationManagementTab() {
         link: '',
         template_type: editingTemplate.type || 'TEST',
         send_push: true,
+        send_whatsapp: !!testPhoneNumber, // Send WhatsApp only if phone provided
+        target_phone: testPhoneNumber, // Override phone with test number
+        base_url: window.location.origin, // Pass current origin for absolute links
         check_quiet_hours: false // לא לבדוק שעות שקט לבדיקה
       });
       
@@ -800,6 +804,83 @@ export default function NotificationManagementTab() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <FieldLabel 
+                        label="מתי?" 
+                        tooltip="לפני, אחרי או בזמן האירוע/היעד"
+                      />
+                      <Select 
+                        value={editingTemplate.timing_direction || 'before'} 
+                        onValueChange={(v) => setEditingTemplate({...editingTemplate, timing_direction: v})}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="בחר זמן" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="before">לפני</SelectItem>
+                          <SelectItem value="after">אחרי</SelectItem>
+                          <SelectItem value="during">ביום ה</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <FieldLabel 
+                        label="ביחס ל..." 
+                        tooltip="נקודת הייחוס לחישוב הזמן"
+                      />
+                      <Select 
+                        value={editingTemplate.timing_reference || 'event_date'} 
+                        onValueChange={(v) => setEditingTemplate({...editingTemplate, timing_reference: v})}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="בחר ייחוס" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="event_date">תאריך האירוע</SelectItem>
+                          <SelectItem value="event_end_time">סיום האירוע</SelectItem>
+                          <SelectItem value="payment_due_date">מועד תשלום</SelectItem>
+                          <SelectItem value="assignment_date">מועד שיבוץ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t">
+                    <h4 className="text-xs font-semibold text-gray-500 mb-2">תנאים נוספים</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input 
+                        placeholder="שדה (למשל status)" 
+                        className="h-8 text-xs"
+                        value={editingTemplate.condition_field || ''}
+                        onChange={(e) => setEditingTemplate({...editingTemplate, condition_field: e.target.value})}
+                      />
+                      <Select 
+                        value={editingTemplate.condition_operator || 'equals'} 
+                        onValueChange={(v) => setEditingTemplate({...editingTemplate, condition_operator: v})}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="equals">שווה ל-</SelectItem>
+                          <SelectItem value="not_equals">שונה מ-</SelectItem>
+                          <SelectItem value="greater_than">גדול מ-</SelectItem>
+                          <SelectItem value="less_than">קטן מ-</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input 
+                        placeholder="ערך (למשל confirmed)" 
+                        className="h-8 text-xs"
+                        value={editingTemplate.condition_value || ''}
+                        onChange={(e) => setEditingTemplate({...editingTemplate, condition_value: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-3">
                     <div>
                       <FieldLabel 
                         label="מקסימום תזכורות" 
@@ -868,8 +949,32 @@ export default function NotificationManagementTab() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <FieldLabel 
-                          label="דף יעד" 
-                          tooltip="לאיזה דף לנווט כשלוחצים על ההתראה"
+                          label="סוג קישור חכם" 
+                          tooltip="בחר לאיזה סוג דף ההתראה תוביל באופן דינמי"
+                        />
+                        <Select 
+                          value={editingTemplate.dynamic_url_type || 'none'} 
+                          onValueChange={(v) => setEditingTemplate({...editingTemplate, dynamic_url_type: v})}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="בחר סוג קישור" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">ללא / ידני</SelectItem>
+                            <SelectItem value="event_page">כרטיסיית אירוע</SelectItem>
+                            <SelectItem value="payment_page">דף תשלומים</SelectItem>
+                            <SelectItem value="assignment_page">דף שיבוצים/ספק</SelectItem>
+                            <SelectItem value="calendar_page">לוח אירועים</SelectItem>
+                            <SelectItem value="settings_page">הגדרות</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {(!editingTemplate.dynamic_url_type || editingTemplate.dynamic_url_type === 'none') && (
+                      <div>
+                        <FieldLabel 
+                          label="דף יעד ידני" 
+                          tooltip="לאיזה דף לנווט (אם לא נבחר קישור חכם)"
                         />
                         <Select 
                           value={editingTemplate.deep_link_base || ''} 
@@ -885,6 +990,11 @@ export default function NotificationManagementTab() {
                           </SelectContent>
                         </Select>
                       </div>
+                      )}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
                       <div>
                         <FieldLabel 
                           label="פרמטרים" 
@@ -917,19 +1027,28 @@ export default function NotificationManagementTab() {
           )}
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button 
-              variant="secondary" 
-              onClick={handleSendTestNotification} 
-              disabled={sendingTest || !editingTemplate?.title_template}
-              className="w-full sm:w-auto"
-            >
-              {sendingTest ? (
-                <Loader2 className="h-4 w-4 animate-spin ml-2" />
-              ) : (
-                <Send className="h-4 w-4 ml-2" />
-              )}
-              שלח לי בדיקה
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 items-center border p-2 rounded-md bg-gray-50">
+              <Input 
+                placeholder="מספר טלפון לבדיקת WhatsApp" 
+                value={testPhoneNumber}
+                onChange={(e) => setTestPhoneNumber(e.target.value)}
+                className="h-9 w-full sm:w-48 text-sm"
+                dir="ltr"
+              />
+              <Button 
+                variant="secondary" 
+                onClick={handleSendTestNotification} 
+                disabled={sendingTest || !editingTemplate?.title_template}
+                className="w-full sm:w-auto h-9"
+              >
+                {sendingTest ? (
+                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                ) : (
+                  <Send className="h-4 w-4 ml-2" />
+                )}
+                שלח בדיקה
+              </Button>
+            </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 ביטול

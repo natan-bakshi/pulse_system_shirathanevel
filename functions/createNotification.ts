@@ -36,7 +36,8 @@ Deno.serve(async (req) => {
             related_supplier_id,
             send_push = true,
             send_whatsapp = false,
-            check_quiet_hours = true
+            check_quiet_hours = true,
+            target_phone = null // Allow overriding target phone for testing
         } = payload;
         
         // WhatsApp message override (optional) - defaults to standard message
@@ -50,13 +51,13 @@ Deno.serve(async (req) => {
         
         // --- 1. Smart User & Phone Resolution ---
         let targetUser = null;
-        let resolvedPhone = null;
+        let resolvedPhone = target_phone; // Use override if provided
         
         try {
             const users = await base44.asServiceRole.entities.User.filter({ id: target_user_id });
             targetUser = users.length > 0 ? users[0] : null;
             
-            if (targetUser) {
+            if (targetUser && !resolvedPhone) {
                 resolvedPhone = targetUser.phone;
                 
                 // If phone is missing, try to resolve from Supplier entity
@@ -122,11 +123,15 @@ Deno.serve(async (req) => {
                     
                     // --- 3. Dynamic URL Generation ---
                     if ((!link || link === '') && template.dynamic_url_type && template.dynamic_url_type !== 'none') {
+                        // Get base URL from payload or default to current origin (not available in Deno) or hardcoded app domain
+                        // User requested full HTTPS path. 
+                        const baseUrl = payload.base_url || 'https://app.base44.com'; 
+                        
                         link = generateDynamicUrl(template.dynamic_url_type, {
                             event_id: related_event_id,
                             supplier_id: related_supplier_id,
                             user_role: targetUser?.role || targetUser?.user_type || 'client'
-                        });
+                        }, baseUrl);
                         console.log(`[Notification] Generated Dynamic URL: ${link}`);
                     }
                 }
@@ -384,32 +389,34 @@ Deno.serve(async (req) => {
 });
 
 // Helper: Generate Dynamic URLs
-function generateDynamicUrl(type, context) {
-    // Base URL structure needs to be absolute for emails/whatsapp, but relative for in-app usually works.
-    // For WhatsApp, we want full URL if possible, or deep link.
-    // Assuming SPA router hash or clean URLs.
+function generateDynamicUrl(type, context, baseUrl) {
+    // Ensure baseUrl doesn't have trailing slash
+    const base = baseUrl.replace(/\/$/, '');
     
-    // We can't easily get the base domain here unless env var is set.
-    // We'll return relative path, assuming the frontend handles it or WhatsApp opens browser.
-    // Actually WhatsApp needs full URL. We'll try to use a standard base if known, or just path.
-    const baseUrl = 'https://app.base44.com/preview'; // Placeholder - ideally get from env
-    
+    let path = '';
     switch (type) {
         case 'event_page':
-            return context.event_id ? `/EventDetails?id=${context.event_id}` : '';
+            path = context.event_id ? `/EventDetails?id=${context.event_id}` : '';
+            break;
         case 'payment_page':
-            return context.event_id ? `/EventDetails?id=${context.event_id}&tab=payments` : '';
+            path = context.event_id ? `/EventDetails?id=${context.event_id}&tab=payments` : '';
+            break;
         case 'assignment_page':
-            return context.user_role === 'supplier' 
+            path = context.user_role === 'supplier' 
                 ? `/SupplierDashboard` 
                 : `/EventManagement?id=${context.event_id}&tab=suppliers`;
+            break;
         case 'calendar_page':
-            return `/EventManagement?tab=board`;
+            path = `/EventManagement?tab=board`;
+            break;
         case 'settings_page':
-            return `/MyNotificationSettings`;
+            path = `/MyNotificationSettings`;
+            break;
         default:
-            return '';
+            path = '';
     }
+    
+    return path ? `${base}${path}` : '';
 }
 
 // Helper function: Check if current time is during Shabbat (Friday 17:00 - Saturday 21:00)
