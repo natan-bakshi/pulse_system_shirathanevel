@@ -26,20 +26,26 @@ export default function ManualWhatsAppSender() {
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['allUsersAndSuppliersForWhatsApp'],
     queryFn: async () => {
-      const [allUsers, allSuppliers] = await Promise.all([
-        base44.entities.User.list(),
-        base44.entities.Supplier.list()
-      ]);
+      // Fetch users and suppliers - handle potentially large lists by simple pagination if needed, but for now list() is okay
+      const allUsers = await base44.entities.User.list();
+      const allSuppliers = await base44.entities.Supplier.list();
       
       // Map supplier phones to users by email
       const enrichedUsers = allUsers.map(user => {
         let phone = user.phone;
         let source = 'user';
         
+        // Normalize logic: if user has no phone, or user is a supplier (and we prefer supplier phone?)
+        // The requirement is "Default to Supplier/Client/Admin phone". 
+        // If the user record is empty, we definitely want the Supplier phone.
         if (!phone && user.email) {
+          // Find supplier where contact_emails array contains user.email
+          // Note: contact_emails is an array of strings
           const supplier = allSuppliers.find(s => 
-            s.contact_emails && s.contact_emails.includes(user.email)
+            Array.isArray(s.contact_emails) && 
+            s.contact_emails.some(email => email && email.toLowerCase().trim() === user.email.toLowerCase().trim())
           );
+          
           if (supplier && supplier.phone) {
             phone = supplier.phone;
             source = 'supplier';
