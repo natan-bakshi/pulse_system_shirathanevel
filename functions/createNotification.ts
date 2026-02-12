@@ -60,24 +60,46 @@ Deno.serve(async (req) => {
             if (targetUser && !resolvedPhone) {
                 resolvedPhone = targetUser.phone;
                 
-                // If phone is missing, try to resolve from Supplier entity
+                // If phone is missing, try to resolve from Supplier or Client (Event) entities
                 if (!resolvedPhone && targetUser.email) {
-                    console.log(`[Notification] User ${target_user_id} missing phone, searching Supplier records by email: ${targetUser.email}`);
-                    // Note: This filter relies on exact match. We might need a more robust search if emails are arrays
-                    // Using filter logic for array contains is tricky with simple filter, we fetch potential suppliers
-                    const suppliers = await base44.asServiceRole.entities.Supplier.filter({ 
-                        // Simplified: check if contact_emails contains the email. 
-                        // Limitation: Simple filter might not support array contains easily in all DBs, 
-                        // but let's try assuming the SDK handles basic array checks or we filter in memory
-                    });
+                    const emailToFind = targetUser.email.toLowerCase().trim();
+                    console.log(`[Notification] User ${target_user_id} missing phone, searching entities by email: ${emailToFind}`);
                     
+                    // 1. Check Suppliers
+                    const suppliers = await base44.asServiceRole.entities.Supplier.list(); // Fetch list to iterate arrays safely
                     const supplier = suppliers.find(s => 
-                        s.contact_emails && Array.isArray(s.contact_emails) && s.contact_emails.includes(targetUser.email)
+                        s.contact_emails && 
+                        Array.isArray(s.contact_emails) && 
+                        s.contact_emails.some(e => e && e.toLowerCase().trim() === emailToFind)
                     );
                     
                     if (supplier && supplier.phone) {
                         resolvedPhone = supplier.phone;
                         console.log(`[Notification] Resolved phone from Supplier ${supplier.id}: ${resolvedPhone}`);
+                    }
+
+                    // 2. Check Clients (Event Parents) if still missing
+                    if (!resolvedPhone) {
+                        // Fetch active events to search for parents
+                        // Optimization: We could filter by status, but list() is safer for now to ensure we find the user
+                        const events = await base44.asServiceRole.entities.Event.filter({ 
+                            // Only check active/future/recent events to optimize? 
+                            // For now, simpler to search all relevant statuses to find the contact info
+                            status: { $ne: 'cancelled' } 
+                        });
+
+                        for (const event of events) {
+                            if (event.parents && Array.isArray(event.parents)) {
+                                const parent = event.parents.find(p => 
+                                    p.email && p.email.toLowerCase().trim() === emailToFind
+                                );
+                                if (parent && parent.phone) {
+                                    resolvedPhone = parent.phone;
+                                    console.log(`[Notification] Resolved phone from Event (Client) ${event.id}: ${resolvedPhone}`);
+                                    break; // Found it
+                                }
+                            }
+                        }
                     }
                 }
             }

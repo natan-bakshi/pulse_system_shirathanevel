@@ -26,29 +26,42 @@ export default function ManualWhatsAppSender() {
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['allUsersAndSuppliersForWhatsApp'],
     queryFn: async () => {
-      // Fetch users and suppliers - handle potentially large lists by simple pagination if needed, but for now list() is okay
-      const allUsers = await base44.entities.User.list();
-      const allSuppliers = await base44.entities.Supplier.list();
+      // Fetch users, suppliers, AND events (for clients)
+      const [allUsers, allSuppliers, allEvents] = await Promise.all([
+        base44.entities.User.list(),
+        base44.entities.Supplier.list(),
+        base44.entities.Event.list() // Fetching all events to find parents
+      ]);
       
-      // Map supplier phones to users by email
+      // Map external phones to users by email
       const enrichedUsers = allUsers.map(user => {
         let phone = user.phone;
         let source = 'user';
+        const userEmail = user.email ? user.email.toLowerCase().trim() : null;
         
-        // Normalize logic: if user has no phone, or user is a supplier (and we prefer supplier phone?)
-        // The requirement is "Default to Supplier/Client/Admin phone". 
-        // If the user record is empty, we definitely want the Supplier phone.
-        if (!phone && user.email) {
-          // Find supplier where contact_emails array contains user.email
-          // Note: contact_emails is an array of strings
+        if (!phone && userEmail) {
+          // 1. Try Supplier
           const supplier = allSuppliers.find(s => 
             Array.isArray(s.contact_emails) && 
-            s.contact_emails.some(email => email && email.toLowerCase().trim() === user.email.toLowerCase().trim())
+            s.contact_emails.some(email => email && email.toLowerCase().trim() === userEmail)
           );
           
           if (supplier && supplier.phone) {
             phone = supplier.phone;
             source = 'supplier';
+          } else {
+            // 2. Try Client (Event Parent)
+            // Iterate events to find a parent with matching email
+            for (const event of allEvents) {
+              if (event.parents && Array.isArray(event.parents)) {
+                const parent = event.parents.find(p => p.email && p.email.toLowerCase().trim() === userEmail);
+                if (parent && parent.phone) {
+                  phone = parent.phone;
+                  source = 'client';
+                  break; // Found matching client phone
+                }
+              }
+            }
           }
         }
         return { ...user, phone, phoneSource: source };
@@ -170,6 +183,11 @@ export default function ManualWhatsAppSender() {
                               {user.phoneSource === 'supplier' && (
                                 <Badge variant="outline" className="mr-1 text-[10px] h-4 bg-purple-50 text-purple-700 border-purple-200">
                                   ספק
+                                </Badge>
+                              )}
+                              {user.phoneSource === 'client' && (
+                                <Badge variant="outline" className="mr-1 text-[10px] h-4 bg-blue-50 text-blue-700 border-blue-200">
+                                  לקוח
                                 </Badge>
                               )}
                             </span>
