@@ -291,14 +291,18 @@ Deno.serve(async (req) => {
                 scheduledFor = getShabbatEndTime();
                 console.log(`[Notification] Shabbat mode active. Scheduling push for: ${scheduledFor.toISOString()}`);
             }
-            // Then check user quiet hours
-            else if (check_quiet_hours && targetUser?.quiet_start_hour !== undefined && targetUser?.quiet_end_hour !== undefined) {
-                const isQuiet = isInQuietHours(targetUser.quiet_start_hour, targetUser.quiet_end_hour);
+            // Then check user quiet hours (or default for unregistered/missing config)
+            else if (check_quiet_hours) {
+                // Default quiet hours: 22:00 to 08:00
+                const startHour = targetUser?.quiet_start_hour !== undefined ? targetUser.quiet_start_hour : 22;
+                const endHour = targetUser?.quiet_end_hour !== undefined ? targetUser.quiet_end_hour : 8;
+                
+                const isQuiet = isInQuietHours(startHour, endHour);
                 
                 if (isQuiet) {
                     shouldDelayPush = true;
-                    scheduledFor = getQuietHoursEndTime(targetUser.quiet_end_hour);
-                    console.log(`[Notification] User in quiet hours. Scheduling push for: ${scheduledFor.toISOString()}`);
+                    scheduledFor = getQuietHoursEndTime(endHour);
+                    console.log(`[Notification] Quiet hours active (${startHour}-${endHour}). Scheduling notification for: ${scheduledFor.toISOString()}`);
                 }
             }
             

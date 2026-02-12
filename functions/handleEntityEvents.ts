@@ -48,6 +48,33 @@ Deno.serve(async (req) => {
                 triggerTypesToFetch.push('supplier_assignment_delete');
                 console.log(`[HandleEntityEvents] Detected supplier assignment deletion. Removed suppliers: ${removed.join(', ')}`);
             }
+
+            // Check if supplier status changed (Approved/Rejected/Signed)
+            const oldStatuses = old_data?.supplier_statuses ? JSON.parse(old_data.supplier_statuses || '{}') : {};
+            const newStatuses = data?.supplier_statuses ? JSON.parse(data.supplier_statuses || '{}') : {};
+            
+            // We need to identify WHICH supplier changed status to target notifications correctly
+            // We'll store this in a special context field on the event object for the next steps
+            event.changed_status_supplier_ids = [];
+            
+            for (const [supId, newStatus] of Object.entries(newStatuses)) {
+                if (oldStatuses[supId] !== newStatus) {
+                    triggerTypesToFetch.push('assignment_status_change');
+                    event.changed_status_supplier_ids.push({ id: supId, status: newStatus, old_status: oldStatuses[supId] });
+                    console.log(`[HandleEntityEvents] Detected status change for supplier ${supId}: ${oldStatuses[supId]} -> ${newStatus}`);
+                }
+            }
+        }
+
+        // Special logic for Event (Critical Updates)
+        if (event.entity_name === 'Event' && triggerType === 'entity_update' && old_data) {
+            const criticalFields = ['event_date', 'event_time', 'location', 'concept'];
+            const changedFields = criticalFields.filter(field => data[field] !== old_data[field]);
+            
+            if (changedFields.length > 0) {
+                triggerTypesToFetch.push('event_critical_update');
+                console.log(`[HandleEntityEvents] Detected critical event update. Fields: ${changedFields.join(', ')}`);
+            }
         }
 
         // Enrich Data with Calculated Fields (for Events)
@@ -137,8 +164,23 @@ Deno.serve(async (req) => {
                 const conditionsMet = await checkConditions(base44, template, enrichedData, old_data, event);
                 
                 if (conditionsMet) {
-                    await sendNotification(base44, template, enrichedData, event); // Pass enrichedData to sendNotification too for variables
-                    notificationsSent++;
+                    // Smart Targeting Logic
+                    // If this is a specific supplier status change, ONLY send to that supplier (if audience is supplier)
+                    // or regarding that supplier (if audience is admin)
+                    
+                    if (template.trigger_type === 'assignment_status_change' && event.changed_status_supplier_ids?.length > 0) {
+                        // Iterate over each changed supplier and send context-specific notification
+                        for (const changeContext of event.changed_status_supplier_ids) {
+                            // Clone event to pass specific context
+                            const specificEvent = { ...event, specific_recipient_id: changeContext.id };
+                            await sendNotification(base44, template, enrichedData, specificEvent);
+                            notificationsSent++;
+                        }
+                    } else {
+                        // Standard broadcast (filtered by audience logic in sendNotification)
+                        await sendNotification(base44, template, enrichedData, event);
+                        notificationsSent++;
+                    }
                 }
             } catch (e) {
                 console.error(`[HandleEntityEvents] Error processing template ${template.type}:`, e);
@@ -258,13 +300,16 @@ async function sendNotification(base44, template, entityData, event) {
     // 1. Supplier Audience
     if (audiences.includes('supplier')) {
         let suppliersToSend = [];
-        if (relatedSupplierId) {
+        
+        // SMART TARGETING: If specific recipient defined in context (from handleEntityEvents loop), ONLY send to them.
+        if (event.specific_recipient_id) {
+            suppliersToSend.push(event.specific_recipient_id);
+        } 
+        // Otherwise use standard logic
+        else if (relatedSupplierId) {
             suppliersToSend.push(relatedSupplierId);
         } else if (eventObj && event.entity_name === 'Event') {
-            // Send to ALL suppliers of this event? Or triggers usually specific?
-            // If template is "Event Time Changed", we probably want to notify ALL suppliers.
-            // Fetch all event services -> suppliers
-            // TODO: Optimize if needed. For now simple:
+            // Broadcast to all event suppliers (e.g. Critical Event Change)
             const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventObj.id });
             for (const s of services) {
                 let ids = [];
@@ -277,25 +322,63 @@ async function sendNotification(base44, template, entityData, event) {
         suppliersToSend = [...new Set(suppliersToSend)];
         
         for (const supId of suppliersToSend) {
-            if (!supplierObj || supplierObj.id !== supId) {
-                const s = await base44.asServiceRole.entities.Supplier.filter({ id: supId });
-                supplierObj = s[0];
-            }
-            if (!supplierObj) continue;
+            // Optimization: Don't refetch if we already have the object
+            let currentSupplierObj = supplierObj && supplierObj.id === supId ? supplierObj : null;
             
-            // Find User(s) for Supplier
-            if (supplierObj.contact_emails && Array.isArray(supplierObj.contact_emails)) {
-                for (const email of supplierObj.contact_emails) {
-                    const users = await base44.asServiceRole.entities.User.filter({ email: email });
-                    for (const user of users) {
-                        // Pass serviceObj if we detected it earlier (relatedServiceId)
-                        let serviceObj = null;
-                        if (relatedServiceId) {
-                            try { serviceObj = await base44.asServiceRole.entities.EventService.get(relatedServiceId); } catch(e){}
-                        }
-                        await trigger(base44, template, user, eventObj, supplierObj, serviceObj);
+            if (!currentSupplierObj) {
+                const s = await base44.asServiceRole.entities.Supplier.filter({ id: supId });
+                if (s.length > 0) currentSupplierObj = s[0];
+            }
+            
+            if (!currentSupplierObj) continue;
+            
+            // Determine Service Object Context
+            let serviceObj = null;
+            if (relatedServiceId) {
+                // If the event came from EventService, we know the service
+                try { serviceObj = await base44.asServiceRole.entities.EventService.get(relatedServiceId); } catch(e){}
+            } else if (event.entity_name === 'Event') {
+                // If it's a broadcast from Event, we need to find which service this supplier belongs to in this event
+                // This gives context like {{service_name}} to the message
+                const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventObj.id });
+                for (const s of services) {
+                    if (s.supplier_ids && s.supplier_ids.includes(supId)) {
+                        serviceObj = s;
+                        break; // Assume 1 service per supplier per event for now
                     }
                 }
+            }
+
+            // Find User(s) for Supplier OR Send to Unregistered via Phone
+            let sentToUser = false;
+            if (currentSupplierObj.contact_emails && Array.isArray(currentSupplierObj.contact_emails)) {
+                for (const email of currentSupplierObj.contact_emails) {
+                    if (!email) continue;
+                    const users = await base44.asServiceRole.entities.User.filter({ email: email });
+                    
+                    if (users.length > 0) {
+                        for (const user of users) {
+                            await trigger(base44, template, user, eventObj, currentSupplierObj, serviceObj);
+                            sentToUser = true;
+                        }
+                    }
+                }
+            }
+            
+            // If no registered user found, construct a "Virtual User" to trigger WhatsApp
+            if (!sentToUser && currentSupplierObj.phone) {
+                console.log(`[Notification] No registered user for supplier ${currentSupplierObj.supplier_name}. Sending to phone: ${currentSupplierObj.phone}`);
+                const virtualUser = {
+                    id: `virtual_sup_${currentSupplierObj.id}`,
+                    email: currentSupplierObj.contact_emails?.[0] || '',
+                    full_name: currentSupplierObj.contact_person || currentSupplierObj.supplier_name,
+                    phone: currentSupplierObj.phone,
+                    role: 'supplier',
+                    // Default preferences for unregistered users
+                    push_enabled: false,
+                    whatsapp_enabled: true 
+                };
+                await trigger(base44, template, virtualUser, eventObj, currentSupplierObj, serviceObj);
             }
         }
     }

@@ -51,6 +51,16 @@ const TRIGGER_TYPES = {
     description: 'נשלחת לפי תזמון שנקבע מראש (למשל: תזכורת 7 ימים לפני האירוע)',
     example: 'תזכורת לפני אירוע'
   },
+  assignment_status_change: {
+    label: 'שינוי סטטוס שיבוץ',
+    description: 'נשלחת כאשר סטטוס של ספק משתנה (אושר, נדחה, נחתם)',
+    example: 'ספק אישר הגעה'
+  },
+  event_critical_update: {
+    label: 'עדכון קריטי באירוע',
+    description: 'נשלחת כאשר משתנים פרטים קריטיים: תאריך, שעה, מיקום או קונספט',
+    example: 'שינוי שעת האירוע'
+  },
   custom_trigger: {
     label: 'טריגר מותאם אישית',
     description: 'טריגר המופעל ידנית או ע"י קוד חיצוני',
