@@ -125,57 +125,35 @@ export default function Layout({ children }) {
     link.href = companyLogo;
   }, [companyName, companyLogo]);
 
-  const assignUserType = useCallback(async (userToUpdate) => {
+  // Centralized Identity Sync
+  const syncUserIdentity = useCallback(async (userToSync) => {
     try {
-      const safeSuppliers = Array.isArray(suppliers) ? suppliers : [];
-
-      const normalizePhone = (phone) => {
-        if (!phone) return '';
-        let p = phone.replace(/[^\d+]/g, ''); // Keep only digits and +
-        if (p.startsWith('+972')) p = '0' + p.substring(4);
-        if (p.startsWith('972')) p = '0' + p.substring(3);
-        if (p.length === 9 && p.startsWith('5')) p = '0' + p; // Add leading 0 if missing for mobile
-        return p;
-      };
-
-      const userEmail = userToUpdate.email?.toLowerCase().trim();
-      const userPhone = normalizePhone(userToUpdate.phone);
-
-      const matchingSupplier = safeSuppliers.find((s) => {
-        // Match by email only
-        return userEmail && Array.isArray(s.contact_emails) &&
-        s.contact_emails.some((email) => email && email.toLowerCase().trim() === userEmail);
+      // Invoke backend function to handle classification and data sync
+      const result = await base44.functions.invoke('syncUserIdentity', { 
+        data: userToSync 
       });
 
-      if (matchingSupplier) {
-        return "supplier";
+      // If backend made updates, refresh the user object
+      if (result.data?.updates) {
+         return await base44.auth.me();
       }
-
-      return "client";
+      return userToSync;
     } catch (error) {
-      console.error("Error in assignUserType:", error);
-      return "client";
+      console.error("Error in syncUserIdentity:", error);
+      return userToSync;
     }
-  }, [suppliers]);
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
-      // Wait for suppliers to load before assigning user type
-      if (suppliersLoading) {
-        return;
-      }
-
       setLoading(true);
       try {
         let currentUser = await base44.auth.me();
 
-        if (!currentUser.user_type) {
-          const newUserType = await assignUserType(currentUser);
-          if (newUserType !== currentUser.user_type) {
-            await base44.auth.updateMe({ user_type: newUserType });
-            currentUser = await base44.auth.me();
-          }
-        }
+        // Run sync on every load to ensure data consistency
+        // This handles "New User" and "Missing Data" scenarios
+        currentUser = await syncUserIdentity(currentUser);
+
         setUser(currentUser);
       } catch (error) {
         setUser(null);
@@ -184,7 +162,7 @@ export default function Layout({ children }) {
       }
     };
     fetchUser();
-  }, [assignUserType, location.pathname, suppliersLoading]);
+  }, [syncUserIdentity, location.pathname]);
 
   useEffect(() => {
     if (loading) return;
