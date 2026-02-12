@@ -1184,7 +1184,6 @@ export default function NotificationManagementTab() {
                         </div>
                       ))}
                     </div>
-                  </div>
               </div>
 
               {/* הגדרות מתקדמות */}
