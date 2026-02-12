@@ -22,14 +22,38 @@ export default function ManualWhatsAppSender() {
   const [sendResult, setSendResult] = useState(null);
 
   // Fetch all users
-  const { data: users = [], isLoading: usersLoading } = useQuery({
-    queryKey: ['allUsersForWhatsApp'],
+  // Fetch all users and suppliers for intelligent mapping
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ['allUsersAndSuppliersForWhatsApp'],
     queryFn: async () => {
-      const allUsers = await base44.entities.User.list();
-      return allUsers.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+      const [allUsers, allSuppliers] = await Promise.all([
+        base44.entities.User.list(),
+        base44.entities.Supplier.list()
+      ]);
+      
+      // Map supplier phones to users by email
+      const enrichedUsers = allUsers.map(user => {
+        let phone = user.phone;
+        let source = 'user';
+        
+        if (!phone && user.email) {
+          const supplier = allSuppliers.find(s => 
+            s.contact_emails && s.contact_emails.includes(user.email)
+          );
+          if (supplier && supplier.phone) {
+            phone = supplier.phone;
+            source = 'supplier';
+          }
+        }
+        return { ...user, phone, phoneSource: source };
+      });
+
+      return enrichedUsers.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
     },
     staleTime: 2 * 60 * 1000
   });
+
+  const users = usersData || [];
 
   // Group users by type
   const groupedUsers = users.reduce((acc, user) => {
@@ -51,9 +75,9 @@ export default function ManualWhatsAppSender() {
         throw new Error('משתמש לא נמצא');
       }
 
-      if (!targetUser.phone) {
-        throw new Error('למשתמש זה אין מספר טלפון במערכת');
-      }
+      // Note: we don't block here if phone is missing in frontend, 
+      // because the backend now has smarter resolution logic (checking Supplier entity).
+      // We assume the backend will try its best.
 
       // Use createNotification to create in-app and send WhatsApp
       const response = await createNotification({
@@ -198,7 +222,7 @@ export default function ManualWhatsAppSender() {
         {/* Send Button */}
         <Button 
           onClick={() => sendMutation.mutate()}
-          disabled={sendMutation.isPending || !selectedUserId || !title || !message || !selectedUser?.phone}
+          disabled={sendMutation.isPending || !selectedUserId || !title || !message}
           className="w-full bg-green-600 hover:bg-green-700 text-white"
         >
           {sendMutation.isPending ? (
