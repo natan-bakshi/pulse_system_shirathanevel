@@ -423,6 +423,7 @@ async function trigger(base44, template, user, eventObj, supplierObj, serviceObj
         family_name: eventObj ? eventObj.family_name : '',
         child_name: eventObj ? eventObj.child_name : '',
         event_id: eventObj ? eventObj.id : '',
+        event_link: eventObj ? `${baseUrl}/EventDetails?id=${eventObj.id}` : '',
         
         // Client details (from parents array if available)
         client_name: eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].name : '',
