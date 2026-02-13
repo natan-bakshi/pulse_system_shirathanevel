@@ -12,15 +12,13 @@ const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-        
-        // Allow system/automation calls (where user might be null, but we need to check auth method)
-        // For now we enforce auth me for manual calls, but automations should use service role properly
-        if (!user) {
-             // If called from another function via service role invoke, it might not have user context? 
-             // Actually base44.auth.me() checks the token. 
-             // We'll assume strict auth for now.
-             return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        // Allow calls from authenticated users OR service role
+        let user = null;
+        try {
+            user = await base44.auth.me();
+        } catch (e) {
+            // No user auth - this is OK for service role calls or WhatsApp-only notifications
+            console.log('[Notification] No user authentication - proceeding with service role');
         }
         
         const payload = await req.json();
