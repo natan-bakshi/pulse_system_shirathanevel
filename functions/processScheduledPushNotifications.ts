@@ -47,27 +47,80 @@ Deno.serve(async (req) => {
                 } catch (e) {
                     console.warn(`[ScheduledPush] Could not fetch user ${pending.user_id}:`, e.message);
                 }
+
+                // Verify user is no longer in quiet hours before sending
+                // Use defaults if not set (22:00-08:00)
+                const startHour = targetUser?.quiet_start_hour !== undefined ? targetUser.quiet_start_hour : 22;
+                const endHour = targetUser?.quiet_end_hour !== undefined ? targetUser.quiet_end_hour : 8;
+
+                if (isInQuietHours(startHour, endHour)) {
+                    // Still in quiet hours - reschedule for next quiet end
+                    const newScheduledFor = getQuietHoursEndTime(endHour);
+                    await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
+                        scheduled_for: newScheduledFor.toISOString()
+                    });
+                    console.log(`[ScheduledPush] User ${pending.user_id} still in quiet hours (${startHour}-${endHour}). Rescheduled for ${newScheduledFor.toISOString()}`);
+                    continue;
+                }
                 
+                // --- WhatsApp Sending Logic ---
+                let whatsappData = null;
+                try {
+                    whatsappData = pending.data ? JSON.parse(pending.data) : {};
+                } catch(e) {}
+
+                if (whatsappData && whatsappData.send_whatsapp) {
+                    // We need to resolve phone again if not stored, but usually createNotification resolves it.
+                    // For now, rely on User phone. If User is missing phone, we might fail here for pending messages
+                    // unless we stored resolved phone in 'data' too. 
+                    // Enhancement: Use targetUser.phone.
+                    
+                    if (targetUser?.phone) {
+                        try {
+                            const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+                            const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+                            
+                            if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                                let cleanPhone = targetUser.phone.replace(/[^0-9]/g, '');
+                                if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+                                else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+                                
+                                const chatId = `${cleanPhone}@c.us`;
+                                const waMsg = whatsappData.whatsapp_message || pending.message;
+                                const link = pending.link || '';
+                                
+                                // Construct Absolute Link (if not already) - Use stored base_url or default
+                                const baseUrl = 'https://app.base44.com'; // Fallback
+                                const fullLink = link ? (link.startsWith('http') ? link : `${baseUrl}${link.startsWith('/') ? link : '/' + link}`) : '';
+                                const content = `*${pending.title}*\n\n${waMsg}${fullLink ? `\n\n${fullLink}` : ''}`;
+                                
+                                await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ chatId, message: content })
+                                });
+                                console.log(`[ScheduledPush] WhatsApp sent to ${chatId}`);
+                                
+                                // Update in-app status
+                                if (pending.in_app_notification_id) {
+                                    await base44.asServiceRole.entities.InAppNotification.update(pending.in_app_notification_id, {
+                                        whatsapp_sent: true
+                                    });
+                                }
+                            }
+                        } catch (waErr) {
+                            console.error(`[ScheduledPush] WhatsApp error:`, waErr);
+                        }
+                    }
+                }
+
                 // Check if user has push enabled
                 if (!targetUser?.push_enabled || !targetUser?.onesignal_subscription_id) {
-                    console.log(`[ScheduledPush] User ${pending.user_id} has no push subscription, marking as sent`);
+                    console.log(`[ScheduledPush] User ${pending.user_id} has no push subscription, marking as sent (WhatsApp processed if enabled)`);
                     await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
                         is_sent: true
                     });
                     continue;
-                }
-                
-                // Verify user is no longer in quiet hours before sending
-                if (targetUser?.quiet_start_hour !== undefined && targetUser?.quiet_end_hour !== undefined) {
-                    if (isInQuietHours(targetUser.quiet_start_hour, targetUser.quiet_end_hour)) {
-                        // Still in quiet hours - reschedule for next quiet end
-                        const newScheduledFor = getQuietHoursEndTime(targetUser.quiet_end_hour);
-                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
-                            scheduled_for: newScheduledFor.toISOString()
-                        });
-                        console.log(`[ScheduledPush] User ${pending.user_id} still in quiet hours. Rescheduled for ${newScheduledFor.toISOString()}`);
-                        continue;
-                    }
                 }
                 
                 // Send the push notification via OneSignal REST API

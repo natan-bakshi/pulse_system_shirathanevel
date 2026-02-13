@@ -459,9 +459,8 @@ async function trigger(base44, template, user, eventObj, supplierObj, serviceObj
     }
     
     try {
-        // Base URL for links (Assuming hardcoded app URL or similar)
-        // Since we are in backend automation, we don't have window.location
-        const baseUrl = 'https://app.base44.com/preview'; // TODO: Update with real domain
+        // Base URL for links - Must be Production URL for WhatsApp links to work
+        const baseUrl = 'https://app.base44.com'; // Production URL
         
         await base44.asServiceRole.functions.invoke('createNotification', {
             target_user_id: user.id,

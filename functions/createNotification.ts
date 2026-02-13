@@ -181,9 +181,9 @@ Deno.serve(async (req) => {
         // Check if user has push enabled
         const userHasPushEnabled = targetUser?.push_enabled === true && targetUser?.onesignal_subscription_id;
         
-        // Check if user has whatsapp enabled (Default true if not explicitly disabled)
-        // Use resolvedPhone here
-        const userHasWhatsAppEnabled = targetUser?.whatsapp_enabled !== false && resolvedPhone; 
+        // Check if user has whatsapp enabled (Forced TRUE for everyone if phone exists)
+        // We ignore targetUser.whatsapp_enabled preference as per requirement
+        const userHasWhatsAppEnabled = !!resolvedPhone; 
         
         console.log(`[Notification] Final Channels - Push: ${send_push && userHasPushEnabled}, WhatsApp: ${send_whatsapp && userHasWhatsAppEnabled} (Phone: ${resolvedPhone})`);
 
@@ -229,15 +229,13 @@ Deno.serve(async (req) => {
                 }
 
                 const chatId = `${cleanPhone}@c.us`;
-                // Use template-specific whatsapp body if available and no override provided
                 let contentToSend = whatsapp_message;
-                if (template && template.whatsapp_body_template && payload.whatsapp_message === undefined) {
-                     // TODO: We would need to re-process variables here if we had them. 
-                     // Assuming the caller passed the processed message in `message` or `whatsapp_message`.
-                     // For now, we use the message passed in.
-                }
                 
-                const whatsappContent = `*${title}*\n\n${contentToSend}${link ? `\n\n${link}` : ''}`;
+                // Construct Absolute Link
+                const currentBaseUrl = (payload.base_url || 'https://app.base44.com').replace(/\/$/, '');
+                const fullLink = link ? (link.startsWith('http') ? link : `${currentBaseUrl}${link.startsWith('/') ? link : '/' + link}`) : '';
+                
+                const whatsappContent = `*${title}*\n\n${contentToSend}${fullLink ? `\n\n${fullLink}` : ''}`;
 
                 console.log(`[Notification] Sending WhatsApp to ${chatId}`);
 
@@ -445,7 +443,7 @@ function generateDynamicUrl(type, context, baseUrl) {
     return path ? `${base}${path}` : '';
 }
 
-// Helper function: Check if current time is during Shabbat (Friday 17:00 - Saturday 21:00)
+// Helper function: Check if current time is during Shabbat (Friday 16:00 - Saturday 20:00)
 function isShabbat(timezone = 'Asia/Jerusalem') {
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -461,15 +459,15 @@ function isShabbat(timezone = 'Asia/Jerusalem') {
     const day = dayPart?.value; // 'Fri', 'Sat', etc.
     const hour = parseInt(hourPart?.value || '0', 10);
     
-    // Friday after 17:00
-    if (day === 'Fri' && hour >= 17) return true;
-    // All day Saturday until 21:00
-    if (day === 'Sat' && hour < 21) return true;
+    // Friday after 16:00
+    if (day === 'Fri' && hour >= 16) return true;
+    // All day Saturday until 20:00
+    if (day === 'Sat' && hour < 20) return true;
     
     return false;
 }
 
-// Helper function: Get end of Shabbat time
+// Helper function: Get end of Shabbat time (Saturday 20:00)
 function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -478,15 +476,15 @@ function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
     });
     const day = formatter.format(now);
     
-    // Calculate next Saturday 21:00
+    // Calculate next Saturday 20:00
     const endTime = new Date(now);
     
     if (day === 'Fri') {
         // Move to Saturday
         endTime.setDate(endTime.getDate() + 1);
     }
-    // Set to 21:00
-    endTime.setHours(21, 0, 0, 0);
+    // Set to 20:00
+    endTime.setHours(20, 0, 0, 0);
     
     return endTime;
 }

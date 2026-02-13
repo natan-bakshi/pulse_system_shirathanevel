@@ -39,6 +39,11 @@ export default function UserNotificationPreferences({ user, onClose }) {
   const [whatsappEnabled, setWhatsappEnabled] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Force WhatsApp to true on load and save
+  useEffect(() => {
+    setWhatsappEnabled(true);
+  }, []);
+
   // Fetch notification templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ['notificationTemplates'],
@@ -146,25 +151,19 @@ export default function UserNotificationPreferences({ user, onClose }) {
         {/* Push Permission Section */}
         <PushPermissionButton user={user} />
 
-        <div className="p-4 border rounded-lg bg-green-50/50 border-green-100">
+        {/* WhatsApp Forced ON - Hidden from user to prevent disabling */}
+        <div className="p-4 border rounded-lg bg-green-50/50 border-green-100 opacity-80 cursor-not-allowed">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-green-100 p-2 rounded-full">
                 <MessageCircle className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <Label htmlFor="whatsapp-toggle" className="text-base font-medium">התראות WhatsApp</Label>
-                <p className="text-sm text-gray-500">קבלת עדכונים חשובים ישירות לווואטסאפ שלך</p>
+                <Label className="text-base font-medium">התראות WhatsApp</Label>
+                <p className="text-sm text-gray-500">התראות WhatsApp פעילות באופן קבוע עבור כל המשתמשים</p>
               </div>
             </div>
-            <Switch
-              id="whatsapp-toggle"
-              checked={whatsappEnabled}
-              onCheckedChange={(checked) => {
-                setWhatsappEnabled(checked);
-                setHasChanges(true);
-              }}
-            />
+            <Switch checked={true} disabled />
           </div>
         </div>
 
