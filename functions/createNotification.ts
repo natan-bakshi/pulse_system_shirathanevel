@@ -128,6 +128,21 @@ Deno.serve(async (req) => {
             console.warn('[Notification] Error during phone resolution:', e.message);
         }
 
+        // --- 1.1 Update User with Resolved Phone (Sync Back) ---
+        if (targetUser && !targetUser.phone && resolvedPhone) {
+            try {
+                console.log(`[Notification] Updating user ${targetUser.id} with resolved phone: ${resolvedPhone}`);
+                // Use backend function or direct entity update if possible. 
+                // Since 'User' entity is special/protected, we should try using base44.users.update if available in SDK for service role,
+                // or assume standard entity update works for admin (service role).
+                // Note: Direct update on User entity usually works for custom fields, but 'phone' might be built-in or custom.
+                // Let's try standard update.
+                await base44.asServiceRole.entities.User.update(targetUser.id, { phone: resolvedPhone });
+            } catch (updateErr) {
+                console.warn('[Notification] Failed to sync phone to user:', updateErr.message);
+            }
+        }
+
         // --- 2. Template Logic & Channel Enforcement ---
         let template = null;
         if (template_type) {
