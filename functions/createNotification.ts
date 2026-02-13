@@ -12,13 +12,13 @@ const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        // Allow calls from authenticated users OR service role
-        let user = null;
+        // Allow calls from authenticated users OR service role (for WhatsApp to non-users)
+        let callingUser = null;
         try {
-            user = await base44.auth.me();
+            callingUser = await base44.auth.me();
         } catch (e) {
             // No user auth - this is OK for service role calls or WhatsApp-only notifications
-            console.log('[Notification] No user authentication - proceeding with service role');
+            console.log('[Notification] No user authentication - proceeding as service role');
         }
         
         const payload = await req.json();
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
                     if ((!link || link === '') && template.dynamic_url_type && template.dynamic_url_type !== 'none') {
                         // Get base URL from payload or default to current origin (not available in Deno) or hardcoded app domain
                         // User requested full HTTPS path. 
-                        const baseUrl = payload.base_url || 'https://app.base44.com'; 
+                        const baseUrl = payload.base_url || 'https://pulse-system.base44.app'; 
                         
                         link = generateDynamicUrl(template.dynamic_url_type, {
                             event_id: related_event_id,
