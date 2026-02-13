@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
             }
 
             // 3. Check User Entity LAST
-            if (target_user_id) {
+            if (target_user_id && !target_user_id.startsWith('virtual')) {
                 const users = await base44.asServiceRole.entities.User.filter({ id: target_user_id });
                 targetUser = users.length > 0 ? users[0] : null;
 
@@ -113,12 +113,6 @@ Deno.serve(async (req) => {
                  }
             }
             
-            // Ensure target_user_id exists for DB constraint
-            if (!target_user_id) {
-                target_user_id = `virtual_${Date.now()}`;
-                console.log(`[Notification] No target_user_id provided, using virtual ID: ${target_user_id}`);
-            }
-
         } catch (e) {
             console.warn('[Notification] Error during phone resolution:', e.message);
         }
@@ -185,26 +179,41 @@ Deno.serve(async (req) => {
         
         console.log(`[Notification] Channels - Push: ${send_push && userHasPushEnabled}, WhatsApp: ${send_whatsapp && userHasWhatsAppEnabled} (Phone: ${resolvedPhone})`);
 
-        // Create In-App Notification
-        const inAppNotification = await base44.asServiceRole.entities.InAppNotification.create({
-            user_id: target_user_id,
-            user_email: target_user_email || targetUser?.email,
-            title,
-            message,
-            link: link || '',
-            is_read: false,
-            template_type: template_type || 'CUSTOM',
-            related_event_id: related_event_id || '',
-            related_event_service_id: related_event_service_id || '',
-            related_supplier_id: related_supplier_id || '',
-            push_sent: false,
-            whatsapp_sent: false,
-            whatsapp_message_id: '',
-            reminder_count: 0,
-            is_resolved: false
-        });
-        
-        console.log(`[Notification] In-app notification created: ${inAppNotification.id}`);
+        // --- 4. DB Logging (SAFE MODE) ---
+        // FIX: Wrap DB creation in try/catch so failure doesn't stop WhatsApp
+        let notificationRecordId = null;
+        let inAppNotification = null;
+
+        try {
+            // Only try to save if we have a real user ID or email, and it's not virtual
+            const isVirtual = target_user_id && target_user_id.startsWith('virtual');
+            
+            if (!isVirtual || target_user_email) {
+                inAppNotification = await base44.asServiceRole.entities.InAppNotification.create({
+                    user_id: isVirtual ? undefined : target_user_id, // Send undefined if virtual to avoid FK constraint error
+                    user_email: target_user_email || targetUser?.email,
+                    title,
+                    message,
+                    link: link || '',
+                    is_read: false,
+                    template_type: template_type || 'CUSTOM',
+                    related_event_id: related_event_id || '',
+                    related_event_service_id: related_event_service_id || '',
+                    related_supplier_id: related_supplier_id || '',
+                    push_sent: false,
+                    whatsapp_sent: false,
+                    whatsapp_message_id: '',
+                    reminder_count: 0,
+                    is_resolved: false
+                });
+                notificationRecordId = inAppNotification.id;
+                console.log(`[Notification] In-app notification created: ${inAppNotification.id}`);
+            } else {
+                console.log(`[Notification] Skipping DB record for virtual user (No email/ID)`);
+            }
+        } catch (dbError) {
+            console.warn(`[Notification] DB Save Failed (proceeding to send anyway): ${dbError.message}`);
+        }
 
         // --- Global Delay Check ---
         let shouldDelay = false;
@@ -227,7 +236,7 @@ Deno.serve(async (req) => {
             }
         }
 
-        if (shouldDelay && scheduledFor) {
+        if (shouldDelay && scheduledFor && notificationRecordId) {
             await base44.asServiceRole.entities.PendingPushNotification.create({
                 user_id: target_user_id,
                 user_email: target_user_email || targetUser?.email,
@@ -236,7 +245,7 @@ Deno.serve(async (req) => {
                 link: link || '',
                 scheduled_for: scheduledFor.toISOString(),
                 template_type: template_type || 'CUSTOM',
-                in_app_notification_id: inAppNotification.id,
+                in_app_notification_id: notificationRecordId,
                 is_sent: false,
                 data: JSON.stringify({
                     send_whatsapp: send_whatsapp && userHasWhatsAppEnabled,
@@ -244,13 +253,15 @@ Deno.serve(async (req) => {
                 })
             });
             
-            await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
-                push_scheduled_for: scheduledFor.toISOString()
-            });
+            if (notificationRecordId) {
+                await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
+                    push_scheduled_for: scheduledFor.toISOString()
+                });
+            }
             
             return Response.json({
                 success: true,
-                notification_id: inAppNotification.id,
+                notification_id: notificationRecordId,
                 push: { sent: false, scheduled: true },
                 whatsapp: { sent: false, scheduled: true, reason: delayReason }
             });
@@ -294,12 +305,14 @@ Deno.serve(async (req) => {
                 if (waResponse.ok) {
                     whatsappResult = { sent: true, id: waData.idMessage };
                     console.log(`[Notification] WhatsApp sent successfully`);
-                    try {
-                        await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
-                            whatsapp_sent: true,
-                            whatsapp_message_id: waData.idMessage || ''
-                        });
-                    } catch (err) { console.warn('Failed to update whatsapp status', err); }
+                    if (notificationRecordId) {
+                        try {
+                            await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
+                                whatsapp_sent: true,
+                                whatsapp_message_id: waData.idMessage || ''
+                            });
+                        } catch (err) { console.warn('Failed to update whatsapp status', err); }
+                    }
                 } else {
                     whatsappResult = { sent: false, error: waData };
                     console.warn(`[Notification] WhatsApp failed:`, waData);
@@ -315,7 +328,7 @@ Deno.serve(async (req) => {
         // --- Push Logic (Immediate) ---
         let pushResult = { sent: false };
         
-        if (send_push && userHasPushEnabled) {
+        if (send_push && userHasPushEnabled && notificationRecordId) {
             // Send push immediately via OneSignal REST API
             try {
                 const subscriptionId = targetUser?.onesignal_subscription_id;
@@ -335,7 +348,7 @@ Deno.serve(async (req) => {
                     headings: { en: title, he: title },
                     url: pushLink || undefined, 
                     data: {
-                        notification_id: inAppNotification.id,
+                        notification_id: notificationRecordId,
                         link: pushLink
                     }
                 };
@@ -352,7 +365,7 @@ Deno.serve(async (req) => {
                 const result = await response.json();
                 
                 if (result.id && result.recipients > 0) {
-                    await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, { push_sent: true });
+                    await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, { push_sent: true });
                     pushResult = { sent: true, recipients: result.recipients, onesignal_id: result.id };
                     console.log(`[Notification] Push sent successfully`);
                 } else {
@@ -368,7 +381,7 @@ Deno.serve(async (req) => {
         
         return Response.json({
             success: true,
-            notification_id: inAppNotification.id,
+            notification_id: notificationRecordId || 'virtual',
             push: pushResult,
             whatsapp: whatsappResult
         });
