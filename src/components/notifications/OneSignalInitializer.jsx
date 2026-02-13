@@ -68,10 +68,12 @@ export default function OneSignalInitializer({ user }) {
 
           // Request current subscription status to sync
           setTimeout(() => {
-            frame.contentWindow.postMessage({
-              action: 'getSubscriptionStatus',
-              userId: user.id
-            }, FIREBASE_PROXY_ORIGIN);
+            if (frame?.contentWindow) {
+              frame.contentWindow.postMessage({
+                action: 'getSubscriptionStatus',
+                userId: user.id
+              }, FIREBASE_PROXY_ORIGIN);
+            }
           }, 1000);
         }
       }
