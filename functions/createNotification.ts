@@ -1,7 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
+
 
 /**
  * Creates an in-app notification and optionally sends a push notification / WhatsApp
@@ -12,10 +14,11 @@ const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+        
         // Allow calls from authenticated users OR service role (for WhatsApp to non-users)
-        let callingUser = null;
+        let user = null;
         try {
-            callingUser = await base44.auth.me();
+            user = await base44.auth.me();
         } catch (e) {
             // No user auth - this is OK for service role calls or WhatsApp-only notifications
             console.log('[Notification] No user authentication - proceeding as service role');
@@ -56,6 +59,7 @@ Deno.serve(async (req) => {
           ? target_user_email.toLowerCase().trim() 
           : null;
 
+
         try {
             // 1. Check Supplier Entity FIRST
             if (!resolvedPhone && related_supplier_id) {
@@ -65,6 +69,7 @@ Deno.serve(async (req) => {
                     console.log(`[Notification] Resolved phone from Supplier ${related_supplier_id}: ${resolvedPhone}`);
                 }
             }
+
 
             // 2. Check Event Parents (Client) SECOND
             if (!resolvedPhone && related_event_id) {
@@ -81,6 +86,7 @@ Deno.serve(async (req) => {
                         parent = event.parents[0];
                     }
 
+
                     if (parent?.phone) {
                         resolvedPhone = parent.phone;
                         console.log(`[Notification] Resolved phone from Event parent ${related_event_id}: ${resolvedPhone}`);
@@ -88,10 +94,12 @@ Deno.serve(async (req) => {
                 }
             }
 
+
             // 3. Check User Entity LAST
             if (target_user_id) {
                 const users = await base44.asServiceRole.entities.User.filter({ id: target_user_id });
                 targetUser = users.length > 0 ? users[0] : null;
+
 
                 if (targetUser && !resolvedPhone) {
                     resolvedPhone = targetUser.phone;
@@ -120,9 +128,11 @@ Deno.serve(async (req) => {
                 console.log(`[Notification] No target_user_id provided, using virtual ID: ${target_user_id}`);
             }
 
+
         } catch (e) {
             console.warn('[Notification] Error during phone resolution:', e.message);
         }
+
 
         // --- 1.1 Update User with Resolved Phone (Sync Back) ---
         if (targetUser && !targetUser.phone && resolvedPhone) {
@@ -138,6 +148,7 @@ Deno.serve(async (req) => {
                 console.warn('[Notification] Failed to sync phone to user:', updateErr.message);
             }
         }
+
 
         // --- 2. Template Logic & Channel Enforcement ---
         let template = null;
@@ -177,8 +188,7 @@ Deno.serve(async (req) => {
                     
                     // --- 3. Dynamic URL Generation ---
                     if ((!link || link === '') && template.dynamic_url_type && template.dynamic_url_type !== 'none') {
-                        // Get base URL from payload or default to current origin (not available in Deno) or hardcoded app domain
-                        // User requested full HTTPS path. 
+                        // Get base URL from payload or default to Pulse System app domain
                         const baseUrl = payload.base_url || 'https://pulse-system.base44.app'; 
                         
                         link = generateDynamicUrl(template.dynamic_url_type, {
@@ -219,6 +229,7 @@ Deno.serve(async (req) => {
         
         console.log(`[Notification] Final Channels - Push: ${send_push && userHasPushEnabled}, WhatsApp: ${send_whatsapp && userHasWhatsAppEnabled} (Phone: ${resolvedPhone})`);
 
+
         // Create the in-app notification
         const inAppNotification = await base44.asServiceRole.entities.InAppNotification.create({
             user_id: target_user_id,
@@ -240,10 +251,12 @@ Deno.serve(async (req) => {
         
         console.log(`[Notification] In-app notification created: ${inAppNotification.id}`);
 
+
         // --- Global Delay Check (Shabbat / Quiet Hours) ---
         let shouldDelay = false;
         let scheduledFor = null;
         let delayReason = '';
+
 
         // 1. Check Shabbat (Friday 16:00 - Saturday 20:00)
         if (isShabbat()) {
@@ -264,6 +277,7 @@ Deno.serve(async (req) => {
                 console.log(`[Notification] Quiet hours active (${startHour}-${endHour}). Scheduling notification for: ${scheduledFor.toISOString()}`);
             }
         }
+
 
         if (shouldDelay && scheduledFor) {
             await base44.asServiceRole.entities.PendingPushNotification.create({
@@ -297,14 +311,17 @@ Deno.serve(async (req) => {
         // Handle WhatsApp notification (Immediate)
         let whatsappResult = { sent: false };
 
+
         if (send_whatsapp && userHasWhatsAppEnabled) {
             try {
                 const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
                 const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
 
+
                 if (!GREEN_API_INSTANCE_ID || !GREEN_API_TOKEN) {
                     throw new Error("Missing Green API Credentials");
                 }
+
 
                 // Clean phone number (using resolvedPhone)
                 let cleanPhone = resolvedPhone.replace(/[^0-9]/g, '');
@@ -314,16 +331,19 @@ Deno.serve(async (req) => {
                     cleanPhone = '972' + cleanPhone;
                 }
 
+
                 const chatId = `${cleanPhone}@c.us`;
                 let contentToSend = whatsapp_message;
                 
                 // Construct Absolute Link
-                const currentBaseUrl = (payload.base_url || 'https://app.base44.com').replace(/\/$/, '');
+                const currentBaseUrl = (payload.base_url || 'https://pulse-system.base44.app').replace(/\/$/, '');
                 const fullLink = link ? (link.startsWith('http') ? link : `${currentBaseUrl}${link.startsWith('/') ? link : '/' + link}`) : '';
                 
                 const whatsappContent = `*${title}*\n\n${contentToSend}${fullLink ? `\n\n${fullLink}` : ''}`;
 
+
                 console.log(`[Notification] Sending WhatsApp to ${chatId}`);
+
 
                 const waResponse = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
                     method: 'POST',
@@ -333,6 +353,7 @@ Deno.serve(async (req) => {
                         message: whatsappContent
                     })
                 });
+
 
                 const waData = await waResponse.json();
                 
@@ -361,6 +382,7 @@ Deno.serve(async (req) => {
             whatsappResult = { sent: false, reason: !resolvedPhone ? 'Missing phone number' : 'WhatsApp disabled by user' };
             console.log(`[Notification] Skipping WhatsApp - ${whatsappResult.reason}`);
         }
+
 
         // Handle push notification
         let pushResult = { sent: false };
@@ -498,6 +520,7 @@ Deno.serve(async (req) => {
     }
 });
 
+
 // Helper: Generate Dynamic URLs
 function generateDynamicUrl(type, context, baseUrl) {
     // Ensure baseUrl doesn't have trailing slash
@@ -529,6 +552,7 @@ function generateDynamicUrl(type, context, baseUrl) {
     return path ? `${base}${path}` : '';
 }
 
+
 // Helper function: Check if current time is during Shabbat (Friday 16:00 - Saturday 20:00)
 function isShabbat(timezone = 'Asia/Jerusalem') {
     const now = new Date();
@@ -553,6 +577,7 @@ function isShabbat(timezone = 'Asia/Jerusalem') {
     return false;
 }
 
+
 // Helper function: Get end of Shabbat time (Saturday 20:00)
 function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
     const now = new Date();
@@ -574,6 +599,7 @@ function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
     
     return endTime;
 }
+
 
 // Helper function: Check if current time is in quiet hours
 function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
@@ -597,6 +623,7 @@ function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
     // Handle same-day quiet hours
     return currentHour >= quietStart && currentHour < quietEnd;
 }
+
 
 // Helper function: Calculate when quiet hours end
 function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
