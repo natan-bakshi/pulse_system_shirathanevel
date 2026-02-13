@@ -207,8 +207,62 @@ Deno.serve(async (req) => {
         });
         
         console.log(`[Notification] In-app notification created: ${inAppNotification.id}`);
+
+        // --- Global Delay Check (Shabbat / Quiet Hours) ---
+        let shouldDelay = false;
+        let scheduledFor = null;
+        let delayReason = '';
+
+        // 1. Check Shabbat (Friday 16:00 - Saturday 20:00)
+        if (isShabbat()) {
+            shouldDelay = true;
+            scheduledFor = getShabbatEndTime();
+            delayReason = 'Shabbat';
+            console.log(`[Notification] Shabbat mode active. Scheduling notification for: ${scheduledFor.toISOString()}`);
+        }
+        // 2. Check Quiet Hours (Default 22:00 - 08:00 if not set)
+        else if (check_quiet_hours) {
+            const startHour = targetUser?.quiet_start_hour !== undefined ? targetUser.quiet_start_hour : 22;
+            const endHour = targetUser?.quiet_end_hour !== undefined ? targetUser.quiet_end_hour : 8;
+            
+            if (isInQuietHours(startHour, endHour)) {
+                shouldDelay = true;
+                scheduledFor = getQuietHoursEndTime(endHour);
+                delayReason = 'Quiet Hours';
+                console.log(`[Notification] Quiet hours active (${startHour}-${endHour}). Scheduling notification for: ${scheduledFor.toISOString()}`);
+            }
+        }
+
+        if (shouldDelay && scheduledFor) {
+            await base44.asServiceRole.entities.PendingPushNotification.create({
+                user_id: target_user_id,
+                user_email: target_user_email || targetUser?.email,
+                title,
+                message,
+                link: link || '',
+                scheduled_for: scheduledFor.toISOString(),
+                template_type: template_type || 'CUSTOM',
+                in_app_notification_id: inAppNotification.id,
+                is_sent: false,
+                data: JSON.stringify({
+                    send_whatsapp: send_whatsapp && userHasWhatsAppEnabled,
+                    whatsapp_message: whatsapp_message // Pass the specific whatsapp message
+                })
+            });
+            
+            await base44.asServiceRole.entities.InAppNotification.update(inAppNotification.id, {
+                push_scheduled_for: scheduledFor.toISOString()
+            });
+            
+            return Response.json({
+                success: true,
+                notification_id: inAppNotification.id,
+                push: { sent: false, scheduled: true, scheduled_for: scheduledFor.toISOString() },
+                whatsapp: { sent: false, scheduled: true, reason: `Delayed due to ${delayReason}` }
+            });
+        }
         
-        // Handle WhatsApp notification
+        // Handle WhatsApp notification (Immediate)
         let whatsappResult = { sent: false };
 
         if (send_whatsapp && userHasWhatsAppEnabled) {
