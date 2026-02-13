@@ -43,87 +43,85 @@ Deno.serve(async (req) => {
         // WhatsApp message override (optional) - defaults to standard message
         const whatsapp_message = payload.whatsapp_message || message;
         
-        if (!target_user_id || !title || !message) {
-            return Response.json({ error: 'target_user_id, title, and message are required' }, { status: 400 });
+        if (!title || !message) {
+            return Response.json({ error: 'title and message are required' }, { status: 400 });
         }
         
-        console.log(`[Notification] Creating notification for user ${target_user_id}: ${title}`);
+        console.log(`[Notification] Creating notification for user ${target_user_id || 'unknown'}: ${title}`);
         
         // --- 1. Smart User & Phone Resolution ---
         let targetUser = null;
         let resolvedPhone = target_phone; // Use override if provided
-        let targetUser = null;
+        
+        // Fix email normalization
+        const normalizedEmail = typeof target_user_email === 'string' && target_user_email 
+          ? target_user_email.toLowerCase().trim() 
+          : null;
 
         try {
-            // Try to resolve phone from related supplier FIRST if supplier_id is provided
+            // 1. Check Supplier Entity FIRST
             if (!resolvedPhone && related_supplier_id) {
                 const supplier = await base44.asServiceRole.entities.Supplier.get(related_supplier_id);
                 if (supplier?.phone) {
                     resolvedPhone = supplier.phone;
-                    console.log(`[Notification] Resolved phone from related Supplier ${related_supplier_id}: ${resolvedPhone}`);
+                    console.log(`[Notification] Resolved phone from Supplier ${related_supplier_id}: ${resolvedPhone}`);
                 }
             }
 
-            // Then try to resolve from client/event parents if event_id is provided (for client notifications)
+            // 2. Check Event Parents (Client) SECOND
             if (!resolvedPhone && related_event_id) {
                 const event = await base44.asServiceRole.entities.Event.get(related_event_id);
                 if (event?.parents && Array.isArray(event.parents)) {
-                    // Find parent matching target_user_email if available, or just take the first phone
-                    const parent = event.parents.find(p => p.email && p.email.toLowerCase().trim() === target_user_email?.toLowerCase().trim());
+                    // Try to match by email first
+                    let parent = null;
+                    if (normalizedEmail) {
+                        parent = event.parents.find(p => p.email && p.email.toLowerCase().trim() === normalizedEmail);
+                    }
+                    
+                    // Fallback to first parent if no email match or no email provided
+                    if (!parent && event.parents.length > 0) {
+                        parent = event.parents[0];
+                    }
+
                     if (parent?.phone) {
                         resolvedPhone = parent.phone;
                         console.log(`[Notification] Resolved phone from Event parent ${related_event_id}: ${resolvedPhone}`);
-                    } else if (event.parents.length > 0 && event.parents[0].phone) {
-                        resolvedPhone = event.parents[0].phone; // Fallback to first parent's phone
-                        console.log(`[Notification] Resolved phone from first Event parent ${related_event_id} (fallback): ${resolvedPhone}`);
                     }
                 }
             }
 
-            // Finally, try to fetch targetUser and use their phone or search by email (existing logic, but now as a fallback)
-            const users = await base44.asServiceRole.entities.User.filter({ id: target_user_id });
-            targetUser = users.length > 0 ? users[0] : null;
+            // 3. Check User Entity LAST
+            if (target_user_id) {
+                const users = await base44.asServiceRole.entities.User.filter({ id: target_user_id });
+                targetUser = users.length > 0 ? users[0] : null;
 
-            if (targetUser && !resolvedPhone) {
-                resolvedPhone = targetUser.phone;
-                
-                // If phone is still missing AND targetUser.email exists, try more generic searches
-                if (!resolvedPhone && targetUser.email) {
-                    const emailToFind = targetUser.email.toLowerCase().trim();
-                    console.log(`[Notification] User ${target_user_id} missing phone, searching entities by email: ${emailToFind} (fallback)`);
-                    
-                    // 1. Check Suppliers (generic email search if not already found by ID)
-                    if (!related_supplier_id) { // Avoid redundant search if already checked by ID
-                        const suppliers = await base44.asServiceRole.entities.Supplier.list();
-                        const supplier = suppliers.find(s => 
-                            s.contact_emails && 
-                            Array.isArray(s.contact_emails) && 
-                            s.contact_emails.some(e => e && e.toLowerCase().trim() === emailToFind)
-                        );
-                        if (supplier && supplier.phone) {
-                            resolvedPhone = supplier.phone;
-                            console.log(`[Notification] Resolved phone from Supplier (generic) ${supplier.id}: ${resolvedPhone}`);
-                        }
-                    }
-
-                    // 2. Check Clients (Event Parents) if still missing (generic email search)
-                    if (!resolvedPhone && !related_event_id) { // Avoid redundant search if already checked by ID
-                        const events = await base44.asServiceRole.entities.Event.filter({ status: { $ne: 'cancelled' } });
-                        for (const event of events) {
-                            if (event.parents && Array.isArray(event.parents)) {
-                                const parent = event.parents.find(p => 
-                                    p.email && p.email.toLowerCase().trim() === emailToFind
-                                );
-                                if (parent && parent.phone) {
-                                    resolvedPhone = parent.phone;
-                                    console.log(`[Notification] Resolved phone from Event (Client generic) ${event.id}: ${resolvedPhone}`);
-                                    break; 
-                                }
-                            }
-                        }
-                    }
+                if (targetUser && !resolvedPhone) {
+                    resolvedPhone = targetUser.phone;
+                    console.log(`[Notification] Resolved phone from User ${target_user_id}: ${resolvedPhone}`);
                 }
             }
+            
+            // 4. Fallback search by email if still no phone and we have an email
+            if (normalizedEmail && !targetUser) {
+                 const usersByEmail = await base44.asServiceRole.entities.User.filter({ email: normalizedEmail });
+                 if (usersByEmail.length > 0) {
+                     targetUser = usersByEmail[0];
+                     if (targetUser && !target_user_id) {
+                         target_user_id = targetUser.id; // Auto-link found user
+                     }
+                     if (!resolvedPhone && targetUser.phone) {
+                         resolvedPhone = targetUser.phone;
+                         console.log(`[Notification] Resolved phone from User email search ${normalizedEmail}: ${resolvedPhone}`);
+                     }
+                 }
+            }
+            
+            // Ensure target_user_id exists for DB constraint
+            if (!target_user_id) {
+                target_user_id = `virtual_${Date.now()}`;
+                console.log(`[Notification] No target_user_id provided, using virtual ID: ${target_user_id}`);
+            }
+
         } catch (e) {
             console.warn('[Notification] Error during phone resolution:', e.message);
         }
