@@ -48,6 +48,16 @@ Deno.serve(async (req) => {
                     console.warn(`[ScheduledPush] Could not fetch user ${pending.user_id}:`, e.message);
                 }
 
+                // Verify not in Shabbat (Friday 16:00 - Saturday 20:00)
+                if (isShabbat()) {
+                    const shabbatEnd = getShabbatEndTime();
+                    await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
+                        scheduled_for: shabbatEnd.toISOString()
+                    });
+                    console.log(`[ScheduledPush] Shabbat active. Rescheduled for ${shabbatEnd.toISOString()}`);
+                    continue;
+                }
+
                 // Verify user is no longer in quiet hours before sending
                 // Use defaults if not set (22:00-08:00)
                 const startHour = targetUser?.quiet_start_hour !== undefined ? targetUser.quiet_start_hour : 22;
@@ -249,6 +259,52 @@ function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
     if (currentHour >= quietEnd) {
         endTime.setDate(endTime.getDate() + 1);
     }
+    
+    return endTime;
+}
+
+// Helper function: Check if current time is during Shabbat (Friday 16:00 - Saturday 20:00)
+function isShabbat(timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        hour: 'numeric',
+        hour12: false,
+        timeZone: timezone
+    });
+    const parts = formatter.formatToParts(now);
+    const dayPart = parts.find(p => p.type === 'weekday');
+    const hourPart = parts.find(p => p.type === 'hour');
+    
+    const day = dayPart?.value; // 'Fri', 'Sat', etc.
+    const hour = parseInt(hourPart?.value || '0', 10);
+    
+    // Friday after 16:00
+    if (day === 'Fri' && hour >= 16) return true;
+    // All day Saturday until 20:00
+    if (day === 'Sat' && hour < 20) return true;
+    
+    return false;
+}
+
+// Helper function: Get end of Shabbat time
+function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        timeZone: timezone
+    });
+    const day = formatter.format(now);
+    
+    // Calculate next Saturday 20:00
+    const endTime = new Date(now);
+    
+    if (day === 'Fri') {
+        // Move to Saturday
+        endTime.setDate(endTime.getDate() + 1);
+    }
+    // Set to 20:00
+    endTime.setHours(20, 0, 0, 0);
     
     return endTime;
 }
