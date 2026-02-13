@@ -52,42 +52,63 @@ Deno.serve(async (req) => {
         // --- 1. Smart User & Phone Resolution ---
         let targetUser = null;
         let resolvedPhone = target_phone; // Use override if provided
-        
+        let targetUser = null;
+
         try {
+            // Try to resolve phone from related supplier FIRST if supplier_id is provided
+            if (!resolvedPhone && related_supplier_id) {
+                const supplier = await base44.asServiceRole.entities.Supplier.get(related_supplier_id);
+                if (supplier?.phone) {
+                    resolvedPhone = supplier.phone;
+                    console.log(`[Notification] Resolved phone from related Supplier ${related_supplier_id}: ${resolvedPhone}`);
+                }
+            }
+
+            // Then try to resolve from client/event parents if event_id is provided (for client notifications)
+            if (!resolvedPhone && related_event_id) {
+                const event = await base44.asServiceRole.entities.Event.get(related_event_id);
+                if (event?.parents && Array.isArray(event.parents)) {
+                    // Find parent matching target_user_email if available, or just take the first phone
+                    const parent = event.parents.find(p => p.email && p.email.toLowerCase().trim() === target_user_email?.toLowerCase().trim());
+                    if (parent?.phone) {
+                        resolvedPhone = parent.phone;
+                        console.log(`[Notification] Resolved phone from Event parent ${related_event_id}: ${resolvedPhone}`);
+                    } else if (event.parents.length > 0 && event.parents[0].phone) {
+                        resolvedPhone = event.parents[0].phone; // Fallback to first parent's phone
+                        console.log(`[Notification] Resolved phone from first Event parent ${related_event_id} (fallback): ${resolvedPhone}`);
+                    }
+                }
+            }
+
+            // Finally, try to fetch targetUser and use their phone or search by email (existing logic, but now as a fallback)
             const users = await base44.asServiceRole.entities.User.filter({ id: target_user_id });
             targetUser = users.length > 0 ? users[0] : null;
-            
+
             if (targetUser && !resolvedPhone) {
                 resolvedPhone = targetUser.phone;
                 
-                // If phone is missing, try to resolve from Supplier or Client (Event) entities
+                // If phone is still missing AND targetUser.email exists, try more generic searches
                 if (!resolvedPhone && targetUser.email) {
                     const emailToFind = targetUser.email.toLowerCase().trim();
-                    console.log(`[Notification] User ${target_user_id} missing phone, searching entities by email: ${emailToFind}`);
+                    console.log(`[Notification] User ${target_user_id} missing phone, searching entities by email: ${emailToFind} (fallback)`);
                     
-                    // 1. Check Suppliers
-                    const suppliers = await base44.asServiceRole.entities.Supplier.list(); // Fetch list to iterate arrays safely
-                    const supplier = suppliers.find(s => 
-                        s.contact_emails && 
-                        Array.isArray(s.contact_emails) && 
-                        s.contact_emails.some(e => e && e.toLowerCase().trim() === emailToFind)
-                    );
-                    
-                    if (supplier && supplier.phone) {
-                        resolvedPhone = supplier.phone;
-                        console.log(`[Notification] Resolved phone from Supplier ${supplier.id}: ${resolvedPhone}`);
+                    // 1. Check Suppliers (generic email search if not already found by ID)
+                    if (!related_supplier_id) { // Avoid redundant search if already checked by ID
+                        const suppliers = await base44.asServiceRole.entities.Supplier.list();
+                        const supplier = suppliers.find(s => 
+                            s.contact_emails && 
+                            Array.isArray(s.contact_emails) && 
+                            s.contact_emails.some(e => e && e.toLowerCase().trim() === emailToFind)
+                        );
+                        if (supplier && supplier.phone) {
+                            resolvedPhone = supplier.phone;
+                            console.log(`[Notification] Resolved phone from Supplier (generic) ${supplier.id}: ${resolvedPhone}`);
+                        }
                     }
 
-                    // 2. Check Clients (Event Parents) if still missing
-                    if (!resolvedPhone) {
-                        // Fetch active events to search for parents
-                        // Optimization: We could filter by status, but list() is safer for now to ensure we find the user
-                        const events = await base44.asServiceRole.entities.Event.filter({ 
-                            // Only check active/future/recent events to optimize? 
-                            // For now, simpler to search all relevant statuses to find the contact info
-                            status: { $ne: 'cancelled' } 
-                        });
-
+                    // 2. Check Clients (Event Parents) if still missing (generic email search)
+                    if (!resolvedPhone && !related_event_id) { // Avoid redundant search if already checked by ID
+                        const events = await base44.asServiceRole.entities.Event.filter({ status: { $ne: 'cancelled' } });
                         for (const event of events) {
                             if (event.parents && Array.isArray(event.parents)) {
                                 const parent = event.parents.find(p => 
@@ -95,8 +116,8 @@ Deno.serve(async (req) => {
                                 );
                                 if (parent && parent.phone) {
                                     resolvedPhone = parent.phone;
-                                    console.log(`[Notification] Resolved phone from Event (Client) ${event.id}: ${resolvedPhone}`);
-                                    break; // Found it
+                                    console.log(`[Notification] Resolved phone from Event (Client generic) ${event.id}: ${resolvedPhone}`);
+                                    break; 
                                 }
                             }
                         }
@@ -104,7 +125,7 @@ Deno.serve(async (req) => {
                 }
             }
         } catch (e) {
-            console.warn('[Notification] Could not fetch target user preferences:', e.message);
+            console.warn('[Notification] Error during phone resolution:', e.message);
         }
 
         // --- 2. Template Logic & Channel Enforcement ---
