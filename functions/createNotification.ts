@@ -129,8 +129,8 @@ Deno.serve(async (req) => {
 
             // Ensure target_user_id exists for DB constraint logic later
             if (!target_user_id) {
-                target_user_id = `virtual_${Date.now()}`;
-                console.log(`[Notification] No target_user_id provided, using virtual ID: ${target_user_id}`);
+                // target_user_id = `virtual_${Date.now()}`; // DISABLED - We want to skip DB creation if no user
+                console.log(`[Notification] No target_user_id provided - proceeding without DB record (Direct Send)`);
             }
 
         } catch (e) {
@@ -215,9 +215,10 @@ Deno.serve(async (req) => {
             // but strict check on ID if DB enforces FK.
             // Safe bet: Try to create.
             
-            if (!isVirtual || target_user_email) {
+            // CRITICAL CHANGE: Only create DB record if we have a REAL target_user_id
+            if (target_user_id && !isVirtual) {
                 inAppNotification = await base44.asServiceRole.entities.InAppNotification.create({
-                    user_id: isVirtual ? undefined : target_user_id, // Send undefined if virtual to avoid FK constraint error
+                    user_id: target_user_id,
                     user_email: target_user_email || targetUser?.email,
                     title,
                     message,
