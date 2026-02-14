@@ -316,23 +316,27 @@ async function sendNotification(base44, template, entityData, event) {
         if (ids.length > 0) relatedSupplierId = ids[0];
     }
 
-    // Determine Audience & Send
+    // Determine Channels from Template
+    const allowedChannels = template.allowed_channels || ['push'];
+    const sendPush = allowedChannels.includes('push');
+    const sendWhatsApp = allowedChannels.includes('whatsapp');
+
+    // Determine Audience
     const audiences = template.targetaudiences || [];
 
-    // 1. Supplier Audience
+    // --- 1. Supplier Audience ---
     if (audiences.includes('supplier')) {
         let suppliersToSend = [];
         
-        // SMART TARGETING: If specific recipient defined in context from handleEntityEvents loop, ONLY send to them.
+        // Smart Targeting: Specific recipient takes precedence
         if (event.specificrecipientid) {
             suppliersToSend.push(event.specificrecipientid);
         } 
-        // Otherwise use standard logic
         else if (relatedSupplierId) {
             suppliersToSend.push(relatedSupplierId);
         } 
         else if (eventObj && event.entityname === 'Event') {
-            // Broadcast to all event suppliers e.g. Critical Event Change...
+            // Broadcast
             const services = await base44.asServiceRole.entities.EventService.filter({ eventid: eventObj.id });
             for (const s of services) {
                 let ids = [];
@@ -340,132 +344,147 @@ async function sendNotification(base44, template, entityData, event) {
                 suppliersToSend.push(...ids);
             }
         }
-
-        // Unique suppliers
+        
         suppliersToSend = [...new Set(suppliersToSend)];
 
         for (const supId of suppliersToSend) {
-            // Optimization: Don't refetch if we already have the object
+            // Get Supplier Entity
             let currentSupplierObj = (supplierObj && supplierObj.id === supId) ? supplierObj : null;
             if (!currentSupplierObj) {
-                const s = await base44.asServiceRole.entities.Supplier.filter({ id: supId });
-                if (s.length > 0) currentSupplierObj = s[0];
+                try { currentSupplierObj = await base44.asServiceRole.entities.Supplier.get(supId); } catch(e){}
             }
             if (!currentSupplierObj) continue;
 
-            // Determine Service Object Context
+            // Resolve Service Context
             let serviceObj = null;
             if (relatedServiceId) {
-                // If the event came from EventService, we know the service
                 try { serviceObj = await base44.asServiceRole.entities.EventService.get(relatedServiceId); } catch(e){}
-            } else if (event.entityname === 'Event') {
-                // If it's a broadcast from Event, we need to find which service this supplier belongs to in this event
-                // This gives context like {servicename} to the message
-                const services = await base44.asServiceRole.entities.EventService.filter({ eventid: eventObj.id });
-                for (const s of services) {
-                    if (s.supplierids && s.supplierids.includes(supId)) {
-                        serviceObj = s;
-                        break; // Assume 1 service per supplier per event for now
-                    }
-                }
+            } else if (eventObj) {
+                 const services = await base44.asServiceRole.entities.EventService.filter({ eventid: eventObj.id });
+                 serviceObj = services.find(s => s.supplierids && s.supplierids.includes(supId));
             }
 
-            // Find Users for Supplier OR Send to Unregistered via Phone
-            let sentToUser = false;
-            
-            // Priority 1: Entity Phone
-            const entityPhone = currentSupplierObj.phone;
+            // --- A. WhatsApp (Direct to Entity Phone) ---
+            if (sendWhatsApp && currentSupplierObj.phone) {
+                await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, serviceObj, null);
+            }
 
-            if (currentSupplierObj.contactemails && Array.isArray(currentSupplierObj.contactemails)) {
+            // --- B. Push/InApp (To User) ---
+            if (sendPush && currentSupplierObj.contactemails && currentSupplierObj.contactemails.length > 0) {
                 for (const email of currentSupplierObj.contactemails) {
                     if (!email) continue;
                     const users = await base44.asServiceRole.entities.User.filter({ email: email });
-                    if (users.length > 0) {
-                        for (const user of users) {
-                            // FIX: If user exists but has no phone, use Supplier entity phone
-                            if (!user.phone && entityPhone) {
-                                user.phone = entityPhone;
-                            }
-                            await trigger(base44, template, user, eventObj, currentSupplierObj, serviceObj);
-                            sentToUser = true;
-                        }
-                    }
-                }
-            }
-
-            // FIX: If no registered user found, construct a Virtual User to trigger WhatsApp
-            if (!sentToUser && entityPhone) {
-                console.log(`[Notification] No registered user for supplier ${currentSupplierObj.suppliername}. Sending to phone ${entityPhone}`);
-                const virtualUser = {
-                    id: `virtual_sup_${currentSupplierObj.id}`,
-                    email: currentSupplierObj.contactemails?.[0] || `sup_${currentSupplierObj.id}@virtual.com`,
-                    fullname: currentSupplierObj.contactperson || currentSupplierObj.suppliername,
-                    phone: entityPhone,
-                    role: 'supplier',
-                    // Default preferences for unregistered users
-                    pushenabled: false,
-                    whatsappenabled: true
-                };
-                await trigger(base44, template, virtualUser, eventObj, currentSupplierObj, serviceObj);
-            }
-        }
-    }
-
-    // 2. Client Audience
-    if (audiences.includes('client') && eventObj) {
-        if (eventObj.parents && Array.isArray(eventObj.parents)) {
-            for (const p of eventObj.parents) {
-                // ... (existing client logic - enhanced for phone priority)
-                // FIX: Get Phone from Entity (Event Parent)
-                const entityPhone = p.phone;
-                let sentToUser = false;
-
-                if (p.email) {
-                    const users = await base44.asServiceRole.entities.User.filter({ email: p.email });
                     for (const user of users) {
-                        // FIX: If user exists but has no phone, use Parent entity phone
-                        if (!user.phone && entityPhone) {
-                            user.phone = entityPhone;
-                        }
-                        await trigger(base44, template, user, eventObj, null, null);
-                        sentToUser = true;
+                        await triggerInApp(base44, template, user, eventObj, currentSupplierObj, serviceObj);
                     }
-                }
-                
-                // FIX: If no user found, create Virtual Client
-                if (!sentToUser && entityPhone) {
-                     console.log(`[Notification] No registered user for client ${p.name}. Sending to phone ${entityPhone}`);
-                     const virtualUser = {
-                        id: `virtual_client_${Date.now()}`,
-                        email: p.email || `client_${Date.now()}@virtual.com`,
-                        fullname: p.name,
-                        phone: entityPhone,
-                        role: 'client',
-                        pushenabled: false,
-                        whatsappenabled: true
-                    };
-                    await trigger(base44, template, virtualUser, eventObj, null, null);
                 }
             }
         }
     }
 
-    // 3. Admin Audience
+    // --- 2. Client Audience ---
+    if (audiences.includes('client') && eventObj && eventObj.parents) {
+        for (const p of eventObj.parents) {
+            // --- A. WhatsApp (Direct to Entity Phone) ---
+            if (sendWhatsApp && p.phone) {
+                 await triggerWhatsApp(base44, template, p.phone, eventObj, null, null, p); // Pass p as user context for names
+            }
+
+            // --- B. Push/InApp (To User) ---
+            if (sendPush && p.email) {
+                const users = await base44.asServiceRole.entities.User.filter({ email: p.email });
+                for (const user of users) {
+                    await triggerInApp(base44, template, user, eventObj, null, null);
+                }
+            }
+        }
+    }
+
+    // --- 3. Admin Audience ---
     if (audiences.includes('admin')) {
         const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
         for (const admin of admins) {
-            await trigger(base44, template, admin, eventObj, supplierObj, null);
+            // --- A. WhatsApp (To User Phone for Admins) ---
+            if (sendWhatsApp && admin.phone) {
+                await triggerWhatsApp(base44, template, admin.phone, eventObj, supplierObj, null, admin);
+            }
+             // --- B. Push/InApp (To User) ---
+            if (sendPush) {
+                await triggerInApp(base44, template, admin, eventObj, supplierObj, null);
+            }
         }
     }
 }
 
-async function trigger(base44, template, user, eventObj, supplierObj, serviceObj) {
-    // Variable Replacement
-    let title = template.title || '';
-    let message = template.body || '';
-    let whatsappmessage = template.whatsappbody || message;
+async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj) {
+    if (!phone) return;
+    
+    // Replace Variables for WhatsApp
+    let message = template.whatsapp_body_template || template.body_template || template.body || '';
+    message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj);
+    
+    // Dynamic Link
+    let link = '';
+    const baseUrl = 'https://pulse-system.base44.app';
+    if (template.dynamic_url_type && template.dynamic_url_type !== 'none') {
+        const context = {
+            event_id: eventObj?.id,
+            supplier_id: supplierObj?.id,
+            user_role: 'supplier' // Default context for link generation
+        };
+        // Simple link gen logic (duplicated from createNotification briefly for independence)
+        switch (template.dynamic_url_type) {
+            case 'event_page': link = `${baseUrl}/EventDetails?id=${context.event_id}`; break;
+            case 'payment_page': link = `${baseUrl}/EventDetails?id=${context.event_id}&tab=payments`; break;
+            case 'assignment_page': link = `${baseUrl}/SupplierDashboard`; break;
+            case 'calendar_page': link = `${baseUrl}/EventManagement?tab=board`; break;
+        }
+    }
 
-    // ... (Keep extensive existing variable mapping for safety) ...
+    // Call Independent WhatsApp Function
+    try {
+        await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
+            phone: phone,
+            message: message,
+            file_url: null // Support files in future if needed
+        });
+        console.log(`[HandleEntityEvents] WhatsApp sent to ${phone}`);
+    } catch (e) {
+        console.error(`[HandleEntityEvents] WhatsApp failed to ${phone}`, e);
+    }
+}
+
+async function triggerInApp(base44, template, user, eventObj, supplierObj, serviceObj) {
+    if (!user || !user.id) return;
+
+    // Replace Variables for Push/InApp
+    let title = template.title_template || template.title || '';
+    let message = template.body_template || template.body || '';
+    
+    title = replaceVariables(title, eventObj, supplierObj, serviceObj, user);
+    message = replaceVariables(message, eventObj, supplierObj, serviceObj, user);
+
+    try {
+         await base44.asServiceRole.functions.invoke('createNotification', {
+            target_user_id: user.id,
+            target_user_email: user.email,
+            title, 
+            message, 
+            template_type: template.type,
+            related_event_id: eventObj ? eventObj.id : undefined,
+            related_supplier_id: supplierObj ? supplierObj.id : undefined,
+            related_event_service_id: serviceObj ? serviceObj.id : undefined,
+            send_push: true
+        });
+        console.log(`[HandleEntityEvents] InApp/Push triggered for ${user.email}`);
+    } catch (e) {
+        console.error('InApp Trigger failed', e);
+    }
+}
+
+function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj) {
+    if (!text) return '';
+    
     const vars = {
         '{eventname}': eventObj ? eventObj.eventname : '',
         '{eventdate}': eventObj ? eventObj.eventdate : '',
@@ -477,57 +496,20 @@ async function trigger(base44, template, user, eventObj, supplierObj, serviceObj
         '{familyname}': eventObj ? eventObj.familyname : '',
         '{childname}': eventObj ? eventObj.childname : '',
         '{eventid}': eventObj ? eventObj.id : '',
-        '{eventlink}': eventObj ? `https://pulse-system.base44.app/EventDetails?id=${eventObj.id}` : '',
-        // Client details from parents array if available
-        '{clientname}': eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].name : '',
-        '{clientphone}': eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].phone : '',
-        '{clientemail}': eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].email : '',
-        // Supplier details
+        '{clientname}': eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].name : (userObj?.fullname || ''),
+        '{clientphone}': eventObj && eventObj.parents && eventObj.parents[0] ? eventObj.parents[0].phone : (userObj?.phone || ''),
         '{suppliername}': supplierObj ? supplierObj.suppliername : '',
         '{supplierphone}': supplierObj ? supplierObj.phone : '',
-        '{supplieremail}': supplierObj && supplierObj.contactemails ? supplierObj.contactemails[0] : '',
-        // Service details (if related to assignment)
         '{servicename}': serviceObj ? serviceObj.servicename : (eventObj && eventObj.serviceName ? eventObj.serviceName : ''),
-        // Assignment details
-        '{assignmentstatus}': serviceObj && supplierObj && serviceObj.supplierstatuses ? JSON.parse(serviceObj.supplierstatuses)[supplierObj.id] : '',
-        // Financials...
         '{totalprice}': eventObj ? (eventObj.totalprice || eventObj.allinclusiveprice) : '',
-        '{discountamount}': eventObj ? eventObj.discountamount : '',
-        '{balance}': eventObj && eventObj.balance !== undefined ? eventObj.balance : '', // Use enriched balance if available
-        '{totalpaid}': eventObj && eventObj.totalpaid !== undefined ? eventObj.totalpaid : '',
-        // User System
-        '{username}': user.fullname || '',
-        '{adminname}': ''
+        '{balance}': eventObj && eventObj.balance !== undefined ? eventObj.balance : '',
+        '{username}': userObj ? (userObj.fullname || userObj.name) : ''
     };
 
+    let result = text;
     for (const [k, v] of Object.entries(vars)) {
         const regex = new RegExp(k, 'g');
-        title = title.replace(regex, v || '');
-        message = message.replace(regex, v || '');
-        whatsappmessage = whatsappmessage.replace(regex, v || '');
+        result = result.replace(regex, v || '');
     }
-
-    try {
-        // Base URL for links - Must be Production URL for WhatsApp links to work
-        // FIX: Force Correct Base URL
-        const baseUrl = 'https://pulse-system.base44.app'; 
-
-        await base44.asServiceRole.functions.invoke('createNotification', {
-            target_user_id: user.id,
-            target_user_email: user.email,
-            target_phone: user.phone, // FIX: Pass phone explicitly
-            title, 
-            message, 
-            whatsapp_message: whatsappmessage,
-            template_type: template.type,
-            related_event_id: eventObj ? eventObj.id : undefined,
-            related_supplier_id: supplierObj ? supplierObj.id : undefined,
-            related_event_service_id: serviceObj ? serviceObj.id : undefined,
-            base_url: baseUrl, // Let createNotification handle channels based on template
-            send_whatsapp: true // Hint to createNotification to check phone
-        });
-        console.log(`[HandleEntityEvents] Triggered for ${user.email} (Phone: ${user.phone})`);
-    } catch (e) {
-        console.error('Trigger failed', e);
-    }
+    return result;
 }

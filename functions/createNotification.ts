@@ -34,71 +34,34 @@ Deno.serve(async (req) => {
             related_event_service_id,
             related_supplier_id,
             send_push = true,
-            send_whatsapp = false,
-            check_quiet_hours = true,
-            target_phone = null
+            check_quiet_hours = true
         } = payload;
-        
-        const whatsapp_message = payload.whatsapp_message || message;
-        
+
         if (!title || !message) {
             return Response.json({ error: 'title and message are required' }, { status: 400 });
         }
-        
+
         // --- URL FIX: FORCE CORRECT DOMAIN ---
         // We force the correct domain for Pulse System
         const FORCED_BASE_URL = 'https://pulse-system.base44.app';
         
         console.log(`[Notification] Creating notification for user ${target_user_id || 'unknown'}: ${title}`);
         
-        // --- 1. Smart User & Phone Resolution ---
+        // --- 1. User Resolution (Only for Push/In-App) ---
         let targetUser = null;
-        let resolvedPhone = target_phone; 
-        
+
         const normalizedEmail = typeof target_user_email === 'string' && target_user_email 
           ? target_user_email.toLowerCase().trim() 
           : null;
 
         try {
-            // 1. Check Supplier Entity FIRST (Priority)
-            if (!resolvedPhone && related_supplier_id) {
-                const supplier = await base44.asServiceRole.entities.Supplier.get(related_supplier_id);
-                if (supplier?.phone) {
-                    resolvedPhone = supplier.phone;
-                    console.log(`[Notification] Resolved phone from Supplier ${related_supplier_id}: ${resolvedPhone}`);
-                }
-            }
-
-            // 2. Check Event Parents (Client) SECOND
-            if (!resolvedPhone && related_event_id) {
-                const event = await base44.asServiceRole.entities.Event.get(related_event_id);
-                if (event?.parents && Array.isArray(event.parents)) {
-                    let parent = null;
-                    if (normalizedEmail) {
-                        parent = event.parents.find(p => p.email && p.email.toLowerCase().trim() === normalizedEmail);
-                    }
-                    if (!parent && event.parents.length > 0) {
-                        parent = event.parents[0];
-                    }
-                    if (parent?.phone) {
-                        resolvedPhone = parent.phone;
-                        console.log(`[Notification] Resolved phone from Event parent ${related_event_id}: ${resolvedPhone}`);
-                    }
-                }
-            }
-
-            // 3. Check User Entity LAST
+            // Check User Entity
             if (target_user_id && !target_user_id.startsWith('virtual')) {
                 const users = await base44.asServiceRole.entities.User.filter({ id: target_user_id });
                 targetUser = users.length > 0 ? users[0] : null;
-
-                if (targetUser && !resolvedPhone) {
-                    resolvedPhone = targetUser.phone;
-                    console.log(`[Notification] Resolved phone from User ${target_user_id}: ${resolvedPhone}`);
-                }
             }
-            
-            // 4. Fallback search by email
+
+            // Fallback search by email
             if (normalizedEmail && !targetUser) {
                  const usersByEmail = await base44.asServiceRole.entities.User.filter({ email: normalizedEmail });
                  if (usersByEmail.length > 0) {
@@ -106,45 +69,10 @@ Deno.serve(async (req) => {
                      if (targetUser && !target_user_id) {
                          target_user_id = targetUser.id;
                      }
-                     if (!resolvedPhone && targetUser.phone) {
-                         resolvedPhone = targetUser.phone;
-                         console.log(`[Notification] Resolved phone from User email search ${normalizedEmail}: ${resolvedPhone}`);
-                     }
                  }
             }
-            
-            // --- CRITICAL FIX START: Last Resort Phone Resolution ---
-            // If User exists but has no phone, or if targetUser is null but we have email, try to find Supplier by Email
-            if (!resolvedPhone && normalizedEmail) {
-                 // Try to find if this email belongs to a supplier contact
-                 // This is a "Hail Mary" to find a phone number
-                 try {
-                     // Note: Optimally we would filter by contact_emails, but if not possible, we rely on related_supplier_id check above.
-                     // If we are here, it means related_supplier_id was missing but we have an email.
-                     // Let's check if the user we found (if any) is linked to a supplier?
-                     // Or simply rely on the fact that if it's a supplier notification, the ID should have been passed.
-                 } catch(e) {}
-            }
-            // --- CRITICAL FIX END ---
-
-            // Ensure target_user_id exists for DB constraint logic later
-            if (!target_user_id) {
-                // target_user_id = `virtual_${Date.now()}`; // DISABLED - We want to skip DB creation if no user
-                console.log(`[Notification] No target_user_id provided - proceeding without DB record (Direct Send)`);
-            }
-
         } catch (e) {
-            console.warn('[Notification] Error during phone resolution:', e.message);
-        }
-
-        // --- 1.1 Sync Phone Back to User ---
-        if (targetUser && !targetUser.phone && resolvedPhone) {
-            try {
-                console.log(`[Notification] Updating user ${targetUser.id} with resolved phone: ${resolvedPhone}`);
-                await base44.asServiceRole.entities.User.update(targetUser.id, { phone: resolvedPhone });
-            } catch (updateErr) {
-                console.warn('[Notification] Failed to sync phone to user:', updateErr.message);
-            }
+            console.warn('[Notification] Error during user resolution:', e.message);
         }
 
         // --- 2. Template Logic ---
@@ -156,16 +84,9 @@ Deno.serve(async (req) => {
                 
                 if (template) {
                     const allowed = template.allowed_channels || ['push'];
-                    
+
                     if (!allowed.includes('push')) send_push = false;
-                    
-                    if (!allowed.includes('whatsapp')) {
-                        send_whatsapp = false;
-                    } else if (allowed.includes('whatsapp') && !send_whatsapp) {
-                        // Auto-enable WhatsApp if template allows it but push is disabled
-                        if (!allowed.includes('push')) send_whatsapp = true;
-                    }
-                    
+
                     // --- Dynamic URL Generation ---
                     if ((!link || link === '') && template.dynamic_url_type && template.dynamic_url_type !== 'none') {
                         // Using FORCED_BASE_URL here
@@ -182,24 +103,21 @@ Deno.serve(async (req) => {
             }
         }
         
-        // Check User Preferences - Only affects Push, WhatsApp is forced by Admin/Template
+        // Check User Preferences - Only affects Push
         if (targetUser?.notification_preferences && template_type) {
             const pref = targetUser.notification_preferences[template_type];
             if (pref !== undefined) {
                 const isEnabled = typeof pref === 'object' ? pref.enabled !== false : pref !== false;
                 if (!isEnabled) {
                     send_push = false; // Disable push only
-                    console.log(`[Notification] User disabled ${template_type} - Push disabled, proceeding with WhatsApp check...`);
-                    // We DO NOT return here, allowing WhatsApp to proceed if enabled
+                    console.log(`[Notification] User disabled ${template_type} - Push disabled.`);
                 }
             }
         }
-        
+
         const userHasPushEnabled = targetUser?.push_enabled === true && targetUser?.onesignal_subscription_id;
-        // WhatsApp enabled if we have a phone
-        const userHasWhatsAppEnabled = !!resolvedPhone; 
-        
-        console.log(`[Notification] Channels - Push: ${send_push && userHasPushEnabled}, WhatsApp: ${send_whatsapp && userHasWhatsAppEnabled} (Phone: ${resolvedPhone})`);
+
+        console.log(`[Notification] Channels - Push: ${send_push && userHasPushEnabled}`);
 
         // --- 4. DB Logging (SAFE MODE) ---
         // FIX: Wrap DB creation in try/catch so failure doesn't stop WhatsApp
@@ -229,7 +147,7 @@ Deno.serve(async (req) => {
                     related_event_service_id: related_event_service_id || '',
                     related_supplier_id: related_supplier_id || '',
                     push_sent: false,
-                    whatsapp_sent: false,
+                    whatsapp_sent: false, // Legacy field, kept for schema compliance
                     whatsapp_message_id: '',
                     reminder_count: 0,
                     is_resolved: false
@@ -275,82 +193,20 @@ Deno.serve(async (req) => {
                 template_type: template_type || 'CUSTOM',
                 in_app_notification_id: notificationRecordId,
                 is_sent: false,
-                data: JSON.stringify({
-                    send_whatsapp: send_whatsapp && userHasWhatsAppEnabled,
-                    whatsapp_message: whatsapp_message 
-                })
+                data: JSON.stringify({})
             });
-            
+
             if (notificationRecordId) {
                 await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
                     push_scheduled_for: scheduledFor.toISOString()
                 });
             }
-            
+
             return Response.json({
                 success: true,
                 notification_id: notificationRecordId,
-                push: { sent: false, scheduled: true },
-                whatsapp: { sent: false, scheduled: true, reason: delayReason }
+                push: { sent: false, scheduled: true }
             });
-        }
-        
-        // --- WhatsApp Logic (Immediate) ---
-        let whatsappResult = { sent: false };
-
-        if (send_whatsapp && userHasWhatsAppEnabled) {
-            try {
-                const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-                const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-
-                if (!GREEN_API_INSTANCE_ID || !GREEN_API_TOKEN) throw new Error("Missing Green API Credentials");
-
-                let cleanPhone = resolvedPhone.replace(/[^0-9]/g, '');
-                if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-                const chatId = `${cleanPhone}@c.us`;
-                
-                // Construct Link for WhatsApp (Force Correct Base URL)
-                let fullLink = '';
-                if (link) {
-                    if (link.startsWith('http')) fullLink = link; 
-                    else fullLink = `${FORCED_BASE_URL}${link.startsWith('/') ? link : '/' + link}`;
-                }
-                
-                const whatsappContent = `*${title}*\n\n${whatsapp_message}${fullLink ? `\n\n${fullLink}` : ''}`;
-
-                console.log(`[Notification] Sending WhatsApp to ${chatId}`);
-
-                const waResponse = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chatId, message: whatsappContent })
-                });
-
-                const waData = await waResponse.json();
-                
-                if (waResponse.ok) {
-                    whatsappResult = { sent: true, id: waData.idMessage };
-                    console.log(`[Notification] WhatsApp sent successfully`);
-                    if (notificationRecordId) {
-                        try {
-                            await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
-                                whatsapp_sent: true,
-                                whatsapp_message_id: waData.idMessage || ''
-                            });
-                        } catch (err) { console.warn('Failed to update whatsapp status', err); }
-                    }
-                } else {
-                    whatsappResult = { sent: false, error: waData };
-                    console.warn(`[Notification] WhatsApp failed:`, waData);
-                }
-            } catch (waError) {
-                console.error('[Notification] WhatsApp error:', waError);
-                whatsappResult = { sent: false, error: waError.message };
-            }
-        } else if (send_whatsapp && !userHasWhatsAppEnabled) {
-            whatsappResult = { sent: false, reason: !resolvedPhone ? 'Missing phone number' : 'WhatsApp disabled' };
         }
 
         // --- Push Logic (Immediate) ---
@@ -410,8 +266,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             notification_id: notificationRecordId || 'virtual',
-            push: pushResult,
-            whatsapp: whatsappResult
+            push: pushResult
         });
         
     } catch (error) {
