@@ -9,6 +9,7 @@ import { Search, Edit, Mail, Phone, UserCheck, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SyncPhonesButton from "@/components/admin/SyncPhonesButton";
 
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -118,6 +119,7 @@ export default function UserManagement() {
           <h1 className="text-3xl font-bold text-white">ניהול משתמשים</h1>
           <p className="text-white/80 mt-1">נהל את סוגי המשתמשים והרשאותיהם במערכת</p>
         </div>
+        <SyncPhonesButton />
       </div>
 
       {/* Filters */}
