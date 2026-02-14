@@ -1,71 +1,128 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 /**
- * Syncs Supplier phone numbers to corresponding Users (by email).
- * Ensures that if a User exists for a Supplier, they have the correct phone number.
+ * Syncs User Identity (Phone & Display Name) from Suppliers and Events.
+ * 
+ * Logic:
+ * 1. Matches Users by Email.
+ * 2. Syncs Phone: If User has no phone (in data.phone or root), updates it from Supplier/Event.
+ * 3. Syncs Display Name:
+ *    - For Suppliers: Uses 'contact_person' or 'supplier_name'.
+ *    - For Clients (Event Parents): Uses '{parent.name} {event.family_name}'.
+ * 4. Priority: Updates are sequential. If a user is both, Event data might overwrite Supplier data depending on order.
  */
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        console.log('[SyncPhones] Starting sync process...');
+        console.log('[SyncIdentity] Starting sync process...');
 
-        // 1. Fetch all Suppliers and Users
-        // Note: For large datasets, use pagination. Assuming < 1000 for now or increasing limit.
-        const suppliers = await base44.asServiceRole.entities.Supplier.list({ limit: 1000 });
-        const users = await base44.asServiceRole.entities.User.list({ limit: 1000 });
+        // 1. Fetch Data
+        // Increasing limits to cover more records. For production with thousands, cursor pagination is recommended.
+        const [suppliers, users, events] = await Promise.all([
+            base44.asServiceRole.entities.Supplier.list({ limit: 1000 }),
+            base44.asServiceRole.entities.User.list({ limit: 1000 }),
+            base44.asServiceRole.entities.Event.list({ limit: 1000 })
+        ]);
 
-        console.log(`[SyncPhones] Found ${suppliers.length} suppliers and ${users.length} users.`);
+        console.log(`[SyncIdentity] Processing ${suppliers.length} suppliers, ${events.length} events against ${users.length} users.`);
 
         const updates = [];
         const errors = [];
 
-        // 2. Create a map of Users by Email for O(1) lookup
+        // Map users by Email (lowercase) for fast lookup
         const usersByEmail = new Map();
         users.forEach(u => {
             if (u.email) usersByEmail.set(u.email.toLowerCase().trim(), u);
         });
 
-        // 3. Iterate Suppliers
-        for (const supplier of suppliers) {
-            // Get supplier email (check contact_emails array or other fields if needed)
-            // The schema says `contact_emails` is an array of strings.
-            const emails = supplier.contact_emails || [];
-            if (!Array.isArray(emails) || emails.length === 0) continue;
+        // Helper to perform update
+        const updateUser = async (user, newPhone, newName, source) => {
+            try {
+                // Determine if we need an update
+                // Check both root phone and data.phone (Base44 structure nuances)
+                const currentPhone = user.data?.phone || user.phone;
+                const currentName = user.data?.display_name || user.display_name;
 
-            // Use the first email or iterate all? Let's iterate all to find a match.
+                let updatesToApply = {};
+                let hasChanges = false;
+
+                // Phone Logic: Only update if source has phone AND (user has no phone OR user phone is different)
+                if (newPhone && (!currentPhone || currentPhone !== newPhone)) {
+                    updatesToApply.phone = newPhone;
+                    hasChanges = true;
+                }
+
+                // Name Logic: Update if source has name AND (user has no name OR different)
+                // We overwrite name to ensure it's "updated" as requested
+                if (newName && (!currentName || currentName !== newName)) {
+                    updatesToApply.display_name = newName;
+                    hasChanges = true;
+                }
+
+                if (hasChanges) {
+                    console.log(`[SyncIdentity] Updating User ${user.email} (${source}):`, updatesToApply);
+                    
+                    // We simply pass the fields. Base44 SDK puts them in 'data' if they are custom fields.
+                    await base44.asServiceRole.entities.User.update(user.id, updatesToApply);
+                    
+                    // Update local object to reflect change for subsequent loops (if any)
+                    if (!user.data) user.data = {};
+                    if (updatesToApply.phone) {
+                         user.phone = updatesToApply.phone; 
+                         user.data.phone = updatesToApply.phone;
+                    }
+                    if (updatesToApply.display_name) {
+                        user.display_name = updatesToApply.display_name;
+                        user.data.display_name = updatesToApply.display_name;
+                    }
+
+                    updates.push({
+                        email: user.email,
+                        source,
+                        changes: updatesToApply
+                    });
+                }
+            } catch (err) {
+                console.error(`[SyncIdentity] Error updating ${user.email}:`, err);
+                errors.push({ email: user.email, error: err.message });
+            }
+        };
+
+        // 2. Process Suppliers
+        for (const supplier of suppliers) {
+            const emails = supplier.contact_emails || [];
+            if (!Array.isArray(emails)) continue;
+
+            const supplierName = supplier.contact_person || supplier.supplier_name;
+            const supplierPhone = supplier.phone;
+
             for (const email of emails) {
                 if (!email) continue;
-                const normalizedEmail = email.toLowerCase().trim();
+                const matchedUser = usersByEmail.get(email.toLowerCase().trim());
+                if (matchedUser) {
+                    // Check logic: 
+                    // - Prioritize updating phone if supplier has one.
+                    // - Always try to sync name.
+                    await updateUser(matchedUser, supplierPhone, supplierName, 'Supplier');
+                }
+            }
+        }
+
+        // 3. Process Events (Clients)
+        for (const event of events) {
+            const parents = event.parents || [];
+            if (!Array.isArray(parents)) continue;
+
+            for (const parent of parents) {
+                if (!parent.email) continue;
+                const matchedUser = usersByEmail.get(parent.email.toLowerCase().trim());
                 
-                if (usersByEmail.has(normalizedEmail)) {
-                    const matchedUser = usersByEmail.get(normalizedEmail);
-                    
-                    // Check if sync needed
-                    // Logic: If user phone is empty OR user phone is different from supplier phone
-                    // AND supplier has a phone.
-                    if (supplier.phone && (!matchedUser.phone || matchedUser.phone !== supplier.phone)) {
-                        try {
-                            console.log(`[SyncPhones] Updating User ${matchedUser.email} phone from ${matchedUser.phone || 'empty'} to ${supplier.phone}`);
-                            
-                            await base44.asServiceRole.entities.User.update(matchedUser.id, {
-                                phone: supplier.phone
-                            });
-                            
-                            updates.push({
-                                user_email: matchedUser.email,
-                                old_phone: matchedUser.phone,
-                                new_phone: supplier.phone
-                            });
-                            
-                            // Update the map instance too if we hit it again
-                            matchedUser.phone = supplier.phone; 
-                            
-                        } catch (err) {
-                            console.error(`[SyncPhones] Failed to update user ${matchedUser.id}:`, err);
-                            errors.push({ email: matchedUser.email, error: err.message });
-                        }
-                    }
+                if (matchedUser) {
+                    const clientName = `${parent.name || ''} ${event.family_name || ''}`.trim();
+                    const clientPhone = parent.phone;
+
+                    await updateUser(matchedUser, clientPhone, clientName, 'Event/Client');
                 }
             }
         }
@@ -73,13 +130,14 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             processed_suppliers: suppliers.length,
+            processed_events: events.length,
             updates_count: updates.length,
             updates,
             errors
         });
 
     } catch (error) {
-        console.error('[SyncPhones] Fatal Error:', error);
+        console.error('[SyncIdentity] Fatal Error:', error);
         return Response.json({ error: error.message }, { status: 500 });
     }
 });
