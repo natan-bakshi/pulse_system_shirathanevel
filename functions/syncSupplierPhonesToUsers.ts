@@ -8,10 +8,6 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        // Admin only check (optional but good practice)
-        // const user = await base44.auth.me();
-        // if (user?.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
-
         console.log('[SyncPhones] Starting sync process...');
 
         // 1. Fetch all Suppliers and Users
