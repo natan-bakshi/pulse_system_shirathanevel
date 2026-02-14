@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { createNotification } from "@/functions/createNotification";
 import { 
   Bell, Plus, Pencil, Trash2, Save, Loader2, 
-  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy, Info, Send
+  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy, Info, Send, MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -336,6 +336,9 @@ export default function NotificationManagementTab() {
     queryFn: () => base44.entities.NotificationTemplate.list()
   });
 
+  const systemTemplates = templates.filter(t => !t.allowed_channels?.includes("whatsapp"));
+  const whatsappTemplates = templates.filter(t => t.allowed_channels?.includes("whatsapp"));
+
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (template) => {
@@ -374,13 +377,16 @@ export default function NotificationManagementTab() {
     }
   });
 
-  // Group templates by category
-  const templatesByCategory = templates.reduce((acc, t) => {
+  // Helper to group templates
+  const groupTemplates = (list) => list.reduce((acc, t) => {
     const cat = t.category || 'system';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(t);
     return acc;
   }, {});
+
+  const systemTemplatesByCategory = groupTemplates(systemTemplates);
+  const whatsappTemplatesByCategory = groupTemplates(whatsappTemplates);
 
   const handleEdit = (template) => {
     setEditingTemplate({ ...template });
@@ -645,27 +651,28 @@ export default function NotificationManagementTab() {
       </div>
 
       {/* Templates List */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="templates">תבניות התראה</TabsTrigger>
+      <Tabs defaultValue="system" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="system">התראות מערכת</TabsTrigger>
+          <TabsTrigger value="whatsapp">הודעות WhatsApp</TabsTrigger>
           <TabsTrigger value="stats">סטטיסטיקות</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="templates" className="space-y-4">
+        <TabsContent value="system" className="space-y-4">
           {templatesLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : templates.length === 0 ? (
+          ) : systemTemplates.length === 0 ? (
             <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
               <CardContent className="py-8 text-center text-gray-500">
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p>אין תבניות התראה. לחץ על "תבנית חדשה" ליצירת תבנית ראשונה.</p>
+                <p>אין תבניות מערכת. לחץ על "תבנית חדשה" ליצירת תבנית ראשונה.</p>
               </CardContent>
             </Card>
           ) : (
-            Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
-              <Card key={category} className="bg-white/95 backdrop-blur-sm shadow-xl">
+            Object.entries(systemTemplatesByCategory).map(([category, categoryTemplates]) => (
+              <Card key={category} className="bg-white/95 backdrop-blur-sm shadow-xl border-r-4 border-r-blue-500">
                 <CardHeader className="py-3">
                   <CardTitle className="text-base">
                     {CATEGORIES[category] || category}
@@ -699,9 +706,91 @@ export default function NotificationManagementTab() {
                             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {template.timing_value} {TIMING_UNITS[template.timing_unit]} לפני
-                              {template.reminder_interval_value && (
-                                <span> | תזכורת כל {template.reminder_interval_value} {TIMING_UNITS[template.reminder_interval_unit]}</span>
-                              )}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mr-4">
+                          <Switch
+                            checked={template.is_active}
+                            onCheckedChange={(checked) => 
+                              toggleActiveMutation.mutate({ id: template.id, is_active: checked })
+                            }
+                          />
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(template)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => {
+                              if (confirm('האם למחוק את תבנית ההתראה?')) {
+                                deleteMutation.mutate(template.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="whatsapp" className="space-y-4">
+          {templatesLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : whatsappTemplates.length === 0 ? (
+            <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+              <CardContent className="py-8 text-center text-gray-500">
+                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-30 text-green-500" />
+                <p>אין תבניות WhatsApp. לחץ על "תבנית חדשה" והגדר ערוץ WhatsApp.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            Object.entries(whatsappTemplatesByCategory).map(([category, categoryTemplates]) => (
+              <Card key={category} className="bg-white/95 backdrop-blur-sm shadow-xl border-r-4 border-r-green-500">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-base">
+                    {CATEGORIES[category] || category}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2">
+                    {categoryTemplates.map((template) => (
+                      <div 
+                        key={template.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                          template.is_active ? 'bg-white' : 'bg-gray-50 opacity-60'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{template.name}</span>
+                            <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50">
+                              WhatsApp
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {TRIGGER_TYPES[template.trigger_type]?.label || template.trigger_type}
+                            </Badge>
+                            {template.target_audiences?.map(a => (
+                              <Badge key={a} variant="secondary" className="text-xs">
+                                {AUDIENCES[a]?.label || a}
+                              </Badge>
+                            ))}
+                          </div>
+                          <p className="text-sm text-gray-500 truncate mt-1">
+                            {template.description || template.whatsapp_body_template}
+                          </p>
+                          {template.timing_value && (
+                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {template.timing_value} {TIMING_UNITS[template.timing_unit]} לפני
                             </p>
                           )}
                         </div>
