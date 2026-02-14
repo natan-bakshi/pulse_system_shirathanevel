@@ -36,13 +36,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
   const [preferences, setPreferences] = useState({});
   const [quietStartHour, setQuietStartHour] = useState(null);
   const [quietEndHour, setQuietEndHour] = useState(null);
-  const [whatsappEnabled, setWhatsappEnabled] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
-
-  // Force WhatsApp to true on load and save
-  useEffect(() => {
-    setWhatsappEnabled(true);
-  }, []);
 
   // Fetch notification templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -57,7 +51,6 @@ export default function UserNotificationPreferences({ user, onClose }) {
       setPreferences(user.notification_preferences || {});
       setQuietStartHour(user.quiet_start_hour ?? null);
       setQuietEndHour(user.quiet_end_hour ?? null);
-      setWhatsappEnabled(user.whatsapp_enabled ?? true);
     }
   }, [user]);
 
@@ -83,8 +76,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
       await base44.auth.updateMe({
         notification_preferences: preferences,
         quiet_start_hour: quietStartHour,
-        quiet_end_hour: quietEndHour,
-        whatsapp_enabled: whatsappEnabled
+        quiet_end_hour: quietEndHour
       });
     },
     onSuccess: () => {
@@ -151,23 +143,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
         {/* Push Permission Section */}
         <PushPermissionButton user={user} />
 
-        {/* WhatsApp Forced ON - Hidden from user to prevent disabling */}
-        <div className="p-4 border rounded-lg bg-green-50/50 border-green-100 opacity-80 cursor-not-allowed">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-green-100 p-2 rounded-full">
-                <MessageCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <Label className="text-base font-medium">התראות WhatsApp</Label>
-                <p className="text-sm text-gray-500">התראות WhatsApp פעילות באופן קבוע עבור כל המשתמשים</p>
-              </div>
-            </div>
-            <Switch checked={true} disabled />
-          </div>
-        </div>
 
-        <Separator />
 
         {/* Quiet Hours Section */}
         <div className="space-y-4">
