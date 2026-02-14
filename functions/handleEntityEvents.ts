@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
         if (!event || !data) return Response.json({ skipped: true, reason: 'Invalid payload' });
 
-        const triggerType = event.type === 'create' ? 'entitycreate' : 'entityupdate';
+        const triggerType = event.type === 'create' ? 'entity_create' : 'entity_update';
         console.log(`[HandleEntityEvents] Processing ${event.entityname} ${triggerType}`);
 
         // 1. Fetch relevant templates
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
             // Check if supplier added
             const added = newIds.filter(id => !oldIds.includes(id));
             if (added.length > 0) {
-                triggerTypesToFetch.push('supplierassignmentcreate');
+                triggerTypesToFetch.push('supplier_assignment_create');
                 // FIX: Store specifically WHO was added so we don't broadcast to everyone later
                 event.addedsupplierids = added; 
                 console.log(`[HandleEntityEvents] Detected supplier assignment creation. Added suppliers: ${added.join(', ')}`);
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
             // Check if supplier removed
             const removed = oldIds.filter(id => !newIds.includes(id));
             if (removed.length > 0) {
-                triggerTypesToFetch.push('supplierassignmentdelete');
+                triggerTypesToFetch.push('supplier_assignment_delete');
                 // FIX: Store specifically WHO was removed
                 event.removedsupplierids = removed;
                 console.log(`[HandleEntityEvents] Detected supplier assignment deletion. Removed suppliers: ${removed.join(', ')}`);
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
             for (const [supId, newStatus] of Object.entries(newStatuses)) {
                 if (oldStatuses[supId] !== newStatus) {
-                    triggerTypesToFetch.push('assignmentstatuschange');
+                    triggerTypesToFetch.push('assignment_status_change');
                     event.changedstatussupplierids.push({ id: supId, status: newStatus, oldstatus: oldStatuses[supId] });
                     console.log(`[HandleEntityEvents] Detected status change for supplier ${supId}: ${oldStatuses[supId]} -> ${newStatus}`);
                 }
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
              const criticalFields = ['eventdate', 'eventtime', 'location', 'concept'];
              const changedFields = criticalFields.filter(field => data[field] !== olddata[field]);
              if (changedFields.length > 0) {
-                 triggerTypesToFetch.push('eventcriticalupdate');
+                 triggerTypesToFetch.push('event_critical_update');
                  console.log(`[HandleEntityEvents] Detected critical event update. Fields: ${changedFields.join(', ')}`);
              }
         }
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
                     // Smart Targeting Logic
                     
                     // FIX: Case 1 - New Supplier Assignment (Only send to the NEW supplier)
-                    if (template.triggertype === 'supplierassignmentcreate' && event.addedsupplierids?.length > 0) {
+                    if (template.triggertype === 'supplier_assignment_create' && event.addedsupplierids?.length > 0) {
                         for (const supId of event.addedsupplierids) {
                             // Clone event to pass specific context
                             const specificEvent = { ...event, specificrecipientid: supId };
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
                         }
                     }
                     // FIX: Case 2 - Supplier Removal (Only send to the REMOVED supplier)
-                    else if (template.triggertype === 'supplierassignmentdelete' && event.removedsupplierids?.length > 0) {
+                    else if (template.triggertype === 'supplier_assignment_delete' && event.removedsupplierids?.length > 0) {
                         for (const supId of event.removedsupplierids) {
                             const specificEvent = { ...event, specificrecipientid: supId };
                             await sendNotification(base44, template, enrichedData, specificEvent);
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
                         }
                     }
                     // Case 3 - Status Change (Only send to the changed supplier)
-                    else if (template.triggertype === 'assignmentstatuschange' && event.changedstatussupplierids?.length > 0) {
+                    else if (template.triggertype === 'assignment_status_change' && event.changedstatussupplierids?.length > 0) {
                         // Iterate over each changed supplier and send context-specific notification
                         for (const changeContext of event.changedstatussupplierids) {
                             // Clone event to pass specific context

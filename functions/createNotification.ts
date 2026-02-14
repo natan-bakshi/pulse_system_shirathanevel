@@ -182,13 +182,15 @@ Deno.serve(async (req) => {
             }
         }
         
-        // Check User Preferences
+        // Check User Preferences - Only affects Push, WhatsApp is forced by Admin/Template
         if (targetUser?.notification_preferences && template_type) {
             const pref = targetUser.notification_preferences[template_type];
             if (pref !== undefined) {
                 const isEnabled = typeof pref === 'object' ? pref.enabled !== false : pref !== false;
                 if (!isEnabled) {
-                    return Response.json({ success: true, skipped: true, reason: 'User disabled this type' });
+                    send_push = false; // Disable push only
+                    console.log(`[Notification] User disabled ${template_type} - Push disabled, proceeding with WhatsApp check...`);
+                    // We DO NOT return here, allowing WhatsApp to proceed if enabled
                 }
             }
         }
