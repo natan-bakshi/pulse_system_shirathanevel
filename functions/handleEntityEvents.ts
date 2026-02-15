@@ -9,7 +9,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+        
+        // LOG RAW REQUEST
         const payload = await req.json();
+        console.log('[HandleEntityEvents] RAW PAYLOAD:', JSON.stringify(payload));
+
         // Payload: { event: { type, entity_name, entity_id }, data: {...}, old_data: {...} }
         const { event, data, old_data } = payload;
         
@@ -17,7 +21,7 @@ Deno.serve(async (req) => {
         const oldData = old_data || payload.olddata;
 
         if (!event || !data) {
-            console.error('[HandleEntityEvents] Invalid payload:', payload);
+            console.error('[HandleEntityEvents] Invalid payload structure:', Object.keys(payload));
             return Response.json({ skipped: true, reason: 'Invalid payload' });
         }
 
@@ -38,7 +42,7 @@ Deno.serve(async (req) => {
 
         // Helper for safe parsing
         const safeParse = (val) => {
-            if (!val) return [];
+            if (val === undefined || val === null) return [];
             if (Array.isArray(val) || typeof val === 'object') return val;
             try { return JSON.parse(val); } catch (e) { return []; }
         };
@@ -47,6 +51,8 @@ Deno.serve(async (req) => {
         if (entityName === 'EventService' && triggerType === 'entity_update') {
             const oldIds = safeParse(oldData?.supplier_ids || oldData?.supplierids);
             const newIds = safeParse(data.supplier_ids || data.supplierids);
+
+            console.log('[HandleEntityEvents] Comparing IDs:', { old: oldIds, new: newIds });
 
             // Check if supplier added
             const oldIdsStr = Array.isArray(oldIds) ? oldIds.map(String) : [];
@@ -75,10 +81,13 @@ Deno.serve(async (req) => {
 
             if (newStatuses && typeof newStatuses === 'object') {
                 for (const [supId, newStatus] of Object.entries(newStatuses)) {
-                    if (oldStatuses[supId] !== newStatus) {
+                    // Safe access to old status
+                    const oldStatus = oldStatuses && typeof oldStatuses === 'object' ? oldStatuses[supId] : undefined;
+                    
+                    if (oldStatus !== newStatus) {
                         triggerTypesToFetch.push('assignment_status_change');
-                        event.changed_status_supplier_ids.push({ id: supId, status: newStatus, old_status: oldStatuses[supId] });
-                        console.log(`[HandleEntityEvents] Detected status change for supplier ${supId}: ${oldStatuses[supId]} -> ${newStatus}`);
+                        event.changed_status_supplier_ids.push({ id: supId, status: newStatus, old_status: oldStatus });
+                        console.log(`[HandleEntityEvents] Detected status change for supplier ${supId}: ${oldStatus} -> ${newStatus}`);
                     }
                 }
             }
@@ -159,6 +168,8 @@ Deno.serve(async (req) => {
 
         // Fetch all matching templates
         let templates = [];
+        console.log(`[HandleEntityEvents] Fetching templates for types: ${triggerTypesToFetch.join(', ')}`);
+        
         for (const type of triggerTypesToFetch) {
             const res = await base44.asServiceRole.entities.NotificationTemplate.filter({ 
                 is_active: true, 
@@ -168,7 +179,7 @@ Deno.serve(async (req) => {
             templates = [...templates, ...res];
         }
         
-        console.log(`[HandleEntityEvents] Found ${templates.length} templates for ${entityName} (Types: ${triggerTypesToFetch.join(', ')})`);
+        console.log(`[HandleEntityEvents] Found ${templates.length} templates`);
 
         let notificationsSent = 0;
 
