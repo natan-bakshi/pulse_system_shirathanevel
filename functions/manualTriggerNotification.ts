@@ -5,7 +5,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
  * Allows admins to force-send a notification for a specific event/entity immediately.
  * Bypasses timing checks and quiet hours.
  * Respects Shabbat.
- * Sends WhatsApp DIRECTLY via Green API (Decoupled from InAppNotification).
+ * Sends WhatsApp DIRECTLY via Green API (Inlined).
  */
 Deno.serve(async (req) => {
     const logs = [];
@@ -37,6 +37,13 @@ Deno.serve(async (req) => {
 
         log(`[ManualTrigger] Triggering template ${template_id} for event ${event_id}`);
 
+        // Secrets for WA
+        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+        if (!GREEN_API_INSTANCE_ID || !GREEN_API_TOKEN) {
+             return Response.json({ error: 'Missing Green API Secrets', logs }, { status: 500 });
+        }
+
         // 1. Fetch Template & Event
         const template = await base44.asServiceRole.entities.NotificationTemplate.get(template_id);
         const event = await base44.asServiceRole.entities.Event.get(event_id);
@@ -61,7 +68,6 @@ Deno.serve(async (req) => {
              
              // Collect all relevant supplier IDs first
              const supplierIdsToFetch = new Set();
-             
              for (const es of eventServices) {
                  if (!es.supplier_ids) continue;
                  try {
@@ -72,7 +78,7 @@ Deno.serve(async (req) => {
              
              log(`[ManualTrigger] Found ${supplierIdsToFetch.size} unique suppliers in event services`);
              
-             // Fetch suppliers individually to ensure we get them even if > 50
+             // Fetch suppliers individually
              const suppliersMap = new Map();
              for (const supId of supplierIdsToFetch) {
                  try {
@@ -110,7 +116,6 @@ Deno.serve(async (req) => {
                      }
 
                      // DIRECT WHATSAPP SEND (No user dependency)
-                     // Treat undefined/null whatsapp_enabled as TRUE (default)
                      const whatsappEnabled = supplier.whatsapp_enabled !== false;
                      
                      if (whatsappEnabled && supplier.phone) {
@@ -130,11 +135,8 @@ Deno.serve(async (req) => {
                          const whatsappMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
                          
                          try {
-                             await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
-                                 phone: supplier.phone,
-                                 message: whatsappMessage,
-                                 file_url: null
-                             });
+                             await sendDirectWhatsApp(supplier.phone, whatsappMessage, null, GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, log);
+                             
                              results.whatsapp_sent++;
                              results.recipients.push({ name: supplier.supplier_name, type: 'whatsapp', phone: supplier.phone });
                              log(`[ManualTrigger] Sent WhatsApp to ${supplier.supplier_name}`);
@@ -187,11 +189,8 @@ Deno.serve(async (req) => {
                              const whatsappMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
                              
                              try {
-                                 await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
-                                     phone: parent.phone,
-                                     message: whatsappMessage,
-                                     file_url: null
-                                 });
+                                 await sendDirectWhatsApp(parent.phone, whatsappMessage, null, GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, log);
+                                 
                                  results.whatsapp_sent++;
                                  results.recipients.push({ name: parent.name, type: 'whatsapp', phone: parent.phone });
                                  log(`[ManualTrigger] Sent WA to client ${parent.name}`);
@@ -227,6 +226,40 @@ Deno.serve(async (req) => {
 });
 
 // --- Helpers ---
+
+async function sendDirectWhatsApp(phone, message, file_url, instanceId, token, log) {
+    if (!phone || !message) throw new Error('Missing phone or message');
+
+    let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+
+    const chatId = `${cleanPhone}@c.us`;
+    let apiMethod = 'sendMessage';
+    let body = { chatId, message };
+
+    if (file_url) {
+        apiMethod = 'sendFileByUrl';
+        body = {
+            chatId,
+            urlFile: file_url,
+            fileName: file_url.split('/').pop() || 'file',
+            caption: message
+        };
+    }
+
+    const response = await fetch(`https://api.green-api.com/waInstance${instanceId}/${apiMethod}/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(JSON.stringify(data));
+    }
+    return data;
+}
 
 async function createLogRecord(base44, data) {
     try {
