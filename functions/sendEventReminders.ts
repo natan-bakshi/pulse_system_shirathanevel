@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
         // Get all event services
         const allEventServices = await base44.asServiceRole.entities.EventService.list();
         
-        // Get all suppliers
-        const suppliers = await base44.asServiceRole.entities.Supplier.list();
+        // Get all suppliers (Limit 1000 to be safe)
+        const suppliers = await base44.asServiceRole.entities.Supplier.list(); // TODO: Add pagination loop if > 50
         const suppliersMap = new Map(suppliers.map(s => [s.id, s]));
         
         // Get all users
@@ -73,8 +73,6 @@ Deno.serve(async (req) => {
                     case 'weeks': reminderCutoff.setDate(reminderCutoff.getDate() - (timingValue * 7)); break;
                 }
                 
-                // console.log(`[EventReminders] Event: ${event.event_name}, Date: ${eventDateTime.toISOString()}, Cutoff: ${reminderCutoff.toISOString()}, Now: ${now.toISOString()}`);
-
                 // Check if it's time to send reminder
                 if (now >= reminderCutoff) {
                     // Get approved suppliers for this event
@@ -101,21 +99,15 @@ Deno.serve(async (req) => {
                             const supplier = suppliersMap.get(supplierId);
                             if (!supplier) continue;
                             
-                            // Find user for supplier (optional)
-                            const supplierUser = allUsers.find(u => 
-                                supplier.contact_emails?.includes(u.email)
-                            );
+                            // Determine Target User ID (Virtual) - Decoupled from User entity
+                            const targetUserId = `virtual_supplier_${supplierId}`;
+                            const targetUserEmail = supplier.contact_emails?.[0] || '';
 
-                            // Determine Target User ID (Real or Virtual)
-                            const targetUserId = supplierUser ? supplierUser.id : `virtual_supplier_${supplierId}`;
-                            const targetUserEmail = supplierUser ? supplierUser.email : (supplier.contact_emails?.[0] || '');
-
-                            // Check for existing reminder by Related Supplier ID (Robust)
-                            // We check if ANY notification exists for this event+supplier, regardless of user_id
+                            // Check for existing reminder in DB logs
                             const hasExisting = existingNotifications.some(n => 
                                 n.template_type === 'SUPPLIER_EVENT_REMINDER' &&
                                 n.related_event_id === event.id &&
-                                (n.related_supplier_id === supplierId || n.user_id === targetUserId)
+                                n.related_supplier_id === supplierId
                             );
 
                             if (hasExisting) {
@@ -142,23 +134,41 @@ Deno.serve(async (req) => {
 
                             // DIRECT SEND FIRST (Decoupled from InAppNotification)
                             let whatsappSent = false;
-                            // Check if phone exists and WhatsApp is enabled (default true)
-                            if (supplier.whatsapp_enabled !== false && supplier.phone) {
+                            
+                            // Always try to send if phone exists (user policy: no opt-out)
+                            if (supplier.phone) {
                                 try {
-                                    await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
-                                        phone: supplier.phone,
-                                        message: whatsappMessage,
-                                        file_url: null
-                                    });
-                                    whatsappSent = true;
-                                    console.log(`[EventReminders] DIRECT WhatsApp sent to ${supplier.supplier_name} (${supplier.phone})`);
+                                    const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+                                    const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+                                    
+                                    if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                                        let cleanPhone = supplier.phone.toString().replace(/[^0-9]/g, '');
+                                        if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+                                        else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+
+                                        const chatId = `${cleanPhone}@c.us`;
+                                        const body = { chatId, message: whatsappMessage };
+
+                                        const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(body)
+                                        });
+                                        
+                                        if (response.ok) {
+                                            whatsappSent = true;
+                                            console.log(`[EventReminders] DIRECT WhatsApp sent to ${supplier.supplier_name} (${supplier.phone})`);
+                                        } else {
+                                            const err = await response.text();
+                                            console.error(`[EventReminders] Green API Error: ${err}`);
+                                        }
+                                    }
                                 } catch (waError) {
                                     console.error(`[EventReminders] DIRECT WhatsApp failed for ${supplier.supplier_name}:`, waError);
                                 }
                             }
 
                             // THEN CREATE LOG (InAppNotification)
-                            // We create the log regardless of WhatsApp success to prevent duplicate processing attempts
                             try {
                                 await base44.asServiceRole.entities.InAppNotification.create({
                                     user_id: targetUserId,
