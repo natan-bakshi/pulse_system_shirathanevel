@@ -62,13 +62,18 @@ Deno.serve(async (req) => {
                 const timingValue = supplierTemplate.timing_value || 1;
                 const timingUnit = supplierTemplate.timing_unit || 'days';
                 
-                const reminderCutoff = new Date(eventDate);
+                // Calculate Event Time in UTC (Assuming input is Israel Time)
+                const eventDateTime = getIsraelEventDate(event.event_date, event.event_time);
+                
+                const reminderCutoff = new Date(eventDateTime);
                 switch (timingUnit) {
                     case 'hours': reminderCutoff.setHours(reminderCutoff.getHours() - timingValue); break;
                     case 'days': reminderCutoff.setDate(reminderCutoff.getDate() - timingValue); break;
                     case 'weeks': reminderCutoff.setDate(reminderCutoff.getDate() - (timingValue * 7)); break;
                 }
                 
+                // console.log(`[EventReminders] Event: ${event.event_name}, Date: ${eventDateTime.toISOString()}, Cutoff: ${reminderCutoff.toISOString()}, Now: ${now.toISOString()}`);
+
                 // Check if it's time to send reminder
                 if (now >= reminderCutoff) {
                     // Get approved suppliers for this event
@@ -88,8 +93,9 @@ Deno.serve(async (req) => {
                         }
                         
                         for (const supplierId of supplierIds) {
-                            // Only remind approved suppliers
-                            if (supplierStatuses[supplierId] !== 'approved') continue;
+                            // Only remind approved/confirmed suppliers
+                            const status = supplierStatuses[supplierId];
+                            if (status !== 'approved' && status !== 'confirmed') continue;
                             
                             const supplier = suppliersMap.get(supplierId);
                             if (!supplier) continue;
@@ -267,4 +273,22 @@ function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('he-IL');
+}
+
+function getIsraelEventDate(dateStr, timeStr) {
+    let time = timeStr || '00:00';
+    if (!time.match(/^\d{1,2}:\d{2}$/)) time = '00:00';
+    
+    // Create UTC date from string (e.g. 2026-02-16T09:00:00Z)
+    const d = new Date(`${dateStr}T${time}:00Z`);
+    
+    // Israel is UTC+2 in Winter, UTC+3 in Summer
+    // Simple heuristic: Summer clock is roughly Apr-Oct
+    const month = d.getMonth() + 1;
+    const isSummer = month >= 4 && month <= 10;
+    const offsetHours = isSummer ? 3 : 2;
+    
+    // Subtract offset to get true UTC moment corresponding to Israel time
+    d.setHours(d.getHours() - offsetHours);
+    return d;
 }
