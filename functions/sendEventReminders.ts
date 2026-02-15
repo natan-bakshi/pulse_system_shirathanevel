@@ -67,6 +67,7 @@ Deno.serve(async (req) => {
                 
                 const reminderCutoff = new Date(eventDateTime);
                 switch (timingUnit) {
+                    case 'minutes': reminderCutoff.setMinutes(reminderCutoff.getMinutes() - timingValue); break;
                     case 'hours': reminderCutoff.setHours(reminderCutoff.getHours() - timingValue); break;
                     case 'days': reminderCutoff.setDate(reminderCutoff.getDate() - timingValue); break;
                     case 'weeks': reminderCutoff.setDate(reminderCutoff.getDate() - (timingValue * 7)); break;
@@ -167,6 +168,7 @@ Deno.serve(async (req) => {
                 
                 const reminderCutoff = new Date(eventDate);
                 switch (timingUnit) {
+                    case 'minutes': reminderCutoff.setMinutes(reminderCutoff.getMinutes() - timingValue); break;
                     case 'hours': reminderCutoff.setHours(reminderCutoff.getHours() - timingValue); break;
                     case 'days': reminderCutoff.setDate(reminderCutoff.getDate() - timingValue); break;
                     case 'weeks': reminderCutoff.setDate(reminderCutoff.getDate() - (timingValue * 7)); break;
