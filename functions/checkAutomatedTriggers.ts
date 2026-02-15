@@ -320,8 +320,8 @@ async function sendToAudiences(base44, template, event, results) {
 
 async function triggerNotification(base44, template, event, user, supplier, eventService, results) {
     // Replace variables
-    let title = template.title_template;
-    let message = template.body_template;
+    let title = template.title_template || '';
+    let message = template.body_template || '';
     let whatsapp_message = template.whatsapp_body_template || message;
     
     const variables = {
@@ -332,7 +332,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
         family_name: event.family_name,
         supplier_name: supplier ? (supplier.contact_person || supplier.supplier_name) : '',
         service_name: eventService ? eventService.service_name : '',
-        user_name: user.full_name,
+        user_name: user ? user.full_name : '',
     };
     
     for (const [key, val] of Object.entries(variables)) {
@@ -342,26 +342,54 @@ async function triggerNotification(base44, template, event, user, supplier, even
         whatsapp_message = whatsapp_message.replace(regex, val || '');
     }
     
+    // 1. Direct WhatsApp Send (Decoupled)
+    let whatsappSent = false;
+    let phoneToUse = null;
+
+    if (supplier && supplier.phone && supplier.whatsapp_enabled !== false) {
+        phoneToUse = supplier.phone;
+    } else if (user && user.phone) {
+        phoneToUse = user.phone;
+    }
+
+    if (phoneToUse && template.allowed_channels && template.allowed_channels.includes('whatsapp')) {
+        try {
+            await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
+                phone: phoneToUse,
+                message: whatsapp_message,
+                file_url: null
+            });
+            whatsappSent = true;
+            console.log(`[AutomatedTriggers] DIRECT WhatsApp sent to ${phoneToUse}`);
+        } catch (e) {
+            console.error(`[AutomatedTriggers] Failed DIRECT WhatsApp to ${phoneToUse}`, e);
+        }
+    }
+
+    // 2. Log to InAppNotification
     try {
-        // Base URL for links - assuming generic app URL or handling in createNotification
-        const baseUrl = 'https://app.base44.com'; 
-        
-        await base44.asServiceRole.functions.invoke('createNotification', {
-            target_user_id: user.id,
-            target_user_email: user.email,
+        const targetUserId = user ? user.id : (supplier ? `virtual_supplier_${supplier.id}` : `virtual_event_${event.id}`);
+        const targetUserEmail = user ? user.email : (supplier ? supplier.contact_emails?.[0] : '');
+
+        await base44.asServiceRole.entities.InAppNotification.create({
+            user_id: targetUserId,
+            user_email: targetUserEmail,
             title: title,
             message: message,
-            whatsapp_message: whatsapp_message,
             link: '', 
             template_type: template.type,
             related_event_id: event.id,
             related_supplier_id: supplier ? supplier.id : undefined,
             related_event_service_id: eventService ? eventService.id : undefined,
-            base_url: baseUrl 
+            whatsapp_sent: whatsappSent,
+            push_sent: false, // We leave push to the legacy InApp logic or handle it separately if needed
+            is_read: false,
+            reminder_count: 0,
+            is_resolved: false
         });
         results.notifications_created++;
-        console.log(`[AutomatedTriggers] Triggered for user ${user.email}`);
+        console.log(`[AutomatedTriggers] Log created for ${targetUserId}`);
     } catch (e) {
-        console.error(`[AutomatedTriggers] Failed to trigger for user ${user.id}:`, e);
+        console.error(`[AutomatedTriggers] Failed to create log for ${user?.id || supplier?.id}:`, e);
     }
 }

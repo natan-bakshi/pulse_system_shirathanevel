@@ -132,6 +132,7 @@ Deno.serve(async (req) => {
                                 event_time: event.event_time || '',
                                 event_location: event.location || '',
                                 supplier_name: supplier.contact_person || supplier.supplier_name,
+                                supplier_phone: supplier.phone,
                                 event_id: event.id
                             };
 
@@ -140,8 +141,24 @@ Deno.serve(async (req) => {
                             const whatsappMessage = replacePlaceholders(supplierTemplate.whatsapp_body_template || supplierTemplate.body_template, contextData);
                             const link = buildDeepLink(supplierTemplate.deep_link_base, supplierTemplate.deep_link_params_map, contextData);
 
+                            // DIRECT SEND FIRST (Decoupled from InAppNotification)
+                            let whatsappSent = false;
+                            if (supplier.whatsapp_enabled !== false && supplier.phone) {
+                                try {
+                                    await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
+                                        phone: supplier.phone,
+                                        message: whatsappMessage,
+                                        file_url: null
+                                    });
+                                    whatsappSent = true;
+                                    console.log(`[EventReminders] DIRECT WhatsApp sent to ${supplier.supplier_name} (${supplier.phone})`);
+                                } catch (waError) {
+                                    console.error(`[EventReminders] DIRECT WhatsApp failed for ${supplier.supplier_name}:`, waError);
+                                }
+                            }
+
+                            // THEN CREATE LOG (InAppNotification)
                             try {
-                                // 1. Create InAppNotification (Log & Dashboard)
                                 await base44.asServiceRole.entities.InAppNotification.create({
                                     user_id: targetUserId,
                                     user_email: targetUserEmail,
@@ -154,30 +171,13 @@ Deno.serve(async (req) => {
                                     related_event_service_id: es.id,
                                     related_supplier_id: supplierId,
                                     push_sent: false,
-                                    whatsapp_sent: false,
+                                    whatsapp_sent: whatsappSent,
                                     reminder_count: 0,
                                     is_resolved: false
                                 });
-
-                                // 2. Send WhatsApp (If enabled)
-                                // We do this AFTER DB creation so we don't spam if DB fails, 
-                                // and we have a record that we "tried" (or at least processed it).
-                                if (supplier.whatsapp_enabled !== false && supplier.phone) {
-                                    try {
-                                        await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
-                                            phone: supplier.phone,
-                                            message: whatsappMessage,
-                                            file_url: null
-                                        });
-                                        console.log(`[EventReminders] WhatsApp sent to ${supplier.supplier_name} (${supplier.phone})`);
-                                    } catch (waError) {
-                                        console.error(`[EventReminders] WhatsApp failed for ${supplier.supplier_name}:`, waError);
-                                    }
-                                }
-
                                 sentCount++;
                             } catch (error) {
-                                console.error(`[EventReminders] Error sending to supplier ${supplier.supplier_name}:`, error);
+                                console.error(`[EventReminders] Error creating log for supplier ${supplier.supplier_name}:`, error);
                             }
                         }
                     }
