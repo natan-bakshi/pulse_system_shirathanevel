@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { createNotification } from "@/functions/createNotification";
 import { 
   Bell, Plus, Pencil, Trash2, Save, Loader2, 
-  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy, Info, Send, MessageSquare
+  AlertCircle, Clock, ChevronDown, ChevronUp, HelpCircle, Copy, Info, Send, MessageSquare, Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
