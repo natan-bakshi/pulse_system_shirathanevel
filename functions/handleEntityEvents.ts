@@ -9,11 +9,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        
-        // LOG RAW REQUEST
         const payload = await req.json();
-        console.log('[HandleEntityEvents] RAW PAYLOAD:', JSON.stringify(payload));
-
+        
         // Payload: { event: { type, entity_name, entity_id }, data: {...}, old_data: {...} }
         const { event, data, old_data } = payload;
         
@@ -21,21 +18,19 @@ Deno.serve(async (req) => {
         const oldData = old_data || payload.olddata;
 
         if (!event || !data) {
-            console.error('[HandleEntityEvents] Invalid payload structure:', Object.keys(payload));
+            // console.error('[HandleEntityEvents] Invalid payload structure');
             return Response.json({ skipped: true, reason: 'Invalid payload' });
         }
 
         // FIX: Handle both snake_case and lowercase variations from SDK
         const entityName = event.entity_name || event.entityname;
-        const entityId = event.entity_id || event.entityid;
         
         if (!entityName) {
-            console.error('[HandleEntityEvents] Entity name missing in event payload:', event);
             return Response.json({ skipped: true, reason: 'Missing entity name' });
         }
 
         const triggerType = event.type === 'create' ? 'entity_create' : 'entity_update';
-        console.log(`[HandleEntityEvents] Processing ${entityName} ${triggerType} (ID: ${entityId})`);
+        // console.log(`[HandleEntityEvents] Processing ${entityName} ${triggerType} (ID: ${event.entity_id})`);
 
         // 1. Fetch relevant templates
         let triggerTypesToFetch = [triggerType]; 
@@ -51,8 +46,6 @@ Deno.serve(async (req) => {
         if (entityName === 'EventService' && triggerType === 'entity_update') {
             const oldIds = safeParse(oldData?.supplier_ids || oldData?.supplierids);
             const newIds = safeParse(data.supplier_ids || data.supplierids);
-
-            console.log('[HandleEntityEvents] Comparing IDs:', { old: oldIds, new: newIds });
 
             // Check if supplier added
             const oldIdsStr = Array.isArray(oldIds) ? oldIds.map(String) : [];
@@ -168,7 +161,6 @@ Deno.serve(async (req) => {
 
         // Fetch all matching templates
         let templates = [];
-        console.log(`[HandleEntityEvents] Fetching templates for types: ${triggerTypesToFetch.join(', ')}`);
         
         for (const type of triggerTypesToFetch) {
             const res = await base44.asServiceRole.entities.NotificationTemplate.filter({ 
@@ -179,20 +171,21 @@ Deno.serve(async (req) => {
             templates = [...templates, ...res];
         }
         
-        console.log(`[HandleEntityEvents] Found ${templates.length} templates`);
+        if (templates.length === 0) {
+            // console.log(`[HandleEntityEvents] No templates found for ${entityName} (Types: ${triggerTypesToFetch.join(', ')})`);
+            return Response.json({ success: true, notifications_sent: 0 });
+        }
+
+        console.log(`[HandleEntityEvents] Found ${templates.length} templates for ${entityName}`);
 
         let notificationsSent = 0;
 
         for (const template of templates) {
             try {
-                console.log(`[HandleEntityEvents] Evaluating template ${template.name} (${template.trigger_type})`);
-                
                 // Check Conditions
                 const conditionsMet = await checkConditions(base44, template, enrichedData, oldData, event, triggerType);
                 
                 if (conditionsMet) {
-                    console.log(`[HandleEntityEvents] Conditions met for template ${template.name}`);
-                    
                     // Smart Targeting Logic
                     
                     // Case 1 - New Supplier Assignment
@@ -228,8 +221,6 @@ Deno.serve(async (req) => {
                         await sendNotification(base44, template, enrichedData, event, entityName);
                         notificationsSent++;
                     }
-                } else {
-                    console.log(`[HandleEntityEvents] Conditions NOT met for template ${template.name}`);
                 }
             } catch (e) {
                 console.error(`[HandleEntityEvents] Error processing template ${template.name}`, e);
@@ -335,10 +326,14 @@ async function sendNotification(base44, template, entityData, event, entityName)
         supplierObj = entityData;
     }
 
-    // Fetch Missing Event
+    // Fetch Missing Event with Error Handling
     if (!eventObj && relatedEventId) {
-        const evs = await base44.asServiceRole.entities.Event.filter({ id: relatedEventId });
-        eventObj = evs[0];
+        try {
+            const evs = await base44.asServiceRole.entities.Event.filter({ id: relatedEventId });
+            eventObj = evs[0];
+        } catch (e) {
+            console.error(`[HandleEntityEvents] Failed to fetch event ${relatedEventId}: ${e.message}`);
+        }
     }
 
     // Fetch Missing Service
@@ -365,7 +360,7 @@ async function sendNotification(base44, template, entityData, event, entityName)
     // Determine Audience
     const audiences = template.target_audiences || template.targetaudiences || [];
     
-    console.log(`[HandleEntityEvents] Sending notification. Channels: ${allowedChannels.join(',')}, Audiences: ${audiences.join(',')}`);
+    // console.log(`[HandleEntityEvents] Sending notification. Channels: ${allowedChannels.join(',')}, Audiences: ${audiences.join(',')}`);
 
     // --- 1. Supplier Audience ---
     if (audiences.includes('supplier')) {
@@ -393,28 +388,30 @@ async function sendNotification(base44, template, entityData, event, entityName)
         }
         
         suppliersToSend = [...new Set(suppliersToSend)];
-        console.log(`[HandleEntityEvents] Targeted Suppliers: ${suppliersToSend.join(',')}`);
+        // console.log(`[HandleEntityEvents] Targeted Suppliers: ${suppliersToSend.join(',')}`);
 
         for (const supId of suppliersToSend) {
             let currentSupplierObj = (supplierObj && supplierObj.id === supId) ? supplierObj : null;
             if (!currentSupplierObj) {
-                try { currentSupplierObj = await base44.asServiceRole.entities.Supplier.get(supId); } catch(e){}
+                try { currentSupplierObj = await base44.asServiceRole.entities.Supplier.get(supId); } catch(e) {
+                    console.error(`[HandleEntityEvents] Failed to fetch supplier ${supId}`);
+                    continue;
+                }
             }
-            if (!currentSupplierObj) {
-                console.log(`[HandleEntityEvents] Supplier ${supId} not found`);
-                continue;
-            }
+            if (!currentSupplierObj) continue;
 
             // Resolve Service Context for this supplier if missing
             let currentServiceObj = serviceObj;
             if (!currentServiceObj && eventObj) {
-                 const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventObj.id });
-                 currentServiceObj = services.find(s => {
-                     const sIds = s.supplier_ids || s.supplierids;
-                     if (!sIds) return false;
-                     const ids = typeof sIds === 'string' ? JSON.parse(sIds) : sIds;
-                     return Array.isArray(ids) && ids.includes(supId);
-                 });
+                 try {
+                     const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventObj.id });
+                     currentServiceObj = services.find(s => {
+                         const sIds = s.supplier_ids || s.supplierids;
+                         if (!sIds) return false;
+                         const ids = typeof sIds === 'string' ? JSON.parse(sIds) : sIds;
+                         return Array.isArray(ids) && ids.includes(supId);
+                     });
+                 } catch(e) {}
             }
 
             // WhatsApp
@@ -423,8 +420,6 @@ async function sendNotification(base44, template, entityData, event, entityName)
                 const isEnabled = currentSupplierObj.whatsapp_enabled !== false; 
                 if (isEnabled && currentSupplierObj.phone) {
                     await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null);
-                } else {
-                    console.log(`[HandleEntityEvents] WhatsApp skipped for supplier ${currentSupplierObj.supplier_name}. Enabled: ${isEnabled}, Phone: ${currentSupplierObj.phone}`);
                 }
             }
 
@@ -482,7 +477,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     let message = template.whatsapp_body_template || template.body_template || template.body || '';
     message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj);
     
-    console.log(`[HandleEntityEvents] Triggering WhatsApp to ${phone}`);
+    // console.log(`[HandleEntityEvents] Triggering WhatsApp to ${phone}`);
 
     // Call Independent WhatsApp Function
     try {
