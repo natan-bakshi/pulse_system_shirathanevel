@@ -324,7 +324,6 @@ export default function NotificationManagementTab() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testPhoneNumber, setTestPhoneNumber] = useState('');
   const [manualTriggerTemplate, setManualTriggerTemplate] = useState(null);
-  const [manualTriggerTemplate, setManualTriggerTemplate] = useState(null);
 
   // Get current user for test sending
   const { data: currentUser } = useQuery({
