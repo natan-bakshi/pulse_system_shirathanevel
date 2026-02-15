@@ -8,35 +8,41 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
  * Sends WhatsApp DIRECTLY via Green API (Decoupled from InAppNotification).
  */
 Deno.serve(async (req) => {
+    const logs = [];
+    const log = (msg) => {
+        console.log(msg);
+        logs.push(msg);
+    };
+
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
         
         // Security check
         if (!user || user.role !== 'admin') {
-            return Response.json({ error: 'Unauthorized' }, { status: 403 });
+            return Response.json({ error: 'Unauthorized', logs }, { status: 403 });
         }
 
         const payload = await req.json();
         const { template_id, event_id } = payload;
 
         if (!template_id || !event_id) {
-            return Response.json({ error: 'Missing template_id or event_id' }, { status: 400 });
+            return Response.json({ error: 'Missing template_id or event_id', logs }, { status: 400 });
         }
 
         // Shabbat Check
         if (isShabbat()) {
-            return Response.json({ error: 'Cannot send manual notifications on Shabbat' }, { status: 400 });
+            return Response.json({ error: 'Cannot send manual notifications on Shabbat', logs }, { status: 400 });
         }
 
-        console.log(`[ManualTrigger] Triggering template ${template_id} for event ${event_id}`);
+        log(`[ManualTrigger] Triggering template ${template_id} for event ${event_id}`);
 
         // 1. Fetch Template & Event
         const template = await base44.asServiceRole.entities.NotificationTemplate.get(template_id);
         const event = await base44.asServiceRole.entities.Event.get(event_id);
 
         if (!template || !event) {
-            return Response.json({ error: 'Template or Event not found' }, { status: 404 });
+            return Response.json({ error: 'Template or Event not found', logs }, { status: 404 });
         }
 
         const results = {
@@ -49,14 +55,19 @@ Deno.serve(async (req) => {
         
         // --- Suppliers Audience ---
         if (template.target_audiences.includes('supplier')) {
-             console.log('[ManualTrigger] Processing suppliers...');
+             log('[ManualTrigger] Processing suppliers...');
              // Get Event Services & Suppliers
              const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
              const suppliers = await base44.asServiceRole.entities.Supplier.list(); 
              const suppliersMap = new Map(suppliers.map(s => [s.id, s]));
 
+             log(`[ManualTrigger] Found ${eventServices.length} services and ${suppliers.length} total suppliers`);
+
              for (const es of eventServices) {
-                if (!es.supplier_ids) continue;
+                if (!es.supplier_ids) {
+                    log(`[ManualTrigger] Service ${es.id} has no supplier_ids`);
+                    continue;
+                }
                 
                 let supplierIds = [];
                 let supplierStatuses = {};
@@ -65,28 +76,34 @@ Deno.serve(async (req) => {
                     supplierIds = typeof es.supplier_ids === 'string' ? JSON.parse(es.supplier_ids) : es.supplier_ids;
                     supplierStatuses = typeof es.supplier_statuses === 'string' ? JSON.parse(es.supplier_statuses || '{}') : (es.supplier_statuses || {});
                 } catch (e) { 
-                    console.warn(`[ManualTrigger] Failed to parse JSON for ES ${es.id}`, e);
+                    log(`[ManualTrigger] Failed to parse JSON for ES ${es.id}: ${e.message}`);
                     continue; 
                 }
+
+                log(`[ManualTrigger] Service ${es.id} suppliers: ${JSON.stringify(supplierIds)}`);
 
                 for (const supplierId of supplierIds) {
                      // Check status (only confirmed/approved)
                      const status = supplierStatuses[supplierId];
-                     console.log(`[ManualTrigger] Checking supplier ${supplierId}, status: ${status}`);
+                     log(`[ManualTrigger] Checking supplier ${supplierId}, status: ${status}`);
                      
                      if (status !== 'approved' && status !== 'confirmed') {
-                         console.log(`[ManualTrigger] Skipping supplier ${supplierId} (status not approved/confirmed)`);
+                         log(`[ManualTrigger] Skipping supplier ${supplierId} (status not approved/confirmed)`);
                          continue;
                      }
 
                      const supplier = suppliersMap.get(supplierId);
                      if (!supplier) {
-                         console.log(`[ManualTrigger] Supplier ${supplierId} not found in DB`);
+                         log(`[ManualTrigger] Supplier ${supplierId} not found in DB`);
                          continue;
                      }
 
                      // DIRECT WHATSAPP SEND (No user dependency)
-                     if (supplier.whatsapp_enabled !== false && supplier.phone) {
+                     // Treat undefined/null whatsapp_enabled as TRUE (default)
+                     const whatsappEnabled = supplier.whatsapp_enabled !== false;
+                     log(`[ManualTrigger] Supplier ${supplier.supplier_name} - WA Enabled: ${whatsappEnabled}, Phone: ${supplier.phone}`);
+
+                     if (whatsappEnabled && supplier.phone) {
                          // Prepare Content
                          const contextData = {
                             event_name: event.event_name,
@@ -110,7 +127,7 @@ Deno.serve(async (req) => {
                              });
                              results.whatsapp_sent++;
                              results.recipients.push({ name: supplier.supplier_name, type: 'whatsapp', phone: supplier.phone });
-                             console.log(`[ManualTrigger] Sent WhatsApp to ${supplier.supplier_name}`);
+                             log(`[ManualTrigger] Sent WhatsApp to ${supplier.supplier_name}`);
                              
                              // Log to InAppNotification (Virtual) - Just for record
                              const title = replacePlaceholders(template.title_template, contextData);
@@ -128,10 +145,10 @@ Deno.serve(async (req) => {
                              });
 
                          } catch (e) {
-                             console.error(`[ManualTrigger] Failed to send to ${supplier.supplier_name}`, e);
+                             log(`[ManualTrigger] Failed to send to ${supplier.supplier_name}: ${e.message}`);
                          }
                      } else {
-                         console.log(`[ManualTrigger] Supplier ${supplier.supplier_name} skipped (WA disabled or no phone)`);
+                         log(`[ManualTrigger] Supplier ${supplier.supplier_name} skipped (WA disabled or no phone)`);
                      }
                 }
              }
@@ -139,13 +156,14 @@ Deno.serve(async (req) => {
 
         // --- Client Audience ---
         if (template.target_audiences.includes('client')) {
-            console.log('[ManualTrigger] Processing clients...');
+            log('[ManualTrigger] Processing clients...');
             if (event.parents) {
                 let parents = [];
                 try { parents = typeof event.parents === 'string' ? JSON.parse(event.parents) : event.parents; } catch(e){}
                 
                 if (Array.isArray(parents)) {
                     for (const parent of parents) {
+                        log(`[ManualTrigger] Checking parent ${parent.name}, Phone: ${parent.phone}`);
                         if (parent.phone) {
                              const contextData = {
                                 event_name: event.event_name,
@@ -167,6 +185,7 @@ Deno.serve(async (req) => {
                                  });
                                  results.whatsapp_sent++;
                                  results.recipients.push({ name: parent.name, type: 'whatsapp', phone: parent.phone });
+                                 log(`[ManualTrigger] Sent WA to client ${parent.name}`);
 
                                  // Log
                                  const title = replacePlaceholders(template.title_template, contextData);
@@ -182,7 +201,7 @@ Deno.serve(async (req) => {
                                  });
 
                              } catch (e) {
-                                 console.error(`[ManualTrigger] Failed to send to client ${parent.name}`, e);
+                                 log(`[ManualTrigger] Failed to send to client ${parent.name}: ${e.message}`);
                              }
                         }
                     }
@@ -190,11 +209,11 @@ Deno.serve(async (req) => {
             }
         }
 
-        return Response.json({ success: true, results });
+        return Response.json({ success: true, results, logs });
 
     } catch (error) {
         console.error('[ManualTrigger] Error:', error);
-        return Response.json({ error: error.message }, { status: 500 });
+        return Response.json({ error: error.message, logs }, { status: 500 });
     }
 });
 

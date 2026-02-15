@@ -718,6 +718,16 @@ export default function NotificationManagementTab() {
                               toggleActiveMutation.mutate({ id: template.id, is_active: checked })
                             }
                           />
+                          {['scheduled_check', 'event_status_change'].includes(template.trigger_type) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="הפעל ידנית עכשיו"
+                              onClick={() => setManualTriggerTemplate(template)}
+                            >
+                              <Zap className="h-4 w-4 text-amber-500" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(template)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -803,6 +813,16 @@ export default function NotificationManagementTab() {
                               toggleActiveMutation.mutate({ id: template.id, is_active: checked })
                             }
                           />
+                          {['scheduled_check', 'event_status_change'].includes(template.trigger_type) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="הפעל ידנית עכשיו"
+                              onClick={() => setManualTriggerTemplate(template)}
+                            >
+                              <Zap className="h-4 w-4 text-amber-500" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(template)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
