@@ -479,14 +479,34 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     
     // console.log(`[HandleEntityEvents] Triggering WhatsApp to ${phone}`);
 
-    // Call Independent WhatsApp Function
+    // Call Direct WhatsApp (Inlined to avoid 403 on invoke)
     try {
-        await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
-            phone: phone,
-            message: message,
-            file_url: null
-        });
-        console.log(`[HandleEntityEvents] WhatsApp sent to ${phone}`);
+        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+        
+        if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+            let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+            if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+            else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+
+            const chatId = `${cleanPhone}@c.us`;
+            const body = { chatId, message };
+
+            const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            
+            if (response.ok) {
+                console.log(`[HandleEntityEvents] WhatsApp sent to ${phone}`);
+            } else {
+                const err = await response.text();
+                console.error(`[HandleEntityEvents] Green API Error: ${err}`);
+            }
+        } else {
+             console.error('[HandleEntityEvents] Missing Green API Secrets');
+        }
     } catch (e) {
         console.error(`[HandleEntityEvents] WhatsApp failed to ${phone}`, e);
     }
