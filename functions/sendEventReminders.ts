@@ -101,7 +101,6 @@ Deno.serve(async (req) => {
                             const supplier = suppliersMap.get(supplierId);
                             if (!supplier) continue;
                             
-                            // Find user for supplier
                             // Find user for supplier (optional)
                             const supplierUser = allUsers.find(u => 
                                 supplier.contact_emails?.includes(u.email)
@@ -143,6 +142,7 @@ Deno.serve(async (req) => {
 
                             // DIRECT SEND FIRST (Decoupled from InAppNotification)
                             let whatsappSent = false;
+                            // Check if phone exists and WhatsApp is enabled (default true)
                             if (supplier.whatsapp_enabled !== false && supplier.phone) {
                                 try {
                                     await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
                             }
 
                             // THEN CREATE LOG (InAppNotification)
+                            // We create the log regardless of WhatsApp success to prevent duplicate processing attempts
                             try {
                                 await base44.asServiceRole.entities.InAppNotification.create({
                                     user_id: targetUserId,
