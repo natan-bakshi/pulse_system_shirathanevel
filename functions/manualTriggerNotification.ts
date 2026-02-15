@@ -46,33 +46,44 @@ Deno.serve(async (req) => {
         };
 
         // 2. Identify Target Audience & Logic
-        // Logic adapted from sendEventReminders but focused on IMMEDIATE delivery
         
         // --- Suppliers Audience ---
         if (template.target_audiences.includes('supplier')) {
+             console.log('[ManualTrigger] Processing suppliers...');
              // Get Event Services & Suppliers
              const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
-             const suppliers = await base44.asServiceRole.entities.Supplier.list(); // Fetching all for mapping is safer than many get() calls
+             const suppliers = await base44.asServiceRole.entities.Supplier.list(); 
              const suppliersMap = new Map(suppliers.map(s => [s.id, s]));
 
              for (const es of eventServices) {
-                if (!es.supplier_ids || !es.supplier_statuses) continue;
+                if (!es.supplier_ids) continue;
                 
                 let supplierIds = [];
                 let supplierStatuses = {};
                 
                 try {
-                    supplierIds = JSON.parse(es.supplier_ids);
-                    supplierStatuses = JSON.parse(es.supplier_statuses);
-                } catch (e) { continue; }
+                    supplierIds = typeof es.supplier_ids === 'string' ? JSON.parse(es.supplier_ids) : es.supplier_ids;
+                    supplierStatuses = typeof es.supplier_statuses === 'string' ? JSON.parse(es.supplier_statuses || '{}') : (es.supplier_statuses || {});
+                } catch (e) { 
+                    console.warn(`[ManualTrigger] Failed to parse JSON for ES ${es.id}`, e);
+                    continue; 
+                }
 
                 for (const supplierId of supplierIds) {
                      // Check status (only confirmed/approved)
                      const status = supplierStatuses[supplierId];
-                     if (status !== 'approved' && status !== 'confirmed') continue;
+                     console.log(`[ManualTrigger] Checking supplier ${supplierId}, status: ${status}`);
+                     
+                     if (status !== 'approved' && status !== 'confirmed') {
+                         console.log(`[ManualTrigger] Skipping supplier ${supplierId} (status not approved/confirmed)`);
+                         continue;
+                     }
 
                      const supplier = suppliersMap.get(supplierId);
-                     if (!supplier) continue;
+                     if (!supplier) {
+                         console.log(`[ManualTrigger] Supplier ${supplierId} not found in DB`);
+                         continue;
+                     }
 
                      // DIRECT WHATSAPP SEND (No user dependency)
                      if (supplier.whatsapp_enabled !== false && supplier.phone) {
@@ -85,7 +96,7 @@ Deno.serve(async (req) => {
                             event_location: event.location || '',
                             supplier_name: supplier.contact_person || supplier.supplier_name,
                             supplier_phone: supplier.phone,
-                            service_name: es.service_name || '', // Assuming service name is on ES or joined
+                            service_name: es.service_name || '', 
                             event_id: event.id
                          };
 
@@ -119,6 +130,8 @@ Deno.serve(async (req) => {
                          } catch (e) {
                              console.error(`[ManualTrigger] Failed to send to ${supplier.supplier_name}`, e);
                          }
+                     } else {
+                         console.log(`[ManualTrigger] Supplier ${supplier.supplier_name} skipped (WA disabled or no phone)`);
                      }
                 }
              }
@@ -126,6 +139,7 @@ Deno.serve(async (req) => {
 
         // --- Client Audience ---
         if (template.target_audiences.includes('client')) {
+            console.log('[ManualTrigger] Processing clients...');
             if (event.parents) {
                 let parents = [];
                 try { parents = typeof event.parents === 'string' ? JSON.parse(event.parents) : event.parents; } catch(e){}
@@ -158,7 +172,7 @@ Deno.serve(async (req) => {
                                  const title = replacePlaceholders(template.title_template, contextData);
                                  const message = replacePlaceholders(template.body_template, contextData);
                                  await createLogRecord(base44, {
-                                     user_id: `virtual_client_${parent.phone}`, // Use phone as unique key if needed
+                                     user_id: `virtual_client_${parent.phone}`, 
                                      user_email: parent.email || '',
                                      title,
                                      message,
