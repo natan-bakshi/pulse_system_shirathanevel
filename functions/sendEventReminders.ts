@@ -48,6 +48,10 @@ Deno.serve(async (req) => {
             is_resolved: false
         });
         
+        // Secrets for WA
+        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+        
         let sentCount = 0;
         let skippedCount = 0;
         
@@ -138,9 +142,6 @@ Deno.serve(async (req) => {
                             // Always try to send if phone exists (user policy: no opt-out)
                             if (supplier.phone) {
                                 try {
-                                    const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-                                    const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-                                    
                                     if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
                                         let cleanPhone = supplier.phone.toString().replace(/[^0-9]/g, '');
                                         if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
@@ -228,13 +229,48 @@ Deno.serve(async (req) => {
                             event_date: formatDate(event.event_date),
                             event_time: event.event_time || '',
                             event_location: event.location || '',
-                            event_id: event.id
+                            event_id: event.id,
+                            admin_name: admin.full_name,
+                            user_name: admin.full_name
                         };
                         
                         const title = replacePlaceholders(adminTemplate.title_template, contextData);
                         const message = replacePlaceholders(adminTemplate.body_template, contextData);
+                        const whatsappMessage = replacePlaceholders(adminTemplate.whatsapp_body_template || adminTemplate.body_template, contextData);
                         const link = buildDeepLink(adminTemplate.deep_link_base, adminTemplate.deep_link_params_map, contextData);
                         
+                        // DIRECT SEND FIRST (Added for Admin)
+                        let whatsappSent = false;
+                        
+                        if (admin.phone) {
+                            try {
+                                if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                                    let cleanPhone = admin.phone.toString().replace(/[^0-9]/g, '');
+                                    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+                                    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+
+                                    const chatId = `${cleanPhone}@c.us`;
+                                    const body = { chatId, message: whatsappMessage };
+
+                                    const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(body)
+                                    });
+                                    
+                                    if (response.ok) {
+                                        whatsappSent = true;
+                                        console.log(`[EventReminders] DIRECT WhatsApp sent to admin ${admin.full_name}`);
+                                    } else {
+                                        const err = await response.text();
+                                        console.error(`[EventReminders] Green API Error (Admin): ${err}`);
+                                    }
+                                }
+                            } catch (waError) {
+                                console.error(`[EventReminders] DIRECT WhatsApp failed for admin ${admin.full_name}:`, waError);
+                            }
+                        }
+
                         try {
                             // Create in-app notification directly using service role
                             await base44.asServiceRole.entities.InAppNotification.create({
@@ -247,6 +283,7 @@ Deno.serve(async (req) => {
                                 template_type: 'ADMIN_EVENT_REMINDER',
                                 related_event_id: event.id,
                                 push_sent: false,
+                                whatsapp_sent: whatsappSent,
                                 reminder_count: 0,
                                 is_resolved: false
                             });

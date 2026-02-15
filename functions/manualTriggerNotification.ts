@@ -217,6 +217,62 @@ Deno.serve(async (req) => {
             }
         }
 
+        // --- Admin Audience ---
+        if (template.target_audiences.includes('admin') || template.target_audiences.includes('system_creator')) {
+            log('[ManualTrigger] Processing admins...');
+            const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+            
+            for (const admin of admins) {
+                // Filter system creator specific
+                if (template.target_audiences.includes('system_creator') && !template.target_audiences.includes('admin')) {
+                     // If ONLY system_creator is targeted (and not general admin) - strict check
+                     // Adjust this logic if you have a specific way to identify the creator, e.g. by email
+                     if (admin.email !== 'natib8000@gmail.com') continue;
+                }
+
+                if (admin.phone) {
+                    const contextData = {
+                        event_name: event.event_name,
+                        family_name: event.family_name,
+                        event_date: formatDate(event.event_date),
+                        event_time: event.event_time || '',
+                        event_location: event.location || '',
+                        admin_name: admin.full_name,
+                        user_name: admin.full_name,
+                        event_id: event.id
+                    };
+
+                    const whatsappMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
+                    
+                    try {
+                        await sendDirectWhatsApp(admin.phone, whatsappMessage, null, GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, log);
+                        
+                        results.whatsapp_sent++;
+                        results.recipients.push({ name: admin.full_name, type: 'whatsapp', phone: admin.phone });
+                        log(`[ManualTrigger] Sent WA to admin ${admin.full_name}`);
+
+                        // Log
+                        const title = replacePlaceholders(template.title_template, contextData);
+                        const message = replacePlaceholders(template.body_template, contextData);
+                        await createLogRecord(base44, {
+                            user_id: admin.id,
+                            user_email: admin.email,
+                            title,
+                            message,
+                            template_type: template.type,
+                            related_event_id: event.id,
+                            whatsapp_sent: true
+                        });
+
+                    } catch (e) {
+                        log(`[ManualTrigger] Failed to send to admin ${admin.full_name}: ${e.message}`);
+                    }
+                } else {
+                    log(`[ManualTrigger] Admin ${admin.full_name} has no phone`);
+                }
+            }
+        }
+
         return Response.json({ success: true, results, logs });
 
     } catch (error) {
