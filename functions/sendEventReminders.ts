@@ -102,25 +102,29 @@ Deno.serve(async (req) => {
                             if (!supplier) continue;
                             
                             // Find user for supplier
+                            // Find user for supplier (optional)
                             const supplierUser = allUsers.find(u => 
                                 supplier.contact_emails?.includes(u.email)
                             );
-                            
-                            if (!supplierUser) continue;
-                            
-                            // Check for existing reminder
+
+                            // Determine Target User ID (Real or Virtual)
+                            const targetUserId = supplierUser ? supplierUser.id : `virtual_supplier_${supplierId}`;
+                            const targetUserEmail = supplierUser ? supplierUser.email : (supplier.contact_emails?.[0] || '');
+
+                            // Check for existing reminder by Related Supplier ID (Robust)
+                            // We check if ANY notification exists for this event+supplier, regardless of user_id
                             const hasExisting = existingNotifications.some(n => 
                                 n.template_type === 'SUPPLIER_EVENT_REMINDER' &&
                                 n.related_event_id === event.id &&
-                                n.user_id === supplierUser.id
+                                (n.related_supplier_id === supplierId || n.user_id === targetUserId)
                             );
-                            
+
                             if (hasExisting) {
                                 skippedCount++;
                                 continue;
                             }
-                            
-                            // Send reminder
+
+                            // Prepare Content
                             const contextData = {
                                 event_name: event.event_name,
                                 family_name: event.family_name,
@@ -130,16 +134,17 @@ Deno.serve(async (req) => {
                                 supplier_name: supplier.contact_person || supplier.supplier_name,
                                 event_id: event.id
                             };
-                            
+
                             const title = replacePlaceholders(supplierTemplate.title_template, contextData);
-                            const message = replacePlaceholders(supplierTemplate.body_template, contextData);
+                            let message = replacePlaceholders(supplierTemplate.body_template, contextData);
+                            const whatsappMessage = replacePlaceholders(supplierTemplate.whatsapp_body_template || supplierTemplate.body_template, contextData);
                             const link = buildDeepLink(supplierTemplate.deep_link_base, supplierTemplate.deep_link_params_map, contextData);
-                            
+
                             try {
-                                // Create in-app notification directly using service role
+                                // 1. Create InAppNotification (Log & Dashboard)
                                 await base44.asServiceRole.entities.InAppNotification.create({
-                                    user_id: supplierUser.id,
-                                    user_email: supplierUser.email,
+                                    user_id: targetUserId,
+                                    user_email: targetUserEmail,
                                     title,
                                     message,
                                     link,
@@ -149,12 +154,30 @@ Deno.serve(async (req) => {
                                     related_event_service_id: es.id,
                                     related_supplier_id: supplierId,
                                     push_sent: false,
+                                    whatsapp_sent: false,
                                     reminder_count: 0,
                                     is_resolved: false
                                 });
+
+                                // 2. Send WhatsApp (If enabled)
+                                // We do this AFTER DB creation so we don't spam if DB fails, 
+                                // and we have a record that we "tried" (or at least processed it).
+                                if (supplier.whatsapp_enabled !== false && supplier.phone) {
+                                    try {
+                                        await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
+                                            phone: supplier.phone,
+                                            message: whatsappMessage,
+                                            file_url: null
+                                        });
+                                        console.log(`[EventReminders] WhatsApp sent to ${supplier.supplier_name} (${supplier.phone})`);
+                                    } catch (waError) {
+                                        console.error(`[EventReminders] WhatsApp failed for ${supplier.supplier_name}:`, waError);
+                                    }
+                                }
+
                                 sentCount++;
                             } catch (error) {
-                                console.error(`[EventReminders] Error sending to supplier:`, error);
+                                console.error(`[EventReminders] Error sending to supplier ${supplier.supplier_name}:`, error);
                             }
                         }
                     }
