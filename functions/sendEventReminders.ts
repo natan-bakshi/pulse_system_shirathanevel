@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
                                 event_date: formatDate(event.event_date),
                                 event_time: event.event_time || '',
                                 event_location: event.location || '',
-                                supplier_name: supplier.supplier_name,
+                                supplier_name: supplier.contact_person || supplier.supplier_name,
                                 event_id: event.id
                             };
                             

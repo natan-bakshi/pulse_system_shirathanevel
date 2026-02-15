@@ -74,6 +74,12 @@ async function processTemplate(base44, template, results) {
             now.setHours(now.getHours() + offset);
             targetDateStart.setTime(now.getTime() - 30 * 60000);
             targetDateEnd.setTime(now.getTime() + 30 * 60000);
+        } else if (template.timing_unit === 'minutes') {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + offset);
+            // Window of +/- 1 minute for precision
+            targetDateStart.setTime(now.getTime() - 60000);
+            targetDateEnd.setTime(now.getTime() + 60000);
         }
     }
     
@@ -324,7 +330,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
         event_time: event.event_time,
         event_location: event.location,
         family_name: event.family_name,
-        supplier_name: supplier ? supplier.supplier_name : '',
+        supplier_name: supplier ? (supplier.contact_person || supplier.supplier_name) : '',
         service_name: eventService ? eventService.service_name : '',
         user_name: user.full_name,
     };
