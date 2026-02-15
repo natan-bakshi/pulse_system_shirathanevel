@@ -13,10 +13,13 @@ Deno.serve(async (req) => {
         // Payload: { event: { type, entity_name, entity_id }, data: {...}, old_data: {...} }
         const { event, data, old_data } = payload;
         
-        // Handle variations in payload keys (snake_case vs lowercase)
+        // Handle variations in payload keys
         const oldData = old_data || payload.olddata;
 
-        if (!event || !data) return Response.json({ skipped: true, reason: 'Invalid payload' });
+        if (!event || !data) {
+            console.error('[HandleEntityEvents] Invalid payload:', payload);
+            return Response.json({ skipped: true, reason: 'Invalid payload' });
+        }
 
         // FIX: Handle both snake_case and lowercase variations from SDK
         const entityName = event.entity_name || event.entityname;
@@ -28,7 +31,7 @@ Deno.serve(async (req) => {
         }
 
         const triggerType = event.type === 'create' ? 'entity_create' : 'entity_update';
-        console.log(`[HandleEntityEvents] Processing ${entityName} ${triggerType}`);
+        console.log(`[HandleEntityEvents] Processing ${entityName} ${triggerType} (ID: ${entityId})`);
 
         // 1. Fetch relevant templates
         let triggerTypesToFetch = [triggerType]; 
@@ -46,7 +49,6 @@ Deno.serve(async (req) => {
             const newIds = safeParse(data.supplier_ids || data.supplierids);
 
             // Check if supplier added
-            // Ensure IDs are strings for comparison
             const oldIdsStr = Array.isArray(oldIds) ? oldIds.map(String) : [];
             const newIdsStr = Array.isArray(newIds) ? newIds.map(String) : [];
 
@@ -54,7 +56,7 @@ Deno.serve(async (req) => {
             if (added.length > 0) {
                 triggerTypesToFetch.push('supplier_assignment_create');
                 event.added_supplier_ids = added; 
-                console.log(`[HandleEntityEvents] Detected supplier assignment creation. Added suppliers: ${added.join(', ')}`);
+                console.log(`[HandleEntityEvents] Detected supplier assignment creation. Added: ${added.join(', ')}`);
             }
 
             // Check if supplier removed
@@ -62,10 +64,10 @@ Deno.serve(async (req) => {
             if (removed.length > 0) {
                 triggerTypesToFetch.push('supplier_assignment_delete');
                 event.removed_supplier_ids = removed;
-                console.log(`[HandleEntityEvents] Detected supplier assignment deletion. Removed suppliers: ${removed.join(', ')}`);
+                console.log(`[HandleEntityEvents] Detected supplier assignment deletion. Removed: ${removed.join(', ')}`);
             }
 
-            // Check if supplier status changed (Approved/Rejected/Signed)
+            // Check if supplier status changed
             const oldStatuses = safeParse(oldData?.supplier_statuses || oldData?.supplierstatuses);
             const newStatuses = safeParse(data.supplier_statuses || data.supplierstatuses);
             
@@ -109,7 +111,6 @@ Deno.serve(async (req) => {
 
                 // Financials
                 const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-                // Handle different casing/naming
                 const totalPrice = data.total_override || data.totaloverride || data.all_inclusive_price || data.allinclusiveprice || data.total_price || data.totalprice || 0;
                 const balance = totalPrice - totalPaid;
                 const paymentPercentage = totalPrice > 0 ? (totalPaid / totalPrice) * 100 : 0;
@@ -144,12 +145,6 @@ Deno.serve(async (req) => {
                         payment_percentage: paymentPercentage,
                         is_fully_paid: balance <= 0,
                         supplier_count: assignedSupplierIds.size,
-                        has_missing_suppliers: services.some(s => {
-                            const required = s.min_suppliers || s.minsuppliers || 0;
-                            const sIds = s.supplier_ids || s.supplierids;
-                            const ids = safeParse(sIds);
-                            return (Array.isArray(ids) ? ids.length : 0) < required;
-                        }),
                         days_until_event: daysUntil,
                         creation_date_age: daysSinceCreated,
                         event_month: month,
@@ -165,8 +160,6 @@ Deno.serve(async (req) => {
         // Fetch all matching templates
         let templates = [];
         for (const type of triggerTypesToFetch) {
-            // Support both trigger_type and triggertype keys in query
-            // Base44 filters are exact match, so we should match the schema key 'trigger_type' and 'entity_name'
             const res = await base44.asServiceRole.entities.NotificationTemplate.filter({ 
                 is_active: true, 
                 trigger_type: type, 
@@ -181,10 +174,14 @@ Deno.serve(async (req) => {
 
         for (const template of templates) {
             try {
+                console.log(`[HandleEntityEvents] Evaluating template ${template.name} (${template.trigger_type})`);
+                
                 // Check Conditions
                 const conditionsMet = await checkConditions(base44, template, enrichedData, oldData, event, triggerType);
                 
                 if (conditionsMet) {
+                    console.log(`[HandleEntityEvents] Conditions met for template ${template.name}`);
+                    
                     // Smart Targeting Logic
                     
                     // Case 1 - New Supplier Assignment
@@ -220,16 +217,18 @@ Deno.serve(async (req) => {
                         await sendNotification(base44, template, enrichedData, event, entityName);
                         notificationsSent++;
                     }
+                } else {
+                    console.log(`[HandleEntityEvents] Conditions NOT met for template ${template.name}`);
                 }
             } catch (e) {
-                console.error(`[HandleEntityEvents] Error processing template ${template.type}`, e);
+                console.error(`[HandleEntityEvents] Error processing template ${template.name}`, e);
             }
         }
 
         return Response.json({ success: true, notifications_sent: notificationsSent });
 
     } catch (error) {
-        console.error('[HandleEntityEvents] Error:', error);
+        console.error('[HandleEntityEvents] Fatal Error:', error);
         return Response.json({ error: error.message }, { status: 500 });
     }
 });
@@ -354,6 +353,8 @@ async function sendNotification(base44, template, entityData, event, entityName)
 
     // Determine Audience
     const audiences = template.target_audiences || template.targetaudiences || [];
+    
+    console.log(`[HandleEntityEvents] Sending notification. Channels: ${allowedChannels.join(',')}, Audiences: ${audiences.join(',')}`);
 
     // --- 1. Supplier Audience ---
     if (audiences.includes('supplier')) {
@@ -381,13 +382,17 @@ async function sendNotification(base44, template, entityData, event, entityName)
         }
         
         suppliersToSend = [...new Set(suppliersToSend)];
+        console.log(`[HandleEntityEvents] Targeted Suppliers: ${suppliersToSend.join(',')}`);
 
         for (const supId of suppliersToSend) {
             let currentSupplierObj = (supplierObj && supplierObj.id === supId) ? supplierObj : null;
             if (!currentSupplierObj) {
                 try { currentSupplierObj = await base44.asServiceRole.entities.Supplier.get(supId); } catch(e){}
             }
-            if (!currentSupplierObj) continue;
+            if (!currentSupplierObj) {
+                console.log(`[HandleEntityEvents] Supplier ${supId} not found`);
+                continue;
+            }
 
             // Resolve Service Context for this supplier if missing
             let currentServiceObj = serviceObj;
@@ -403,10 +408,12 @@ async function sendNotification(base44, template, entityData, event, entityName)
 
             // WhatsApp
             if (sendWhatsApp) {
-                if (currentSupplierObj.whatsapp_enabled !== false && currentSupplierObj.phone) {
+                // Default to true if missing/null
+                const isEnabled = currentSupplierObj.whatsapp_enabled !== false; 
+                if (isEnabled && currentSupplierObj.phone) {
                     await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null);
                 } else {
-                    console.log(`[HandleEntityEvents] WhatsApp skipped for supplier ${currentSupplierObj.supplier_name} (disabled or no phone)`);
+                    console.log(`[HandleEntityEvents] WhatsApp skipped for supplier ${currentSupplierObj.supplier_name}. Enabled: ${isEnabled}, Phone: ${currentSupplierObj.phone}`);
                 }
             }
 
@@ -464,15 +471,14 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     let message = template.whatsapp_body_template || template.body_template || template.body || '';
     message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj);
     
-    // Dynamic Link Logic
-    let fileUrl = null; // Support file in future if needed
-    
+    console.log(`[HandleEntityEvents] Triggering WhatsApp to ${phone}`);
+
     // Call Independent WhatsApp Function
     try {
         await base44.asServiceRole.functions.invoke('sendWhatsAppMessage', {
             phone: phone,
             message: message,
-            file_url: fileUrl
+            file_url: null
         });
         console.log(`[HandleEntityEvents] WhatsApp sent to ${phone}`);
     } catch (e) {
@@ -519,48 +525,47 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj) {
     };
 
     const vars = {
-        '{event_name}': getVal(eventObj, ['event_name', 'eventname']),
-        '{eventname}': getVal(eventObj, ['event_name', 'eventname']),
-        '{event_date}': getVal(eventObj, ['event_date', 'eventdate']),
-        '{eventdate}': getVal(eventObj, ['event_date', 'eventdate']),
-        '{event_time}': getVal(eventObj, ['event_time', 'eventtime']),
-        '{eventtime}': getVal(eventObj, ['event_time', 'eventtime']),
-        '{event_location}': getVal(eventObj, ['location']),
-        '{eventlocation}': getVal(eventObj, ['location']),
-        '{event_type}': getVal(eventObj, ['event_type', 'eventtype']),
-        '{guest_count}': getVal(eventObj, ['guest_count', 'guestcount']),
-        '{city}': getVal(eventObj, ['city']),
-        '{family_name}': getVal(eventObj, ['family_name', 'familyname']),
-        '{familyname}': getVal(eventObj, ['family_name', 'familyname']),
-        '{child_name}': getVal(eventObj, ['child_name', 'childname']),
-        '{event_id}': getVal(eventObj, ['id']),
-        '{supplier_name}': getVal(supplierObj, ['supplier_name', 'suppliername']),
-        '{suppliername}': getVal(supplierObj, ['supplier_name', 'suppliername']),
-        '{supplier_phone}': getVal(supplierObj, ['phone']),
-        '{service_name}': getVal(serviceObj, ['service_name', 'servicename']) || getVal(eventObj, ['service_name', 'serviceName']),
-        '{servicename}': getVal(serviceObj, ['service_name', 'servicename']),
-        '{total_price}': getVal(eventObj, ['total_price', 'totalprice', 'total_override', 'totaloverride', 'all_inclusive_price', 'allinclusiveprice']),
-        '{balance}': getVal(eventObj, ['balance']),
-        '{user_name}': getVal(userObj, ['full_name', 'fullname', 'name']),
-        '{username}': getVal(userObj, ['full_name', 'fullname', 'name'])
+        'event_name': getVal(eventObj, ['event_name', 'eventname']),
+        'eventname': getVal(eventObj, ['event_name', 'eventname']),
+        'event_date': getVal(eventObj, ['event_date', 'eventdate']),
+        'eventdate': getVal(eventObj, ['event_date', 'eventdate']),
+        'event_time': getVal(eventObj, ['event_time', 'eventtime']),
+        'eventtime': getVal(eventObj, ['event_time', 'eventtime']),
+        'event_location': getVal(eventObj, ['location']),
+        'eventlocation': getVal(eventObj, ['location']),
+        'event_type': getVal(eventObj, ['event_type', 'eventtype']),
+        'guest_count': getVal(eventObj, ['guest_count', 'guestcount']),
+        'city': getVal(eventObj, ['city']),
+        'family_name': getVal(eventObj, ['family_name', 'familyname']),
+        'familyname': getVal(eventObj, ['family_name', 'familyname']),
+        'child_name': getVal(eventObj, ['child_name', 'childname']),
+        'event_id': getVal(eventObj, ['id']),
+        'supplier_name': getVal(supplierObj, ['supplier_name', 'suppliername']),
+        'suppliername': getVal(supplierObj, ['supplier_name', 'suppliername']),
+        'supplier_phone': getVal(supplierObj, ['phone']),
+        'service_name': getVal(serviceObj, ['service_name', 'servicename']) || getVal(eventObj, ['service_name', 'serviceName']),
+        'servicename': getVal(serviceObj, ['service_name', 'servicename']),
+        'total_price': getVal(eventObj, ['total_price', 'totalprice', 'total_override', 'totaloverride', 'all_inclusive_price', 'allinclusiveprice']),
+        'balance': getVal(eventObj, ['balance']),
+        'user_name': getVal(userObj, ['full_name', 'fullname', 'name']),
+        'username': getVal(userObj, ['full_name', 'fullname', 'name'])
     };
 
     // Client Name/Phone Logic
     if (eventObj && eventObj.parents) {
         const parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents;
         if (Array.isArray(parents) && parents.length > 0) {
-            vars['{client_name}'] = parents[0].name;
-            vars['{clientname}'] = parents[0].name;
-            vars['{client_phone}'] = parents[0].phone;
+            vars['client_name'] = parents[0].name;
+            vars['clientname'] = parents[0].name;
+            vars['client_phone'] = parents[0].phone;
         }
     }
     // Fallback to user obj if parents not found
-    if (!vars['{client_name}']) vars['{client_name}'] = vars['{user_name}'];
+    if (!vars['client_name']) vars['client_name'] = vars['user_name'];
 
-    let result = text;
-    for (const [k, v] of Object.entries(vars)) {
-        // Replace all occurrences
-        result = result.split(k).join(v || '');
-    }
-    return result;
+    // Improved Regex Replacement to handle {{key}} and {key}
+    return text.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
+        // key is the captured group inside {{...}} or {...}
+        return vars[key] !== undefined ? vars[key] : match;
+    });
 }
