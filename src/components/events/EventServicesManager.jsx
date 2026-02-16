@@ -1019,7 +1019,7 @@ export default function EventServicesManager({
                                           </div>
                                       </div>
                                   ))}
-                                  <Button variant="ghost" size="sm" className="w-full text-xs text-red-700 h-6" onClick={() => {
+                                  <Button type="button" variant="ghost" size="sm" className="w-full text-xs text-red-700 h-6" onClick={() => {
                                       const newUnits = [...units];
                                       newUnits[uIdx].pickupPoints.push({ time: '', location: '', contact: { name: '', phone: '' } });
                                       updateTransport(newUnits);
