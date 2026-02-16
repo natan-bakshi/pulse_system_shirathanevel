@@ -122,7 +122,9 @@ export default function EventServicesManager({
 
     // Add new structure packages to the map
     mainPackageItems.forEach(mainPkg => {
-      const children = childItems.filter(c => c.parent_package_event_service_id === mainPkg.id);
+      const children = childItems
+        .filter(c => c.parent_package_event_service_id === mainPkg.id)
+        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
       
       packagesMap.set(mainPkg.id, {
         package_id: mainPkg.id,
@@ -135,7 +137,15 @@ export default function EventServicesManager({
       });
     });
 
+    // Sort legacy package services too
+    packagesMap.forEach(pkg => {
+      if (!pkg.is_new_structure) {
+        pkg.services.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      }
+    });
+
     const packages = Array.from(packagesMap.values());
+    standalone.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
     return { packages, standalone };
   }, [selectedServices]);
