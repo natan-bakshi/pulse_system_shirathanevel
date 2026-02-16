@@ -929,9 +929,18 @@ export default function EventServicesManager({
 
                           const updateTransport = (newUnits) => {
                                const firstPoint = newUnits[0]?.pickupPoints[0] || {};
-                               handleServiceChange(service.id, 'pickuppoint', JSON.stringify(newUnits));
-                               handleServiceChange(service.id, 'standingtime', firstPoint.time || '');
-                               handleServiceChange(service.id, 'onsitecontactdetails', firstPoint.contact || {});
+                               const updatedServices = selectedServices.map(s => {
+                                 if (s.id === service.id) {
+                                   return {
+                                     ...s,
+                                     pickup_point: JSON.stringify(newUnits),
+                                     standing_time: firstPoint.time || '',
+                                     on_site_contact_details: firstPoint.contact || {}
+                                   };
+                                 }
+                                 return s;
+                               });
+                               onServicesChange(updatedServices);
                           };
 
                           return units.map((unit, uIdx) => (
