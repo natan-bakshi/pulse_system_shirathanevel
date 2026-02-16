@@ -747,10 +747,10 @@ export default function EventServicesManager({
     const isSelected = selectedServicesForAction.includes(service.id);
 
     return (
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex-1">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-2 gap-2">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <GripVertical className="h-4 w-4 text-gray-400" />
+            <GripVertical className="h-4 w-4 text-gray-400 shrink-0" />
             <Checkbox
                 checked={isSelected}
                 onCheckedChange={(checked) => {
