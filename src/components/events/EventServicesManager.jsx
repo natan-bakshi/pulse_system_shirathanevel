@@ -619,13 +619,53 @@ export default function EventServicesManager({
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
     let updatedServices = [...selectedServices];
+
+    // Handle reorder within a package
+    if (type === 'service-in-package') {
+      const packageId = source.droppableId;
+      const pkg = groupedServices.packages.find(p => p.package_id === packageId);
+      if (!pkg) return;
+
+      const servicesInPkg = [...pkg.services];
+      const [moved] = servicesInPkg.splice(source.index, 1);
+      servicesInPkg.splice(destination.index, 0, moved);
+
+      // Recalculate order_index
+      const baseIndex = moved.order_index || 0;
+      servicesInPkg.forEach((s, i) => {
+        const idx = updatedServices.findIndex(us => us.id === s.id);
+        if (idx !== -1) {
+          updatedServices[idx] = { ...updatedServices[idx], order_index: i };
+        }
+      });
+
+      onServicesChange(updatedServices);
+      return;
+    }
+
+    // Handle reorder of standalone services
+    if (type === 'standalone') {
+      const standaloneItems = [...groupedServices.standalone];
+      const [moved] = standaloneItems.splice(source.index, 1);
+      standaloneItems.splice(destination.index, 0, moved);
+
+      standaloneItems.forEach((s, i) => {
+        const idx = updatedServices.findIndex(us => us.id === s.id);
+        if (idx !== -1) {
+          updatedServices[idx] = { ...updatedServices[idx], order_index: i };
+        }
+      });
+
+      onServicesChange(updatedServices);
+      return;
+    }
+
+    // Fallback: general drag between groups
     const movedItemIndex = updatedServices.findIndex(s => s.id === draggableId);
     if (movedItemIndex === -1) return;
     
     const movedItem = { ...updatedServices[movedItemIndex] };
     
-    // Calculate new order logic
-    // We need to know the structure of the destination group to find the neighbor
     let destItems = [];
     let isDestPackage = false;
     let destPackageId = null;
@@ -642,20 +682,13 @@ export default function EventServicesManager({
         }
     }
 
-    // Determine new parent/package status
     if (isDestPackage) {
-        // Moving INTO a package
-        // Find the main package item to link to
-        const mainPkgItem = updatedServices.find(s => s.id === destPackageId || s.package_id === destPackageId); // Simplified lookup
-        // Ideally we use the package_id from the droppable
-        
-        // Check if it's a new structure package
         const isNewStructure = groupedServices.packages.find(p => p.package_id === destPackageId)?.is_new_structure;
         
         if (isNewStructure) {
             movedItem.parent_package_event_service_id = destPackageId;
             movedItem.package_id = null;
-            movedItem.custom_price = 0; // Price in package is 0
+            movedItem.custom_price = 0;
             movedItem.is_package_main_item = false;
         } else {
             movedItem.package_id = destPackageId;
@@ -663,42 +696,26 @@ export default function EventServicesManager({
             movedItem.is_package_main_item = false;
         }
     } else {
-        // Moving to Standalone
         movedItem.package_id = null;
         movedItem.parent_package_event_service_id = null;
         movedItem.is_package_main_item = false;
-        // Restore price? We don't have the original base price easily available here without looking up allServices
-        // But usually moving to standalone keeps the 0 price until edited, or we could try to look it up.
-        // For now, keep as is.
     }
 
-    // Calculate Order Index
-    // We need to insert the item into destItems array mentally to see neighbors
-    // But destItems are sorted by order_index.
-    
     let newOrderIndex = 0;
     
-    // Note: destination.index is the index IN THE VISIBLE LIST (destItems)
-    
     if (destItems.length === 0) {
-        // Empty destination
-        newOrderIndex = 1000; // Start somewhere
+        newOrderIndex = 1000;
     } else if (destination.index === 0) {
-        // At start
         newOrderIndex = (destItems[0].order_index || 0) - 100;
     } else if (destination.index >= destItems.length) {
-        // At end
         newOrderIndex = (destItems[destItems.length - 1].order_index || 0) + 100;
     } else {
-        // Between two items
         const prevItem = destItems[destination.index - 1];
         const nextItem = destItems[destination.index];
         newOrderIndex = ((prevItem.order_index || 0) + (nextItem.order_index || 0)) / 2;
     }
     
     movedItem.order_index = newOrderIndex;
-    
-    // Update the list
     updatedServices[movedItemIndex] = movedItem;
     
     onServicesChange(updatedServices);
