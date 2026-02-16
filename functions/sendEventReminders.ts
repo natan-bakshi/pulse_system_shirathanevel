@@ -347,12 +347,14 @@ Deno.serve(async (req) => {
             }
         }
         
-        console.log(`[EventReminders] Completed. Sent: ${sentCount}, Skipped: ${skippedCount}`);
+        console.log(`[EventReminders] Completed. Sent: ${sentCount}, Skipped: ${skippedCount}, Queued: ${queuedCount}`);
         
         return Response.json({
             success: true,
             sent: sentCount,
-            skipped: skippedCount
+            skipped: skippedCount,
+            queued: queuedCount,
+            was_quiet_hours: currentlyInQuietHours
         });
         
     } catch (error) {
