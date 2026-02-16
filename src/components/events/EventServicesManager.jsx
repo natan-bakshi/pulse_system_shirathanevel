@@ -753,8 +753,8 @@ export default function EventServicesManager({
               {allInclusive && service.quantity > 1 && (
                 <div className="text-sm text-gray-600">כמות: {service.quantity}</div>
               )}
-              {serviceDetails?.service_description && (
-                <div className="text-xs text-gray-500 line-clamp-2" dangerouslySetInnerHTML={{ __html: serviceDetails.service_description }} />
+              {(service.service_description || serviceDetails?.service_description) && (
+                <div className="text-xs text-gray-500 break-words" dangerouslySetInnerHTML={{ __html: service.service_description || serviceDetails.service_description }} />
               )}
               {service.client_notes && (
                 <div className="text-xs text-gray-500 italic">הערה: {service.client_notes}</div>
