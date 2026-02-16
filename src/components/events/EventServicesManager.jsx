@@ -908,14 +908,14 @@ export default function EventServicesManager({
                       {(() => {
                           let units = [];
                           try {
-                              const parsed = JSON.parse(service.pickuppoint || '[]');
+                              const parsed = JSON.parse(service.pickup_point || service.pickuppoint || '[]');
                               units = Array.isArray(parsed) ? parsed : [];
                           } catch (e) {
                               units = [{
                                   pickupPoints: [{
-                                      time: service.standingtime || '',
-                                      location: service.pickuppoint || '',
-                                      contact: service.onsitecontactdetails || { name: '', phone: '' }
+                                      time: service.standing_time || service.standingtime || '',
+                                      location: service.pickup_point || service.pickuppoint || '',
+                                      contact: service.on_site_contact_details || service.onsitecontactdetails || { name: '', phone: '' }
                                   }]
                               }];
                           }
