@@ -592,8 +592,8 @@ for (const serviceItem of formData.services) {
         console.error("Failed to check event status:", checkError);
       }
 
-      await onSave(savedEvent);
       onClose();
+      await onSave(savedEvent);
 
     } catch (error) {
       console.error("Failed to save event:", error);
