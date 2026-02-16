@@ -95,13 +95,11 @@ export default function EventManagement() {
         queryClient.invalidateQueries({ queryKey: ['payments'] });
     }, [queryClient]);
     
-    const handleSave = useCallback(async (eventData) => {
+    const handleSave = useCallback(async (savedEvent) => {
         try {
-            if (editingEvent) {
-                await base44.entities.Event.update(editingEvent.id, eventData);
-            } else {
-                const newEvent = await base44.entities.Event.create(eventData);
-                navigate(createPageUrl(`EventDetails?id=${newEvent.id}`));
+            // EventForm כבר יצר/עדכן את האירוע - כאן רק מרעננים ומנווטים
+            if (!editingEvent && savedEvent?.id) {
+                navigate(createPageUrl(`EventDetails?id=${savedEvent.id}`));
             }
             setIsFormOpen(false);
             setEditingEvent(null);
