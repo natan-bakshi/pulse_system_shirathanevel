@@ -775,7 +775,7 @@ export default function EventServicesManager({
           
           {/* תצוגה מכווצת */}
           {!isExpanded && (
-            <div className="mr-6 space-y-1">
+            <div className="mr-6 space-y-1 min-w-0">
               {!allInclusive && (
                 <div className="text-sm text-gray-600">
                   מחיר: ₪{((service.custom_price || 0) * (service.quantity || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -790,7 +790,7 @@ export default function EventServicesManager({
                 <div className="text-xs text-gray-500 break-words" dangerouslySetInnerHTML={{ __html: service.service_description || serviceDetails.service_description }} />
               )}
               {service.client_notes && (
-                <div className="text-xs text-gray-500 italic">הערה: {service.client_notes}</div>
+                <div className="text-xs text-gray-500 italic break-words">הערה: {service.client_notes}</div>
               )}
                           {/* Transport Details - Read Only Formatted */}
             {isTransportService && (
