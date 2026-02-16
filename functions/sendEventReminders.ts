@@ -233,7 +233,8 @@ Deno.serve(async (req) => {
                 const timingValue = adminTemplate.timing_value || 1;
                 const timingUnit = adminTemplate.timing_unit || 'days';
                 
-                const reminderCutoff = new Date(eventDate);
+                const adminEventDateTime = getIsraelEventDate(event.event_date, event.event_time);
+                const reminderCutoff = new Date(adminEventDateTime);
                 switch (timingUnit) {
                     case 'minutes': reminderCutoff.setMinutes(reminderCutoff.getMinutes() - timingValue); break;
                     case 'hours': reminderCutoff.setHours(reminderCutoff.getHours() - timingValue); break;
