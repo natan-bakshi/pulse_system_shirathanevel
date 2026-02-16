@@ -271,12 +271,31 @@ Deno.serve(async (req) => {
                         const whatsappMessage = replacePlaceholders(adminTemplate.whatsapp_body_template || adminTemplate.body_template, contextData);
                         const link = buildDeepLink(adminTemplate.deep_link_base, adminTemplate.deep_link_params_map, contextData);
                         
-                        // DIRECT SEND FIRST (Added for Admin)
+                        // WHATSAPP SEND with quiet hours check (Admin)
                         let whatsappSent = false;
                         
-                        if (admin.phone) {
-                            try {
-                                if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                        if (admin.phone && GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                            if (currentlyInQuietHours) {
+                                // Queue for later
+                                try {
+                                    await base44.asServiceRole.entities.PendingPushNotification.create({
+                                        user_id: admin.id,
+                                        user_email: admin.email,
+                                        title,
+                                        message: whatsappMessage,
+                                        link: link || '',
+                                        scheduled_for: quietHoursEndTime.toISOString(),
+                                        template_type: 'ADMIN_EVENT_REMINDER',
+                                        is_sent: false,
+                                        data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: admin.phone })
+                                    });
+                                    queuedCount++;
+                                    console.log(`[EventReminders] WhatsApp QUEUED for admin ${admin.full_name} until ${quietHoursEndTime.toISOString()}`);
+                                } catch (qErr) {
+                                    console.error(`[EventReminders] Failed to queue WhatsApp for admin:`, qErr);
+                                }
+                            } else {
+                                try {
                                     let cleanPhone = admin.phone.toString().replace(/[^0-9]/g, '');
                                     if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
                                     else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
@@ -297,9 +316,9 @@ Deno.serve(async (req) => {
                                         const err = await response.text();
                                         console.error(`[EventReminders] Green API Error (Admin): ${err}`);
                                     }
+                                } catch (waError) {
+                                    console.error(`[EventReminders] DIRECT WhatsApp failed for admin ${admin.full_name}:`, waError);
                                 }
-                            } catch (waError) {
-                                console.error(`[EventReminders] DIRECT WhatsApp failed for admin ${admin.full_name}:`, waError);
                             }
                         }
 
