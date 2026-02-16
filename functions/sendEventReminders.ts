@@ -52,8 +52,19 @@ Deno.serve(async (req) => {
         const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
         const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
         
+        // Check quiet hours (default 22:00-08:00 Israel time)
+        const DEFAULT_QUIET_START = 22;
+        const DEFAULT_QUIET_END = 8;
+        const currentlyInQuietHours = isInQuietHours(DEFAULT_QUIET_START, DEFAULT_QUIET_END);
+        const quietHoursEndTime = currentlyInQuietHours ? getQuietHoursEndTime(DEFAULT_QUIET_END) : null;
+        
+        if (currentlyInQuietHours) {
+            console.log(`[EventReminders] Currently in quiet hours (${DEFAULT_QUIET_START}:00-${DEFAULT_QUIET_END}:00). WhatsApp messages will be queued.`);
+        }
+        
         let sentCount = 0;
         let skippedCount = 0;
+        let queuedCount = 0;
         
         for (const event of allEvents) {
             if (event.status === 'cancelled') continue;
