@@ -147,13 +147,34 @@ Deno.serve(async (req) => {
                             const whatsappMessage = replacePlaceholders(supplierTemplate.whatsapp_body_template || supplierTemplate.body_template, contextData);
                             const link = buildDeepLink(supplierTemplate.deep_link_base, supplierTemplate.deep_link_params_map, contextData);
 
-                            // DIRECT SEND FIRST (Decoupled from InAppNotification)
+                            // WHATSAPP SEND with quiet hours check
                             let whatsappSent = false;
+                            let whatsappQueued = false;
                             
-                            // Always try to send if phone exists (user policy: no opt-out)
-                            if (supplier.phone) {
-                                try {
-                                    if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                            if (supplier.phone && GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                                if (currentlyInQuietHours) {
+                                    // Queue for later
+                                    try {
+                                        await base44.asServiceRole.entities.PendingPushNotification.create({
+                                            user_id: targetUserId,
+                                            user_email: targetUserEmail,
+                                            title,
+                                            message: whatsappMessage,
+                                            link: link || '',
+                                            scheduled_for: quietHoursEndTime.toISOString(),
+                                            template_type: 'SUPPLIER_EVENT_REMINDER',
+                                            is_sent: false,
+                                            data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: supplier.phone })
+                                        });
+                                        whatsappQueued = true;
+                                        queuedCount++;
+                                        console.log(`[EventReminders] WhatsApp QUEUED for ${supplier.supplier_name} until ${quietHoursEndTime.toISOString()}`);
+                                    } catch (qErr) {
+                                        console.error(`[EventReminders] Failed to queue WhatsApp for ${supplier.supplier_name}:`, qErr);
+                                    }
+                                } else {
+                                    // Send immediately
+                                    try {
                                         let cleanPhone = supplier.phone.toString().replace(/[^0-9]/g, '');
                                         if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
                                         else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
@@ -174,9 +195,9 @@ Deno.serve(async (req) => {
                                             const err = await response.text();
                                             console.error(`[EventReminders] Green API Error: ${err}`);
                                         }
+                                    } catch (waError) {
+                                        console.error(`[EventReminders] DIRECT WhatsApp failed for ${supplier.supplier_name}:`, waError);
                                     }
-                                } catch (waError) {
-                                    console.error(`[EventReminders] DIRECT WhatsApp failed for ${supplier.supplier_name}:`, waError);
                                 }
                             }
 
