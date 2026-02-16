@@ -49,8 +49,8 @@ export default function UserNotificationPreferences({ user, onClose }) {
   useEffect(() => {
     if (user) {
       setPreferences(user.notification_preferences || {});
-      setQuietStartHour(user.quiet_start_hour ?? null);
-      setQuietEndHour(user.quiet_end_hour ?? null);
+      setQuietStartHour(user.quiet_start_hour ?? 22);
+      setQuietEndHour(user.quiet_end_hour ?? 8);
     }
   }, [user]);
 
