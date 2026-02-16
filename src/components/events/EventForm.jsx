@@ -524,6 +524,7 @@ for (const serviceItem of formData.services) {
         order_index: serviceItem.order_index !== undefined ? serviceItem.order_index : (serviceDetails?.default_order_index || 0),
         
         pickup_point: serviceItem.pickup_point || '',
+        standing_time: serviceItem.standing_time || '',
         on_site_contact_details: serviceItem.on_site_contact_details || null,
         parent_package_event_service_id: parentId,
         
