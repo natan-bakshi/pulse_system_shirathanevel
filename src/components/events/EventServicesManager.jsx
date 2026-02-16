@@ -1264,26 +1264,44 @@ export default function EventServicesManager({
                   </Button>
                 </div>
               </div>
-              <div className="p-3 space-y-2">
-                {pkg.services.map((service) => (
-                  <div key={service.service_id} className="p-3 bg-gray-50 rounded">
-                    {renderServiceCard(service, true)}
+              <Droppable droppableId={pkg.package_id} type="service-in-package">
+                {(provided) => (
+                  <div {...provided.droppableProps} ref={provided.innerRef} className="p-3 space-y-2">
+                    {pkg.services.map((service, sIndex) => (
+                      <Draggable key={service.id || service.service_id} draggableId={service.id || service.service_id} index={sIndex}>
+                        {(provided) => (
+                          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="p-3 bg-gray-50 rounded">
+                            {renderServiceCard(service, true)}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                ))}
-              </div>
+                )}
+              </Droppable>
             </div>
           ))}
 
           {/* Standalone Services */}
           {groupedServices.standalone.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm text-gray-600">שירותים בודדים</h4>
-              {groupedServices.standalone.map((service) => (
-                <div key={service.service_id} className="border rounded p-3 bg-white">
-                  {renderServiceCard(service, false)}
+            <Droppable droppableId="standalone" type="standalone">
+              {(provided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                  <h4 className="font-semibold text-sm text-gray-600">שירותים בודדים</h4>
+                  {groupedServices.standalone.map((service, index) => (
+                    <Draggable key={service.id || service.service_id} draggableId={service.id || service.service_id} index={index}>
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="border rounded p-3 bg-white">
+                          {renderServiceCard(service, false)}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
                 </div>
-              ))}
-            </div>
+              )}
+            </Droppable>
           )}
         </div>
       </DragDropContext>
