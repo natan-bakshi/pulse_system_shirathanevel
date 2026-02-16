@@ -402,6 +402,44 @@ function formatDate(dateString) {
     return date.toLocaleDateString('he-IL');
 }
 
+function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
+    const currentHour = parseInt(formatter.format(now), 10);
+    if (quietStart > quietEnd) return currentHour >= quietStart || currentHour < quietEnd;
+    return currentHour >= quietStart && currentHour < quietEnd;
+}
+
+function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
+    const currentHour = parseInt(formatter.format(now), 10);
+    // Build a proper Israel-time date for quietEnd:00
+    const israelDateFormatter = new Intl.DateTimeFormat('en-US', { 
+        year: 'numeric', month: '2-digit', day: '2-digit', 
+        hour: '2-digit', minute: '2-digit', hour12: false, 
+        timeZone: timezone 
+    });
+    const parts = israelDateFormatter.formatToParts(now);
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    
+    // Create date in Israel timezone
+    let endDate = new Date(`${year}-${month}-${day}T${String(quietEnd).padStart(2,'0')}:00:00`);
+    // Adjust for Israel offset (UTC+2 winter, UTC+3 summer)
+    const m = parseInt(month, 10);
+    const isSummer = m >= 4 && m <= 10;
+    const offsetHours = isSummer ? 3 : 2;
+    endDate = new Date(endDate.getTime() - offsetHours * 60 * 60 * 1000);
+    
+    // If we're past the end time, schedule for tomorrow
+    if (now >= endDate) {
+        endDate.setDate(endDate.getDate() + 1);
+    }
+    return endDate;
+}
+
 function getIsraelEventDate(dateStr, timeStr) {
     let time = timeStr || '09:00';
     if (!time.match(/^\d{1,2}:\d{2}$/)) time = '09:00';
