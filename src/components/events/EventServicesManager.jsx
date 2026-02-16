@@ -410,18 +410,24 @@ export default function EventServicesManager({
 
     const servicesInPackage = packageData.service_ids || [];
 
-    const newServices = servicesInPackage.map((serviceId, idx) => {
-      const serviceDetails = allServices.find(s => s.id === serviceId);
-      if (!serviceDetails) return null;
+    // מיון לפי default_order_index של השירותים
+    const sortedServicesInPackage = [...servicesInPackage]
+      .map(serviceId => {
+        const serviceDetails = allServices.find(s => s.id === serviceId);
+        return { serviceId, serviceDetails };
+      })
+      .filter(item => item.serviceDetails)
+      .sort((a, b) => (a.serviceDetails.default_order_index || 0) - (b.serviceDetails.default_order_index || 0));
 
+    const newServices = sortedServicesInPackage.map((item, idx) => {
       return {
         id: `temp_${Date.now()}_${idx}`,
-        service_id: serviceId,
-        service_name: serviceDetails.service_name,
+        service_id: item.serviceId,
+        service_name: item.serviceDetails.service_name,
         custom_price: 0, // Price is in package
         quantity: 1,
         includes_vat: packageData.package_includes_vat, 
-        service_description: serviceDetails.service_description || '',
+        service_description: item.serviceDetails.service_description || '',
         
         parent_package_event_service_id: mainPackageTempId,
         is_package_main_item: false,
@@ -433,7 +439,7 @@ export default function EventServicesManager({
         client_notes: '',
         order_index: newPackageBaseOrderIndex + idx + 1
       };
-    }).filter(Boolean);
+    });
 
     onServicesChange([...selectedServices, packageMainItem, ...newServices]);
     setSelectedExistingPackage(null);
