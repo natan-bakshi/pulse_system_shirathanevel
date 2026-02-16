@@ -765,15 +765,15 @@ export default function EventServicesManager({
                     {(() => {
                         let units = [];
                         try {
-                            const parsed = JSON.parse(service.pickuppoint || '[]');
+                            const parsed = JSON.parse(service.pickup_point || service.pickuppoint || '[]');
                             units = Array.isArray(parsed) ? parsed : [];
                         } catch (e) {
-                             if (service.pickuppoint || service.standingtime) {
+                             if (service.pickup_point || service.pickuppoint || service.standing_time || service.standingtime) {
                                 units = [{
                                     pickupPoints: [{
-                                        time: service.standingtime,
-                                        location: service.pickuppoint,
-                                        contact: service.onsitecontactdetails
+                                        time: service.standing_time || service.standingtime,
+                                        location: service.pickup_point || service.pickuppoint,
+                                        contact: service.on_site_contact_details || service.onsitecontactdetails
                                     }]
                                 }];
                              }
