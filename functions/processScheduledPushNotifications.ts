@@ -80,34 +80,26 @@ Deno.serve(async (req) => {
                 } catch(e) {}
 
                 if (whatsappData && whatsappData.send_whatsapp) {
-                    // We need to resolve phone again if not stored, but usually createNotification resolves it.
-                    // For now, rely on User phone. If User is missing phone, we might fail here for pending messages
-                    // unless we stored resolved phone in 'data' too. 
-                    // Enhancement: Use targetUser.phone.
+                    // Use stored phone from data (preferred) or fallback to targetUser.phone
+                    const phoneToUse = whatsappData.phone || targetUser?.phone;
                     
-                    if (targetUser?.phone) {
+                    if (phoneToUse) {
                         try {
                             const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
                             const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
                             
                             if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-                                let cleanPhone = targetUser.phone.replace(/[^0-9]/g, '');
+                                let cleanPhone = phoneToUse.toString().replace(/[^0-9]/g, '');
                                 if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
                                 else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
                                 
                                 const chatId = `${cleanPhone}@c.us`;
                                 const waMsg = whatsappData.whatsapp_message || pending.message;
-                                const link = pending.link || '';
-                                
-                                // Construct Absolute Link (if not already) - Use stored base_url or default
-                                const baseUrl = 'https://app.base44.com'; // Fallback
-                                const fullLink = link ? (link.startsWith('http') ? link : `${baseUrl}${link.startsWith('/') ? link : '/' + link}`) : '';
-                                const content = `*${pending.title}*\n\n${waMsg}${fullLink ? `\n\n${fullLink}` : ''}`;
                                 
                                 await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ chatId, message: content })
+                                    body: JSON.stringify({ chatId, message: waMsg })
                                 });
                                 console.log(`[ScheduledPush] WhatsApp sent to ${chatId}`);
                                 
@@ -121,6 +113,8 @@ Deno.serve(async (req) => {
                         } catch (waErr) {
                             console.error(`[ScheduledPush] WhatsApp error:`, waErr);
                         }
+                    } else {
+                        console.log(`[ScheduledPush] No phone found for pending WhatsApp ${pending.id}`);
                     }
                 }
 
