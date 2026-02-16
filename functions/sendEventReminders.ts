@@ -349,8 +349,8 @@ function formatDate(dateString) {
 }
 
 function getIsraelEventDate(dateStr, timeStr) {
-    let time = timeStr || '00:00';
-    if (!time.match(/^\d{1,2}:\d{2}$/)) time = '00:00';
+    let time = timeStr || '09:00';
+    if (!time.match(/^\d{1,2}:\d{2}$/)) time = '09:00';
     
     // Create UTC date from string (e.g. 2026-02-16T09:00:00Z)
     const d = new Date(`${dateStr}T${time}:00Z`);
