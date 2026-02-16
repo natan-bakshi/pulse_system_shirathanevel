@@ -477,9 +477,37 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     let message = template.whatsapp_body_template || template.body_template || template.body || '';
     message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj);
     
-    // console.log(`[HandleEntityEvents] Triggering WhatsApp to ${phone}`);
+    // Check quiet hours (default 22:00-08:00 Israel time)
+    const DEFAULT_QUIET_START = 22;
+    const DEFAULT_QUIET_END = 8;
+    const inQuietHours = isInQuietHours(DEFAULT_QUIET_START, DEFAULT_QUIET_END);
+    
+    if (inQuietHours) {
+        // Queue for later
+        try {
+            const quietEnd = getQuietHoursEndTime(DEFAULT_QUIET_END);
+            const userId = userObj?.id || (supplierObj ? `virtual_supplier_${supplierObj.id}` : 'virtual_unknown');
+            const userEmail = userObj?.email || supplierObj?.contact_emails?.[0] || '';
+            
+            await base44.asServiceRole.entities.PendingPushNotification.create({
+                user_id: userId,
+                user_email: userEmail,
+                title: replaceVariables(template.title_template || '', eventObj, supplierObj, serviceObj, userObj),
+                message: message,
+                link: '',
+                scheduled_for: quietEnd.toISOString(),
+                template_type: template.type,
+                is_sent: false,
+                data: JSON.stringify({ send_whatsapp: true, whatsapp_message: message, phone: phone })
+            });
+            console.log(`[HandleEntityEvents] WhatsApp QUEUED for ${phone} until ${quietEnd.toISOString()}`);
+        } catch (qErr) {
+            console.error(`[HandleEntityEvents] Failed to queue WhatsApp:`, qErr);
+        }
+        return;
+    }
 
-    // Call Direct WhatsApp (Inlined to avoid 403 on invoke)
+    // Send immediately
     try {
         const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
         const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
@@ -510,6 +538,37 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     } catch (e) {
         console.error(`[HandleEntityEvents] WhatsApp failed to ${phone}`, e);
     }
+}
+
+// --- Quiet Hours Helpers ---
+function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
+    const currentHour = parseInt(formatter.format(now), 10);
+    if (quietStart > quietEnd) return currentHour >= quietStart || currentHour < quietEnd;
+    return currentHour >= quietStart && currentHour < quietEnd;
+}
+
+function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
+    const currentHour = parseInt(formatter.format(now), 10);
+    const israelDateFormatter = new Intl.DateTimeFormat('en-US', { 
+        year: 'numeric', month: '2-digit', day: '2-digit', 
+        hour: '2-digit', minute: '2-digit', hour12: false, 
+        timeZone: timezone 
+    });
+    const parts = israelDateFormatter.formatToParts(now);
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    let endDate = new Date(`${year}-${month}-${day}T${String(quietEnd).padStart(2,'0')}:00:00`);
+    const m = parseInt(month, 10);
+    const isSummer = m >= 4 && m <= 10;
+    const offsetHours = isSummer ? 3 : 2;
+    endDate = new Date(endDate.getTime() - offsetHours * 60 * 60 * 1000);
+    if (now >= endDate) endDate.setDate(endDate.getDate() + 1);
+    return endDate;
 }
 
 async function triggerInApp(base44, template, user, eventObj, supplierObj, serviceObj) {
