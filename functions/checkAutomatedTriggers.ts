@@ -342,7 +342,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
         whatsapp_message = whatsapp_message.replace(regex, val || '');
     }
     
-    // 1. Direct WhatsApp Send (Decoupled)
+    // 1. WhatsApp Send with quiet hours check
     let whatsappSent = false;
     let phoneToUse = null;
 
@@ -353,36 +353,64 @@ async function triggerNotification(base44, template, event, user, supplier, even
     }
 
     if (phoneToUse && template.allowed_channels && template.allowed_channels.includes('whatsapp')) {
-        try {
-            const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-            const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-            
-            if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-                let cleanPhone = phoneToUse.toString().replace(/[^0-9]/g, '');
-                if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-                const chatId = `${cleanPhone}@c.us`;
-                const body = { chatId, message: whatsapp_message };
-
-                const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
+        const DEFAULT_QUIET_START = 22;
+        const DEFAULT_QUIET_END = 8;
+        const inQuietHours = isInQuietHours(DEFAULT_QUIET_START, DEFAULT_QUIET_END);
+        
+        if (inQuietHours) {
+            // Queue for later
+            try {
+                const quietEnd = getQuietHoursEndTime(DEFAULT_QUIET_END);
+                const targetUserId = user ? user.id : (supplier ? `virtual_supplier_${supplier.id}` : `virtual_event_${event.id}`);
+                const targetUserEmail = user ? user.email : (supplier ? supplier.contact_emails?.[0] : '');
                 
-                if (response.ok) {
-                    whatsappSent = true;
-                    console.log(`[AutomatedTriggers] DIRECT WhatsApp sent to ${phoneToUse}`);
-                } else {
-                    const err = await response.text();
-                    console.error(`[AutomatedTriggers] Green API Error: ${err}`);
-                }
-            } else {
-                 console.error('[AutomatedTriggers] Missing Green API Secrets');
+                await base44.asServiceRole.entities.PendingPushNotification.create({
+                    user_id: targetUserId,
+                    user_email: targetUserEmail,
+                    title: title,
+                    message: whatsapp_message,
+                    link: '',
+                    scheduled_for: quietEnd.toISOString(),
+                    template_type: template.type,
+                    is_sent: false,
+                    data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsapp_message, phone: phoneToUse })
+                });
+                console.log(`[AutomatedTriggers] WhatsApp QUEUED for ${phoneToUse} until ${quietEnd.toISOString()}`);
+            } catch (qErr) {
+                console.error(`[AutomatedTriggers] Failed to queue WhatsApp:`, qErr);
             }
-        } catch (e) {
-            console.error(`[AutomatedTriggers] Failed DIRECT WhatsApp to ${phoneToUse}`, e);
+        } else {
+            try {
+                const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+                const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+                
+                if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                    let cleanPhone = phoneToUse.toString().replace(/[^0-9]/g, '');
+                    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+                    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+
+                    const chatId = `${cleanPhone}@c.us`;
+                    const body = { chatId, message: whatsapp_message };
+
+                    const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    
+                    if (response.ok) {
+                        whatsappSent = true;
+                        console.log(`[AutomatedTriggers] DIRECT WhatsApp sent to ${phoneToUse}`);
+                    } else {
+                        const err = await response.text();
+                        console.error(`[AutomatedTriggers] Green API Error: ${err}`);
+                    }
+                } else {
+                     console.error('[AutomatedTriggers] Missing Green API Secrets');
+                }
+            } catch (e) {
+                console.error(`[AutomatedTriggers] Failed DIRECT WhatsApp to ${phoneToUse}`, e);
+            }
         }
     }
 
