@@ -54,6 +54,8 @@ export default function EventDetails() {
   const [shareStatus, setShareStatus] = useState('initial');
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState("");
+  const [quoteIncludeIntro, setQuoteIncludeIntro] = useState(true);
+  const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(true);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -1413,7 +1415,7 @@ export default function EventDetails() {
   const handleGenerateQuote = useCallback(async () => {
     setIsGeneratingQuote(true);
     try {
-      const response = await base44.functions.invoke('generateQuote', { eventId });
+      const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
       const html = response.data.html;
       
       const newWindow = window.open();
@@ -1429,12 +1431,12 @@ export default function EventDetails() {
     } finally {
       setIsGeneratingQuote(false);
     }
-  }, [eventId]);
+  }, [eventId, quoteIncludeIntro, quoteIncludePaymentTerms]);
 
   const handleGeneratePdf = useCallback(async () => {
     setIsGeneratingPdf(true);
     try {
-      const response = await base44.functions.invoke('generateQuotePdf', { eventId });
+      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
 
@@ -1465,7 +1467,7 @@ export default function EventDetails() {
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [eventId, event]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms]);
 
   const handleSmartShare = useCallback(async (e) => {
     e.preventDefault();
@@ -1498,7 +1500,7 @@ export default function EventDetails() {
         try {
             setShareStatus('fetching');
             
-            const response = await base44.functions.invoke('generateQuotePdf', { eventId });
+            const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
             const pdfUrl = response.data.pdf_url;
             const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
             
@@ -1518,7 +1520,7 @@ export default function EventDetails() {
             alert("שגיאה בהכנת הקובץ, נסה שוב");
         }
     }
-  }, [eventId, event, shareStatus, pdfBlob, pdfFileName]);
+  }, [eventId, event, shareStatus, pdfBlob, pdfFileName, quoteIncludeIntro, quoteIncludePaymentTerms]);
 
   const handleExportEvent = useCallback(() => {
     setShowExportDialog(true);
