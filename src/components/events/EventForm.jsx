@@ -347,15 +347,6 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
 
     let servicesToSet = initialServicesFromEvent;
 
-    // Load defaults only if it's a new event and we have services loaded
-    if (!event && allServices.length > 0) {
-        if (eventData.concept && conceptDefaults.length > 0) {
-            servicesToSet = loadDefaultServices(allServices, eventData.concept, conceptDefaults);
-        } else if (!eventData.concept && servicesToSet.length === 0) {
-            servicesToSet = loadDefaultServices(allServices, null, conceptDefaults);
-        }
-    }
-
     if (event?.concept && !existingConcepts.includes(event.concept)) {
       setIsManualConcept(true);
     } else {
@@ -378,16 +369,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   }, [event?.id, allServices.length, conceptDefaults.length, initialDate]); // Reduced dependencies
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => {
-      const newData = { ...prev, [field]: value };
-
-      if (field === 'concept' && !event && allServices.length > 0 && conceptDefaults.length > 0) {
-        const defaultServices = loadDefaultServices(allServices, value, conceptDefaults);
-        return { ...newData, services: defaultServices };
-      }
-
-      return newData;
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleParentChange = (index, field, value) => {
@@ -991,7 +973,22 @@ for (const serviceItem of formData.services) {
           </div>
 
           <div className="p-6 border rounded-lg bg-gray-50/80">
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">שירותים</h3>
+            <div className="flex justify-between items-center mb-4 border-b pb-2">
+              <h3 className="text-lg font-semibold">שירותים</h3>
+              {!event && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadDefaults}
+                  disabled={isSaving || allServices.length === 0}
+                  className="text-purple-700 border-purple-200 hover:bg-purple-50"
+                >
+                  <Sparkles className="h-4 w-4 ml-1" />
+                  טען שירותים מוגדרים מראש
+                </Button>
+              )}
+            </div>
             <EventServicesManager
               allServices={allServices}
               allSuppliers={allSuppliers}
