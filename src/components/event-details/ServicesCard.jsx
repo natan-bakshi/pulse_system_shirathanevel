@@ -739,12 +739,11 @@ const handleCopyTransport = (service, serviceDetails) => {
                           )}
                         </div>
                         {isAdmin && (
-                          <Input
-                            placeholder="הערה לספק..."
-                            value={note}
-                            onChange={(e) => handleUpdateSupplierNote(service.id, sup.id, e.target.value)}
-                            onBlur={() => loadEventData()}
-                            className="text-xs h-7"
+                          <SupplierNoteInput
+                            serviceId={service.id}
+                            supplierId={sup.id}
+                            initialNote={note}
+                            handleUpdateSupplierNote={handleUpdateSupplierNote}
                           />
                         )}
                       </div>
