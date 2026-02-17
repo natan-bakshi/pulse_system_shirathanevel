@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { X, Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste } from "lucide-react";
+import { X, Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import EventServicesManager from "./EventServicesManager";
 import PaymentManager from "./PaymentManager";
@@ -177,32 +177,106 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   }, []);
 
 
-  const loadDefaultServices = (servicesList, conceptName, allConceptDefaults) => {
+  const loadDefaultServices = (servicesList, conceptName, allConceptDefaults, packagesData) => {
     const concept = allConceptDefaults.find(c => c.concept === conceptName);
+    const result = [];
+    let orderCounter = 0;
 
+    // 1. הוסף חבילות דיפולטיביות (אם יש)
+    const defaultPackageIds = concept?.package_ids || [];
+    if (defaultPackageIds.length > 0 && packagesData.length > 0) {
+      for (const pkgId of defaultPackageIds) {
+        const pkg = packagesData.find(p => p.id === pkgId);
+        if (!pkg) continue;
+
+        const mainPkgTempId = `def_pkg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const baseOrder = orderCounter * 1000;
+
+        // Main package item
+        result.push({
+          id: mainPkgTempId,
+          service_id: servicesList[0]?.id || '',
+          package_name: pkg.package_name,
+          package_description: pkg.package_description,
+          custom_price: pkg.package_price || 0,
+          includes_vat: pkg.package_includes_vat || false,
+          is_package_main_item: true,
+          quantity: 1,
+          order_index: baseOrder,
+          supplier_ids: [],
+          supplier_statuses: {},
+          supplier_notes: {},
+          admin_notes: '',
+          client_notes: '',
+          service_description: pkg.package_description || ''
+        });
+
+        // Child services in package
+        const sortedServiceIds = (pkg.service_ids || [])
+          .map(sid => servicesList.find(s => s.id === sid))
+          .filter(Boolean)
+          .sort((a, b) => (a.default_order_index || 0) - (b.default_order_index || 0));
+
+        sortedServiceIds.forEach((service, idx) => {
+          result.push({
+            id: `def_${Date.now()}_${orderCounter}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+            service_id: service.id,
+            service_name: service.service_name,
+            custom_price: 0,
+            quantity: 1,
+            includes_vat: pkg.package_includes_vat || false,
+            service_description: service.service_description || '',
+            parent_package_event_service_id: mainPkgTempId,
+            is_package_main_item: false,
+            supplier_ids: [],
+            supplier_statuses: {},
+            supplier_notes: {},
+            admin_notes: '',
+            client_notes: '',
+            order_index: baseOrder + idx + 1
+          });
+        });
+
+        orderCounter++;
+      }
+    }
+
+    // 2. הוסף שירותים בודדים דיפולטיביים
     let defaultServicesToAdd;
     if (concept && concept.service_ids?.length > 0) {
       defaultServicesToAdd = servicesList.filter(service => concept.service_ids.includes(service.id));
-    } else {
+    } else if (!concept) {
       defaultServicesToAdd = servicesList.filter(service => service.is_default);
+    } else {
+      defaultServicesToAdd = [];
     }
 
-    return defaultServicesToAdd.map((service, idx) => ({
-      id: `def_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
-      service_id: service.id,
-      service_name: service.service_name,
-      custom_price: service.base_price || 0,
-      quantity: 1,
-      total_price: service.base_price || 0,
-      supplier_ids: [],
-      status: "pending",
-      includes_vat: service.default_includes_vat || false,
-      admin_notes: "",
-      client_notes: "",
-      service_description: service.service_description || "",
-      min_suppliers: service.default_min_suppliers !== undefined ? service.default_min_suppliers : 0,
-      order_index: service.default_order_index || 0
-    })).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    defaultServicesToAdd.forEach((service, idx) => {
+      result.push({
+        id: `def_${Date.now()}_s_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+        service_id: service.id,
+        service_name: service.service_name,
+        custom_price: service.base_price || 0,
+        quantity: 1,
+        total_price: service.base_price || 0,
+        supplier_ids: [],
+        status: "pending",
+        includes_vat: service.default_includes_vat || false,
+        admin_notes: "",
+        client_notes: "",
+        service_description: service.service_description || "",
+        min_suppliers: service.default_min_suppliers !== undefined ? service.default_min_suppliers : 0,
+        order_index: service.default_order_index || (orderCounter * 1000 + idx)
+      });
+    });
+
+    return result.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  };
+
+  const handleLoadDefaults = () => {
+    if (allServices.length === 0) return;
+    const defaults = loadDefaultServices(allServices, formData.concept, conceptDefaults, allPackages);
+    setFormData(prev => ({ ...prev, services: [...prev.services, ...defaults] }));
   };
 
   useEffect(() => {

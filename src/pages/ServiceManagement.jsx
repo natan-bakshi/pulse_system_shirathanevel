@@ -734,6 +734,7 @@ export default function ServiceManagement() {
         isOpen={isConceptsOpen}
         onClose={() => setIsConceptsOpen(false)}
         allServices={services}
+        allPackages={packages}
       />
       
       <ExportDialog
