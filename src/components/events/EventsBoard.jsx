@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
@@ -889,14 +889,33 @@ export default function EventsBoard() {
                                 {suppliers.filter(s => editingService.supplierIds.includes(s.id)).length > 0 && (
                                     <div className="space-y-2">
                                         <Label className="text-xs text-gray-500 font-medium">ספקים משובצים</Label>
-                                        {suppliers.filter(s => editingService.supplierIds.includes(s.id)).map(s => (
-                                            <div key={s.id} className="p-2 rounded-lg border bg-green-50 border-green-200 flex items-center justify-between group">
-                                                <div className="text-sm font-medium text-green-900">{s.supplier_name}</div>
-                                                <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
-                                                    <X className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        ))}
+                                        {suppliers.filter(s => editingService.supplierIds.includes(s.id)).map(s => {
+                                            const supplierStatus = editingService.supplierStatuses[s.id] || 'pending';
+                                            const statusBg = supplierStatus === 'confirmed' ? 'bg-green-50 border-green-200' : supplierStatus === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200';
+                                            const statusTextColor = supplierStatus === 'confirmed' ? 'text-green-900' : supplierStatus === 'rejected' ? 'text-red-900' : 'text-yellow-900';
+                                            return (
+                                                <div key={s.id} className={`p-2 rounded-lg border ${statusBg} flex items-center justify-between group`}>
+                                                    <div className={`text-sm font-medium ${statusTextColor}`}>{s.supplier_name}</div>
+                                                    <div className="flex items-center gap-1">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <button className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${getStatusColor(supplierStatus)}`}>
+                                                                    {supplierStatus === 'confirmed' ? 'אושר' : supplierStatus === 'rejected' ? 'נדחה' : 'בהמתנה'}
+                                                                </button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent>
+                                                                <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'pending' } }))}>בהמתנה</DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'confirmed' } }))}>אושר</DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'rejected' } }))}>נדחה</DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                        <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
 
