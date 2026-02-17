@@ -910,14 +910,23 @@ export default function EventsBoard() {
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
                                                         <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
-                                                            <X className="h-4 w-4" />
+                                                        <X className="h-4 w-4" />
                                                         </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                                        </div>
+                                                        </div>
+                                                        <div className="mt-1">
+                                                        <Input
+                                                        placeholder="הערה לספק..."
+                                                        value={editingService.supplierNotes[s.id] || ''}
+                                                        onChange={(e) => setEditingService(p => ({ ...p, supplierNotes: { ...p.supplierNotes, [s.id]: e.target.value } }))}
+                                                        className="text-xs h-7"
+                                                        />
+                                                        </div>
+                                                        </div>
+                                                        );
+                                                        })}
+                                                        </div>
+                                                        )}
 
                                 {/* Available Suppliers */}
                                 <div className="space-y-2">
