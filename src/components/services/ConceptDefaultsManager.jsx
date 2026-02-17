@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, Trash2, Loader2, Save } from "lucide-react";
+import { X, Plus, Trash2, Loader2, Save, Package as PackageIcon } from "lucide-react";
 
 const SETTING_KEY = "concept_defaults";
 
-export default function ConceptDefaultsManager({ isOpen, onClose, allServices }) {
+export default function ConceptDefaultsManager({ isOpen, onClose, allServices, allPackages = [] }) {
   const [concepts, setConcepts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,7 +47,7 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices })
       alert("שם קונספט לא תקין או כבר קיים");
       return;
     }
-    setConcepts([...concepts, { concept: newConceptName.trim(), service_ids: [] }]);
+    setConcepts([...concepts, { concept: newConceptName.trim(), service_ids: [], package_ids: [] }]);
     setNewConceptName("");
   };
 
@@ -66,6 +66,20 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices })
       serviceIds.push(serviceId);
     }
     newConcepts[conceptIndex].service_ids = serviceIds;
+    setConcepts(newConcepts);
+  };
+
+  const handlePackageToggle = (conceptIndex, packageId) => {
+    const newConcepts = [...concepts];
+    const packageIds = newConcepts[conceptIndex].package_ids || [];
+    const pkgIndex = packageIds.indexOf(packageId);
+
+    if (pkgIndex > -1) {
+      packageIds.splice(pkgIndex, 1);
+    } else {
+      packageIds.push(packageId);
+    }
+    newConcepts[conceptIndex].package_ids = packageIds;
     setConcepts(newConcepts);
   };
 
@@ -114,7 +128,26 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices })
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
-                  <Label>בחר שירותים עבור קונספט זה:</Label>
+                  {allPackages.length > 0 && (
+                    <>
+                      <Label className="flex items-center gap-1"><PackageIcon className="h-4 w-4 text-purple-600" />בחר חבילות:</Label>
+                      <div className="max-h-32 overflow-y-auto border rounded-md p-2 mt-1 mb-3 space-y-1 bg-purple-50/50">
+                          {allPackages.map(pkg => (
+                            <div key={pkg.id} className="flex items-center space-x-2 space-x-reverse">
+                               <input
+                                type="checkbox"
+                                id={`pkg-${index}-${pkg.id}`}
+                                checked={(concept.package_ids || []).includes(pkg.id)}
+                                onChange={() => handlePackageToggle(index, pkg.id)}
+                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                               />
+                               <Label htmlFor={`pkg-${index}-${pkg.id}`} className="text-sm font-normal">{pkg.package_name}</Label>
+                            </div>
+                          ))}
+                      </div>
+                    </>
+                  )}
+                  <Label>בחר שירותים בודדים:</Label>
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2 mt-1 space-y-1">
                       {allServices.map(service => (
                         <div key={service.id} className="flex items-center space-x-2 space-x-reverse">
