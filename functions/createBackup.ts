@@ -37,29 +37,25 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.User.list()
         ]);
 
-        // שלב 2: בניית Master Backup JSON
-        const masterBackup = {
-            backup_date: new Date().toISOString(),
-            backup_by: user.email,
-            entities: {
-                Event: events,
-                EventService: eventServices,
-                Service: services,
-                Supplier: suppliers,
-                Payment: payments,
-                Package: packages,
-                AppSettings: appSettings,
-                QuoteTemplate: quoteTemplates,
-                SignedAgreement: signedAgreements,
-                PriceHistory: priceHistory,
-                User: users
-            }
+        console.log(`[Backup] Fetched ${events.length} events, ${eventServices.length} event services`);
+
+        // שלב 2: בניית Master Backup JSON (entities ראשיים)
+        const masterEntities = {
+            Event: events,
+            EventService: eventServices,
+            Service: services,
+            Supplier: suppliers,
+            Payment: payments,
+            Package: packages,
+            AppSettings: appSettings,
+            QuoteTemplate: quoteTemplates,
+            SignedAgreement: signedAgreements,
+            PriceHistory: priceHistory,
+            User: users
         };
 
-        console.log(`[Backup] Master backup created with ${events.length} events, ${eventServices.length} event services`);
-
-        // שלב 3: בניית גיבויים ספציפיים לכל אירוע
-        const eventBackups = [];
+        // שלב 3: בניית גיבויים ספציפיים לכל אירוע (enriched)
+        const enrichedEventBackups = [];
         for (const event of events) {
             const eventEventServices = eventServices.filter(es => es.event_id === event.id);
             const eventPayments = payments.filter(p => p.event_id === event.id);
@@ -96,7 +92,7 @@ Deno.serve(async (req) => {
                 };
             });
 
-            eventBackups.push({
+            enrichedEventBackups.push({
                 event,
                 event_services: enrichedEventServices,
                 payments: eventPayments,
@@ -104,110 +100,87 @@ Deno.serve(async (req) => {
             });
         }
 
-        // שלב 4: יצירת תיקיית גיבוי ב-Google Drive
-        const now = new Date();
-        const backupFolderName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-        
-        // מציאת או יצירת תיקייה ראשית
-        const mainFolderName = 'Base44 Backups';
-        
-        // חיפוש תיקייה ראשית
-        let mainFolderId = await findOrCreateFolder(driveAccessToken, mainFolderName, null);
-        console.log(`[Backup] Main folder ID: ${mainFolderId}`);
-        
-        // יצירת תיקיית גיבוי חדשה
-        const backupFolderId = await findOrCreateFolder(driveAccessToken, backupFolderName, mainFolderId);
-        console.log(`[Backup] Created backup folder: ${backupFolderName} (ID: ${backupFolderId})`);
-
-        // שלב 5: העלאת קבצים ל-Google Drive
-        // העלאת Master Backup
-        await uploadFileToDrive(
-            driveAccessToken,
-            'master_backup.json',
-            JSON.stringify(masterBackup, null, 2),
-            'application/json',
-            backupFolderId
-        );
-        console.log('[Backup] Master backup uploaded');
-
-        // העלאת גיבויים ספציפיים לאירועים
-        for (const eventBackup of eventBackups) {
-            await uploadFileToDrive(
-                driveAccessToken,
-                `event_${eventBackup.event.id}.json`,
-                JSON.stringify(eventBackup, null, 2),
-                'application/json',
-                backupFolderId
-            );
-        }
-        console.log(`[Backup] Uploaded ${eventBackups.length} event-specific backups`);
-
-        // העלאת גיבויים נפרדים לישויות סטטיות
-        const staticEntities = {
-            services: services,
-            suppliers: suppliers,
-            packages: packages,
-            appSettings: appSettings,
-            quoteTemplates: quoteTemplates
-        };
-        
-        for (const [entityName, entityData] of Object.entries(staticEntities)) {
-            await uploadFileToDrive(
-                driveAccessToken,
-                `${entityName}.json`,
-                JSON.stringify(entityData, null, 2),
-                'application/json',
-                backupFolderId
-            );
-        }
-        console.log('[Backup] Static entities backups uploaded');
-
-        // שלב 6: גיבוי הצעות מחיר HTML
+        // שלב 4: גיבוי הצעות מחיר HTML - אסוף הכל מראש
+        const htmlQuotes = {};
         let htmlBackupCount = 0;
         for (const agreement of signedAgreements) {
             if (agreement.agreement_content_uri) {
                 try {
-                    // קבלת signed URL לקובץ ה-HTML הפרטי
                     const signedUrlResult = await base44.integrations.Core.CreateFileSignedUrl({
                         file_uri: agreement.agreement_content_uri,
                         expires_in: 300
                     });
                     
-                    // הורדת תוכן ה-HTML
                     const htmlResponse = await fetch(signedUrlResult.signed_url);
                     if (htmlResponse.ok) {
                         const htmlContent = await htmlResponse.text();
-                        
-                        // העלאת ה-HTML ל-Drive
-                        await uploadFileToDrive(
-                            driveAccessToken,
-                            `quote_${agreement.user_id || agreement.id}.html`,
-                            htmlContent,
-                            'text/html',
-                            backupFolderId
-                        );
+                        htmlQuotes[`quote_${agreement.user_id || agreement.id}`] = htmlContent;
                         htmlBackupCount++;
                     }
                 } catch (e) {
-                    console.warn(`[Backup] Failed to backup HTML for agreement ${agreement.id}: ${e.message}`);
+                    console.warn(`[Backup] Failed to fetch HTML for agreement ${agreement.id}: ${e.message}`);
                 }
             }
         }
-        console.log(`[Backup] Backed up ${htmlBackupCount} quote HTML files`);
+        console.log(`[Backup] Collected ${htmlBackupCount} quote HTML files`);
 
-        // שלב 7: מדיניות FIFO - מחיקת גיבויים ישנים
+        // שלב 5: איחוד הכל לקובץ JSON אחד
+        const now = new Date();
+        const backupTimestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+
+        const consolidatedBackup = {
+            backup_date: now.toISOString(),
+            backup_by: user.email,
+            backup_name: backupTimestamp,
+            // Master entities (לשחזור)
+            entities: masterEntities,
+            // גיבויים מועשרים לפי אירוע
+            event_backups: enrichedEventBackups,
+            // ישויות סטטיות (עותק נפרד לנוחות)
+            static_entities: {
+                services: services,
+                suppliers: suppliers,
+                packages: packages,
+                appSettings: appSettings,
+                quoteTemplates: quoteTemplates
+            },
+            // הצעות מחיר HTML
+            html_quotes: htmlQuotes
+        };
+
+        const backupJson = JSON.stringify(consolidatedBackup, null, 2);
+        const backupFileName = `Pulse_Backup_${backupTimestamp}.json`;
+
+        console.log(`[Backup] Consolidated backup file: ${backupFileName} (${(backupJson.length / 1024 / 1024).toFixed(2)} MB)`);
+
+        // שלב 6: מציאת או יצירת תיקייה ראשית ב-Drive (קריאה 1-2)
+        const mainFolderName = 'Base44 Backups';
+        const mainFolderId = await findOrCreateFolder(driveAccessToken, mainFolderName, null);
+        console.log(`[Backup] Main folder ID: ${mainFolderId}`);
+
+        // שלב 7: העלאת קובץ יחיד ל-Google Drive (קריאה אחת!)
+        const uploadResult = await uploadFileToDrive(
+            driveAccessToken,
+            backupFileName,
+            backupJson,
+            'application/json',
+            mainFolderId
+        );
+        console.log(`[Backup] Uploaded consolidated backup: ${uploadResult.id}`);
+
+        // שלב 8: מדיניות FIFO - מחיקת גיבויים ישנים
         await applyFIFOPolicy(driveAccessToken, mainFolderId, MAX_BACKUPS);
 
-        // שלב 8: שליחת התראה על הצלחה
+        // שלב 9: שליחת התראה על הצלחה
         try {
             await base44.integrations.Core.SendEmail({
                 to: user.email,
-                subject: `גיבוי הושלם בהצלחה - ${backupFolderName}`,
+                subject: `גיבוי הושלם בהצלחה - ${backupTimestamp}`,
                 body: `
                     <div dir="rtl" style="font-family: Arial, sans-serif;">
                         <h2>גיבוי הושלם בהצלחה!</h2>
                         <p><strong>תאריך ושעה:</strong> ${now.toLocaleString('he-IL')}</p>
-                        <p><strong>שם הגיבוי:</strong> ${backupFolderName}</p>
+                        <p><strong>שם הקובץ:</strong> ${backupFileName}</p>
                         <p><strong>סיכום:</strong></p>
                         <ul>
                             <li>אירועים: ${events.length}</li>
@@ -217,7 +190,7 @@ Deno.serve(async (req) => {
                             <li>תשלומים: ${payments.length}</li>
                             <li>הצעות מחיר (HTML): ${htmlBackupCount}</li>
                         </ul>
-                        <p>הגיבוי נשמר ב-Google Drive בתיקייה: <strong>${mainFolderName}/${backupFolderName}</strong></p>
+                        <p>הגיבוי נשמר ב-Google Drive בתיקייה: <strong>${mainFolderName}/${backupFileName}</strong></p>
                     </div>
                 `
             });
@@ -229,8 +202,9 @@ Deno.serve(async (req) => {
 
         return Response.json({
             success: true,
-            backup_name: backupFolderName,
-            backup_folder_id: backupFolderId,
+            backup_name: backupTimestamp,
+            backup_file_name: backupFileName,
+            backup_file_id: uploadResult.id,
             summary: {
                 events: events.length,
                 event_services: eventServices.length,
@@ -325,10 +299,10 @@ async function uploadFileToDrive(accessToken, fileName, content, mimeType, folde
     return await response.json();
 }
 
-// פונקציית עזר: מדיניות FIFO - מחיקת גיבויים ישנים
+// פונקציית עזר: מדיניות FIFO - מחיקת גיבויים ישנים (קבצי JSON בתיקייה הראשית)
 async function applyFIFOPolicy(accessToken, mainFolderId, maxBackups) {
-    // רשימת כל תיקיות הגיבוי
-    const query = `'${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    // חיפוש קבצי JSON של גיבויים (Pulse_Backup_*.json)
+    const query = `'${mainFolderId}' in parents and mimeType='application/json' and name contains 'Pulse_Backup_' and trashed=false`;
     
     const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,createdTime)&orderBy=createdTime`,
@@ -338,41 +312,57 @@ async function applyFIFOPolicy(accessToken, mainFolderId, maxBackups) {
     );
     
     const result = await response.json();
-    const folders = result.files || [];
+    const files = result.files || [];
     
-    console.log(`[Backup FIFO] Found ${folders.length} backup folders, max allowed: ${maxBackups}`);
+    console.log(`[Backup FIFO] Found ${files.length} backup files, max allowed: ${maxBackups}`);
+    
+    // גם חיפוש תיקיות ישנות (מהמבנה הקודם) לספירה כוללת
+    const folderQuery = `'${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const folderResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(folderQuery)}&fields=files(id,name,createdTime)&orderBy=createdTime`,
+        {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        }
+    );
+    const folderResult = await folderResponse.json();
+    const oldFolders = (folderResult.files || []).filter(f => f.name !== 'Base44 Backups');
+    
+    // מיזוג הכל ומיון לפי תאריך יצירה
+    const allBackupItems = [
+        ...files.map(f => ({ ...f, type: 'file' })),
+        ...oldFolders.map(f => ({ ...f, type: 'folder' }))
+    ].sort((a, b) => new Date(a.createdTime) - new Date(b.createdTime));
     
     // אם יש יותר מדי גיבויים, מחק את הישנים
-    if (folders.length > maxBackups) {
-        const foldersToDelete = folders.slice(0, folders.length - maxBackups);
+    if (allBackupItems.length > maxBackups) {
+        const itemsToDelete = allBackupItems.slice(0, allBackupItems.length - maxBackups);
         
-        for (const folder of foldersToDelete) {
-            console.log(`[Backup FIFO] Deleting old backup: ${folder.name}`);
+        for (const item of itemsToDelete) {
+            console.log(`[Backup FIFO] Deleting old backup: ${item.name} (${item.type})`);
             
-            // מחיקת כל הקבצים בתיקייה
-            const filesQuery = `'${folder.id}' in parents and trashed=false`;
-            const filesResponse = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(filesQuery)}&fields=files(id)`,
-                {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
+            if (item.type === 'folder') {
+                // מחיקת כל הקבצים בתיקייה הישנה
+                const filesInFolder = `'${item.id}' in parents and trashed=false`;
+                const innerResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(filesInFolder)}&fields=files(id)`,
+                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                );
+                const innerResult = await innerResponse.json();
+                for (const innerFile of (innerResult.files || [])) {
+                    await fetch(`https://www.googleapis.com/drive/v3/files/${innerFile.id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
                 }
-            );
-            const filesResult = await filesResponse.json();
-            
-            for (const file of (filesResult.files || [])) {
-                await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
             }
             
-            // מחיקת התיקייה עצמה
-            await fetch(`https://www.googleapis.com/drive/v3/files/${folder.id}`, {
+            // מחיקת הקובץ/תיקייה עצמה
+            await fetch(`https://www.googleapis.com/drive/v3/files/${item.id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${accessToken}` }
             });
         }
         
-        console.log(`[Backup FIFO] Deleted ${foldersToDelete.length} old backups`);
+        console.log(`[Backup FIFO] Deleted ${itemsToDelete.length} old backups`);
     }
 }
