@@ -36,16 +36,21 @@ export default function EventsBoard() {
     const [statusFilters, setStatusFilters] = useState(() => {
         try {
             const saved = localStorage.getItem('eventsBoard_statusFilters');
-            return saved ? JSON.parse(saved) : [];
+            if (saved !== null) return JSON.parse(saved);
+            return ["confirmed", "in_progress", "completed"];
         } catch {
-            return [];
+            return ["confirmed", "in_progress", "completed"];
         }
     });
     const [hidePastEventsInCurrentMonth, setHidePastEventsInCurrentMonth] = useState(() => {
-        return localStorage.getItem('eventsBoard_hidePastEvents') === 'true';
+        const saved = localStorage.getItem('eventsBoard_hidePastEvents');
+        if (saved !== null) return saved === 'true';
+        return true;
     });
     const [isStickyEnabled, setIsStickyEnabled] = useState(() => {
-        return localStorage.getItem('eventsBoard_sticky') !== 'false';
+        const saved = localStorage.getItem('eventsBoard_sticky');
+        if (saved !== null) return saved !== 'false';
+        return false;
     });
 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
