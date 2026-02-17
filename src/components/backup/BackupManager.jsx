@@ -65,7 +65,7 @@ export default function BackupManager() {
             setActionResult({
                 type: 'success',
                 title: 'גיבוי נוצר בהצלחה!',
-                message: `גיבוי ${response.data.backup_name} נוצר. ${response.data.summary.events} אירועים, ${response.data.summary.event_services} שירותי אירוע.`
+                message: `גיבוי ${response.data.backup_file_name || response.data.backup_name} נוצר. ${response.data.summary.events} אירועים, ${response.data.summary.event_services} שירותי אירוע.`
             });
             refetchBackups();
         } catch (error) {
