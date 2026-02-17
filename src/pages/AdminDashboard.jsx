@@ -213,16 +213,17 @@ export default function AdminDashboard() {
   const upcomingEvents = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const allowedStatuses = ["confirmed", "in_progress"];
 
     return events.
     filter((event) => {
       const eventDate = new Date(event.event_date);
       eventDate.setHours(0, 0, 0, 0);
-      return eventDate >= today && visibleStatuses && Array.isArray(visibleStatuses) && visibleStatuses.includes(event.status);
+      return eventDate >= today && allowedStatuses.includes(event.status);
     }).
     sort((a, b) => new Date(a.event_date) - new Date(b.event_date)).
     slice(0, 5);
-  }, [events, visibleStatuses]);
+  }, [events]);
 
   const handleCreateEvent = useCallback((initialDate) => {
     setFormInitialDate(initialDate || '');
