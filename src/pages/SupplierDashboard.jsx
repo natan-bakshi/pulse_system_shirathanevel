@@ -137,7 +137,7 @@ export default function SupplierDashboard() {
       return {
         ...event,
         serviceName: service.service_name,
-        serviceDescription: service.description,
+        serviceDescription: assignment.service_description || service.service_description || '',
         assignmentStatus,
         eventServiceId: assignment.id,
         supplierNote: noteForSupplier
