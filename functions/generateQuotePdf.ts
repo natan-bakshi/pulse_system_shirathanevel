@@ -831,10 +831,13 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                               ` : `
                               <tr><td class="label">סה"כ לפני מע"מ:</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                               `}
+                              ${event.discount_before_vat && eventDiscountAmount > 0 ? `
+                              <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                              ` : ''}
                               <tr><td class="label">מע"מ (18%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                               <tr><td class="label">סה"כ כולל מע"מ:</td><td class="value">₪${totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                              ${eventDiscountAmount > 0 ? `
-                              <tr><td class="label" style="color: #ef4444;">הנחה:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                              ${!event.discount_before_vat && eventDiscountAmount > 0 ? `
+                              <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                               ` : ''}
                               <tr class="total">
                                   <td class="label">סה"כ לתשלום:</td>
