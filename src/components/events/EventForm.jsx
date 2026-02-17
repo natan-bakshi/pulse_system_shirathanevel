@@ -502,7 +502,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
           // 1. First Pass: Create new Main Package Items immediately to get their IDs
           const newPackageItems = formData.services.filter(s => 
             s.is_package_main_item && 
-            s.id && String(s.id).startsWith('temp_')
+            s.id && (String(s.id).startsWith('temp_') || String(s.id).startsWith('def_pkg_'))
           );
 
           for (const pkgItem of newPackageItems) {
@@ -534,13 +534,13 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
           // 2. Second Pass: Process all services
 for (const serviceItem of formData.services) {
     // Skip if we just created it in pass 1
-    if (serviceItem.is_package_main_item && String(serviceItem.id).startsWith('temp')) continue;
+    if (serviceItem.is_package_main_item && (String(serviceItem.id).startsWith('temp') || String(serviceItem.id).startsWith('def_pkg_'))) continue;
 
     const serviceDetails = currentAllServices.find(s => s.id === serviceItem.service_id);
     
     // Resolve parent ID from map if needed
     let parentId = serviceItem.parent_package_event_service_id;
-    if (parentId && String(parentId).startsWith('temp')) {
+    if (parentId && (String(parentId).startsWith('temp') || String(parentId).startsWith('def_pkg_'))) {
         // --- התיקון כאן: שימוש בסוגריים מרובעים במקום .get() ---
         parentId = tempIdMap[parentId]; 
     }
@@ -593,7 +593,7 @@ for (const serviceItem of formData.services) {
     };
 
     let existingIndex = -1;
-    if (serviceItem.id && !String(serviceItem.id).startsWith('temp')) {
+    if (serviceItem.id && !String(serviceItem.id).startsWith('temp') && !String(serviceItem.id).startsWith('def_')) {
         existingIndex = servicesToDelete.findIndex(es => es.id === serviceItem.id);
     }
     
