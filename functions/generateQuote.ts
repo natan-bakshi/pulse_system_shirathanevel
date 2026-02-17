@@ -394,7 +394,7 @@ Deno.serve(async (req) => {
                                 <strong style="color: #333; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
                                 ${serviceDescription ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.95); margin-top: 2px;">${serviceDescription}</div>` : ''}
                                 ${service.client_notes ? `<div style="color: #888; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${service.client_notes}</div>` : ''}
-                                ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity}</div>` : ''}
+                                ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity} × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
                         </div>
@@ -475,7 +475,7 @@ Deno.serve(async (req) => {
                                 <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
                                 ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
                                 ${service.client_notes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${service.client_notes}</div>` : ''}
-                                ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}</div>` : ''}
+                                ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity} × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
                             ${!event.all_inclusive ? `
@@ -773,10 +773,13 @@ Deno.serve(async (req) => {
                       ` : `
                       <tr><td class="label">סה"כ לפני מע"מ:</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                       `}
+                      ${event.discount_before_vat && eventDiscountAmount > 0 ? `
+                      <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                      ` : ''}
                       <tr><td class="label">מע"מ (18%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                       <tr><td class="label">סה"כ כולל מע"מ:</td><td class="value">₪${totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                      ${eventDiscountAmount > 0 ? `
-                      <tr><td class="label" style="color: #ef4444;">הנחה:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                      ${!event.discount_before_vat && eventDiscountAmount > 0 ? `
+                      <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                       ` : ''}
                       <tr class="total">
                           <td class="label">סה"כ לתשלום:</td>

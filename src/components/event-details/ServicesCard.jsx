@@ -779,6 +779,11 @@ const handleCopyTransport = (service, serviceDetails) => {
                 <div className="text-lg font-bold text-red-800 whitespace-nowrap">
                   ₪{((parseFloat(service.custom_price) || 0) * (parseFloat(service.quantity) || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
+                {(parseFloat(service.quantity) || 1) > 1 && (
+                  <div className="text-xs text-gray-500 whitespace-nowrap">
+                    {service.quantity} × ₪{(parseFloat(service.custom_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                )}
                 <div className="text-xs text-gray-500 whitespace-nowrap">
                   {service.includes_vat ? 'כולל מע"מ' : 'לא כולל מע"מ'}
                 </div>

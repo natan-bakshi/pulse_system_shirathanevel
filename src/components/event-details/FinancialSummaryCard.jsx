@@ -83,9 +83,15 @@ export default function FinancialSummaryCard({
         ) : (
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span>סה"כ לפני מע"מ:</span><span>₪{financials.totalCostWithoutVat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+            {event.discount_before_vat && financials.discountAmount > 0 && (
+              <div className="flex justify-between text-red-600">
+                <span>הנחה{event.discount_reason && ` (${event.discount_reason})`}:</span>
+                <span>-₪{financials.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
             <div className="flex justify-between"><span>מע"מ (18%):</span><span>₪{financials.vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
             <div className="flex justify-between"><span>סה"כ כולל מע"מ:</span><span>₪{financials.totalCostWithVat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
-            {financials.discountAmount > 0 && (
+            {!event.discount_before_vat && financials.discountAmount > 0 && (
               <div className="flex justify-between text-red-600">
                 <span>הנחה{event.discount_reason && ` (${event.discount_reason})`}:</span>
                 <span>-₪{financials.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>

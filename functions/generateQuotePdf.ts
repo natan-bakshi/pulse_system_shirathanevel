@@ -371,7 +371,7 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                                 <strong style="color: #333; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
                                 ${serviceDescription ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.95); margin-top: 2px;">${serviceDescription}</div>` : ''}
                                 ${service.client_notes ? `<div style="color: #888; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${service.client_notes}</div>` : ''}
-                                ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity}</div>` : ''}
+                                ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity} × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
                         </div>
@@ -452,7 +452,7 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                                 <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
                                 ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
                                 ${service.client_notes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${service.client_notes}</div>` : ''}
-                                ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}</div>` : ''}
+                                ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity} × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
                             ${!event.all_inclusive ? `
