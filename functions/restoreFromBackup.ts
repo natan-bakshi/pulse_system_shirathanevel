@@ -31,78 +31,63 @@ Deno.serve(async (req) => {
         }
 
         console.log(`[Restore] Starting restore process by user: ${user.email}`);
-        console.log(`[Restore] Backup folder: ${backup_folder_name || backup_folder_id}`);
+        console.log(`[Restore] Backup: ${backup_folder_name || backup_folder_id}`);
 
         // קבלת Access Token ל-Google Drive
         const driveAccessToken = await base44.asServiceRole.connectors.getAccessToken("googledrive");
 
-        // שלב 1: מציאת תיקיית הגיבוי
-        let folderId = backup_folder_id;
-        
-        if (!folderId && backup_folder_name) {
-            // מציאת התיקייה לפי שם
-            const mainFolderName = 'Base44 Backups';
-            const mainFolderId = await findMainFolder(driveAccessToken, mainFolderName);
+        // שלב 1: מציאת קובץ/תיקיית הגיבוי
+        let masterBackup;
+        let backupSourceName = backup_folder_name || backup_folder_id;
+
+        // בדיקה אם זה קובץ JSON (פורמט חדש) או תיקייה (פורמט ישן)
+        const isConsolidatedFile = backup_folder_name && backup_folder_name.endsWith('.json');
+
+        if (isConsolidatedFile || (!backup_folder_name && backup_folder_id)) {
+            // ניסיון לטעון כקובץ JSON ישירות
+            let fileId = backup_folder_id;
             
-            if (!mainFolderId) {
-                return Response.json({ error: 'Backup folder not found' }, { status: 404 });
-            }
+            console.log(`[Restore] Attempting to load consolidated backup file: ${fileId}`);
             
-            const query = `name='${backup_folder_name}' and '${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-            const response = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`,
+            const downloadResponse = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
                 {
                     headers: { 'Authorization': `Bearer ${driveAccessToken}` }
                 }
             );
-            const result = await response.json();
             
-            if (!result.files || result.files.length === 0) {
-                return Response.json({ error: `Backup folder '${backup_folder_name}' not found` }, { status: 404 });
+            if (downloadResponse.ok) {
+                const backupContent = await downloadResponse.text();
+                const parsed = JSON.parse(backupContent);
+                
+                if (parsed.entities) {
+                    // זה קובץ גיבוי מאוחד חדש
+                    masterBackup = parsed;
+                    console.log(`[Restore] Loaded consolidated backup. Date: ${masterBackup.backup_date}`);
+                } else {
+                    // זה אולי master_backup.json מפורמט ישן
+                    masterBackup = parsed;
+                    console.log(`[Restore] Loaded legacy format backup`);
+                }
+            } else {
+                // אם לא הצליח כקובץ, ננסה כתיקייה (פורמט ישן)
+                console.log(`[Restore] File download failed, trying as legacy folder...`);
+                masterBackup = await loadFromLegacyFolder(driveAccessToken, backup_folder_id, backup_folder_name);
             }
-            
-            folderId = result.files[0].id;
+        } else {
+            // פורמט ישן - תיקייה
+            masterBackup = await loadFromLegacyFolder(driveAccessToken, backup_folder_id, backup_folder_name);
         }
 
-        console.log(`[Restore] Found backup folder ID: ${folderId}`);
-
-        // שלב 2: מציאת והורדת master_backup.json
-        const filesQuery = `name='master_backup.json' and '${folderId}' in parents and trashed=false`;
-        const filesResponse = await fetch(
-            `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(filesQuery)}&fields=files(id,name)`,
-            {
-                headers: { 'Authorization': `Bearer ${driveAccessToken}` }
-            }
-        );
-        const filesResult = await filesResponse.json();
-        
-        if (!filesResult.files || filesResult.files.length === 0) {
+        if (!masterBackup || !masterBackup.entities) {
             return Response.json({ 
-                error: 'master_backup.json not found in backup folder. Invalid backup.' 
+                error: 'לא ניתן לטעון את נתוני הגיבוי. ודא שהגיבוי תקין.' 
             }, { status: 404 });
         }
 
-        const masterBackupFileId = filesResult.files[0].id;
-        console.log(`[Restore] Found master_backup.json: ${masterBackupFileId}`);
-
-        // הורדת תוכן הקובץ
-        const downloadResponse = await fetch(
-            `https://www.googleapis.com/drive/v3/files/${masterBackupFileId}?alt=media`,
-            {
-                headers: { 'Authorization': `Bearer ${driveAccessToken}` }
-            }
-        );
-        
-        if (!downloadResponse.ok) {
-            return Response.json({ error: 'Failed to download backup file' }, { status: 500 });
-        }
-
-        const backupContent = await downloadResponse.text();
-        const masterBackup = JSON.parse(backupContent);
-
         console.log(`[Restore] Backup loaded. Date: ${masterBackup.backup_date}, By: ${masterBackup.backup_by}`);
 
-        // שלב 3: מחיקת כל הנתונים הקיימים (זהירות!)
+        // שלב 2: מחיקת כל הנתונים הקיימים (זהירות!)
         const entitiesToRestore = [
             'Event',
             'EventService',
@@ -122,12 +107,10 @@ Deno.serve(async (req) => {
 
         for (const entityName of entitiesToRestore) {
             try {
-                // אחזור כל הרשומות הקיימות
                 const existingRecords = await base44.asServiceRole.entities[entityName].list();
                 
                 console.log(`[Restore] Deleting ${existingRecords.length} records from ${entityName}`);
                 
-                // מחיקת כל רשומה
                 let deleteCount = 0;
                 for (const record of existingRecords) {
                     try {
@@ -150,7 +133,7 @@ Deno.serve(async (req) => {
 
         console.log('[Restore] Delete phase completed:', deleteResults);
 
-        // שלב 4: שחזור נתונים מהגיבוי
+        // שלב 3: שחזור נתונים מהגיבוי
         for (const entityName of entitiesToRestore) {
             try {
                 const backupData = masterBackup.entities[entityName];
@@ -165,10 +148,8 @@ Deno.serve(async (req) => {
 
                 let restoreCount = 0;
                 
-                // שחזור רשומה אחת בכל פעם (bulkCreate יכול להיכשל על חלק מהישויות)
                 for (const record of backupData) {
                     try {
-                        // הסרת שדות מערכת שלא צריך לשחזר
                         const { id, created_date, updated_date, created_by, ...dataToRestore } = record;
                         
                         await base44.asServiceRole.entities[entityName].create(dataToRestore);
@@ -190,17 +171,17 @@ Deno.serve(async (req) => {
 
         console.log('[Restore] Restore phase completed:', restoreResults);
 
-        // שלב 5: שליחת התראה
+        // שלב 4: שליחת התראה
         const now = new Date();
         try {
             await base44.integrations.Core.SendEmail({
                 to: user.email,
-                subject: `שחזור נתונים הושלם - ${backup_folder_name || folderId}`,
+                subject: `שחזור נתונים הושלם - ${backupSourceName}`,
                 body: `
                     <div dir="rtl" style="font-family: Arial, sans-serif;">
                         <h2>שחזור נתונים הושלם!</h2>
                         <p><strong>תאריך ושעה:</strong> ${now.toLocaleString('he-IL')}</p>
-                        <p><strong>גיבוי מקור:</strong> ${backup_folder_name || folderId}</p>
+                        <p><strong>גיבוי מקור:</strong> ${backupSourceName}</p>
                         <p><strong>תאריך הגיבוי המקורי:</strong> ${masterBackup.backup_date}</p>
                         
                         <h3>סיכום מחיקה:</h3>
@@ -229,8 +210,7 @@ Deno.serve(async (req) => {
             success: true,
             message: 'שחזור הושלם בהצלחה',
             backup_info: {
-                folder_id: folderId,
-                folder_name: backup_folder_name,
+                source: backupSourceName,
                 original_backup_date: masterBackup.backup_date,
                 original_backup_by: masterBackup.backup_by
             },
@@ -244,6 +224,65 @@ Deno.serve(async (req) => {
         return Response.json({ error: error.message }, { status: 500 });
     }
 });
+
+// פונקציית עזר: טעינה מתיקיית גיבוי ישנה (legacy)
+async function loadFromLegacyFolder(driveAccessToken, folderId, folderName) {
+    let targetFolderId = folderId;
+    
+    if (!targetFolderId && folderName) {
+        const mainFolderName = 'Base44 Backups';
+        const mainFolderId = await findMainFolder(driveAccessToken, mainFolderName);
+        
+        if (!mainFolderId) {
+            return null;
+        }
+        
+        const query = `name='${folderName}' and '${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        const response = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`,
+            {
+                headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+            }
+        );
+        const result = await response.json();
+        
+        if (!result.files || result.files.length === 0) {
+            return null;
+        }
+        
+        targetFolderId = result.files[0].id;
+    }
+
+    // מציאת master_backup.json בתיקייה
+    const filesQuery = `name='master_backup.json' and '${targetFolderId}' in parents and trashed=false`;
+    const filesResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(filesQuery)}&fields=files(id,name)`,
+        {
+            headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+        }
+    );
+    const filesResult = await filesResponse.json();
+    
+    if (!filesResult.files || filesResult.files.length === 0) {
+        return null;
+    }
+
+    const masterBackupFileId = filesResult.files[0].id;
+    
+    const downloadResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${masterBackupFileId}?alt=media`,
+        {
+            headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+        }
+    );
+    
+    if (!downloadResponse.ok) {
+        return null;
+    }
+
+    const backupContent = await downloadResponse.text();
+    return JSON.parse(backupContent);
+}
 
 // פונקציית עזר: מציאת תיקייה ראשית
 async function findMainFolder(accessToken, folderName) {

@@ -27,28 +27,57 @@ Deno.serve(async (req) => {
             return Response.json({
                 success: true,
                 backups: [],
+                sheets: [],
                 message: 'לא נמצאו גיבויים. טרם בוצע גיבוי ראשון.'
             });
         }
 
-        // רשימת כל תיקיות הגיבוי
-        const query = `'${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-        
-        const response = await fetch(
-            `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,createdTime,modifiedTime)&orderBy=createdTime desc`,
+        // --- פורמט חדש: קבצי JSON יחידים ---
+        const jsonQuery = `'${mainFolderId}' in parents and mimeType='application/json' and name contains 'Pulse_Backup_' and trashed=false`;
+        const jsonResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(jsonQuery)}&fields=files(id,name,createdTime,modifiedTime,size)&orderBy=createdTime desc`,
             {
                 headers: { 'Authorization': `Bearer ${driveAccessToken}` }
             }
         );
-        
-        const result = await response.json();
-        const folders = result.files || [];
+        const jsonResult = await jsonResponse.json();
+        const jsonFiles = jsonResult.files || [];
 
-        console.log(`[List Backups] Found ${folders.length} backup folders`);
+        console.log(`[List Backups] Found ${jsonFiles.length} consolidated backup files`);
 
-        // עיבוד הרשימה לפורמט ידידותי
-        const backups = await Promise.all(folders.map(async (folder) => {
-            // בדיקת תוכן התיקייה
+        const newFormatBackups = jsonFiles.map(file => {
+            const dateTime = parseBackupFileName(file.name);
+            return {
+                id: file.id,
+                name: file.name,
+                created_at: file.createdTime,
+                modified_at: file.modifiedTime,
+                date_formatted: dateTime.dateFormatted,
+                time_formatted: dateTime.timeFormatted,
+                files_count: 1,
+                total_size_bytes: parseInt(file.size) || 0,
+                total_size_formatted: formatBytes(parseInt(file.size) || 0),
+                has_master_backup: true,
+                is_valid: true,
+                backup_type: 'consolidated' // סוג חדש
+            };
+        });
+
+        // --- פורמט ישן: תיקיות גיבוי ---
+        const folderQuery = `'${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        const folderResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(folderQuery)}&fields=files(id,name,createdTime,modifiedTime)&orderBy=createdTime desc`,
+            {
+                headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+            }
+        );
+        const folderResult = await folderResponse.json();
+        const folders = folderResult.files || [];
+
+        console.log(`[List Backups] Found ${folders.length} legacy backup folders`);
+
+        // עיבוד תיקיות ישנות
+        const legacyBackups = await Promise.all(folders.map(async (folder) => {
             const filesQuery = `'${folder.id}' in parents and trashed=false`;
             const filesResponse = await fetch(
                 `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(filesQuery)}&fields=files(id,name,size)`,
@@ -59,13 +88,8 @@ Deno.serve(async (req) => {
             const filesResult = await filesResponse.json();
             const files = filesResult.files || [];
             
-            // חישוב גודל כולל
             const totalSize = files.reduce((sum, file) => sum + (parseInt(file.size) || 0), 0);
-            
-            // בדיקה אם יש master_backup.json
             const hasMasterBackup = files.some(f => f.name === 'master_backup.json');
-            
-            // פרסור שם התיקייה לתאריך ושעה
             const dateTime = parseBackupFolderName(folder.name);
             
             return {
@@ -79,11 +103,16 @@ Deno.serve(async (req) => {
                 total_size_bytes: totalSize,
                 total_size_formatted: formatBytes(totalSize),
                 has_master_backup: hasMasterBackup,
-                is_valid: hasMasterBackup // גיבוי תקין רק אם יש master_backup.json
+                is_valid: hasMasterBackup,
+                backup_type: 'legacy' // סוג ישן
             };
         }));
 
-        // רשימת גיליונות Google Sheets בתיקייה
+        // מיזוג ומיון לפי תאריך יצירה (חדש ראשון)
+        const allBackups = [...newFormatBackups, ...legacyBackups]
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        // רשימת גיליונות Google Sheets
         const sheetsQuery = `'${mainFolderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
         const sheetsResponse = await fetch(
             `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(sheetsQuery)}&fields=files(id,name,createdTime,modifiedTime)&orderBy=createdTime desc`,
@@ -102,9 +131,9 @@ Deno.serve(async (req) => {
 
         return Response.json({
             success: true,
-            backups: backups,
+            backups: allBackups,
             sheets: sheets,
-            total_backups: backups.length,
+            total_backups: allBackups.length,
             total_sheets: sheets.length
         });
 
@@ -134,9 +163,35 @@ async function findMainFolder(accessToken, folderName) {
     return null;
 }
 
-// פונקציית עזר: פרסור שם תיקיית גיבוי
+// פונקציית עזר: פרסור שם קובץ גיבוי חדש (Pulse_Backup_YYYY-MM-DD_HHMMSS.json)
+function parseBackupFileName(fileName) {
+    const match = fileName.match(/Pulse_Backup_(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})\.json$/);
+    
+    if (match) {
+        const [, year, month, day, hour, minute, second] = match;
+        const date = new Date(year, month - 1, day, hour, minute, second);
+        
+        return {
+            dateFormatted: date.toLocaleDateString('he-IL', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }),
+            timeFormatted: date.toLocaleTimeString('he-IL', {
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+        };
+    }
+    
+    return {
+        dateFormatted: fileName,
+        timeFormatted: ''
+    };
+}
+
+// פונקציית עזר: פרסור שם תיקיית גיבוי ישנה (YYYY-MM-DD_HHMMSS)
 function parseBackupFolderName(folderName) {
-    // פורמט: YYYY-MM-DD_HHMMSS
     const match = folderName.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})$/);
     
     if (match) {
