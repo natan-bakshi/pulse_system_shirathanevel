@@ -99,26 +99,21 @@ export default Deno.serve(async (req) => {
 
         let newStatus = event.status;
         let statusChanged = false;
-        const updateData = {};
 
         if (allServicesSatisfied) {
-            // Only promote to in_progress if not previously demoted from it
-            if (event.status === 'confirmed' && !event.was_in_progress) {
+            if (event.status === 'confirmed') {
                 newStatus = 'in_progress';
                 statusChanged = true;
-                updateData.status = newStatus;
             }
         } else {
             if (event.status === 'in_progress') {
                 newStatus = 'confirmed';
                 statusChanged = true;
-                updateData.status = newStatus;
-                updateData.was_in_progress = true;
             }
         }
 
         if (statusChanged) {
-            await base44.entities.Event.update(eventId, updateData);
+            await base44.entities.Event.update(eventId, { status: newStatus });
         }
 
         return Response.json({ success: true, statusChanged, newStatus });
