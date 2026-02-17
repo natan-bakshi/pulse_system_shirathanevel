@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -302,7 +302,7 @@ export default function EventServicesManager({
     onServicesChange(selectedServices.filter(s => s.service_id !== serviceId));
   };
 
-  const handleServiceChange = (itemId, field, value) => {
+  const handleServiceChange = useCallback((itemId, field, value) => {
     const updatedServices = selectedServices.map(s => {
       if (s.id === itemId) {
         let updatedValue = value;
@@ -314,7 +314,7 @@ export default function EventServicesManager({
       return s;
     });
     onServicesChange(updatedServices);
-  };
+  }, [selectedServices, onServicesChange]);
 
   const handleOpenSupplierDialog = (service) => {
     setSelectedServiceForSupplier(service);
