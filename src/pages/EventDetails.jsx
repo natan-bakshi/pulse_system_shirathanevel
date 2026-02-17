@@ -344,6 +344,11 @@ export default function EventDetails() {
     const servicesToUse = isSupplier ? filteredServicesForSupplier : eventServices;
     const servicesSorted = [...servicesToUse].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
+    // Suppliers see only their assigned services as flat list - no package grouping
+    if (isSupplier) {
+      return { packages: [], standalone: servicesSorted };
+    }
+
     const packagesMap = new Map();
     const standalone = [];
     
