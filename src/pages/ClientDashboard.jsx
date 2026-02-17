@@ -190,7 +190,7 @@ export default function ClientDashboard() {
                     <CardTitle className="text-lg text-gray-900 break-words">{event.event_name} - {event.family_name}</CardTitle>
                     <Badge className="bg-red-100 text-red-800 shrink-0">{event.status === 'quote' ? 'הצעת מחיר' : 'אירוע'}</Badge>
                 </div>
-                <p className="text-sm text-gray-600">{event.child_name && `לכבוד ${event.child_name}`}</p>
+                <p className="text-sm text-gray-600">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
               </CardHeader>
               <CardContent className="flex-grow space-y-3 p-4 pt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">

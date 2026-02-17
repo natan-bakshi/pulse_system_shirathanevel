@@ -327,7 +327,7 @@ export default function SupplierDashboard() {
                     <CardTitle className="text-xl text-gray-900">
                       {event.event_name} - משפחת {event.family_name}
                     </CardTitle>
-                    <p className="text-gray-600 mt-1">{event.child_name && `לכבוד ${event.child_name}`}</p>
+                    <p className="text-gray-600 mt-1">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
                     <p className="text-lg font-semibold text-red-800 mt-2">שירות: {event.serviceName}</p>
                     {event.supplierNote && (
                       <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
