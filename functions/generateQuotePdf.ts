@@ -31,7 +31,9 @@ function getEventType(typeKey) {
     return types[typeKey] || "אירוע";
 }
 
-async function generateQuoteHtml(eventId, base44Instance) {
+async function generateQuoteHtml(eventId, base44Instance, options = {}) {
+    const includeIntro = options.includeIntro !== false;
+    const includePaymentTerms = options.includePaymentTerms !== false;
     const [event, allServices, allEventServices, payments, templates, appSettingsList] = await Promise.all([
         base44Instance.asServiceRole.entities.Event.get(eventId),
         base44Instance.asServiceRole.entities.Service.list(),
@@ -812,7 +814,7 @@ async function generateQuoteHtml(eventId, base44Instance) {
                       
                       ${eventDetailsHtml}
 
-                      ${introTemplate ? `
+                      ${(introTemplate && includeIntro) ? `
                       <div class="section">
                           <div class="intro-content">${introTemplate.content}</div>
                       </div>` : ''}
@@ -849,7 +851,7 @@ async function generateQuoteHtml(eventId, base44Instance) {
                           </table>
                       </div>
 
-                      ${paymentTemplate ? `
+                      ${(paymentTemplate && includePaymentTerms) ? `
                       <div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;">
                           <h2 class="section-title">תנאי תשלום</h2>
                           <div class="payment-terms">${paymentTemplate.content}</div>
@@ -894,13 +896,15 @@ Deno.serve(async (req) => {
 
         const body = await req.json();
         const eventId = body.eventId;
+        const includeIntro = body.includeIntro !== false;
+        const includePaymentTerms = body.includePaymentTerms !== false;
 
         if (!eventId) {
             return Response.json({ error: 'Event ID is required' }, { status: 400 });
         }
 
         // Generate HTML content
-        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44);
+        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms });
 
         const apiKey = Deno.env.get('API2PDF_API_KEY');
         if (!apiKey) {

@@ -54,8 +54,8 @@ export default function EventDetails() {
   const [shareStatus, setShareStatus] = useState('initial');
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState("");
-  const [quoteIncludeIntro, setQuoteIncludeIntro] = useState(true);
-  const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(true);
+  const [quoteIncludeIntro, setQuoteIncludeIntro] = useState(null); // null = not initialized yet
+  const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(null);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -200,6 +200,13 @@ export default function EventDetails() {
     cacheTime: 10 * 60 * 1000
   });
 
+  const { data: quoteTemplates = [] } = useQuery({
+    queryKey: ['quoteTemplates'],
+    queryFn: () => base44.entities.QuoteTemplate.list(),
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000
+  });
+
   // React Query for event data
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ['event', eventId],
@@ -228,6 +235,20 @@ export default function EventDetails() {
   const isAdmin = user?.role === 'admin';
   const isClient = user?.user_type === 'client';
   const isSupplier = user?.user_type === 'supplier';
+
+  // Initialize quote options defaults when event loads
+  useEffect(() => {
+    if (event && quoteIncludeIntro === null) {
+      // Intro default: show if event has a concept with a matching intro template
+      const hasIntroTemplate = event.concept && quoteTemplates.some(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
+      setQuoteIncludeIntro(!!hasIntroTemplate);
+    }
+    if (event && quoteIncludePaymentTerms === null) {
+      // Payment terms default: show only for 'quote' and 'cancelled' statuses
+      const showPaymentTerms = ['quote', 'cancelled'].includes(event.status);
+      setQuoteIncludePaymentTerms(showPaymentTerms);
+    }
+  }, [event, quoteTemplates]);
 
   // Initialize editable schedule when event loads
   useEffect(() => {
@@ -1801,7 +1822,27 @@ export default function EventDetails() {
                 <ChevronDown className="h-4 w-4 mr-2" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-[200px]">
+              {(() => {
+                const hasIntroTemplate = event.concept && quoteTemplates.some(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
+                const hasPaymentTemplate = quoteTemplates.some(t => t.template_type === 'payment_terms');
+                return (hasIntroTemplate || hasPaymentTemplate) ? (
+                  <div className="flex items-center gap-3 px-2 py-1.5 border-b border-gray-100">
+                    {hasIntroTemplate && (
+                      <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
+                        <Checkbox checked={quoteIncludeIntro} onCheckedChange={setQuoteIncludeIntro} className="h-3.5 w-3.5" />
+                        <span>פתיח</span>
+                      </label>
+                    )}
+                    {hasPaymentTemplate && (
+                      <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
+                        <Checkbox checked={quoteIncludePaymentTerms} onCheckedChange={setQuoteIncludePaymentTerms} className="h-3.5 w-3.5" />
+                        <span>תנאי תשלום</span>
+                      </label>
+                    )}
+                  </div>
+                ) : null;
+              })()}
               <DropdownMenuItem onClick={handleGenerateQuote} disabled={isGeneratingQuote}>
                 <FileText className="h-4 w-4 ml-2" />
                 הצג

@@ -59,6 +59,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const eventId = body.eventId;
+    const includeIntro = body.includeIntro !== false; // default true
+    const includePaymentTerms = body.includePaymentTerms !== false; // default true
 
     if (!eventId) {
       return Response.json({ error: 'Event ID is required' }, { status: 400 });
@@ -754,7 +756,7 @@ Deno.serve(async (req) => {
               
               ${eventDetailsHtml}
 
-              ${introTemplate ? `
+              ${(introTemplate && includeIntro) ? `
               <div class="section">
                   <div class="intro-content">${introTemplate.content}</div>
               </div>` : ''}
@@ -791,7 +793,7 @@ Deno.serve(async (req) => {
                   </table>
               </div>
 
-              ${paymentTemplate ? `
+              ${(paymentTemplate && includePaymentTerms) ? `
               <div class="section payment-section" style="margin-top: 50px;">
                   <h2 class="section-title">תנאי תשלום</h2>
                   <div class="payment-terms">${paymentTemplate.content}</div>
