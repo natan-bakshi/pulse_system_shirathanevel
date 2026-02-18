@@ -744,6 +744,16 @@ Deno.serve(async (req) => {
               .line-through { text-decoration: line-through; color: #888; }
               
               .footer { text-align: center; padding: 15px; font-size: calc(${quoteBodyFontSize}px * 0.8); color: #666; border-top: 1px solid #eee; margin-top: 20px; }
+              
+              @media screen and (max-width: 600px) {
+                  body { padding: 8px; }
+                  .page-content { padding: 4mm 3mm; min-height: auto; }
+                  .event-details-box { padding: 8px 4px; margin-bottom: 15px; }
+                  .package-content { padding-right: 8px; }
+                  .section { margin-bottom: 25px; }
+                  .package-group { margin-bottom: 25px; }
+                  .package-footer { flex-wrap: wrap; gap: 4px; }
+              }
           </style>
       </head>
       <body>
