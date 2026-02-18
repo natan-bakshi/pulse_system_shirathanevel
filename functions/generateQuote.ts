@@ -107,8 +107,15 @@ Deno.serve(async (req) => {
     const quoteShowFooter = String(appSettings.quote_show_footer) === 'true';
     const quoteFooterText = appSettings.quote_footer_text || '';
 
-    // HTML Preview - standard padding
-    // Margins removed as requested
+    // HTML Quote margins from settings (desktop = default view, mobile = responsive)
+    const quoteHtmlDesktopMarginTop = appSettings.quote_html_desktop_margin_top || '20';
+    const quoteHtmlDesktopMarginBottom = appSettings.quote_html_desktop_margin_bottom || '20';
+    const quoteHtmlDesktopMarginLeft = appSettings.quote_html_desktop_margin_left || '20';
+    const quoteHtmlDesktopMarginRight = appSettings.quote_html_desktop_margin_right || '20';
+    const quoteHtmlMobileMarginTop = appSettings.quote_html_mobile_margin_top || '8';
+    const quoteHtmlMobileMarginBottom = appSettings.quote_html_mobile_margin_bottom || '8';
+    const quoteHtmlMobileMarginLeft = appSettings.quote_html_mobile_margin_left || '6';
+    const quoteHtmlMobileMarginRight = appSettings.quote_html_mobile_margin_right || '6';
 
     // CRITICAL FIX: Sort by order_index BEFORE processing
     const sortedEventServices = [...allEventServices].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -519,7 +526,7 @@ Deno.serve(async (req) => {
               body {
                   font-family: 'Assistant', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
                   margin: 0;
-                  padding: 20px;
+                  padding: ${quoteHtmlDesktopMarginTop}mm ${quoteHtmlDesktopMarginLeft}mm ${quoteHtmlDesktopMarginBottom}mm ${quoteHtmlDesktopMarginRight}mm;
                   -webkit-print-color-adjust: exact;
                   print-color-adjust: exact;
                   color: ${quoteTextColor};
@@ -542,7 +549,7 @@ Deno.serve(async (req) => {
                   min-height: 297mm;
                   margin: 0 auto;
                   background: transparent;
-                  padding: 20mm;
+                  padding: 0;
                   box-shadow: none;
                   position: relative;
                   z-index: 1;
@@ -746,8 +753,8 @@ Deno.serve(async (req) => {
               .footer { text-align: center; padding: 15px; font-size: calc(${quoteBodyFontSize}px * 0.8); color: #666; border-top: 1px solid #eee; margin-top: 20px; }
               
               @media screen and (max-width: 600px) {
-                  body { padding: 8px; }
-                  .page-content { padding: 4mm 3mm; min-height: auto; }
+                  body { padding: ${quoteHtmlMobileMarginTop}mm ${quoteHtmlMobileMarginLeft}mm ${quoteHtmlMobileMarginBottom}mm ${quoteHtmlMobileMarginRight}mm; }
+                  .page-content { padding: 0; min-height: auto; }
                   .event-details-box { padding: 8px 4px; margin-bottom: 15px; }
                   .package-content { padding-right: 8px; }
                   .section { margin-bottom: 25px; }

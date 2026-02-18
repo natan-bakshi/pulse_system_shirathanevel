@@ -21,7 +21,15 @@ const settingKeys = [
     'vat_rate',
     'quote_body_font_size',
     'quote_title_font_size',
-    'show_events_board_tab'
+    'show_events_board_tab',
+    'quote_html_desktop_margin_top',
+    'quote_html_desktop_margin_bottom',
+    'quote_html_desktop_margin_left',
+    'quote_html_desktop_margin_right',
+    'quote_html_mobile_margin_top',
+    'quote_html_mobile_margin_bottom',
+    'quote_html_mobile_margin_left',
+    'quote_html_mobile_margin_right'
     ];
 
 export default function SettingsPage() {
@@ -36,7 +44,15 @@ export default function SettingsPage() {
         vat_rate: "18",
         quote_body_font_size: "15",
         quote_title_font_size: "16",
-        show_events_board_tab: "false"
+        show_events_board_tab: "false",
+        quote_html_desktop_margin_top: "20",
+        quote_html_desktop_margin_bottom: "20",
+        quote_html_desktop_margin_left: "20",
+        quote_html_desktop_margin_right: "20",
+        quote_html_mobile_margin_top: "8",
+        quote_html_mobile_margin_bottom: "8",
+        quote_html_mobile_margin_left: "6",
+        quote_html_mobile_margin_right: "6"
         });
     const queryClient = useQueryClient();
     const location = useLocation();
@@ -280,6 +296,52 @@ export default function SettingsPage() {
                                     placeholder="16"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">גודל הפונט של כותרות בהצעה (ברירת מחדל: 16px, מומלץ: 8-72)</p>
+                            </div>
+
+                            <div className="border-t pt-4 mt-4">
+                                <h3 className="text-sm font-semibold mb-3">שוליים - תצוגת מחשב (mm)</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="quote_html_desktop_margin_top">למעלה</Label>
+                                        <Input id="quote_html_desktop_margin_top" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_top} onChange={e => handleSettingChange('quote_html_desktop_margin_top', e.target.value)} placeholder="20" />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="quote_html_desktop_margin_bottom">למטה</Label>
+                                        <Input id="quote_html_desktop_margin_bottom" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_bottom} onChange={e => handleSettingChange('quote_html_desktop_margin_bottom', e.target.value)} placeholder="20" />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="quote_html_desktop_margin_right">ימין</Label>
+                                        <Input id="quote_html_desktop_margin_right" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_right} onChange={e => handleSettingChange('quote_html_desktop_margin_right', e.target.value)} placeholder="20" />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="quote_html_desktop_margin_left">שמאל</Label>
+                                        <Input id="quote_html_desktop_margin_left" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_left} onChange={e => handleSettingChange('quote_html_desktop_margin_left', e.target.value)} placeholder="20" />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">שוליים לתצוגת הצעת מחיר ב-HTML במחשב (ברירת מחדל: 20mm לכל צד)</p>
+                            </div>
+
+                            <div className="border-t pt-4 mt-4">
+                                <h3 className="text-sm font-semibold mb-3">שוליים - תצוגת מובייל (mm)</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="quote_html_mobile_margin_top">למעלה</Label>
+                                        <Input id="quote_html_mobile_margin_top" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_top} onChange={e => handleSettingChange('quote_html_mobile_margin_top', e.target.value)} placeholder="8" />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="quote_html_mobile_margin_bottom">למטה</Label>
+                                        <Input id="quote_html_mobile_margin_bottom" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_bottom} onChange={e => handleSettingChange('quote_html_mobile_margin_bottom', e.target.value)} placeholder="8" />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="quote_html_mobile_margin_right">ימין</Label>
+                                        <Input id="quote_html_mobile_margin_right" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_right} onChange={e => handleSettingChange('quote_html_mobile_margin_right', e.target.value)} placeholder="6" />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="quote_html_mobile_margin_left">שמאל</Label>
+                                        <Input id="quote_html_mobile_margin_left" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_left} onChange={e => handleSettingChange('quote_html_mobile_margin_left', e.target.value)} placeholder="6" />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">שוליים לתצוגת הצעת מחיר ב-HTML במובייל (ברירת מחדל: 8mm למעלה/למטה, 6mm לצדדים)</p>
                             </div>
                         </CardContent>
                     </Card>
