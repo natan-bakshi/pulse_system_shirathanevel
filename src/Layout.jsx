@@ -343,7 +343,7 @@ export default function Layout({ children }) {
       }
     `}</style>
 
-    <div dir="rtl" className="min-h-screen w-full flex overflow-x-hidden relative" style={{
+    <div dir="rtl" className={`min-h-screen w-full flex overflow-x-hidden relative ${darkMode ? 'pulse-dark' : ''}`} style={{
         backgroundImage: `url('${backgroundUrl}')`,
         backgroundSize: "cover",
         backgroundPosition: "center",
