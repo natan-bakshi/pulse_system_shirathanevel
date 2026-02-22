@@ -14,26 +14,39 @@ export default function PullToRefresh({ children, containerRef }) {
   const handleTouchStart = useCallback((e) => {
     const el = containerRef?.current;
     if (!el) return;
-    if (el.scrollTop <= 0) {
-      startYRef.current = e.touches[0].clientY;
-      isPullingRef.current = true;
-    }
+    startYRef.current = e.touches[0].clientY;
+    // Only mark as potential pull if already at the very top
+    isPullingRef.current = el.scrollTop <= 0;
   }, [containerRef]);
 
   const handleTouchMove = useCallback((e) => {
     if (!isPullingRef.current || refreshing) return;
     const el = containerRef?.current;
-    if (!el || el.scrollTop > 0) {
+    if (!el) return;
+
+    // If user scrolled down since touchstart, cancel pull mode
+    if (el.scrollTop > 0) {
       isPullingRef.current = false;
       setPullDistance(0);
       setPulling(false);
       return;
     }
+
     const currentY = e.touches[0].clientY;
     const diff = currentY - startYRef.current;
-    if (diff > 0) {
+
+    // Only activate pull-to-refresh on downward swipe (diff > 10 for threshold)
+    // If swiping up (diff < 0), let normal scroll handle it
+    if (diff < 0) {
+      isPullingRef.current = false;
+      setPullDistance(0);
+      setPulling(false);
+      return;
+    }
+
+    if (diff > 10) {
       setPulling(true);
-      setPullDistance(Math.min(diff * 0.5, 120));
+      setPullDistance(Math.min((diff - 10) * 0.5, 120));
     }
   }, [refreshing, containerRef]);
 
