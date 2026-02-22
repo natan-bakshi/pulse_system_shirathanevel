@@ -341,6 +341,160 @@ export default function Layout({ children }) {
           position: relative;
         }
       }
+
+      /* ========== Dark Mode ========== */
+      .pulse-dark .bg-black\/20 {
+        background-color: rgba(0, 0, 0, 0.55) !important;
+      }
+
+      /* Cards & content backgrounds */
+      .pulse-dark .bg-white\/95,
+      .pulse-dark .bg-white\/90,
+      .pulse-dark .bg-white,
+      .pulse-dark .bg-card {
+        background-color: #1e1e2e !important;
+        color: #e2e2e8 !important;
+        border-color: #383850 !important;
+      }
+
+      .pulse-dark .bg-white\/80 {
+        background-color: rgba(30, 30, 46, 0.8) !important;
+        color: #e2e2e8 !important;
+      }
+
+      /* Text colors */
+      .pulse-dark .text-gray-900,
+      .pulse-dark .text-gray-800 {
+        color: #e2e2e8 !important;
+      }
+      .pulse-dark .text-gray-700,
+      .pulse-dark .text-gray-600 {
+        color: #b4b4c4 !important;
+      }
+      .pulse-dark .text-gray-500,
+      .pulse-dark .text-gray-400 {
+        color: #8888a0 !important;
+      }
+
+      /* Inputs, selects, textareas */
+      .pulse-dark input,
+      .pulse-dark textarea,
+      .pulse-dark select,
+      .pulse-dark [role="combobox"] {
+        background-color: #282840 !important;
+        color: #e2e2e8 !important;
+        border-color: #44445a !important;
+      }
+      .pulse-dark input::placeholder,
+      .pulse-dark textarea::placeholder {
+        color: #6c6c88 !important;
+      }
+
+      /* Borders */
+      .pulse-dark .border,
+      .pulse-dark .border-b,
+      .pulse-dark .border-t {
+        border-color: #383850 !important;
+      }
+
+      /* Dropdown menus & popovers */
+      .pulse-dark [data-radix-popper-content-wrapper] [role="menu"],
+      .pulse-dark [data-radix-popper-content-wrapper] [role="listbox"],
+      .pulse-dark [data-radix-popper-content-wrapper] > div {
+        background-color: #1e1e2e !important;
+        color: #e2e2e8 !important;
+        border-color: #383850 !important;
+      }
+      .pulse-dark [role="menuitem"]:hover,
+      .pulse-dark [role="option"]:hover,
+      .pulse-dark [role="option"][data-highlighted] {
+        background-color: #383850 !important;
+      }
+
+      /* Dialogs */
+      .pulse-dark [role="dialog"] {
+        background-color: #1e1e2e !important;
+        color: #e2e2e8 !important;
+        border-color: #383850 !important;
+      }
+
+      /* Table rows */
+      .pulse-dark tr:hover {
+        background-color: #282840 !important;
+      }
+      .pulse-dark th {
+        color: #b4b4c4 !important;
+      }
+
+      /* Sidebar in dark mode */
+      .pulse-dark .bg-white\/95.backdrop-blur-sm.shadow-2xl {
+        background-color: #1a1a2e !important;
+        color: #e2e2e8 !important;
+      }
+      .pulse-dark nav a.text-gray-700 {
+        color: #b4b4c4 !important;
+      }
+      .pulse-dark nav a.text-gray-700:hover {
+        background-color: rgba(139, 0, 0, 0.15) !important;
+      }
+
+      /* Badges */
+      .pulse-dark .bg-gray-50,
+      .pulse-dark .bg-gray-100 {
+        background-color: #282840 !important;
+      }
+
+      /* Subtle backgrounds */
+      .pulse-dark .bg-blue-50 {
+        background-color: rgba(30, 60, 100, 0.3) !important;
+      }
+      .pulse-dark .bg-red-50,
+      .pulse-dark .bg-red-50\/20 {
+        background-color: rgba(100, 30, 30, 0.2) !important;
+      }
+      .pulse-dark .bg-purple-50 {
+        background-color: rgba(60, 30, 100, 0.25) !important;
+      }
+      .pulse-dark .bg-green-50 {
+        background-color: rgba(30, 80, 50, 0.2) !important;
+      }
+      .pulse-dark .bg-yellow-50 {
+        background-color: rgba(80, 70, 20, 0.25) !important;
+      }
+
+      /* White text override protection - keep white text white */
+      .pulse-dark .text-white {
+        color: #ffffff !important;
+      }
+
+      /* Footer */
+      .pulse-dark footer.text-center {
+        color: #6c6c88 !important;
+      }
+
+      /* Tabs */
+      .pulse-dark [role="tablist"] {
+        background-color: #282840 !important;
+      }
+      .pulse-dark [role="tab"] {
+        color: #8888a0 !important;
+      }
+      .pulse-dark [role="tab"][data-state="active"] {
+        background-color: #1e1e2e !important;
+        color: #e2e2e8 !important;
+      }
+
+      /* Scrollbar dark */
+      .pulse-dark ::-webkit-scrollbar {
+        width: 6px;
+      }
+      .pulse-dark ::-webkit-scrollbar-track {
+        background: #1a1a2e;
+      }
+      .pulse-dark ::-webkit-scrollbar-thumb {
+        background: #44445a;
+        border-radius: 3px;
+      }
     `}</style>
 
     <div dir="rtl" className={`min-h-screen w-full flex overflow-x-hidden relative ${darkMode ? 'pulse-dark' : ''}`} style={{
