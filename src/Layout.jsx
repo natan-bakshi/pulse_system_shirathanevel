@@ -27,7 +27,6 @@ import PushNotificationPrompt from "@/components/notifications/PushNotificationP
 import TermsPopup from "@/components/legal/TermsPopup";
 import { Toaster as SonnerToaster } from "sonner";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
-import PullToRefresh from "@/components/PullToRefresh";
 import DarkModeToggle from "@/components/DarkModeToggle";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
@@ -74,7 +73,6 @@ export default function Layout({ children }) {
   const [themeMode, setThemeMode] = useState(() => {
     try { return localStorage.getItem('pulse_theme_mode') || 'auto'; } catch { return 'auto'; }
   });
-  const mainContentRef = React.useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -684,7 +682,7 @@ export default function Layout({ children }) {
 
           }
 
-        <div className="flex-1 flex flex-col overflow-y-auto min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <header className="flex items-center justify-between p-2 sm:p-4 border-b border-white/20 gap-1">
           {/* כפתור תפריט - צד ימין ב-RTL */}
           <button
@@ -750,12 +748,10 @@ export default function Layout({ children }) {
           )}
         </header>
 
-          <main ref={mainContentRef} className="flex-1 overflow-y-scroll overflow-x-hidden min-w-0 w-full max-w-[100vw] relative" style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
-              <PullToRefresh containerRef={mainContentRef}>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative">
               <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full box-border overflow-x-hidden">
                 {children}
               </div>
-              </PullToRefresh>
             <footer className="text-center text-xs text-gray-400 py-3 border-t border-white/10">
               © {new Date().getFullYear()} Developed by Natan Bakshi
             </footer>
