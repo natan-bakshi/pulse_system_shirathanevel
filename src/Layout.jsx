@@ -26,6 +26,7 @@ import OneSignalInitializer from "@/components/notifications/OneSignalInitialize
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import TermsPopup from "@/components/legal/TermsPopup";
 import { Toaster as SonnerToaster } from "sonner";
+import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
 // System creator email - only this user can access settings
@@ -495,10 +496,10 @@ export default function Layout({ children }) {
           )}
         </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative">
-            <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full box-border overflow-x-hidden">
-              {children}
-            </div>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative" style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
+              <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full box-border overflow-x-hidden">
+                {children}
+              </div>
             <footer className="text-center text-xs text-gray-400 py-3 border-t border-white/10">
               © {new Date().getFullYear()} Developed by Natan Bakshi
             </footer>
