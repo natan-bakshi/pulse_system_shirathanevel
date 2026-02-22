@@ -28,6 +28,7 @@ import TermsPopup from "@/components/legal/TermsPopup";
 import { Toaster as SonnerToaster } from "sonner";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import PullToRefresh from "@/components/PullToRefresh";
+import DarkModeToggle from "@/components/DarkModeToggle";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
 // System creator email - only this user can access settings
@@ -70,6 +71,9 @@ export default function Layout({ children }) {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCalendarConnect, setShowCalendarConnect] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('pulse_dark_mode') === 'true'; } catch { return false; }
+  });
   const mainContentRef = React.useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -114,6 +118,11 @@ export default function Layout({ children }) {
       companyLogo: settingsMap.company_logo_url || "https://i.postimg.cc/KvxTLYHq/02.png"
     };
   }, [settingsMap]);
+
+  // Save dark mode preference
+  useEffect(() => {
+    try { localStorage.setItem('pulse_dark_mode', darkMode.toString()); } catch {}
+  }, [darkMode]);
 
   // Update document title and favicon when settings change
   useEffect(() => {
