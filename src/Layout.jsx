@@ -422,6 +422,7 @@ export default function Layout({ children }) {
                   <Bell className="h-4 w-4 ml-2" />
                   הגדרת התראות
                 </Link>
+                <DarkModeToggle darkMode={darkMode} setDarkMode={setDarkMode} />
                 <Button
                   variant="outline"
                   className="w-full justify-start text-sm lg:text-base border-red-200 text-red-800 hover:bg-red-50"
