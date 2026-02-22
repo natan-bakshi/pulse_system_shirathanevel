@@ -56,7 +56,7 @@ export default function PullToRefresh({ children, containerRef }) {
     if (pullDistance >= THRESHOLD && !refreshing) {
       setRefreshing(true);
       setPullDistance(THRESHOLD);
-      await queryClient.invalidateQueries();
+      await queryClient.refetchQueries();
       await new Promise(r => setTimeout(r, 600));
       setRefreshing(false);
     }
