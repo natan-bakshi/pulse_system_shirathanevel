@@ -15,6 +15,7 @@ import StatCard from "../components/admin/StatCard";
 import EventsCalendar from "../components/admin/EventsCalendar";
 import CalendarSettings from "../components/admin/CalendarSettings";
 import EventForm from "../components/events/EventForm";
+import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SupplierAssignmentDialog from "../components/assignments/SupplierAssignmentDialog";
@@ -350,6 +351,7 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-white">דשבורד ניהול</h1>
             <p className="text-white/80 mt-1">מבט כללי על האירועים והביצועים</p>
+            <DeleteAccountButton />
           </div>
           <div className="flex gap-2">
             {showEventsBoardTab &&

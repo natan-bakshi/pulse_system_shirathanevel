@@ -639,39 +639,39 @@ const handleCopyTransport = (service, serviceDetails) => {
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <Label className="text-xs">שעה</Label>
-                                  <Input type="time" value={point.time || ''} onChange={(e) => {
-                                    const newUnits = [...units];
-                                    newUnits[uIdx].pickupPoints[pIdx].time = e.target.value;
-                                    handleUnitsChange(newUnits);
-                                  }} onBlur={() => saveTransportChanges(units)} className="text-sm h-8" />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">מיקום</Label>
-                                  <Input value={point.location || ''} onChange={(e) => {
-                                    const newUnits = [...units];
-                                    newUnits[uIdx].pickupPoints[pIdx].location = e.target.value;
-                                    handleUnitsChange(newUnits);
-                                  }} onBlur={() => saveTransportChanges(units)} className="text-sm h-8" />
-                                </div>
+                              <div className="space-y-1">
+                               <Label className="text-xs">שעה</Label>
+                               <Input type="time" value={point.time || ''} onChange={(e) => {
+                                 const newUnits = JSON.parse(JSON.stringify(units));
+                                 newUnits[uIdx].pickupPoints[pIdx].time = e.target.value;
+                                 handleUnitsChange(newUnits);
+                               }} onBlur={() => saveTransportChanges(JSON.parse(JSON.stringify(units)))} className="text-sm h-8" />
+                              </div>
+                              <div className="space-y-1">
+                               <Label className="text-xs">מיקום</Label>
+                               <Input value={point.location || ''} onChange={(e) => {
+                                 const newUnits = JSON.parse(JSON.stringify(units));
+                                 newUnits[uIdx].pickupPoints[pIdx].location = e.target.value;
+                                 handleUnitsChange(newUnits);
+                               }} onBlur={() => saveTransportChanges(JSON.parse(JSON.stringify(units)))} className="text-sm h-8" />
+                              </div>
                               </div>
 
                               <div className="space-y-1">
-                                <Label className="text-xs">איש קשר</Label>
-                                <div className="flex gap-2">
-                                  <Input placeholder="שם" value={point.contact?.name || ''} onChange={(e) => {
-                                    const newUnits = [...units];
-                                    if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
-                                    newUnits[uIdx].pickupPoints[pIdx].contact.name = e.target.value;
-                                    handleUnitsChange(newUnits);
-                                  }} onBlur={() => saveTransportChanges(units)} className="text-sm h-8" />
-                                  <Input placeholder="טלפון" value={point.contact?.phone || ''} onChange={(e) => {
-                                    const newUnits = [...units];
-                                    if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
-                                    newUnits[uIdx].pickupPoints[pIdx].contact.phone = e.target.value;
-                                    handleUnitsChange(newUnits);
-                                  }} onBlur={() => saveTransportChanges(units)} className="text-sm h-8" />
+                              <Label className="text-xs">איש קשר</Label>
+                              <div className="flex gap-2">
+                               <Input placeholder="שם" value={point.contact?.name || ''} onChange={(e) => {
+                                 const newUnits = JSON.parse(JSON.stringify(units));
+                                 if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
+                                 newUnits[uIdx].pickupPoints[pIdx].contact.name = e.target.value;
+                                 handleUnitsChange(newUnits);
+                               }} onBlur={() => saveTransportChanges(JSON.parse(JSON.stringify(units)))} className="text-sm h-8" />
+                               <Input placeholder="טלפון" value={point.contact?.phone || ''} onChange={(e) => {
+                                 const newUnits = JSON.parse(JSON.stringify(units));
+                                 if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
+                                 newUnits[uIdx].pickupPoints[pIdx].contact.phone = e.target.value;
+                                 handleUnitsChange(newUnits);
+                               }} onBlur={() => saveTransportChanges(JSON.parse(JSON.stringify(units)))} className="text-sm h-8" />
                                   <ContactPicker onContactSelect={(c) => {
                                     const newUnits = [...units];
                                     if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};

@@ -11,6 +11,7 @@ import { format, getYear, getMonth } from "date-fns";
 import { he } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 
 const YEARS = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
 const MONTHS = [
@@ -272,6 +273,9 @@ export default function SupplierDashboard() {
             יש לך {filteredEvents.filter(e => e.assignmentStatus === 'pending').length} שיבוצים ממתינים לאישור
           </p>
         )}
+        <div className="mt-4">
+          <DeleteAccountButton />
+        </div>
       </div>
       
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
