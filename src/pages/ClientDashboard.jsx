@@ -12,7 +12,6 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 import { generateQuote } from '@/functions/generateQuote';
-import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 
 
 export default function ClientDashboard() {
@@ -170,9 +169,6 @@ export default function ClientDashboard() {
         <h1 className="text-3xl font-bold text-white mb-2">שלום {user.full_name || 'לקוח/ה'}</h1>
         <p className="text-white/80">ברוך הבא לאזור האישי שלך</p>
         <p className="text-white/60 text-sm mt-2">מחובר עם: {user.email}</p>
-        <div className="mt-4">
-          <DeleteAccountButton />
-        </div>
       </div>
 
       {eventsWithDetails.length === 0 ? (

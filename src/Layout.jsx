@@ -71,8 +71,8 @@ export default function Layout({ children }) {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCalendarConnect, setShowCalendarConnect] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    try { return localStorage.getItem('pulse_dark_mode') === 'true'; } catch { return false; }
+  const [themeMode, setThemeMode] = useState(() => {
+    try { return localStorage.getItem('pulse_theme_mode') || 'auto'; } catch { return 'auto'; }
   });
   const mainContentRef = React.useRef(null);
   const location = useLocation();
@@ -119,10 +119,25 @@ export default function Layout({ children }) {
     };
   }, [settingsMap]);
 
-  // Save dark mode preference
+  // Resolve dark mode from themeMode + system preference
   useEffect(() => {
-    try { localStorage.setItem('pulse_dark_mode', darkMode.toString()); } catch {}
-  }, [darkMode]);
+    try { localStorage.setItem('pulse_theme_mode', themeMode); } catch {}
+
+    const applyTheme = () => {
+      let isDark = false;
+      if (themeMode === 'dark') isDark = true;
+      else if (themeMode === 'auto') isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      document.documentElement.classList.toggle('dark', isDark);
+    };
+    applyTheme();
+
+    // Listen for system changes when in auto mode
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => { if (themeMode === 'auto') { applyTheme(); } };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [themeMode]);
 
   // Update document title and favicon when settings change
   useEffect(() => {
@@ -342,162 +357,234 @@ export default function Layout({ children }) {
         }
       }
 
-      /* ========== Dark Mode ========== */
-      .pulse-dark .bg-black\/20 {
-        background-color: rgba(0, 0, 0, 0.55) !important;
+      /* ========== Dark Mode (via html.dark class) ========== */
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f9fafb;
+        --bg-card: rgba(255, 255, 255, 0.95);
+        --bg-card-solid: #ffffff;
+        --bg-overlay: rgba(0, 0, 0, 0.2);
+        --bg-sidebar: rgba(255, 255, 255, 0.95);
+        --bg-input: transparent;
+        --bg-hover: #f3f4f6;
+        --bg-elevated: #f9fafb;
+        --text-primary: #111827;
+        --text-secondary: #4b5563;
+        --text-muted: #6b7280;
+        --text-faint: #9ca3af;
+        --border-color: #e5e7eb;
+        --border-subtle: #f3f4f6;
+      }
+
+      html.dark {
+        --bg-primary: #0f1117;
+        --bg-secondary: #1a1d2e;
+        --bg-card: rgba(26, 29, 46, 0.95);
+        --bg-card-solid: #1a1d2e;
+        --bg-overlay: rgba(0, 0, 0, 0.6);
+        --bg-sidebar: rgba(18, 20, 32, 0.98);
+        --bg-input: #1e2235;
+        --bg-hover: #252a3e;
+        --bg-elevated: #1e2235;
+        --text-primary: #e8eaed;
+        --text-secondary: #b0b8c8;
+        --text-muted: #8892a8;
+        --text-faint: #6a7490;
+        --border-color: #2d3348;
+        --border-subtle: #252a3e;
+      }
+
+      /* ---- Global dark overrides ---- */
+      html.dark .bg-black\/20 {
+        background-color: var(--bg-overlay) !important;
       }
 
       /* Cards & content backgrounds */
-      .pulse-dark .bg-white\/95,
-      .pulse-dark .bg-white\/90,
-      .pulse-dark .bg-white,
-      .pulse-dark .bg-card {
-        background-color: #1e1e2e !important;
-        color: #e2e2e8 !important;
-        border-color: #383850 !important;
+      html.dark .bg-white\/95,
+      html.dark .bg-white\/90,
+      html.dark .bg-white,
+      html.dark .bg-card {
+        background-color: var(--bg-card-solid) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
       }
 
-      .pulse-dark .bg-white\/80 {
-        background-color: rgba(30, 30, 46, 0.8) !important;
-        color: #e2e2e8 !important;
+      html.dark .bg-white\/80 {
+        background-color: rgba(26, 29, 46, 0.85) !important;
+        color: var(--text-primary) !important;
       }
 
       /* Text colors */
-      .pulse-dark .text-gray-900,
-      .pulse-dark .text-gray-800 {
-        color: #e2e2e8 !important;
+      html.dark .text-gray-900,
+      html.dark .text-gray-800 {
+        color: var(--text-primary) !important;
       }
-      .pulse-dark .text-gray-700,
-      .pulse-dark .text-gray-600 {
-        color: #b4b4c4 !important;
+      html.dark .text-gray-700,
+      html.dark .text-gray-600 {
+        color: var(--text-secondary) !important;
       }
-      .pulse-dark .text-gray-500,
-      .pulse-dark .text-gray-400 {
-        color: #8888a0 !important;
+      html.dark .text-gray-500,
+      html.dark .text-gray-400 {
+        color: var(--text-muted) !important;
+      }
+      html.dark .text-gray-300 {
+        color: var(--text-faint) !important;
       }
 
       /* Inputs, selects, textareas */
-      .pulse-dark input,
-      .pulse-dark textarea,
-      .pulse-dark select,
-      .pulse-dark [role="combobox"] {
-        background-color: #282840 !important;
-        color: #e2e2e8 !important;
-        border-color: #44445a !important;
+      html.dark input,
+      html.dark textarea,
+      html.dark select,
+      html.dark [role="combobox"] {
+        background-color: var(--bg-input) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
       }
-      .pulse-dark input::placeholder,
-      .pulse-dark textarea::placeholder {
-        color: #6c6c88 !important;
+      html.dark input::placeholder,
+      html.dark textarea::placeholder {
+        color: var(--text-faint) !important;
       }
 
       /* Borders */
-      .pulse-dark .border,
-      .pulse-dark .border-b,
-      .pulse-dark .border-t {
-        border-color: #383850 !important;
+      html.dark .border,
+      html.dark .border-b,
+      html.dark .border-t,
+      html.dark .border-l,
+      html.dark .border-r {
+        border-color: var(--border-color) !important;
       }
 
       /* Dropdown menus & popovers */
-      .pulse-dark [data-radix-popper-content-wrapper] [role="menu"],
-      .pulse-dark [data-radix-popper-content-wrapper] [role="listbox"],
-      .pulse-dark [data-radix-popper-content-wrapper] > div {
-        background-color: #1e1e2e !important;
-        color: #e2e2e8 !important;
-        border-color: #383850 !important;
+      html.dark [data-radix-popper-content-wrapper] [role="menu"],
+      html.dark [data-radix-popper-content-wrapper] [role="listbox"],
+      html.dark [data-radix-popper-content-wrapper] > div {
+        background-color: var(--bg-card-solid) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
       }
-      .pulse-dark [role="menuitem"]:hover,
-      .pulse-dark [role="option"]:hover,
-      .pulse-dark [role="option"][data-highlighted] {
-        background-color: #383850 !important;
+      html.dark [role="menuitem"]:hover,
+      html.dark [role="option"]:hover,
+      html.dark [role="option"][data-highlighted] {
+        background-color: var(--bg-hover) !important;
       }
 
       /* Dialogs */
-      .pulse-dark [role="dialog"] {
-        background-color: #1e1e2e !important;
-        color: #e2e2e8 !important;
-        border-color: #383850 !important;
+      html.dark [role="dialog"],
+      html.dark [data-state="open"][role="dialog"] {
+        background-color: var(--bg-card-solid) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
       }
 
-      /* Table rows */
-      .pulse-dark tr:hover {
-        background-color: #282840 !important;
+      /* Tables */
+      html.dark tr:hover {
+        background-color: var(--bg-hover) !important;
       }
-      .pulse-dark th {
-        color: #b4b4c4 !important;
+      html.dark th {
+        color: var(--text-secondary) !important;
       }
-
-      /* Sidebar in dark mode */
-      .pulse-dark .bg-white\/95.backdrop-blur-sm.shadow-2xl {
-        background-color: #1a1a2e !important;
-        color: #e2e2e8 !important;
-      }
-      .pulse-dark nav a.text-gray-700 {
-        color: #b4b4c4 !important;
-      }
-      .pulse-dark nav a.text-gray-700:hover {
-        background-color: rgba(139, 0, 0, 0.15) !important;
+      html.dark td {
+        color: var(--text-primary) !important;
+        border-color: var(--border-subtle) !important;
       }
 
-      /* Badges */
-      .pulse-dark .bg-gray-50,
-      .pulse-dark .bg-gray-100 {
-        background-color: #282840 !important;
+      /* Sidebar */
+      html.dark .bg-white\/95.backdrop-blur-sm.shadow-2xl {
+        background-color: var(--bg-sidebar) !important;
+        color: var(--text-primary) !important;
+      }
+      html.dark nav a.text-gray-700 {
+        color: var(--text-secondary) !important;
+      }
+      html.dark nav a.text-gray-700:hover {
+        background-color: var(--bg-hover) !important;
       }
 
-      /* Subtle backgrounds */
-      .pulse-dark .bg-blue-50 {
-        background-color: rgba(30, 60, 100, 0.3) !important;
+      /* Gray/neutral backgrounds */
+      html.dark .bg-gray-50,
+      html.dark .bg-gray-100 {
+        background-color: var(--bg-elevated) !important;
+        color: var(--text-primary) !important;
       }
-      .pulse-dark .bg-red-50,
-      .pulse-dark .bg-red-50\/20 {
-        background-color: rgba(100, 30, 30, 0.2) !important;
-      }
-      .pulse-dark .bg-purple-50 {
-        background-color: rgba(60, 30, 100, 0.25) !important;
-      }
-      .pulse-dark .bg-green-50 {
-        background-color: rgba(30, 80, 50, 0.2) !important;
-      }
-      .pulse-dark .bg-yellow-50 {
-        background-color: rgba(80, 70, 20, 0.25) !important;
+      html.dark .bg-gray-200 {
+        background-color: var(--border-color) !important;
       }
 
-      /* White text override protection - keep white text white */
-      .pulse-dark .text-white {
-        color: #ffffff !important;
+      /* Subtle colored backgrounds */
+      html.dark .bg-blue-50 { background-color: rgba(37, 99, 235, 0.12) !important; }
+      html.dark .bg-blue-100 { background-color: rgba(37, 99, 235, 0.18) !important; }
+      html.dark .bg-red-50 { background-color: rgba(220, 38, 38, 0.1) !important; }
+      html.dark .bg-red-100 { background-color: rgba(220, 38, 38, 0.15) !important; }
+      html.dark .bg-green-50 { background-color: rgba(22, 163, 74, 0.1) !important; }
+      html.dark .bg-green-100 { background-color: rgba(22, 163, 74, 0.15) !important; }
+      html.dark .bg-yellow-50 { background-color: rgba(202, 138, 4, 0.1) !important; }
+      html.dark .bg-yellow-100 { background-color: rgba(202, 138, 4, 0.15) !important; }
+      html.dark .bg-purple-50 { background-color: rgba(147, 51, 234, 0.1) !important; }
+      html.dark .bg-purple-100 { background-color: rgba(147, 51, 234, 0.15) !important; }
+      html.dark .bg-amber-50 { background-color: rgba(217, 119, 6, 0.1) !important; }
+
+      /* White text stays white */
+      html.dark .text-white { color: #ffffff !important; }
+
+      /* Buttons - outline / ghost */
+      html.dark .border-red-200 {
+        border-color: rgba(185, 28, 28, 0.4) !important;
+      }
+      html.dark button.hover\:bg-red-50:hover {
+        background-color: rgba(185, 28, 28, 0.12) !important;
       }
 
       /* Footer */
-      .pulse-dark footer.text-center {
-        color: #6c6c88 !important;
+      html.dark footer.text-center {
+        color: var(--text-faint) !important;
       }
 
       /* Tabs */
-      .pulse-dark [role="tablist"] {
-        background-color: #282840 !important;
+      html.dark [role="tablist"] {
+        background-color: var(--bg-elevated) !important;
       }
-      .pulse-dark [role="tab"] {
-        color: #8888a0 !important;
+      html.dark [role="tab"] {
+        color: var(--text-muted) !important;
       }
-      .pulse-dark [role="tab"][data-state="active"] {
-        background-color: #1e1e2e !important;
-        color: #e2e2e8 !important;
+      html.dark [role="tab"][data-state="active"] {
+        background-color: var(--bg-card-solid) !important;
+        color: var(--text-primary) !important;
       }
 
-      /* Scrollbar dark */
-      .pulse-dark ::-webkit-scrollbar {
-        width: 6px;
+      /* Badge text colors in dark */
+      html.dark .text-red-800 { color: #fca5a5 !important; }
+      html.dark .text-blue-800 { color: #93c5fd !important; }
+      html.dark .text-green-800 { color: #86efac !important; }
+      html.dark .text-yellow-800 { color: #fde68a !important; }
+      html.dark .text-purple-800 { color: #d8b4fe !important; }
+      html.dark .text-amber-800 { color: #fcd34d !important; }
+
+      /* Link blue in dark */
+      html.dark .text-blue-600 { color: #60a5fa !important; }
+      html.dark .text-blue-600:hover { color: #93c5fd !important; }
+
+      /* Scrollbar */
+      html.dark ::-webkit-scrollbar { width: 6px; }
+      html.dark ::-webkit-scrollbar-track { background: var(--bg-primary); }
+      html.dark ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+      /* Sheet / overlay */
+      html.dark [data-state="open"].bg-black\/80 {
+        background-color: rgba(0, 0, 0, 0.7) !important;
       }
-      .pulse-dark ::-webkit-scrollbar-track {
-        background: #1a1a2e;
+
+      /* Progress bar track */
+      html.dark .bg-gray-200.rounded-full {
+        background-color: var(--border-color) !important;
       }
-      .pulse-dark ::-webkit-scrollbar-thumb {
-        background: #44445a;
-        border-radius: 3px;
+
+      /* Calendar day cells */
+      html.dark .rdp-day:hover {
+        background-color: var(--bg-hover) !important;
       }
     `}</style>
 
-    <div dir="rtl" className={`min-h-screen w-full flex overflow-x-hidden relative ${darkMode ? 'pulse-dark' : ''}`} style={{
+    <div dir="rtl" className="min-h-screen w-full flex overflow-x-hidden relative" style={{
         backgroundImage: `url('${backgroundUrl}')`,
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -576,7 +663,7 @@ export default function Layout({ children }) {
                   <Bell className="h-4 w-4 ml-2" />
                   הגדרת התראות
                 </Link>
-                <DarkModeToggle darkMode={darkMode} setDarkMode={setDarkMode} />
+                <DarkModeToggle themeMode={themeMode} setThemeMode={setThemeMode} />
                 <Button
                   variant="outline"
                   className="w-full justify-start text-sm lg:text-base border-red-200 text-red-800 hover:bg-red-50"
