@@ -64,9 +64,12 @@ Deno.serve(async (req) => {
         
         let notificationsSent = 0;
         
+        // Check if this service type has notifications enabled
+        const shouldNotifySuppliers = service?.send_supplier_notifications !== false;
+        
         // Check for new assignments
         const newAssignmentTemplate = templates.find(t => t.type === 'SUPPLIER_NEW_ASSIGNMENT');
-        if (newAssignmentTemplate) {
+        if (newAssignmentTemplate && shouldNotifySuppliers) {
             for (const supplierId of currentSupplierIds) {
                 const isNew = !oldSupplierIds.includes(supplierId);
                 const statusChanged = oldStatuses[supplierId] !== currentStatuses[supplierId];
@@ -82,6 +85,13 @@ Deno.serve(async (req) => {
                     
                     if (!supplierUser) continue;
                     
+                    // Get supplier note for this assignment
+                    let supplierNotes = {};
+                    try {
+                        if (data.supplier_notes) supplierNotes = JSON.parse(data.supplier_notes);
+                    } catch (e) {}
+                    const supplierNote = supplierNotes[supplierId] || '';
+                    
                     const contextData = {
                         event_name: eventData.event_name,
                         family_name: eventData.family_name,
@@ -90,6 +100,7 @@ Deno.serve(async (req) => {
                         event_location: eventData.location || '',
                         supplier_name: supplier.supplier_name,
                         service_name: service?.service_name || '',
+                        supplier_note: supplierNote,
                         event_id: eventData.id
                     };
                     
@@ -120,7 +131,7 @@ Deno.serve(async (req) => {
             }
         }
         
-        // Check for rejections - notify admins
+        // Check for rejections - notify admins (always notify admins regardless of service notification setting)
         const rejectionTemplate = templates.find(t => t.type === 'ADMIN_ASSIGNMENT_REJECTED');
         if (rejectionTemplate) {
             for (const supplierId of currentSupplierIds) {
@@ -172,7 +183,7 @@ Deno.serve(async (req) => {
         
         // Check for assignment updates (status changes other than rejection)
         const updateTemplate = templates.find(t => t.type === 'SUPPLIER_ASSIGNMENT_UPDATE');
-        if (updateTemplate) {
+        if (updateTemplate && shouldNotifySuppliers) {
             for (const supplierId of currentSupplierIds) {
                 if (!oldSupplierIds.includes(supplierId)) continue; // Already handled as new
                 

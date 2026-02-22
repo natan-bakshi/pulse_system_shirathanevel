@@ -434,6 +434,23 @@ export default function ServiceManagement() {
                                   <Label htmlFor={`vat-toggle-${service.id}`} className="text-xs">כולל מע"מ</Label>
                               </div>
                             </div>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2 space-x-reverse">
+                                  <Switch
+                                      id={`notif-toggle-${service.id}`}
+                                      checked={service.send_supplier_notifications !== false}
+                                      onCheckedChange={async (checked) => {
+                                        try {
+                                          await base44.entities.Service.update(service.id, { send_supplier_notifications: checked });
+                                          queryClient.invalidateQueries({ queryKey: ['services'] });
+                                        } catch (error) {
+                                          console.error("Failed to toggle notification:", error);
+                                        }
+                                      }}
+                                  />
+                                  <Label htmlFor={`notif-toggle-${service.id}`} className="text-xs">שלח הודעות שיבוץ לספקים</Label>
+                              </div>
+                            </div>
                           </CardContent>
                           <div className="p-4 border-t flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleEdit(service)} className="flex-1">

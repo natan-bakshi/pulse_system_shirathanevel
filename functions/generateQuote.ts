@@ -764,6 +764,7 @@ Deno.serve(async (req) => {
           </style>
       </head>
       <body>
+          <button onclick="window.close(); if(!window.closed) history.back();" style="position:fixed;top:12px;left:12px;z-index:9999;background:#8B0000;color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);line-height:1;" title="סגור">✕</button>
           <div class="page-content">
               ${!quoteHideLogo ? `
               <div class="header">
