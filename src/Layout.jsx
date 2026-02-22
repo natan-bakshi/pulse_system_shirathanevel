@@ -421,6 +421,7 @@ export default function Layout({ children }) {
                   <LogOut className="h-4 w-4 ml-2" />
                   יציאה
                 </Button>
+                <DeleteAccountButton />
               </div>
             </div>
           </div>
