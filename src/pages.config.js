@@ -60,6 +60,7 @@ import SettingsPage from './pages/SettingsPage';
 import SupplierDashboard from './pages/SupplierDashboard';
 import SupplierManagement from './pages/SupplierManagement';
 import UserManagement from './pages/UserManagement';
+import UserSettings from './pages/UserSettings';
 import __Layout from './Layout.jsx';
 
 
@@ -77,6 +78,7 @@ export const PAGES = {
     "SupplierDashboard": SupplierDashboard,
     "SupplierManagement": SupplierManagement,
     "UserManagement": UserManagement,
+    "UserSettings": UserSettings,
 }
 
 export const pagesConfig = {
