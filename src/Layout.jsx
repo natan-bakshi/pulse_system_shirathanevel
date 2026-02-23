@@ -167,7 +167,19 @@ export default function Layout({ children }) {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = () => { if (themeMode === 'auto') { applyTheme(); } };
     mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+
+    // Listen for theme changes from UserSettings page
+    const storageHandler = (e) => {
+      if (e.key === 'pulse_theme_mode' && e.newValue && e.newValue !== themeMode) {
+        setThemeMode(e.newValue);
+      }
+    };
+    window.addEventListener('storage', storageHandler);
+
+    return () => {
+      mq.removeEventListener('change', handler);
+      window.removeEventListener('storage', storageHandler);
+    };
   }, [themeMode]);
 
 
