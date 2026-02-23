@@ -580,18 +580,20 @@ export default function Layout({ children }) {
       html.dark .rdp-day:hover {
         background-color: var(--bg-hover) !important;
       }
-    `}</style>
+      `}</style>
 
-          <div dir="rtl" 
-        className="min-h-screen w-full flex overflow-x-hidden relative"
-        style={{
-          backgroundImage: `url('${backgroundUrl}')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
-          backgroundColor: "var(--bg-primary)",
-          color: "var(--text-primary)"
-        }}>
+
+    <div dir="rtl" 
+      className="min-h-screen w-full flex overflow-x-hidden relative"
+      style={{
+        backgroundImage: `url('${backgroundUrl}')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+        backgroundColor: "var(--bg-primary)",
+        color: "var(--text-primary)"
+      }}>
+
 
       <div className="min-h-screen bg-black/20 backdrop-blur-sm flex-1 flex">
         {/* Sidebar */}
