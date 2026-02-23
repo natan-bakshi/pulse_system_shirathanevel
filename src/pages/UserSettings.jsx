@@ -26,8 +26,8 @@ export default function UserSettings() {
     if (mode === 'dark') isDark = true;
     else if (mode === 'auto') isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.classList.toggle('dark', isDark);
-    // Dispatch storage event so Layout picks up the change
-    window.dispatchEvent(new StorageEvent('storage', { key: 'pulse_theme_mode', newValue: mode }));
+    // Dispatch custom event so Layout picks up the change (same-window)
+    window.dispatchEvent(new CustomEvent('pulse_theme_change', { detail: { mode } }));
   };
 
   if (isLoading) {

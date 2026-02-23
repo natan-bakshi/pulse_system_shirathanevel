@@ -168,17 +168,17 @@ export default function Layout({ children }) {
     const handler = () => { if (themeMode === 'auto') { applyTheme(); } };
     mq.addEventListener('change', handler);
 
-    // Listen for theme changes from UserSettings page
-    const storageHandler = (e) => {
-      if (e.key === 'pulse_theme_mode' && e.newValue && e.newValue !== themeMode) {
-        setThemeMode(e.newValue);
+    // Listen for theme changes from UserSettings page (same-window custom event)
+    const themeChangeHandler = (e) => {
+      if (e.detail?.mode && e.detail.mode !== themeMode) {
+        setThemeMode(e.detail.mode);
       }
     };
-    window.addEventListener('storage', storageHandler);
+    window.addEventListener('pulse_theme_change', themeChangeHandler);
 
     return () => {
       mq.removeEventListener('change', handler);
-      window.removeEventListener('storage', storageHandler);
+      window.removeEventListener('pulse_theme_change', themeChangeHandler);
     };
   }, [themeMode]);
 
