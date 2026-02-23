@@ -16,6 +16,7 @@ import NotificationManagementTab from "@/components/admin/NotificationManagement
 
 const settingKeys = [
     'background_image_url', 
+    'background_image_dark_url',
     'company_name', 
     'company_logo_url', 
     'vat_rate',
@@ -39,6 +40,7 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('general');
     const [settings, setSettings] = useState({
         background_image_url: "",
+        background_image_dark_url: "",
         company_name: "",
         company_logo_url: "",
         vat_rate: "18",
@@ -233,7 +235,7 @@ export default function SettingsPage() {
                         <CardHeader><CardTitle className="flex items-center gap-2"><Image className="h-5 w-5" />הגדרות תצוגה</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="bg-upload">תמונת רקע</Label>
+                                <Label htmlFor="bg-upload">תמונת רקע - מצב בהיר</Label>
                                 <div className="mt-2 flex items-center gap-4">
                                     <Input id="background_image_url" value={settings.background_image_url} onChange={e => handleSettingChange('background_image_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
                                      <Input id="bg-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'background_image_url')} disabled={isUploading} className="hidden" />
@@ -241,7 +243,19 @@ export default function SettingsPage() {
                                         {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
                                     </Label>
                                 </div>
-                                {settings.background_image_url && <img src={settings.background_image_url} alt="רקע" className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
+                                {settings.background_image_url && <img src={settings.background_image_url} alt="רקע בהיר" className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
+                            </div>
+                            <div>
+                                <Label htmlFor="bg-dark-upload">תמונת רקע - מצב כהה</Label>
+                                <div className="mt-2 flex items-center gap-4">
+                                    <Input id="background_image_dark_url" value={settings.background_image_dark_url} onChange={e => handleSettingChange('background_image_dark_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
+                                     <Input id="bg-dark-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'background_image_dark_url')} disabled={isUploading} className="hidden" />
+                                     <Label htmlFor="bg-dark-upload" className="cursor-pointer">
+                                        {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
+                                    </Label>
+                                </div>
+                                {settings.background_image_dark_url && <img src={settings.background_image_dark_url} alt="רקע כהה" className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
+                                <p className="text-xs text-gray-500 mt-1">אם לא תוגדר תמונה למצב כהה, תשמש תמונת הרקע של מצב בהיר</p>
                             </div>
                         </CardContent>
                     </Card>
