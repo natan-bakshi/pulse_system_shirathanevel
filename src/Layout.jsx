@@ -30,8 +30,10 @@ import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import DarkModeToggle from "@/components/DarkModeToggle";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
+
 // System creator email - only this user can access settings
 const SYSTEM_CREATOR_EMAIL = 'natib8000@gmail.com';
+
 
 const getAdminNavItems = (userEmail) => {
   const items = [
@@ -53,17 +55,23 @@ const getAdminNavItems = (userEmail) => {
   return items;
 };
 
+
 const navigationItems = {
+
 
   client: [
   { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home }],
 
+
   supplier: [
   { title: "האירועים שלי", url: createPageUrl("SupplierDashboard"), icon: Home }]
 
+
 };
 
+
 const commonNavItems = [];
+
 
 export default function Layout({ children }) {
   const [user, setUser] = useState(null);
@@ -75,6 +83,7 @@ export default function Layout({ children }) {
   });
   const location = useLocation();
   const navigate = useNavigate();
+
 
   // React Query for app settings - cached globally
   const { data: appSettings = [] } = useQuery({
@@ -92,6 +101,7 @@ export default function Layout({ children }) {
     retry: 1
   });
 
+
   // React Query for suppliers - needed for user type assignment
   const { data: suppliers = [], isLoading: suppliersLoading } = useQuery({
     queryKey: ['suppliers'],
@@ -100,6 +110,7 @@ export default function Layout({ children }) {
     cacheTime: 10 * 60 * 1000
   });
 
+
   // Memoize settings map
   const settingsMap = useMemo(() => {
     return appSettings.reduce((acc, item) => {
@@ -107,6 +118,7 @@ export default function Layout({ children }) {
       return acc;
     }, {});
   }, [appSettings]);
+
 
   // Memoize visual settings
   const { backgroundUrl, companyName, companyLogo } = useMemo(() => {
@@ -117,9 +129,11 @@ export default function Layout({ children }) {
     };
   }, [settingsMap]);
 
+
   // Resolve dark mode from themeMode + system preference
   useEffect(() => {
     try { localStorage.setItem('pulse_theme_mode', themeMode); } catch {}
+
 
     const applyTheme = () => {
       let isDark = false;
@@ -130,6 +144,7 @@ export default function Layout({ children }) {
     };
     applyTheme();
 
+
     // Listen for system changes when in auto mode
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = () => { if (themeMode === 'auto') { applyTheme(); } };
@@ -137,9 +152,11 @@ export default function Layout({ children }) {
     return () => mq.removeEventListener('change', handler);
   }, [themeMode]);
 
+
   // Update document title and favicon when settings change
   useEffect(() => {
     document.title = companyName;
+
 
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
@@ -150,6 +167,7 @@ export default function Layout({ children }) {
     link.href = companyLogo;
   }, [companyName, companyLogo]);
 
+
   // Centralized Identity Sync
   const syncUserIdentity = useCallback(async (userToSync) => {
     try {
@@ -157,6 +175,7 @@ export default function Layout({ children }) {
       const result = await base44.functions.invoke('syncUserIdentity', { 
         data: userToSync 
       });
+
 
       // If backend made updates, refresh the user object
       if (result.data?.updates) {
@@ -169,15 +188,18 @@ export default function Layout({ children }) {
     }
   }, []);
 
+
   useEffect(() => {
     const fetchUser = async () => {
       setLoading(true);
       try {
         let currentUser = await base44.auth.me();
 
+
         // Run sync on every load to ensure data consistency
         // This handles "New User" and "Missing Data" scenarios
         currentUser = await syncUserIdentity(currentUser);
+
 
         setUser(currentUser);
       } catch (error) {
@@ -189,12 +211,15 @@ export default function Layout({ children }) {
     fetchUser();
   }, [syncUserIdentity, location.pathname]);
 
+
   useEffect(() => {
     if (loading) return;
     if (!user) return;
 
+
     const userType = user.user_type;
     const { pathname } = location;
+
 
     // Define home pages for each user type
     const homePages = {
@@ -203,13 +228,16 @@ export default function Layout({ children }) {
       supplier: createPageUrl("SupplierDashboard")
     };
 
+
     const homePage = homePages[userType] || createPageUrl("ClientDashboard");
+
 
     // If user is on root path or empty path, redirect to their dashboard
     if (pathname === "/" || pathname === createPageUrl("")) {
       navigate(homePage, { replace: true });
       return;
     }
+
 
     // Admin access control
     const adminOnlyPages = [
@@ -224,31 +252,39 @@ export default function Layout({ children }) {
       return;
     }
 
+
     // Allow all users to access MyNotificationSettings
     const isAccessingNotificationSettings = pathname.includes('MyNotificationSettings');
+
 
     // Allow system creator to access SettingsPage
     if (isAccessingSettingsPage && user.email === SYSTEM_CREATOR_EMAIL) {
       return; // Allow access, don't redirect
     }
 
+
     const isTryingToAccessAdminPage = adminOnlyPages.some((p) => pathname.startsWith(createPageUrl(p.substring(1))));
+
 
     if (userType !== 'admin' && isTryingToAccessAdminPage) {
       navigate(homePage, { replace: true });
       return;
     }
 
+
     // If user is not on their correct dashboard and trying to access a non-specific page
     // redirect them to their appropriate dashboard
     const isOnCorrectDashboard = pathname.startsWith(homePage);
     const isAccessingSpecificEvent = pathname.includes('EventDetails');
 
+
     if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage) {
       navigate(homePage, { replace: true });
     }
 
+
   }, [user, location, navigate, loading]);
+
 
   const handleLogout = useCallback(async () => {
     try {
@@ -259,6 +295,7 @@ export default function Layout({ children }) {
       console.error("Logout failed:", error);
     }
   }, [navigate]);
+
 
   if (loading) {
     return (
@@ -271,7 +308,9 @@ export default function Layout({ children }) {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-800"></div>
       </div>);
 
+
   }
+
 
   if (!user) {
     return (
@@ -287,17 +326,21 @@ export default function Layout({ children }) {
             alt={companyName}
             className="h-8 w-auto max-w-[150px] object-contain opacity-90 shrink-0" />
 
+
           <h1 className="text-2xl font-bold text-gray-900 mb-4">ברוכים הבאים ל{companyName}</h1>
           <p className="text-gray-600 mb-6">מערכת ניהול אירועים מתקדמת</p>
           {children}
         </div>
       </div>);
 
+
   }
+
 
   const currentNavItems = user.user_type === 'admin' 
     ? getAdminNavItems(user.email) 
     : (navigationItems[user.user_type] || navigationItems.client);
+
 
 
   return (
@@ -314,6 +357,7 @@ export default function Layout({ children }) {
         right: auto !important;
       }
 
+
       @media (max-width: 640px) {
         /* 1. כיווץ כפתורים: רק כאלו שיש בתוכם אייקון (svg) */
         main button.inline-flex.items-center:has(svg),
@@ -324,6 +368,7 @@ export default function Layout({ children }) {
           height: 38px !important;
           justify-content: center !important;
         }
+
 
         /* 2. כפתורים ללא אייקון: נשארים עם טקסט, רק מצטמצמים מעט כדי לחסוך מקום */
         main button.inline-flex.items-center:not(:has(svg)) {
@@ -340,12 +385,14 @@ export default function Layout({ children }) {
           display: block !important;
         }
 
+
         /* 4. טיפול במיכלים: כפתורים ירדו שורה (Wrap) במקום לדחוף את המסך */
         .flex.gap-2, .flex.gap-3, .flex.space-x-2 {
           flex-wrap: wrap !important;
           justify-content: flex-end !important;
           gap: 6px !important;
         }
+
 
         /* 5. נעילת רוחב מסך למניעת הזחה שמאלה */
         html, body {
@@ -354,6 +401,7 @@ export default function Layout({ children }) {
           position: relative;
         }
       }
+
 
       /* ========== Dark Mode (via html.dark class) ========== */
       :root {
@@ -374,6 +422,7 @@ export default function Layout({ children }) {
         --border-subtle: #f3f4f6;
       }
 
+
       html.dark {
         --bg-primary: #0f1117;
         --bg-secondary: #1a1d2e;
@@ -392,42 +441,56 @@ export default function Layout({ children }) {
         --border-subtle: #252a3e;
       }
 
+
       /* ---- Global dark overrides ---- */
-      html.dark .bg-black\/20 {
+      html.dark .bg-black\\/20 {
         background-color: var(--bg-overlay) !important;
       }
 
-      /* Cards & content backgrounds */
-      html.dark .bg-white\/95,
-      html.dark .bg-white\/90,
+
+      /* Cards & content backgrounds (הרחבתי כדי שיתפוס כל קלף ורכיב לבן של Tailwind/Shadcn) */
+      html.dark .bg-white\\/95,
+      html.dark .bg-white\\/90,
       html.dark .bg-white,
-      html.dark .bg-card {
+      html.dark .bg-card,
+      html.dark .bg-background,
+      html.dark [class*="bg-white"] {
         background-color: var(--bg-card-solid) !important;
         color: var(--text-primary) !important;
         border-color: var(--border-color) !important;
       }
 
-      html.dark .bg-white\/80 {
+
+      html.dark .bg-white\\/80 {
         background-color: rgba(26, 29, 46, 0.85) !important;
         color: var(--text-primary) !important;
       }
 
+
       /* Text colors */
       html.dark .text-gray-900,
-      html.dark .text-gray-800 {
+      html.dark .text-gray-800,
+      html.dark .text-slate-900,
+      html.dark .text-slate-800 {
         color: var(--text-primary) !important;
       }
       html.dark .text-gray-700,
-      html.dark .text-gray-600 {
+      html.dark .text-gray-600,
+      html.dark .text-slate-700,
+      html.dark .text-slate-600 {
         color: var(--text-secondary) !important;
       }
       html.dark .text-gray-500,
-      html.dark .text-gray-400 {
+      html.dark .text-gray-400,
+      html.dark .text-slate-500,
+      html.dark .text-slate-400 {
         color: var(--text-muted) !important;
       }
-      html.dark .text-gray-300 {
+      html.dark .text-gray-300,
+      html.dark .text-slate-300 {
         color: var(--text-faint) !important;
       }
+
 
       /* Inputs, selects, textareas */
       html.dark input,
@@ -443,6 +506,7 @@ export default function Layout({ children }) {
         color: var(--text-faint) !important;
       }
 
+
       /* Borders */
       html.dark .border,
       html.dark .border-b,
@@ -451,6 +515,7 @@ export default function Layout({ children }) {
       html.dark .border-r {
         border-color: var(--border-color) !important;
       }
+
 
       /* Dropdown menus & popovers */
       html.dark [data-radix-popper-content-wrapper] [role="menu"],
@@ -466,6 +531,7 @@ export default function Layout({ children }) {
         background-color: var(--bg-hover) !important;
       }
 
+
       /* Dialogs */
       html.dark [role="dialog"],
       html.dark [data-state="open"][role="dialog"] {
@@ -473,6 +539,7 @@ export default function Layout({ children }) {
         color: var(--text-primary) !important;
         border-color: var(--border-color) !important;
       }
+
 
       /* Tables */
       html.dark tr:hover {
@@ -486,8 +553,9 @@ export default function Layout({ children }) {
         border-color: var(--border-subtle) !important;
       }
 
+
       /* Sidebar */
-      html.dark .bg-white\/95.backdrop-blur-sm.shadow-2xl {
+      html.dark .bg-white\\/95.backdrop-blur-sm.shadow-2xl {
         background-color: var(--bg-sidebar) !important;
         color: var(--text-primary) !important;
       }
@@ -498,15 +566,20 @@ export default function Layout({ children }) {
         background-color: var(--bg-hover) !important;
       }
 
+
       /* Gray/neutral backgrounds */
       html.dark .bg-gray-50,
-      html.dark .bg-gray-100 {
+      html.dark .bg-gray-100,
+      html.dark .bg-slate-50,
+      html.dark .bg-slate-100 {
         background-color: var(--bg-elevated) !important;
         color: var(--text-primary) !important;
       }
-      html.dark .bg-gray-200 {
+      html.dark .bg-gray-200,
+      html.dark .bg-slate-200 {
         background-color: var(--border-color) !important;
       }
+
 
       /* Subtle colored backgrounds */
       html.dark .bg-blue-50 { background-color: rgba(37, 99, 235, 0.12) !important; }
@@ -521,21 +594,25 @@ export default function Layout({ children }) {
       html.dark .bg-purple-100 { background-color: rgba(147, 51, 234, 0.15) !important; }
       html.dark .bg-amber-50 { background-color: rgba(217, 119, 6, 0.1) !important; }
 
+
       /* White text stays white */
       html.dark .text-white { color: #ffffff !important; }
+
 
       /* Buttons - outline / ghost */
       html.dark .border-red-200 {
         border-color: rgba(185, 28, 28, 0.4) !important;
       }
-      html.dark button.hover\:bg-red-50:hover {
+      html.dark button.hover\\:bg-red-50:hover {
         background-color: rgba(185, 28, 28, 0.12) !important;
       }
+
 
       /* Footer */
       html.dark footer.text-center {
         color: var(--text-faint) !important;
       }
+
 
       /* Tabs */
       html.dark [role="tablist"] {
@@ -549,6 +626,7 @@ export default function Layout({ children }) {
         color: var(--text-primary) !important;
       }
 
+
       /* Badge text colors in dark */
       html.dark .text-red-800 { color: #fca5a5 !important; }
       html.dark .text-blue-800 { color: #93c5fd !important; }
@@ -557,48 +635,54 @@ export default function Layout({ children }) {
       html.dark .text-purple-800 { color: #d8b4fe !important; }
       html.dark .text-amber-800 { color: #fcd34d !important; }
 
+
       /* Link blue in dark */
       html.dark .text-blue-600 { color: #60a5fa !important; }
       html.dark .text-blue-600:hover { color: #93c5fd !important; }
+
 
       /* Scrollbar */
       html.dark ::-webkit-scrollbar { width: 6px; }
       html.dark ::-webkit-scrollbar-track { background: var(--bg-primary); }
       html.dark ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 
+
       /* Sheet / overlay */
-      html.dark [data-state="open"].bg-black\/80 {
+      html.dark [data-state="open"].bg-black\\/80 {
         background-color: rgba(0, 0, 0, 0.7) !important;
       }
+
 
       /* Progress bar track */
       html.dark .bg-gray-200.rounded-full {
         background-color: var(--border-color) !important;
       }
 
+
       /* Calendar day cells */
       html.dark .rdp-day:hover {
         background-color: var(--bg-hover) !important;
       }
-      `}</style>
+    `}</style>
 
 
-    <div dir="rtl" 
-      className="min-h-screen w-full flex overflow-x-hidden relative"
-      style={{
-        backgroundImage: `url('${backgroundUrl}')`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-        backgroundColor: "var(--bg-primary)",
-        color: "var(--text-primary)"
-      }}>
+    <div dir="rtl" 
+      className="min-h-screen w-full flex overflow-x-hidden relative"
+      style={{
+        backgroundImage: `url('${backgroundUrl}')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+        backgroundColor: "var(--bg-primary)",
+        color: "var(--text-primary)"
+      }}>
 
 
       <div className="min-h-screen bg-black/20 backdrop-blur-sm flex-1 flex">
         {/* Sidebar */}
         <div className={`fixed inset-y-0 right-0 z-50 w-72 bg-white/95 backdrop-blur-sm shadow-2xl transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:inset-y-auto lg:w-72 lg:flex-shrink-0 ${
+
 
           sidebarOpen ? 'lg:translate-x-0' : 'lg:translate-x-full lg:!w-0 lg:overflow-hidden'} ${
           !sidebarOpen && 'invisible lg:visible'}`}>
@@ -610,6 +694,7 @@ export default function Layout({ children }) {
                   alt={companyName}
                   className="h-10 lg:h-12 w-auto" />
 
+
             </div>
             <Button
                 variant="ghost"
@@ -617,9 +702,11 @@ export default function Layout({ children }) {
                 onClick={() => setSidebarOpen(false)}
                 className="lg:hidden">
 
+
               <X className="h-6 w-6" />
             </Button>
           </div>
+
 
           <div className="flex flex-col flex-1 overflow-y-auto">
             <nav className="flex-1 px-6 py-4 space-y-2">
@@ -634,11 +721,13 @@ export default function Layout({ children }) {
                   }
                   onClick={() => setSidebarOpen(false)}>
 
+
                   <item.icon className="h-4 w-4 lg:h-5 lg:w-5 ml-2 lg:ml-3" />
                   <span className="font-medium">{item.title}</span>
                 </Link>
                 )}
             </nav>
+
 
             <div className="p-6 border-t mt-auto">
               <div className="flex items-center space-x-3 space-x-reverse mb-4">
@@ -674,6 +763,7 @@ export default function Layout({ children }) {
                   className="w-full justify-start text-sm lg:text-base border-red-200 text-red-800 hover:bg-red-50"
                   onClick={handleLogout}>
 
+
                   <LogOut className="h-4 w-4 ml-2" />
                   יציאה
                 </Button>
@@ -682,12 +772,15 @@ export default function Layout({ children }) {
             </div>
           </div>
 
+
         {sidebarOpen &&
           <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)} />
 
+
           }
+
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <header className="flex items-center justify-between p-2 sm:p-4 border-b border-white/20 gap-1">
@@ -711,6 +804,7 @@ export default function Layout({ children }) {
             <Menu className="h-6 w-6 pointer-events-none" />
           </button>
 
+
           {/* מיכל לוגו מרכזי - ממורכז בין הכפתור לדיב הריק */}
           <div className="flex-1 flex justify-center items-center overflow-hidden px-1">
             <img
@@ -723,8 +817,10 @@ export default function Layout({ children }) {
             </span>
           </div>
 
+
           {/* פעמון התראות */}
           <NotificationBell user={user} />
+
 
           {/* כפתור חזרה אחורה - מופיע רק אם אנחנו לא בדף הראשי/דשבורד */}
           {location.pathname !== "/" && !location.pathname.endsWith("Dashboard") ? (
@@ -754,6 +850,7 @@ export default function Layout({ children }) {
             <div style={{ width: '44px' }} className="shrink-0"></div>
           )}
         </header>
+
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative">
               <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full box-border overflow-x-hidden">
@@ -794,6 +891,7 @@ export default function Layout({ children }) {
         }}
       />
 
+
       {/* OneSignal Firebase Proxy Bridge */}
       <iframe 
         id="onesignal-subscribe-frame"
@@ -803,5 +901,6 @@ export default function Layout({ children }) {
       />
       </div>
       </>);
+
 
 }
