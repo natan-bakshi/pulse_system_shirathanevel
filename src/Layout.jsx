@@ -120,14 +120,26 @@ export default function Layout({ children }) {
   }, [appSettings]);
 
 
+  // Track active dark state for background selection
+  const [isDarkActive, setIsDarkActive] = useState(() => {
+    try {
+      const mode = localStorage.getItem('pulse_theme_mode') || 'auto';
+      if (mode === 'dark') return true;
+      if (mode === 'light') return false;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch { return false; }
+  });
+
   // Memoize visual settings
   const { backgroundUrl, companyName, companyLogo } = useMemo(() => {
+    const lightBg = settingsMap.background_image_url || "https://i.postimg.cc/vHhVvsRQ/01.png";
+    const darkBg = settingsMap.background_image_dark_url || lightBg;
     return {
-      backgroundUrl: settingsMap.background_image_url || "https://i.postimg.cc/vHhVvsRQ/01.png",
+      backgroundUrl: isDarkActive ? darkBg : lightBg,
       companyName: settingsMap.company_name || "Pulse - הלב הפועם של האירוע שלך",
       companyLogo: settingsMap.company_logo_url || "https://i.postimg.cc/KvxTLYHq/02.png"
     };
-  }, [settingsMap]);
+  }, [settingsMap, isDarkActive]);
 
 
   // Resolve dark mode from themeMode + system preference
@@ -141,6 +153,7 @@ export default function Layout({ children }) {
       else if (themeMode === 'auto') isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       
       document.documentElement.classList.toggle('dark', isDark);
+      setIsDarkActive(isDark);
     };
     applyTheme();
 
