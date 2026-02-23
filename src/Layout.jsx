@@ -281,7 +281,7 @@ export default function Layout({ children }) {
         backgroundPosition: "center",
         backgroundAttachment: "fixed"
       }}>
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl text-center">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-8 shadow-2xl text-center border border-gray-200">
           <img
             src={companyLogo}
             alt={companyName}
@@ -582,12 +582,17 @@ export default function Layout({ children }) {
       }
     `}</style>
 
-    <div dir="rtl" className="min-h-screen w-full flex overflow-x-hidden relative" style={{
-        backgroundImage: `url('${backgroundUrl}')`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed"
-      }}>
+          <div dir="rtl" 
+        className="min-h-screen w-full flex overflow-x-hidden relative"
+        style={{
+          backgroundImage: `url('${backgroundUrl}')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          backgroundColor: "var(--bg-primary)",
+          color: "var(--text-primary)"
+        }}>
+
       <div className="min-h-screen bg-black/20 backdrop-blur-sm flex-1 flex">
         {/* Sidebar */}
         <div className={`fixed inset-y-0 right-0 z-50 w-72 bg-white/95 backdrop-blur-sm shadow-2xl transform transition-transform duration-300 ease-in-out ${
