@@ -110,15 +110,15 @@ export default function EventsCalendar({ events, onDateClick, onEventClick }) {
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-      <CardHeader>
-        <div className="flex items-center justify-between gap-4">
-          <Button variant="outline" size="sm" onClick={() => setCurrentDate(subMonths(currentDate, 1))}>
+      <CardHeader className="p-3 sm:p-6">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
+          <Button variant="outline" size="sm" onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0">
             <ChevronRight className="h-4 w-4" />
           </Button>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-center">
             <Select value={currentDate.getMonth().toString()} onValueChange={handleMonthChange}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-24 sm:w-32 h-8 sm:h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -131,7 +131,7 @@ export default function EventsCalendar({ events, onDateClick, onEventClick }) {
             </Select>
             
             <Select value={currentDate.getFullYear().toString()} onValueChange={handleYearChange}>
-              <SelectTrigger className="w-24">
+              <SelectTrigger className="w-20 sm:w-24 h-8 sm:h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -144,27 +144,26 @@ export default function EventsCalendar({ events, onDateClick, onEventClick }) {
             </Select>
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => setCurrentDate(addMonths(currentDate, 1))}>
+          <Button variant="outline" size="sm" onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0">
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-1 mb-4">
+      <CardContent className="p-2 sm:p-6">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2 sm:mb-4">
           {weekDays.map(day => (
-            <div key={day} className="p-2 text-center font-semibold text-gray-600">
+            <div key={day} className="p-1 sm:p-2 text-center font-semibold text-gray-600 text-xs sm:text-sm">
               {day}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
           {calendarDays.map(date => {
             const dateKey = format(date, 'yyyy-MM-dd');
             const dayEvents = eventsMap[dateKey] || [];
             const isCurrentMonth = isSameMonth(date, currentDate);
             const isToday = isSameDay(date, new Date());
             
-            // המרה לתאריך עברי בעזרת Intl המובנה בדפדפן
             const hebDayNumber = new Intl.DateTimeFormat('he-u-ca-hebrew', {day: 'numeric'}).format(date);
             const hebDaySymbol = hebrewDaysGematria[parseInt(hebDayNumber)] || hebDayNumber;
             const hebMonthName = new Intl.DateTimeFormat('he-u-ca-hebrew', {month: 'long'}).format(date);
@@ -177,37 +176,35 @@ export default function EventsCalendar({ events, onDateClick, onEventClick }) {
                 key={dateKey}
                 onClick={() => handleDateClick(date)}
                 className={`
-                  min-h-[100px] p-1 border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors
+                  min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-1 border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors
                   ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'}
                   ${isToday ? 'ring-2 ring-blue-500' : ''}
                 `}
               >
-                <div className="flex justify-between items-start mb-1">
-                  <div className={`text-sm font-medium ${isToday ? 'text-blue-600' : ''}`}>
+                <div className="flex justify-between items-start mb-0.5 sm:mb-1">
+                  <div className={`text-[11px] sm:text-sm font-medium ${isToday ? 'text-blue-600' : ''}`}>
                     {format(date, 'd')}
                   </div>
-                  {/* הצגת יום בחודש העברי באותיות, ושם חודש במסכים גדולים */}
-                  <div className="text-[10px] text-gray-400 font-light text-left">
+                  <div className="text-[8px] sm:text-[10px] text-gray-400 font-light text-left leading-tight">
                     {hebDaySymbol} 
                     <span className="hidden md:inline mr-1 text-[9px]">{hebMonthName}</span>
                   </div>
                 </div>
 
-                {/* הצגת שם החג אם קיים */}
                 {holidayName && (
-                  <div className="text-[9px] text-red-500 font-bold leading-tight truncate mb-1" title={holidayName}>
+                  <div className="text-[7px] sm:text-[9px] text-red-500 font-bold leading-tight truncate mb-0.5 sm:mb-1" title={holidayName}>
                     {holidayName}
                   </div>
                 )}
 
                 <div 
-                  className={`space-y-1 overflow-y-auto transition-all duration-300 ${isExpanded ? 'max-h-[140px]' : 'max-h-[52px]'}`}
+                  className={`space-y-0.5 sm:space-y-1 overflow-y-auto transition-all duration-300 ${isExpanded ? 'max-h-[100px] sm:max-h-[140px]' : 'max-h-[32px] sm:max-h-[52px]'}`}
                 >
                   {dayEvents.map(event => (
                     <div
                       key={event.id}
                       onClick={(e) => handleEventClick(event, e)}
-                      className={`text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 ${getStatusColor(event.status)}`}
+                      className={`text-[9px] sm:text-xs p-0.5 sm:p-1 rounded truncate cursor-pointer hover:opacity-80 ${getStatusColor(event.status)}`}
                       title={`${event.event_name} - משפחת ${event.family_name}`}
                     >
                       {event.family_name}
@@ -215,16 +212,15 @@ export default function EventsCalendar({ events, onDateClick, onEventClick }) {
                   ))}
                 </div>
 
-                {/* כפתור גילוי/סגירת אירועים נוספים */}
                 {dayEvents.length > 2 && (
                   <div 
                     onClick={(e) => {
                       e.stopPropagation();
                       setExpandedDays(prev => ({ ...prev, [dateKey]: !isExpanded }));
                     }}
-                    className="text-[10px] text-blue-600 font-bold mt-1 hover:underline text-center"
+                    className="text-[8px] sm:text-[10px] text-blue-600 font-bold mt-0.5 sm:mt-1 hover:underline text-center"
                   >
-                    {isExpanded ? 'סגור' : `+${dayEvents.length - 2} עוד`}
+                    {isExpanded ? 'סגור' : `+${dayEvents.length - 2}`}
                   </div>
                 )}
               </div>

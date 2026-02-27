@@ -136,28 +136,31 @@ export default function EventManagement() {
     }, [navigate]);
     
     return (
-        <div className="p-4 sm:p-6 lg:p-8 max-w-full mx-auto w-full">
+        <div className="p-2 sm:p-4 lg:p-8 max-w-full mx-auto w-full">
             <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-2xl">ניהול אירועים</CardTitle>
-                        <Button onClick={() => { setEditingEvent(null); setIsFormOpen(true); }}>
-                            <PlusCircle className="ml-2 h-4 w-4" />
-                            צור אירוע חדש
+                <CardHeader className="p-3 sm:p-6">
+                    <div className="flex justify-between items-center gap-2">
+                        <CardTitle className="text-xl sm:text-2xl">ניהול אירועים</CardTitle>
+                        <Button onClick={() => { setEditingEvent(null); setIsFormOpen(true); }} size="sm" className="sm:h-9 sm:px-4">
+                            <PlusCircle className="ml-1 sm:ml-2 h-4 w-4" />
+                            <span className="hidden sm:inline">צור אירוע חדש</span>
+                            <span className="sm:hidden">חדש</span>
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 sm:p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full max-w-md mb-6" style={{ gridTemplateColumns: showEventsBoardTab ? '1fr 1fr' : '1fr' }}>
-                            <TabsTrigger value="grid" className="flex items-center gap-2">
-                                <LayoutGrid className="h-4 w-4" />
-                                תצוגת כרטיסים
+                        <TabsList className="grid w-full max-w-md mb-4 sm:mb-6" style={{ gridTemplateColumns: showEventsBoardTab ? '1fr 1fr' : '1fr' }}>
+                            <TabsTrigger value="grid" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                                <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                <span className="hidden sm:inline">תצוגת כרטיסים</span>
+                                <span className="sm:hidden">כרטיסים</span>
                             </TabsTrigger>
                             {showEventsBoardTab && (
-                                <TabsTrigger value="board" className="flex items-center gap-2">
-                                    <Table className="h-4 w-4" />
-                                    לוח אירועים
+                                <TabsTrigger value="board" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                                    <Table className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                    <span className="hidden sm:inline">לוח אירועים</span>
+                                    <span className="sm:hidden">לוח</span>
                                 </TabsTrigger>
                             )}
                         </TabsList>

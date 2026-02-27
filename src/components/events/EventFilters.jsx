@@ -73,9 +73,9 @@ export default function EventFilters({ events, setFilteredEvents }) {
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="p-3 sm:p-6 space-y-3 sm:space-y-4">
         <div className="relative">
-          <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+          <Search className="absolute right-3 top-2.5 sm:top-3 h-4 w-4 text-gray-400" />
           <Input
             placeholder="חיפוש אירועים..."
             value={searchTerm}

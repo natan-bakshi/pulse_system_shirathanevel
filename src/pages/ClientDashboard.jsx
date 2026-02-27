@@ -164,11 +164,11 @@ export default function ClientDashboard() {
   }
 
   return (
-    <div className="space-y-6 w-full max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-7xl mx-auto">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-2">שלום {user.full_name || 'לקוח/ה'}</h1>
-        <p className="text-white/80">ברוך הבא לאזור האישי שלך</p>
-        <p className="text-white/60 text-sm mt-2">מחובר עם: {user.email}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">שלום {user.full_name || 'לקוח/ה'}</h1>
+        <p className="text-white/80 text-sm sm:text-base">ברוך הבא לאזור האישי שלך</p>
+        <p className="text-white/60 text-xs sm:text-sm mt-1 sm:mt-2">מחובר עם: {user.email}</p>
       </div>
 
       {eventsWithDetails.length === 0 ? (
@@ -182,10 +182,10 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {eventsWithDetails.map((event) => (
-            <Card key={event.id} className="bg-white/95 backdrop-blur-sm shadow-xl flex flex-col h-full">
-              <CardHeader className="p-4">
+            <Card key={event.id} className="bg-white/95 backdrop-blur-sm shadow-lg sm:shadow-xl flex flex-col h-full">
+              <CardHeader className="p-3 sm:p-4">
                 <div className="flex flex-wrap justify-between items-start gap-2">
                     <CardTitle className="text-lg text-gray-900 break-words">{event.event_name} - {event.family_name}</CardTitle>
                     <Badge className="bg-red-100 text-red-800 shrink-0">{event.status === 'quote' ? 'הצעת מחיר' : 'אירוע'}</Badge>

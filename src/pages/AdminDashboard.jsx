@@ -343,13 +343,13 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">דשבורד ניהול</h1>
-            <p className="text-white/80 mt-1">מבט כללי על האירועים והביצועים</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">דשבורד ניהול</h1>
+            <p className="text-white/80 mt-0.5 sm:mt-1 text-sm sm:text-base">מבט כללי על האירועים והביצועים</p>
           </div>
           <div className="flex gap-2">
             {showEventsBoardTab &&
@@ -390,14 +390,14 @@ export default function AdminDashboard() {
         }
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
         <StatCard title="עתידיים" value={stats.futureEvents} icon={Calendar} color="wine" />
         <StatCard title="החודש" value={stats.thisMonthEvents} icon={Clock} color="gold" />
         <StatCard title="ממתינים" value={stats.pendingAssignments} icon={Clock} color="wine" />
         <StatCard title="נדחו" value={stats.rejectedAssignments} icon={AlertTriangle} color="gold" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
         <div className="lg:col-span-2">
           <EventsCalendar
             events={events.filter((event) => visibleStatuses.includes(event.status))}
@@ -407,20 +407,20 @@ export default function AdminDashboard() {
         </div>
         <div>
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl max-h-[calc(100vh-12rem)] flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
-                <ListChecks className="h-5 w-5" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                <ListChecks className="h-4 w-4 sm:h-5 sm:w-5" />
                 אירועים קרובים
               </CardTitle>
             </CardHeader>
-            <CardContent className="overflow-y-auto flex-grow">
-              <div className="space-y-3">
+            <CardContent className="overflow-y-auto flex-grow p-3 sm:p-6 pt-0">
+              <div className="space-y-2 sm:space-y-3">
                 {upcomingEvents.length > 0 ? upcomingEvents.map((event) => {
                   return (
                     <button
                       key={event.id}
                       onClick={() => handleEventClick(event)}
-                      className="block w-full p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-right">
+                      className="block w-full p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-right">
 
                             <div className="flex justify-between items-start gap-2">
                               <div className="min-w-0 flex-1">
@@ -456,44 +456,47 @@ export default function AdminDashboard() {
 
       {(rejectedAssignments.length > 0 || pendingAssignments.length > 0) &&
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-          <CardHeader>
-            <div className="flex flex-col gap-4">
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
-                <Clock className="h-5 w-5 text-amber-500" />
+          <CardHeader className="p-3 sm:p-6">
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
                 ניהול שיבוצים
               </CardTitle>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                   <Input
-                  placeholder="חיפוש לפי אירוע, ספק, שירות או תאריך..."
+                  placeholder="חיפוש..."
                   value={assignmentSearchTerm}
                   onChange={(e) => setAssignmentSearchTerm(e.target.value)}
                   className="pr-10" />
 
                 </div>
-                <div className="flex gap-2 items-center">
-                  <Filter className="h-4 w-4 text-gray-500" />
+                <div className="flex gap-1 sm:gap-2 items-center overflow-x-auto">
+                  <Filter className="h-4 w-4 text-gray-500 shrink-0 hidden sm:block" />
                   <Button
                   variant={assignmentSortBy === 'event' ? 'default' : 'outline'}
                   size="sm"
+                  className="text-xs sm:text-sm h-8 px-2 sm:px-3 shrink-0"
                   onClick={() => setAssignmentSortBy('event')}>
 
-                    לפי אירוע
+                    אירוע
                   </Button>
                   <Button
                   variant={assignmentSortBy === 'supplier' ? 'default' : 'outline'}
                   size="sm"
+                  className="text-xs sm:text-sm h-8 px-2 sm:px-3 shrink-0"
                   onClick={() => setAssignmentSortBy('supplier')}>
 
-                    לפי ספק
+                    ספק
                   </Button>
                   <Button
                   variant={assignmentSortBy === 'service' ? 'default' : 'outline'}
                   size="sm"
+                  className="text-xs sm:text-sm h-8 px-2 sm:px-3 shrink-0"
                   onClick={() => setAssignmentSortBy('service')}>
 
-                    לפי שירות
+                    שירות
                   </Button>
                 </div>
               </div>

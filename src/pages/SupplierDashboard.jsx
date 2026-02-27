@@ -263,9 +263,9 @@ export default function SupplierDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-2">שלום {user?.full_name || supplier?.supplier_name || "ספק"}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">שלום {user?.full_name || supplier?.supplier_name || "ספק"}</h1>
         {filteredEvents.length > 0 && (
           <p className="text-white/80">
             יש לך {filteredEvents.filter(e => e.assignmentStatus === 'pending').length} שיבוצים ממתינים לאישור
@@ -274,20 +274,20 @@ export default function SupplierDashboard() {
       </div>
       
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           <div className="relative">
-            <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+            <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="חיפוש לפי שם אירוע, משפחה או שירות..."
+              placeholder="חיפוש..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pr-10"
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
             <div className="flex bg-gray-100 p-1 rounded-lg">
-              <Button onClick={() => setTimeFilter('future')} variant={timeFilter === 'future' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white">אירועים עתידיים</Button>
-              <Button onClick={() => setTimeFilter('past')} variant={timeFilter === 'past' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white">אירועי עבר</Button>
+              <Button onClick={() => setTimeFilter('future')} variant={timeFilter === 'future' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white text-xs sm:text-sm h-8 sm:h-9">עתידיים</Button>
+              <Button onClick={() => setTimeFilter('past')} variant={timeFilter === 'past' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white text-xs sm:text-sm h-8 sm:h-9">עבר</Button>
             </div>
             <Select value={yearFilter} onValueChange={setYearFilter}>
               <SelectTrigger><SelectValue placeholder="כל השנים" /></SelectTrigger>
@@ -320,10 +320,10 @@ export default function SupplierDashboard() {
         <div className="grid gap-6">
           {filteredEvents.map((event, index) => (
             <Card key={`${event.id}-${index}`} className="bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-shadow duration-300">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl text-gray-900">
+              <CardHeader className="p-3 sm:p-6">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base sm:text-xl text-gray-900 break-words">
                       {event.event_name} - משפחת {event.family_name}
                     </CardTitle>
                     <p className="text-gray-600 mt-1">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
@@ -340,8 +340,8 @@ export default function SupplierDashboard() {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-500" />
                     <span>{format(new Date(event.event_date), 'dd/MM/yyyy', { locale: he })}</span>
@@ -365,19 +365,21 @@ export default function SupplierDashboard() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="flex justify-between items-center">
+              <CardFooter className="flex justify-between items-center p-3 sm:p-6 pt-0 gap-2">
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => navigate(createPageUrl('EventDetails') + `?id=${event.id}`)}
-                  className="border-red-200 text-red-800 hover:bg-red-50"
+                  className="border-red-200 text-red-800 hover:bg-red-50 text-xs sm:text-sm"
                 >
                   צפה בפרטים
                 </Button>
-                <div className="flex gap-2">
+                <div className="flex gap-1 sm:gap-2">
                   {event.assignmentStatus !== 'confirmed' && (
                     <Button
+                      size="sm"
                       onClick={() => handleStatusChange(event.eventServiceId, 'confirmed')}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
                     >
                       אשר
                     </Button>
@@ -385,8 +387,9 @@ export default function SupplierDashboard() {
                   {event.assignmentStatus !== 'rejected' && (
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={() => handleStatusChange(event.eventServiceId, 'rejected')}
-                      className="border-red-500 text-red-600 hover:bg-red-50"
+                      className="border-red-500 text-red-600 hover:bg-red-50 text-xs sm:text-sm"
                     >
                       דחה
                     </Button>

@@ -678,15 +678,15 @@ for (const serviceItem of formData.services) {
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="p-6 pb-0 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+        <DialogHeader className="p-4 sm:p-6 pb-0 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
           <DialogTitle className="text-lg sm:text-xl font-bold">
             {event ? "עריכת אירוע" : "יצירת אירוע חדש"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 p-3 sm:p-6">
 
-          <div className="p-6 border rounded-lg bg-gray-50/80">
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">פרטי אירוע</h3>
+          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">פרטי אירוע</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 id="event_name"
@@ -795,9 +795,9 @@ for (const serviceItem of formData.services) {
             </div>
           </div>
 
-          <div className="p-6 border rounded-lg bg-gray-50/80">
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">פרטי משפחה</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">פרטי משפחה</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <Input
                 id="family_name"
                 value={formData.family_name}
@@ -831,9 +831,9 @@ for (const serviceItem of formData.services) {
             </div>
           </div>
 
-          <div className="p-6 border rounded-lg bg-gray-50/80">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h3 className="text-lg font-semibold">פרטי הורים</h3>
+          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+            <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
+              <h3 className="text-base sm:text-lg font-semibold">פרטי הורים</h3>
               <Button type="button" variant="outline" size="sm" onClick={addParent} disabled={isSaving}>
                 <Plus className="h-4 w-4 ml-1" />הוסף הורה
               </Button>
@@ -882,10 +882,10 @@ for (const serviceItem of formData.services) {
             </div>
           </div>
 
-          <div className="p-6 border rounded-lg bg-gray-50/80">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Clock className="h-5 w-5" />
+          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+            <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
+              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                 לוח זמנים
               </h3>
               {formData.schedule?.length > 0 && (
@@ -972,9 +972,9 @@ for (const serviceItem of formData.services) {
             </DragDropContext>
           </div>
 
-          <div className="p-6 border rounded-lg bg-gray-50/80">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h3 className="text-lg font-semibold">שירותים</h3>
+          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+            <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
+              <h3 className="text-base sm:text-lg font-semibold">שירותים</h3>
               {!event && (
                 <Button
                   type="button"
@@ -1003,8 +1003,8 @@ for (const serviceItem of formData.services) {
           </div>
 
           {!formData.all_inclusive && (
-            <div className="p-6 border rounded-lg bg-gray-50/80">
-              <h3 className="text-lg font-semibold mb-4 border-b pb-2">סיכום כספי</h3>
+            <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">סיכום כספי</h3>
               
               {(() => {
                 // Calculate financials on the fly using the utility
@@ -1115,8 +1115,8 @@ for (const serviceItem of formData.services) {
             </div>
           )}
 
-          <div className="p-6 border rounded-lg bg-gray-50/80">
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">תשלומים</h3>
+          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">תשלומים</h3>
             <PaymentManager
               payments={formData.payments}
               onPaymentsChange={handlePaymentsChange}
@@ -1124,8 +1124,8 @@ for (const serviceItem of formData.services) {
             />
           </div>
 
-          <div className="p-6 border rounded-lg bg-gray-50/80">
-              <h3 className="text-lg font-semibold mb-4 border-b pb-2">סטטוס אירוע</h3>
+          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">סטטוס אירוע</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                       <Label htmlFor="status">סטטוס</Label>
@@ -1143,11 +1143,11 @@ for (const serviceItem of formData.services) {
               </div>
           </div>
 
-          <CardFooter className="flex justify-end gap-3 p-0 pt-6 sticky bottom-0 bg-white/95 backdrop-blur-sm z-10">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
+          <CardFooter className="flex justify-end gap-2 sm:gap-3 p-3 sm:p-0 pt-4 sm:pt-6 sticky bottom-0 bg-white/95 backdrop-blur-sm z-10 border-t sm:border-t-0">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} size="sm" className="sm:h-9 sm:px-4">
               ביטול
             </Button>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving} size="sm" className="sm:h-9 sm:px-4">
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 ml-2 animate-spin" />
@@ -1155,7 +1155,7 @@ for (const serviceItem of formData.services) {
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 ml-2" />
+                  <Save className="h-4 w-4 ml-1 sm:ml-2" />
                   {event ? "עדכן אירוע" : "צור אירוע"}
                 </>
               )}
