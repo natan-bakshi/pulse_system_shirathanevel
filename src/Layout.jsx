@@ -256,7 +256,7 @@ export default function Layout({ children }) {
     const homePages = {
       admin: createPageUrl("AdminDashboard"),
       client: createPageUrl("ClientDashboard"),
-      supplier: createPageUrl("SupplierDashboard")
+      supplier: createPageUrl("SupplierCalendarDashboard")
     };
 
 
