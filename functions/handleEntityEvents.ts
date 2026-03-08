@@ -678,7 +678,7 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         'supplier_phone': getVal(supplierObj, ['phone']),
         'service_name': resolvedServiceName || getVal(serviceObj, ['service_name', 'servicename']) || getVal(eventObj, ['service_name', 'serviceName']),
         'servicename': resolvedServiceName || getVal(serviceObj, ['service_name', 'servicename']),
-        'supplier_note': supplierNote || '',
+        'supplier_note': supplierNote ? `📝 הערה עבורך: ${supplierNote}` : '',
         'total_price': getVal(eventObj, ['total_price', 'totalprice', 'total_override', 'totaloverride', 'all_inclusive_price', 'allinclusiveprice']),
         'balance': getVal(eventObj, ['balance']),
         'user_name': getVal(userObj, ['full_name', 'fullname', 'name']),
