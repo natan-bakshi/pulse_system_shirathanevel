@@ -57,11 +57,11 @@ import MyNotificationSettings from './pages/MyNotificationSettings';
 import QuoteTemplateManagement from './pages/QuoteTemplateManagement';
 import ServiceManagement from './pages/ServiceManagement';
 import SettingsPage from './pages/SettingsPage';
+import SupplierCalendarDashboard from './pages/SupplierCalendarDashboard';
 import SupplierDashboard from './pages/SupplierDashboard';
 import SupplierManagement from './pages/SupplierManagement';
 import UserManagement from './pages/UserManagement';
 import UserSettings from './pages/UserSettings';
-import SupplierCalendarDashboard from './pages/SupplierCalendarDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -76,11 +76,11 @@ export const PAGES = {
     "QuoteTemplateManagement": QuoteTemplateManagement,
     "ServiceManagement": ServiceManagement,
     "SettingsPage": SettingsPage,
+    "SupplierCalendarDashboard": SupplierCalendarDashboard,
     "SupplierDashboard": SupplierDashboard,
     "SupplierManagement": SupplierManagement,
     "UserManagement": UserManagement,
     "UserSettings": UserSettings,
-    "SupplierCalendarDashboard": SupplierCalendarDashboard,
 }
 
 export const pagesConfig = {

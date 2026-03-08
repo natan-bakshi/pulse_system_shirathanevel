@@ -29,6 +29,7 @@ import TermsPopup from "@/components/legal/TermsPopup";
 import { Toaster as SonnerToaster } from "sonner";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
 
