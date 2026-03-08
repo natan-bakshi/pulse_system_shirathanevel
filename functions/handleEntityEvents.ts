@@ -642,7 +642,7 @@ async function triggerInApp(base44, template, user, eventObj, supplierObj, servi
     }
 }
 
-function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj) {
+function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote) {
     if (!text) return '';
     
     // Helper to safe access properties
@@ -673,8 +673,9 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj) {
         'supplier_name': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name', 'suppliername']),
         'suppliername': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name', 'suppliername']),
         'supplier_phone': getVal(supplierObj, ['phone']),
-        'service_name': getVal(serviceObj, ['service_name', 'servicename']) || getVal(eventObj, ['service_name', 'serviceName']),
-        'servicename': getVal(serviceObj, ['service_name', 'servicename']),
+        'service_name': resolvedServiceName || getVal(serviceObj, ['service_name', 'servicename']) || getVal(eventObj, ['service_name', 'serviceName']),
+        'servicename': resolvedServiceName || getVal(serviceObj, ['service_name', 'servicename']),
+        'supplier_note': supplierNote || '',
         'total_price': getVal(eventObj, ['total_price', 'totalprice', 'total_override', 'totaloverride', 'all_inclusive_price', 'allinclusiveprice']),
         'balance': getVal(eventObj, ['balance']),
         'user_name': getVal(userObj, ['full_name', 'fullname', 'name']),
@@ -693,9 +694,15 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj) {
     // Fallback to user obj if parents not found
     if (!vars['client_name']) vars['client_name'] = vars['user_name'];
 
-    // Improved Regex Replacement to handle {{key}} and {key}
-    return text.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
-        // key is the captured group inside {{...}} or {...}
+    // Replace variables
+    let result = text.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
         return vars[key] !== undefined ? vars[key] : match;
     });
+    
+    // Clean up empty supplier_note decorations: remove lines like "~~" or "~  ~" left when note is empty
+    result = result.replace(/~\s*~/g, '');
+    // Clean up leftover empty lines from removed note
+    result = result.replace(/\n{3,}/g, '\n\n');
+    
+    return result;
 }
