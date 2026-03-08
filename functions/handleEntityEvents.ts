@@ -501,6 +501,9 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     let message = template.whatsapp_body_template || template.body_template || template.body || '';
     message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote);
     
+    // Clean up empty supplier_note placeholders: remove lines with only ~~ or empty tildes
+    message = message.replace(/~\s*~/g, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+    
     // Check quiet hours (default 22:00-08:00 Israel time)
     const DEFAULT_QUIET_START = 22;
     const DEFAULT_QUIET_END = 8;
@@ -516,7 +519,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
             await base44.asServiceRole.entities.PendingPushNotification.create({
                 user_id: userId,
                 user_email: userEmail,
-                title: replaceVariables(template.title_template || '', eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote),
+                title: replaceVariables(template.title_template || '', eventObj, supplierObj, serviceObj, userObj),
                 message: message,
                 link: '',
                 scheduled_for: quietEnd.toISOString(),
@@ -694,15 +697,9 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
     // Fallback to user obj if parents not found
     if (!vars['client_name']) vars['client_name'] = vars['user_name'];
 
-    // Replace variables
-    let result = text.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
+    // Improved Regex Replacement to handle {{key}} and {key}
+    return text.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
+        // key is the captured group inside {{...}} or {...}
         return vars[key] !== undefined ? vars[key] : match;
     });
-    
-    // Clean up empty supplier_note decorations: remove lines like "~~" or "~  ~" left when note is empty
-    result = result.replace(/~\s*~/g, '');
-    // Clean up leftover empty lines from removed note
-    result = result.replace(/\n{3,}/g, '\n\n');
-    
-    return result;
 }
