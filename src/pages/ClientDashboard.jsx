@@ -182,9 +182,9 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {eventsWithDetails.map((event) => (
-            <Card key={event.id} className="bg-white/95 backdrop-blur-sm shadow-lg sm:shadow-xl flex flex-col h-full">
+        <div data-tour="client-events-list" className="grid gap-3 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {eventsWithDetails.map((event, idx) => (
+            <Card key={event.id} data-tour={idx === 0 ? "client-event-card" : undefined} className="bg-white/95 backdrop-blur-sm shadow-lg sm:shadow-xl flex flex-col h-full">
               <CardHeader className="p-3 sm:p-4">
                 <div className="flex flex-wrap justify-between items-start gap-2">
                     <CardTitle className="text-lg text-gray-900 break-words">{event.event_name} - {event.family_name}</CardTitle>

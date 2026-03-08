@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Settings, Loader2 } from "lucide-react";
+import { Settings, Loader2, Navigation } from "lucide-react";
 import UserNotificationPreferences from "@/components/notifications/UserNotificationPreferences";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function UserSettings() {
   const { data: user, isLoading } = useQuery({
@@ -54,6 +55,35 @@ export default function UserSettings() {
         </CardHeader>
         <CardContent>
           <DarkModeToggle themeMode={themeMode} setThemeMode={handleSetThemeMode} />
+        </CardContent>
+      </Card>
+
+      {/* Guided Tour */}
+      <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-lg">סיור מודרך</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-500 mb-3">הפעל את הסיור המודרך כדי ללמוד על כל הפונקציות במערכת.</p>
+          <Button
+            variant="outline"
+            className="border-red-200 text-red-800 hover:bg-red-50"
+            onClick={async () => {
+              try {
+                await base44.auth.updateMe({
+                  tour_version: '',
+                  tour_completed: false,
+                  tour_skipped: false
+                });
+                window.dispatchEvent(new Event('pulse_start_tour'));
+              } catch (e) {
+                console.error("Failed to reset tour:", e);
+              }
+            }}
+          >
+            <Navigation className="h-4 w-4 ml-2" />
+            התחל סיור מודרך
+          </Button>
         </CardContent>
       </Card>
 

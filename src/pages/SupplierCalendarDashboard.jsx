@@ -199,15 +199,17 @@ export default function SupplierCalendarDashboard() {
       </div>
 
       {/* Calendar */}
-      <EventsCalendar
-        events={calendarEvents}
-        onDateClick={handleDateClick}
-        onEventClick={handleEventClick}
-      />
+      <div data-tour="supplier-calendar">
+        <EventsCalendar
+          events={calendarEvents}
+          onDateClick={handleDateClick}
+          onEventClick={handleEventClick}
+        />
+      </div>
 
       {/* Pending Events List */}
       {pendingEvents.length > 0 && (
-        <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+        <Card data-tour="supplier-pending-list" className="bg-white/95 backdrop-blur-sm shadow-xl">
           <CardHeader className="p-3 sm:p-6 pb-2">
             <CardTitle className="text-lg sm:text-xl text-gray-900 flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-500" />
