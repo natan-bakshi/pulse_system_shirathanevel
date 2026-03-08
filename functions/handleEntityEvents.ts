@@ -474,8 +474,32 @@ async function sendNotification(base44, template, entityData, event, entityName)
 async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj) {
     if (!phone) return;
     
+    // Resolve real Service name from Service entity (serviceObj is EventService, not Service)
+    let resolvedServiceName = '';
+    let supplierNote = '';
+    if (serviceObj) {
+        const svcId = serviceObj.service_id || serviceObj.serviceid;
+        if (svcId) {
+            try {
+                const svc = await base44.asServiceRole.entities.Service.get(svcId);
+                if (svc) resolvedServiceName = svc.service_name || '';
+            } catch (e) {
+                console.warn(`[triggerWhatsApp] Failed to fetch Service ${svcId}`);
+            }
+        }
+        // Extract supplier-specific note from EventService.supplier_notes
+        if (supplierObj && serviceObj.supplier_notes) {
+            try {
+                const notes = typeof serviceObj.supplier_notes === 'string' ? JSON.parse(serviceObj.supplier_notes) : serviceObj.supplier_notes;
+                if (notes && typeof notes === 'object') {
+                    supplierNote = notes[supplierObj.id] || '';
+                }
+            } catch (e) {}
+        }
+    }
+    
     let message = template.whatsapp_body_template || template.body_template || template.body || '';
-    message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj);
+    message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote);
     
     // Check quiet hours (default 22:00-08:00 Israel time)
     const DEFAULT_QUIET_START = 22;
