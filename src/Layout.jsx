@@ -886,6 +886,7 @@ export default function Layout({ children }) {
                   <PushNotificationManager />
                   <OneSignalInitializer user={user} />
                   <PushNotificationPrompt user={user} />
+                  <PWAInstallPrompt />
           {/* {showCalendarConnect && (
               <GoogleCalendarConnect 
                 user={user} 
