@@ -222,6 +222,13 @@ export default function Layout({ children }) {
   }, []);
 
 
+  // Listen for sidebar open event from onboarding tour
+  useEffect(() => {
+    const handler = () => setSidebarOpen(true);
+    window.addEventListener('pulse_open_sidebar', handler);
+    return () => window.removeEventListener('pulse_open_sidebar', handler);
+  }, []);
+
   useEffect(() => {
     const fetchUser = async () => {
       setLoading(true);
