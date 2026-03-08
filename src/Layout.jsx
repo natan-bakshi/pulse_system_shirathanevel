@@ -308,9 +308,10 @@ export default function Layout({ children }) {
     // redirect them to their appropriate dashboard
     const isOnCorrectDashboard = pathname.startsWith(homePage);
     const isAccessingSpecificEvent = pathname.includes('EventDetails');
+    const isAccessingSupplierPage = pathname.includes('SupplierDashboard') || pathname.includes('SupplierCalendarDashboard');
 
 
-    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings) {
+    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingSupplierPage) {
       navigate(homePage, { replace: true });
     }
 
