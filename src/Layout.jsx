@@ -30,6 +30,7 @@ import { Toaster as SonnerToaster } from "sonner";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
+import UserOnboardingTour from "@/components/onboarding/UserOnboardingTour";
 // import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
 
 
@@ -836,7 +837,9 @@ export default function Layout({ children }) {
 
 
           {/* פעמון התראות */}
-          <NotificationBell user={user} />
+          <div data-tour="notification-bell">
+            <NotificationBell user={user} />
+          </div>
 
 
           {/* כפתור חזרה אחורה - מופיע רק אם אנחנו לא בדף הראשי/דשבורד */}
@@ -887,6 +890,7 @@ export default function Layout({ children }) {
                   <OneSignalInitializer user={user} />
                   <PushNotificationPrompt user={user} />
                   <PWAInstallPrompt />
+                  <UserOnboardingTour user={user} />
           {/* {showCalendarConnect && (
               <GoogleCalendarConnect 
                 user={user} 
