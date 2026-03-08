@@ -75,6 +75,8 @@ export default function UserOnboardingTour({ user }) {
   useEffect(() => {
     const handler = () => {
       if (tourSteps.length > 0) {
+        // Open sidebar so nav items are visible for tour
+        window.dispatchEvent(new Event('pulse_open_sidebar'));
         const sorted = [...tourSteps].sort((a, b) => a.step_order - b.step_order);
         const joySteps = sorted.map(s => ({
           target: s.target_selector,
@@ -85,7 +87,7 @@ export default function UserOnboardingTour({ user }) {
           spotlightClicks: true
         }));
         setSteps(joySteps);
-        setRun(true);
+        setTimeout(() => setRun(true), 500);
       }
     };
     window.addEventListener('pulse_start_tour', handler);
@@ -102,7 +104,8 @@ export default function UserOnboardingTour({ user }) {
 
     // Show tour if version mismatch or never completed/skipped
     if (userVersion !== CURRENT_TOUR_VERSION || (!completed && !skipped)) {
-      // Small delay to let the page render and elements appear
+      // Open sidebar and delay to let the page render and elements appear
+      window.dispatchEvent(new Event('pulse_open_sidebar'));
       const timer = setTimeout(() => {
         const sorted = [...tourSteps].sort((a, b) => a.step_order - b.step_order);
         const joySteps = sorted.map(s => ({
