@@ -100,25 +100,48 @@ Deno.serve(async (req) => {
             });
         }
 
-        // שלב 4: גיבוי הצעות מחיר HTML - אסוף הכל מראש
+        // שלב 4: גיבוי הצעות מחיר HTML - אסוף הכל במקביל (מונע Timeout)
         const htmlQuotes = {};
         let htmlBackupCount = 0;
-        for (const agreement of signedAgreements) {
-            if (agreement.agreement_content_uri) {
-                try {
-                    const signedUrlResult = await base44.integrations.Core.CreateFileSignedUrl({
-                        file_uri: agreement.agreement_content_uri,
-                        expires_in: 300
-                    });
-                    
-                    const htmlResponse = await fetch(signedUrlResult.signed_url);
-                    if (htmlResponse.ok) {
-                        const htmlContent = await htmlResponse.text();
-                        htmlQuotes[`quote_${agreement.user_id || agreement.id}`] = htmlContent;
+        const agreementsWithUri = signedAgreements.filter(a => a.agreement_content_uri);
+        console.log(`[Backup] Found ${agreementsWithUri.length} agreements with HTML to backup`);
+        
+        if (agreementsWithUri.length > 0) {
+            // שלב 4a: יצירת כל ה-Signed URLs במקביל (בקבוצות של 10)
+            const BATCH_SIZE = 10;
+            for (let i = 0; i < agreementsWithUri.length; i += BATCH_SIZE) {
+                const batch = agreementsWithUri.slice(i, i + BATCH_SIZE);
+                const results = await Promise.allSettled(
+                    batch.map(async (agreement) => {
+                        try {
+                            const signedUrlResult = await base44.integrations.Core.CreateFileSignedUrl({
+                                file_uri: agreement.agreement_content_uri,
+                                expires_in: 300
+                            });
+                            
+                            const controller = new AbortController();
+                            const timeout = setTimeout(() => controller.abort(), 10000); // 10 שניות מקסימום לכל הורדה
+                            
+                            const htmlResponse = await fetch(signedUrlResult.signed_url, { signal: controller.signal });
+                            clearTimeout(timeout);
+                            
+                            if (htmlResponse.ok) {
+                                const htmlContent = await htmlResponse.text();
+                                return { key: `quote_${agreement.user_id || agreement.id}`, content: htmlContent };
+                            }
+                            return null;
+                        } catch (e) {
+                            console.warn(`[Backup] Failed to fetch HTML for agreement ${agreement.id}: ${e.message}`);
+                            return null;
+                        }
+                    })
+                );
+                
+                for (const result of results) {
+                    if (result.status === 'fulfilled' && result.value) {
+                        htmlQuotes[result.value.key] = result.value.content;
                         htmlBackupCount++;
                     }
-                } catch (e) {
-                    console.warn(`[Backup] Failed to fetch HTML for agreement ${agreement.id}: ${e.message}`);
                 }
             }
         }
