@@ -598,11 +598,32 @@ function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
 async function triggerInApp(base44, template, user, eventObj, supplierObj, serviceObj) {
     if (!user || !user.id) return;
 
+    // Resolve real Service name from Service entity (serviceObj is EventService, not Service)
+    let resolvedServiceName = '';
+    let supplierNote = '';
+    if (serviceObj) {
+        const svcId = serviceObj.service_id || serviceObj.serviceid;
+        if (svcId) {
+            try {
+                const svc = await base44.asServiceRole.entities.Service.get(svcId);
+                if (svc) resolvedServiceName = svc.service_name || '';
+            } catch (e) {}
+        }
+        if (supplierObj && serviceObj.supplier_notes) {
+            try {
+                const notes = typeof serviceObj.supplier_notes === 'string' ? JSON.parse(serviceObj.supplier_notes) : serviceObj.supplier_notes;
+                if (notes && typeof notes === 'object') {
+                    supplierNote = notes[supplierObj.id] || '';
+                }
+            } catch (e) {}
+        }
+    }
+
     let title = template.title_template || template.title || '';
     let message = template.body_template || template.body || '';
     
-    title = replaceVariables(title, eventObj, supplierObj, serviceObj, user);
-    message = replaceVariables(message, eventObj, supplierObj, serviceObj, user);
+    title = replaceVariables(title, eventObj, supplierObj, serviceObj, user, resolvedServiceName, supplierNote);
+    message = replaceVariables(message, eventObj, supplierObj, serviceObj, user, resolvedServiceName, supplierNote);
 
     try {
          await base44.asServiceRole.functions.invoke('createNotification', {
