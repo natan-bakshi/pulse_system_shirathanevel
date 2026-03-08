@@ -104,12 +104,17 @@ export default function SupplierCalendarDashboard() {
   }, [supplier, allEventServices, allEvents, allServices]);
 
   // Calendar events - mapped to match EventsCalendar format
-  // Use assignmentStatus for coloring instead of event.status
+  // Map supplier assignment statuses to EventsCalendar color statuses:
+  // confirmed → in_progress (green), pending → pending (yellow), rejected → rejected (red)
   const calendarEvents = useMemo(() => {
+    const statusToCalendarStatus = {
+      confirmed: 'in_progress',  // green
+      pending: 'pending',        // yellow
+      rejected: 'rejected'       // red
+    };
     return supplierEvents.map(ev => ({
       ...ev,
-      // Override status with the supplier's assignment status for calendar coloring
-      status: ev.assignmentStatus
+      status: statusToCalendarStatus[ev.assignmentStatus] || 'pending'
     }));
   }, [supplierEvents]);
 
