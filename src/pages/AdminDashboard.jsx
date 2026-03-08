@@ -371,6 +371,7 @@ export default function AdminDashboard() {
               הגדרות דשבורד
             </Button>
             <Button
+              data-tour="admin-create-event-btn"
               onClick={() => handleCreateEvent('')}
               className="bg-red-800 hover:bg-red-700 text-white shadow-lg">
 
@@ -390,7 +391,7 @@ export default function AdminDashboard() {
         }
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
+      <div data-tour="admin-stats-cards" className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
         <StatCard title="עתידיים" value={stats.futureEvents} icon={Calendar} color="wine" />
         <StatCard title="החודש" value={stats.thisMonthEvents} icon={Clock} color="gold" />
         <StatCard title="ממתינים" value={stats.pendingAssignments} icon={Clock} color="wine" />
@@ -398,7 +399,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" data-tour="admin-calendar">
           <EventsCalendar
             events={events.filter((event) => visibleStatuses.includes(event.status))}
             onEventClick={handleEventClick}
@@ -406,7 +407,7 @@ export default function AdminDashboard() {
 
         </div>
         <div>
-          <Card className="bg-white/95 backdrop-blur-sm shadow-xl max-h-[calc(100vh-12rem)] flex flex-col">
+          <Card data-tour="admin-upcoming-events" className="bg-white/95 backdrop-blur-sm shadow-xl max-h-[calc(100vh-12rem)] flex flex-col">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <ListChecks className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -455,7 +456,7 @@ export default function AdminDashboard() {
       </div>
 
       {(rejectedAssignments.length > 0 || pendingAssignments.length > 0) &&
-      <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+      <Card data-tour="admin-assignments-section" className="bg-white/95 backdrop-blur-sm shadow-xl">
           <CardHeader className="p-3 sm:p-6">
             <div className="flex flex-col gap-3 sm:gap-4">
               <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
