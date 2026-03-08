@@ -68,7 +68,8 @@ const navigationItems = {
 
 
   supplier: [
-  { title: "האירועים שלי", url: createPageUrl("SupplierDashboard"), icon: Home },
+  { title: "דשבורד", url: createPageUrl("SupplierCalendarDashboard"), icon: Home },
+  { title: "האירועים שלי", url: createPageUrl("SupplierDashboard"), icon: Calendar },
   { title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog }]
 
 
