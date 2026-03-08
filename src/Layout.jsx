@@ -42,15 +42,15 @@ const getAdminNavItems = (userEmail) => {
   const items = [
     { title: "דשבורד", url: createPageUrl("AdminDashboard"), icon: Home },
     { title: "לוח אירועים", url: createPageUrl("EventManagement") + "?tab=board", icon: Calendar },
-    { title: "אירועים", url: createPageUrl("EventManagement"), icon: Calendar },
-    { title: "לקוחות", url: createPageUrl("ClientManagement"), icon: Users },
-    { title: "ספקים", url: createPageUrl("SupplierManagement"), icon: Truck },
-    { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star },
-    { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText },
-    { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck },
+    { title: "אירועים", url: createPageUrl("EventManagement"), icon: Calendar, tourId: "nav-events" },
+    { title: "לקוחות", url: createPageUrl("ClientManagement"), icon: Users, tourId: "nav-clients" },
+    { title: "ספקים", url: createPageUrl("SupplierManagement"), icon: Truck, tourId: "nav-suppliers" },
+    { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star, tourId: "nav-services" },
+    { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText, tourId: "nav-quotes" },
+    { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck, tourId: "nav-users" },
   ];
   
-  items.push({ title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog });
+  items.push({ title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" });
   
   // Only system creator can see settings
   if (userEmail === SYSTEM_CREATOR_EMAIL) {
@@ -65,14 +65,14 @@ const navigationItems = {
 
 
   client: [
-  { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home },
-  { title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog }],
+  { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home, tourId: "nav-client-events" },
+  { title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" }],
 
 
   supplier: [
-  { title: "דשבורד", url: createPageUrl("SupplierCalendarDashboard"), icon: Home },
-  { title: "האירועים שלי", url: createPageUrl("SupplierDashboard"), icon: Calendar },
-  { title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog }]
+  { title: "דשבורד", url: createPageUrl("SupplierCalendarDashboard"), icon: Home, tourId: "nav-supplier-dashboard" },
+  { title: "האירועים שלי", url: createPageUrl("SupplierDashboard"), icon: Calendar, tourId: "nav-supplier-events" },
+  { title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" }]
 
 
 };
@@ -749,6 +749,7 @@ export default function Layout({ children }) {
                 <Link
                   key={item.title}
                   to={item.url}
+                  data-tour={item.tourId || undefined}
                   className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-sm lg:text-base ${
                   location.pathname.startsWith(item.url.split('?')[0]) ?
                   'bg-gradient-to-r from-red-800 to-red-700 text-white shadow-lg' :
