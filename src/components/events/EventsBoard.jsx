@@ -722,6 +722,7 @@ export default function EventsBoard() {
             <div className="flex items-center justify-between bg-gradient-to-l from-red-50 to-white p-4 rounded-xl shadow-md border border-red-100 max-w-full">
                 <Button variant="outline" size="sm" onClick={toggleAllMonths} className="border-gray-300 text-gray-700 hover:bg-gray-50">{Object.values(collapsedMonths).filter(v => v === true).length === 12 ? 'פתח הכל' : 'סגור הכל'}</Button>
                 <div className="flex items-center gap-4"><Button variant="outline" size="sm" onClick={() => setSelectedYear(selectedYear - 1)} className="border-red-300 text-red-700 hover:bg-red-50">← {selectedYear - 1}</Button><h2 className="text-2xl font-bold text-red-800 px-4">{selectedYear}</h2><Button variant="outline" size="sm" onClick={() => setSelectedYear(selectedYear + 1)} className="border-red-300 text-red-700 hover:bg-red-50">{selectedYear + 1} →</Button></div>
+                <div className="text-xs text-gray-500"></div>
             </div>
 
             {eventsLoading ? (
