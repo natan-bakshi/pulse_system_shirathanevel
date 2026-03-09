@@ -281,7 +281,7 @@ export default function Layout({ children }) {
 
     // Admin access control
     const adminOnlyPages = [
-    "/AdminDashboard", "/EventManagement", "/ClientManagement",
+    "/AdminDashboard", "/EventManagement", "/EventsBoardPage", "/ClientManagement",
     "/SupplierManagement", "/ServiceManagement", "/QuoteTemplateManagement",
     "/UserManagement"];
     
