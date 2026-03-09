@@ -351,7 +351,7 @@ export default function AdminDashboard() {
             </Button>
             <Link to={createPageUrl("EventsBoardPage")}>
               <Button
-                variant="outline" className="bg-transparent text-red-800 px-4 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border shadow-sm hover:text-accent-foreground h-9 border-white/30 hover:bg-white/20">
+                variant="ghost" className="text-red-700 px-3 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-accent-foreground h-9 hover:bg-white/20">
 
                 <Calendar className="h-4 w-4 ml-2" />
                 לוח אירועים
