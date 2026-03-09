@@ -355,7 +355,11 @@ const handleCopyTransport = (service, serviceDetails) => {
                   <div className="text-xs text-gray-500 italic mt-1 break-words">הערה: {service.client_notes}</div>
                 )}
                 {!isInPackage && !isSupplier && service.quantity > 1 && (
-                  <div className="text-sm text-gray-600">כמות: {service.quantity}</div>
+                  <div className="text-sm text-gray-600">
+                    {event.all_inclusive 
+                      ? `כמות: ${service.quantity}` 
+                      : `כמות: ${service.quantity}`}
+                  </div>
                 )}
                 {/* תצוגת פרטי נסיעות - לקריאה בלבד */}
                                 {/* תצוגת פרטי נסיעות - מתוקנת ומפורמטת */}
