@@ -729,6 +729,135 @@ export default function Layout({ children }) {
         background-color: var(--bg-card-solid) !important;
         border-color: var(--border-color) !important;
       }
+
+      /* ========== Comprehensive inline-style overrides for Dark Mode ========== */
+      /* Override ANY element whose inline style sets a white/light background */
+      html.dark [style*="background-color: #ffffff"],
+      html.dark [style*="background-color:#ffffff"],
+      html.dark [style*="background-color: #FFFFFF"],
+      html.dark [style*="background-color:#FFFFFF"],
+      html.dark [style*="background-color: rgb(255, 255, 255)"],
+      html.dark [style*="background-color: white"] {
+        background-color: var(--bg-card-solid) !important;
+      }
+
+      html.dark [style*="background-color: #f9fafb"],
+      html.dark [style*="background-color:#f9fafb"],
+      html.dark [style*="background-color: #F9FAFB"],
+      html.dark [style*="background-color:#F9FAFB"],
+      html.dark [style*="background-color: rgb(249, 250, 251)"] {
+        background-color: var(--bg-elevated) !important;
+      }
+
+      /* Broad catch-all for remaining Tailwind bg classes missed above */
+      html.dark .bg-white\\/70,
+      html.dark .bg-white\\/60,
+      html.dark .bg-white\\/50 {
+        background-color: rgba(26, 29, 46, 0.7) !important;
+        color: var(--text-primary) !important;
+      }
+
+      /* Gradient overrides for dark mode */
+      html.dark [class*="bg-gradient-to"][class*="from-red-50"],
+      html.dark [class*="bg-gradient-to"][class*="to-white"] {
+        background: var(--bg-elevated) !important;
+      }
+
+      /* Ensure inner cards/containers within tables get dark bg */
+      html.dark .bg-white.rounded-lg,
+      html.dark .bg-white.rounded-md,
+      html.dark .bg-white.rounded-xl,
+      html.dark .bg-white.rounded-2xl {
+        background-color: var(--bg-card-solid) !important;
+        border-color: var(--border-color) !important;
+      }
+
+      /* Subtle colored bg overrides that were missed */
+      html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.12) !important; }
+      html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1) !important; }
+      html.dark .bg-orange-100 { background-color: rgba(249, 115, 22, 0.15) !important; }
+      html.dark .bg-pink-50 { background-color: rgba(236, 72, 153, 0.1) !important; }
+      html.dark .bg-pink-100 { background-color: rgba(236, 72, 153, 0.15) !important; }
+      html.dark .bg-teal-50 { background-color: rgba(20, 184, 166, 0.1) !important; }
+      html.dark .bg-cyan-50 { background-color: rgba(6, 182, 212, 0.1) !important; }
+
+      /* Override text colors inside colored badges/pills for dark readability */
+      html.dark .text-indigo-800 { color: #a5b4fc !important; }
+      html.dark .text-orange-800 { color: #fdba74 !important; }
+      html.dark .text-pink-800 { color: #f9a8d4 !important; }
+      html.dark .text-teal-800 { color: #5eead4 !important; }
+      html.dark .text-cyan-800 { color: #67e8f9 !important; }
+
+      /* Hover states in dark mode */
+      html.dark .hover\\:bg-gray-100:hover,
+      html.dark .hover\\:bg-gray-50:hover {
+        background-color: var(--bg-hover) !important;
+      }
+
+      html.dark .hover\\:bg-red-50:hover {
+        background-color: rgba(185, 28, 28, 0.12) !important;
+      }
+
+      html.dark .hover\\:bg-red-50\\/30:hover {
+        background-color: rgba(185, 28, 28, 0.08) !important;
+      }
+
+      /* Border color overrides for colored borders */
+      html.dark .border-gray-100,
+      html.dark .border-gray-200,
+      html.dark .border-gray-300 {
+        border-color: var(--border-color) !important;
+      }
+
+      html.dark .border-red-100,
+      html.dark .border-red-200 {
+        border-color: rgba(185, 28, 28, 0.3) !important;
+      }
+
+      html.dark .border-yellow-100,
+      html.dark .border-yellow-200 {
+        border-color: rgba(202, 138, 4, 0.3) !important;
+      }
+
+      html.dark .border-green-100,
+      html.dark .border-green-200 {
+        border-color: rgba(22, 163, 74, 0.3) !important;
+      }
+
+      html.dark .border-blue-100,
+      html.dark .border-blue-200 {
+        border-color: rgba(37, 99, 235, 0.3) !important;
+      }
+
+      html.dark .border-amber-100,
+      html.dark .border-amber-200 {
+        border-color: rgba(217, 119, 6, 0.3) !important;
+      }
+
+      html.dark .border-indigo-200,
+      html.dark .border-indigo-400 {
+        border-color: rgba(99, 102, 241, 0.4) !important;
+      }
+
+      /* Red gradient header in EventsBoard stays as-is (dark enough) */
+
+      /* Placeholder text in dark mode */
+      html.dark .text-gray-300.text-center,
+      html.dark .text-gray-400.italic {
+        color: var(--text-faint) !important;
+      }
+
+      /* Ensure dialog overlay in dark mode */
+      html.dark [data-state="open"][class*="bg-black"] {
+        background-color: rgba(0, 0, 0, 0.75) !important;
+      }
+
+      /* Sonner toasts in dark mode */
+      html.dark [data-sonner-toast] {
+        background-color: var(--bg-card-solid) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
+      }
     `}</style>
 
 

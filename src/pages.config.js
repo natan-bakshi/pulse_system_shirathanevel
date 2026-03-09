@@ -53,6 +53,7 @@ import ClientGallery from './pages/ClientGallery';
 import ClientManagement from './pages/ClientManagement';
 import EventDetails from './pages/EventDetails';
 import EventManagement from './pages/EventManagement';
+import EventsBoardPage from './pages/EventsBoardPage';
 import MyNotificationSettings from './pages/MyNotificationSettings';
 import QuoteTemplateManagement from './pages/QuoteTemplateManagement';
 import ServiceManagement from './pages/ServiceManagement';
@@ -62,7 +63,6 @@ import SupplierDashboard from './pages/SupplierDashboard';
 import SupplierManagement from './pages/SupplierManagement';
 import UserManagement from './pages/UserManagement';
 import UserSettings from './pages/UserSettings';
-import EventsBoardPage from './pages/EventsBoardPage';
 import __Layout from './Layout.jsx';
 
 
@@ -73,6 +73,7 @@ export const PAGES = {
     "ClientManagement": ClientManagement,
     "EventDetails": EventDetails,
     "EventManagement": EventManagement,
+    "EventsBoardPage": EventsBoardPage,
     "MyNotificationSettings": MyNotificationSettings,
     "QuoteTemplateManagement": QuoteTemplateManagement,
     "ServiceManagement": ServiceManagement,
@@ -82,7 +83,6 @@ export const PAGES = {
     "SupplierManagement": SupplierManagement,
     "UserManagement": UserManagement,
     "UserSettings": UserSettings,
-    "EventsBoardPage": EventsBoardPage,
 }
 
 export const pagesConfig = {

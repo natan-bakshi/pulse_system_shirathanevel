@@ -349,6 +349,14 @@ export default function AdminDashboard() {
               <Settings className="h-4 w-4 ml-2" />
               הגדרות דשבורד
             </Button>
+            <Link to={createPageUrl("EventsBoardPage")}>
+              <Button
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/20">
+                <Calendar className="h-4 w-4 ml-2" />
+                לוח אירועים
+              </Button>
+            </Link>
             <Button
               data-tour="admin-create-event-btn"
               onClick={() => handleCreateEvent('')}
