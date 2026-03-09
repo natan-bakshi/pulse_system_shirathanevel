@@ -62,6 +62,7 @@ import SupplierDashboard from './pages/SupplierDashboard';
 import SupplierManagement from './pages/SupplierManagement';
 import UserManagement from './pages/UserManagement';
 import UserSettings from './pages/UserSettings';
+import EventsBoardPage from './pages/EventsBoardPage';
 import __Layout from './Layout.jsx';
 
 
@@ -81,6 +82,7 @@ export const PAGES = {
     "SupplierManagement": SupplierManagement,
     "UserManagement": UserManagement,
     "UserSettings": UserSettings,
+    "EventsBoardPage": EventsBoardPage,
 }
 
 export const pagesConfig = {
