@@ -15,12 +15,12 @@ export default function StatCard({ title, value, icon: Icon, color }) {
     <Card className="bg-white/95 backdrop-blur-sm shadow-lg sm:shadow-xl hover:shadow-2xl transition-shadow duration-300">
       <CardContent className="p-3 sm:p-6">
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{title}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] sm:text-sm font-medium text-gray-600 leading-tight">{title}</p>
             <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1">{value}</p>
           </div>
-          <div className={`p-2 sm:p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} shadow-lg shrink-0`}>
-            <Icon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
+          <div className={`p-1.5 sm:p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} shadow-lg shrink-0`}>
+            <Icon className="h-3.5 w-3.5 sm:h-6 sm:w-6 text-white" />
           </div>
         </div>
       </CardContent>
