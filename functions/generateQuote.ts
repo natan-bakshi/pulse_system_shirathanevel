@@ -401,7 +401,7 @@ Deno.serve(async (req) => {
                                 <strong style="color: #333; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
                                 ${serviceDescription ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.95); margin-top: 2px;">${serviceDescription}</div>` : ''}
                                 ${service.client_notes ? `<div style="color: #888; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${service.client_notes}</div>` : ''}
-                                ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity} × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
+                                ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity}${!event.all_inclusive ? ` × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : ''}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
                         </div>
