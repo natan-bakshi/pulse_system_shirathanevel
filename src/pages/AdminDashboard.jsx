@@ -351,8 +351,8 @@ export default function AdminDashboard() {
             </Button>
             <Link to={createPageUrl("EventsBoardPage")}>
               <Button
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/20">
+                variant="outline" className="bg-transparent text-red-800 px-4 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border shadow-sm hover:text-accent-foreground h-9 border-white/30 hover:bg-white/20">
+
                 <Calendar className="h-4 w-4 ml-2" />
                 לוח אירועים
               </Button>
@@ -500,9 +500,9 @@ export default function AdminDashboard() {
                   </h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {filteredRejectedAssignments.map(({ event, supplier, eventServiceId, serviceName, supplierId }) => {
-                      const eventServiceData = eventServices.find((es) => es.id === eventServiceId);
-                      return (
-                <div key={`rejected-${eventServiceId}-${supplierId}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-red-50 rounded-lg border border-red-200 gap-2">
+                  const eventServiceData = eventServices.find((es) => es.id === eventServiceId);
+                  return (
+                    <div key={`rejected-${eventServiceId}-${supplierId}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-red-50 rounded-lg border border-red-200 gap-2">
                         <div className="flex-1 min-w-0 w-full">
                           <Link to={createPageUrl(`EventDetails?id=${event.id}`)} className="font-semibold text-blue-600 hover:underline break-words block">
                             {event.family_name} - {format(new Date(event.event_date), "dd/MM/yy", { locale: he })}
@@ -512,16 +512,16 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex gap-2 items-center mt-2 sm:mt-0">
                           <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7"
-                            onClick={() => setEditingAssignmentDialog({
-                              eventServiceData,
-                              eventName: event.event_name,
-                              serviceName
-                            })}
-                            title="ניהול שיבוץ ספקים"
-                          >
+                          size="sm"
+                          variant="outline"
+                          className="h-7"
+                          onClick={() => setEditingAssignmentDialog({
+                            eventServiceData,
+                            eventName: event.event_name,
+                            serviceName
+                          })}
+                          title="ניהול שיבוץ ספקים">
+
                             <Edit className="h-3 w-3" />
                           </Button>
                           <DropdownMenu>
@@ -540,8 +540,8 @@ export default function AdminDashboard() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                      </div>
-                      );
+                      </div>);
+
                 })}
                   </div>
                 </div>
@@ -621,8 +621,8 @@ export default function AdminDashboard() {
         suppliers={suppliers}
         onSaved={() => {
           queryClient.invalidateQueries({ queryKey: ['eventServices'] });
-        }}
-      />
+        }} />
+
       }
     </div>);
 
