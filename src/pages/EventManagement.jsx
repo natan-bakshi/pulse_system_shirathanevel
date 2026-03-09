@@ -20,18 +20,12 @@ export default function EventManagement() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    // Fetch app settings to check if events board is enabled
     const { data: appSettings = [] } = useQuery({
         queryKey: ['appSettings'],
         queryFn: () => base44.entities.AppSettings.list(),
         staleTime: 5 * 60 * 1000,
         cacheTime: 10 * 60 * 1000
     });
-
-    const showEventsBoardTab = useMemo(() => {
-        const setting = appSettings.find(s => s.setting_key === 'show_events_board_tab');
-        return setting?.setting_value === 'true';
-    }, [appSettings]);
 
     const { data: events = [], isLoading: eventsLoading } = useQuery({
         queryKey: ['events'],
