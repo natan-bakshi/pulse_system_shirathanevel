@@ -10,7 +10,7 @@ import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import EventCard from '../components/events/EventCard';
 import EventFilters from '../components/events/EventFilters';
 import EventForm from '../components/events/EventForm';
-import EventsBoard from '../components/events/EventsBoard';
+
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 
 export default function EventManagement() {
