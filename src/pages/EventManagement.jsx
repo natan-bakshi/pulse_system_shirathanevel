@@ -14,14 +14,9 @@ import EventForm from '../components/events/EventForm';
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 
 export default function EventManagement() {
-    const location = useLocation();
-    const urlParams = new URLSearchParams(location.search);
-    const initialTab = urlParams.get('tab') || 'grid';
-    
     const [filteredEvents, setFilteredEvents] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
-    const [activeTab, setActiveTab] = useState(initialTab);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
