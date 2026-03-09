@@ -401,42 +401,31 @@ export default function Layout({ children }) {
 
 
       @media (max-width: 640px) {
-        /* 1. כיווץ כפתורים: רק כאלו שיש בתוכם אייקון (svg) */
-        main button.inline-flex.items-center:has(svg),
-        header button.inline-flex.items-center:has(svg) {
-          font-size: 0 !important; /* מעלים טקסט */
-          padding: 8px !important;
-          min-width: 38px !important;
-          height: 38px !important;
-          justify-content: center !important;
+        /* 1. כפתורים עם אייקון וטקסט: הקטנה חכמה שמשאירה את שניהם */
+        main button.inline-flex.items-center,
+        header button.inline-flex.items-center {
+          font-size: 11px !important;
+          padding: 4px 8px !important;
+          min-height: 32px !important;
+          height: auto !important;
+          gap: 3px !important;
         }
 
-
-        /* 2. כפתורים ללא אייקון: נשארים עם טקסט, רק מצטמצמים מעט כדי לחסוך מקום */
-        main button.inline-flex.items-center:not(:has(svg)) {
-          font-size: 13px !important;
-          padding: 4px 10px !important;
-          width: auto !important;
-        }
-        
-        /* 3. הבטחה שהאייקון נשאר גלוי ובמרכז הכפתור */
-        main button svg, header button svg {
-          margin: 0 !important;
-          width: 18px !important;
-          height: 18px !important;
-          display: block !important;
+        /* 2. אייקונים בכפתורים: קטנים יותר */
+        main button.inline-flex.items-center svg,
+        header button.inline-flex.items-center svg {
+          width: 14px !important;
+          height: 14px !important;
+          flex-shrink: 0 !important;
         }
 
-
-        /* 4. טיפול במיכלים: כפתורים ירדו שורה (Wrap) במקום לדחוף את המסך */
+        /* 3. טיפול במיכלים: כפתורים ירדו שורה (Wrap) במקום לדחוף את המסך */
         .flex.gap-2, .flex.gap-3, .flex.space-x-2 {
           flex-wrap: wrap !important;
-          justify-content: flex-end !important;
-          gap: 6px !important;
+          gap: 4px !important;
         }
 
-
-        /* 5. נעילת רוחב מסך למניעת הזחה שמאלה */
+        /* 4. נעילת רוחב מסך למניעת הזחה שמאלה */
         html, body {
           max-width: 100vw !important;
           overflow-x: hidden !important;
