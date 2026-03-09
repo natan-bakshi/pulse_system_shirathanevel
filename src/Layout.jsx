@@ -694,6 +694,41 @@ export default function Layout({ children }) {
       html.dark .rdp-day:hover {
         background-color: var(--bg-hover) !important;
       }
+
+      /* EventsBoard: table cells with inline background-color */
+      html.dark td[style*="background-color: #ffffff"],
+      html.dark td[style*="background-color: #f9fafb"] {
+        background-color: var(--bg-card-solid) !important;
+      }
+
+      /* EventsBoard: sticky columns with inline bg */
+      html.dark td[style*="#ffffff"][class*="sticky"],
+      html.dark td[style*="#f9fafb"][class*="sticky"] {
+        background-color: var(--bg-card-solid) !important;
+      }
+
+      /* EventsBoard: header/control containers */
+      html.dark .bg-gradient-to-l.from-red-50.to-white {
+        background: var(--bg-elevated) !important;
+      }
+
+      /* EventsBoard: service cards inside table */
+      html.dark .bg-white.rounded-lg.border.border-gray-200 {
+        background-color: var(--bg-elevated) !important;
+        border-color: var(--border-color) !important;
+      }
+
+      /* EventsBoard: rounded-xl cards with shadows (month wrappers) */
+      html.dark .bg-white.rounded-xl.shadow-lg {
+        background-color: var(--bg-card-solid) !important;
+        border-color: var(--border-color) !important;
+      }
+
+      /* EventsBoard: settings/search bar */
+      html.dark .bg-white.rounded-xl.shadow-md {
+        background-color: var(--bg-card-solid) !important;
+        border-color: var(--border-color) !important;
+      }
     `}</style>
 
 
