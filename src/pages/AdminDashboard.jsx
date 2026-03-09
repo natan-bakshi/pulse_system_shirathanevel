@@ -379,10 +379,10 @@ export default function AdminDashboard() {
       </div>
 
       <div data-tour="admin-stats-cards" className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
-        <StatCard title="עתידיים" value={stats.futureEvents} icon={Calendar} color="wine" />
-        <StatCard title="החודש" value={stats.thisMonthEvents} icon={Clock} color="gold" />
-        <StatCard title="ממתינים" value={stats.pendingAssignments} icon={Clock} color="wine" />
-        <StatCard title="נדחו" value={stats.rejectedAssignments} icon={AlertTriangle} color="gold" />
+        <StatCard title="אירועים עתידיים" value={stats.futureEvents} icon={Calendar} color="wine" />
+        <StatCard title="אירועים החודש" value={stats.thisMonthEvents} icon={Clock} color="gold" />
+        <StatCard title="שיבוצים ממתינים" value={stats.pendingAssignments} icon={Clock} color="wine" />
+        <StatCard title="שיבוצים שנדחו" value={stats.rejectedAssignments} icon={AlertTriangle} color="gold" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
