@@ -137,51 +137,26 @@ export default function EventManagement() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full max-w-md mb-4 sm:mb-6" style={{ gridTemplateColumns: showEventsBoardTab ? '1fr 1fr' : '1fr' }}>
-                            <TabsTrigger value="grid" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                                <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                <span className="hidden sm:inline">תצוגת כרטיסים</span>
-                                <span className="sm:hidden">כרטיסים</span>
-                            </TabsTrigger>
-                            {showEventsBoardTab && (
-                                <TabsTrigger value="board" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                                    <Table className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                    <span className="hidden sm:inline">לוח אירועים</span>
-                                    <span className="sm:hidden">לוח</span>
-                                </TabsTrigger>
-                            )}
-                        </TabsList>
-
-                        <TabsContent value="grid" className="mt-0">
-                            <EventFilters events={events} setFilteredEvents={setFilteredEvents} />
-                            
-                            {eventsLoading ? (
-                                <div className="flex justify-center items-center py-10">
-                                    <Loader2 className="h-8 w-8 animate-spin text-red-800" />
-                                </div>
-                            ) : (
-                                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
-                                    {filteredEvents.map(event => (
-                                        <EventCard 
-                                            key={event.id} 
-                                            event={event} 
-                                            totals={calculateTotals(event)}
-                                            onEdit={handleEdit} 
-                                            onDelete={handleDelete} 
-                                            onSelect={handleSelectEvent}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </TabsContent>
-
-                        {showEventsBoardTab && (
-                            <TabsContent value="board" className="mt-0 min-w-0">
-                                <EventsBoard />
-                            </TabsContent>
-                        )}
-                    </Tabs>
+                    <EventFilters events={events} setFilteredEvents={setFilteredEvents} />
+                    
+                    {eventsLoading ? (
+                        <div className="flex justify-center items-center py-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-red-800" />
+                        </div>
+                    ) : (
+                        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
+                            {filteredEvents.map(event => (
+                                <EventCard 
+                                    key={event.id} 
+                                    event={event} 
+                                    totals={calculateTotals(event)}
+                                    onEdit={handleEdit} 
+                                    onDelete={handleDelete} 
+                                    onSelect={handleSelectEvent}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
