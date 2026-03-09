@@ -56,18 +56,7 @@ export default function AdminDashboard() {
     onError: () => DEFAULT_VISIBLE_STATUSES
   });
 
-  const { data: boardSettings = [] } = useQuery({
-    queryKey: ['boardSettings'],
-    queryFn: () => base44.entities.AppSettings.filter({ setting_key: 'show_events_board_tab' }),
-    staleTime: 5 * 60 * 1000
-  });
-
   const visibleStatuses = calendarSettings || DEFAULT_VISIBLE_STATUSES;
-
-  const showEventsBoardTab = useMemo(() => {
-    const setting = boardSettings.find((s) => s.setting_key === 'show_events_board_tab');
-    return setting?.setting_value === 'true';
-  }, [boardSettings]);
 
   // React Query for events
   const { data: events = [], isLoading: eventsLoading } = useQuery({
