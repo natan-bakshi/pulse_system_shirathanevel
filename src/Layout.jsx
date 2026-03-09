@@ -41,7 +41,7 @@ const SYSTEM_CREATOR_EMAIL = 'natib8000@gmail.com';
 const getAdminNavItems = (userEmail) => {
   const items = [
     { title: "דשבורד", url: createPageUrl("AdminDashboard"), icon: Home },
-    { title: "לוח אירועים", url: createPageUrl("EventManagement") + "?tab=board", icon: Calendar },
+    { title: "לוח אירועים", url: createPageUrl("EventsBoardPage"), icon: Calendar, tourId: "nav-events-board" },
     { title: "אירועים", url: createPageUrl("EventManagement"), icon: Calendar, tourId: "nav-events" },
     { title: "לקוחות", url: createPageUrl("ClientManagement"), icon: Users, tourId: "nav-clients" },
     { title: "ספקים", url: createPageUrl("SupplierManagement"), icon: Truck, tourId: "nav-suppliers" },
