@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, CreditCard } from "lucide-react";
-import { getCurrencySymbol, getEffectiveCurrency, convertCurrency, DEFAULT_EXCHANGE_RATE } from "@/components/utils/currencyUtils";
+import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from "@/components/utils/currencyUtils";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
-export default function PaymentManager({ payments = [], onPaymentsChange, isReadOnly = false, eventPrimaryCurrency = 'ILS' }) {
+export default function PaymentManager({ payments = [], onPaymentsChange, isReadOnly = false, eventPrimaryCurrency = 'ILS', exchangeRate = 3.6 }) {
   const [localPayments, setLocalPayments] = useState(payments);
 
   const addPayment = () => {
@@ -55,7 +55,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
   const totalPaid = localPayments.reduce((sum, p) => {
     const amount = parseFloat(p.amount) || 0;
     const paymentCurrency = getEffectiveCurrency(p.currency, eventPrimaryCurrency);
-    return sum + convertCurrency(amount, paymentCurrency, eventPrimaryCurrency, DEFAULT_EXCHANGE_RATE);
+    return sum + convertCurrency(amount, paymentCurrency, eventPrimaryCurrency, exchangeRate);
   }, 0);
 
   return (
@@ -102,7 +102,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                       const paymentCurrency = getEffectiveCurrency(payment.currency, eventPrimaryCurrency);
                       const amount = parseFloat(payment.amount) || 0;
                       if (amount > 0 && paymentCurrency !== eventPrimaryCurrency) {
-                        const converted = convertCurrency(amount, paymentCurrency, eventPrimaryCurrency, DEFAULT_EXCHANGE_RATE);
+                        const converted = convertCurrency(amount, paymentCurrency, eventPrimaryCurrency, exchangeRate);
                         return (
                           <div className="text-xs text-gray-500 mt-1 text-center">
                             ≈ {getCurrencySymbol(eventPrimaryCurrency)}{converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -164,7 +164,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                       const paymentCurrency = getEffectiveCurrency(payment.currency, eventPrimaryCurrency);
                       const amount = parseFloat(payment.amount) || 0;
                       if (amount > 0 && paymentCurrency !== eventPrimaryCurrency) {
-                        const converted = convertCurrency(amount, paymentCurrency, eventPrimaryCurrency, DEFAULT_EXCHANGE_RATE);
+                        const converted = convertCurrency(amount, paymentCurrency, eventPrimaryCurrency, exchangeRate);
                         return (
                           <p className="text-xs text-gray-500">
                             ≈ {getCurrencySymbol(eventPrimaryCurrency)}{converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
