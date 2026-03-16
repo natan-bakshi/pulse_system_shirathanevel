@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Calendar, Clock, MapPin, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { getCurrencySymbol } from "@/components/utils/currencyUtils";
 
 export default function EventCard({ event, onSelect, onStatusChange, totals }) {
   const getStatusText = (status) => {
@@ -34,6 +35,7 @@ export default function EventCard({ event, onSelect, onStatusChange, totals }) {
   const totalPaid = totals?.totalPaid ?? event.totalPaid ?? 0;
   const balance = totals?.balance ?? event.balance ?? 0;
   const discountAmount = totals?.discountAmount ?? event.discount_amount ?? 0;
+  const cs = getCurrencySymbol(event.primary_currency || 'ILS');
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl flex flex-col hover:shadow-2xl transition-shadow duration-300 h-full w-full max-w-full overflow-hidden">
@@ -54,21 +56,21 @@ export default function EventCard({ event, onSelect, onStatusChange, totals }) {
         <div className="text-sm text-gray-700 pt-3 border-t">
           <div className="flex justify-between items-center mb-1">
             <span>עלות כוללת:</span>
-            <span className="font-semibold">₪{finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <span className="font-semibold">{cs}{finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
           {discountAmount > 0 && (
              <div className="flex justify-between items-center mb-1 text-red-600 text-xs">
                <span>הנחה:</span>
-               <span>-₪{discountAmount.toLocaleString()}</span>
+               <span>-{cs}{discountAmount.toLocaleString()}</span>
              </div>
           )}
           <div className="flex justify-between items-center mb-1 text-gray-600">
             <span>שולם:</span>
-            <span>₪{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <span>{cs}{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between items-center font-bold mt-2">
             <span>יתרה לתשלום:</span>
-            <span className={balance > 0 ? "text-red-700" : "text-green-700"}>₪{balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <span className={balance > 0 ? "text-red-700" : "text-green-700"}>{cs}{balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
         </div>
       </CardContent>
