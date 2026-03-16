@@ -168,7 +168,7 @@ export function PackageDialog({ open, onOpenChange, form, setForm, searchTerm, s
   );
 }
 
-export function EditPackageDialog({ open, onOpenChange, form, setForm, isSaving, onSave }) {
+export function EditPackageDialog({ open, onOpenChange, form, setForm, isSaving, onSave, primaryCurrency = 'ILS', exchangeRate = 3.6 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -177,7 +177,26 @@ export function EditPackageDialog({ open, onOpenChange, form, setForm, isSaving,
           <div><Label>שם החבילה</Label><Input value={form.package_name} onChange={(e) => setForm({ ...form, package_name: e.target.value })} /></div>
           <div><Label>תיאור</Label><Textarea value={form.package_description} onChange={(e) => setForm({ ...form, package_description: e.target.value })} /></div>
           <div className="grid grid-cols-2 gap-2">
-            <div><Label>מחיר</Label><Input type="number" value={form.package_price} onChange={(e) => setForm({ ...form, package_price: e.target.value })} /></div>
+            <div>
+              <Label>מחיר</Label>
+              <div className="relative">
+                <Input type="number" value={form.package_price} onChange={(e) => setForm({ ...form, package_price: e.target.value })} className="pl-10" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentCurrency = form.package_currency || primaryCurrency;
+                    const newCurrency = currentCurrency === 'ILS' ? 'USD' : 'ILS';
+                    const price = parseFloat(form.package_price) || 0;
+                    const convertedPrice = price > 0 ? Math.round(convertCurrency(price, currentCurrency, newCurrency, exchangeRate) * 100) / 100 : 0;
+                    setForm({ ...form, package_price: convertedPrice, package_currency: newCurrency });
+                  }}
+                  className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+                  title="לחץ להחלפת מטבע"
+                >
+                  {getCurrencySymbol(form.package_currency || primaryCurrency)}
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-2 pt-6"><Checkbox checked={form.package_includes_vat} onCheckedChange={(checked) => setForm({ ...form, package_includes_vat: checked })} /><Label>כולל מע"מ</Label></div>
           </div>
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded"><p className="text-sm text-yellow-800">שינויים אלו יחולו רק על האירוע הנוכחי ולא ישנו את החבילה הגלובלית</p></div>
