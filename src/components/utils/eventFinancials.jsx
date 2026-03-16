@@ -1,4 +1,6 @@
-export const calculateEventFinancials = (event, services = [], payments = [], vatRate = 0.18) => {
+import { convertCurrency } from './currencyUtils';
+
+export const calculateEventFinancials = (event, services = [], payments = [], vatRate = 0.18, exchangeRate = 3.6) => {
     
     if (!event) {
         return {
@@ -12,11 +14,20 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
         };
     }
 
+    const eventCurrency = event.primary_currency || 'ILS';
+
     // Helper to safely parse numbers
     const safeFloat = (val) => {
         if (val === null || val === undefined || val === '') return 0;
         const num = parseFloat(val);
         return isNaN(num) ? 0 : num;
+    };
+
+    // Convert a service price to event currency
+    const toEventCurrency = (amount, itemCurrency) => {
+        const from = itemCurrency || eventCurrency;
+        if (from === eventCurrency) return amount;
+        return convertCurrency(amount, from, eventCurrency, exchangeRate);
     };
 
     let totalCostWithoutVat = 0;
