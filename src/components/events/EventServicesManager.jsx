@@ -1151,13 +1151,19 @@ export default function EventServicesManager({
                 onClick={() => {
                   const oldCurrency = primaryCurrency;
                   const newCurrency = oldCurrency === 'ILS' ? 'USD' : 'ILS';
-                  // Convert all service prices from old currency to new currency
+                  // Convert all service AND package prices from old currency to new currency
                   const convertedServices = selectedServices.map(s => {
                    const price = parseFloat(s.custom_price) || 0;
-                   if (price === 0) return { ...s, currency: undefined };
+                   const pkgPrice = parseFloat(s.package_price) || 0;
                    const serviceCurrency = getEffectiveCurrency(s.currency, oldCurrency);
-                   const convertedPrice = convertCurrency(price, serviceCurrency, newCurrency, exchangeRate);
-                   return { ...s, custom_price: Math.round(convertedPrice * 100) / 100, currency: undefined };
+                   const updated = { ...s, currency: undefined };
+                   if (price > 0) {
+                     updated.custom_price = Math.round(convertCurrency(price, serviceCurrency, newCurrency, exchangeRate) * 100) / 100;
+                   }
+                   if (pkgPrice > 0) {
+                     updated.package_price = Math.round(convertCurrency(pkgPrice, serviceCurrency, newCurrency, exchangeRate) * 100) / 100;
+                   }
+                   return updated;
                   });
                   onServicesChange(convertedServices);
                   onPrimaryCurrencyChange(newCurrency);

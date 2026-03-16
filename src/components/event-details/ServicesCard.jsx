@@ -1013,18 +1013,51 @@ const handleCopyTransport = (service, serviceDetails) => {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => {
-                          const newCurrency = (event?.primary_currency || 'ILS') === 'ILS' ? 'USD' : 'ILS';
-                          onPrimaryCurrencyChange(newCurrency);
+                        onClick={async () => {
+                          const oldCurrency = event?.primary_currency || 'ILS';
+                          const newCurrency = oldCurrency === 'ILS' ? 'USD' : 'ILS';
+                          // Convert all EventService prices
+                          for (const es of eventServices) {
+                            const price = parseFloat(es.custom_price) || 0;
+                            if (price === 0 && !es.package_price) continue;
+                            const serviceCurrency = getEffectiveCurrency(es.currency, oldCurrency);
+                            const updateData = {};
+                            if (price > 0) {
+                              updateData.custom_price = Math.round(convertCurrency(price, serviceCurrency, newCurrency, exchangeRate) * 100) / 100;
+                            }
+                            if (es.is_package_main_item && es.custom_price > 0) {
+                              // main package item - custom_price is the package price
+                            }
+                            if (es.package_price) {
+                              updateData.package_price = Math.round(convertCurrency(parseFloat(es.package_price) || 0, serviceCurrency, newCurrency, exchangeRate) * 100) / 100;
+                            }
+                            // Clear per-service currency since everything moves to new primary
+                            updateData.currency = null;
+                            updateData.converted_price = null;
+                            if (Object.keys(updateData).length > 0) {
+                              await base44.entities.EventService.update(es.id, updateData);
+                            }
+                          }
+                          // Also convert all_inclusive_price if set
+                          const aiPrice = parseFloat(event?.all_inclusive_price) || 0;
+                          const updateEvent = { primary_currency: newCurrency };
+                          if (aiPrice > 0) {
+                            updateEvent.all_inclusive_price = Math.round(convertCurrency(aiPrice, oldCurrency, newCurrency, exchangeRate) * 100) / 100;
+                          }
+                          const overridePrice = parseFloat(event?.total_override) || 0;
+                          if (overridePrice > 0) {
+                            updateEvent.total_override = Math.round(convertCurrency(overridePrice, oldCurrency, newCurrency, exchangeRate) * 100) / 100;
+                          }
+                          await onPrimaryCurrencyChange(newCurrency, updateEvent);
                         }}
                         className="text-xs font-medium px-2 py-1.5 rounded border border-gray-300 hover:bg-white transition-colors"
-                        title="לחץ להחלפת מטבע"
+                        title="לחץ להחלפת מטבע (ימיר את כל המחירים)"
                       >
                         {getCurrencySymbol(event?.primary_currency || 'ILS')} {(event?.primary_currency || 'ILS') === 'ILS' ? 'שקל' : 'דולר'}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>החלף מטבע ראשי של האירוע</p>
+                      <p>החלף מטבע ראשי וימיר את כל המחירים</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
