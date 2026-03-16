@@ -1945,6 +1945,7 @@ export default function EventDetails() {
         setShowSupplierDialog={setShowSupplierDialog}
         handleRemoveFromPackage={handleRemoveFromPackage}
         handleDeleteService={handleDeleteService}
+        exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
       />
 
       {(isAdmin || isClient) && (
