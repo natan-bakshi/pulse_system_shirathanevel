@@ -18,7 +18,8 @@ export default function PaymentsCard({
   handleDeletePayment,
   setCurrentReceiptUrl,
   setCurrentReceiptPaymentId,
-  setShowReceiptDialog
+  setShowReceiptDialog,
+  exchangeRate = 3.6
 }) {
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
@@ -40,7 +41,7 @@ export default function PaymentsCard({
                     const eventCurrency = event?.primary_currency || 'ILS';
                     const amount = parseFloat(payment.amount) || 0;
                     if (amount > 0 && paymentCurrency !== eventCurrency) {
-                      const converted = convertCurrency(amount, paymentCurrency, eventCurrency, DEFAULT_EXCHANGE_RATE);
+                      const converted = convertCurrency(amount, paymentCurrency, eventCurrency, exchangeRate);
                       return (
                         <div className="text-xs text-gray-500">
                           ≈ {getCurrencySymbol(eventCurrency)}{converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
