@@ -137,31 +137,12 @@ export default function EventDetails() {
   const [editingServiceField, setEditingServiceField] = useState(null);
   const [savingServiceField, setSavingServiceField] = useState(null);
 
-  // Debouncing effect for search terms
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSupplierSearch(supplierSearchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [supplierSearchTerm]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPackageServiceSearch(packageServiceSearchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [packageServiceSearchTerm]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedAddToPackageSearch(addToPackageSearchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [addToPackageSearchTerm]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedAddServiceSearch(addServiceSearchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [addServiceSearchTerm]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedExistingPackageSearch(existingPackageSearchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [existingPackageSearchTerm]);
+  // Debouncing effects for search terms
+  useEffect(() => { const t = setTimeout(() => setDebouncedSupplierSearch(supplierSearchTerm), 300); return () => clearTimeout(t); }, [supplierSearchTerm]);
+  useEffect(() => { const t = setTimeout(() => setDebouncedPackageServiceSearch(packageServiceSearchTerm), 300); return () => clearTimeout(t); }, [packageServiceSearchTerm]);
+  useEffect(() => { const t = setTimeout(() => setDebouncedAddToPackageSearch(addToPackageSearchTerm), 300); return () => clearTimeout(t); }, [addToPackageSearchTerm]);
+  useEffect(() => { const t = setTimeout(() => setDebouncedAddServiceSearch(addServiceSearchTerm), 300); return () => clearTimeout(t); }, [addServiceSearchTerm]);
+  useEffect(() => { const t = setTimeout(() => setDebouncedExistingPackageSearch(existingPackageSearchTerm), 300); return () => clearTimeout(t); }, [existingPackageSearchTerm]);
 
   // React Query for user data
   const { data: user } = useQuery({
