@@ -1954,8 +1954,8 @@ export default function EventDetails() {
         handleRemoveFromPackage={handleRemoveFromPackage}
         handleDeleteService={handleDeleteService}
         exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
+        onPrimaryCurrencyChange={isAdmin ? async (c) => { await base44.entities.Event.update(eventId, { primary_currency: c }); await loadEventData(); } : undefined}
       />
-
       {(isAdmin || isClient) && (
         <PaymentsCard
           event={event}
