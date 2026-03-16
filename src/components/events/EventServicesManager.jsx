@@ -1867,11 +1867,28 @@ export default function EventServicesManager({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>מחיר</Label>
-                <Input 
-                  type="number" 
-                  value={editPackageForm.package_price} 
-                  onChange={(e) => setEditPackageForm({ ...editPackageForm, package_price: e.target.value })} 
-                />
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    value={editPackageForm.package_price} 
+                    onChange={(e) => setEditPackageForm({ ...editPackageForm, package_price: e.target.value })} 
+                    className="pl-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentCurrency = editPackageForm.package_currency || primaryCurrency;
+                      const newCurrency = currentCurrency === 'ILS' ? 'USD' : 'ILS';
+                      const price = parseFloat(editPackageForm.package_price) || 0;
+                      const convertedPrice = price > 0 ? Math.round(convertCurrency(price, currentCurrency, newCurrency, exchangeRate) * 100) / 100 : 0;
+                      setEditPackageForm({ ...editPackageForm, package_price: convertedPrice, package_currency: newCurrency });
+                    }}
+                    className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+                    title="לחץ להחלפת מטבע"
+                  >
+                    {getCurrencySymbol(editPackageForm.package_currency || primaryCurrency)}
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2 pt-6">
                 <Checkbox 
