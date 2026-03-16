@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { FileText, Loader2, Search, Download, Trash2 } from 'lucide-react';
-import { getCurrencySymbol, convertCurrency, DEFAULT_EXCHANGE_RATE } from '@/components/utils/currencyUtils';
+import { getCurrencySymbol, convertCurrency } from '@/components/utils/currencyUtils';
 
 export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptions, onConfirmExport }) {
   return (
@@ -33,7 +33,7 @@ export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptio
   );
 }
 
-export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm, onAddPayment, onUploadReceipt, uploadingReceipt, eventPrimaryCurrency }) {
+export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm, onAddPayment, onUploadReceipt, uploadingReceipt, eventPrimaryCurrency, exchangeRate = 3.6 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -54,7 +54,7 @@ export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm,
               const eventCurrency = eventPrimaryCurrency || 'ILS';
               const amount = parseFloat(paymentForm.amount) || 0;
               if (amount > 0 && paymentCurrency !== eventCurrency) {
-                const converted = convertCurrency(amount, paymentCurrency, eventCurrency, DEFAULT_EXCHANGE_RATE);
+                const converted = convertCurrency(amount, paymentCurrency, eventCurrency, exchangeRate);
                 return (
                   <div className="text-xs text-gray-500 mt-1">
                     ≈ {getCurrencySymbol(eventCurrency)}{converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
