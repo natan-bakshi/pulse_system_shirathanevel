@@ -462,12 +462,19 @@ export default function EventServicesManager({
 
   const handleOpenEditPackage = (pkg) => {
     setEditingPackage(pkg.package_id);
+    // For new structure, get the currency from the main package item
+    let pkgCurrency = undefined;
+    if (pkg.is_new_structure) {
+      const mainItem = selectedServices.find(s => s.id === pkg.package_id);
+      pkgCurrency = mainItem?.currency;
+    }
     setEditPackageForm({
       package_name: pkg.package_name,
       package_description: pkg.package_description || '',
       package_price: pkg.package_price || '',
       package_includes_vat: pkg.package_includes_vat || false,
-      is_new_structure: pkg.is_new_structure || false
+      is_new_structure: pkg.is_new_structure || false,
+      package_currency: pkgCurrency
     });
     setShowEditPackageDialog(true);
   };
