@@ -109,16 +109,6 @@ export default function EventOverviewCard({
                   <Label>קונספט</Label>
                   <Input value={eventDetailsData.concept} onChange={(e) => setEventDetailsData({ ...eventDetailsData, concept: e.target.value })} />
                 </div>
-                <div>
-                  <Label>מטבע ראשי</Label>
-                  <Select value={eventDetailsData.primary_currency || 'ILS'} onValueChange={(value) => setEventDetailsData({ ...eventDetailsData, primary_currency: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ILS">₪ שקל</SelectItem>
-                      <SelectItem value="USD">$ דולר</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="col-span-full">
                   <Label>הערות</Label>
                   <Textarea value={eventDetailsData.notes || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, notes: e.target.value })} rows={3} />
@@ -140,7 +130,6 @@ export default function EventOverviewCard({
               <div className="flex items-center gap-2 min-w-0"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location}</span></div>
               <div className="flex items-center gap-2 min-w-0"><Home className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.city || 'לא צוין'}</span></div>
               <div className="flex items-center gap-2 min-w-0"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים</span></div>
-              <div className="flex items-center gap-2 min-w-0"><span className="text-gray-500 font-bold shrink-0">{getCurrencySymbol(event.primary_currency || 'ILS')}</span><span className="truncate">מטבע: {event.primary_currency === 'USD' ? 'דולר' : 'שקל'}</span></div>
               {event.concept && <div className="col-span-full break-words"><strong>קונספט:</strong> {event.concept}</div>}
               {event.notes && <div className="col-span-full break-words"><strong>הערות:</strong> {event.notes}</div>}
               {isAdmin && (
@@ -155,7 +144,6 @@ export default function EventOverviewCard({
                       city: event.city, 
                       guest_count: event.guest_count, 
                       concept: event.concept, 
-                      primary_currency: event.primary_currency || 'ILS',
                       notes: event.notes 
                     }); 
                   }}>
