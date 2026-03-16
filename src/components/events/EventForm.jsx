@@ -1135,6 +1135,7 @@ for (const serviceItem of formData.services) {
               onPaymentsChange={handlePaymentsChange}
               disabled={isSaving}
               eventPrimaryCurrency={formData.primary_currency}
+              exchangeRate={exchangeRate}
             />
           </div>
 
