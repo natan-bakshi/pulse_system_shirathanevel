@@ -1958,6 +1958,7 @@ export default function EventDetails() {
           setCurrentReceiptUrl={setCurrentReceiptUrl}
           setCurrentReceiptPaymentId={setCurrentReceiptPaymentId}
           setShowReceiptDialog={setShowReceiptDialog}
+          exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
         />
       )}
 
