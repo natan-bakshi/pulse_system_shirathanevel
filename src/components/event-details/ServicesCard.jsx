@@ -417,27 +417,47 @@ const handleCopyTransport = (service, serviceDetails) => {
             {isExpanded && isAdmin && !isSupplier && !isClient && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mr-6 mt-2">
                 {!event.all_inclusive && (
-                  <div>
-                    <Label className="text-xs">מחיר ליחידה</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        value={editableService.custom_price || ''}
-                        onChange={(e) => {
+                  <>
+                    <div>
+                      <Label className="text-xs">מחיר ליחידה</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          value={editableService.custom_price || ''}
+                          onChange={(e) => {
+                            const updatedServices = editableServices.map(s => 
+                              s.id === service.id ? { ...s, custom_price: e.target.value } : s
+                            );
+                            setEditableServices(updatedServices);
+                          }}
+                          onBlur={(e) => handleUpdateServiceField(service.id, 'custom_price', e.target.value)}
+                          className="text-sm h-8"
+                          disabled={isSaving && savingServiceField?.field === 'custom_price'}
+                        />
+                        {isSaving && savingServiceField?.field === 'custom_price' && (
+                          <Loader2 className="h-3 w-3 animate-spin absolute left-2 top-2.5 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">מטבע</Label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentCurrency = getEffectiveCurrency(editableService.currency, event?.primary_currency);
+                          const newCurrency = currentCurrency === 'ILS' ? 'USD' : 'ILS';
                           const updatedServices = editableServices.map(s => 
-                            s.id === service.id ? { ...s, custom_price: e.target.value } : s
+                            s.id === service.id ? { ...s, currency: newCurrency } : s
                           );
                           setEditableServices(updatedServices);
+                          handleUpdateServiceField(service.id, 'currency', newCurrency);
                         }}
-                        onBlur={(e) => handleUpdateServiceField(service.id, 'custom_price', e.target.value)}
-                        className="text-sm h-8"
-                        disabled={isSaving && savingServiceField?.field === 'custom_price'}
-                      />
-                      {isSaving && savingServiceField?.field === 'custom_price' && (
-                        <Loader2 className="h-3 w-3 animate-spin absolute left-2 top-2.5 text-gray-400" />
-                      )}
+                        className="flex items-center gap-1 text-sm h-8 px-2 rounded border border-gray-300 hover:bg-gray-50 w-full justify-center"
+                      >
+                        {getCurrencySymbol(getEffectiveCurrency(editableService.currency, event?.primary_currency))} {getEffectiveCurrency(editableService.currency, event?.primary_currency) === 'ILS' ? 'שקל' : 'דולר'}
+                      </button>
                     </div>
-                  </div>
+                  </>
                 )}
                 <div>
                   <Label className="text-xs">כמות</Label>

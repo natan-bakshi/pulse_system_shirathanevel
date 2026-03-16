@@ -731,16 +731,7 @@ for (const serviceItem of formData.services) {
                 placeholder="מיקום"
                 disabled={isSaving}
               />
-              <div>
-                <Label htmlFor="primary_currency">מטבע ראשי</Label>
-                <Select value={formData.primary_currency} onValueChange={(value) => handleInputChange("primary_currency", value)} disabled={isSaving}>
-                  <SelectTrigger id="primary_currency"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ILS">₪ שקל</SelectItem>
-                    <SelectItem value="USD">$ דולר</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <div />
               <div>
                 <Label htmlFor="concept">קונספט</Label>
                 <div className="space-y-2">
@@ -1012,6 +1003,8 @@ for (const serviceItem of formData.services) {
               allInclusivePrice={formData.all_inclusive_price}
               allInclusiveIncludesVat={formData.all_inclusive_includes_vat}
               onAllInclusiveChange={handleAllInclusiveChange}
+              primaryCurrency={formData.primary_currency}
+              onPrimaryCurrencyChange={(value) => handleInputChange("primary_currency", value)}
             />
           </div>
 
@@ -1134,6 +1127,7 @@ for (const serviceItem of formData.services) {
               payments={formData.payments}
               onPaymentsChange={handlePaymentsChange}
               disabled={isSaving}
+              eventPrimaryCurrency={formData.primary_currency}
             />
           </div>
 

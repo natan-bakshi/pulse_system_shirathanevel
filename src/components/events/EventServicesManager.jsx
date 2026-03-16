@@ -18,6 +18,7 @@ import { Package } from '@/entities/Package';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import ContactPicker from '../ui/ContactPicker';
+import { getCurrencySymbol, getEffectiveCurrency } from '../utils/currencyUtils';
 
 export default function EventServicesManager({
   allServices,
@@ -28,7 +29,9 @@ export default function EventServicesManager({
   allInclusive,
   allInclusivePrice,
   allInclusiveIncludesVat,
-  onAllInclusiveChange
+  onAllInclusiveChange,
+  primaryCurrency = 'ILS',
+  onPrimaryCurrencyChange
 }) {
   const [expandedServices, setExpandedServices] = useState({});
   const [copiedId, setCopiedId] = useState(null);
@@ -778,7 +781,7 @@ export default function EventServicesManager({
             <div className="mr-6 space-y-1 min-w-0">
               {!allInclusive && (
                 <div className="text-sm text-gray-600">
-                  מחיר: ₪{((service.custom_price || 0) * (service.quantity || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  מחיר: {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))}{((service.custom_price || 0) * (service.quantity || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   {service.includes_vat ? ' (כולל מע"מ)' : ' (לא כולל מע"מ)'}
                   {service.quantity > 1 && ` | כמות: ${service.quantity}`}
                 </div>
@@ -845,16 +848,28 @@ export default function EventServicesManager({
           {isExpanded && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mr-6 mt-2">
               {!allInclusive && (
-                <div>
-                  <Label className="text-xs">מחיר ליחידה</Label>
-                  <Input
-                    type="number"
-                    value={service.custom_price || ''}
-                    onChange={(e) => handleServiceChange(service.id, 'custom_price', e.target.value)}
-                    placeholder="מחיר"
-                    className="text-sm h-8"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label className="text-xs">מחיר ליחידה</Label>
+                    <Input
+                      type="number"
+                      value={service.custom_price || ''}
+                      onChange={(e) => handleServiceChange(service.id, 'custom_price', e.target.value)}
+                      placeholder="מחיר"
+                      className="text-sm h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">מטבע</Label>
+                    <button
+                      type="button"
+                      onClick={() => handleServiceChange(service.id, 'currency', (getEffectiveCurrency(service.currency, primaryCurrency)) === 'ILS' ? 'USD' : 'ILS')}
+                      className="flex items-center gap-1 text-sm h-8 px-2 rounded border border-gray-300 hover:bg-gray-50 w-full justify-center"
+                    >
+                      {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))} {getEffectiveCurrency(service.currency, primaryCurrency) === 'ILS' ? 'שקל' : 'דולר'}
+                    </button>
+                  </div>
+                </>
               )}
               <div>
                 <Label className="text-xs">כמות</Label>
@@ -1104,14 +1119,27 @@ export default function EventServicesManager({
 
   return (
     <div className="space-y-4">
-      {/* All Inclusive Toggle */}
+      {/* All Inclusive Toggle + Primary Currency */}
       <div className="p-4 bg-blue-50 rounded space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Switch 
             checked={allInclusive} 
             onCheckedChange={(checked) => onAllInclusiveChange({ all_inclusive: checked })} 
           />
           <Label>חבילת הכל כלול</Label>
+          {onPrimaryCurrencyChange && (
+            <div className="flex items-center gap-1 mr-auto">
+              <span className="text-xs text-gray-500">מטבע:</span>
+              <button
+                type="button"
+                onClick={() => onPrimaryCurrencyChange(primaryCurrency === 'ILS' ? 'USD' : 'ILS')}
+                className="text-xs font-medium px-1.5 py-0.5 rounded border border-gray-300 hover:bg-white transition-colors"
+                title="לחץ להחלפת מטבע"
+              >
+                {getCurrencySymbol(primaryCurrency)} {primaryCurrency === 'ILS' ? 'שקל' : 'דולר'}
+              </button>
+            </div>
+          )}
         </div>
         {allInclusive && (
           <div className="grid grid-cols-2 gap-2">
@@ -1232,7 +1260,7 @@ export default function EventServicesManager({
                       />
                       <span className="text-sm flex-1">{service.service_name}</span>
                       {service.base_price > 0 && (
-                        <span className="text-xs text-gray-500">₪{service.base_price.toLocaleString()}</span>
+                        <span className="text-xs text-gray-500">{getCurrencySymbol(primaryCurrency)}{service.base_price.toLocaleString()}</span>
                       )}
                     </div>
                   );
@@ -1292,7 +1320,7 @@ export default function EventServicesManager({
                   )}
                   {!allInclusive && (
                     <div className="text-sm text-purple-600">
-                      ₪{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} 
+                      {getCurrencySymbol(primaryCurrency)}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} 
                       {pkg.package_includes_vat && ' (כולל מע"מ)'}
                     </div>
                   )}

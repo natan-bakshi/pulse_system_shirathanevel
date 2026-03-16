@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, CreditCard } from "lucide-react";
+import { getCurrencySymbol, getEffectiveCurrency } from "@/components/utils/currencyUtils";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
-export default function PaymentManager({ payments = [], onPaymentsChange, isReadOnly = false }) {
+export default function PaymentManager({ payments = [], onPaymentsChange, isReadOnly = false, eventPrimaryCurrency = 'ILS' }) {
   const [localPayments, setLocalPayments] = useState(payments);
 
   const addPayment = () => {
@@ -85,6 +86,16 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                     />
                   </div>
                   <div>
+                    <Label>מטבע</Label>
+                    <button
+                      type="button"
+                      onClick={() => updatePayment(payment.id, 'currency', (getEffectiveCurrency(payment.currency, eventPrimaryCurrency)) === 'ILS' ? 'USD' : 'ILS')}
+                      className="flex items-center gap-1 text-sm h-9 px-3 rounded border border-gray-300 hover:bg-gray-50 w-full justify-center"
+                    >
+                      {getCurrencySymbol(getEffectiveCurrency(payment.currency, eventPrimaryCurrency))} {getEffectiveCurrency(payment.currency, eventPrimaryCurrency) === 'ILS' ? 'שקל' : 'דולר'}
+                    </button>
+                  </div>
+                  <div>
                     <Label>תאריך תשלום</Label>
                     <Input
                       type="date"
@@ -131,7 +142,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
               ) : (
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-bold">₪{payment.amount?.toLocaleString()}</p>
+                    <p className="font-bold">{getCurrencySymbol(getEffectiveCurrency(payment.currency, eventPrimaryCurrency))}{payment.amount?.toLocaleString()}</p>
                     <p className="text-sm text-gray-600">
                       {format(new Date(payment.payment_date), "dd/MM/yyyy", { locale: he })} - {getPaymentMethodText(payment.payment_method)}
                     </p>
@@ -150,7 +161,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
             <div className="border-t pt-4">
               <div className="flex justify-between items-center font-bold text-lg">
                 <span>סה"כ שולם:</span>
-                <span className="text-green-600">₪{totalPaid.toLocaleString()}</span>
+                <span className="text-green-600">{getCurrencySymbol(eventPrimaryCurrency)}{totalPaid.toLocaleString()}</span>
               </div>
             </div>
           )}
