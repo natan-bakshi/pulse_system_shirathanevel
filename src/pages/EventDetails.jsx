@@ -1998,47 +1998,7 @@ export default function EventDetails() {
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
-      {/* Dialogs now rendered by EventDetailDialogs component above */}
-            <div>
-              <Label>הערות</Label>
-              <Textarea
-                value={paymentForm.notes}
-                onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                placeholder="הערות על התשלום (אופציונלי)"
-              />
-            </div>
-            <div>
-              <Label>אסמכתא (תמונה)</Label>
-              <div className="space-y-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleUploadReceipt}
-                  disabled={uploadingReceipt}
-                />
-                {uploadingReceipt && (
-                  <div className="text-sm text-gray-500 flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>מעלה קובץ...</span>
-                  </div>
-                )}
-                {paymentForm.receipt_image_url && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
-                    <FileText className="h-4 w-4" />
-                    <span>אסמכתא הועלתה בהצלחה</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>ביטול</Button>
-            <Button onClick={handleAddPayment} disabled={uploadingReceipt}>הוסף תשלום</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Supplier Assignment Dialog */}
+      {/* Old Supplier Assignment Dialog */}
       <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
