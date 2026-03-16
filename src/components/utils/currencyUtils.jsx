@@ -2,6 +2,9 @@
 
 export const CURRENCY_SYMBOLS = { ILS: '₪', USD: '$' };
 
+// Default exchange rate USD->ILS
+export const DEFAULT_EXCHANGE_RATE = 3.6;
+
 export function getCurrencySymbol(code) {
   return CURRENCY_SYMBOLS[code] || '₪';
 }
