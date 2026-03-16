@@ -18,7 +18,7 @@ import { Package } from '@/entities/Package';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import ContactPicker from '../ui/ContactPicker';
-import { getCurrencySymbol, getEffectiveCurrency } from '../utils/currencyUtils';
+import { getCurrencySymbol, getEffectiveCurrency, convertCurrency, DEFAULT_EXCHANGE_RATE } from '../utils/currencyUtils';
 
 export default function EventServicesManager({
   allServices,
@@ -1132,9 +1132,22 @@ export default function EventServicesManager({
               <span className="text-xs text-gray-500">מטבע:</span>
               <button
                 type="button"
-                onClick={() => onPrimaryCurrencyChange(primaryCurrency === 'ILS' ? 'USD' : 'ILS')}
+                onClick={() => {
+                  const oldCurrency = primaryCurrency;
+                  const newCurrency = oldCurrency === 'ILS' ? 'USD' : 'ILS';
+                  // Convert all service prices from old currency to new currency
+                  const convertedServices = selectedServices.map(s => {
+                    const price = parseFloat(s.custom_price) || 0;
+                    if (price === 0) return { ...s, currency: undefined };
+                    const serviceCurrency = getEffectiveCurrency(s.currency, oldCurrency);
+                    const convertedPrice = convertCurrency(price, serviceCurrency, newCurrency, DEFAULT_EXCHANGE_RATE);
+                    return { ...s, custom_price: Math.round(convertedPrice * 100) / 100, currency: undefined };
+                  });
+                  onServicesChange(convertedServices);
+                  onPrimaryCurrencyChange(newCurrency);
+                }}
                 className="text-xs font-medium px-1.5 py-0.5 rounded border border-gray-300 hover:bg-white transition-colors"
-                title="לחץ להחלפת מטבע"
+                title="לחץ להחלפת מטבע (ימיר את כל המחירים)"
               >
                 {getCurrencySymbol(primaryCurrency)} {primaryCurrency === 'ILS' ? 'שקל' : 'דולר'}
               </button>
