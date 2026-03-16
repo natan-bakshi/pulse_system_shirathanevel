@@ -1988,38 +1988,18 @@ export default function EventDetails() {
         />
       )}
 
-      {/* Export Dialog */}
-      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>ייצוא אירוע</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              {Object.keys(exportOptions).map(key => (
-                <div key={key} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={exportOptions[key]}
-                    onCheckedChange={(checked) => setExportOptions({ ...exportOptions, [key]: checked })}
-                  />
-                  <Label>{key === 'eventDetails' ? 'פרטי אירוע' : key === 'familyDetails' ? 'פרטי משפחה' : key === 'services' ? 'שירותים' : key === 'suppliers' ? 'ספקים' : key === 'payments' ? 'תשלומים' : key === 'financials' ? 'סיכום פיננסי' : 'הערות'}</Label>
-                </div>
-              ))}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowExportDialog(false)}>ביטול</Button>
-            <Button onClick={handleConfirmExport}>ייצא</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Payment Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>הוספת תשלום</DialogTitle>
-          </DialogHeader>
+      <ExportDialog open={showExportDialog} onOpenChange={setShowExportDialog} exportOptions={exportOptions} setExportOptions={setExportOptions} onConfirmExport={handleConfirmExport} />
+      <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} />
+      <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
+      <PackageDialog open={showPackageDialog} onOpenChange={setShowPackageDialog} form={packageForm} setForm={setPackageForm} searchTerm={packageServiceSearchTerm} setSearchTerm={setPackageServiceSearchTerm} filteredServices={filteredServicesForPackage} isCreating={isCreatingPackage} onCreate={handleCreatePackage} />
+      <EditPackageDialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog} form={editPackageForm} setForm={setEditPackageForm} isSaving={isSavingPackageEdit} onSave={handleSavePackageEdit} />
+      <AddServiceDialog open={showAddServiceDialog} onOpenChange={setShowAddServiceDialog} searchTerm={addServiceSearchTerm} setSearchTerm={setAddServiceSearchTerm} filteredServices={filteredServicesForAdd} selected={selectedServicesToAdd} setSelected={setSelectedServicesToAdd} isAdding={isAddingServices} onAdd={handleAddStandaloneServices} />
+      <AddExistingPackageDialog open={showAddExistingPackageDialog} onOpenChange={setShowAddExistingPackageDialog} searchTerm={existingPackageSearchTerm} setSearchTerm={setExistingPackageSearchTerm} filteredPackages={filteredExistingPackages} selected={selectedExistingPackage} setSelected={setSelectedExistingPackage} isAdding={isAddingExistingPackage} onAdd={handleAddExistingPackage} />
+      <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
+      <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
+      <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
+      {/* OLD DIALOGS REPLACED BY COMPONENT -- PLACEHOLDER TO MATCH REMAINING */}
+      <span className="hidden">placeholder</span>
           <div className="space-y-4">
             <div>
               <Label>סכום</Label>
