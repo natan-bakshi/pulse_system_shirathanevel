@@ -21,6 +21,7 @@ import ContactPicker from '../ui/ContactPicker';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { format } from 'date-fns';
+import { getCurrencySymbol, getEffectiveCurrency } from '../utils/currencyUtils';
 
 function SupplierNoteInput({ serviceId, supplierId, initialNote, handleUpdateSupplierNote }) {
   const [localNote, setLocalNote] = React.useState(initialNote || '');
@@ -781,11 +782,11 @@ const handleCopyTransport = (service, serviceDetails) => {
             {!isInPackage && !isSupplier && !event.all_inclusive && (
               <div className="text-right lg:text-left lg:ml-4">
                 <div className="text-lg font-bold text-red-800 whitespace-nowrap">
-                  ₪{((parseFloat(service.custom_price) || 0) * (parseFloat(service.quantity) || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {getCurrencySymbol(getEffectiveCurrency(service.currency, event?.primary_currency))}{((parseFloat(service.custom_price) || 0) * (parseFloat(service.quantity) || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
                 {(parseFloat(service.quantity) || 1) > 1 && (
                   <div className="text-xs text-gray-500 whitespace-nowrap">
-                    {service.quantity} × ₪{(parseFloat(service.custom_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {service.quantity} × {getCurrencySymbol(getEffectiveCurrency(service.currency, event?.primary_currency))}{(parseFloat(service.custom_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 )}
                 <div className="text-xs text-gray-500 whitespace-nowrap">
@@ -1018,7 +1019,7 @@ const handleCopyTransport = (service, serviceDetails) => {
             <div className="space-y-4">
               {event.all_inclusive && event.all_inclusive_price && !isSupplier && (
                 <div className="p-4 bg-blue-50 rounded">
-                  <strong>חבילת הכל כלול:</strong> ₪{event.all_inclusive_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  <strong>חבילת הכל כלול:</strong> {getCurrencySymbol(event?.primary_currency || 'ILS')}{event.all_inclusive_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   {event.all_inclusive_includes_vat && <span className="text-sm text-gray-600"> (כולל מע"מ)</span>}
                 </div>
               )}
@@ -1038,7 +1039,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                                   {pkg.package_description && (
                                     <div className="text-sm text-gray-600 mt-1" dangerouslySetInnerHTML={{ __html: pkg.package_description }} />
                                   )}
-                                  {!isSupplier && !event.all_inclusive && <div className="text-sm text-purple-600">₪{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>}
+                                  {!isSupplier && !event.all_inclusive && <div className="text-sm text-purple-600">{getCurrencySymbol(event?.primary_currency || 'ILS')}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>}
                                 </div>
                                 {isAdmin && (
                                  <div className="flex gap-1 sm:gap-2">
