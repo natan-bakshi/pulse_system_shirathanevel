@@ -433,7 +433,8 @@ export default function EventDetails() {
   const financials = useMemo(() => {
     const vatRateSetting = appSettings.find(s => s.setting_key === 'vat_rate');
     const vatRate = vatRateSetting ? parseFloat(vatRateSetting.setting_value) / 100 : 0.18;
-    return calculateEventFinancials(eventForCalculation, servicesForCalculation, payments, vatRate);
+    const rS = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate');
+    return calculateEventFinancials(eventForCalculation, servicesForCalculation, payments, vatRate, rS ? parseFloat(rS.setting_value) || 3.6 : 3.6);
   }, [eventForCalculation, servicesForCalculation, payments, appSettings]);
 
   const handleStatusChange = useCallback(async (newStatus) => {
