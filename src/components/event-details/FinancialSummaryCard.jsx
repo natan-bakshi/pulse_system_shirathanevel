@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Edit, Save, Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { getCurrencySymbol } from '@/components/utils/currencyUtils';
 
 export default function FinancialSummaryCard({
   event,
@@ -17,6 +18,8 @@ export default function FinancialSummaryCard({
   handleSaveFinancial,
   isSavingFinancial
 }) {
+  const cs = getCurrencySymbol(event?.primary_currency || 'ILS');
+
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
@@ -82,24 +85,24 @@ export default function FinancialSummaryCard({
           </div>
         ) : (
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span>סה"כ לפני מע"מ:</span><span>₪{financials.totalCostWithoutVat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+            <div className="flex justify-between"><span>סה"כ לפני מע"מ:</span><span>{cs}{financials.totalCostWithoutVat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
             {event.discount_before_vat && financials.discountAmount > 0 && (
               <div className="flex justify-between text-red-600">
                 <span>הנחה{event.discount_reason && ` (${event.discount_reason})`}:</span>
-                <span>-₪{financials.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span>-{cs}{financials.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             )}
-            <div className="flex justify-between"><span>מע"מ (18%):</span><span>₪{financials.vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
-            <div className="flex justify-between"><span>סה"כ כולל מע"מ:</span><span>₪{financials.totalCostWithVat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+            <div className="flex justify-between"><span>מע"מ (18%):</span><span>{cs}{financials.vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+            <div className="flex justify-between"><span>סה"כ כולל מע"מ:</span><span>{cs}{financials.totalCostWithVat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
             {!event.discount_before_vat && financials.discountAmount > 0 && (
               <div className="flex justify-between text-red-600">
                 <span>הנחה{event.discount_reason && ` (${event.discount_reason})`}:</span>
-                <span>-₪{financials.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span>-{cs}{financials.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>סה"כ לתשלום:</span><span>₪{financials.finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
-            <div className="flex justify-between text-green-600"><span>שולם:</span><span>₪{financials.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
-            <div className="flex justify-between font-bold text-lg"><span>יתרה לתשלום:</span><span>₪{financials.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>סה"כ לתשלום:</span><span>{cs}{financials.finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+            <div className="flex justify-between text-green-600"><span>שולם:</span><span>{cs}{financials.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+            <div className="flex justify-between font-bold text-lg"><span>יתרה לתשלום:</span><span>{cs}{financials.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
           </div>
         )}
       </CardContent>
