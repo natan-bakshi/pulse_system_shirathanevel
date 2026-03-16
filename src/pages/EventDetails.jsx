@@ -132,8 +132,7 @@ export default function EventDetails() {
   const [isAddingServiceToPackage, setIsAddingServiceToPackage] = useState(false);
 
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
-  const [currentReceiptUrl, setCurrentReceiptUrl] = useState('');
-  const [currentReceiptPaymentId, setCurrentReceiptPaymentId] = useState(null);
+  const [currentReceiptUrl, setCurrentReceiptUrl] = useState('');  const [currentReceiptPaymentId, setCurrentReceiptPaymentId] = useState(null);
 
   const [editingServiceField, setEditingServiceField] = useState(null);
   const [savingServiceField, setSavingServiceField] = useState(null);
