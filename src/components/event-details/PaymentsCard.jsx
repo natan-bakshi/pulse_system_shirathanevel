@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
-import { getCurrencySymbol, getEffectiveCurrency, convertCurrency, DEFAULT_EXCHANGE_RATE } from '@/components/utils/currencyUtils';
+import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '@/components/utils/currencyUtils';
 
 function getPaymentMethodText(method) {
   const methods = { cash: 'מזומן', bank_transfer: 'העברה בנקאית', check: 'צ\'ק', credit_card: 'כרטיס אשראי' };
