@@ -1166,6 +1166,11 @@ export default function EventServicesManager({
                    return updated;
                   });
                   onServicesChange(convertedServices);
+                  // Convert all_inclusive_price if set
+                  const aiPrice = parseFloat(allInclusivePrice) || 0;
+                  if (aiPrice > 0) {
+                    onAllInclusiveChange({ all_inclusive_price: Math.round(convertCurrency(aiPrice, oldCurrency, newCurrency, exchangeRate) * 100) / 100 });
+                  }
                   onPrimaryCurrencyChange(newCurrency);
                 }}
                 className="text-xs font-medium px-1.5 py-0.5 rounded border border-gray-300 hover:bg-white transition-colors"
