@@ -60,6 +60,7 @@ export default function EventDetails() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
+    currency: '',
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'cash',
     notes: '',
@@ -647,6 +648,7 @@ export default function EventDetails() {
       const paymentData = {
         event_id: eventId,
         amount: amount,
+        currency: paymentForm.currency || event?.primary_currency || 'ILS',
         payment_date: paymentForm.payment_date,
         payment_method: paymentForm.payment_method
       };
@@ -669,6 +671,7 @@ export default function EventDetails() {
       setShowPaymentDialog(false);
       setPaymentForm({
         amount: '',
+        currency: '',
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: 'cash',
         notes: '',
@@ -1972,7 +1975,7 @@ export default function EventDetails() {
       )}
 
       <ExportDialog open={showExportDialog} onOpenChange={setShowExportDialog} exportOptions={exportOptions} setExportOptions={setExportOptions} onConfirmExport={handleConfirmExport} />
-      <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} />
+      <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} eventPrimaryCurrency={event?.primary_currency || 'ILS'} />
       <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
       <PackageDialog open={showPackageDialog} onOpenChange={setShowPackageDialog} form={packageForm} setForm={setPackageForm} searchTerm={packageServiceSearchTerm} setSearchTerm={setPackageServiceSearchTerm} filteredServices={filteredServicesForPackage} isCreating={isCreatingPackage} onCreate={handleCreatePackage} />
       <EditPackageDialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog} form={editPackageForm} setForm={setEditPackageForm} isSaving={isSavingPackageEdit} onSave={handleSavePackageEdit} />
