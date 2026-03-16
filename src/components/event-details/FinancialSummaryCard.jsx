@@ -55,7 +55,7 @@ export default function FinancialSummaryCard({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>הנחה (₪)</Label>
+                <Label>הנחה ({cs})</Label>
                 <Input type="number" placeholder="0" value={financialEditData.discount_amount} onChange={(e) => setFinancialEditData({ ...financialEditData, discount_amount: e.target.value })} />
                 <div className="flex items-center gap-2">
                   <Checkbox 

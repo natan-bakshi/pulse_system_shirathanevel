@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { getCurrencySymbol } from '@/components/utils/currencyUtils';
 
 function getPaymentMethodText(method) {
   const methods = { cash: 'מזומן', bank_transfer: 'העברה בנקאית', check: 'צ\'ק', credit_card: 'כרטיס אשראי' };
@@ -10,6 +11,7 @@ function getPaymentMethodText(method) {
 }
 
 export default function PaymentsCard({
+  event,
   payments,
   isAdmin,
   setShowPaymentDialog,
@@ -32,7 +34,7 @@ export default function PaymentsCard({
             payments.map(payment => (
               <div key={payment.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                 <div className="flex-1">
-                  <div className="font-medium">₪{payment.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</div>
+                  <div className="font-medium">{getCurrencySymbol(payment.currency || event?.primary_currency || 'ILS')}{payment.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</div>
                   <div className="text-sm text-gray-600">
                     {format(new Date(payment.payment_date), 'dd/MM/yyyy')} - {getPaymentMethodText(payment.payment_method)}
                   </div>

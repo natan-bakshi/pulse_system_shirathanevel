@@ -62,14 +62,17 @@ export default function EventManagement() {
         
         const vatRateSetting = appSettings.find(s => s.setting_key === 'vat_rate');
         const vatRate = vatRateSetting ? parseFloat(vatRateSetting.setting_value) / 100 : 0.18;
+        const rS = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate');
+        const exRate = rS ? parseFloat(rS.setting_value) || 3.6 : 3.6;
 
-        const financials = calculateEventFinancials(event, eventServices, payments, vatRate);
+        const financials = calculateEventFinancials(event, eventServices, payments, vatRate, exRate);
 
         return { 
             finalTotal: financials.finalTotal, 
             totalPaid: financials.totalPaid, 
             balance: financials.balance, 
-            discountAmount: financials.discountAmount 
+            discountAmount: financials.discountAmount,
+            currency: financials.currency
         };
     }, [allServices, allPayments, appSettings]);
 
