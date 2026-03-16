@@ -1349,7 +1349,13 @@ export default function EventServicesManager({
                   )}
                   {!allInclusive && (
                     <div className="text-sm text-purple-600">
-                      {getCurrencySymbol(primaryCurrency)}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} 
+                      {getCurrencySymbol((() => {
+                        if (pkg.is_new_structure) {
+                          const mainItem = selectedServices.find(s => s.id === pkg.package_id);
+                          return getEffectiveCurrency(mainItem?.currency, primaryCurrency);
+                        }
+                        return primaryCurrency;
+                      })())}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} 
                       {pkg.package_includes_vat && ' (כולל מע"מ)'}
                     </div>
                   )}
