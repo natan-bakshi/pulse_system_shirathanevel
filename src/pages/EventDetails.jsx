@@ -1998,76 +1998,8 @@ export default function EventDetails() {
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
-      {/* Old Supplier Assignment Dialog */}
-      <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>שיבוץ ספקים</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="חיפוש ספקים..."
-                value={supplierSearchTerm}
-                onChange={(e) => setSupplierSearchTerm(e.target.value)}
-                className="pr-10"
-              />
-            </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {filteredSuppliersForDialog.map(supplier => (
-                <div key={supplier.id} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={supplierFormData.supplierIds.includes(supplier.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSupplierFormData({ ...supplierFormData, supplierIds: [...supplierFormData.supplierIds, supplier.id] });
-                        } else {
-                          const newNotes = { ...supplierFormData.notes };
-                          delete newNotes[supplier.id];
-                          setSupplierFormData({ 
-                            ...supplierFormData, 
-                            supplierIds: supplierFormData.supplierIds.filter(id => id !== supplier.id),
-                            notes: newNotes
-                          });
-                        }
-                      }}
-                    />
-                    <Label>{supplier.supplier_name}</Label>
-                  </div>
-                  {supplierFormData.supplierIds.includes(supplier.id) && (
-                    <div className="mr-6">
-                      <Label className="text-xs">הערה לספק</Label>
-                      <Input
-                        placeholder="הערה ספציפית לספק זה..."
-                        value={supplierFormData.notes[supplier.id] || ''}
-                        onChange={(e) => {
-                          setSupplierFormData({
-                            ...supplierFormData,
-                            notes: {
-                              ...supplierFormData.notes,
-                              [supplier.id]: e.target.value
-                            }
-                          });
-                        }}
-                        className="text-sm"
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowSupplierDialog(false); setSupplierSearchTerm(""); }}>ביטול</Button>
-            <Button onClick={handleAssignSuppliers}>שמור</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Package Dialog */}
-      <Dialog open={showPackageDialog} onOpenChange={setShowPackageDialog}>
+      {/* Old Create Package Dialog */}
+      <Dialog open={false}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>יצירת חבילה חדשה</DialogTitle>
