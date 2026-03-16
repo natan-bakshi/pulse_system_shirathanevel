@@ -63,7 +63,7 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
                  const price = safeFloat(s.custom_price);
                  let itemTotal = price * quantity;
                  if (s.includes_vat) itemTotal = itemTotal / (1 + vatRate);
-                 return sum + itemTotal;
+                 return sum + toEventCurrency(itemTotal, s.currency);
             }
 
             // 2. New Structure: Child Item (Skip)
@@ -83,7 +83,7 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
                 if (s.package_includes_vat) {
                     pkgTotal = pkgTotal / (1 + vatRate);
                 }
-                return sum + pkgTotal;
+                return sum + toEventCurrency(pkgTotal, s.currency);
             }
 
             // 4. Standalone Service
@@ -93,7 +93,7 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
             if (s.includes_vat) {
                 serviceTotal = serviceTotal / (1 + vatRate);
             }
-            return sum + serviceTotal;
+            return sum + toEventCurrency(serviceTotal, s.currency);
 
         }, 0);
     }
@@ -126,8 +126,11 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
         finalTotal = Math.max(0, totalCostWithVat - discountAmount);
     }
 
-    // Payments
-    const totalPaid = payments.reduce((sum, p) => sum + safeFloat(p.amount), 0);
+    // Payments - convert each payment to event currency
+    const totalPaid = payments.reduce((sum, p) => {
+        const amount = safeFloat(p.amount);
+        return sum + toEventCurrency(amount, p.currency);
+    }, 0);
     const balance = finalTotal - totalPaid;
 
     return {
@@ -137,6 +140,7 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
         discountAmount,
         finalTotal,
         totalPaid,
-        balance
+        balance,
+        currency: eventCurrency
     };
 };
