@@ -1998,31 +1998,7 @@ export default function EventDetails() {
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
-      {/* Remaining old dialog code removed - now using EventDetailDialogs component */}
-      <span className="hidden">old-dialogs-removed</span>
-            </div>
-            <div>
-              <Label>תאריך תשלום</Label>
-              <Input
-                type="date"
-                value={paymentForm.payment_date}
-                onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>אמצעי תשלום</Label>
-              <Select value={paymentForm.payment_method} onValueChange={(value) => setPaymentForm({ ...paymentForm, payment_method: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">מזומן</SelectItem>
-                  <SelectItem value="bank_transfer">העברה בנקאית</SelectItem>
-                  <SelectItem value="check">צ'ק</SelectItem>
-                  <SelectItem value="credit_card">כרטיס אשראי</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Dialogs now rendered by EventDetailDialogs component above */}
             <div>
               <Label>הערות</Label>
               <Textarea
