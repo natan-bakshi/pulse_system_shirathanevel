@@ -1998,19 +1998,7 @@ export default function EventDetails() {
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
-      {/* Old dialogs removed - handled by EventDetailDialogs */}
-          <div className="space-y-4">
-            <div>
-              <Label>בחר שירותים</Label>
-              <div className="relative mb-2">
-                <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="חיפוש שירותים..."
-                  value={addToPackageSearchTerm}
-                  onChange={(e) => setAddToPackageSearchTerm(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
+      {/* All old inline dialogs removed - now using EventDetailDialogs component */}
               <div className="space-y-2 max-h-48 overflow-y-auto border rounded p-2">
                 {filteredServicesForAddToPackage.map(service => (
                   <div key={service.id} className="flex items-center gap-2">
