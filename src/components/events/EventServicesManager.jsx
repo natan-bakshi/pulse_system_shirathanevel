@@ -18,7 +18,7 @@ import { Package } from '@/entities/Package';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import ContactPicker from '../ui/ContactPicker';
-import { getCurrencySymbol, getEffectiveCurrency, convertCurrency, DEFAULT_EXCHANGE_RATE } from '../utils/currencyUtils';
+import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
 
 export default function EventServicesManager({
   allServices,
@@ -31,7 +31,8 @@ export default function EventServicesManager({
   allInclusiveIncludesVat,
   onAllInclusiveChange,
   primaryCurrency = 'ILS',
-  onPrimaryCurrencyChange
+  onPrimaryCurrencyChange,
+  exchangeRate = 3.6
 }) {
   const [expandedServices, setExpandedServices] = useState({});
   const [copiedId, setCopiedId] = useState(null);
@@ -848,28 +849,35 @@ export default function EventServicesManager({
           {isExpanded && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mr-6 mt-2">
               {!allInclusive && (
-                <>
-                  <div>
-                    <Label className="text-xs">מחיר ליחידה</Label>
+                <div>
+                  <Label className="text-xs">מחיר ליחידה</Label>
+                  <div className="relative">
                     <Input
                       type="number"
                       value={service.custom_price || ''}
                       onChange={(e) => handleServiceChange(service.id, 'custom_price', e.target.value)}
                       placeholder="מחיר"
-                      className="text-sm h-8"
+                      className="text-sm h-8 pl-10"
                     />
-                  </div>
-                  <div>
-                    <Label className="text-xs">מטבע</Label>
                     <button
                       type="button"
-                      onClick={() => handleServiceChange(service.id, 'currency', (getEffectiveCurrency(service.currency, primaryCurrency)) === 'ILS' ? 'USD' : 'ILS')}
-                      className="flex items-center gap-1 text-sm h-8 px-2 rounded border border-gray-300 hover:bg-gray-50 w-full justify-center"
+                      onClick={() => {
+                        const currentCurrency = getEffectiveCurrency(service.currency, primaryCurrency);
+                        const newCurrency = currentCurrency === 'ILS' ? 'USD' : 'ILS';
+                        const price = parseFloat(service.custom_price) || 0;
+                        const convertedPrice = price > 0 ? Math.round(convertCurrency(price, currentCurrency, newCurrency, exchangeRate) * 100) / 100 : 0;
+                        const updatedServices = selectedServices.map(s =>
+                          s.id === service.id ? { ...s, currency: newCurrency, custom_price: convertedPrice } : s
+                        );
+                        onServicesChange(updatedServices);
+                      }}
+                      className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+                      title="לחץ להחלפת מטבע"
                     >
-                      {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))} {getEffectiveCurrency(service.currency, primaryCurrency) === 'ILS' ? 'שקל' : 'דולר'}
+                      {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))}
                     </button>
                   </div>
-                </>
+                </div>
               )}
               <div>
                 <Label className="text-xs">כמות</Label>
@@ -1137,11 +1145,11 @@ export default function EventServicesManager({
                   const newCurrency = oldCurrency === 'ILS' ? 'USD' : 'ILS';
                   // Convert all service prices from old currency to new currency
                   const convertedServices = selectedServices.map(s => {
-                    const price = parseFloat(s.custom_price) || 0;
-                    if (price === 0) return { ...s, currency: undefined };
-                    const serviceCurrency = getEffectiveCurrency(s.currency, oldCurrency);
-                    const convertedPrice = convertCurrency(price, serviceCurrency, newCurrency, DEFAULT_EXCHANGE_RATE);
-                    return { ...s, custom_price: Math.round(convertedPrice * 100) / 100, currency: undefined };
+                   const price = parseFloat(s.custom_price) || 0;
+                   if (price === 0) return { ...s, currency: undefined };
+                   const serviceCurrency = getEffectiveCurrency(s.currency, oldCurrency);
+                   const convertedPrice = convertCurrency(price, serviceCurrency, newCurrency, exchangeRate);
+                   return { ...s, custom_price: Math.round(convertedPrice * 100) / 100, currency: undefined };
                   });
                   onServicesChange(convertedServices);
                   onPrimaryCurrencyChange(newCurrency);

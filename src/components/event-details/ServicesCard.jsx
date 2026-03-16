@@ -21,7 +21,7 @@ import ContactPicker from '../ui/ContactPicker';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { format } from 'date-fns';
-import { getCurrencySymbol, getEffectiveCurrency } from '../utils/currencyUtils';
+import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
 
 function SupplierNoteInput({ serviceId, supplierId, initialNote, handleUpdateSupplierNote }) {
   const [localNote, setLocalNote] = React.useState(initialNote || '');
@@ -89,7 +89,8 @@ export default function ServicesCard({
   setSupplierFormData,
   setShowSupplierDialog,
   handleRemoveFromPackage,
-  handleDeleteService
+  handleDeleteService,
+  exchangeRate = 3.6
 }) {
   const [expandedServices, setExpandedServices] = useState({});
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
@@ -431,31 +432,32 @@ const handleCopyTransport = (service, serviceDetails) => {
                             setEditableServices(updatedServices);
                           }}
                           onBlur={(e) => handleUpdateServiceField(service.id, 'custom_price', e.target.value)}
-                          className="text-sm h-8"
+                          className="text-sm h-8 pl-10"
                           disabled={isSaving && savingServiceField?.field === 'custom_price'}
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentCurrency = getEffectiveCurrency(editableService.currency, event?.primary_currency);
+                            const newCurrency = currentCurrency === 'ILS' ? 'USD' : 'ILS';
+                            const price = parseFloat(editableService.custom_price) || 0;
+                            const convertedPrice = price > 0 ? Math.round(convertCurrency(price, currentCurrency, newCurrency, exchangeRate) * 100) / 100 : 0;
+                            const updatedServices = editableServices.map(s => 
+                              s.id === service.id ? { ...s, currency: newCurrency, custom_price: convertedPrice } : s
+                            );
+                            setEditableServices(updatedServices);
+                            handleUpdateServiceField(service.id, 'currency', newCurrency);
+                            handleUpdateServiceField(service.id, 'custom_price', convertedPrice);
+                          }}
+                          className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+                          title="לחץ להחלפת מטבע"
+                        >
+                          {getCurrencySymbol(getEffectiveCurrency(editableService.currency, event?.primary_currency))}
+                        </button>
                         {isSaving && savingServiceField?.field === 'custom_price' && (
-                          <Loader2 className="h-3 w-3 animate-spin absolute left-2 top-2.5 text-gray-400" />
+                          <Loader2 className="h-3 w-3 animate-spin absolute left-8 top-2.5 text-gray-400" />
                         )}
                       </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs">מטבע</Label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentCurrency = getEffectiveCurrency(editableService.currency, event?.primary_currency);
-                          const newCurrency = currentCurrency === 'ILS' ? 'USD' : 'ILS';
-                          const updatedServices = editableServices.map(s => 
-                            s.id === service.id ? { ...s, currency: newCurrency } : s
-                          );
-                          setEditableServices(updatedServices);
-                          handleUpdateServiceField(service.id, 'currency', newCurrency);
-                        }}
-                        className="flex items-center gap-1 text-sm h-8 px-2 rounded border border-gray-300 hover:bg-gray-50 w-full justify-center"
-                      >
-                        {getCurrencySymbol(getEffectiveCurrency(editableService.currency, event?.primary_currency))} {getEffectiveCurrency(editableService.currency, event?.primary_currency) === 'ILS' ? 'שקל' : 'דולר'}
-                      </button>
                     </div>
                   </>
                 )}
