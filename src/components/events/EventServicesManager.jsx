@@ -497,7 +497,8 @@ export default function EventServicesManager({
             package_description: editPackageForm.package_description,
             service_description: editPackageForm.package_description,
             custom_price: parseFloat(editPackageForm.package_price) || 0,
-            includes_vat: editPackageForm.package_includes_vat
+            includes_vat: editPackageForm.package_includes_vat,
+            currency: editPackageForm.package_currency || undefined
           };
         } else if (s.parent_package_event_service_id === editingPackage) {
           // עדכון שירותי הילדים - רק מע"מ
