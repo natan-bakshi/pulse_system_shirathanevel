@@ -1236,6 +1236,7 @@ export default function EventDetails() {
         if (isNewStructure && service.id === editingPackage) {
             updates.custom_price = parseFloat(editPackageForm.package_price) || 0;
             updates.includes_vat = editPackageForm.package_includes_vat;
+            updates.currency = editPackageForm.package_currency || undefined;
         }
 
         console.log(`[DEBUG] Sending update for service ${service.id}:`, updates);
