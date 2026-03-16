@@ -33,6 +33,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   const [allPackages, setAllPackages] = useState([]);
   const [conceptDefaults, setConceptDefaults] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState(3.6);
   const [existingConcepts, setExistingConcepts] = useState([]);
   const [isManualConcept, setIsManualConcept] = useState(false);
   const [importText, setImportText] = useState("");
@@ -136,12 +137,16 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   useEffect(() => {
     const loadPrerequisites = async () => {
       try {
-        const [servicesData, suppliersData, packagesData, conceptSettings] = await Promise.all([
+        const [servicesData, suppliersData, packagesData, conceptSettings, exchangeRateSettings] = await Promise.all([
           Service.list(),
           Supplier.list(),
           Package.list(),
-          AppSettings.filter({ setting_key: 'concept_defaults' })
+          AppSettings.filter({ setting_key: 'concept_defaults' }),
+          AppSettings.filter({ setting_key: 'usd_ils_exchange_rate' })
         ]);
+        if (exchangeRateSettings.length > 0) {
+          setExchangeRate(parseFloat(exchangeRateSettings[0].setting_value) || 3.6);
+        }
         setAllServices(Array.isArray(servicesData) ? servicesData : []);
         setAllSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
         setAllPackages(Array.isArray(packagesData) ? packagesData : []);
@@ -1006,6 +1011,7 @@ for (const serviceItem of formData.services) {
               onAllInclusiveChange={handleAllInclusiveChange}
               primaryCurrency={formData.primary_currency}
               onPrimaryCurrencyChange={(value) => handleInputChange("primary_currency", value)}
+              exchangeRate={exchangeRate}
             />
           </div>
 
