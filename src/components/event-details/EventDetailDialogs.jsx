@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Loader2, Search, Download, Trash2 } from 'lucide-react';
 
 export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptions, onConfirmExport }) {
@@ -32,13 +33,23 @@ export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptio
   );
 }
 
-export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm, onAddPayment, onUploadReceipt, uploadingReceipt }) {
+export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm, onAddPayment, onUploadReceipt, uploadingReceipt, eventPrimaryCurrency }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>הוספת תשלום</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div><Label>סכום</Label><Input type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" /></div>
+          <div>
+            <Label>מטבע</Label>
+            <Select value={paymentForm.currency || eventPrimaryCurrency || 'ILS'} onValueChange={(value) => setPaymentForm({ ...paymentForm, currency: value })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ILS">₪ שקל</SelectItem>
+                <SelectItem value="USD">$ דולר</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div><Label>תאריך תשלום</Label><Input type="date" value={paymentForm.payment_date} onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })} /></div>
           <div>
             <Label>אמצעי תשלום</Label>

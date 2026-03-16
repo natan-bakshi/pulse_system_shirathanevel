@@ -22,6 +22,7 @@ import EventServicesManager from "./EventServicesManager";
 import PaymentManager from "./PaymentManager";
 import ContactPicker from "../ui/ContactPicker";
 import { calculateEventFinancials } from "@/components/utils/eventFinancials";
+import { getCurrencySymbol } from "@/components/utils/currencyUtils";
 import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QuoteTemplate } from "@/entities/QuoteTemplate";
@@ -115,6 +116,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
     notes: "",
     parents: [{ name: "", phone: "", email: "" }],
     schedule: [],
+    primary_currency: "ILS",
     all_inclusive: false,
     all_inclusive_price: 0,
     all_inclusive_includes_vat: false,
@@ -308,6 +310,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       city: event?.city || "",
       guest_count: event?.guest_count !== undefined && event.guest_count !== null ? String(event.guest_count) : "",
       status: event?.status || "quote",
+      primary_currency: event?.primary_currency || "ILS",
       notes: event?.notes || "",
       parents: event?.parents?.length ? event.parents : [{ name: "", phone: "", email: "" }],
       schedule: event?.schedule?.length ? event.schedule : [],
@@ -729,6 +732,16 @@ for (const serviceItem of formData.services) {
                 disabled={isSaving}
               />
               <div>
+                <Label htmlFor="primary_currency">מטבע ראשי</Label>
+                <Select value={formData.primary_currency} onValueChange={(value) => handleInputChange("primary_currency", value)} disabled={isSaving}>
+                  <SelectTrigger id="primary_currency"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ILS">₪ שקל</SelectItem>
+                    <SelectItem value="USD">$ דולר</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="concept">קונספט</Label>
                 <div className="space-y-2">
                   {!isManualConcept ? (
@@ -1056,15 +1069,15 @@ for (const serviceItem of formData.services) {
                         <div className="space-y-2 pb-3 border-b mb-3">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">סה"כ לפני מע"מ:</span>
-                            <span>₪{financials.totalCostWithoutVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span>{getCurrencySymbol(formData.primary_currency)}{financials.totalCostWithoutVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">מע"מ (18%):</span>
-                            <span>₪{financials.vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span>{getCurrencySymbol(formData.primary_currency)}{financials.vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                           <div className="flex justify-between font-semibold">
                             <span>סה"כ כולל מע"מ:</span>
-                            <span>₪{financials.totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span>{getCurrencySymbol(formData.primary_currency)}{financials.totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                         </div>
                       )}
@@ -1105,7 +1118,7 @@ for (const serviceItem of formData.services) {
                       <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
                         <span className="text-lg font-bold text-gray-900">לתשלום:</span>
                         <span className="text-xl font-bold text-green-700">
-                          ₪{financials.finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          {getCurrencySymbol(formData.primary_currency)}{financials.finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </span>
                       </div>
                     </div>
