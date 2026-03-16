@@ -1946,6 +1946,7 @@ export default function EventDetails() {
 
       {(isAdmin || isClient) && (
         <PaymentsCard
+          event={event}
           payments={payments}
           isAdmin={isAdmin}
           setShowPaymentDialog={setShowPaymentDialog}
