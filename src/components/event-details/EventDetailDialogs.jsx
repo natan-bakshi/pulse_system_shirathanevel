@@ -220,7 +220,7 @@ export function AddExistingPackageDialog({ open, onOpenChange, searchTerm, setSe
                   <Checkbox checked={selected === pkg.id} onCheckedChange={(checked) => setSelected(checked ? pkg.id : null)} />
                   <div className="flex-1">
                     <div className="font-medium">{pkg.package_name}</div>
-                    <div className="text-sm text-gray-600">₪{(pkg.package_price || 0).toLocaleString()} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>
+                    <div className="text-sm text-gray-600">{(pkg.package_price || 0).toLocaleString()} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>
                     {pkg.package_description && <div className="text-xs text-gray-500 mt-1">{pkg.package_description}</div>}
                   </div>
                 </div>
