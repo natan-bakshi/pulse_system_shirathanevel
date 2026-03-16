@@ -1061,7 +1061,13 @@ const handleCopyTransport = (service, serviceDetails) => {
                                   {pkg.package_description && (
                                     <div className="text-sm text-gray-600 mt-1" dangerouslySetInnerHTML={{ __html: pkg.package_description }} />
                                   )}
-                                  {!isSupplier && !event.all_inclusive && <div className="text-sm text-purple-600">{getCurrencySymbol(event?.primary_currency || 'ILS')}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>}
+                                  {!isSupplier && !event.all_inclusive && <div className="text-sm text-purple-600">{getCurrencySymbol((() => {
+                                    if (pkg.is_new_structure) {
+                                      const mainItem = eventServices.find(s => s.id === pkg.package_id);
+                                      return getEffectiveCurrency(mainItem?.currency, event?.primary_currency);
+                                    }
+                                    return event?.primary_currency || 'ILS';
+                                  })())}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>}
                                 </div>
                                 {isAdmin && (
                                  <div className="flex gap-1 sm:gap-2">
