@@ -1158,14 +1158,21 @@ export default function EventDetails() {
 
   const handleOpenEditPackage = useCallback((pkg) => {
     setEditingPackage(pkg.package_id);
+    // For new structure, get the currency from the main package item
+    let pkgCurrency = undefined;
+    if (pkg.is_new_structure) {
+      const mainItem = eventServices.find(s => s.id === pkg.package_id);
+      pkgCurrency = mainItem?.currency;
+    }
     setEditPackageForm({
       package_name: pkg.package_name,
       package_description: pkg.package_description || '',
       package_price: pkg.package_price || '',
-      package_includes_vat: pkg.package_includes_vat || false
+      package_includes_vat: pkg.package_includes_vat || false,
+      package_currency: pkgCurrency
     });
     setShowEditPackageDialog(true);
-  }, []);
+  }, [eventServices]);
 
   const handleSavePackageEdit = useCallback(async () => {
     if (!editPackageForm.package_name) {
