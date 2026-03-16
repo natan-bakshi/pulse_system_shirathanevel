@@ -20,6 +20,7 @@ const settingKeys = [
     'company_name', 
     'company_logo_url', 
     'vat_rate',
+    'usd_ils_exchange_rate',
     'quote_body_font_size',
     'quote_title_font_size',
     'show_events_board_tab',
@@ -44,6 +45,7 @@ export default function SettingsPage() {
         company_name: "",
         company_logo_url: "",
         vat_rate: "18",
+        usd_ils_exchange_rate: "3.6",
         quote_body_font_size: "15",
         quote_title_font_size: "16",
         show_events_board_tab: "false",
@@ -276,6 +278,19 @@ export default function SettingsPage() {
                                     placeholder="18"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">אחוז המע"מ שישמש בכל חישובי המערכת (ברירת מחדל: 18%)</p>
+                            </div>
+                            <div>
+                                <Label htmlFor="usd_ils_exchange_rate">שער חליפין דולר/שקל</Label>
+                                <Input 
+                                    id="usd_ils_exchange_rate" 
+                                    type="number" 
+                                    min="0" 
+                                    step="0.01"
+                                    value={settings.usd_ils_exchange_rate} 
+                                    onChange={e => handleSettingChange('usd_ils_exchange_rate', e.target.value)} 
+                                    placeholder="3.6"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">שער המרה דולר לשקל. משמש לחישוב מחירים באירועים עם מטבעות מעורבים</p>
                             </div>
                         </CardContent>
                     </Card>
