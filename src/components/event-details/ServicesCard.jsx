@@ -90,7 +90,8 @@ export default function ServicesCard({
   setShowSupplierDialog,
   handleRemoveFromPackage,
   handleDeleteService,
-  exchangeRate = 3.6
+  exchangeRate = 3.6,
+  onPrimaryCurrencyChange
 }) {
   const [expandedServices, setExpandedServices] = useState({});
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
@@ -1005,6 +1006,29 @@ const handleCopyTransport = (service, serviceDetails) => {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+
+              {onPrimaryCurrencyChange && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newCurrency = (event?.primary_currency || 'ILS') === 'ILS' ? 'USD' : 'ILS';
+                          onPrimaryCurrencyChange(newCurrency);
+                        }}
+                        className="text-xs font-medium px-2 py-1.5 rounded border border-gray-300 hover:bg-white transition-colors"
+                        title="לחץ להחלפת מטבע"
+                      >
+                        {getCurrencySymbol(event?.primary_currency || 'ILS')} {(event?.primary_currency || 'ILS') === 'ILS' ? 'שקל' : 'דולר'}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>החלף מטבע ראשי של האירוע</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           )}
         </div>
