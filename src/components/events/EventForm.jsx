@@ -592,7 +592,8 @@ for (const serviceItem of formData.services) {
         package_price: finalPrice,
         package_description: finalDesc,
         package_includes_vat: finalVat,
-        package_id: serviceItem.package_id
+        package_id: serviceItem.package_id,
+        currency: serviceItem.currency || undefined
     };
 
     let existingIndex = -1;
