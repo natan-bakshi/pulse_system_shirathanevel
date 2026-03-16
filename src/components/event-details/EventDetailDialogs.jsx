@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { FileText, Loader2, Search, Download, Trash2 } from 'lucide-react';
+import { getCurrencySymbol, convertCurrency, DEFAULT_EXCHANGE_RATE } from '@/components/utils/currencyUtils';
 
 export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptions, onConfirmExport }) {
   return (
@@ -48,6 +49,20 @@ export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm,
                 <SelectItem value="USD">$ דולר</SelectItem>
               </SelectContent>
             </Select>
+            {(() => {
+              const paymentCurrency = paymentForm.currency || eventPrimaryCurrency || 'ILS';
+              const eventCurrency = eventPrimaryCurrency || 'ILS';
+              const amount = parseFloat(paymentForm.amount) || 0;
+              if (amount > 0 && paymentCurrency !== eventCurrency) {
+                const converted = convertCurrency(amount, paymentCurrency, eventCurrency, DEFAULT_EXCHANGE_RATE);
+                return (
+                  <div className="text-xs text-gray-500 mt-1">
+                    ≈ {getCurrencySymbol(eventCurrency)}{converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
           <div><Label>תאריך תשלום</Label><Input type="date" value={paymentForm.payment_date} onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })} /></div>
           <div>
