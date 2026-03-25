@@ -439,46 +439,7 @@ export default function EventDetails() {
 
   const handleStatusChange = useCallback(async (newStatus) => {
     try {
-      const previousStatus = event?.status;
       await base44.entities.Event.update(eventId, { status: newStatus });
-      
-      // Sync with Google Calendar
-      try {
-        if (newStatus === 'completed' && previousStatus !== 'completed') {
-          // Create calendar event when status changes to completed
-          // Sync for admin
-          if (user?.role === 'admin') {
-            await base44.functions.invoke('syncGoogleCalendar', {
-              action: 'create',
-              eventId: eventId,
-              userType: 'admin'
-            });
-          }
-          // Also sync for client (will use their connected calendar if available)
-          await base44.functions.invoke('syncGoogleCalendar', {
-            action: 'create',
-            eventId: eventId,
-            userType: 'client'
-          });
-        } else if (newStatus !== 'completed' && previousStatus === 'completed') {
-          // Delete calendar event when status changes from completed
-          if (user?.role === 'admin') {
-            await base44.functions.invoke('syncGoogleCalendar', {
-              action: 'delete',
-              eventId: eventId,
-              userType: 'admin'
-            });
-          }
-          await base44.functions.invoke('syncGoogleCalendar', {
-            action: 'delete',
-            eventId: eventId,
-            userType: 'client'
-          });
-        }
-      } catch (calendarError) {
-        console.warn("Calendar sync failed:", calendarError);
-        // Don't block the status change if calendar sync fails
-      }
       
       await base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
       await loadEventData();
@@ -486,7 +447,7 @@ export default function EventDetails() {
       console.error("Failed to update status:", error);
       alert("שגיאה בעדכון סטטוס האירוע");
     }
-  }, [eventId, loadEventData, event, user]);
+  }, [eventId, loadEventData]);
 
   const handleDeleteEvent = useCallback(async () => {
     const confirmMessage = `⚠️ אזהרה חמורה! ⚠️\n\nהפעולה הזו תמחק לצמיתות את:\n• האירוע "${event.event_name}"\n• כל השירותים המשויכים (${eventServices.length} שירותים)\n• כל התשלומים (${payments.length} תשלומים)\n• כל הנתונים הקשורים לאירוע זה\n\nפעולה זו אינה הפיכה!\n\nהאם אתה בטוח לחלוטין שברצונך למחוק אירוע זה?`;
@@ -730,32 +691,6 @@ export default function EventDetails() {
       await base44.entities.EventService.update(eventServiceId, {
         supplier_statuses: JSON.stringify(supplierStatuses)
       });
-
-      // Sync with Google Calendar for supplier
-      try {
-        if (newStatus === 'confirmed' && previousStatus !== 'confirmed') {
-          // Create calendar event when supplier confirms
-          await base44.functions.invoke('syncGoogleCalendar', {
-            action: 'create',
-            eventId: eventId,
-            eventServiceId: eventServiceId,
-            supplierId: supplierId,
-            userType: 'supplier'
-          });
-        } else if (newStatus !== 'confirmed' && previousStatus === 'confirmed') {
-          // Delete calendar event when supplier status changes from confirmed
-          await base44.functions.invoke('syncGoogleCalendar', {
-            action: 'delete',
-            eventId: eventId,
-            eventServiceId: eventServiceId,
-            supplierId: supplierId,
-            userType: 'supplier'
-          });
-        }
-      } catch (calendarError) {
-        console.warn("Supplier calendar sync failed:", calendarError);
-        // Don't block the status change if calendar sync fails
-      }
       
       await base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
       await loadEventData();

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Settings, Loader2, Navigation } from "lucide-react";
+import GoogleCalendarUserCard from "@/components/calendar/GoogleCalendarUserCard";
 import UserNotificationPreferences from "@/components/notifications/UserNotificationPreferences";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
@@ -86,6 +87,9 @@ export default function UserSettings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Google Calendar */}
+      <GoogleCalendarUserCard />
 
       {/* Notification Preferences */}
       <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden">
