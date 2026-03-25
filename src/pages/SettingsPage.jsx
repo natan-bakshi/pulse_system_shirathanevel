@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell } from "lucide-react";
+import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,7 +31,8 @@ const settingKeys = [
     'quote_html_mobile_margin_top',
     'quote_html_mobile_margin_bottom',
     'quote_html_mobile_margin_left',
-    'quote_html_mobile_margin_right'
+    'quote_html_mobile_margin_right',
+    'google_calendar_sync_enabled'
     ];
 
 export default function SettingsPage() {
@@ -56,7 +57,8 @@ export default function SettingsPage() {
         quote_html_mobile_margin_top: "8",
         quote_html_mobile_margin_bottom: "8",
         quote_html_mobile_margin_left: "6",
-        quote_html_mobile_margin_right: "6"
+        quote_html_mobile_margin_right: "6",
+        google_calendar_sync_enabled: "false"
         });
     const queryClient = useQueryClient();
     const location = useLocation();
@@ -388,6 +390,32 @@ export default function SettingsPage() {
                                     checked={settings.show_events_board_tab === "true"}
                                     onCheckedChange={(checked) => handleSettingChange('show_events_board_tab', checked ? "true" : "false")}
                                 />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" />סנכרון Google Calendar</CardTitle></CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between pb-4 border-b">
+                                <div>
+                                    <Label htmlFor="google_calendar_sync_enabled">הפעל סנכרון אוטומטי ליומן Google</Label>
+                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, שינויים באירועים יסונכרנו אוטומטית ליומן Google של המנהלים והספקים המחוברים</p>
+                                </div>
+                                <Switch 
+                                    id="google_calendar_sync_enabled"
+                                    checked={settings.google_calendar_sync_enabled === "true"}
+                                    onCheckedChange={(checked) => handleSettingChange('google_calendar_sync_enabled', checked ? "true" : "false")}
+                                />
+                            </div>
+                            <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-2">
+                                <p className="font-medium">איך זה עובד?</p>
+                                <ul className="list-disc mr-5 space-y-1 text-xs">
+                                    <li>כל משתמש (מנהל/ספק) צריך לחבר את יומן Google שלו דרך דף הגדרות המשתמש</li>
+                                    <li>כאשר אירוע נוצר/מתעדכן/נמחק, הוא יסונכרן אוטומטית ליומן המנהל</li>
+                                    <li>כאשר ספק משובץ לשירות ומאושר, האירוע יתווסף ליומן שלו</li>
+                                    <li>ביטול שיבוץ או שינוי סטטוס ימחק את האירוע מיומן הספק</li>
+                                </ul>
                             </div>
                         </CardContent>
                     </Card>

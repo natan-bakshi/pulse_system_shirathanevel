@@ -121,7 +121,8 @@ export default function SupplierManagement() {
     services_provided: "",
     whatsapp_group_url: "",
     whatsapp_enabled: true,
-    preferred_channel: "phone"
+    preferred_channel: "phone",
+    google_calendar_id: ""
   });
 
   // Debouncing effect for search
@@ -161,7 +162,8 @@ export default function SupplierManagement() {
       services_provided: "",
       whatsapp_group_url: "",
       whatsapp_enabled: true,
-      preferred_channel: "phone"
+      preferred_channel: "phone",
+      google_calendar_id: ""
     });
     setIsDialogOpen(true);
   }, []);
@@ -176,7 +178,8 @@ export default function SupplierManagement() {
       services_provided: (supplier.services_provided || []).join(', '),
       whatsapp_group_url: supplier.whatsapp_group_url || "",
       whatsapp_enabled: supplier.whatsapp_enabled ?? true,
-      preferred_channel: supplier.preferred_channel || "phone"
+      preferred_channel: supplier.preferred_channel || "phone",
+      google_calendar_id: supplier.google_calendar_id || ""
     });
     setIsDialogOpen(true);
   }, []);
@@ -202,7 +205,8 @@ export default function SupplierManagement() {
         services_provided: formData.services_provided.split(',').map(s => s.trim()).filter(Boolean),
         whatsapp_group_url: formData.whatsapp_group_url,
         whatsapp_enabled: formData.whatsapp_enabled,
-        preferred_channel: formData.preferred_channel
+        preferred_channel: formData.preferred_channel,
+        google_calendar_id: formData.google_calendar_id || null
       };
       
       if (editingSupplier) {
@@ -409,6 +413,24 @@ export default function SupplierManagement() {
             </div>
 
             <div className="mt-4"><Label htmlFor="s_services">שירותים (מופרדים בפסיק)</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
+
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Google Calendar</h3>
+              </div>
+              <div>
+                <Label htmlFor="s_gcal_id">מזהה יומן Google (Calendar ID)</Label>
+                <Input 
+                  id="s_gcal_id" 
+                  value={formData.google_calendar_id || ''} 
+                  onChange={e => setFormData({...formData, google_calendar_id: e.target.value})} 
+                  placeholder="example@gmail.com או Calendar ID"
+                  className="dir-ltr text-left"
+                />
+                <p className="text-xs text-gray-500 mt-1">הזן את כתובת ה-Gmail של הספק או Calendar ID ייעודי. האירועים יסונכרנו ליומן זה כשהספק יחבר את חשבון Google שלו.</p>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>ביטול</Button>

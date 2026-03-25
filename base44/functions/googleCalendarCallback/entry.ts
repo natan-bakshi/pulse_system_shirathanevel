@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
     try {
@@ -115,7 +115,8 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.User.update(userId, {
             google_calendar_access_token: tokens.access_token,
             google_calendar_refresh_token: tokens.refresh_token,
-            google_calendar_token_expiry: new Date(Date.now() + (tokens.expires_in * 1000)).toISOString()
+            google_calendar_token_expiry: new Date(Date.now() + (tokens.expires_in * 1000)).toISOString(),
+            google_calendar_connected: true
         });
 
         return new Response(`
