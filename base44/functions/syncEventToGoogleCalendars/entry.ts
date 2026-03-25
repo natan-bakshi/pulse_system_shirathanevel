@@ -257,13 +257,24 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing eventId or eventServiceId' }, { status: 400 });
     }
 
-    // Check global setting
+    // Check global settings
     const allSettings = await base44.asServiceRole.entities.AppSettings.list();
     const settingsMap = allSettings.reduce((acc, s) => { acc[s.setting_key] = s.setting_value; return acc; }, {});
 
-    if (settingsMap.google_calendar_sync_enabled !== 'true') {
-      return Response.json({ skipped: true, message: 'Google Calendar sync is disabled' });
+    const adminSyncEnabled = settingsMap.google_calendar_admin_sync_enabled === 'true';
+    const supplierSyncEnabled = settingsMap.google_calendar_supplier_sync_enabled === 'true';
+    // Backward compat: if old single toggle is on but new ones aren't set, treat both as enabled
+    const legacyEnabled = settingsMap.google_calendar_sync_enabled === 'true';
+    const isAdminSyncOn = adminSyncEnabled || (legacyEnabled && settingsMap.google_calendar_admin_sync_enabled === undefined);
+    const isSupplierSyncOn = supplierSyncEnabled || (legacyEnabled && settingsMap.google_calendar_supplier_sync_enabled === undefined);
+
+    if (!isAdminSyncOn && !isSupplierSyncOn) {
+      return Response.json({ skipped: true, message: 'Google Calendar sync is disabled for both admins and suppliers' });
     }
+
+    // Admin emails whitelist (comma-separated in settings)
+    const adminEmailsRaw = settingsMap.google_calendar_admin_emails || '';
+    const adminEmailsWhitelist = adminEmailsRaw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
     const companyName = settingsMap.company_name || '';
 
@@ -306,15 +317,21 @@ Deno.serve(async (req) => {
     const allSuppliers = await base44.asServiceRole.entities.Supplier.list();
     const suppliersMap = allSuppliers.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
 
-    // Load admin user(s) with Google Calendar connected
+    // Load users
     const allUsers = await base44.asServiceRole.entities.User.list();
-    const adminUsers = allUsers.filter(u => u.user_type === 'admin' && u.google_calendar_connected && u.google_calendar_refresh_token);
+    // Admin users: connected + in whitelist (if whitelist not empty)
+    const adminUsers = isAdminSyncOn 
+      ? allUsers.filter(u => u.user_type === 'admin' && u.google_calendar_connected && u.google_calendar_refresh_token
+          && (adminEmailsWhitelist.length === 0 || adminEmailsWhitelist.includes((u.email || '').toLowerCase())))
+      : [];
 
     // Build map of supplier email -> User record (for token access)
     const supplierUserMap = {};
-    for (const u of allUsers) {
-      if (u.user_type === 'supplier' && u.google_calendar_connected && u.google_calendar_refresh_token) {
-        supplierUserMap[u.email] = u;
+    if (isSupplierSyncOn) {
+      for (const u of allUsers) {
+        if (u.user_type === 'supplier' && u.google_calendar_connected && u.google_calendar_refresh_token) {
+          supplierUserMap[u.email] = u;
+        }
       }
     }
 
