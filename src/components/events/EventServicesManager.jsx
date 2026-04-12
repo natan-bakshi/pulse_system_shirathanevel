@@ -1093,7 +1093,7 @@ export default function EventServicesManager({
           if (!Array.isArray(units) || units.length === 0) {
                units = [{ pickupPoints: [{ time: service.standingtime, location: service.pickuppoint, contact: service.onsitecontactdetails }] }];
           }
-          const dateStr = service.eventdate ? format(new Date(service.eventdate), 'dd/MM/yyyy') : '';
+          const dateStr = service.eventdate ? new Date(service.eventdate).toLocaleDateString('he-IL') : '';
           let fullText = "";
           units.forEach((unit, uIdx) => {
               if (fullText) fullText += "\n";

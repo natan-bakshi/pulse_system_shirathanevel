@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar, Plus, Trash2, Mail } from "lucide-react";
+import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,80 +32,10 @@ const settingKeys = [
     'quote_html_mobile_margin_bottom',
     'quote_html_mobile_margin_left',
     'quote_html_mobile_margin_right',
-    'google_calendar_sync_enabled',
     'google_calendar_admin_sync_enabled',
     'google_calendar_supplier_sync_enabled',
-    'google_calendar_admin_emails'
+    'admin_google_calendar_id'
     ];
-
-function AdminCalendarEmails({ value, onChange }) {
-    const emails = value ? value.split(',').map(e => e.trim()).filter(Boolean) : [];
-    const [newEmail, setNewEmail] = React.useState('');
-
-    const addEmail = () => {
-        const email = newEmail.trim().toLowerCase();
-        if (!email) return;
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            alert('כתובת מייל לא תקינה');
-            return;
-        }
-        if (emails.includes(email)) {
-            alert('כתובת המייל כבר קיימת ברשימה');
-            return;
-        }
-        onChange([...emails, email].join(','));
-        setNewEmail('');
-    };
-
-    const removeEmail = (emailToRemove) => {
-        onChange(emails.filter(e => e !== emailToRemove).join(','));
-    };
-
-    return (
-        <div className="space-y-3 pb-4 border-b">
-            <div>
-                <Label className="flex items-center gap-1.5">
-                    <Mail className="h-4 w-4" />
-                    כתובות מייל של מנהלים לסנכרון
-                </Label>
-                <p className="text-xs text-gray-500 mt-1">הוסף את כתובות ה-Gmail של המנהלים שאליהם יסונכרנו האירועים. כל מנהל צריך גם לחבר את יומן Google דרך דף הגדרות המשתמש.</p>
-            </div>
-            
-            <div className="flex gap-2">
-                <Input 
-                    value={newEmail} 
-                    onChange={e => setNewEmail(e.target.value)} 
-                    placeholder="example@gmail.com"
-                    className="dir-ltr text-left flex-1"
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEmail(); } }}
-                />
-                <Button type="button" variant="outline" size="sm" onClick={addEmail}>
-                    <Plus className="h-4 w-4 ml-1" />
-                    הוסף
-                </Button>
-            </div>
-
-            {emails.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                    {emails.map(email => (
-                        <Badge key={email} variant="secondary" className="flex items-center gap-1 py-1.5 px-3 text-sm">
-                            <span className="dir-ltr">{email}</span>
-                            <button 
-                                type="button" 
-                                onClick={() => removeEmail(email)} 
-                                className="mr-1 text-gray-500 hover:text-red-600 transition-colors"
-                            >
-                                <Trash2 className="h-3 w-3" />
-                            </button>
-                        </Badge>
-                    ))}
-                </div>
-            ) : (
-                <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">לא נוספו כתובות מייל. אם הרשימה ריקה, כל מנהל שחיבר יומן Google יקבל סנכרון.</p>
-            )}
-        </div>
-    );
-}
 
 export default function SettingsPage() {
     const [isCreator, setIsCreator] = useState(false);
@@ -130,10 +60,9 @@ export default function SettingsPage() {
         quote_html_mobile_margin_bottom: "8",
         quote_html_mobile_margin_left: "6",
         quote_html_mobile_margin_right: "6",
-        google_calendar_sync_enabled: "false",
         google_calendar_admin_sync_enabled: "false",
         google_calendar_supplier_sync_enabled: "false",
-        google_calendar_admin_emails: ""
+        admin_google_calendar_id: "primary"
         });
     const queryClient = useQueryClient();
     const location = useLocation();
@@ -472,11 +401,33 @@ export default function SettingsPage() {
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
                         <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" />סנכרון Google Calendar</CardTitle></CardHeader>
                         <CardContent className="space-y-6">
+                            {/* סטטוס חיבור */}
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+                                <div className="h-3 w-3 bg-green-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-green-800 font-medium text-sm">Google Calendar מחובר (אינטגרציה מובנית)</p>
+                                    <p className="text-green-600 text-xs">החיבור מנוהל דרך הפלטפורמה - אין צורך בהגדרה נוספת</p>
+                                </div>
+                            </div>
+
+                            {/* מזהה יומן המנהל */}
+                            <div className="pb-4 border-b">
+                                <Label htmlFor="admin_google_calendar_id">מזהה יומן המנהל הראשי</Label>
+                                <Input 
+                                    id="admin_google_calendar_id" 
+                                    value={settings.admin_google_calendar_id} 
+                                    onChange={e => handleSettingChange('admin_google_calendar_id', e.target.value)} 
+                                    placeholder="primary"
+                                    className="dir-ltr text-left mt-2"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">ברירת מחדל: primary (היומן הראשי). ניתן לשנות ל-Calendar ID ספציפי מהגדרות יומן Google.</p>
+                            </div>
+
                             {/* Toggle מנהלים */}
                             <div className="flex items-center justify-between pb-4 border-b">
                                 <div>
-                                    <Label htmlFor="google_calendar_admin_sync_enabled">סנכרון למנהלים</Label>
-                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, אירועים יסונכרנו אוטומטית ליומני Google של המנהלים</p>
+                                    <Label htmlFor="google_calendar_admin_sync_enabled">סנכרון למנהל</Label>
+                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, אירועים סגורים/תפורים/שעברו יסונכרנו ליומן Google של המנהל</p>
                                 </div>
                                 <Switch 
                                     id="google_calendar_admin_sync_enabled"
@@ -489,7 +440,7 @@ export default function SettingsPage() {
                             <div className="flex items-center justify-between pb-4 border-b">
                                 <div>
                                     <Label htmlFor="google_calendar_supplier_sync_enabled">סנכרון לספקים</Label>
-                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, אירועים יסונכרנו ליומני Google של ספקים מאושרים</p>
+                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, ספקים מאושרים יקבלו אירועים ביומן Google שלהם (נדרש Calendar ID בכרטיס הספק)</p>
                                 </div>
                                 <Switch 
                                     id="google_calendar_supplier_sync_enabled"
@@ -498,21 +449,13 @@ export default function SettingsPage() {
                                 />
                             </div>
 
-                            {/* רשימת מיילים של מנהלים */}
-                            {settings.google_calendar_admin_sync_enabled === "true" && (
-                                <AdminCalendarEmails 
-                                    value={settings.google_calendar_admin_emails} 
-                                    onChange={(val) => handleSettingChange('google_calendar_admin_emails', val)} 
-                                />
-                            )}
-
                             <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-2">
                                 <p className="font-medium">איך זה עובד?</p>
                                 <ul className="list-disc mr-5 space-y-1 text-xs">
-                                    <li>מנהלים: הוסף כתובות Gmail למעלה. כל מנהל צריך לחבר את יומן Google שלו דרך דף הגדרות המשתמש</li>
-                                    <li>ספקים: כל ספק צריך לחבר את יומן Google שלו דרך דף הגדרות המשתמש</li>
-                                    <li>אירועים יסונכרנו אוטומטית בעת יצירה/עדכון/מחיקה</li>
-                                    <li>שיבוץ ספק מאושר יוסיף אירוע ליומן שלו, ביטול ימחק אותו</li>
+                                    <li><strong>מנהל:</strong> אירועים בסטטוס סגור/תפור/עבר יסונכרנו אוטומטית ליומן Google שהוגדר למעלה</li>
+                                    <li><strong>ספקים:</strong> כל ספק שיש לו Calendar ID בכרטיס הספק יקבל אירועים שהוא משובץ אליהם (רק כשהשיבוץ מאושר)</li>
+                                    <li>שינוי סטטוס לסטטוס שלא מסונכרן (כמו הצעה/ביטול) ימחק את האירוע מהיומן</li>
+                                    <li>כל סנכרון צורך קרדיט אינטגרציה אחד בלבד - גם אם מסנכרן למנהל ולכל הספקים ביחד</li>
                                 </ul>
                             </div>
                         </CardContent>

@@ -31,7 +31,7 @@ import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import UserOnboardingTour from "@/components/onboarding/UserOnboardingTour";
-// import GoogleCalendarConnect from "@/components/calendar/GoogleCalendarConnect";
+
 
 
 // System creator email - only this user can access settings
@@ -85,7 +85,7 @@ export default function Layout({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showCalendarConnect, setShowCalendarConnect] = useState(false);
+
   const [themeMode, setThemeMode] = useState(() => {
     try { return localStorage.getItem('pulse_theme_mode') || 'auto'; } catch { return 'auto'; }
   });
@@ -1052,12 +1052,7 @@ export default function Layout({ children }) {
                   <PushNotificationPrompt user={user} />
                   <PWAInstallPrompt />
                   <UserOnboardingTour user={user} />
-          {/* {showCalendarConnect && (
-              <GoogleCalendarConnect 
-                user={user} 
-                onClose={() => setShowCalendarConnect(false)} 
-              />
-             )} */}
+
         </>
         }
       <SonnerToaster 

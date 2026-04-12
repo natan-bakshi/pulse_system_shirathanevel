@@ -1,4 +1,14 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+
+/**
+ * syncEventToGoogleCalendars - Admin calendar sync via Shared Connector
+ * 
+ * Uses the built-in Google Calendar shared connector (1 integration credit per call).
+ * Only syncs events with status: confirmed, in_progress, completed.
+ * If status changes to a non-synced status, deletes the event from the calendar.
+ * 
+ * Triggered by entity automations on Event and EventService changes.
+ */
 
 const EVENT_TYPE_HEBREW = {
   bar_mitzvah: 'בר מצווה',
@@ -7,67 +17,143 @@ const EVENT_TYPE_HEBREW = {
   other: 'אירוע'
 };
 
+// Statuses that should be synced to Google Calendar
+const SYNCED_STATUSES = ['confirmed', 'in_progress', 'completed'];
+
 /**
- * Refresh a user's Google Calendar access token using their refresh_token.
- * Returns the new access_token or null on failure.
- * Also updates the User entity with the new token.
+ * Build schedule text from event schedule array.
  */
-async function refreshUserToken(base44, userId, refreshToken) {
-  const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
-  const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: 'refresh_token'
-    })
-  });
-
-  if (!response.ok) {
-    console.error(`Token refresh failed for user ${userId}:`, await response.text());
-    return null;
-  }
-
-  const tokens = await response.json();
-
-  await base44.asServiceRole.entities.User.update(userId, {
-    google_calendar_access_token: tokens.access_token,
-    google_calendar_token_expiry: new Date(Date.now() + (tokens.expires_in * 1000)).toISOString()
-  });
-
-  return tokens.access_token;
+function buildScheduleText(schedule) {
+  if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return '';
+  return schedule.map(item => {
+    let line = '';
+    if (item.time) line += item.time;
+    if (item.activity) line += (line ? ' - ' : '') + item.activity;
+    if (item.notes) line += (line ? ' (' : '(') + item.notes + ')';
+    return line;
+  }).filter(Boolean).join('\n');
 }
 
 /**
- * Get a valid access token for a user (refresh if expired).
+ * Calculate start and end times for a calendar event.
  */
-async function getValidAccessToken(base44, userRecord) {
-  if (!userRecord.google_calendar_refresh_token) return null;
-
-  const now = new Date();
-  const expiry = userRecord.google_calendar_token_expiry ? new Date(userRecord.google_calendar_token_expiry) : null;
-
-  // If token is still valid (with 2 min buffer), use it
-  if (userRecord.google_calendar_access_token && expiry && expiry > new Date(now.getTime() + 120000)) {
-    return userRecord.google_calendar_access_token;
+function calculateTimes(eventDate, eventTime, offsetMinutes, durationHours) {
+  if (!eventTime) {
+    const nextDay = new Date(eventDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    return {
+      startDateTime: { date: eventDate },
+      endDateTime: { date: nextDay.toISOString().split('T')[0] }
+    };
   }
 
-  // Otherwise refresh
-  return await refreshUserToken(base44, userRecord.id, userRecord.google_calendar_refresh_token);
+  const [hours, minutes] = eventTime.split(':').map(Number);
+  const startDate = new Date(eventDate + 'T00:00:00+03:00');
+  startDate.setHours(hours, minutes + offsetMinutes, 0, 0);
+
+  const endDate = new Date(startDate);
+  endDate.setHours(endDate.getHours() + durationHours);
+
+  return {
+    startDateTime: { dateTime: startDate.toISOString(), timeZone: 'Asia/Jerusalem' },
+    endDateTime: { dateTime: endDate.toISOString(), timeZone: 'Asia/Jerusalem' }
+  };
 }
 
 /**
- * Create or update a Google Calendar event.
+ * Build calendar event body for ADMIN.
+ * כותרת: סוג האירוע, של, שם החתן, שם המשפחה
+ * גוף: אירוע, סוג, של, שם חתן, משפחה, בקונספט (אם יש), מספר משתתפים, לוז, תאריך, שעה
+ * משך: 5 שעות
+ */
+function buildAdminEventBody(event) {
+  const eventType = EVENT_TYPE_HEBREW[event.event_type] || 'אירוע';
+  const childName = event.child_name || '';
+  const familyName = event.family_name || '';
+
+  // כותרת
+  let summary = childName 
+    ? `${eventType}, של, ${childName}, ${familyName}`
+    : `${eventType}, של, משפחת ${familyName}`;
+
+  // גוף
+  let description = childName
+    ? `אירוע, ${eventType}, של, ${childName}, משפחת ${familyName}`
+    : `אירוע, ${eventType}, של, משפחת ${familyName}`;
+  
+  if (event.concept) {
+    description += `, בקונספט, ${event.concept}`;
+  }
+  description += `.`;
+  description += `\nמספר משתתפים: ${event.guest_count || 'לא צוין'}`;
+
+  const scheduleText = buildScheduleText(event.schedule);
+  if (scheduleText) {
+    description += `\n\nלוז האירוע:\n${scheduleText}`;
+  }
+
+  const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, 0, 5);
+
+  return {
+    summary,
+    description,
+    location: event.location || '',
+    start: startDateTime,
+    end: endDateTime
+  };
+}
+
+/**
+ * Build calendar event body for SUPPLIER.
+ * כותרת: סוג האירוע, עם, שם החברה, שם השירות, הערה עבורך (הערה) - רק אם יש הערה
+ * גוף: אירוע, סוג, של, שם חתן, משפחה, בקונספט (אם יש), לוז
+ * שעה: 15 דקות לפני, משך: 3 שעות
+ */
+function buildSupplierEventBody(event, serviceName, supplierNote, companyName) {
+  const eventType = EVENT_TYPE_HEBREW[event.event_type] || 'אירוע';
+  const childName = event.child_name || '';
+  const familyName = event.family_name || '';
+
+  // כותרת
+  let summary = `${eventType}, עם, ${companyName || ''}, ${serviceName}`;
+  if (supplierNote) {
+    summary += `, הערה עבורך (${supplierNote})`;
+  }
+
+  // גוף
+  let description = childName
+    ? `אירוע, ${eventType}, של, ${childName}, משפחת ${familyName}`
+    : `אירוע, ${eventType}, של, משפחת ${familyName}`;
+  
+  if (event.concept) {
+    description += `, בקונספט, ${event.concept}`;
+  }
+  description += `.`;
+
+  const scheduleText = buildScheduleText(event.schedule);
+  if (scheduleText) {
+    description += `\n\nלוז האירוע:\n${scheduleText}`;
+  }
+
+  // שעת התחלה: 15 דקות לפני שעת האירוע, משך: 3 שעות
+  const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, -15, 3);
+
+  return {
+    summary,
+    description,
+    location: event.location || '',
+    start: startDateTime,
+    end: endDateTime
+  };
+}
+
+/**
+ * Create or update a Google Calendar event using the shared connector token.
  */
 async function upsertCalendarEvent(accessToken, calendarId, existingEventId, eventBody) {
   const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
 
   if (existingEventId) {
-    // Try to update
     const res = await fetch(`${baseUrl}/${existingEventId}`, {
       method: 'PATCH',
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -77,14 +163,13 @@ async function upsertCalendarEvent(accessToken, calendarId, existingEventId, eve
       const data = await res.json();
       return { success: true, eventId: data.id };
     }
-    // If 404 (deleted externally), fall through to create
     if (res.status !== 404) {
       console.error(`Calendar PATCH failed (${res.status}):`, await res.text());
       return { success: false, error: `PATCH failed: ${res.status}` };
     }
+    // 404 = deleted externally, fall through to create
   }
 
-  // Create new
   const res = await fetch(baseUrl, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -120,165 +205,41 @@ async function deleteCalendarEvent(accessToken, calendarId, existingEventId) {
   return { success: false, error: `DELETE failed: ${res.status}` };
 }
 
-/**
- * Build schedule text from event schedule array.
- */
-function buildScheduleText(schedule) {
-  if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return '';
-  return schedule.map(item => {
-    let line = '';
-    if (item.time) line += item.time;
-    if (item.activity) line += (line ? ' - ' : '') + item.activity;
-    if (item.notes) line += (line ? ' (' : '(') + item.notes + ')';
-    return line;
-  }).filter(Boolean).join('\n');
-}
-
-/**
- * Build calendar event body for ADMIN.
- */
-function buildAdminEventBody(event) {
-  const eventType = EVENT_TYPE_HEBREW[event.event_type] || 'אירוע';
-  const childName = event.child_name || '';
-  const familyName = event.family_name || '';
-
-  // כותרת: סוג האירוע, של, שם החתן, שם המשפחה
-  const summary = `${eventType}, של, ${childName}${childName ? ', ' : ''}${familyName}`.replace(/, ,/g, ',').replace(/,\s*$/,'');
-
-  // גוף
-  let description = `אירוע, ${eventType}, של, ${childName}${childName ? ', ' : ''}משפחת ${familyName}`;
-  if (event.concept) {
-    description += `, בקונספט, ${event.concept}`;
-  }
-  description += `.\nמספר משתתפים: ${event.guest_count || 'לא צוין'}`;
-
-  const scheduleText = buildScheduleText(event.schedule);
-  if (scheduleText) {
-    description += `\n\nלוז האירוע:\n${scheduleText}`;
-  }
-
-  // חישוב שעות
-  const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, 0, 5);
-
-  return {
-    summary,
-    description,
-    location: event.location || '',
-    start: startDateTime,
-    end: endDateTime
-  };
-}
-
-/**
- * Build calendar event body for SUPPLIER.
- */
-function buildSupplierEventBody(event, serviceName, supplierNote, companyName) {
-  const eventType = EVENT_TYPE_HEBREW[event.event_type] || 'אירוע';
-  const childName = event.child_name || '';
-  const familyName = event.family_name || '';
-
-  // כותרת: סוג האירוע, עם, שם החברה, שם השירות, הערה עבורך (הערה)
-  let summary = `${eventType}, עם, ${companyName || ''}, ${serviceName}`;
-  if (supplierNote) {
-    summary += `, הערה עבורך (${supplierNote})`;
-  }
-
-  // גוף
-  let description = `אירוע, ${eventType}, של, ${childName}${childName ? ', ' : ''}משפחת ${familyName}`;
-  if (event.concept) {
-    description += `, בקונספט, ${event.concept}`;
-  }
-
-  const scheduleText = buildScheduleText(event.schedule);
-  if (scheduleText) {
-    description += `\n\nלוז האירוע:\n${scheduleText}`;
-  }
-
-  // שעת התחלה: 15 דקות לפני שעת האירוע, משך: 3 שעות
-  const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, -15, 3);
-
-  return {
-    summary,
-    description,
-    location: event.location || '',
-    start: startDateTime,
-    end: endDateTime
-  };
-}
-
-/**
- * Calculate start and end times for a calendar event.
- * @param {string} eventDate - ISO date string (YYYY-MM-DD)
- * @param {string} eventTime - Time string (HH:MM)
- * @param {number} offsetMinutes - Minutes to offset start time (negative = before)
- * @param {number} durationHours - Duration in hours
- */
-function calculateTimes(eventDate, eventTime, offsetMinutes, durationHours) {
-  if (!eventTime) {
-    // All-day event
-    const nextDay = new Date(eventDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    return {
-      startDateTime: { date: eventDate },
-      endDateTime: { date: nextDay.toISOString().split('T')[0] }
-    };
-  }
-
-  const [hours, minutes] = eventTime.split(':').map(Number);
-  const startDate = new Date(eventDate + 'T00:00:00');
-  startDate.setHours(hours, minutes + offsetMinutes, 0, 0);
-
-  const endDate = new Date(startDate);
-  endDate.setHours(endDate.getHours() + durationHours);
-
-  return {
-    startDateTime: { dateTime: startDate.toISOString(), timeZone: 'Asia/Jerusalem' },
-    endDateTime: { dateTime: endDate.toISOString(), timeZone: 'Asia/Jerusalem' }
-  };
-}
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-    }
 
     const body = await req.json();
     // Support both direct call and automation trigger
     const eventId = body.eventId || body.data?.id || body.event?.entity_id;
     const triggerAction = body.action || body.event?.type; // 'create', 'update', 'delete'
-    const eventServiceId = body.eventServiceId; // for targeted supplier sync
+    const eventServiceId = body.eventServiceId;
     const entityName = body.event?.entity_name; // 'Event' or 'EventService'
 
     if (!eventId && !eventServiceId) {
       return Response.json({ error: 'Missing eventId or eventServiceId' }, { status: 400 });
     }
 
-    // Check global settings
+    // ====================================================
+    // LOAD SETTINGS (no credits used)
+    // ====================================================
     const allSettings = await base44.asServiceRole.entities.AppSettings.list();
     const settingsMap = allSettings.reduce((acc, s) => { acc[s.setting_key] = s.setting_value; return acc; }, {});
 
     const adminSyncEnabled = settingsMap.google_calendar_admin_sync_enabled === 'true';
     const supplierSyncEnabled = settingsMap.google_calendar_supplier_sync_enabled === 'true';
-    // Backward compat: if old single toggle is on but new ones aren't set, treat both as enabled
-    const legacyEnabled = settingsMap.google_calendar_sync_enabled === 'true';
-    const isAdminSyncOn = adminSyncEnabled || (legacyEnabled && settingsMap.google_calendar_admin_sync_enabled === undefined);
-    const isSupplierSyncOn = supplierSyncEnabled || (legacyEnabled && settingsMap.google_calendar_supplier_sync_enabled === undefined);
 
-    if (!isAdminSyncOn && !isSupplierSyncOn) {
-      return Response.json({ skipped: true, message: 'Google Calendar sync is disabled for both admins and suppliers' });
+    if (!adminSyncEnabled && !supplierSyncEnabled) {
+      return Response.json({ skipped: true, message: 'Google Calendar sync is disabled' });
     }
 
-    // Admin emails whitelist (comma-separated in settings)
-    const adminEmailsRaw = settingsMap.google_calendar_admin_emails || '';
-    const adminEmailsWhitelist = adminEmailsRaw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-
     const companyName = settingsMap.company_name || '';
+    const adminCalendarId = settingsMap.admin_google_calendar_id || 'primary';
 
-    // Determine the actual eventId if triggered from EventService
+    // ====================================================
+    // DETERMINE EVENT ID
+    // ====================================================
     let actualEventId = eventId;
     let targetEventService = null;
 
@@ -289,7 +250,6 @@ Deno.serve(async (req) => {
           targetEventService = await base44.asServiceRole.entities.EventService.get(esId);
           actualEventId = targetEventService?.event_id || eventId;
         } catch (e) {
-          // EventService may have been deleted
           console.log(`EventService ${esId} not found (may have been deleted)`);
         }
       }
@@ -299,142 +259,112 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Could not determine eventId' }, { status: 400 });
     }
 
-    // Load event
+    // ====================================================
+    // LOAD EVENT
+    // ====================================================
     let event;
     try {
       event = await base44.asServiceRole.entities.Event.get(actualEventId);
     } catch (e) {
-      // Event may have been deleted
       console.log(`Event ${actualEventId} not found - handling as delete`);
     }
 
-    // Load all event services
-    const allEventServices = event ? await base44.asServiceRole.entities.EventService.filter({ event_id: actualEventId }) : [];
-    const allServices = await base44.asServiceRole.entities.Service.list();
-    const servicesMap = allServices.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
+    const isDeleteAction = triggerAction === 'delete' || !event;
+    const isStatusSynced = event && SYNCED_STATUSES.includes(event.status);
 
-    // Load all suppliers
-    const allSuppliers = await base44.asServiceRole.entities.Supplier.list();
-    const suppliersMap = allSuppliers.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
+    // If event exists but status is NOT in synced list, treat as delete (remove from calendar)
+    const shouldDelete = isDeleteAction || !isStatusSynced;
 
-    // Load users
-    const allUsers = await base44.asServiceRole.entities.User.list();
-    // Admin users: connected + in whitelist (if whitelist not empty)
-    const adminUsers = isAdminSyncOn 
-      ? allUsers.filter(u => u.user_type === 'admin' && u.google_calendar_connected && u.google_calendar_refresh_token
-          && (adminEmailsWhitelist.length === 0 || adminEmailsWhitelist.includes((u.email || '').toLowerCase())))
-      : [];
-
-    // Build map of supplier email -> User record (for token access)
-    const supplierUserMap = {};
-    if (isSupplierSyncOn) {
-      for (const u of allUsers) {
-        if (u.user_type === 'supplier' && u.google_calendar_connected && u.google_calendar_refresh_token) {
-          supplierUserMap[u.email] = u;
-        }
-      }
+    // ====================================================
+    // GET SHARED CONNECTOR TOKEN (1 integration credit)
+    // This single token is used for ALL calendar operations
+    // ====================================================
+    let accessToken;
+    try {
+      const connection = await base44.asServiceRole.connectors.getConnection("googlecalendar");
+      accessToken = connection.accessToken;
+    } catch (e) {
+      console.error('Failed to get Google Calendar connector token:', e);
+      return Response.json({ error: 'Google Calendar connector not authorized', details: e.message }, { status: 500 });
     }
 
     const results = [];
-    const isDeleteAction = triggerAction === 'delete' || !event;
 
-    // ============================================
-    // ADMIN SYNC
-    // ============================================
-    for (const adminUser of adminUsers) {
-      try {
-        const accessToken = await getValidAccessToken(base44, adminUser);
-        if (!accessToken) {
-          results.push({ target: 'admin', userId: adminUser.id, success: false, error: 'No valid token' });
-          continue;
-        }
+    // ====================================================
+    // ADMIN SYNC (uses shared connector token + admin calendar ID from settings)
+    // ====================================================
+    if (adminSyncEnabled) {
+      const existingEventId = event?.google_calendar_event_id;
 
-        const calendarId = adminUser.google_calendar_id || 'primary';
-        const existingEventId = event?.google_calendar_event_id;
-
-        if (isDeleteAction) {
-          const delResult = await deleteCalendarEvent(accessToken, calendarId, existingEventId);
-          results.push({ target: 'admin', userId: adminUser.id, ...delResult, action: 'delete' });
+      if (shouldDelete) {
+        // Delete from admin calendar
+        if (existingEventId) {
+          const delResult = await deleteCalendarEvent(accessToken, adminCalendarId, existingEventId);
+          results.push({ target: 'admin', ...delResult, action: 'delete' });
           if (delResult.success && event) {
             await base44.asServiceRole.entities.Event.update(actualEventId, { google_calendar_event_id: null });
           }
         } else {
-          const eventBody = buildAdminEventBody(event);
-          const upsertResult = await upsertCalendarEvent(accessToken, calendarId, existingEventId, eventBody);
-          results.push({ target: 'admin', userId: adminUser.id, ...upsertResult, action: existingEventId ? 'update' : 'create' });
-
-          if (upsertResult.success && upsertResult.eventId !== existingEventId) {
-            await base44.asServiceRole.entities.Event.update(actualEventId, { google_calendar_event_id: upsertResult.eventId });
-          }
+          results.push({ target: 'admin', success: true, action: 'skip', reason: 'no existing calendar event' });
         }
-      } catch (err) {
-        console.error(`Admin sync error for user ${adminUser.id}:`, err);
-        results.push({ target: 'admin', userId: adminUser.id, success: false, error: err.message });
+      } else {
+        // Create or update in admin calendar
+        const eventBody = buildAdminEventBody(event);
+        const upsertResult = await upsertCalendarEvent(accessToken, adminCalendarId, existingEventId, eventBody);
+        results.push({ target: 'admin', ...upsertResult, action: existingEventId ? 'update' : 'create' });
+
+        if (upsertResult.success && upsertResult.eventId !== existingEventId) {
+          await base44.asServiceRole.entities.Event.update(actualEventId, { google_calendar_event_id: upsertResult.eventId });
+        }
       }
     }
 
-    // ============================================
-    // SUPPLIER SYNC
-    // ============================================
-    // Determine which event services to process
-    const eventServicesToProcess = targetEventService ? [targetEventService] : allEventServices;
+    // ====================================================
+    // SUPPLIER SYNC (also uses shared connector token - same credit!)
+    // Suppliers get events synced only when status is approved ('confirmed')
+    // ====================================================
+    if (supplierSyncEnabled && !isDeleteAction) {
+      // Load event services and related data
+      const allEventServices = event ? await base44.asServiceRole.entities.EventService.filter({ event_id: actualEventId }) : [];
+      const allServices = await base44.asServiceRole.entities.Service.list();
+      const servicesMap = allServices.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
+      const allSuppliers = await base44.asServiceRole.entities.Supplier.list();
+      const suppliersMap = allSuppliers.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
 
-    for (const es of eventServicesToProcess) {
-      let supplierIds = [];
-      try { supplierIds = JSON.parse(es.supplier_ids || '[]'); } catch (e) {}
+      const eventServicesToProcess = targetEventService ? [targetEventService] : allEventServices;
 
-      let supplierStatuses = {};
-      try { supplierStatuses = JSON.parse(es.supplier_statuses || '{}'); } catch (e) {}
+      for (const es of eventServicesToProcess) {
+        let supplierIds = [];
+        try { supplierIds = JSON.parse(es.supplier_ids || '[]'); } catch (e) {}
+        let supplierStatuses = {};
+        try { supplierStatuses = JSON.parse(es.supplier_statuses || '{}'); } catch (e) {}
+        let supplierCalendarIds = {};
+        try { supplierCalendarIds = JSON.parse(es.supplier_calendar_ids || '{}'); } catch (e) {}
+        let supplierNotes = {};
+        try { supplierNotes = JSON.parse(es.supplier_notes || '{}'); } catch (e) {}
 
-      let supplierCalendarIds = {};
-      try { supplierCalendarIds = JSON.parse(es.supplier_calendar_ids || '{}'); } catch (e) {}
+        let calendarIdsChanged = false;
+        const serviceName = servicesMap[es.service_id]?.service_name || 'שירות';
 
-      let supplierNotes = {};
-      try { supplierNotes = JSON.parse(es.supplier_notes || '{}'); } catch (e) {}
+        for (const suppId of supplierIds) {
+          const supplier = suppliersMap[suppId];
+          if (!supplier) continue;
 
-      let calendarIdsChanged = false;
-      const serviceName = servicesMap[es.service_id]?.service_name || 'שירות';
+          const status = supplierStatuses[suppId] || 'pending';
+          const isConfirmed = status === 'confirmed';
+          const existingCalEventId = supplierCalendarIds[suppId];
 
-      for (const suppId of supplierIds) {
-        const supplier = suppliersMap[suppId];
-        if (!supplier) continue;
-
-        const status = supplierStatuses[suppId] || 'pending';
-        const isConfirmed = status === 'confirmed';
-        const existingCalEventId = supplierCalendarIds[suppId];
-
-        // Find the User record for this supplier (match by email)
-        let supplierUser = null;
-        for (const email of (supplier.contact_emails || [])) {
-          if (supplierUserMap[email]) {
-            supplierUser = supplierUserMap[email];
-            break;
-          }
-        }
-
-        if (!supplierUser) {
-          // Supplier has no connected Google Calendar user - skip
-          if (existingCalEventId) {
-            // Can't delete without token, just clear the reference
-            delete supplierCalendarIds[suppId];
-            calendarIdsChanged = true;
-          }
-          continue;
-        }
-
-        try {
-          const accessToken = await getValidAccessToken(base44, supplierUser);
-          if (!accessToken) {
-            results.push({ target: 'supplier', supplierId: suppId, esId: es.id, success: false, error: 'No valid token' });
+          // Supplier calendar ID from supplier entity
+          const supplierCalendarId = supplier.google_calendar_id;
+          if (!supplierCalendarId) {
+            // Supplier has no calendar configured - skip
             continue;
           }
 
-          const calendarId = supplierUser.google_calendar_id || 'primary';
-
-          if (isDeleteAction || !isConfirmed) {
-            // Delete: event deleted, or supplier no longer confirmed
+          if (shouldDelete || !isConfirmed) {
+            // Delete: event not synced status, or supplier not confirmed
             if (existingCalEventId) {
-              const delResult = await deleteCalendarEvent(accessToken, calendarId, existingCalEventId);
+              const delResult = await deleteCalendarEvent(accessToken, supplierCalendarId, existingCalEventId);
               results.push({ target: 'supplier', supplierId: suppId, esId: es.id, ...delResult, action: 'delete' });
               if (delResult.success) {
                 delete supplierCalendarIds[suppId];
@@ -442,10 +372,10 @@ Deno.serve(async (req) => {
               }
             }
           } else {
-            // Create or update: supplier is confirmed
+            // Create or update: supplier is confirmed + event has synced status
             const note = supplierNotes[suppId] || '';
             const eventBody = buildSupplierEventBody(event, serviceName, note, companyName);
-            const upsertResult = await upsertCalendarEvent(accessToken, calendarId, existingCalEventId, eventBody);
+            const upsertResult = await upsertCalendarEvent(accessToken, supplierCalendarId, existingCalEventId, eventBody);
             results.push({ target: 'supplier', supplierId: suppId, esId: es.id, ...upsertResult, action: existingCalEventId ? 'update' : 'create' });
 
             if (upsertResult.success) {
@@ -453,48 +383,53 @@ Deno.serve(async (req) => {
               calendarIdsChanged = true;
             }
           }
-        } catch (err) {
-          console.error(`Supplier sync error for supplier ${suppId}:`, err);
-          results.push({ target: 'supplier', supplierId: suppId, esId: es.id, success: false, error: err.message });
+        }
+
+        // Clean up orphaned calendar entries (suppliers removed from service)
+        for (const oldSuppId of Object.keys(supplierCalendarIds)) {
+          if (!supplierIds.includes(oldSuppId) && supplierCalendarIds[oldSuppId]) {
+            const supplier = suppliersMap[oldSuppId];
+            if (supplier?.google_calendar_id) {
+              await deleteCalendarEvent(accessToken, supplier.google_calendar_id, supplierCalendarIds[oldSuppId]);
+            }
+            delete supplierCalendarIds[oldSuppId];
+            calendarIdsChanged = true;
+          }
+        }
+
+        if (calendarIdsChanged) {
+          await base44.asServiceRole.entities.EventService.update(es.id, {
+            supplier_calendar_ids: JSON.stringify(supplierCalendarIds)
+          });
         }
       }
+    } else if (supplierSyncEnabled && isDeleteAction) {
+      // Event deleted - clean up all supplier calendar entries
+      const allEventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: actualEventId }).catch(() => []);
+      const allSuppliers = await base44.asServiceRole.entities.Supplier.list();
+      const suppliersMap = allSuppliers.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
 
-      // Also handle suppliers that were removed (have calendar IDs but no longer in supplier_ids)
-      for (const oldSuppId of Object.keys(supplierCalendarIds)) {
-        if (!supplierIds.includes(oldSuppId) && supplierCalendarIds[oldSuppId]) {
-          const supplier = suppliersMap[oldSuppId];
-          let supplierUser = null;
-          if (supplier) {
-            for (const email of (supplier.contact_emails || [])) {
-              if (supplierUserMap[email]) {
-                supplierUser = supplierUserMap[email];
-                break;
-              }
+      for (const es of allEventServices) {
+        let supplierCalendarIds = {};
+        try { supplierCalendarIds = JSON.parse(es.supplier_calendar_ids || '{}'); } catch (e) {}
+
+        let changed = false;
+        for (const [suppId, calEventId] of Object.entries(supplierCalendarIds)) {
+          if (calEventId) {
+            const supplier = suppliersMap[suppId];
+            if (supplier?.google_calendar_id) {
+              await deleteCalendarEvent(accessToken, supplier.google_calendar_id, calEventId);
             }
+            delete supplierCalendarIds[suppId];
+            changed = true;
           }
-
-          if (supplierUser) {
-            try {
-              const accessToken = await getValidAccessToken(base44, supplierUser);
-              if (accessToken) {
-                const calendarId = supplierUser.google_calendar_id || 'primary';
-                await deleteCalendarEvent(accessToken, calendarId, supplierCalendarIds[oldSuppId]);
-              }
-            } catch (e) {
-              console.error(`Failed to delete orphaned calendar event for supplier ${oldSuppId}:`, e);
-            }
-          }
-
-          delete supplierCalendarIds[oldSuppId];
-          calendarIdsChanged = true;
         }
-      }
 
-      // Save updated calendar IDs
-      if (calendarIdsChanged) {
-        await base44.asServiceRole.entities.EventService.update(es.id, {
-          supplier_calendar_ids: JSON.stringify(supplierCalendarIds)
-        });
+        if (changed) {
+          await base44.asServiceRole.entities.EventService.update(es.id, {
+            supplier_calendar_ids: JSON.stringify(supplierCalendarIds)
+          }).catch(e => console.log('Could not update ES during delete cleanup:', e));
+        }
       }
     }
 
