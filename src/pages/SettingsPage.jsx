@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar } from "lucide-react";
+import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar, RefreshCw } from "lucide-react";
+import { syncAllEventsToCalendar } from "@/functions/syncAllEventsToCalendar";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,6 +42,8 @@ export default function SettingsPage() {
     const [isCreator, setIsCreator] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isSyncingAdmin, setIsSyncingAdmin] = useState(false);
+    const [isSyncingSupplier, setIsSyncingSupplier] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
     const [settings, setSettings] = useState({
         background_image_url: "",
@@ -447,6 +450,55 @@ export default function SettingsPage() {
                                     checked={settings.google_calendar_supplier_sync_enabled === "true"}
                                     onCheckedChange={(checked) => handleSettingChange('google_calendar_supplier_sync_enabled', checked ? "true" : "false")}
                                 />
+                            </div>
+
+                            {/* כפתורי סנכרון מיידי */}
+                            <div className="border-t pt-4 mt-2">
+                                <Label className="text-sm font-semibold">סנכרון מיידי</Label>
+                                <p className="text-xs text-gray-500 mb-3">לחץ לסנכרון מיידי של כל האירועים הרלוונטיים ליומן Google</p>
+                                <div className="flex flex-wrap gap-3">
+                                    <Button
+                                        variant="outline"
+                                        disabled={isSyncingAdmin || settings.google_calendar_admin_sync_enabled !== "true"}
+                                        onClick={async () => {
+                                            setIsSyncingAdmin(true);
+                                            try {
+                                                const res = await syncAllEventsToCalendar({ syncType: 'admin' });
+                                                alert(`סנכרון מנהל הושלם!\nסונכרנו: ${res.data.synced}\nדולגו: ${res.data.skipped}\nשגיאות: ${res.data.errors}`);
+                                            } catch (e) {
+                                                console.error('Admin sync error:', e);
+                                                alert('שגיאה בסנכרון: ' + (e.message || 'Unknown error'));
+                                            } finally {
+                                                setIsSyncingAdmin(false);
+                                            }
+                                        }}
+                                    >
+                                        {isSyncingAdmin ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <RefreshCw className="h-4 w-4 ml-2" />}
+                                        סנכרן יומן מנהל
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        disabled={isSyncingSupplier || settings.google_calendar_supplier_sync_enabled !== "true"}
+                                        onClick={async () => {
+                                            setIsSyncingSupplier(true);
+                                            try {
+                                                const res = await syncAllEventsToCalendar({ syncType: 'supplier' });
+                                                alert(`סנכרון ספקים הושלם!\nסונכרנו: ${res.data.synced}\nדולגו: ${res.data.skipped}\nשגיאות: ${res.data.errors}`);
+                                            } catch (e) {
+                                                console.error('Supplier sync error:', e);
+                                                alert('שגיאה בסנכרון: ' + (e.message || 'Unknown error'));
+                                            } finally {
+                                                setIsSyncingSupplier(false);
+                                            }
+                                        }}
+                                    >
+                                        {isSyncingSupplier ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <RefreshCw className="h-4 w-4 ml-2" />}
+                                        סנכרן יומן ספקים
+                                    </Button>
+                                </div>
+                                {settings.google_calendar_admin_sync_enabled !== "true" && settings.google_calendar_supplier_sync_enabled !== "true" && (
+                                    <p className="text-xs text-amber-600 mt-2">הפעל לפחות טוגל אחד כדי לבצע סנכרון</p>
+                                )}
                             </div>
 
                             <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-2">
