@@ -32,21 +32,32 @@ function buildScheduleText(schedule) {
 
 function calculateTimes(eventDate, eventTime, offsetMinutes, durationHours) {
   if (!eventTime) {
-    const nextDay = new Date(eventDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const parts = eventDate.split('-').map(Number);
+    const nextDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
+    const nextDayStr = nextDay.toISOString().split('T')[0];
     return {
       startDateTime: { date: eventDate },
-      endDateTime: { date: nextDay.toISOString().split('T')[0] }
+      endDateTime: { date: nextDayStr }
     };
   }
   const [hours, minutes] = eventTime.split(':').map(Number);
-  const startDate = new Date(eventDate + 'T00:00:00+03:00');
-  startDate.setHours(hours, minutes + offsetMinutes, 0, 0);
-  const endDate = new Date(startDate);
-  endDate.setHours(endDate.getHours() + durationHours);
+  let totalMinutes = hours * 60 + minutes + offsetMinutes;
+  const startHours = Math.floor(totalMinutes / 60);
+  const startMins = totalMinutes % 60;
+  const hh = String(startHours).padStart(2, '0');
+  const mm = String(startMins).padStart(2, '0');
+  const startIso = `${eventDate}T${hh}:${mm}:00`;
+
+  const endTotalMinutes = totalMinutes + durationHours * 60;
+  const endHours = Math.floor(endTotalMinutes / 60);
+  const endMins = endTotalMinutes % 60;
+  const ehh = String(endHours).padStart(2, '0');
+  const emm = String(endMins).padStart(2, '0');
+  const endIso = `${eventDate}T${ehh}:${emm}:00`;
+
   return {
-    startDateTime: { dateTime: startDate.toISOString(), timeZone: 'Asia/Jerusalem' },
-    endDateTime: { dateTime: endDate.toISOString(), timeZone: 'Asia/Jerusalem' }
+    startDateTime: { dateTime: startIso, timeZone: 'Asia/Jerusalem' },
+    endDateTime: { dateTime: endIso, timeZone: 'Asia/Jerusalem' }
   };
 }
 
@@ -55,17 +66,16 @@ function buildAdminEventBody(event) {
   const childName = event.child_name || '';
   const familyName = event.family_name || '';
   let summary = childName 
-    ? `${eventType}, של, ${childName}, ${familyName}`
-    : `${eventType}, של, משפחת ${familyName}`;
+    ? `${eventType} של ${childName} ${familyName}`
+    : `${eventType} של משפחת ${familyName}`;
   let description = childName
-    ? `אירוע, ${eventType}, של, ${childName}, משפחת ${familyName}`
-    : `אירוע, ${eventType}, של, משפחת ${familyName}`;
-  if (event.concept) description += `, בקונספט, ${event.concept}`;
-  description += `.`;
-  description += `\nמספר משתתפים: ${event.guest_count || 'לא צוין'}`;
+    ? `אירוע ${eventType} של ${childName} ${familyName}.`
+    : `אירוע ${eventType} של משפחת ${familyName}.`;
+  if (event.concept) description += `\nבקונספט ${event.concept}.`;
+  description += `\nמספר משתתפים: ${event.guest_count || 'לא צוין'}.`;
   const scheduleText = buildScheduleText(event.schedule);
   if (scheduleText) description += `\n\nלוז האירוע:\n${scheduleText}`;
-  const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, 0, 5);
+  const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, 0, 6);
   return { summary, description, location: event.location || '', start: startDateTime, end: endDateTime };
 }
 
@@ -73,13 +83,12 @@ function buildSupplierEventBody(event, serviceName, supplierNote, companyName) {
   const eventType = EVENT_TYPE_HEBREW[event.event_type] || 'אירוע';
   const childName = event.child_name || '';
   const familyName = event.family_name || '';
-  let summary = `${eventType}, עם, ${companyName || ''}, ${serviceName}`;
-  if (supplierNote) summary += `, הערה עבורך (${supplierNote})`;
+  let summary = `${eventType} עם ${companyName || ''}. שירות: ${serviceName}.`;
+  if (supplierNote) summary += ` הערה עבורך: (${supplierNote})`;
   let description = childName
-    ? `אירוע, ${eventType}, של, ${childName}, משפחת ${familyName}`
-    : `אירוע, ${eventType}, של, משפחת ${familyName}`;
-  if (event.concept) description += `, בקונספט, ${event.concept}`;
-  description += `.`;
+    ? `אירוע ${eventType} של ${childName} ${familyName}.`
+    : `אירוע ${eventType} של משפחת ${familyName}.`;
+  if (event.concept) description += `\nבקונספט ${event.concept}.`;
   const scheduleText = buildScheduleText(event.schedule);
   if (scheduleText) description += `\n\nלוז האירוע:\n${scheduleText}`;
   const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, -15, 3);
