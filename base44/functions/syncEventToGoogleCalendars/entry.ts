@@ -228,6 +228,8 @@ Deno.serve(async (req) => {
     const triggerAction = body.action || body.event?.type; // 'create', 'update', 'delete'
     const eventServiceId = body.eventServiceId;
     const entityName = body.event?.entity_name; // 'Event' or 'EventService'
+    // For delete triggers, body.data contains the entity data BEFORE deletion
+    const deletedEntityData = triggerAction === 'delete' ? body.data : null;
 
     if (!eventId && !eventServiceId) {
       return Response.json({ error: 'Missing eventId or eventServiceId' }, { status: 400 });
@@ -263,6 +265,11 @@ Deno.serve(async (req) => {
           actualEventId = targetEventService?.event_id || eventId;
         } catch (e) {
           console.log(`EventService ${esId} not found (may have been deleted)`);
+          // For delete triggers, use pre-deletion data as fallback
+          if (deletedEntityData) {
+            targetEventService = deletedEntityData;
+            actualEventId = deletedEntityData.event_id || eventId;
+          }
         }
       }
     }
@@ -280,6 +287,10 @@ Deno.serve(async (req) => {
     } catch (e) {
       console.log(`Event ${actualEventId} not found - handling as delete`);
     }
+
+    // For delete triggers on Event entity, use the pre-deletion data as fallback
+    // This ensures we have google_calendar_event_id even after the event is deleted
+    const eventForCalendarIds = event || (entityName === 'Event' && deletedEntityData ? deletedEntityData : null);
 
     const isDeleteAction = triggerAction === 'delete' || !event;
     const isStatusSynced = event && SYNCED_STATUSES.includes(event.status);
@@ -306,7 +317,7 @@ Deno.serve(async (req) => {
     // ADMIN SYNC (uses shared connector token + admin calendar ID from settings)
     // ====================================================
     if (adminSyncEnabled) {
-      const existingEventId = event?.google_calendar_event_id;
+      const existingEventId = event?.google_calendar_event_id || eventForCalendarIds?.google_calendar_event_id;
 
       if (shouldDelete) {
         // Delete from admin calendar
@@ -417,7 +428,11 @@ Deno.serve(async (req) => {
       }
     } else if (supplierSyncEnabled && isDeleteAction) {
       // Event deleted - clean up all supplier calendar entries
-      const allEventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: actualEventId }).catch(() => []);
+      // For EventService delete trigger, use deletedEntityData if available
+      let allEventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: actualEventId }).catch(() => []);
+      if (allEventServices.length === 0 && entityName === 'EventService' && deletedEntityData?.supplier_calendar_ids) {
+        allEventServices = [deletedEntityData];
+      }
       const allSuppliers = await base44.asServiceRole.entities.Supplier.list();
       const suppliersMap = allSuppliers.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
 
