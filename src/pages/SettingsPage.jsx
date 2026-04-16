@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BackupManager from "@/components/backup/BackupManager";
 import NotificationManagementTab from "@/components/admin/NotificationManagementTab";
+import CalendarTemplateSettings from "@/components/calendar/CalendarTemplateSettings";
 
 const settingKeys = [
     'background_image_url', 
@@ -35,6 +36,7 @@ const settingKeys = [
     'quote_html_mobile_margin_right',
     'google_calendar_admin_sync_enabled',
     'google_calendar_supplier_sync_enabled',
+    'google_calendar_client_sync_enabled',
     'admin_google_calendar_id'
     ];
 
@@ -65,6 +67,7 @@ export default function SettingsPage() {
         quote_html_mobile_margin_right: "6",
         google_calendar_admin_sync_enabled: "false",
         google_calendar_supplier_sync_enabled: "false",
+        google_calendar_client_sync_enabled: "false",
         admin_google_calendar_id: "primary"
         });
     const queryClient = useQueryClient();
@@ -452,6 +455,19 @@ export default function SettingsPage() {
                                 />
                             </div>
 
+                            {/* Toggle לקוחות */}
+                            <div className="flex items-center justify-between pb-4 border-b">
+                                <div>
+                                    <Label htmlFor="google_calendar_client_sync_enabled">סנכרון ללקוחות</Label>
+                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, לקוחות שאישרו סנכרון יקבלו אירועים ביומן Google שלהם</p>
+                                </div>
+                                <Switch 
+                                    id="google_calendar_client_sync_enabled"
+                                    checked={settings.google_calendar_client_sync_enabled === "true"}
+                                    onCheckedChange={(checked) => handleSettingChange('google_calendar_client_sync_enabled', checked ? "true" : "false")}
+                                />
+                            </div>
+
                             {/* כפתורי סנכרון מיידי */}
                             <div className="border-t pt-4 mt-2">
                                 <Label className="text-sm font-semibold">סנכרון מיידי</Label>
@@ -495,6 +511,22 @@ export default function SettingsPage() {
                                         {isSyncingSupplier ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <RefreshCw className="h-4 w-4 ml-2" />}
                                         סנכרן יומן ספקים
                                     </Button>
+                                    <Button
+                                        variant="outline"
+                                        disabled={settings.google_calendar_client_sync_enabled !== "true"}
+                                        onClick={async () => {
+                                            try {
+                                                const res = await syncAllEventsToCalendar({ syncType: 'client' });
+                                                alert(`סנכרון לקוחות הושלם!\nסונכרנו: ${res.data.synced}\nדולגו: ${res.data.skipped}\nשגיאות: ${res.data.errors}`);
+                                            } catch (e) {
+                                                console.error('Client sync error:', e);
+                                                alert('שגיאה בסנכרון: ' + (e.message || 'Unknown error'));
+                                            }
+                                        }}
+                                    >
+                                        <RefreshCw className="h-4 w-4 ml-2" />
+                                        סנכרן יומן לקוחות
+                                    </Button>
                                 </div>
                                 {settings.google_calendar_admin_sync_enabled !== "true" && settings.google_calendar_supplier_sync_enabled !== "true" && (
                                     <p className="text-xs text-amber-600 mt-2">הפעל לפחות טוגל אחד כדי לבצע סנכרון</p>
@@ -505,13 +537,18 @@ export default function SettingsPage() {
                                 <p className="font-medium">איך זה עובד?</p>
                                 <ul className="list-disc mr-5 space-y-1 text-xs">
                                     <li><strong>מנהל:</strong> אירועים בסטטוס סגור/תפור/עבר יסונכרנו אוטומטית ליומן Google שהוגדר למעלה</li>
-                                    <li><strong>ספקים:</strong> כל ספק שיש לו Calendar ID בכרטיס הספק יקבל אירועים שהוא משובץ אליהם (רק כשהשיבוץ מאושר)</li>
+                                    <li><strong>ספקים:</strong> ספקים מאושרים שאישרו סנכרון יקבלו אירועים ביומן שלהם</li>
+                                    <li><strong>לקוחות:</strong> לקוחות שאישרו סנכרון יקבלו אירועים ביומן שלהם</li>
                                     <li>שינוי סטטוס לסטטוס שלא מסונכרן (כמו הצעה/ביטול) ימחק את האירוע מהיומן</li>
                                     <li>כל סנכרון צורך קרדיט אינטגרציה אחד בלבד - גם אם מסנכרן למנהל ולכל הספקים ביחד</li>
+                                    <li>כל משתמש יכול לאשר/לבטל סנכרון בדף הגדרות משתמש</li>
                                 </ul>
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Calendar Template Settings */}
+                    <CalendarTemplateSettings />
                 </TabsContent>
 
                 <TabsContent value="notifications" className="mt-6">

@@ -428,7 +428,7 @@ export default function SupplierManagement() {
                   placeholder="example@gmail.com או Calendar ID"
                   className="dir-ltr text-left"
                 />
-                <p className="text-xs text-gray-500 mt-1">הזן את כתובת ה-Gmail של הספק או Calendar ID ייעודי. האירועים יסונכרנו ליומן זה כשהספק יחבר את חשבון Google שלו.</p>
+                <p className="text-xs text-gray-500 mt-1">מזהה יומן Google לסנכרון אירועים</p>
               </div>
             </div>
           </div>

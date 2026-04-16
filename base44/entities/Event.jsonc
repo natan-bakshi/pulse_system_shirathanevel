@@ -1,0 +1,187 @@
+{
+  "name": "Event",
+  "type": "object",
+  "properties": {
+    "event_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "bar_mitzvah",
+        "bat_mitzvah",
+        "wedding",
+        "other"
+      ],
+      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "event_time": {
+      "type": "string",
+      "description": "\u05e9\u05e2\u05ea \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "location": {
+      "type": "string",
+      "description": "\u05de\u05d9\u05e7\u05d5\u05dd \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "concept": {
+      "type": "string",
+      "description": "\u05e7\u05d5\u05e0\u05e1\u05e4\u05d8 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "family_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05de\u05e9\u05e4\u05d7\u05d4"
+    },
+    "child_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05d9\u05dc\u05d3/\u05d4"
+    },
+    "city": {
+      "type": "string",
+      "description": "\u05e2\u05d9\u05e8 \u05de\u05d2\u05d5\u05e8\u05d9\u05dd"
+    },
+    "guest_count": {
+      "type": "number",
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05d0\u05d5\u05e8\u05d7\u05d9\u05dd"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "quote",
+        "confirmed",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "quote",
+      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "primary_currency": {
+      "type": "string",
+      "enum": [
+        "ILS",
+        "USD"
+      ],
+      "default": "ILS",
+      "description": "\u05de\u05d8\u05d1\u05e2 \u05e8\u05d0\u05e9\u05d9 \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "total_price": {
+      "type": "number",
+      "description": "\u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc - \u05e9\u05d3\u05d4 \u05d9\u05e9\u05df. \u05e0\u05d0 \u05dc\u05d4\u05e9\u05ea\u05de\u05e9 \u05d1-all_inclusive_price"
+    },
+    "all_inclusive": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 \u05d4\u05d9\u05d0 \u05d4\u05db\u05dc \u05db\u05dc\u05d5\u05dc"
+    },
+    "all_inclusive_price": {
+      "type": "number",
+      "description": "\u05de\u05d7\u05d9\u05e8 \u05d7\u05d1\u05d9\u05dc\u05ea \u05d4\u05db\u05dc \u05db\u05dc\u05d5\u05dc"
+    },
+    "all_inclusive_includes_vat": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05de\u05d7\u05d9\u05e8 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 \u05db\u05d5\u05dc\u05dc \u05de\u05e2''\u05de"
+    },
+    "total_override": {
+      "type": "number",
+      "description": "\u05d3\u05e8\u05d9\u05e1\u05ea \u05d4\u05de\u05d7\u05d9\u05e8 \u05d4\u05db\u05d5\u05dc\u05dc"
+    },
+    "total_override_includes_vat": {
+      "type": "boolean",
+      "default": true,
+      "description": "\u05d4\u05d0\u05dd \u05d3\u05e8\u05d9\u05e1\u05ea \u05d4\u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc\u05ea \u05de\u05e2''\u05de"
+    },
+    "discount_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05e0\u05d7\u05d4"
+    },
+    "discount_before_vat": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05d4\u05e0\u05d7\u05d4 \u05de\u05d7\u05d5\u05e9\u05d1\u05ea \u05dc\u05e4\u05e0\u05d9 \u05de\u05e2''\u05de"
+    },
+    "discount_reason": {
+      "type": "string",
+      "description": "\u05e1\u05d9\u05d1\u05ea \u05d4\u05d4\u05e0\u05d7\u05d4"
+    },
+    "notes": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05db\u05dc\u05dc\u05d9\u05d5\u05ea"
+    },
+    "schedule": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "string"
+          },
+          "activity": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "\u05dc\u05d5\u05d7 \u05d6\u05de\u05e0\u05d9\u05dd \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "parents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "\u05e9\u05dd \u05d4\u05d4\u05d5\u05e8\u05d4"
+          },
+          "phone": {
+            "type": "string",
+            "description": "\u05d8\u05dc\u05e4\u05d5\u05df"
+          },
+          "email": {
+            "type": "string",
+            "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc"
+          }
+        }
+      },
+      "description": "\u05e8\u05e9\u05d9\u05de\u05ea \u05d4\u05d5\u05e8\u05d9\u05dd/\u05d0\u05e0\u05e9\u05d9 \u05e7\u05e9\u05e8"
+    },
+    "google_calendar_event_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d1\u05d9\u05d5\u05de\u05df Google (\u05dc\u05de\u05e0\u05d4\u05dc)"
+    },
+    "client_google_calendar_event_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d1\u05d9\u05d5\u05de\u05df Google \u05e9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7"
+    },
+    "client_google_calendar_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d9\u05d5\u05de\u05df Google \u05e9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7 \u05dc\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d6\u05d4"
+    },
+    "admin_other_google_calendar_ids": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d9 \u05d0\u05d9\u05e8\u05d5\u05e2\u05d9 \u05d9\u05d5\u05de\u05df \u05d2\u05d5\u05d2\u05dc \u05e9\u05dc \u05de\u05e0\u05d4\u05dc\u05d9\u05dd \u05e0\u05d5\u05e1\u05e4\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON - \u05d0\u05d5\u05d1\u05d9\u05d9\u05e7\u05d8 \u05e2\u05dd userId \u05db\u05de\u05e4\u05ea\u05d7 \u05d5\u05de\u05d6\u05d4\u05d4 \u05d0\u05d9\u05e8\u05d5\u05e2 \u05db\u05e2\u05e8\u05da"
+    }
+  },
+  "required": [
+    "event_name",
+    "event_date",
+    "family_name"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "phone": {
+      "type": "string",
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05d4\u05d8\u05dc\u05e4\u05d5\u05df \u05e9\u05dc \u05d4\u05de\u05e9\u05ea\u05de\u05e9"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05ea\u05e6\u05d5\u05d2\u05d4 \u05de\u05e1\u05d5\u05e0\u05db\u05e8\u05df (\u05de\u05e1\u05e4\u05e7\u05d9\u05dd/\u05dc\u05e7\u05d5\u05d7\u05d5\u05ea)"
+    },
+    "user_type": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "client",
+        "supplier"
+      ],
+      "default": "client",
+      "description": "\u05e1\u05d5\u05d2 \u05d4\u05de\u05e9\u05ea\u05de\u05e9 (\u05dc\u05e7\u05d5\u05d7, \u05e1\u05e4\u05e7, \u05de\u05e0\u05d4\u05dc)"
+    },
+    "push_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05d0\u05d9\u05e9\u05e8 \u05d4\u05ea\u05e8\u05d0\u05d5\u05ea Push"
+    },
+    "whatsapp_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05d0\u05d9\u05e9\u05e8 \u05d4\u05ea\u05e8\u05d0\u05d5\u05ea \u05d1\u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4"
+    },
+    "onesignal_external_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05de\u05e9\u05ea\u05de\u05e9 \u05d1-OneSignal (\u05dc\u05e8\u05d5\u05d1 \u05d6\u05d4\u05d4 \u05dc-ID \u05d1\u05de\u05e2\u05e8\u05db\u05ea)"
+    },
+    "onesignal_subscription_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05e0\u05d5\u05d9 (Subscription ID) \u05d1-OneSignal"
+    },
+    "quiet_hours_start": {
+      "type": "string",
+      "description": "\u05e9\u05e2\u05ea \u05d4\u05ea\u05d7\u05dc\u05ea \u05e9\u05e2\u05d5\u05ea \u05e9\u05e7\u05d8\u05d5\u05ea (\u05dc\u05de\u05e9\u05dc 22:00)"
+    },
+    "quiet_hours_end": {
+      "type": "string",
+      "description": "\u05e9\u05e2\u05ea \u05e1\u05d9\u05d5\u05dd \u05e9\u05e2\u05d5\u05ea \u05e9\u05e7\u05d8\u05d5\u05ea (\u05dc\u05de\u05e9\u05dc 08:00)"
+    },
+    "quiet_hours_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "\u05d4\u05d0\u05dd \u05e9\u05e2\u05d5\u05ea \u05e9\u05e7\u05d8\u05d5\u05ea \u05e4\u05e2\u05d9\u05dc\u05d5\u05ea"
+    },
+    "respect_shabbat": {
+      "type": "boolean",
+      "default": true,
+      "description": "\u05d4\u05d0\u05dd \u05dc\u05d0 \u05dc\u05e9\u05dc\u05d5\u05d7 \u05d4\u05ea\u05e8\u05d0\u05d5\u05ea \u05d1\u05e9\u05d1\u05ea \u05d5\u05d7\u05d2"
+    },
+    "tour_version": {
+      "type": "string",
+      "description": "\u05d2\u05e8\u05e1\u05ea \u05d4\u05e1\u05d9\u05d5\u05e8 \u05d4\u05d0\u05d7\u05e8\u05d5\u05e0\u05d4 \u05e9\u05d4\u05d5\u05e9\u05dc\u05de\u05d4/\u05d3\u05d5\u05dc\u05d2\u05d4"
+    },
+    "tour_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05e1\u05d9\u05d5\u05e8 \u05d4\u05d5\u05e9\u05dc\u05dd \u05d1\u05d2\u05e8\u05e1\u05d4 \u05d4\u05e0\u05d5\u05db\u05d7\u05d9\u05ea"
+    },
+    "tour_skipped": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05e1\u05d9\u05d5\u05e8 \u05d3\u05d5\u05dc\u05d2 \u05d1\u05d2\u05e8\u05e1\u05d4 \u05d4\u05e0\u05d5\u05db\u05d7\u05d9\u05ea"
+    },
+    "google_calendar_connected": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05d7\u05d9\u05d1\u05e8 \u05d0\u05ea \u05d9\u05d5\u05de\u05df Google \u05e9\u05dc\u05d5"
+    },
+    "google_calendar_access_token": {
+      "type": "string",
+      "description": "\u05d8\u05d5\u05e7\u05df \u05d2\u05d9\u05e9\u05d4 \u05dc\u05d9\u05d5\u05de\u05df Google \u05e9\u05dc \u05d4\u05de\u05e9\u05ea\u05de\u05e9"
+    },
+    "google_calendar_refresh_token": {
+      "type": "string",
+      "description": "\u05d8\u05d5\u05e7\u05df \u05e8\u05e2\u05e0\u05d5\u05df \u05dc\u05d9\u05d5\u05de\u05df Google \u05e9\u05dc \u05d4\u05de\u05e9\u05ea\u05de\u05e9"
+    },
+    "google_calendar_token_expiry": {
+      "type": "string",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05ea\u05e4\u05d5\u05d2\u05ea \u05d8\u05d5\u05e7\u05df \u05d4\u05d2\u05d9\u05e9\u05d4 \u05e9\u05dc Google Calendar"
+    },
+    "google_calendar_id": {
+      "type": "string",
+      "default": "primary",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d9\u05d5\u05de\u05df \u05e9\u05dc \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05d1-Google Calendar (\u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc: primary)"
+    },
+    "calendar_sync_approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05d0\u05d9\u05e9\u05e8 \u05e1\u05e0\u05db\u05e8\u05d5\u05df \u05d0\u05d9\u05e8\u05d5\u05e2\u05d9\u05dd \u05dc\u05d9\u05d5\u05de\u05df Google \u05e9\u05dc\u05d5"
+    }
+  },
+  "required": []
+}

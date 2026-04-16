@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Settings, Loader2, Navigation } from "lucide-react";
 
 import UserNotificationPreferences from "@/components/notifications/UserNotificationPreferences";
+import UserCalendarSync from "@/components/calendar/UserCalendarSync";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,6 +90,9 @@ export default function UserSettings() {
       </Card>
 
 
+
+      {/* Calendar Sync */}
+      <UserCalendarSync user={user} />
 
       {/* Notification Preferences */}
       <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden">
