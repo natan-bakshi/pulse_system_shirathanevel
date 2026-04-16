@@ -233,15 +233,16 @@ Deno.serve(async (req) => {
 
         for (const suppId of supplierIds) {
           const supplier = suppliersMap[suppId];
-          const calId = supplier?.google_calendar_id || (supplier?.contact_emails?.[0]);
-          if (!calId) { skipped++; continue; }
+          if (!supplier) { skipped++; continue; }
 
           const status = supplierStatuses[suppId] || 'pending';
           if (status !== 'confirmed') { skipped++; continue; }
 
-          // Check supplier sync approval
+          // Check supplier sync approval and get calendar ID from User entity
           const supplierUser = allUsers.find(u => u.email && supplier.contact_emails?.includes(u.email));
           if (!supplierUser?.calendar_sync_approved) { skipped++; continue; }
+          const calId = supplierUser.google_calendar_id;
+          if (!calId) { skipped++; continue; }
 
           const existingCalEventId = supplierCalendarIds[suppId];
           const note = supplierNotes[suppId] || '';
@@ -269,12 +270,13 @@ Deno.serve(async (req) => {
     if (syncType === 'client') {
       for (const event of syncableEvents) {
         const clientEmail = event.parents?.[0]?.email;
-        const clientCalendarId = event.client_google_calendar_id || clientEmail;
-        if (!clientCalendarId) { skipped++; continue; }
+        if (!clientEmail) { skipped++; continue; }
 
-        // Check client sync approval
+        // Check client sync approval and get calendar ID from User entity
         const clientUser = allUsers.find(u => u.email === clientEmail);
         if (!clientUser?.calendar_sync_approved) { skipped++; continue; }
+        const clientCalendarId = clientUser.google_calendar_id;
+        if (!clientCalendarId) { skipped++; continue; }
 
         const existingCalEventId = event.client_google_calendar_event_id;
         const eventBody = buildEventBody(event, 'client', settingsMap, {});

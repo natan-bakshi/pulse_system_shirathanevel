@@ -63,6 +63,16 @@ Deno.serve(async (req) => {
       return { success: res.ok || res.status === 404 || res.status === 410 };
     }
 
+    // Helper to delete an entire calendar from the connected account
+    async function deleteCalendar(calendarId) {
+      if (!calendarId || calendarId === 'primary') return { success: true };
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`,
+        { method: 'DELETE', headers: { 'Authorization': `Bearer ${accessToken}` } }
+      );
+      return { success: res.ok || res.status === 404 || res.status === 410 };
+    }
+
     // ====================================================
     // CLEANUP FOR ADMIN USERS
     // ====================================================
@@ -101,8 +111,7 @@ Deno.serve(async (req) => {
           try { supplierCalendarIds = JSON.parse(es.supplier_calendar_ids || '{}'); } catch (e) {}
 
           if (supplierCalendarIds[supplier.id]) {
-            const calId = calendarToClean || supplier.google_calendar_id || userEmail;
-            await deleteEvent(calId, supplierCalendarIds[supplier.id]);
+            await deleteEvent(calendarToClean, supplierCalendarIds[supplier.id]);
             delete supplierCalendarIds[supplier.id];
             await base44.asServiceRole.entities.EventService.update(es.id, {
               supplier_calendar_ids: JSON.stringify(supplierCalendarIds)
@@ -124,8 +133,7 @@ Deno.serve(async (req) => {
         const isClientOfEvent = event.parents?.some(p => p.email === userEmail);
         
         if (isClientOfEvent && event.client_google_calendar_event_id) {
-          const calId = calendarToClean || event.client_google_calendar_id || userEmail;
-          await deleteEvent(calId, event.client_google_calendar_event_id);
+          await deleteEvent(calendarToClean, event.client_google_calendar_event_id);
           await base44.asServiceRole.entities.Event.update(event.id, {
             client_google_calendar_event_id: null
           });
@@ -134,9 +142,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If calendar changed (not disabled), trigger re-sync to new calendar
-    if (calendarChanged && isSyncApproved) {
-      console.log(`Calendar changed for user ${userId}, new sync will be triggered by next event update`);
+    // If sync was disabled, delete the dedicated calendar from the connected account
+    if (syncDisabled && calendarToClean && calendarToClean !== 'primary') {
+      console.log(`Deleting dedicated calendar ${calendarToClean} for user ${userId}`);
+      const delCalResult = await deleteCalendar(calendarToClean);
+      results.push({ target: 'calendar_deletion', calendarId: calendarToClean, ...delCalResult });
     }
 
     return Response.json({ success: true, results, cleanedCalendar: calendarToClean });

@@ -513,15 +513,15 @@ Deno.serve(async (req) => {
           const isConfirmed = status === 'confirmed';
           const existingCalEventId = supplierCalendarIds[suppId];
 
-          // Supplier calendar ID: from supplier entity, fallback to first email
-          const supplierCalendarId = supplier.google_calendar_id || (supplier.contact_emails && supplier.contact_emails[0]) || null;
-          if (!supplierCalendarId) continue;
-
           // Check if supplier approved sync via User entity
           const supplierUser = allUsers.find(u => 
             u.email && supplier.contact_emails && supplier.contact_emails.includes(u.email)
           );
           const supplierSyncApproved = supplierUser?.calendar_sync_approved === true;
+
+          // Supplier calendar ID: from User entity (dedicated calendar created on sync approval)
+          const supplierCalendarId = supplierUser?.google_calendar_id || null;
+          if (!supplierCalendarId) continue;
 
           if (shouldDelete || !isConfirmed || !supplierSyncApproved) {
             if (existingCalEventId) {
@@ -572,15 +572,16 @@ Deno.serve(async (req) => {
     if (clientSyncEnabled && event) {
       // Find client user(s) via event parents
       const clientEmail = event.parents?.[0]?.email;
-      const clientCalendarId = event.client_google_calendar_id || clientEmail || null;
       const existingClientEventId = event.client_google_calendar_event_id || eventForCalendarIds?.client_google_calendar_event_id;
 
-      // Check if client approved sync
+      // Check if client approved sync and get their dedicated calendar ID
       let clientSyncApproved = false;
+      let clientCalendarId = null;
       if (clientEmail) {
         const clientUser = allUsers.find(u => u.email === clientEmail);
         if (clientUser?.calendar_sync_approved === true) {
           clientSyncApproved = true;
+          clientCalendarId = clientUser.google_calendar_id || null;
         }
       }
 
@@ -606,9 +607,13 @@ Deno.serve(async (req) => {
     } else if (clientSyncEnabled && isDeleteAction && eventForCalendarIds?.client_google_calendar_event_id) {
       // Event deleted - clean up client calendar
       const clientEmail = eventForCalendarIds.parents?.[0]?.email;
-      const clientCalendarId = eventForCalendarIds.client_google_calendar_id || clientEmail;
-      if (clientCalendarId) {
-        await deleteCalendarEvent(accessToken, clientCalendarId, eventForCalendarIds.client_google_calendar_event_id);
+      let delClientCalId = null;
+      if (clientEmail) {
+        const clientUser = allUsers.find(u => u.email === clientEmail);
+        delClientCalId = clientUser?.google_calendar_id || null;
+      }
+      if (delClientCalId) {
+        await deleteCalendarEvent(accessToken, delClientCalId, eventForCalendarIds.client_google_calendar_event_id);
         results.push({ target: 'client', action: 'delete', success: true });
       }
     }

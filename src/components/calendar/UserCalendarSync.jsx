@@ -3,36 +3,38 @@ import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Calendar, Info, Loader2, Save } from "lucide-react";
+import { Calendar, Info, Loader2, Save, CheckCircle2, XCircle } from "lucide-react";
 import { handleUserCalendarDisconnection } from "@/functions/handleUserCalendarDisconnection";
+import { createAndShareUserCalendar } from "@/functions/createAndShareUserCalendar";
 
 export default function UserCalendarSync({ user }) {
   const [syncApproved, setSyncApproved] = useState(user?.calendar_sync_approved || false);
-  const [calendarId, setCalendarId] = useState(user?.google_calendar_id || '');
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
+
+  const isConnected = user?.calendar_sync_approved && user?.google_calendar_id && user.google_calendar_id !== 'primary';
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       const oldSyncApproved = user?.calendar_sync_approved || false;
-      const oldCalendarId = user?.google_calendar_id || 'primary';
-      const newCalendarId = calendarId || 'primary';
+      const oldCalendarId = user?.google_calendar_id || '';
 
-      // Save settings
-      await base44.auth.updateMe({
-        calendar_sync_approved: syncApproved,
-        google_calendar_id: newCalendarId
-      });
-
-      // If sync was disabled or calendar changed, trigger cleanup
-      const syncDisabled = oldSyncApproved && !syncApproved;
-      const calendarChanged = oldSyncApproved && oldCalendarId !== newCalendarId;
-
-      if (syncDisabled || calendarChanged) {
+      if (syncApproved && !isConnected) {
+        // User is enabling sync - create a new calendar and share it
+        const result = await createAndShareUserCalendar({});
+        if (result.data?.error) {
+          alert("שגיאה ביצירת היומן: " + (result.data.error || 'שגיאה לא ידועה'));
+          setIsSaving(false);
+          return;
+        }
+        if (result.data?.warning) {
+          alert("היומן נוצר אך השיתוף נכשל. ייתכן שתצטרך לשתף ידנית.");
+        }
+      } else if (!syncApproved && oldSyncApproved) {
+        // User is disabling sync - trigger cleanup
         try {
           await handleUserCalendarDisconnection({
             userId: user.id,
@@ -44,8 +46,8 @@ export default function UserCalendarSync({ user }) {
               role: user.role
             },
             newData: { 
-              calendar_sync_approved: syncApproved, 
-              google_calendar_id: newCalendarId,
+              calendar_sync_approved: false, 
+              google_calendar_id: '',
               email: user.email,
               user_type: user.user_type,
               role: user.role
@@ -54,17 +56,23 @@ export default function UserCalendarSync({ user }) {
         } catch (e) {
           console.error("Calendar cleanup error:", e);
         }
+
+        // Clear the calendar ID on the user
+        await base44.auth.updateMe({
+          calendar_sync_approved: false,
+          google_calendar_id: ''
+        });
       }
 
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      alert("הגדרות היומן נשמרו בהצלחה!");
+      alert(syncApproved ? "יומן Google חובר בהצלחה!" : "סנכרון היומן כובה בהצלחה.");
     } catch (error) {
       console.error("Failed to save calendar settings:", error);
       alert("שגיאה בשמירת ההגדרות.");
     } finally {
       setIsSaving(false);
     }
-  }, [syncApproved, calendarId, user, queryClient]);
+  }, [syncApproved, isConnected, user, queryClient]);
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
@@ -90,48 +98,47 @@ export default function UserCalendarSync({ user }) {
           />
         </div>
 
-        {syncApproved && (
-          <>
-            {/* Calendar ID */}
+        {isConnected && (
+          <div className="bg-green-50 rounded-lg p-3 text-sm text-green-800 flex items-start gap-2">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
-              <Label htmlFor="calendar_id">מזהה יומן (Calendar ID) - אופציונלי</Label>
-              <Input
-                id="calendar_id"
-                value={calendarId === 'primary' ? '' : calendarId}
-                onChange={e => setCalendarId(e.target.value)}
-                placeholder="ברירת מחדל: היומן הראשי (כתובת המייל שלך)"
-                className="dir-ltr text-left mt-1"
-              />
+              <p className="font-medium">יומן Google מחובר</p>
+              <p className="text-xs mt-1">יומן ייעודי נוצר ושותף אליך אוטומטית. אירועים יסונכרנו אליו.</p>
             </div>
-
-            {/* Info box */}
-            <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-800 space-y-1">
-              <div className="flex items-start gap-2">
-                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium mb-1">מה זה מזהה יומן?</p>
-                  <ul className="list-disc mr-4 space-y-0.5">
-                    <li>כברירת מחדל, האירועים יסונכרנו ליומן הראשי שלך (לפי כתובת המייל)</li>
-                    <li>אם יש לך יומן משני ב-Google Calendar ואתה רוצה שהאירועים יגיעו אליו, הזן את ה-Calendar ID שלו</li>
-                    <li>למציאת Calendar ID: Google Calendar → הגדרות → היומן הרצוי → "שילוב יומן" → Calendar ID</li>
-                    <li><strong>זוהי אופציה לשדרוג, לא חובה.</strong> אם לא בטוח, השאר ריק</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </>
+          </div>
         )}
 
-        {!syncApproved && (
+        {syncApproved && !isConnected && (
+          <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-800 space-y-1">
+            <div className="flex items-start gap-2">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium mb-1">מה יקרה כשתשמור?</p>
+                <p>ייווצר יומן Google ייעודי בשמך והוא ישותף אליך אוטומטית. תקבל הזמנה לצפות ביומן ישירות ב-Google Calendar שלך.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!syncApproved && isConnected && (
           <p className="text-xs text-amber-600">
-            כשהסנכרון כבוי, לא יסונכרנו אירועים ליומן Google שלך. אם היו אירועים מסונכרנים בעבר, הם יימחקו מהיומן.
+            כשתכבה את הסנכרון, האירועים שסונכרנו ליומן יימחקו והיומן הייעודי יימחק.
           </p>
         )}
 
-        <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-          שמור הגדרות יומן
-        </Button>
+        {!syncApproved && !isConnected && (
+          <p className="text-xs text-gray-500">
+            הפעל סנכרון כדי ליצור יומן Google ייעודי שיציג את האירועים שלך.
+          </p>
+        )}
+
+        {/* Show save button only when there's a change to make */}
+        {((syncApproved && !isConnected) || (!syncApproved && isConnected)) && (
+          <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
+            {syncApproved ? 'חבר יומן Google' : 'כבה וניתוק יומן'}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
