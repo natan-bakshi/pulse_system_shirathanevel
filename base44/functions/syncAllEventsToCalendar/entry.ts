@@ -134,13 +134,19 @@ async function upsertCalendarEvent(accessToken, calendarId, existingEventId, eve
       body: JSON.stringify(eventBody)
     });
     if (res.ok) return { success: true, eventId: (await res.json()).id };
-    if (res.status !== 404) return { success: false, error: `PATCH ${res.status}` };
+    if (res.status !== 404) {
+      const errText = await res.text();
+      return { success: false, error: `PATCH ${res.status}: ${errText}` };
+    }
   }
   const res = await fetch(baseUrl, {
     method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(eventBody)
   });
-  if (!res.ok) return { success: false, error: `POST ${res.status}` };
+  if (!res.ok) {
+    const errText = await res.text();
+    return { success: false, error: `POST ${res.status}: ${errText}` };
+  }
   return { success: true, eventId: (await res.json()).id };
 }
 
@@ -183,6 +189,7 @@ Deno.serve(async (req) => {
     const suppliersMap = allSuppliers.reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
 
     let synced = 0, skipped = 0, errors = 0;
+    const errorDetails = [];
 
     if (syncType === 'admin') {
       for (const event of syncableEvents) {
@@ -247,6 +254,7 @@ Deno.serve(async (req) => {
             calendarIdsChanged = true;
           } else {
             errors++;
+            errorDetails.push({ eventId: event.id, supplierId: suppId, calendarId: calId, supplierName: supplier?.supplier_name, error: result.error });
           }
         }
 
@@ -284,7 +292,7 @@ Deno.serve(async (req) => {
       skipped += allEvents.length - syncableEvents.length;
     }
 
-    return Response.json({ success: true, syncType, synced, skipped, errors, totalEvents: allEvents.length, syncableEvents: syncableEvents.length });
+    return Response.json({ success: true, syncType, synced, skipped, errors, errorDetails: errorDetails.slice(0, 20), totalEvents: allEvents.length, syncableEvents: syncableEvents.length });
 
   } catch (error) {
     console.error('Error in syncAllEventsToCalendar:', error);
