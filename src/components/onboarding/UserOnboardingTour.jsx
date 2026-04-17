@@ -104,8 +104,7 @@ export default function UserOnboardingTour({ user }) {
 
     // Show tour if version mismatch or never completed/skipped
     if (userVersion !== CURRENT_TOUR_VERSION || (!completed && !skipped)) {
-      // Open sidebar and delay to let the page render and elements appear
-      window.dispatchEvent(new Event('pulse_open_sidebar'));
+      // Delay to let the page render and elements appear
       const timer = setTimeout(() => {
         const sorted = [...tourSteps].sort((a, b) => a.step_order - b.step_order);
         const joySteps = sorted.map(s => ({
