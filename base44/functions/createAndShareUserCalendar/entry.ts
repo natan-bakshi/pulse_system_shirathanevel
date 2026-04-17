@@ -17,6 +17,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get company name from AppSettings
+    const allSettings = await base44.asServiceRole.entities.AppSettings.list();
+    const settingsMap = allSettings.reduce((acc, s) => { acc[s.setting_key] = s.setting_value; return acc; }, {});
+    const companyName = settingsMap.company_name || 'Pulse';
+
     // Determine the display name for the calendar
     let calendarName = '';
     const userType = user.user_type || 'client';
@@ -26,10 +31,10 @@ Deno.serve(async (req) => {
       const allSuppliers = await base44.asServiceRole.entities.Supplier.list();
       const supplier = allSuppliers.find(s => s.contact_emails && s.contact_emails.includes(user.email));
       const contactName = supplier?.contact_person || supplier?.supplier_name || user.full_name || user.email;
-      calendarName = `שירת הנבל - ${contactName}`;
+      calendarName = `${companyName} - ${contactName}`;
     } else {
       // For admins and clients, use the user's full name
-      calendarName = `שירת הנבל - ${user.full_name || user.email}`;
+      calendarName = `${companyName} - ${user.full_name || user.email}`;
     }
 
     // Get access token from shared connector

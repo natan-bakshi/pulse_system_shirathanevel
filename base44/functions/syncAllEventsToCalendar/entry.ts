@@ -167,7 +167,6 @@ Deno.serve(async (req) => {
 
     const allSettings = await base44.asServiceRole.entities.AppSettings.list();
     const settingsMap = allSettings.reduce((acc, s) => { acc[s.setting_key] = s.setting_value; return acc; }, {});
-    const adminCalendarId = settingsMap.admin_google_calendar_id || 'primary';
 
     let adminSupplierCategories = [];
     try { adminSupplierCategories = JSON.parse(settingsMap.google_calendar_admin_supplier_categories || '[]'); } catch (e) {}
@@ -192,20 +191,51 @@ Deno.serve(async (req) => {
     const errorDetails = [];
 
     if (syncType === 'admin') {
-      for (const event of syncableEvents) {
-        const eventES = allEventServices.filter(es => es.event_id === event.id);
-        const suppliersList = buildSuppliersList(eventES, allServices, allSuppliers, adminSupplierCategories);
-        const eventBody = buildEventBody(event, 'admin', settingsMap, { suppliersList });
-        const existingCalId = event.google_calendar_event_id;
-        const result = await upsertCalendarEvent(accessToken, adminCalendarId, existingCalId, eventBody);
-        if (result.success) {
-          synced++;
-          if (result.eventId !== existingCalId) {
-            await base44.asServiceRole.entities.Event.update(event.id, { google_calendar_event_id: result.eventId });
+      // Sync to all admin users who approved calendar sync
+      const adminUsers = allUsers.filter(u => u.role === 'admin' && u.calendar_sync_approved && u.google_calendar_id);
+      if (adminUsers.length === 0) {
+        return Response.json({ success: true, syncType, synced: 0, skipped: allEvents.length, errors: 0, errorDetails: [], totalEvents: allEvents.length, syncableEvents: syncableEvents.length, message: 'No admin users with calendar sync enabled' });
+      }
+
+      for (const adminUser of adminUsers) {
+        const adminCalendarId = adminUser.google_calendar_id;
+        // Parse per-admin calendar event IDs stored on Event entity
+        // For the first admin, use google_calendar_event_id. For additional admins, use admin_other_google_calendar_ids JSON field.
+        for (const event of syncableEvents) {
+          const eventES = allEventServices.filter(es => es.event_id === event.id);
+          const suppliersList = buildSuppliersList(eventES, allServices, allSuppliers, adminSupplierCategories);
+          const eventBody = buildEventBody(event, 'admin', settingsMap, { suppliersList });
+
+          // Determine existing calendar event ID for this admin
+          let existingCalEventId = null;
+          let otherAdminIds = {};
+          try { otherAdminIds = JSON.parse(event.admin_other_google_calendar_ids || '{}'); } catch (e) {}
+
+          if (adminUsers.length === 1 || !event.admin_other_google_calendar_ids) {
+            // Single admin or legacy: use the main field
+            existingCalEventId = event.google_calendar_event_id;
+          } else {
+            existingCalEventId = otherAdminIds[adminUser.id] || null;
           }
-        } else {
-          errors++;
-          console.error(`Admin sync failed for event ${event.id}:`, result.error);
+
+          const result = await upsertCalendarEvent(accessToken, adminCalendarId, existingCalEventId, eventBody);
+          if (result.success) {
+            synced++;
+            if (adminUsers.length === 1) {
+              if (result.eventId !== event.google_calendar_event_id) {
+                await base44.asServiceRole.entities.Event.update(event.id, { google_calendar_event_id: result.eventId });
+              }
+            } else {
+              if (result.eventId !== existingCalEventId) {
+                otherAdminIds[adminUser.id] = result.eventId;
+                await base44.asServiceRole.entities.Event.update(event.id, { admin_other_google_calendar_ids: JSON.stringify(otherAdminIds) });
+              }
+            }
+          } else {
+            errors++;
+            errorDetails.push({ eventId: event.id, adminUserId: adminUser.id, calendarId: adminCalendarId, error: result.error });
+            console.error(`Admin sync failed for event ${event.id} admin ${adminUser.id}:`, result.error);
+          }
         }
       }
       skipped = allEvents.length - syncableEvents.length;
