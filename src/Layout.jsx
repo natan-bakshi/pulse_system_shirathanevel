@@ -876,11 +876,7 @@ export default function Layout({ children }) {
       <div className="min-h-screen bg-black/20 backdrop-blur-sm flex-1 flex">
         {/* Sidebar */}
         <div className={`fixed inset-y-0 right-0 z-50 w-72 bg-white/95 backdrop-blur-sm shadow-2xl transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:inset-y-auto lg:w-72 lg:flex-shrink-0 ${
-
-
-          sidebarOpen ? 'lg:translate-x-0' : 'lg:translate-x-full lg:!w-0 lg:overflow-hidden'} ${
-          !sidebarOpen && 'invisible lg:visible'}`}>
+          sidebarOpen ? 'translate-x-0' : 'translate-x-full invisible'}`}>
             
           <div className="flex items-center justify-between p-6 border-b lg:justify-center relative">
             <div className="flex items-center space-x-3 space-x-reverse">
@@ -894,8 +890,7 @@ export default function Layout({ children }) {
             <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden">
+                onClick={() => setSidebarOpen(false)}>
 
 
               <X className="h-6 w-6" />
@@ -954,7 +949,7 @@ export default function Layout({ children }) {
 
         {sidebarOpen &&
           <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setSidebarOpen(false)} />
 
 
