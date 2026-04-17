@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +20,26 @@ import PaymentsCard from '../components/event-details/PaymentsCard';
 import FinancialSummaryCard from '../components/event-details/FinancialSummaryCard';
 import { createPageUrl } from '@/utils';
 import { calculateEventFinancials } from '@/components/utils/eventFinancials';
+
+// Helper: When merging server data with local state, preserve local values
+// for fields that may differ from server (user is actively editing them)
+function getLocalOverrides(localService, serverService) {
+  const overrides = {};
+  // Preserve local transport/text fields if they differ from server
+  const fieldsToPreserve = [
+    'pickup_point', 'standing_time', 'on_site_contact_details',
+    'service_description', 'client_notes', 'notes'
+  ];
+  for (const field of fieldsToPreserve) {
+    const localVal = localService[field];
+    const serverVal = serverService[field];
+    // If local value exists and differs from server, keep local
+    if (localVal !== undefined && JSON.stringify(localVal) !== JSON.stringify(serverVal)) {
+      overrides[field] = localVal;
+    }
+  }
+  return overrides;
+}
 
 export default function EventDetails() {
   const location = useLocation();
@@ -248,10 +268,27 @@ export default function EventDetails() {
   }, [event]);
 
   // Initialize editableServices when eventServices loads
+  // Use a ref to track if this is the first load or a user-triggered reload (loadEventData)
+  const editableServicesInitRef = React.useRef(false);
   useEffect(() => {
     if (eventServices && eventServices.length > 0) {
-      setEditableServices(eventServices.map(s => ({ ...s })));
+      setEditableServices(prev => {
+        // On first load or when service count changes (add/delete), fully replace
+        if (!editableServicesInitRef.current || prev.length !== eventServices.length) {
+          editableServicesInitRef.current = true;
+          return eventServices.map(s => ({ ...s }));
+        }
+        // On background refresh, merge server data but preserve locally-edited fields
+        // that the user might be actively editing (transport fields, descriptions, etc.)
+        return prev.map(prevService => {
+          const serverService = eventServices.find(s => s.id === prevService.id);
+          if (!serverService) return prevService;
+          // Use server data as base, but keep local overrides for fields that might be mid-edit
+          return { ...serverService, ...getLocalOverrides(prevService, serverService) };
+        });
+      });
     } else {
+      editableServicesInitRef.current = false;
       setEditableServices([]);
     }
   }, [eventServices]);
@@ -770,8 +807,17 @@ export default function EventDetails() {
       }
       
       await base44.entities.EventService.update(serviceId, updateData);
-      await base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
-      await loadEventData();
+      base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
+      
+      // Update the local editableServices state directly instead of refetching from server.
+      // This prevents overwriting user's in-progress edits on other fields.
+      setEditableServices(prev => prev.map(s => 
+        s.id === serviceId ? { ...s, ...updateData } : s
+      ));
+      
+      // Silently refresh the query cache in the background without triggering re-render of editableServices
+      queryClient.invalidateQueries({ queryKey: ['eventServices', eventId] });
+      
       setEditingServiceField(null);
     } catch (error) {
       console.error(`Failed to update ${field}:`, error);
@@ -779,7 +825,7 @@ export default function EventDetails() {
     } finally {
       setSavingServiceField(null);
     }
-  }, [loadEventData]);
+  }, [eventId, queryClient]);
 
   const handleDragEnd = useCallback(async (result) => {
     const { source, destination, type } = result;
