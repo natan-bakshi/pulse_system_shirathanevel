@@ -1468,54 +1468,47 @@ export default function EventDetails() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (shareStatus === 'ready' && pdfBlob) {
-        try {
-            const file = new File([pdfBlob], pdfFileName, { type: "application/pdf" });
-            
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'הצעת מחיר',
-                    text: ''
-                });
-                // Reset after successful share
-                setShareStatus('initial');
-                setPdfBlob(null);
-                setPdfFileName("");
-            } else {
-                alert("המכשיר אינו תומך בשיתוף קבצים מסוג זה");
-            }
-        } catch (err) {
-            console.error("Share failed/cancelled", err);
-        }
-        return;
-    }
+    try {
+      setShareStatus('fetching');
+      
+      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
+      const pdfUrl = response.data.pdf_url;
+      const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
+      
+      if (!pdfUrl) throw new Error('No PDF URL returned');
 
-    if (shareStatus === 'initial') {
-        try {
-            setShareStatus('fetching');
-            
-            const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
-            const pdfUrl = response.data.pdf_url;
-            const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
-            
-            if (pdfUrl) {
-                const pdfResponse = await fetch(pdfUrl);
-                const blob = await pdfResponse.blob();
-                setPdfBlob(blob);
-                setPdfFileName(fileName);
-                setShareStatus('ready');
-            } else {
-                throw new Error('No PDF URL returned');
-            }
-            
-        } catch (error) {
-            console.error(error);
-            setShareStatus('initial');
-            alert("שגיאה בהכנת הקובץ, נסה שוב");
-        }
+      const pdfResponse = await fetch(pdfUrl);
+      const blob = await pdfResponse.blob();
+      const file = new File([blob], fileName, { type: "application/pdf" });
+
+      // Try native share (works on iOS/Android)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'הצעת מחיר'
+        });
+      } else {
+        // Fallback: direct download
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Share failed:", err);
+        alert("שגיאה בשיתוף הקובץ, נסה שוב");
+      }
+    } finally {
+      setShareStatus('initial');
+      setPdfBlob(null);
+      setPdfFileName("");
     }
-  }, [eventId, event, shareStatus, pdfBlob, pdfFileName, quoteIncludeIntro, quoteIncludePaymentTerms]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms]);
 
   const handleExportEvent = useCallback(() => {
     setShowExportDialog(true);
@@ -1827,17 +1820,11 @@ export default function EventDetails() {
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onSelect={handleSmartShare} 
-                className={shareStatus === 'ready' ? "bg-green-50 text-green-700 focus:bg-green-100 cursor-pointer" : "cursor-pointer"}
+                disabled={shareStatus === 'fetching'}
+                className="cursor-pointer"
               >
-                {shareStatus === 'initial' && <Share2 className="h-4 w-4 ml-2" />}
-                {shareStatus === 'fetching' && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-                {shareStatus === 'ready' && <Send className="h-4 w-4 ml-2" />}
-                
-                <span>
-                    {shareStatus === 'initial' && "שתף הצעת מחיר"}
-                    {shareStatus === 'fetching' && "מכין קובץ..."}
-                    {shareStatus === 'ready' && "לחץ כאן לשליחה!"}
-                </span>
+                {shareStatus === 'fetching' ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Share2 className="h-4 w-4 ml-2" />}
+                <span>{shareStatus === 'fetching' ? "מכין ושולח..." : "שתף הצעת מחיר"}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
