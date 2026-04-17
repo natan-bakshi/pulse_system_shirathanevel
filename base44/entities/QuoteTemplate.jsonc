@@ -1,0 +1,50 @@
+{
+  "name": "QuoteTemplate",
+  "type": "object",
+  "properties": {
+    "template_type": {
+      "type": "string",
+      "enum": [
+        "concept_intro",
+        "payment_terms",
+        "agreement_disclaimer"
+      ],
+      "description": "\u05e1\u05d5\u05d2 \u05d4\u05ea\u05d1\u05e0\u05d9\u05ea (\u05e4\u05ea\u05d9\u05d7 \u05dc\u05e7\u05d5\u05e0\u05e1\u05e4\u05d8, \u05ea\u05e0\u05d0\u05d9 \u05ea\u05e9\u05dc\u05d5\u05dd, \u05d0\u05d5 \u05ea\u05e0\u05d0\u05d9 \u05d4\u05ea\u05e7\u05e9\u05e8\u05d5\u05ea)"
+    },
+    "identifier": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4. \u05e2\u05d1\u05d5\u05e8 \u05e4\u05ea\u05d9\u05d7 \u05d6\u05d4 \u05d9\u05d4\u05d9\u05d4 \u05e9\u05dd \u05d4\u05e7\u05d5\u05e0\u05e1\u05e4\u05d8. \u05e2\u05d1\u05d5\u05e8 \u05ea\u05e0\u05d0\u05d9 \u05ea\u05e9\u05dc\u05d5\u05dd \u05d0\u05d5 \u05ea\u05e0\u05d0\u05d9 \u05d4\u05ea\u05e7\u05e9\u05e8\u05d5\u05ea, \u05d6\u05d4 \u05d9\u05d4\u05d9\u05d4 'default'."
+    },
+    "content": {
+      "type": "string",
+      "description": "\u05ea\u05d5\u05db\u05df \u05d4\u05ea\u05d1\u05e0\u05d9\u05ea (\u05ea\u05d5\u05de\u05da \u05d1-HTML)"
+    },
+    "line_height": {
+      "type": "string",
+      "default": "1.6",
+      "description": "\u05de\u05e8\u05d5\u05d5\u05d7 \u05d1\u05d9\u05df \u05e9\u05d5\u05e8\u05d5\u05ea"
+    },
+    "font_size": {
+      "type": "string",
+      "default": "15",
+      "description": "\u05d2\u05d5\u05d3\u05dc \u05d2\u05d5\u05e4\u05df \u05dc\u05ea\u05d1\u05e0\u05d9\u05ea \u05d6\u05d5 (px)"
+    }
+  },
+  "required": [
+    "template_type",
+    "identifier",
+    "content"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

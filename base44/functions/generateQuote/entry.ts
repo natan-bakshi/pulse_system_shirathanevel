@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
     const appSettings = appSettingsList.reduce((acc, item) => ({ ...acc, [item.setting_key]: item.setting_value }), {});
     const introTemplate = templates.find(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
     const paymentTemplate = templates.find(t => t.template_type === 'payment_terms');
+    const agreementTemplate = templates.find(t => t.template_type === 'agreement_disclaimer');
     
     const quoteBodyFontSize = appSettings.quote_body_font_size || '15';
     const quoteTitleFontSize = appSettings.quote_title_font_size || '16';
@@ -819,6 +820,9 @@ Deno.serve(async (req) => {
                   <h2 class="section-title">תנאי תשלום</h2>
                   <div class="payment-terms">${paymentTemplate.content}</div>
               </div>` : ''}
+
+              ${agreementTemplate ? `
+              <div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>` : ''}
               
               ${quoteShowFooter ? `
               <div class="footer">

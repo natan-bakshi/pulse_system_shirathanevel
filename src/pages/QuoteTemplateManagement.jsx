@@ -98,7 +98,7 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
                     )}
                     </div>
 
-                    {template.template_type === 'concept_intro' && (
+                    {(template.template_type === 'concept_intro' || template.template_type === 'agreement_disclaimer') && (
                     <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>גודל פונט (px)</Label>
@@ -530,6 +530,11 @@ export default function QuoteTemplateManagement() {
         [templates]
     );
 
+    const agreementTemplates = useMemo(() => 
+        templates.filter(t => t.template_type === 'agreement_disclaimer'),
+        [templates]
+    );
+
     if (loading) {
         return (
             <div className="flex justify-center items-center py-10">
@@ -549,6 +554,7 @@ export default function QuoteTemplateManagement() {
                     <TabsTrigger value="settings">הגדרות הצעה</TabsTrigger>
                     <TabsTrigger value="intro">פתיחים</TabsTrigger>
                     <TabsTrigger value="payment">תנאי תשלום</TabsTrigger>
+                    <TabsTrigger value="agreement">תנאי התקשרות</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="settings">
@@ -639,6 +645,57 @@ export default function QuoteTemplateManagement() {
                     </Card>
 
                     {editingTemplate && editingTemplate.template_type === 'payment_terms' && (
+                        <TemplateEditor
+                            template={editingTemplate}
+                            onSave={handleSave}
+                            onCancel={() => setEditingTemplate(null)}
+                            concepts={concepts}
+                            isSaving={isSaving}
+                        />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="agreement" className="space-y-6">
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <CardTitle>תנאי התקשרות</CardTitle>
+                                {agreementTemplates.length === 0 && (
+                                    <Button onClick={() => setEditingTemplate({ template_type: 'agreement_disclaimer', identifier: 'default', content: '' })}>
+                                        <Plus className="h-4 w-4 ml-2" />
+                                        צור תנאי התקשרות
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-gray-500 mb-4">
+                                מקטע זה מופיע תמיד בהצעת המחיר אחרי תנאי התשלום (גם אם תנאי התשלום לא נכללים). ללא כותרת נפרדת, כהמשך ויזואלי חלק.
+                            </p>
+                            <div className="space-y-4">
+                                {agreementTemplates.map(template => (
+                                    <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                        <div>
+                                            <h3 className="font-medium">תנאי התקשרות</h3>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => setEditingTemplate(template)}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => handleDelete(template.id)} className="text-red-600">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {agreementTemplates.length === 0 && (
+                                    <p className="text-center text-gray-500 py-4">אין תנאי התקשרות מוגדרים</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {editingTemplate && editingTemplate.template_type === 'agreement_disclaimer' && (
                         <TemplateEditor
                             template={editingTemplate}
                             onSave={handleSave}
