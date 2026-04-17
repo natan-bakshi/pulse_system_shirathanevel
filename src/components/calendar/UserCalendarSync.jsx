@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Calendar, Info, Loader2, Save, CheckCircle2, XCircle } from "lucide-react";
+import { Calendar, Info, Loader2, Save, CheckCircle2, XCircle, Mail } from "lucide-react";
 import { handleUserCalendarDisconnection } from "@/functions/handleUserCalendarDisconnection";
 import { createAndShareUserCalendar } from "@/functions/createAndShareUserCalendar";
 
 export default function UserCalendarSync({ user }) {
   const [syncApproved, setSyncApproved] = useState(user?.calendar_sync_approved || false);
   const [isSaving, setIsSaving] = useState(false);
+  const [justConnected, setJustConnected] = useState(false);
   const queryClient = useQueryClient();
 
   const isConnected = user?.calendar_sync_approved && user?.google_calendar_id && user.google_calendar_id !== 'primary';
@@ -65,7 +66,11 @@ export default function UserCalendarSync({ user }) {
       }
 
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      alert(syncApproved ? "יומן Google חובר בהצלחה!" : "סנכרון היומן כובה בהצלחה.");
+      if (syncApproved) {
+        setJustConnected(true);
+      } else {
+        alert("סנכרון היומן כובה בהצלחה.");
+      }
     } catch (error) {
       console.error("Failed to save calendar settings:", error);
       alert("שגיאה בשמירת ההגדרות.");
@@ -98,12 +103,25 @@ export default function UserCalendarSync({ user }) {
           />
         </div>
 
-        {isConnected && (
+        {isConnected && !justConnected && (
           <div className="bg-green-50 rounded-lg p-3 text-sm text-green-800 flex items-start gap-2">
             <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium">יומן Google מחובר</p>
               <p className="text-xs mt-1">יומן ייעודי נוצר ושותף אליך אוטומטית. אירועים יסונכרנו אליו.</p>
+            </div>
+          </div>
+        )}
+
+        {justConnected && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 space-y-2">
+            <div className="flex items-start gap-2">
+              <Mail className="h-5 w-5 mt-0.5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-bold">יומן Google נוצר בהצלחה!</p>
+                <p className="mt-1">נשלח אליך מייל עם בקשה לאישור שיתוף היומן. <strong>עליך לאשר את השיתוף בגוף המייל</strong> כדי שהיומן יופיע אצלך ב-Google Calendar.</p>
+                <p className="mt-2 text-xs text-amber-700">לא מוצא את המייל? חפש גם בתיקיית <strong>דואר זבל / ספאם</strong>.</p>
+              </div>
             </div>
           </div>
         )}
