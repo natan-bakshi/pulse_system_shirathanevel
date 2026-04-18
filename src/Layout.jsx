@@ -31,6 +31,7 @@ import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import UserOnboardingTour from "@/components/onboarding/UserOnboardingTour";
+import CalendarSyncPrompt from "@/components/calendar/CalendarSyncPrompt";
 
 
 
@@ -1047,6 +1048,7 @@ export default function Layout({ children }) {
                   <PushNotificationPrompt user={user} />
                   <PWAInstallPrompt />
                   <UserOnboardingTour user={user} />
+                  <CalendarSyncPrompt user={user} />
 
         </>
         }
