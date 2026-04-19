@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Search, Edit, Trash2, Phone, Mail, Save, Loader2, Users, ChevronDown, ChevronUp, Link as LinkIcon, Calendar, Download, MessageCircle } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Phone, Mail, Save, Loader2, Users, ChevronDown, ChevronUp, Link as LinkIcon, Calendar, Download, MessageCircle, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import ContactPicker from "../components/ui/ContactPicker";
@@ -19,6 +19,7 @@ import EmailAddress from "../components/ui/EmailAddress";
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import ExportDialog from "../components/export/ExportDialog";
+import SupplierDeclineStatsDialog from "../components/suppliers/SupplierDeclineStatsDialog";
 
 const SupplierEventsList = ({ supplierId }) => {
   const [events, setEvents] = useState([]);
@@ -113,6 +114,7 @@ export default function SupplierManagement() {
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [expandedSuppliers, setExpandedSuppliers] = useState({});
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showDeclineStats, setShowDeclineStats] = useState(false);
   const [formData, setFormData] = useState({
     supplier_name: "",
     contact_person: "",
@@ -136,6 +138,27 @@ export default function SupplierManagement() {
     queryFn: () => base44.entities.Supplier.list(sortBy),
     staleTime: 2 * 60 * 1000,
     cacheTime: 5 * 60 * 1000
+  });
+
+  const { data: allEventServices = [] } = useQuery({
+    queryKey: ['eventServicesForStats'],
+    queryFn: () => base44.entities.EventService.list(),
+    staleTime: 5 * 60 * 1000,
+    enabled: showDeclineStats
+  });
+
+  const { data: allServicesForStats = [] } = useQuery({
+    queryKey: ['servicesForStats'],
+    queryFn: () => base44.entities.Service.list(),
+    staleTime: 5 * 60 * 1000,
+    enabled: showDeclineStats
+  });
+
+  const { data: allEventsForStats = [] } = useQuery({
+    queryKey: ['eventsForStats'],
+    queryFn: () => base44.entities.Event.list(),
+    staleTime: 5 * 60 * 1000,
+    enabled: showDeclineStats
   });
   
   const toggleSupplierExpansion = useCallback((supplierId) => {
@@ -252,6 +275,10 @@ export default function SupplierManagement() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold text-white">ניהול ספקים</h1>
         <div className="flex gap-2">
+            <Button onClick={() => setShowDeclineStats(true)} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+              <TrendingDown className="h-4 w-4 ml-2" />
+              דחיות
+            </Button>
             <Button onClick={() => setShowExportDialog(true)} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
               <Download className="h-4 w-4 ml-2" />
               ייצא
@@ -448,6 +475,14 @@ export default function SupplierManagement() {
         columns={exportColumns}
         title="רשימת ספקים"
         exportTypes={['csv', 'html']}
+      />
+      <SupplierDeclineStatsDialog
+        isOpen={showDeclineStats}
+        onClose={() => setShowDeclineStats(false)}
+        eventServices={allEventServices}
+        allSuppliers={suppliers}
+        allServices={allServicesForStats}
+        allEvents={allEventsForStats}
       />
     </div>
   );

@@ -67,9 +67,33 @@ Deno.serve(async (req) => {
 
     supplierStatuses[matchingSupplier.id] = newStatus;
 
-    await base44.asServiceRole.entities.EventService.update(eventServiceId, {
+    const updateData = {
       supplier_statuses: JSON.stringify(supplierStatuses)
-    });
+    };
+
+    // If rejected, add to declined_suppliers history
+    if (newStatus === 'rejected') {
+      let declinedSuppliers = [];
+      try {
+        declinedSuppliers = JSON.parse(eventService.declined_suppliers || '[]');
+        if (!Array.isArray(declinedSuppliers)) declinedSuppliers = [];
+      } catch (e) {
+        declinedSuppliers = [];
+      }
+
+      // Only add if not already recorded
+      const alreadyDeclined = declinedSuppliers.some(d => d.supplier_id === matchingSupplier.id);
+      if (!alreadyDeclined) {
+        declinedSuppliers.push({
+          supplier_id: matchingSupplier.id,
+          declined_date: new Date().toISOString(),
+          reason: ''
+        });
+        updateData.declined_suppliers = JSON.stringify(declinedSuppliers);
+      }
+    }
+
+    await base44.asServiceRole.entities.EventService.update(eventServiceId, updateData);
 
     return Response.json({ success: true, status: newStatus });
 

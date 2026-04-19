@@ -131,12 +131,37 @@ Deno.serve(async (req) => {
             }
         }
         
-        // Check for rejections - notify admins (always notify admins regardless of service notification setting)
+        // Check for rejections - notify admins AND save to declined_suppliers history
         const rejectionTemplate = templates.find(t => t.type === 'ADMIN_ASSIGNMENT_REJECTED');
         if (rejectionTemplate) {
             for (const supplierId of currentSupplierIds) {
                 const wasRejected = oldStatuses[supplierId] !== 'rejected' && currentStatuses[supplierId] === 'rejected';
                 
+                // Save to declined_suppliers history
+                if (wasRejected) {
+                    try {
+                        let declinedSuppliers = [];
+                        try {
+                            declinedSuppliers = JSON.parse(data.declined_suppliers || '[]');
+                            if (!Array.isArray(declinedSuppliers)) declinedSuppliers = [];
+                        } catch (e) { declinedSuppliers = []; }
+                        
+                        const alreadyDeclined = declinedSuppliers.some(d => d.supplier_id === supplierId);
+                        if (!alreadyDeclined) {
+                            declinedSuppliers.push({
+                                supplier_id: supplierId,
+                                declined_date: new Date().toISOString(),
+                                reason: ''
+                            });
+                            await base44.asServiceRole.entities.EventService.update(data.id, {
+                                declined_suppliers: JSON.stringify(declinedSuppliers)
+                            });
+                        }
+                    } catch (declineErr) {
+                        console.warn('[AssignmentChange] Error saving decline history:', declineErr);
+                    }
+                }
+
                 if (wasRejected) {
                     const supplier = suppliersMap.get(supplierId);
                     if (!supplier) continue;

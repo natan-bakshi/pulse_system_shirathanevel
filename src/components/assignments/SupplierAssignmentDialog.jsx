@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Save, X, Plus, Search } from 'lucide-react';
+import { Loader2, Save, X, Plus, Search, AlertTriangle } from 'lucide-react';
 import ContactPicker from '@/components/ui/ContactPicker';
 
 export default function SupplierAssignmentDialog({
@@ -92,7 +92,26 @@ export default function SupplierAssignmentDialog({
     }
   }, [editingService, queryClient, onSaved, onClose]);
 
+  // Parse declined suppliers from eventServiceData
+  const declinedSuppliers = React.useMemo(() => {
+    try {
+      return JSON.parse(eventServiceData?.declined_suppliers || '[]');
+    } catch (e) { return []; }
+  }, [eventServiceData]);
+
   const handleToggleSupplier = useCallback((supplierId) => {
+    // Check if supplier previously declined - show warning
+    const declineRecord = declinedSuppliers.find(d => d.supplier_id === supplierId);
+    const isAdding = !editingService?.supplierIds?.includes(supplierId);
+    
+    if (isAdding && declineRecord) {
+      const supplier = suppliers.find(s => s.id === supplierId);
+      const dateStr = declineRecord.declined_date ? ' בתאריך ' + new Date(declineRecord.declined_date).toLocaleDateString('he-IL') : '';
+      if (!window.confirm(`⚠️ שים לב: הספק "${supplier?.supplier_name || ''}" דחה שירות זה בעבר${dateStr}.\n\nלשבץ בכל זאת?`)) {
+        return;
+      }
+    }
+
     setEditingService(prev => {
       if (!prev) return prev;
 
@@ -117,7 +136,7 @@ export default function SupplierAssignmentDialog({
         supplierNotes: newNotes
       };
     });
-  }, []);
+  }, [declinedSuppliers, editingService, suppliers]);
 
   const handleCreateSupplier = useCallback(async () => {
     setIsSavingNewSupplier(true);
@@ -238,12 +257,20 @@ export default function SupplierAssignmentDialog({
                   {filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).length === 0 ? (
                     <div className="text-sm text-gray-400 italic text-center py-4 border border-dashed rounded-lg">לא נמצאו ספקים</div>
                   ) : (
-                    filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).map(s => (
-                      <div key={s.id} className="p-2 rounded-lg border bg-white flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                        <Checkbox id={`sup-${s.id}`} checked={false} onCheckedChange={() => handleToggleSupplier(s.id)} />
-                        <Label htmlFor={`sup-${s.id}`} className="text-sm cursor-pointer flex-1 py-1">{s.supplier_name}</Label>
-                      </div>
-                    ))
+                    filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).map(s => {
+                      const hasDeclined = declinedSuppliers.some(d => d.supplier_id === s.id);
+                      return (
+                        <div key={s.id} className={`p-2 rounded-lg border flex items-center gap-3 hover:bg-gray-50 transition-colors ${hasDeclined ? 'bg-red-50/50 border-red-200' : 'bg-white'}`}>
+                          <Checkbox id={`sup-${s.id}`} checked={false} onCheckedChange={() => handleToggleSupplier(s.id)} />
+                          <Label htmlFor={`sup-${s.id}`} className="text-sm cursor-pointer flex-1 py-1 flex items-center gap-1.5">
+                            {s.supplier_name}
+                            {hasDeclined && (
+                              <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>
+                            )}
+                          </Label>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>

@@ -724,13 +724,18 @@ export default function EventDetails() {
         supplierStatuses = {};
       }
 
-      const previousStatus = supplierStatuses[supplierId];
       supplierStatuses[supplierId] = newStatus;
-
-      await base44.entities.EventService.update(eventServiceId, {
-        supplier_statuses: JSON.stringify(supplierStatuses)
-      });
-      
+      const updateData = { supplier_statuses: JSON.stringify(supplierStatuses) };
+      if (newStatus === 'rejected') {
+        let declined = [];
+        try { declined = JSON.parse(eventService.declined_suppliers || '[]'); } catch(e) { declined = []; }
+        if (!Array.isArray(declined)) declined = [];
+        if (!declined.some(d => d.supplier_id === supplierId)) {
+          declined.push({ supplier_id: supplierId, declined_date: new Date().toISOString(), reason: '' });
+          updateData.declined_suppliers = JSON.stringify(declined);
+        }
+      }
+      await base44.entities.EventService.update(eventServiceId, updateData);
       await base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
       await loadEventData();
     } catch (error) {
@@ -1202,11 +1207,6 @@ export default function EventDetails() {
     
     setIsSavingPackageEdit(true);
     try {
-      console.log("[DEBUG] Starting package save. ID:", editingPackage, "Is New Structure:", isNewStructure);
-      console.log("[DEBUG] Services to update:", servicesToUpdate.map(s => s.id));
-      console.log("[DEBUG] Form data:", editPackageForm);
-
-      // Parallel updates
       await Promise.all(servicesToUpdate.map(service => {
         const updates = {
           package_name: editPackageForm.package_name,
@@ -1222,7 +1222,6 @@ export default function EventDetails() {
             updates.currency = editPackageForm.package_currency || undefined;
         }
 
-        console.log(`[DEBUG] Sending update for service ${service.id}:`, updates);
         return base44.entities.EventService.update(service.id, updates);
       }));
 

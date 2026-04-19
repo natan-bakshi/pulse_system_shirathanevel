@@ -1,0 +1,168 @@
+{
+  "name": "EventService",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "service_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea"
+    },
+    "package_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 (\u05e9\u05d3\u05d4 \u05d9\u05e9\u05df - \u05dc\u05e9\u05d9\u05de\u05d5\u05e9 \u05d1\u05ea\u05d0\u05d9\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8)"
+    },
+    "is_package_main_item": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d6\u05d4\u05d5 \u05e4\u05e8\u05d9\u05d8 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 \u05d4\u05e8\u05d0\u05e9\u05d9"
+    },
+    "parent_package_event_service_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e4\u05e8\u05d9\u05d8 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 \u05d4\u05e8\u05d0\u05e9\u05d9 (\u05e2\u05d1\u05d5\u05e8 \u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd \u05d1\u05ea\u05d5\u05da \u05d7\u05d1\u05d9\u05dc\u05d4)"
+    },
+    "package_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 (\u05e2\u05d1\u05d5\u05e8 \u05d7\u05d1\u05d9\u05dc\u05d5\u05ea \u05e1\u05e4\u05e6\u05d9\u05e4\u05d9\u05d5\u05ea \u05dc\u05d0\u05d9\u05e8\u05d5\u05e2)"
+    },
+    "package_price": {
+      "type": "number",
+      "description": "\u05de\u05d7\u05d9\u05e8 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 (\u05e2\u05d1\u05d5\u05e8 \u05d7\u05d1\u05d9\u05dc\u05d5\u05ea \u05e1\u05e4\u05e6\u05d9\u05e4\u05d9\u05d5\u05ea \u05dc\u05d0\u05d9\u05e8\u05d5\u05e2)"
+    },
+    "package_includes_vat": {
+      "type": "boolean",
+      "description": "\u05d4\u05d0\u05dd \u05de\u05d7\u05d9\u05e8 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 \u05db\u05d5\u05dc\u05dc \u05de\u05e2\"\u05de"
+    },
+    "package_description": {
+      "type": "string",
+      "description": "\u05ea\u05d9\u05d0\u05d5\u05e8 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 (\u05e2\u05d1\u05d5\u05e8 \u05d7\u05d1\u05d9\u05dc\u05d5\u05ea \u05e1\u05e4\u05e6\u05d9\u05e4\u05d9\u05d5\u05ea \u05dc\u05d0\u05d9\u05e8\u05d5\u05e2)"
+    },
+    "order_index": {
+      "type": "number",
+      "default": 0,
+      "description": "\u05e1\u05d3\u05e8 \u05d4\u05ea\u05e6\u05d5\u05d2\u05d4 \u05e9\u05dc \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea/\u05d7\u05d1\u05d9\u05dc\u05d4"
+    },
+    "supplier_ids": {
+      "type": "string",
+      "description": "\u05e8\u05e9\u05d9\u05de\u05ea \u05e1\u05e4\u05e7\u05d9\u05dd \u05de\u05e9\u05d5\u05d1\u05e6\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON - \u05de\u05e2\u05e8\u05da \u05e9\u05dc \u05de\u05d7\u05e8\u05d5\u05d6\u05d5\u05ea ID"
+    },
+    "supplier_statuses": {
+      "type": "string",
+      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1\u05d9\u05dd \u05e9\u05dc \u05e1\u05e4\u05e7\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON - \u05d0\u05d5\u05d1\u05d9\u05d9\u05e7\u05d8 \u05e2\u05dd supplier_id \u05db\u05de\u05e4\u05ea\u05d7 \u05d5\u05e1\u05d8\u05d8\u05d5\u05e1 \u05db\u05e2\u05e8\u05da"
+    },
+    "supplier_notes": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05dc\u05e1\u05e4\u05e7\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON - \u05d0\u05d5\u05d1\u05d9\u05d9\u05e7\u05d8 \u05e2\u05dd supplier_id \u05db\u05de\u05e4\u05ea\u05d7 \u05d5\u05d4\u05e2\u05e8\u05d4 \u05db\u05e2\u05e8\u05da"
+    },
+    "supplier_calendar_ids": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d9 \u05d0\u05d9\u05e8\u05d5\u05e2\u05d9 \u05d9\u05d5\u05de\u05df \u05d2\u05d5\u05d2\u05dc \u05e9\u05dc \u05e1\u05e4\u05e7\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON - \u05d0\u05d5\u05d1\u05d9\u05d9\u05e7\u05d8 \u05e2\u05dd supplier_id \u05db\u05de\u05e4\u05ea\u05d7 \u05d5\u05de\u05d6\u05d4\u05d4 \u05d9\u05d5\u05de\u05df \u05db\u05e2\u05e8\u05da"
+    },
+    "declined_suppliers": {
+      "type": "string",
+      "description": "\u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d9\u05ea \u05d3\u05d7\u05d9\u05d5\u05ea \u05e1\u05e4\u05e7\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON - \u05de\u05e2\u05e8\u05da \u05d0\u05d5\u05d1\u05d9\u05d9\u05e7\u05d8\u05d9\u05dd [{supplier_id, declined_date, reason}]"
+    },
+    "custom_price": {
+      "type": "number",
+      "description": "\u05de\u05d7\u05d9\u05e8 \u05de\u05d5\u05ea\u05d0\u05dd"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "ILS",
+        "USD"
+      ],
+      "description": "\u05de\u05d8\u05d1\u05e2 \u05e9\u05dc \u05d4\u05de\u05d7\u05d9\u05e8. \u05d0\u05dd \u05dc\u05d0 \u05de\u05d5\u05d2\u05d3\u05e8, \u05d9\u05d5\u05e8\u05e9 \u05de\u05de\u05d8\u05d1\u05e2 \u05e8\u05d0\u05e9\u05d9 \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+    },
+    "converted_price": {
+      "type": "number",
+      "description": "\u05de\u05d7\u05d9\u05e8 \u05de\u05d5\u05de\u05e8 \u05dc\u05de\u05d8\u05d1\u05e2 \u05d4\u05e8\u05d0\u05e9\u05d9 \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 (\u05e8\u05e7 \u05d0\u05dd currency \u05e9\u05d5\u05e0\u05d4 \u05de\u05de\u05d8\u05d1\u05e2 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2)"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1,
+      "description": "\u05db\u05de\u05d5\u05ea"
+    },
+    "total_price": {
+      "type": "number",
+      "description": "\u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc"
+    },
+    "notes": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea"
+    },
+    "includes_vat": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc \u05de\u05e2\"\u05de"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05ea \u05de\u05e0\u05d4\u05dc (\u05e4\u05e0\u05d9\u05de\u05d9)"
+    },
+    "client_notes": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05dc\u05dc\u05e7\u05d5\u05d7 \u05e9\u05d9\u05d5\u05e6\u05d2\u05d5 \u05d1\u05d4\u05e6\u05e2\u05ea \u05d4\u05de\u05d7\u05d9\u05e8"
+    },
+    "service_description": {
+      "type": "string",
+      "description": "\u05ea\u05d9\u05d0\u05d5\u05e8 \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea (\u05e2\u05d1\u05d5\u05e8 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d4\u05e1\u05e4\u05e6\u05d9\u05e4\u05d9)"
+    },
+    "pickup_point": {
+      "type": "string",
+      "description": "\u05e0\u05e7\u05d5\u05d3\u05ea \u05d0\u05d9\u05e1\u05d5\u05e3 (\u05dc\u05e9\u05d9\u05e8\u05d5\u05ea\u05d9 \u05e0\u05e1\u05d9\u05e2\u05d5\u05ea)"
+    },
+    "standing_time": {
+      "type": "string",
+      "description": "\u05e9\u05e2\u05ea \u05d4\u05ea\u05d9\u05d9\u05e6\u05d1\u05d5\u05ea (\u05dc\u05e9\u05d9\u05e8\u05d5\u05ea\u05d9 \u05e0\u05e1\u05d9\u05e2\u05d5\u05ea)"
+    },
+    "on_site_contact_details": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        }
+      },
+      "description": "\u05e4\u05e8\u05d8\u05d9 \u05d0\u05d9\u05e9 \u05e7\u05e9\u05e8 \u05d1\u05d0\u05ea\u05e8 (\u05dc\u05e9\u05d9\u05e8\u05d5\u05ea\u05d9 \u05e0\u05e1\u05d9\u05e2\u05d5\u05ea)"
+    },
+    "min_suppliers": {
+      "type": "number",
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05e1\u05e4\u05e7\u05d9\u05dd \u05de\u05d9\u05e0\u05d9\u05de\u05dc\u05d9 \u05dc\u05e9\u05d9\u05d1\u05d5\u05e5 (null = \u05d9\u05e8\u05e9 \u05de\u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc \u05e9\u05dc \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea)"
+    }
+  },
+  "required": [
+    "event_id",
+    "service_id"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "supplier_ids": {
+                "$like": "%{{user.id}}%"
+              }
+            },
+            {
+              "_allowed_fields": [
+                "supplier_statuses"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

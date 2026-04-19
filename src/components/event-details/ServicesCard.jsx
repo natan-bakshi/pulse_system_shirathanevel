@@ -1305,12 +1305,24 @@ const handleCopyTransport = (service, serviceDetails) => {
               />
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {filteredLocalSuppliers.map(supplier => (
+              {filteredLocalSuppliers.map(supplier => {
+                // Check if this supplier previously declined this service
+                let declinedSuppliers = [];
+                try { declinedSuppliers = JSON.parse(localSelectedService?.declined_suppliers || '[]'); } catch(e) {}
+                const declineRecord = declinedSuppliers.find(d => d.supplier_id === supplier.id);
+                const hasDeclined = !!declineRecord;
+
+                return (
                 <div key={supplier.id} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={localSupplierFormData.supplierIds.includes(supplier.id)}
                       onCheckedChange={(checked) => {
+                        if (checked && hasDeclined) {
+                          if (!window.confirm(`⚠️ שים לב: הספק "${supplier.supplier_name}" דחה שירות זה בעבר${declineRecord.declined_date ? ' בתאריך ' + new Date(declineRecord.declined_date).toLocaleDateString('he-IL') : ''}.\n\nלשבץ בכל זאת?`)) {
+                            return;
+                          }
+                        }
                         if (checked) {
                           setLocalSupplierFormData({ ...localSupplierFormData, supplierIds: [...localSupplierFormData.supplierIds, supplier.id] });
                         } else {
@@ -1324,7 +1336,12 @@ const handleCopyTransport = (service, serviceDetails) => {
                         }
                       }}
                     />
-                    <Label>{supplier.supplier_name}</Label>
+                    <Label className={hasDeclined ? 'flex items-center gap-1.5' : ''}>
+                      {supplier.supplier_name}
+                      {hasDeclined && (
+                        <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>
+                      )}
+                    </Label>
                   </div>
                   {localSupplierFormData.supplierIds.includes(supplier.id) && (
                     <div className="mr-6">
@@ -1346,7 +1363,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                     </div>
                   )}
                 </div>
-              ))}
+              );})}
             </div>
           </div>
           <DialogFooter>
