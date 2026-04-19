@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FileText, Loader2, Download, Trash2, ChevronDown, Share2, Send } from 'lucide-react';
+import { FileText, Loader2, Download, Trash2, ChevronDown, Share2, Send, Clock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ExportDialog, PaymentDialog, SupplierAssignDialog, PackageDialog, EditPackageDialog, AddServiceDialog, AddExistingPackageDialog, AddToPackageDialog, AddServiceToPackageDialog, ReceiptDialog } from '../components/event-details/EventDetailDialogs';
 import EventOverviewCard from '../components/event-details/EventOverviewCard';
@@ -20,6 +20,7 @@ import PaymentsCard from '../components/event-details/PaymentsCard';
 import FinancialSummaryCard from '../components/event-details/FinancialSummaryCard';
 import { createPageUrl } from '@/utils';
 import { calculateEventFinancials } from '@/components/utils/eventFinancials';
+import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -74,6 +75,7 @@ export default function EventDetails() {
   const [shareStatus, setShareStatus] = useState('initial');
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState("");
+  const [showQuoteHistory, setShowQuoteHistory] = useState(false);
   const [quoteIncludeIntro, setQuoteIncludeIntro] = useState(null); // null = not initialized yet
   const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(null);
 
@@ -1455,6 +1457,9 @@ export default function EventDetails() {
       } else {
         throw new Error('No PDF URL returned');
       }
+
+      // Refresh event data to update quote history
+      loadEventData();
       
     } catch (error) {
       console.error("Failed to generate PDF:", error);
@@ -1462,7 +1467,7 @@ export default function EventDetails() {
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, loadEventData]);
 
   const handleSmartShare = useCallback(async (e) => {
     e.preventDefault();
@@ -1498,6 +1503,8 @@ export default function EventDetails() {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       }
+      // Refresh event data to update quote history
+      loadEventData();
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error("Share failed:", err);
@@ -1508,7 +1515,7 @@ export default function EventDetails() {
       setPdfBlob(null);
       setPdfFileName("");
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, loadEventData]);
 
   const handleExportEvent = useCallback(() => {
     setShowExportDialog(true);
@@ -1826,6 +1833,24 @@ export default function EventDetails() {
                 {shareStatus === 'fetching' ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Share2 className="h-4 w-4 ml-2" />}
                 <span>{shareStatus === 'fetching' ? "מכין ושולח..." : "שתף הצעת מחיר"}</span>
               </DropdownMenuItem>
+              {event.quote_history && event.quote_history.length > 0 && (
+                <>
+                  <div className="border-t border-gray-100 my-1" />
+                  <DropdownMenuItem 
+                    onSelect={(e) => { e.preventDefault(); setShowQuoteHistory(prev => !prev); }}
+                    className="cursor-pointer"
+                  >
+                    <Clock className="h-4 w-4 ml-2" />
+                    <span>היסטוריה ({event.quote_history.length})</span>
+                  </DropdownMenuItem>
+                  {showQuoteHistory && (
+                    <QuoteHistoryPanel 
+                      quoteHistory={event.quote_history} 
+                      onClose={() => setShowQuoteHistory(false)} 
+                    />
+                  )}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <Button

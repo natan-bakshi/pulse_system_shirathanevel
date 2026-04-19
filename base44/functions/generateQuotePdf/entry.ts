@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import puppeteer from 'npm:puppeteer@23.11.1';
 
 // Import helper functions
@@ -953,7 +953,48 @@ Deno.serve(async (req) => {
              throw new Error('No PDF URL in API2PDF response');
         }
 
-        return Response.json({ pdf_url: result.pdf, fileName: `${fileAndTitleName}.pdf` });
+        const pdfUrl = result.pdf;
+        const fileName = `${fileAndTitleName}.pdf`;
+
+        // Save PDF to private storage and update quote history
+        try {
+            // Download the PDF from API2PDF
+            const pdfDownload = await fetch(pdfUrl);
+            const pdfArrayBuffer = await pdfDownload.arrayBuffer();
+            const pdfUint8Array = new Uint8Array(pdfArrayBuffer);
+            
+            // Create a File-like blob for upload
+            const pdfBlob = new Blob([pdfUint8Array], { type: 'application/pdf' });
+            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+            // Upload to private storage
+            const uploadResult = await base44.asServiceRole.integrations.Core.UploadPrivateFile({ file: pdfFile });
+            const fileUri = uploadResult.file_uri;
+
+            // Get current event to read existing quote_history
+            const currentEvent = await base44.asServiceRole.entities.Event.get(eventId);
+            const existingHistory = currentEvent.quote_history || [];
+
+            // Add new entry to history
+            const newEntry = {
+                file_uri: fileUri,
+                file_name: fileName,
+                created_at: new Date().toISOString(),
+                created_by_user_name: user.full_name || user.email || 'לא ידוע',
+                event_status: currentEvent.status || 'quote'
+            };
+
+            await base44.asServiceRole.entities.Event.update(eventId, {
+                quote_history: [...existingHistory, newEntry]
+            });
+
+            console.log('Quote PDF saved to history successfully');
+        } catch (historyError) {
+            // Don't fail the whole request if history save fails
+            console.error('Failed to save quote to history (non-blocking):', historyError);
+        }
+
+        return Response.json({ pdf_url: pdfUrl, fileName });
 
     } catch (error) {
         console.error('Error generating PDF:', error);
