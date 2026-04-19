@@ -1846,7 +1846,12 @@ export default function EventDetails() {
                   {showQuoteHistory && (
                     <QuoteHistoryPanel 
                       quoteHistory={event.quote_history} 
-                      onClose={() => setShowQuoteHistory(false)} 
+                      onClose={() => setShowQuoteHistory(false)}
+                      onDelete={async (item) => {
+                        const updated = (event.quote_history || []).filter(q => q.file_uri !== item.file_uri || q.created_at !== item.created_at);
+                        await base44.entities.Event.update(eventId, { quote_history: updated });
+                        await loadEventData();
+                      }}
                     />
                   )}
                 </>
