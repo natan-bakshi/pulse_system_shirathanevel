@@ -1,23 +1,117 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
 const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
 
+// ============================================================
+// Helper functions (defined before Deno.serve for Deno compatibility)
+// ============================================================
+
+function getIsraelDayOfWeek(timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone });
+    const day = formatter.format(now);
+    const dayMap = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6 };
+    return dayMap[day] ?? -1;
+}
+
+function isShabbat(timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false, timeZone: timezone });
+    const parts = formatter.formatToParts(now);
+    const day = parts.find(p => p.type === 'weekday')?.value;
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+    if (day === 'Fri' && hour >= 16) return true;
+    if (day === 'Sat' && hour < 20) return true;
+    return false;
+}
+
+function buildEventContext(event, supplier, userOrParent) {
+    return {
+        event_name: event.event_name || '',
+        family_name: event.family_name || '',
+        event_date: formatDate(event.event_date),
+        event_time: event.event_time || '',
+        event_location: event.location || '',
+        supplier_name: supplier ? (supplier.contact_person || supplier.supplier_name) : '',
+        supplier_phone: supplier?.phone || '',
+        service_name: '',
+        event_id: event.id,
+        admin_name: userOrParent?.full_name || userOrParent?.name || '',
+        user_name: userOrParent?.full_name || userOrParent?.name || '',
+        client_name: userOrParent?.name || userOrParent?.full_name || ''
+    };
+}
+
+function applyTimingOffset(date, unit, value) {
+    switch (unit) {
+        case 'minutes': date.setMinutes(date.getMinutes() + value); break;
+        case 'hours': date.setHours(date.getHours() + value); break;
+        case 'days': date.setDate(date.getDate() + value); break;
+        case 'weeks': date.setDate(date.getDate() + (value * 7)); break;
+        case 'months': date.setMonth(date.getMonth() + value); break;
+    }
+}
+
+function replacePlaceholders(template, data) {
+    if (!template) return '';
+    return template.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
+        const value = data[key];
+        return value !== undefined && value !== null ? String(value) : match;
+    });
+}
+
+function buildDeepLink(basePage, paramsMapJson, data) {
+    if (!basePage) return '/';
+    let url = `/${basePage}`;
+    if (paramsMapJson) {
+        try {
+            const paramsMap = JSON.parse(paramsMapJson);
+            const params = new URLSearchParams();
+            for (const [key, valueTemplate] of Object.entries(paramsMap)) {
+                const value = replacePlaceholders(valueTemplate, data);
+                if (value && !value.includes('{{')) params.append(key, value);
+            }
+            const paramString = params.toString();
+            if (paramString) url += `?${paramString}`;
+        } catch (e) {}
+    }
+    return url;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('he-IL');
+}
+
+function getIsraelEventDate(dateStr, timeStr) {
+    let time = timeStr || '09:00';
+    if (!time.match(/^\d{1,2}:\d{2}$/)) time = '09:00';
+    const d = new Date(`${dateStr}T${time}:00Z`);
+    const month = d.getMonth() + 1;
+    const isSummer = month >= 4 && month <= 10;
+    const offsetHours = isSummer ? 3 : 2;
+    d.setHours(d.getHours() - offsetHours);
+    return d;
+}
+
 /**
  * Daily Scheduled Notifications Processor
- * Runs once daily at 09:00 Israel time.
- * Replaces: processScheduledPushNotifications (every 15min), sendEventReminders (hourly), 
- *           checkPendingAssignments (hourly), checkAutomatedTriggers (hourly)
+ * Runs once daily at 09:00 Israel time (07:00 UTC).
+ * 
+ * ALL scheduled notifications are handled HERE in a single run:
  * 
  * Steps:
  * 1. Process pending notifications (queued from quiet hours/shabbat)
  * 2. Process scheduled_check templates (timed notifications)
- * 3. Send event reminders to suppliers and admins
- * 4. Check pending supplier assignments
- * 5. Batch send all collected WhatsApp & Push notifications
- * 6. Clean up old PendingPushNotification records
+ * 3. Send event reminders to suppliers and admins (1 day before)
+ * 4. Check pending supplier assignments (reminder for 4 days)
+ * 5. Check missing assignments - admin alert (Sunday only, up to 7 days before)
+ * 6. Check client payment reminders (events that passed with balance)
+ * 7. Batch send all collected WhatsApp & Push notifications
+ * 8. Clean up old PendingPushNotification records
  */
 Deno.serve(async (req) => {
     try {
@@ -43,6 +137,8 @@ Deno.serve(async (req) => {
             scheduled_templates_processed: 0,
             event_reminders_sent: 0,
             pending_assignments_sent: 0,
+            missing_assignments_sent: 0,
+            client_payment_reminders_sent: 0,
             errors: 0,
             cleaned_up: 0
         };
@@ -59,7 +155,10 @@ Deno.serve(async (req) => {
             allUsers,
             allTemplates,
             allPendingNotifications,
-            existingNotifications
+            existingNotifications,
+            allPayments,
+            allServices,
+            appSettings
         ] = await Promise.all([
             base44.asServiceRole.entities.Event.list(),
             base44.asServiceRole.entities.EventService.list(),
@@ -67,11 +166,15 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.User.list(),
             base44.asServiceRole.entities.NotificationTemplate.filter({ is_active: true }),
             base44.asServiceRole.entities.PendingPushNotification.filter({ is_sent: false }),
-            base44.asServiceRole.entities.InAppNotification.filter({ is_resolved: false })
+            base44.asServiceRole.entities.InAppNotification.filter({ is_resolved: false }),
+            base44.asServiceRole.entities.Payment.list(),
+            base44.asServiceRole.entities.Service.list(),
+            base44.asServiceRole.entities.AppSettings.list()
         ]);
 
         const suppliersMap = new Map(allSuppliers.map(s => [s.id, s]));
         const eventsMap = new Map(allEvents.map(e => [e.id, e]));
+        const servicesMap = new Map(allServices.map(s => [s.id, s]));
         const adminUsers = allUsers.filter(u => u.role === 'admin');
         const now = new Date();
 
@@ -424,7 +527,256 @@ Deno.serve(async (req) => {
         }
 
         // ============================================================
-        // PHASE 5: Batch Send All Collected Messages
+        // PHASE 5: Missing Assignments Check (Sunday only)
+        // ============================================================
+        const isSunday = getIsraelDayOfWeek() === 0; // 0 = Sunday
+        
+        if (isSunday) {
+            console.log('[DailyNotifications] Phase 5: Checking missing assignments (Sunday)...');
+            
+            const missingTemplate = allTemplates.find(t => t.type === 'ADMIN_MISSING_ASSIGNMENT');
+            
+            if (missingTemplate) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const sevenDaysFromNow = new Date(today);
+                sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+                
+                const upcomingEvents = allEvents.filter(e => {
+                    if (e.status === 'cancelled' || e.status === 'completed') return false;
+                    const eventDate = new Date(e.event_date);
+                    return eventDate >= today && eventDate <= sevenDaysFromNow;
+                });
+                
+                for (const event of upcomingEvents) {
+                    const eventServices = allEventServices.filter(es => es.event_id === event.id);
+                    
+                    for (const es of eventServices) {
+                        const serviceDef = servicesMap.get(es.service_id);
+                        const minRequired = es.min_suppliers ?? serviceDef?.default_min_suppliers ?? 0;
+                        
+                        if (minRequired === 0) continue;
+                        
+                        // Count confirmed/approved suppliers
+                        let approvedCount = 0;
+                        if (es.supplier_ids && es.supplier_statuses) {
+                            try {
+                                const supplierIds = JSON.parse(es.supplier_ids);
+                                const statuses = JSON.parse(es.supplier_statuses);
+                                approvedCount = supplierIds.filter(id => 
+                                    statuses[id] === 'approved' || statuses[id] === 'confirmed'
+                                ).length;
+                            } catch (e) {}
+                        }
+                        
+                        if (approvedCount >= minRequired) continue;
+                        
+                        // Check duplicate
+                        const serviceName = serviceDef?.service_name || '';
+                        const hasDuplicate = existingNotifications.some(n =>
+                            n.template_type === 'ADMIN_MISSING_ASSIGNMENT' &&
+                            n.related_event_id === event.id &&
+                            n.message?.includes(serviceName)
+                        );
+                        if (hasDuplicate) continue;
+                        
+                        const contextData = {
+                            event_name: event.event_name || '',
+                            family_name: event.family_name || '',
+                            event_date: formatDate(event.event_date),
+                            service_name: serviceName,
+                            min_suppliers: minRequired,
+                            current_suppliers: approvedCount,
+                            event_id: event.id
+                        };
+                        
+                        const title = replacePlaceholders(missingTemplate.title_template, contextData);
+                        const message = replacePlaceholders(missingTemplate.body_template, contextData);
+                        const waMessage = replacePlaceholders(missingTemplate.whatsapp_body_template || missingTemplate.body_template, contextData);
+                        const link = buildDeepLink(missingTemplate.deep_link_base, missingTemplate.deep_link_params_map, contextData);
+                        const allowedChannels = missingTemplate.allowed_channels || ['push'];
+                        
+                        for (const admin of adminUsers) {
+                            // WhatsApp
+                            if (allowedChannels.includes('whatsapp') && admin.phone) {
+                                whatsappQueue.push({ phone: admin.phone, message: waMessage });
+                            }
+                            
+                            // InApp + Push
+                            try {
+                                const notifRecord = await base44.asServiceRole.entities.InAppNotification.create({
+                                    user_id: admin.id,
+                                    user_email: admin.email,
+                                    title, message, link: link || '',
+                                    is_read: false,
+                                    template_type: 'ADMIN_MISSING_ASSIGNMENT',
+                                    related_event_id: event.id,
+                                    related_event_service_id: es.id,
+                                    push_sent: false,
+                                    whatsapp_sent: allowedChannels.includes('whatsapp') && !!admin.phone,
+                                    reminder_count: 0,
+                                    is_resolved: false
+                                });
+                                
+                                if (admin.push_enabled && admin.onesignal_subscription_id) {
+                                    pushQueue.push({
+                                        subscriptionId: admin.onesignal_subscription_id,
+                                        title, message, link: link || '',
+                                        notificationRecordId: notifRecord.id
+                                    });
+                                }
+                            } catch (dbErr) {
+                                console.warn(`[DailyNotifications] DB error for missing assignment:`, dbErr.message);
+                            }
+                            
+                            results.missing_assignments_sent++;
+                        }
+                    }
+                }
+            }
+        } else {
+            console.log('[DailyNotifications] Phase 5: Skipping missing assignments (not Sunday)');
+        }
+
+        // ============================================================
+        // PHASE 6: Client Payment Reminders (events that passed with balance)
+        // ============================================================
+        console.log('[DailyNotifications] Phase 6: Checking client payment reminders...');
+        
+        const paymentTemplate = allTemplates.find(t => t.type === 'CLIENT_PAYMENT_REMINDER');
+        
+        if (paymentTemplate) {
+            const vatSetting = appSettings.find(s => s.setting_key === 'vat_rate');
+            const vatRate = vatSetting ? parseFloat(vatSetting.setting_value) / 100 : 0.17;
+            
+            const pastEvents = allEvents.filter(e => {
+                if (e.status === 'cancelled') return false;
+                const eventDate = new Date(e.event_date);
+                return eventDate < now;
+            });
+            
+            for (const event of pastEvents) {
+                // Calculate total cost
+                let totalCost = 0;
+                
+                if (event.all_inclusive && event.all_inclusive_price) {
+                    totalCost = event.all_inclusive_price;
+                    if (!event.all_inclusive_includes_vat) totalCost *= (1 + vatRate);
+                } else if (event.total_override) {
+                    totalCost = event.total_override;
+                    if (!event.total_override_includes_vat) totalCost *= (1 + vatRate);
+                } else {
+                    const eventServices = allEventServices.filter(es => es.event_id === event.id);
+                    for (const es of eventServices) {
+                        const price = es.custom_price || es.total_price || 0;
+                        const quantity = es.quantity || 1;
+                        let serviceCost = price * quantity;
+                        if (!es.includes_vat) serviceCost *= (1 + vatRate);
+                        totalCost += serviceCost;
+                    }
+                }
+                
+                if (event.discount_amount) totalCost = Math.max(0, totalCost - event.discount_amount);
+                
+                // Calculate total paid
+                const eventPayments = allPayments.filter(p => 
+                    p.event_id === event.id && p.payment_status === 'completed'
+                );
+                const totalPaid = eventPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                const balance = totalCost - totalPaid;
+                
+                if (balance <= 0) continue;
+                
+                // Find client users
+                const clientUsers = [];
+                if (event.parents && Array.isArray(event.parents)) {
+                    for (const parent of event.parents) {
+                        if (parent.email) {
+                            const clientUser = allUsers.find(u => u.email?.toLowerCase() === parent.email.toLowerCase());
+                            if (clientUser) clientUsers.push(clientUser);
+                        }
+                    }
+                }
+                
+                if (clientUsers.length === 0) continue;
+                
+                const reminderIntervalValue = paymentTemplate.reminder_interval_value || 7;
+                const reminderIntervalUnit = paymentTemplate.reminder_interval_unit || 'days';
+                const maxReminders = paymentTemplate.max_reminders || 4;
+                const allowedChannels = paymentTemplate.allowed_channels || ['push'];
+                
+                for (const clientUser of clientUsers) {
+                    const existingNotification = existingNotifications.find(n =>
+                        n.template_type === 'CLIENT_PAYMENT_REMINDER' &&
+                        n.related_event_id === event.id &&
+                        n.user_id === clientUser.id
+                    );
+                    
+                    if (existingNotification) {
+                        const lastSentTime = new Date(existingNotification.created_date);
+                        const reminderCutoff = new Date();
+                        applyTimingOffset(reminderCutoff, reminderIntervalUnit, -reminderIntervalValue);
+                        if (lastSentTime > reminderCutoff) continue;
+                        if (existingNotification.reminder_count >= maxReminders) continue;
+                    }
+                    
+                    const formatCurrency = (amount) => new Intl.NumberFormat('he-IL', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+                    
+                    const contextData = {
+                        event_name: event.event_name || '',
+                        family_name: event.family_name || '',
+                        event_date: formatDate(event.event_date),
+                        balance: formatCurrency(balance),
+                        event_id: event.id,
+                        client_name: clientUser.full_name || ''
+                    };
+                    
+                    const title = replacePlaceholders(paymentTemplate.title_template, contextData);
+                    const message = replacePlaceholders(paymentTemplate.body_template, contextData);
+                    const waMessage = replacePlaceholders(paymentTemplate.whatsapp_body_template || paymentTemplate.body_template, contextData);
+                    const link = buildDeepLink(paymentTemplate.deep_link_base, paymentTemplate.deep_link_params_map, contextData);
+                    
+                    // WhatsApp - check parents for phone
+                    if (allowedChannels.includes('whatsapp') && event.parents) {
+                        const parent = event.parents.find(p => p.email?.toLowerCase() === clientUser.email?.toLowerCase());
+                        if (parent?.phone) {
+                            whatsappQueue.push({ phone: parent.phone, message: waMessage });
+                        }
+                    }
+                    
+                    // InApp + Push
+                    try {
+                        const notifRecord = await base44.asServiceRole.entities.InAppNotification.create({
+                            user_id: clientUser.id,
+                            user_email: clientUser.email,
+                            title, message, link: link || '',
+                            is_read: false,
+                            template_type: 'CLIENT_PAYMENT_REMINDER',
+                            related_event_id: event.id,
+                            push_sent: false,
+                            whatsapp_sent: false,
+                            reminder_count: existingNotification ? (existingNotification.reminder_count || 0) + 1 : 0,
+                            is_resolved: false
+                        });
+                        
+                        if (clientUser.push_enabled && clientUser.onesignal_subscription_id) {
+                            pushQueue.push({
+                                subscriptionId: clientUser.onesignal_subscription_id,
+                                title, message, link: link || '',
+                                notificationRecordId: notifRecord.id
+                            });
+                        }
+                    } catch (dbErr) {
+                        console.warn(`[DailyNotifications] DB error for client payment:`, dbErr.message);
+                    }
+                    
+                    results.client_payment_reminders_sent++;
+                }
+            }
+        }
+
+        // ============================================================
+        // PHASE 7: Batch Send All Collected Messages
         // ============================================================
         console.log(`[DailyNotifications] Phase 5: Sending ${whatsappQueue.length} WhatsApp + ${pushQueue.length} Push messages...`);
         
@@ -518,7 +870,7 @@ Deno.serve(async (req) => {
         }
 
         // ============================================================
-        // PHASE 6: Cleanup old PendingPushNotifications
+        // PHASE 8: Cleanup old PendingPushNotifications
         // ============================================================
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -775,86 +1127,4 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
 }
 
 
-// ============================================================
-// Shared Helpers
-// ============================================================
-
-function buildEventContext(event, supplier, userOrParent) {
-    return {
-        event_name: event.event_name || '',
-        family_name: event.family_name || '',
-        event_date: formatDate(event.event_date),
-        event_time: event.event_time || '',
-        event_location: event.location || '',
-        supplier_name: supplier ? (supplier.contact_person || supplier.supplier_name) : '',
-        supplier_phone: supplier?.phone || '',
-        service_name: '',
-        event_id: event.id,
-        admin_name: userOrParent?.full_name || userOrParent?.name || '',
-        user_name: userOrParent?.full_name || userOrParent?.name || '',
-        client_name: userOrParent?.name || userOrParent?.full_name || ''
-    };
-}
-
-function applyTimingOffset(date, unit, value) {
-    switch (unit) {
-        case 'minutes': date.setMinutes(date.getMinutes() + value); break;
-        case 'hours': date.setHours(date.getHours() + value); break;
-        case 'days': date.setDate(date.getDate() + value); break;
-        case 'weeks': date.setDate(date.getDate() + (value * 7)); break;
-        case 'months': date.setMonth(date.getMonth() + value); break;
-    }
-}
-
-function replacePlaceholders(template, data) {
-    if (!template) return '';
-    return template.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
-        const value = data[key];
-        return value !== undefined && value !== null ? String(value) : match;
-    });
-}
-
-function buildDeepLink(basePage, paramsMapJson, data) {
-    if (!basePage) return '/';
-    let url = `/${basePage}`;
-    if (paramsMapJson) {
-        try {
-            const paramsMap = JSON.parse(paramsMapJson);
-            const params = new URLSearchParams();
-            for (const [key, valueTemplate] of Object.entries(paramsMap)) {
-                const value = replacePlaceholders(valueTemplate, data);
-                if (value && !value.includes('{{')) params.append(key, value);
-            }
-            const paramString = params.toString();
-            if (paramString) url += `?${paramString}`;
-        } catch (e) {}
-    }
-    return url;
-}
-
-function formatDate(dateString) {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('he-IL');
-}
-
-function getIsraelEventDate(dateStr, timeStr) {
-    let time = timeStr || '09:00';
-    if (!time.match(/^\d{1,2}:\d{2}$/)) time = '09:00';
-    const d = new Date(`${dateStr}T${time}:00Z`);
-    const month = d.getMonth() + 1;
-    const isSummer = month >= 4 && month <= 10;
-    const offsetHours = isSummer ? 3 : 2;
-    d.setHours(d.getHours() - offsetHours);
-    return d;
-}
-
-function isShabbat(timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false, timeZone: timezone });
-    const parts = formatter.formatToParts(now);
-    const day = parts.find(p => p.type === 'weekday')?.value;
-    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-    if (day === 'Fri' && hour >= 16) return true;
-    if (day === 'Sat' && hour < 20) return true;
-    return false;
-}
+// (All helper functions defined at the top of the file before Deno.serve)
