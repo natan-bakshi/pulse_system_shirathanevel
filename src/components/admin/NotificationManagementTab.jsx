@@ -337,9 +337,6 @@ export default function NotificationManagementTab() {
     queryFn: () => base44.entities.NotificationTemplate.list()
   });
 
-  // All templates grouped by category (unified view)
-  const allTemplatesByCategory = groupTemplates(templates);
-
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (template) => {
@@ -385,6 +382,9 @@ export default function NotificationManagementTab() {
     acc[cat].push(t);
     return acc;
   }, {});
+
+  // All templates grouped by category (unified view)
+  const allTemplatesByCategory = groupTemplates(templates);
 
 
 
