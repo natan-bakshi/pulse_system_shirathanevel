@@ -284,7 +284,7 @@ export default function Layout({ children }) {
     const adminOnlyPages = [
     "/AdminDashboard", "/EventManagement", "/EventsBoardPage", "/ClientManagement",
     "/SupplierManagement", "/ServiceManagement", "/QuoteTemplateManagement",
-    "/UserManagement"];
+    "/UserManagement", "/ManualQuoteEditor"];
     
     // Settings page is only for system creator
     const isAccessingSettingsPage = pathname.includes('SettingsPage');

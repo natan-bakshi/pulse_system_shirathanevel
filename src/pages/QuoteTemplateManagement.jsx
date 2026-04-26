@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Plus, Trash2, Loader2, Edit, UploadCloud } from "lucide-react";
+import { Save, Plus, Trash2, Loader2, Edit, UploadCloud, FileText } from "lucide-react";
+import ManualQuotesList from "@/components/manualQuote/ManualQuotesList";
 
 const quillModules = {
   toolbar: [
@@ -481,6 +482,19 @@ export default function QuoteTemplateManagement() {
         cacheTime: 5 * 60 * 1000
     });
 
+    // React Query for app settings - to know if manual quote creation is enabled
+    const { data: appSettings = [] } = useQuery({
+        queryKey: ['appSettings'],
+        queryFn: () => base44.entities.AppSettings.list(),
+        staleTime: 10 * 60 * 1000,
+        cacheTime: 30 * 60 * 1000
+    });
+
+    const manualQuoteEnabled = useMemo(() => {
+        const setting = appSettings.find(s => s.setting_key === 'manual_quote_creation_enabled');
+        return setting?.setting_value === 'true';
+    }, [appSettings]);
+
     // Memoize unique concepts
     const concepts = useMemo(() => {
         return [...new Set(events.map(e => e.concept).filter(Boolean))];
@@ -550,11 +564,17 @@ export default function QuoteTemplateManagement() {
             </div>
 
             <Tabs defaultValue="settings" className="space-y-6">
-                <TabsList className="bg-white/95 backdrop-blur-sm shadow-xl">
+                <TabsList className="bg-white/95 backdrop-blur-sm shadow-xl flex-wrap h-auto">
                     <TabsTrigger value="settings">הגדרות הצעה</TabsTrigger>
                     <TabsTrigger value="intro">פתיחים</TabsTrigger>
                     <TabsTrigger value="payment">תנאי תשלום</TabsTrigger>
                     <TabsTrigger value="agreement">תנאי התקשרות</TabsTrigger>
+                    {manualQuoteEnabled && (
+                        <TabsTrigger value="manual" className="flex items-center gap-1">
+                            <FileText className="h-4 w-4" />
+                            הצעות מחיר ידניות
+                        </TabsTrigger>
+                    )}
                 </TabsList>
 
                 <TabsContent value="settings">
@@ -705,6 +725,12 @@ export default function QuoteTemplateManagement() {
                         />
                     )}
                 </TabsContent>
+
+                {manualQuoteEnabled && (
+                    <TabsContent value="manual" className="space-y-6">
+                        <ManualQuotesList />
+                    </TabsContent>
+                )}
             </Tabs>
         </div>
     );

@@ -26,6 +26,7 @@ const settingKeys = [
     'quote_body_font_size',
     'quote_title_font_size',
     'show_events_board_tab',
+    'manual_quote_creation_enabled',
     'quote_html_desktop_margin_top',
     'quote_html_desktop_margin_bottom',
     'quote_html_desktop_margin_left',
@@ -57,6 +58,7 @@ export default function SettingsPage() {
         quote_body_font_size: "15",
         quote_title_font_size: "16",
         show_events_board_tab: "false",
+        manual_quote_creation_enabled: "false",
         quote_html_desktop_margin_top: "20",
         quote_html_desktop_margin_bottom: "20",
         quote_html_desktop_margin_left: "20",
@@ -399,6 +401,18 @@ export default function SettingsPage() {
                                     id="show_events_board_tab"
                                     checked={settings.show_events_board_tab === "true"}
                                     onCheckedChange={(checked) => handleSettingChange('show_events_board_tab', checked ? "true" : "false")}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between pb-4 border-b">
+                                <div>
+                                    <Label htmlFor="manual_quote_creation_enabled">יצירת הצעת מחיר ידנית</Label>
+                                    <p className="text-xs text-gray-500 mt-1">הפעל אפשרות ליצירת הצעות מחיר ידניות חופשיות (עורך טקסט עשיר עם שיוך לאירוע, פתיחים, שירותים וסיכום כספי)</p>
+                                </div>
+                                <Switch
+                                    id="manual_quote_creation_enabled"
+                                    checked={settings.manual_quote_creation_enabled === "true"}
+                                    onCheckedChange={(checked) => handleSettingChange('manual_quote_creation_enabled', checked ? "true" : "false")}
                                 />
                             </div>
                         </CardContent>
