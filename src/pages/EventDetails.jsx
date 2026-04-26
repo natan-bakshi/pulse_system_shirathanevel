@@ -21,6 +21,7 @@ import FinancialSummaryCard from '../components/event-details/FinancialSummaryCa
 import { createPageUrl } from '@/utils';
 import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
+import DateChangeDecisionDialog from '../components/event-details/DateChangeDecisionDialog';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -1991,6 +1992,7 @@ export default function EventDetails() {
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
+      {isAdmin && event?.date_change_pending_action && (<DateChangeDecisionDialog open={true} event={event} onResolved={loadEventData} />)}
     </div>
   );
 }

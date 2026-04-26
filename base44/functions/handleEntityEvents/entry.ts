@@ -94,8 +94,60 @@ Deno.serve(async (req) => {
                  const oldVal = oldData[field];
                  return newVal && oldVal && newVal !== oldVal;
              });
-             
+
+             // Detect specifically date/time change to handle the special "ask manager" flow
+             const dateOrTimeChanged = changedFields.some(f => 
+                 ['event_date', 'eventdate', 'event_time', 'eventtime'].includes(f)
+             );
+
              if (changedFields.length > 0) {
+                 // Special flow: if date/time changed AND there are assigned suppliers,
+                 // suppress the automatic event_critical_update notification and set a flag
+                 // for the admin to decide what to do with the suppliers (reassign or cancel).
+                 if (dateOrTimeChanged) {
+                     try {
+                         const eventId = data.id;
+                         const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventId });
+                         
+                         // Check if any service has at least one assigned supplier
+                         let hasAssignedSuppliers = false;
+                         for (const s of services) {
+                             const sIds = s.supplier_ids || s.supplierids;
+                             if (sIds) {
+                                 try {
+                                     const ids = typeof sIds === 'string' ? JSON.parse(sIds) : sIds;
+                                     if (Array.isArray(ids) && ids.length > 0) {
+                                         hasAssignedSuppliers = true;
+                                         break;
+                                     }
+                                 } catch(e) {}
+                             }
+                         }
+
+                         if (hasAssignedSuppliers) {
+                             // Set the pending action flag and store previous date/time
+                             // Skip if flag is already set (avoid overwriting on subsequent updates)
+                             const alreadyPending = data.date_change_pending_action || data.datechangependingaction;
+                             if (!alreadyPending) {
+                                 await base44.asServiceRole.entities.Event.update(eventId, {
+                                     date_change_pending_action: true,
+                                     previous_event_date: oldData.event_date || oldData.eventdate || '',
+                                     previous_event_time: oldData.event_time || oldData.eventtime || ''
+                                 });
+                                 console.log(`[HandleEntityEvents] Date/time changed with assigned suppliers - flagged for admin decision. Skipping event_critical_update notification.`);
+                             }
+                             // Do NOT push event_critical_update - the admin will manually trigger it
+                             return Response.json({ 
+                                 success: true, 
+                                 notifications_sent: 0, 
+                                 reason: 'Date change pending admin decision' 
+                             });
+                         }
+                     } catch (e) {
+                         console.error('[HandleEntityEvents] Error checking suppliers for date change flow:', e);
+                     }
+                 }
+
                  triggerTypesToFetch.push('event_critical_update');
                  console.log(`[HandleEntityEvents] Detected critical event update. Fields: ${changedFields.join(', ')}`);
              }
