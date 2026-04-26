@@ -3,9 +3,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 /**
  * Manual Trigger for Notification Templates
  * Allows admins to force-send a notification for a specific event/entity immediately.
- * Bypasses timing checks and quiet hours.
- * Respects Shabbat.
- * Sends WhatsApp DIRECTLY via Green API (Inlined).
+ *
+ * Uses the SAME recipient/condition/content logic as the automated/scheduled triggers
+ * (mirrors handleEntityEvents.sendNotification) to guarantee identical behavior:
+ * - Same target audiences (suppliers / clients / admins) per template config
+ * - Same template conditions (e.g. supplier status filters)
+ * - Same content (title/body/whatsapp_body)
+ * - Same channels (push / whatsapp)
+ *
+ * Bypasses: timing/scheduled checks, Shabbat block (admin manually pressed send).
+ * Honors: quiet hours (queues WhatsApp), template conditions, allowed channels.
+ *
+ * NOTE: Local imports between functions are not supported in Base44, so the
+ * shared helpers below are intentionally duplicated from handleEntityEvents.js.
+ * Keep them in sync if you change one of them.
  */
 Deno.serve(async (req) => {
     const logs = [];
@@ -17,8 +28,7 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
-        
-        // Security check
+
         if (!user || user.role !== 'admin') {
             return Response.json({ error: 'Unauthorized', logs }, { status: 403 });
         }
@@ -30,19 +40,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Missing template_id or event_id', logs }, { status: 400 });
         }
 
-        // Shabbat Check
-        if (isShabbat()) {
-            return Response.json({ error: 'Cannot send manual notifications on Shabbat', logs }, { status: 400 });
-        }
-
         log(`[ManualTrigger] Triggering template ${template_id} for event ${event_id}`);
-
-        // Secrets for WA
-        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-        if (!GREEN_API_INSTANCE_ID || !GREEN_API_TOKEN) {
-             return Response.json({ error: 'Missing Green API Secrets', logs }, { status: 500 });
-        }
 
         // 1. Fetch Template & Event
         const template = await base44.asServiceRole.entities.NotificationTemplate.get(template_id);
@@ -52,228 +50,84 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Template or Event not found', logs }, { status: 404 });
         }
 
-        const results = {
-            whatsapp_sent: 0,
-            push_sent: 0,
-            recipients: []
+        // 2. Enrich event data (mirrors handleEntityEvents enrichment)
+        let enrichedData = { ...event };
+        try {
+            const [payments, services] = await Promise.all([
+                base44.asServiceRole.entities.Payment.filter({ event_id: event.id }),
+                base44.asServiceRole.entities.EventService.filter({ event_id: event.id })
+            ]);
+
+            const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const totalPrice = event.total_override || event.all_inclusive_price || event.total_price || 0;
+            const balance = totalPrice - totalPaid;
+            const paymentPercentage = totalPrice > 0 ? (totalPaid / totalPrice) * 100 : 0;
+
+            const assignedSupplierIds = new Set();
+            services.forEach(s => {
+                const sIds = s.supplier_ids;
+                if (sIds) {
+                    try {
+                        const ids = typeof sIds === 'string' ? JSON.parse(sIds) : sIds;
+                        if (Array.isArray(ids)) ids.forEach(id => assignedSupplierIds.add(id));
+                    } catch (e) {}
+                }
+            });
+
+            if (event.event_date) {
+                const eventDate = new Date(event.event_date);
+                const now = new Date();
+                const daysUntil = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+                const daysSinceCreated = event.created_date
+                    ? Math.ceil((now - new Date(event.created_date)) / (1000 * 60 * 60 * 24))
+                    : 0;
+                const month = eventDate.getMonth() + 1;
+                const dayOfWeek = eventDate.getDay();
+                const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+
+                enrichedData = {
+                    ...enrichedData,
+                    total_paid: totalPaid,
+                    balance: balance,
+                    payment_percentage: paymentPercentage,
+                    is_fully_paid: balance <= 0,
+                    supplier_count: assignedSupplierIds.size,
+                    days_until_event: daysUntil,
+                    creation_date_age: daysSinceCreated,
+                    event_month: month,
+                    is_weekend: isWeekend
+                };
+            }
+        } catch (e) {
+            log(`[ManualTrigger] Error enriching event data: ${e.message}`);
+        }
+
+        // 3. Synthetic event object (same shape sendNotification expects)
+        const syntheticEvent = {
+            type: 'manual',
+            entity_name: 'Event',
+            entity_id: event.id
         };
 
-        // 2. Identify Target Audience & Logic
-        
-        // --- Suppliers Audience ---
-        if (template.target_audiences.includes('supplier')) {
-             log('[ManualTrigger] Processing suppliers...');
-             // Get Event Services
-             const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
-             
-             // Collect all relevant supplier IDs first
-             const supplierIdsToFetch = new Set();
-             for (const es of eventServices) {
-                 if (!es.supplier_ids) continue;
-                 try {
-                     const ids = typeof es.supplier_ids === 'string' ? JSON.parse(es.supplier_ids) : es.supplier_ids;
-                     if (Array.isArray(ids)) ids.forEach(id => supplierIdsToFetch.add(id));
-                 } catch (e) {}
-             }
-             
-             log(`[ManualTrigger] Found ${supplierIdsToFetch.size} unique suppliers in event services`);
-             
-             // Fetch suppliers individually
-             const suppliersMap = new Map();
-             for (const supId of supplierIdsToFetch) {
-                 try {
-                     const s = await base44.asServiceRole.entities.Supplier.get(supId);
-                     if (s) suppliersMap.set(supId, s);
-                 } catch (e) {
-                     log(`[ManualTrigger] Failed to fetch supplier ${supId}`);
-                 }
-             }
-
-             for (const es of eventServices) {
-                if (!es.supplier_ids) continue;
-                
-                let supplierIds = [];
-                let supplierStatuses = {};
-                
-                try {
-                    supplierIds = typeof es.supplier_ids === 'string' ? JSON.parse(es.supplier_ids) : es.supplier_ids;
-                    supplierStatuses = typeof es.supplier_statuses === 'string' ? JSON.parse(es.supplier_statuses || '{}') : (es.supplier_statuses || {});
-                } catch (e) { continue; }
-
-                for (const supplierId of supplierIds) {
-                     // Check status (only confirmed/approved)
-                     const status = supplierStatuses[supplierId];
-                     
-                     if (status !== 'approved' && status !== 'confirmed') {
-                         log(`[ManualTrigger] Skipping supplier ${supplierId} - Status: ${status}`);
-                         continue;
-                     }
-
-                     const supplier = suppliersMap.get(supplierId);
-                     if (!supplier) {
-                         log(`[ManualTrigger] Supplier ${supplierId} missing in map`);
-                         continue;
-                     }
-
-                     // DIRECT WHATSAPP SEND (No user dependency)
-                     const whatsappEnabled = supplier.whatsapp_enabled !== false;
-                     
-                     if (whatsappEnabled && supplier.phone) {
-                         // Prepare Content
-                         const contextData = {
-                            event_name: event.event_name,
-                            family_name: event.family_name,
-                            event_date: formatDate(event.event_date),
-                            event_time: event.event_time || '',
-                            event_location: event.location || '',
-                            supplier_name: supplier.contact_person || supplier.supplier_name,
-                            supplier_phone: supplier.phone,
-                            service_name: es.service_name || '', 
-                            event_id: event.id
-                         };
-
-                         const whatsappMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
-                         
-                         try {
-                             await sendDirectWhatsApp(supplier.phone, whatsappMessage, null, GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, log);
-                             
-                             results.whatsapp_sent++;
-                             results.recipients.push({ name: supplier.supplier_name, type: 'whatsapp', phone: supplier.phone });
-                             log(`[ManualTrigger] Sent WhatsApp to ${supplier.supplier_name}`);
-                             
-                             // Log to InAppNotification (Virtual) - Just for record
-                             const title = replacePlaceholders(template.title_template, contextData);
-                             const message = replacePlaceholders(template.body_template, contextData);
-                             
-                             await createLogRecord(base44, {
-                                 user_id: `virtual_supplier_${supplierId}`,
-                                 user_email: supplier.contact_emails?.[0] || '',
-                                 title,
-                                 message,
-                                 template_type: template.type,
-                                 related_event_id: event.id,
-                                 related_supplier_id: supplierId,
-                                 whatsapp_sent: true
-                             });
-
-                         } catch (e) {
-                             log(`[ManualTrigger] Failed to send to ${supplier.supplier_name}: ${e.message}`);
-                         }
-                     } else {
-                         log(`[ManualTrigger] Supplier ${supplier.supplier_name} skipped (WA: ${whatsappEnabled}, Phone: ${supplier.phone})`);
-                     }
-                }
-             }
+        // 4. Evaluate template conditions (identical to automated flow)
+        const conditionsMet = await checkConditions(template, enrichedData, null, 'manual');
+        if (!conditionsMet) {
+            log(`[ManualTrigger] Template conditions not met for event ${event.id}`);
+            return Response.json({
+                success: true,
+                results: { conditions_met: false },
+                logs
+            });
         }
 
-        // --- Client Audience ---
-        if (template.target_audiences.includes('client')) {
-            log('[ManualTrigger] Processing clients...');
-            if (event.parents) {
-                let parents = [];
-                try { parents = typeof event.parents === 'string' ? JSON.parse(event.parents) : event.parents; } catch(e){}
-                
-                if (Array.isArray(parents)) {
-                    for (const parent of parents) {
-                        if (parent.phone) {
-                             const contextData = {
-                                event_name: event.event_name,
-                                family_name: event.family_name,
-                                event_date: formatDate(event.event_date),
-                                event_time: event.event_time || '',
-                                event_location: event.location || '',
-                                client_name: parent.name,
-                                event_id: event.id
-                             };
+        // 5. Dispatch via unified sendNotification (same as automated flow)
+        const result = await sendNotification(base44, template, enrichedData, syntheticEvent, 'Event', log);
 
-                             const whatsappMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
-                             
-                             try {
-                                 await sendDirectWhatsApp(parent.phone, whatsappMessage, null, GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, log);
-                                 
-                                 results.whatsapp_sent++;
-                                 results.recipients.push({ name: parent.name, type: 'whatsapp', phone: parent.phone });
-                                 log(`[ManualTrigger] Sent WA to client ${parent.name}`);
-
-                                 // Log
-                                 const title = replacePlaceholders(template.title_template, contextData);
-                                 const message = replacePlaceholders(template.body_template, contextData);
-                                 await createLogRecord(base44, {
-                                     user_id: `virtual_client_${parent.phone}`, 
-                                     user_email: parent.email || '',
-                                     title,
-                                     message,
-                                     template_type: template.type,
-                                     related_event_id: event.id,
-                                     whatsapp_sent: true
-                                 });
-
-                             } catch (e) {
-                                 log(`[ManualTrigger] Failed to send to client ${parent.name}: ${e.message}`);
-                             }
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- Admin Audience ---
-        if (template.target_audiences.includes('admin') || template.target_audiences.includes('system_creator')) {
-            log('[ManualTrigger] Processing admins...');
-            const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
-            
-            for (const admin of admins) {
-                // Filter system creator specific
-                if (template.target_audiences.includes('system_creator') && !template.target_audiences.includes('admin')) {
-                     // If ONLY system_creator is targeted (and not general admin) - strict check
-                     // Adjust this logic if you have a specific way to identify the creator, e.g. by email
-                     if (admin.email !== 'natib8000@gmail.com') continue;
-                }
-
-                if (admin.phone) {
-                    const contextData = {
-                        event_name: event.event_name,
-                        family_name: event.family_name,
-                        event_date: formatDate(event.event_date),
-                        event_time: event.event_time || '',
-                        event_location: event.location || '',
-                        admin_name: admin.full_name,
-                        user_name: admin.full_name,
-                        event_id: event.id
-                    };
-
-                    const whatsappMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
-                    
-                    try {
-                        await sendDirectWhatsApp(admin.phone, whatsappMessage, null, GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, log);
-                        
-                        results.whatsapp_sent++;
-                        results.recipients.push({ name: admin.full_name, type: 'whatsapp', phone: admin.phone });
-                        log(`[ManualTrigger] Sent WA to admin ${admin.full_name}`);
-
-                        // Log
-                        const title = replacePlaceholders(template.title_template, contextData);
-                        const message = replacePlaceholders(template.body_template, contextData);
-                        await createLogRecord(base44, {
-                            user_id: admin.id,
-                            user_email: admin.email,
-                            title,
-                            message,
-                            template_type: template.type,
-                            related_event_id: event.id,
-                            whatsapp_sent: true
-                        });
-
-                    } catch (e) {
-                        log(`[ManualTrigger] Failed to send to admin ${admin.full_name}: ${e.message}`);
-                    }
-                } else {
-                    log(`[ManualTrigger] Admin ${admin.full_name} has no phone`);
-                }
-            }
-        }
-
-        return Response.json({ success: true, results, logs });
+        return Response.json({
+            success: true,
+            results: { conditions_met: true, ...result },
+            logs
+        });
 
     } catch (error) {
         console.error('[ManualTrigger] Error:', error);
@@ -281,85 +135,408 @@ Deno.serve(async (req) => {
     }
 });
 
-// --- Helpers ---
 
-async function sendDirectWhatsApp(phone, message, file_url, instanceId, token, log) {
-    if (!phone || !message) throw new Error('Missing phone or message');
+// =====================================================================
+// Helpers below are MIRRORED from functions/handleEntityEvents.js
+// (local imports between Base44 functions are not supported).
+// Keep these in sync with handleEntityEvents.js if you change one.
+// =====================================================================
 
-    let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+async function checkConditions(template, data, oldData, triggerType) {
+    const logic = template.condition_logic || template.conditionlogic || 'and';
 
-    const chatId = `${cleanPhone}@c.us`;
-    let apiMethod = 'sendMessage';
-    let body = { chatId, message };
+    let allConditions = [];
+    const condField = template.condition_field || template.conditionfield;
+    const condVal = template.condition_value || template.conditionvalue;
+    const condOp = template.condition_operator || template.conditionoperator;
 
-    if (file_url) {
-        apiMethod = 'sendFileByUrl';
-        body = {
-            chatId,
-            urlFile: file_url,
-            fileName: file_url.split('/').pop() || 'file',
-            caption: message
-        };
+    if (condField && condVal) {
+        allConditions.push({ field: condField, operator: condOp || 'equals', value: condVal });
     }
 
-    const response = await fetch(`https://api.green-api.com/waInstance${instanceId}/${apiMethod}/${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(JSON.stringify(data));
+    const eventFilter = template.event_filter_condition || template.eventfiltercondition;
+    if (eventFilter) {
+        try {
+            const parsed = JSON.parse(eventFilter);
+            if (Array.isArray(parsed)) {
+                allConditions = [...allConditions, ...parsed];
+            }
+        } catch (e) {}
     }
-    return data;
+
+    if (allConditions.length === 0) return true;
+
+    for (const cond of allConditions) {
+        let met = false;
+
+        if (cond.operator === 'changed') {
+            // For manual trigger we have no oldData — treat as "passed" so manual sends are not blocked
+            // by 'changed' conditions (admin explicitly chose to send now).
+            met = true;
+        } else {
+            met = checkSingleCondition(data, cond);
+        }
+
+        if (logic === 'and' && !met) return false;
+        if (logic === 'or' && met) return true;
+    }
+
+    return logic === 'and' ? true : false;
 }
 
-async function createLogRecord(base44, data) {
+function checkSingleCondition(entityData, condition) {
+    let val = entityData[condition.field];
+    const reqVal = condition.value;
+    const op = condition.operator || 'equals';
+
+    switch (op) {
+        case 'equals': return String(val) == String(reqVal);
+        case 'not_equals':
+        case 'notequals': return String(val) != String(reqVal);
+        case 'greater_than':
+        case 'greaterthan': return parseFloat(val) > parseFloat(reqVal);
+        case 'less_than':
+        case 'lessthan': return parseFloat(val) < parseFloat(reqVal);
+        case 'contains': return String(val).includes(reqVal);
+        case 'is_empty':
+        case 'isempty': return !val || (Array.isArray(val) && val.length === 0);
+        case 'is_not_empty':
+        case 'isnotempty': return !!val && !(Array.isArray(val) && val.length === 0);
+        default: return false;
+    }
+}
+
+async function sendNotification(base44, template, entityData, event, entityName, log) {
+    let relatedEventId;
+    let eventObj = null;
+    let supplierObj = null;
+    let serviceObj = null;
+
+    if (entityName === 'Event') {
+        relatedEventId = entityData.id;
+        eventObj = entityData;
+    }
+
+    const allowedChannels = template.allowed_channels || template.allowedchannels || ['push'];
+    const sendPush = allowedChannels.includes('push');
+    const sendWhatsApp = allowedChannels.includes('whatsapp');
+    const audiences = template.target_audiences || template.targetaudiences || [];
+
+    let suppliersNotified = 0;
+    let clientsNotified = 0;
+    let adminsNotified = 0;
+
+    // --- 1. Supplier Audience ---
+    if (audiences.includes('supplier')) {
+        let suppliersToSend = [];
+
+        if (eventObj) {
+            try {
+                const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventObj.id });
+                for (const s of services) {
+                    const sIds = s.supplier_ids || s.supplierids;
+                    if (!sIds) continue;
+                    let ids = [];
+                    try { ids = typeof sIds === 'string' ? JSON.parse(sIds) : sIds; } catch (e) {}
+                    if (Array.isArray(ids)) suppliersToSend.push(...ids);
+                }
+            } catch (e) {
+                log && log(`[ManualTrigger] Error loading services: ${e.message}`);
+            }
+        }
+
+        suppliersToSend = [...new Set(suppliersToSend)];
+        log && log(`[ManualTrigger] Suppliers to notify: ${suppliersToSend.length}`);
+
+        for (const supId of suppliersToSend) {
+            let currentSupplierObj = null;
+            try { currentSupplierObj = await base44.asServiceRole.entities.Supplier.get(supId); } catch (e) {}
+            if (!currentSupplierObj) continue;
+
+            // Resolve EventService context for this supplier
+            let currentServiceObj = null;
+            if (eventObj) {
+                try {
+                    const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventObj.id });
+                    currentServiceObj = services.find(s => {
+                        const sIds = s.supplier_ids || s.supplierids;
+                        if (!sIds) return false;
+                        try {
+                            const ids = typeof sIds === 'string' ? JSON.parse(sIds) : sIds;
+                            return Array.isArray(ids) && ids.includes(supId);
+                        } catch (e) { return false; }
+                    });
+                } catch (e) {}
+            }
+
+            if (sendWhatsApp) {
+                const isEnabled = currentSupplierObj.whatsapp_enabled !== false;
+                if (isEnabled && currentSupplierObj.phone) {
+                    await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null);
+                }
+            }
+
+            if (sendPush) {
+                const emails = currentSupplierObj.contact_emails || currentSupplierObj.contactemails;
+                if (emails && Array.isArray(emails)) {
+                    for (const email of emails) {
+                        if (!email) continue;
+                        const users = await base44.asServiceRole.entities.User.filter({ email });
+                        for (const u of users) {
+                            await triggerInApp(base44, template, u, eventObj, currentSupplierObj, currentServiceObj);
+                        }
+                    }
+                }
+            }
+
+            suppliersNotified++;
+        }
+    }
+
+    // --- 2. Client Audience ---
+    if (audiences.includes('client') && eventObj && eventObj.parents) {
+        let parents = [];
+        try { parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents; } catch (e) {}
+
+        if (Array.isArray(parents)) {
+            for (const p of parents) {
+                if (sendWhatsApp && p.phone) {
+                    await triggerWhatsApp(base44, template, p.phone, eventObj, null, null, p);
+                }
+                if (sendPush && p.email) {
+                    const users = await base44.asServiceRole.entities.User.filter({ email: p.email });
+                    for (const u of users) {
+                        await triggerInApp(base44, template, u, eventObj, null, null);
+                    }
+                }
+                clientsNotified++;
+            }
+        }
+    }
+
+    // --- 3. Admin Audience ---
+    if (audiences.includes('admin') || audiences.includes('system_creator')) {
+        const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+        for (const admin of admins) {
+            if (audiences.includes('system_creator') && !audiences.includes('admin')) {
+                if (admin.email !== 'natib8000@gmail.com') continue;
+            }
+            if (sendWhatsApp && admin.phone) {
+                await triggerWhatsApp(base44, template, admin.phone, eventObj, supplierObj, serviceObj, admin);
+            }
+            if (sendPush) {
+                await triggerInApp(base44, template, admin, eventObj, supplierObj, serviceObj);
+            }
+            adminsNotified++;
+        }
+    }
+
+    return { suppliers_notified: suppliersNotified, clients_notified: clientsNotified, admins_notified: adminsNotified };
+}
+
+async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj) {
+    if (!phone) return;
+
+    let resolvedServiceName = '';
+    let supplierNote = '';
+    if (serviceObj) {
+        const svcId = serviceObj.service_id || serviceObj.serviceid;
+        if (svcId) {
+            try {
+                const svc = await base44.asServiceRole.entities.Service.get(svcId);
+                if (svc) resolvedServiceName = svc.service_name || '';
+            } catch (e) {}
+        }
+        if (supplierObj && serviceObj.supplier_notes) {
+            try {
+                const notes = typeof serviceObj.supplier_notes === 'string' ? JSON.parse(serviceObj.supplier_notes) : serviceObj.supplier_notes;
+                if (notes && typeof notes === 'object') {
+                    supplierNote = notes[supplierObj.id] || '';
+                }
+            } catch (e) {}
+        }
+    }
+
+    let message = template.whatsapp_body_template || template.body_template || template.body || '';
+    message = replaceVariables(message, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote);
+    message = message.replace(/~\s*~/g, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+
+    const DEFAULT_QUIET_START = 22;
+    const DEFAULT_QUIET_END = 8;
+    const inQuietHours = isInQuietHours(DEFAULT_QUIET_START, DEFAULT_QUIET_END);
+
+    if (inQuietHours) {
+        try {
+            const quietEnd = getQuietHoursEndTime(DEFAULT_QUIET_END);
+            const userId = userObj?.id || (supplierObj ? `virtual_supplier_${supplierObj.id}` : 'virtual_unknown');
+            const userEmail = userObj?.email || supplierObj?.contact_emails?.[0] || '';
+
+            await base44.asServiceRole.entities.PendingPushNotification.create({
+                user_id: userId,
+                user_email: userEmail,
+                title: replaceVariables(template.title_template || '', eventObj, supplierObj, serviceObj, userObj),
+                message,
+                link: '',
+                scheduled_for: quietEnd.toISOString(),
+                template_type: template.type,
+                is_sent: false,
+                data: JSON.stringify({ send_whatsapp: true, whatsapp_message: message, phone })
+            });
+        } catch (qErr) {
+            console.error('[ManualTrigger] Failed to queue WhatsApp:', qErr);
+        }
+        return;
+    }
+
     try {
-        await base44.asServiceRole.entities.InAppNotification.create({
-             user_id: data.user_id,
-             user_email: data.user_email,
-             title: data.title,
-             message: data.message,
-             link: '',
-             is_read: false,
-             template_type: data.template_type,
-             related_event_id: data.related_event_id,
-             related_supplier_id: data.related_supplier_id,
-             whatsapp_sent: data.whatsapp_sent,
-             push_sent: false,
-             reminder_count: 0,
-             is_resolved: false
-         });
+        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
+        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
+
+        if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+            let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+            if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+            else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+
+            const chatId = `${cleanPhone}@c.us`;
+            const body = { chatId, message };
+
+            await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        }
     } catch (e) {
-        console.warn('Failed to create log record', e);
+        console.error('[ManualTrigger] WhatsApp send failed', e);
     }
 }
 
-function replacePlaceholders(template, data) {
-    if (!template) return '';
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-        const value = data[key];
-        return value !== undefined && value !== null ? String(value) : match;
-    });
+async function triggerInApp(base44, template, user, eventObj, supplierObj, serviceObj) {
+    if (!user || !user.id) return;
+
+    let resolvedServiceName = '';
+    let supplierNote = '';
+    if (serviceObj) {
+        const svcId = serviceObj.service_id || serviceObj.serviceid;
+        if (svcId) {
+            try {
+                const svc = await base44.asServiceRole.entities.Service.get(svcId);
+                if (svc) resolvedServiceName = svc.service_name || '';
+            } catch (e) {}
+        }
+        if (supplierObj && serviceObj.supplier_notes) {
+            try {
+                const notes = typeof serviceObj.supplier_notes === 'string' ? JSON.parse(serviceObj.supplier_notes) : serviceObj.supplier_notes;
+                if (notes && typeof notes === 'object') {
+                    supplierNote = notes[supplierObj.id] || '';
+                }
+            } catch (e) {}
+        }
+    }
+
+    let title = template.title_template || template.title || '';
+    let message = template.body_template || template.body || '';
+
+    title = replaceVariables(title, eventObj, supplierObj, serviceObj, user, resolvedServiceName, supplierNote);
+    message = replaceVariables(message, eventObj, supplierObj, serviceObj, user, resolvedServiceName, supplierNote);
+
+    try {
+        await base44.asServiceRole.functions.invoke('createNotification', {
+            target_user_id: user.id,
+            target_user_email: user.email,
+            title,
+            message,
+            template_type: template.type,
+            related_event_id: eventObj ? eventObj.id : undefined,
+            related_supplier_id: supplierObj ? supplierObj.id : undefined,
+            related_event_service_id: serviceObj ? serviceObj.id : undefined,
+            send_push: true
+        });
+    } catch (e) {
+        console.error('[ManualTrigger] InApp Trigger failed', e);
+    }
 }
 
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('he-IL');
-}
-
-function isShabbat(timezone = 'Asia/Jerusalem') {
+function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
     const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false, timeZone: timezone });
-    const parts = formatter.formatToParts(now);
-    const day = parts.find(p => p.type === 'weekday')?.value;
-    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-    if (day === 'Fri' && hour >= 16) return true;
-    if (day === 'Sat' && hour < 20) return true;
-    return false;
+    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
+    const currentHour = parseInt(formatter.format(now), 10);
+    if (quietStart > quietEnd) return currentHour >= quietStart || currentHour < quietEnd;
+    return currentHour >= quietStart && currentHour < quietEnd;
+}
+
+function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
+    const now = new Date();
+    const israelDateFormatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+        timeZone: timezone
+    });
+    const parts = israelDateFormatter.formatToParts(now);
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    let endDate = new Date(`${year}-${month}-${day}T${String(quietEnd).padStart(2, '0')}:00:00`);
+    const m = parseInt(month, 10);
+    const isSummer = m >= 4 && m <= 10;
+    const offsetHours = isSummer ? 3 : 2;
+    endDate = new Date(endDate.getTime() - offsetHours * 60 * 60 * 1000);
+    if (now >= endDate) endDate.setDate(endDate.getDate() + 1);
+    return endDate;
+}
+
+function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote) {
+    if (!text) return '';
+
+    const getVal = (obj, keys) => {
+        if (!obj) return '';
+        for (const key of keys) {
+            if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+        }
+        return '';
+    };
+
+    const vars = {
+        'event_name': getVal(eventObj, ['event_name', 'eventname']),
+        'eventname': getVal(eventObj, ['event_name', 'eventname']),
+        'event_date': getVal(eventObj, ['event_date', 'eventdate']),
+        'eventdate': getVal(eventObj, ['event_date', 'eventdate']),
+        'event_time': getVal(eventObj, ['event_time', 'eventtime']),
+        'eventtime': getVal(eventObj, ['event_time', 'eventtime']),
+        'event_location': getVal(eventObj, ['location']),
+        'eventlocation': getVal(eventObj, ['location']),
+        'event_type': getVal(eventObj, ['event_type', 'eventtype']),
+        'guest_count': getVal(eventObj, ['guest_count', 'guestcount']),
+        'city': getVal(eventObj, ['city']),
+        'family_name': getVal(eventObj, ['family_name', 'familyname']),
+        'familyname': getVal(eventObj, ['family_name', 'familyname']),
+        'child_name': getVal(eventObj, ['child_name', 'childname']),
+        'event_id': getVal(eventObj, ['id']),
+        'supplier_name': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name', 'suppliername']),
+        'suppliername': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name', 'suppliername']),
+        'supplier_phone': getVal(supplierObj, ['phone']),
+        'service_name': resolvedServiceName || getVal(serviceObj, ['service_name', 'servicename']) || getVal(eventObj, ['service_name', 'serviceName']),
+        'servicename': resolvedServiceName || getVal(serviceObj, ['service_name', 'servicename']),
+        'supplier_note': supplierNote ? `📝 הערה עבורך: ${supplierNote}` : '',
+        'total_price': getVal(eventObj, ['total_price', 'totalprice', 'total_override', 'totaloverride', 'all_inclusive_price', 'allinclusiveprice']),
+        'balance': getVal(eventObj, ['balance']),
+        'user_name': getVal(userObj, ['full_name', 'fullname', 'name']),
+        'username': getVal(userObj, ['full_name', 'fullname', 'name'])
+    };
+
+    if (eventObj && eventObj.parents) {
+        try {
+            const parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents;
+            if (Array.isArray(parents) && parents.length > 0) {
+                vars['client_name'] = parents[0].name;
+                vars['clientname'] = parents[0].name;
+                vars['client_phone'] = parents[0].phone;
+            }
+        } catch (e) {}
+    }
+    if (!vars['client_name']) vars['client_name'] = vars['user_name'];
+
+    return text.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
+        return vars[key] !== undefined ? vars[key] : match;
+    });
 }
