@@ -109,23 +109,137 @@ Deno.serve(async (req) => {
             entity_id: event.id
         };
 
-        // 4. Evaluate template conditions (identical to automated flow)
-        const conditionsMet = await checkConditions(template, enrichedData, null, 'manual');
-        if (!conditionsMet) {
-            log(`[ManualTrigger] Template conditions not met for event ${event.id}`);
-            return Response.json({
-                success: true,
-                results: { conditions_met: false },
-                logs
-            });
+        const audiences = template.target_audiences || template.targetaudiences || [];
+        const allowedChannels = template.allowed_channels || template.allowedchannels || ['push'];
+        const sendPush = allowedChannels.includes('push');
+        const sendWhatsApp = allowedChannels.includes('whatsapp');
+
+        let suppliersNotified = 0;
+        let clientsNotified = 0;
+        let adminsNotified = 0;
+        let suppliersChecked = 0;
+        let suppliersSkipped = 0;
+
+        // 4. Supplier audience: iterate over every EventService + supplier in the event
+        // and evaluate template conditions per (event + service + supplier) context.
+        // This makes the manual trigger behave like an automatic trigger that fires
+        // for each relevant assignment, but without any time gating.
+        if (audiences.includes('supplier')) {
+            let services = [];
+            try {
+                services = await base44.asServiceRole.entities.EventService.filter({ event_id: event.id });
+            } catch (e) {
+                log(`[ManualTrigger] Error loading services: ${e.message}`);
+            }
+
+            for (const serviceObj of services) {
+                // Parse supplier ids
+                let supplierIds = [];
+                const sIds = serviceObj.supplier_ids || serviceObj.supplierids;
+                if (sIds) {
+                    try { supplierIds = typeof sIds === 'string' ? JSON.parse(sIds) : sIds; } catch (e) {}
+                }
+                if (!Array.isArray(supplierIds) || supplierIds.length === 0) continue;
+
+                // Parse supplier statuses (object: { supplierId: status })
+                let supplierStatuses = {};
+                const stRaw = serviceObj.supplier_statuses || serviceObj.supplierstatuses;
+                if (stRaw) {
+                    try {
+                        const parsed = typeof stRaw === 'string' ? JSON.parse(stRaw) : stRaw;
+                        if (parsed && typeof parsed === 'object') supplierStatuses = parsed;
+                    } catch (e) {}
+                }
+
+                for (const supId of supplierIds) {
+                    suppliersChecked++;
+                    let currentSupplierObj = null;
+                    try { currentSupplierObj = await base44.asServiceRole.entities.Supplier.get(supId); } catch (e) {}
+                    if (!currentSupplierObj) {
+                        suppliersSkipped++;
+                        continue;
+                    }
+
+                    // Build enriched context that exposes event, service and supplier-level fields
+                    // to the condition evaluator (top-level keys only, mirroring entity fields).
+                    const supplierStatus = supplierStatuses[supId] || '';
+                    const enrichedContext = {
+                        ...enrichedData,                  // event-level fields (incl. computed)
+                        ...serviceObj,                    // event-service fields (overrides where keys collide)
+                        id: enrichedData.id,              // keep event id as primary id for {{event_id}} resolution
+                        event_id: enrichedData.id,
+                        event_service_id: serviceObj.id,
+                        supplier_id: supId,
+                        supplier_status: supplierStatus,
+                        current_supplier_status: supplierStatus,
+                        // Surface the most relevant supplier fields without overriding event-level ones
+                        supplier_name: currentSupplierObj.supplier_name || currentSupplierObj.contact_person || '',
+                        supplier_phone: currentSupplierObj.phone || '',
+                        supplier_whatsapp_enabled: currentSupplierObj.whatsapp_enabled !== false
+                    };
+
+                    const conditionsMet = await checkConditions(template, enrichedContext, null, 'manual');
+                    if (!conditionsMet) {
+                        suppliersSkipped++;
+                        continue;
+                    }
+
+                    // Send WhatsApp
+                    if (sendWhatsApp) {
+                        const isEnabled = currentSupplierObj.whatsapp_enabled !== false;
+                        if (isEnabled && currentSupplierObj.phone) {
+                            await triggerWhatsApp(base44, template, currentSupplierObj.phone, enrichedData, currentSupplierObj, serviceObj, null);
+                        }
+                    }
+
+                    // Send Push / In-App
+                    if (sendPush) {
+                        const emails = currentSupplierObj.contact_emails || currentSupplierObj.contactemails;
+                        if (emails && Array.isArray(emails)) {
+                            for (const email of emails) {
+                                if (!email) continue;
+                                const users = await base44.asServiceRole.entities.User.filter({ email });
+                                for (const u of users) {
+                                    await triggerInApp(base44, template, u, enrichedData, currentSupplierObj, serviceObj);
+                                }
+                            }
+                        }
+                    }
+
+                    suppliersNotified++;
+                }
+            }
+
+            log(`[ManualTrigger] Supplier scan: checked=${suppliersChecked}, notified=${suppliersNotified}, skipped=${suppliersSkipped}`);
         }
 
-        // 5. Dispatch via unified sendNotification (same as automated flow)
-        const result = await sendNotification(base44, template, enrichedData, syntheticEvent, 'Event', log);
+        // 5. Client / Admin audiences: handle once at the event level (no per-supplier iteration).
+        const nonSupplierAudiences = audiences.filter(a => a !== 'supplier');
+        if (nonSupplierAudiences.length > 0) {
+            // Evaluate conditions at the event level for non-supplier audiences
+            const conditionsMet = await checkConditions(template, enrichedData, null, 'manual');
+            if (conditionsMet) {
+                // Build a template-like clone with only the non-supplier audiences so
+                // sendNotification won't re-send to suppliers (which we already handled above).
+                const templateForOthers = { ...template, target_audiences: nonSupplierAudiences };
+                const result = await sendNotification(base44, templateForOthers, enrichedData, syntheticEvent, 'Event', log);
+                clientsNotified = result.clients_notified || 0;
+                adminsNotified = result.admins_notified || 0;
+            } else {
+                log(`[ManualTrigger] Event-level conditions not met for non-supplier audiences`);
+            }
+        }
 
         return Response.json({
             success: true,
-            results: { conditions_met: true, ...result },
+            results: {
+                conditions_met: true,
+                suppliers_checked: suppliersChecked,
+                suppliers_notified: suppliersNotified,
+                suppliers_skipped: suppliersSkipped,
+                clients_notified: clientsNotified,
+                admins_notified: adminsNotified
+            },
             logs
         });
 
