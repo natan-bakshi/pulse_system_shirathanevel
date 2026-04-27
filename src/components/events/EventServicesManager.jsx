@@ -44,7 +44,7 @@ export default function EventServicesManager({
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
   const [selectedServiceForSupplier, setSelectedServiceForSupplier] = useState(null);
-  const [supplierFormData, setSupplierFormData] = useState({ supplierIds: [], notes: {} });
+  const [supplierFormData, setSupplierFormData] = useState({ supplierIds: [], notes: {}, declinedSuppliers: [] });
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
   const [addServiceSelectValue, setAddServiceSelectValue] = useState("");
   const [selectedServicesForAction, setSelectedServicesForAction] = useState([]);
@@ -324,7 +324,19 @@ export default function EventServicesManager({
     setSelectedServiceForSupplier(service);
     const supplierIds = Array.isArray(service.supplier_ids) ? service.supplier_ids : [];
     const supplierNotes = typeof service.supplier_notes === 'object' ? service.supplier_notes : {};
-    setSupplierFormData({ supplierIds, notes: supplierNotes });
+    // Parse declined suppliers history (supports both string JSON and array)
+    let declinedSuppliers = [];
+    try {
+      if (Array.isArray(service.declined_suppliers)) {
+        declinedSuppliers = service.declined_suppliers;
+      } else if (typeof service.declined_suppliers === 'string') {
+        declinedSuppliers = JSON.parse(service.declined_suppliers || '[]');
+      }
+      if (!Array.isArray(declinedSuppliers)) declinedSuppliers = [];
+    } catch (e) {
+      declinedSuppliers = [];
+    }
+    setSupplierFormData({ supplierIds, notes: supplierNotes, declinedSuppliers });
     setSupplierSearchTerm("");
     setShowSupplierDialog(true);
   };
@@ -346,7 +358,7 @@ export default function EventServicesManager({
     onServicesChange(updatedServices);
     setShowSupplierDialog(false);
     setSelectedServiceForSupplier(null);
-    setSupplierFormData({ supplierIds: [], notes: {} });
+    setSupplierFormData({ supplierIds: [], notes: {}, declinedSuppliers: [] });
     setSupplierSearchTerm("");
   };
 
@@ -1444,13 +1456,24 @@ export default function EventServicesManager({
               </Button>
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {filteredSuppliersForDialog.map(supplier => (
-                <div key={supplier.id} className="space-y-2">
+              {filteredSuppliersForDialog.map(supplier => {
+                const declineRecord = (supplierFormData.declinedSuppliers || []).find(d => d.supplier_id === supplier.id);
+                const hasDeclined = !!declineRecord;
+                const isAssigned = supplierFormData.supplierIds.includes(supplier.id);
+                return (
+                <div key={supplier.id} className={`space-y-2 ${hasDeclined && !isAssigned ? 'bg-red-50/50 border border-red-200 rounded-lg p-2' : ''}`}>
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      checked={supplierFormData.supplierIds.includes(supplier.id)}
+                      checked={isAssigned}
                       onCheckedChange={(checked) => {
                         if (checked) {
+                          // Warn before assigning a supplier who declined before
+                          if (hasDeclined) {
+                            const dateStr = declineRecord.declined_date ? ' בתאריך ' + new Date(declineRecord.declined_date).toLocaleDateString('he-IL') : '';
+                            if (!window.confirm(`⚠️ שים לב: הספק "${supplier.supplier_name}" דחה שירות זה בעבר${dateStr}.\n\nלשבץ בכל זאת?`)) {
+                              return;
+                            }
+                          }
                           setSupplierFormData({ ...supplierFormData, supplierIds: [...supplierFormData.supplierIds, supplier.id] });
                         } else {
                           const newNotes = { ...supplierFormData.notes };
@@ -1463,7 +1486,12 @@ export default function EventServicesManager({
                         }
                       }}
                     />
-                    <Label>{supplier.supplier_name}</Label>
+                    <Label className="flex items-center gap-1.5">
+                      {supplier.supplier_name}
+                      {hasDeclined && (
+                        <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>
+                      )}
+                    </Label>
                   </div>
                   {supplierFormData.supplierIds.includes(supplier.id) && (
                     <div className="mr-6">
@@ -1485,7 +1513,8 @@ export default function EventServicesManager({
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           <DialogFooter>
