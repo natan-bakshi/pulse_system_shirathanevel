@@ -119,6 +119,12 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                 </Select>
               </div>
             )}
+            <CustomContentToggle
+              block={block}
+              updateOptions={updateOptions}
+              label="ערוך טקסט פתיח רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
+              placeholder="טקסט פתיח מותאם להצעה זו..."
+            />
           </div>
         );
 
@@ -131,7 +137,9 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               {[
                 ['showPrices', 'הצג מחירים'],
                 ['showDescriptions', 'הצג תיאורים'],
-                ['showQuantities', 'הצג כמויות']
+                ['showQuantities', 'הצג כמויות'],
+                ['showClientNotes', 'הצג הערות ללקוח'],
+                ['showTransportDetails', 'הצג פרטי נסיעה / איש קשר']
               ].map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm">
                   <Checkbox
@@ -171,7 +179,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
 
       case BLOCK_TYPES.PAYMENT_TERMS:
         return (
-          <div>
+          <div className="space-y-2">
             <Label className="text-xs">בחר תבנית תנאי תשלום:</Label>
             <Select value={block.options?.templateId || '__default__'} onValueChange={(v) => updateOptions({ templateId: v === '__default__' ? '' : v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
@@ -182,12 +190,18 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                 ))}
               </SelectContent>
             </Select>
+            <CustomContentToggle
+              block={block}
+              updateOptions={updateOptions}
+              label="ערוך תנאי תשלום רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
+              placeholder="תנאי תשלום מותאמים להצעה זו..."
+            />
           </div>
         );
 
       case BLOCK_TYPES.AGREEMENT_DISCLAIMER:
         return (
-          <div>
+          <div className="space-y-2">
             <Label className="text-xs">בחר תבנית תנאי התקשרות:</Label>
             <Select value={block.options?.templateId || '__default__'} onValueChange={(v) => updateOptions({ templateId: v === '__default__' ? '' : v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
@@ -198,6 +212,12 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                 ))}
               </SelectContent>
             </Select>
+            <CustomContentToggle
+              block={block}
+              updateOptions={updateOptions}
+              label="ערוך תנאי התקשרות רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
+              placeholder="תנאי התקשרות מותאמים להצעה זו..."
+            />
           </div>
         );
 
@@ -264,6 +284,33 @@ function NotLinkedNotice() {
       <div>
         קטע זה דורש אירוע משויך. שייך אירוע בראש העמוד כדי שהתוכן יומשך מהאירוע אוטומטית בעת ייצוא ה-PDF.
       </div>
+    </div>
+  );
+}
+
+/**
+ * רכיב משותף — מאפשר לדרוס את תוכן התבניות (פתיח / תנאי תשלום / תנאי התקשרות)
+ * עבור הצעה זו בלבד, מבלי לשנות את התבנית הגלובלית.
+ */
+function CustomContentToggle({ block, updateOptions, label, placeholder }) {
+  const useCustom = !!block.options?.useCustomContent;
+  return (
+    <div className="pt-2 mt-2 border-t border-dashed border-gray-200 space-y-2">
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={useCustom}
+          onCheckedChange={(v) => updateOptions({ useCustomContent: !!v })}
+        />
+        <span>{label}</span>
+      </label>
+      {useCustom && (
+        <RichTextEditor
+          value={block.options?.customContent || ''}
+          onChange={(html) => updateOptions({ customContent: html })}
+          minHeight={140}
+          placeholder={placeholder}
+        />
+      )}
     </div>
   );
 }

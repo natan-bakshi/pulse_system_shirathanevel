@@ -51,7 +51,7 @@ export function createBlock(type) {
     case BLOCK_TYPES.INTRO_TEMPLATE:
       return { ...base, options: { templateId: '', useEventConcept: true } };
     case BLOCK_TYPES.SERVICES:
-      return { ...base, options: { showPrices: true, showDescriptions: true, showQuantities: true } };
+      return { ...base, options: { showPrices: true, showDescriptions: true, showQuantities: true, showClientNotes: true, showTransportDetails: true } };
     case BLOCK_TYPES.FINANCIAL_SUMMARY:
       return { ...base, options: { showVat: true, showPaid: true, showBalance: true, showDiscount: true } };
     case BLOCK_TYPES.PAYMENT_TERMS:

@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, FileDown, ArrowRight, Trash2, Info } from 'lucide-react';
+import { Loader2, Save, FileDown, ArrowRight, Trash2, Info, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import EventLinkSelector from '@/components/manualQuote/EventLinkSelector';
 import BlockAdder from '@/components/manualQuote/BlockAdder';
 import BlockEditor from '@/components/manualQuote/BlockEditor';
 import { generateManualQuotePdf } from '@/functions/generateManualQuotePdf';
+import { buildBlocksFromEvent } from '@/components/manualQuote/buildBlocksFromEvent';
 
 export default function ManualQuoteEditor() {
   const navigate = useNavigate();
@@ -92,6 +93,18 @@ export default function ManualQuoteEditor() {
       return next;
     });
   }, []);
+
+  const handleLoadFromEvent = useCallback(() => {
+    if (!linkedEventId) {
+      toast.error('יש לשייך קודם אירוע למעלה כדי לטעון את הצעת המחיר שלו');
+      return;
+    }
+    if (blocks.length > 0 && !confirm('פעולה זו תחליף את כל הקטעים הקיימים במבנה של הצעת מחיר רגילה. להמשיך?')) {
+      return;
+    }
+    setBlocks(buildBlocksFromEvent());
+    toast.success('נטענה הצעת מחיר רגילה כנקודת התחלה — ניתן לערוך, להסיר או להוסיף קטעי טקסט בין המקטעים');
+  }, [linkedEventId, blocks.length]);
 
   const handleSave = useCallback(async (silent = false) => {
     setIsSaving(true);
@@ -212,12 +225,25 @@ export default function ManualQuoteEditor() {
 
       <EventLinkSelector linkedEventId={linkedEventId} onChange={setLinkedEventId} />
 
-      {/* Info banner */}
-      <div className="bg-blue-50/95 border border-blue-200 rounded-lg p-3 text-sm text-blue-900 flex items-start gap-2">
-        <Info className="h-4 w-4 mt-0.5 shrink-0" />
-        <div>
-          העורך מחולק לקטעים. הוסף קטעים בסוגים השונים, סדר אותם בסדר הרצוי, ולחץ על "הפק PDF" כדי לייצר את ההצעה. ה-PDF יופק עם אותו רקע, שוליים ועיצוב כמו הצעות המחיר הרגילות.
+      {/* Info banner + Load from event */}
+      <div className="bg-blue-50/95 border border-blue-200 rounded-lg p-3 text-sm text-blue-900 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-start gap-2 flex-1 min-w-[260px]">
+          <Info className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            העורך מחולק לקטעים. הוסף קטעים בסוגים השונים, סדר אותם בסדר הרצוי, ולחץ על "הפק PDF" כדי לייצר את ההצעה. ה-PDF יופק עם אותו רקע, שוליים ועיצוב כמו הצעות המחיר הרגילות.
+          </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLoadFromEvent}
+          disabled={!linkedEventId}
+          className="shrink-0"
+          title={!linkedEventId ? 'יש לשייך אירוע למעלה' : 'בנה הצעה רגילה כנקודת התחלה'}
+        >
+          <Wand2 className="h-4 w-4 ml-1" />
+          טען הצעה רגילה מהאירוע
+        </Button>
       </div>
 
       {/* Blocks */}

@@ -84,6 +84,17 @@ function renderEventDetailsBlock(block, event, settings) {
 
 function renderIntroBlock(block, event, templates, settings) {
   const opts = block.options || {};
+
+  // 1) Custom content for this quote only — overrides templates
+  if (opts.useCustomContent && opts.customContent) {
+    const fs = settings.quoteBodyFontSize;
+    const lh = settings.quoteGeneralLineHeight;
+    return `
+      <div class="section">
+        <div class="intro-content" style="text-align: center; margin-bottom: 30px; font-size: ${fs}px; line-height: ${lh}; color: ${settings.quoteTextColor}; padding: 10px 0;">${opts.customContent}</div>
+      </div>`;
+  }
+
   let template = null;
   if (opts.useEventConcept !== false && event?.concept) {
     template = templates.find(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
@@ -100,12 +111,57 @@ function renderIntroBlock(block, event, templates, settings) {
     </div>`;
 }
 
+function renderTransportDetails(service, settings) {
+  if (service.category !== 'נסיעות') return '';
+  let units = [];
+  try {
+    const parsed = JSON.parse(service.pickup_point || '[]');
+    units = Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    if (service.pickup_point || service.standing_time) {
+      units = [{
+        pickupPoints: [{
+          time: service.standing_time,
+          location: service.pickup_point,
+          contact: service.on_site_contact_details
+        }]
+      }];
+    }
+  }
+
+  if (units.length === 0 && !service.on_site_contact_details?.name) return '';
+
+  if (units.length === 0 && service.on_site_contact_details?.name) {
+    return `<div style="color: #1e40af; font-size: calc(${settings.quoteBodyFontSize}px * 0.85); margin-top: 5px; background-color: rgba(239, 246, 255, 0.5); padding: 4px 6px; border-radius: 4px;">
+        <div><strong>איש קשר במקום:</strong> ${escapeHtml(service.on_site_contact_details.name)}${service.on_site_contact_details.phone ? ` (${escapeHtml(service.on_site_contact_details.phone)})` : ''}</div>
+    </div>`;
+  }
+
+  return `<div style="color: #1e40af; font-size: calc(${settings.quoteBodyFontSize}px * 0.85); margin-top: 5px; background-color: rgba(239, 246, 255, 0.5); padding: 4px 6px; border-radius: 4px;">
+    ${units.map((unit, uIdx) => `
+      <div style="${uIdx > 0 ? 'border-top: 1px solid rgba(30, 64, 175, 0.2); padding-top: 4px; margin-top: 4px;' : ''}">
+        ${units.length > 1 ? `<div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">נסיעה ${uIdx + 1}</div>` : ''}
+        ${(unit.pickupPoints || []).map((point, pIdx) => `
+          <div style="margin-bottom: 2px;">
+            ${unit.pickupPoints.length > 1 ? `<span style="font-weight: 600;">נקודה ${pIdx + 1}:</span>` : ''}
+            ${point.time ? `<span style="margin-right: 6px;"><strong>שעה:</strong> ${escapeHtml(point.time)}</span>` : ''}
+            ${point.location ? `<span style="margin-right: 6px;"><strong>מיקום:</strong> ${escapeHtml(point.location)}</span>` : ''}
+            ${point.contact?.name ? `<div style="margin-top: 1px;"><strong>איש קשר:</strong> ${escapeHtml(point.contact.name)} ${point.contact.phone ? `(${escapeHtml(point.contact.phone)})` : ''}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `).join('')}
+  </div>`;
+}
+
 function renderServicesBlock(block, event, allServices, eventServices, settings) {
   if (!event || !eventServices || eventServices.length === 0) return '';
   const opts = block.options || {};
   const showPrices = opts.showPrices !== false && !event.all_inclusive;
   const showDescriptions = opts.showDescriptions !== false;
   const showQuantities = opts.showQuantities !== false;
+  const showClientNotes = opts.showClientNotes !== false;
+  const showTransportDetails = opts.showTransportDetails !== false;
 
   const populated = eventServices.map(es => {
     const sd = allServices.find(s => s.id === es.service_id) || {};
@@ -137,7 +193,9 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
               <div style="flex: 1;">
                 <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || '')}</strong>
                 ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
+                ${showClientNotes && child.client_notes ? `<div style="color: #888; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${child.client_notes}</div>` : ''}
                 ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
+                ${showTransportDetails ? renderTransportDetails(child, settings) : ''}
               </div>
             </div>
           `).join('')}
@@ -174,6 +232,9 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
                 <div style="flex: 1;">
                   <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || '')}</strong>
                   ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
+                  ${showClientNotes && child.client_notes ? `<div style="color: #888; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${child.client_notes}</div>` : ''}
+                  ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
+                  ${showTransportDetails ? renderTransportDetails(child, settings) : ''}
                 </div>
               </div>
             `).join('')}
@@ -199,7 +260,9 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
           <div style="flex: 1; min-width: 200px;">
             <strong style="color: #1f2937; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(s.service_name || '')}</strong>
             ${showDescriptions && s.service_description ? `<div style="color: #6b7280; font-size: ${settings.quoteBodyFontSize}px; margin-top: 5px;">${s.service_description}</div>` : ''}
+            ${showClientNotes && s.client_notes ? `<div style="color: #9ca3af; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${s.client_notes}</div>` : ''}
             ${showQuantities && s.quantity > 1 ? `<div style="color: #6b7280; font-size: ${settings.quoteBodyFontSize}px; margin-top: 3px;">כמות: ${s.quantity}</div>` : ''}
+            ${showTransportDetails ? renderTransportDetails(s, settings) : ''}
           </div>
           ${showPrices ? `
           <div style="text-align: left; margin-top: 10px;">
@@ -285,6 +348,22 @@ function renderFinancialSummaryBlock(block, event, eventServices, payments, sett
 
 function renderTemplateBlock(block, templates, type, sectionTitle, settings) {
   const opts = block.options || {};
+
+  // Custom content for this quote only — falls back to template fonts/line-height
+  if (opts.useCustomContent && opts.customContent) {
+    const fallback = templates.find(t => t.id === opts.templateId) || templates.find(t => t.template_type === type);
+    const fs = fallback?.font_size || settings.quoteSummaryFontSize;
+    const lh = fallback?.line_height || settings.quoteSummaryLineHeight;
+    if (type === 'agreement_disclaimer') {
+      return `<div class="payment-terms" style="font-size: ${fs}px; line-height: ${lh}; color: ${settings.quoteTextColor}; padding: 10px 0;">${opts.customContent}</div>`;
+    }
+    return `
+      <div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;">
+        ${sectionTitle ? `<h2 class="section-title">${sectionTitle}</h2>` : ''}
+        <div class="payment-terms" style="font-size: ${fs}px; line-height: ${lh}; color: ${settings.quoteTextColor}; padding: 10px 0;">${opts.customContent}</div>
+      </div>`;
+  }
+
   let template = null;
   if (opts.templateId) {
     template = templates.find(t => t.id === opts.templateId);
