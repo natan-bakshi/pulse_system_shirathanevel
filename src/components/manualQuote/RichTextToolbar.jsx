@@ -12,7 +12,7 @@ import {
   Superscript as SupIcon, Subscript as SubIcon,
   Highlighter, Palette, Type
 } from 'lucide-react';
-import ColorPalettePopover from './ColorPalettePopover';
+import ColorPalettePopover from './ColorPalettePopover.jsx';
 
 const FONT_FAMILIES = [
   { label: 'ברירת מחדל', value: '' },
