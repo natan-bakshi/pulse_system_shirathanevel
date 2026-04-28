@@ -15,13 +15,47 @@ import { BLOCK_TYPES, BLOCK_LABELS } from './blockTypes';
  * רכיבים שתלויים באירוע (פרטי אירוע / שירותים / סיכום כספי) מציגים תצוגה מקדימה אינפורמטיבית בלבד —
  * התוכן עצמו נבנה בצד השרת בעת ייצוא PDF.
  */
-export default function BlockEditor({ block, index, total, onChange, onRemove, onMoveUp, onMoveDown, linkedEventId, templates }) {
+export default function BlockEditor({ block, index, total, onChange, onRemove, onMoveUp, onMoveDown, linkedEventId, templates, linkedEvent }) {
   const update = (patch) => onChange({ ...block, ...patch });
   const updateOptions = (patch) => onChange({ ...block, options: { ...(block.options || {}), ...patch } });
 
   const introTemplates = (templates || []).filter(t => t.template_type === 'concept_intro');
   const paymentTemplates = (templates || []).filter(t => t.template_type === 'payment_terms');
   const agreementTemplates = (templates || []).filter(t => t.template_type === 'agreement_disclaimer');
+
+  // מחשב את התוכן הנוכחי של התבנית הרלוונטית עבור הבלוק — משמש כברירת מחדל בעת הפעלת
+  // האופציה "ערוך טקסט מותאם", כדי שהמשתמש יראה את הטקסט הקיים של התבנית ויוכל לערוך/למחוק אותו.
+  const getCurrentTemplateContent = () => {
+    if (block.type === BLOCK_TYPES.INTRO_TEMPLATE) {
+      // אם משתמשים בקונספט של האירוע — חפש תבנית מתאימה לפי identifier=concept
+      if (block.options?.useEventConcept && linkedEvent?.concept) {
+        const t = introTemplates.find(tpl => tpl.identifier === linkedEvent.concept);
+        return t?.content || '';
+      }
+      // אחרת — לפי בחירה ידנית
+      const id = block.options?.templateId;
+      if (id) {
+        const t = introTemplates.find(tpl => tpl.id === id);
+        return t?.content || '';
+      }
+      return '';
+    }
+    if (block.type === BLOCK_TYPES.PAYMENT_TERMS) {
+      const id = block.options?.templateId;
+      const t = id
+        ? paymentTemplates.find(tpl => tpl.id === id)
+        : paymentTemplates.find(tpl => tpl.identifier === 'default');
+      return t?.content || '';
+    }
+    if (block.type === BLOCK_TYPES.AGREEMENT_DISCLAIMER) {
+      const id = block.options?.templateId;
+      const t = id
+        ? agreementTemplates.find(tpl => tpl.id === id)
+        : agreementTemplates.find(tpl => tpl.identifier === 'default');
+      return t?.content || '';
+    }
+    return '';
+  };
 
   const renderEditor = () => {
     switch (block.type) {
@@ -124,6 +158,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               updateOptions={updateOptions}
               label="ערוך טקסט פתיח רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
               placeholder="טקסט פתיח מותאם להצעה זו..."
+              defaultContent={getCurrentTemplateContent()}
             />
           </div>
         );
@@ -195,6 +230,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               updateOptions={updateOptions}
               label="ערוך תנאי תשלום רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
               placeholder="תנאי תשלום מותאמים להצעה זו..."
+              defaultContent={getCurrentTemplateContent()}
             />
           </div>
         );
@@ -217,6 +253,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               updateOptions={updateOptions}
               label="ערוך תנאי התקשרות רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
               placeholder="תנאי התקשרות מותאמים להצעה זו..."
+              defaultContent={getCurrentTemplateContent()}
             />
           </div>
         );
@@ -291,15 +328,30 @@ function NotLinkedNotice() {
 /**
  * רכיב משותף — מאפשר לדרוס את תוכן התבניות (פתיח / תנאי תשלום / תנאי התקשרות)
  * עבור הצעה זו בלבד, מבלי לשנות את התבנית הגלובלית.
+ *
+ * defaultContent: תוכן ה-HTML של התבנית הקיימת — נטען לעורך כברירת מחדל בעת
+ * הפעלת האופציה (אם אין עדיין customContent שמור), כדי שהמשתמש יראה את הטקסט
+ * הנוכחי בעיצובו ויוכל לערוך/לשנות/למחוק אותו.
  */
-function CustomContentToggle({ block, updateOptions, label, placeholder }) {
+function CustomContentToggle({ block, updateOptions, label, placeholder, defaultContent = '' }) {
   const useCustom = !!block.options?.useCustomContent;
+
+  const handleToggle = (v) => {
+    const enabled = !!v;
+    const patch = { useCustomContent: enabled };
+    // בעת הפעלה ראשונית — אם אין תוכן מותאם שמור, טען את תוכן התבנית הנוכחית
+    if (enabled && !block.options?.customContent && defaultContent) {
+      patch.customContent = defaultContent;
+    }
+    updateOptions(patch);
+  };
+
   return (
     <div className="pt-2 mt-2 border-t border-dashed border-gray-200 space-y-2">
       <label className="flex items-center gap-2 text-sm">
         <Checkbox
           checked={useCustom}
-          onCheckedChange={(v) => updateOptions({ useCustomContent: !!v })}
+          onCheckedChange={handleToggle}
         />
         <span>{label}</span>
       </label>
