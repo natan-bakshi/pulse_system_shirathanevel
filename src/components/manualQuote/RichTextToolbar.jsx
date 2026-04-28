@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,7 +12,7 @@ import {
   Superscript as SupIcon, Subscript as SubIcon,
   Highlighter, Palette, Type
 } from 'lucide-react';
-import ColorPalettePopover from './ColorPalettePopover.jsx';
+import ColorPalettePopover from './ColorPalettePopover';
 
 const FONT_FAMILIES = [
   { label: 'ברירת מחדל', value: '' },
