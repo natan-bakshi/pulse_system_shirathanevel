@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FileText, Loader2, Download, Trash2, ChevronDown, Share2, Send, Clock } from 'lucide-react';
+import { FileText, Loader2, Download, Trash2, ChevronDown, Share2, Send, Clock, Edit3 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ExportDialog, PaymentDialog, SupplierAssignDialog, PackageDialog, EditPackageDialog, AddServiceDialog, AddExistingPackageDialog, AddToPackageDialog, AddServiceToPackageDialog, ReceiptDialog } from '../components/event-details/EventDetailDialogs';
 import EventOverviewCard from '../components/event-details/EventOverviewCard';
@@ -1821,17 +1821,14 @@ export default function EventDetails() {
                 <FileText className="h-4 w-4 ml-2" />
                 הצג
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
-                <Download className="h-4 w-4 ml-2" />
-                ייצא כ-PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onSelect={handleSmartShare} 
-                disabled={shareStatus === 'fetching'}
-                className="cursor-pointer"
-              >
+              <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}><Download className="h-4 w-4 ml-2" />ייצא כ-PDF</DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleSmartShare} disabled={shareStatus === 'fetching'} className="cursor-pointer">
                 {shareStatus === 'fetching' ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Share2 className="h-4 w-4 ml-2" />}
                 <span>{shareStatus === 'fetching' ? "מכין ושולח..." : "שתף הצעת מחיר"}</span>
+              </DropdownMenuItem>
+              <div className="border-t border-gray-100 my-1" />
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`${createPageUrl('ManualQuoteEditor')}?fromEventId=${eventId}`); }} className="cursor-pointer">
+                <Edit3 className="h-4 w-4 ml-2" /><span>צור הצעה רגילה עם התאמות</span>
               </DropdownMenuItem>
               {event.quote_history && event.quote_history.length > 0 && (
                 <>

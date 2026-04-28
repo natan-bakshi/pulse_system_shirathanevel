@@ -12,6 +12,7 @@ import {
   Superscript as SupIcon, Subscript as SubIcon,
   Highlighter, Palette, Type
 } from 'lucide-react';
+import ColorPalettePopover from './ColorPalettePopover';
 
 const FONT_FAMILIES = [
   { label: 'ברירת מחדל', value: '' },
@@ -74,8 +75,6 @@ function Divider() {
 export default function RichTextToolbar({ editor }) {
   const [fontSize, setFontSize] = useState('');
   const [fontFamily, setFontFamily] = useState('');
-  const colorInputRef = useRef(null);
-  const highlightInputRef = useRef(null);
 
   // NOTE: callbacks must be declared BEFORE any conditional return to keep hook order stable.
   const setLink = useCallback(() => {
@@ -218,28 +217,19 @@ export default function RichTextToolbar({ editor }) {
       <Divider />
 
       {/* Color & Highlight */}
-      <div className="relative">
-        <ToolbarButton tooltip="צבע טקסט" onClick={() => colorInputRef.current?.click()}>
-          <Palette className="h-4 w-4" />
-        </ToolbarButton>
-        <input
-          ref={colorInputRef}
-          type="color"
-          className="absolute inset-0 opacity-0 w-0 h-0"
-          onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-        />
-      </div>
-      <div className="relative">
-        <ToolbarButton tooltip="צבע הדגשה" active={editor.isActive('highlight')} onClick={() => highlightInputRef.current?.click()}>
-          <Highlighter className="h-4 w-4" />
-        </ToolbarButton>
-        <input
-          ref={highlightInputRef}
-          type="color"
-          className="absolute inset-0 opacity-0 w-0 h-0"
-          onChange={(e) => editor.chain().focus().toggleHighlight({ color: e.target.value }).run()}
-        />
-      </div>
+      <ColorPalettePopover
+        icon={<Palette className="h-4 w-4" />}
+        tooltip="צבע טקסט"
+        onPickColor={(color) => editor.chain().focus().setColor(color).run()}
+        onClear={() => editor.chain().focus().unsetColor().run()}
+      />
+      <ColorPalettePopover
+        icon={<Highlighter className="h-4 w-4" />}
+        tooltip="צבע הדגשה"
+        active={editor.isActive('highlight')}
+        onPickColor={(color) => editor.chain().focus().toggleHighlight({ color }).run()}
+        onClear={() => editor.chain().focus().unsetHighlight().run()}
+      />
       <ToolbarButton tooltip="הסר צבע" onClick={() => editor.chain().focus().unsetColor().unsetHighlight().run()}>
         <Type className="h-4 w-4" />
       </ToolbarButton>
