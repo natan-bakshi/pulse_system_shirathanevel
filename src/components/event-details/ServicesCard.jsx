@@ -549,8 +549,9 @@ const handleCopyTransport = (service, serviceDetails) => {
                           ['bold', 'italic', 'underline', { 'list': 'ordered'}, { 'list': 'bullet' }],
                           ['clean']
                         ],
+                        clipboard: { matchVisual: false },
                       }}
-                      formats={['bold', 'italic', 'underline', 'list', 'bullet']}
+                      formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
                       className="bg-white"
                       style={{ fontSize: '13px' }}
                     />
