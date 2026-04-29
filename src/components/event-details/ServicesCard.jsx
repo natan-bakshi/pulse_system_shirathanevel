@@ -537,13 +537,22 @@ const handleCopyTransport = (service, serviceDetails) => {
                   <div className="relative">
                     <ReactQuill
                       value={editableService.service_description || serviceDetails?.service_description || ''}
-                      onChange={(value) => {
+                      onChange={(value, delta, source) => {
                         const updatedServices = editableServices.map(s => 
                           s.id === service.id ? { ...s, service_description: value } : s
                         );
                         setEditableServices(updatedServices);
+                        // אם זו פעולת הדבקה (paste) או פעולה אחרת שאינה הקלדה ישירה - שמור מיד
+                        // כדי למנוע אובדן תוכן מודבק לפני שה-onBlur מספיק להתעדכן
+                        if (source === 'user' && delta && delta.ops && delta.ops.some(op => op.insert && typeof op.insert === 'string' && op.insert.length > 1)) {
+                          handleUpdateServiceField(service.id, 'service_description', value);
+                        }
                       }}
-                      onBlur={() => handleUpdateServiceField(service.id, 'service_description', editableService.service_description)}
+                      onBlur={(range, source, editor) => {
+                        // השתמש בערך הנוכחי מה-editor במקום מה-state (שעלול להיות לא מעודכן)
+                        const currentValue = editor.getHTML();
+                        handleUpdateServiceField(service.id, 'service_description', currentValue);
+                      }}
                       modules={{
                         toolbar: [
                           ['bold', 'italic', 'underline', { 'list': 'ordered'}, { 'list': 'bullet' }],
