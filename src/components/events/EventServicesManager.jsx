@@ -960,8 +960,9 @@ export default function EventServicesManager({
                       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                       ['clean']
                     ],
+                    clipboard: { matchVisual: false },
                   }}
-                  formats={['bold', 'italic', 'underline', 'list', 'bullet']}
+                  formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
                   placeholder="תיאור מפורט של השירות"
                   className="bg-white"
                 />
@@ -1628,8 +1629,9 @@ export default function EventServicesManager({
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                     ['clean']
                   ],
+                  clipboard: { matchVisual: false },
                 }}
-                formats={['bold', 'italic', 'underline', 'list', 'bullet']}
+                formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
                 placeholder="תיאור מפורט של השירות"
               />
             </div>

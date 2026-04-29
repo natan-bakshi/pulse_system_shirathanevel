@@ -1399,8 +1399,9 @@ const handleCopyTransport = (service, serviceDetails) => {
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                     ['clean']
                   ],
+                  clipboard: { matchVisual: false },
                 }}
-                formats={['bold', 'italic', 'underline', 'list', 'bullet']}
+                formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
                 placeholder="תיאור מפורט של השירות"
               />
             </div>
