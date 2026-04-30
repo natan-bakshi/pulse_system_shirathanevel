@@ -1867,6 +1867,7 @@ export default function EventDetails() {
         isClient={isClient}
         isSupplier={isSupplier}
         currentUser={user}
+        tasksSystemEnabled={(() => { const s = appSettings.find(x => x.setting_key === 'tasks_system_enabled'); return !s || s.setting_value !== 'false'; })()}
         editingSection={editingSection}
         setEditingSection={setEditingSection}
         eventDetailsData={eventDetailsData}

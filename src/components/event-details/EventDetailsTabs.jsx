@@ -21,6 +21,7 @@ export default function EventDetailsTabs(props) {
   const {
     // משותפים
     event, isAdmin, isClient, isSupplier, currentUser,
+    tasksSystemEnabled = true,
     editingSection, setEditingSection,
     // Overview
     eventDetailsData, setEventDetailsData,
@@ -62,7 +63,8 @@ export default function EventDetailsTabs(props) {
     handleSaveFinancial, isSavingFinancial,
   } = props;
 
-  const tabsCount = isAdmin ? 4 : 3;
+  const showTasksTab = isAdmin && tasksSystemEnabled;
+  const tabsCount = showTasksTab ? 4 : 3;
 
   return (
     <Tabs defaultValue="details" className="w-full">
@@ -82,7 +84,7 @@ export default function EventDetailsTabs(props) {
           <span className="hidden sm:inline">סיכום כספי</span>
           <span className="sm:hidden">כספי</span>
         </TabsTrigger>
-        {isAdmin && (
+        {showTasksTab && (
           <TabsTrigger value="tasks" className="text-xs sm:text-sm gap-1">
             <ListChecks className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">משימות לביצוע</span>
@@ -214,8 +216,8 @@ export default function EventDetailsTabs(props) {
         )}
       </TabsContent>
 
-      {/* לשונית 4: משימות לביצוע (מנהלים בלבד) */}
-      {isAdmin && (
+      {/* לשונית 4: משימות לביצוע (מנהלים בלבד + מערכת המשימות פעילה) */}
+      {showTasksTab && (
         <TabsContent value="tasks" className="mt-4">
           <EventTasksTab eventId={event?.id} currentUser={currentUser} />
         </TabsContent>

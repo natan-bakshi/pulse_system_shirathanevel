@@ -35,13 +35,24 @@ export default function MyTasks() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // הגדרות מערכת - לבדיקה האם מערכת המשימות פעילה
+  const { data: appSettings = [] } = useQuery({
+    queryKey: ['appSettings'],
+    queryFn: () => base44.entities.AppSettings.list(),
+    staleTime: 10 * 60 * 1000,
+  });
+  const tasksSystemEnabled = useMemo(() => {
+    const s = appSettings.find(x => x.setting_key === 'tasks_system_enabled');
+    return !s || s.setting_value !== 'false';
+  }, [appSettings]);
+
   const { createTask, updateTask, deleteTask, toggleComplete, updateNotes, isSaving } = useTaskActions(currentUser);
 
   // טעינת כל המשימות (RLS מבטיח שרק מנהלים מקבלים)
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => base44.entities.Task.list('-created_date', 500),
-    enabled: !!currentUser && currentUser.role === 'admin',
+    enabled: !!currentUser && currentUser.role === 'admin' && tasksSystemEnabled,
     staleTime: 30 * 1000,
   });
 
@@ -230,6 +241,21 @@ export default function MyTasks() {
             <AlertCircle className="h-12 w-12 mx-auto mb-3 text-red-600" />
             <h2 className="text-xl font-bold mb-2">אין הרשאה</h2>
             <p className="text-gray-600">דף זה זמין למנהלים בלבד.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // מערכת המשימות כבויה
+  if (currentUser && isAdmin && !tasksSystemEnabled) {
+    return (
+      <div className="p-6 text-center">
+        <Card className="bg-white/95 backdrop-blur-sm max-w-md mx-auto">
+          <CardContent className="p-8">
+            <AlertCircle className="h-12 w-12 mx-auto mb-3 text-amber-600" />
+            <h2 className="text-xl font-bold mb-2">מערכת המשימות מושבתת</h2>
+            <p className="text-gray-600">ניתן להפעיל אותה דרך דף ההגדרות.</p>
           </CardContent>
         </Card>
       </div>

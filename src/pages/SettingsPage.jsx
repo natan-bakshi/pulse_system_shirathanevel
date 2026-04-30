@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar, RefreshCw } from "lucide-react";
+import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar, RefreshCw, ListChecks } from "lucide-react";
 import { syncAllEventsToCalendar } from "@/functions/syncAllEventsToCalendar";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,8 @@ const settingKeys = [
     'google_calendar_admin_sync_enabled',
     'google_calendar_supplier_sync_enabled',
     'google_calendar_client_sync_enabled',
-    'admin_google_calendar_id'
+    'admin_google_calendar_id',
+    'tasks_system_enabled'
     ];
 
 export default function SettingsPage() {
@@ -70,7 +71,8 @@ export default function SettingsPage() {
         google_calendar_admin_sync_enabled: "false",
         google_calendar_supplier_sync_enabled: "false",
         google_calendar_client_sync_enabled: "false",
-        admin_google_calendar_id: "primary"
+        admin_google_calendar_id: "primary",
+        tasks_system_enabled: "true"
         });
     const queryClient = useQueryClient();
     const location = useLocation();
@@ -413,6 +415,21 @@ export default function SettingsPage() {
                                     id="manual_quote_creation_enabled"
                                     checked={settings.manual_quote_creation_enabled === "true"}
                                     onCheckedChange={(checked) => handleSettingChange('manual_quote_creation_enabled', checked ? "true" : "false")}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between pb-4 border-b">
+                                <div>
+                                    <Label htmlFor="tasks_system_enabled" className="flex items-center gap-2">
+                                        <ListChecks className="h-4 w-4" />
+                                        מערכת ניהול משימות
+                                    </Label>
+                                    <p className="text-xs text-gray-500 mt-1">כיבוי כללי של מערכת המשימות. כאשר כבוי - לא תוצג לשונית "משימות לביצוע" בכרטיסיית האירוע, פריט "המשימות שלי" בתפריט הצדדי יוסתר, וההתראות היומיות על משימות יושבתו</p>
+                                </div>
+                                <Switch
+                                    id="tasks_system_enabled"
+                                    checked={settings.tasks_system_enabled !== "false"}
+                                    onCheckedChange={(checked) => handleSettingChange('tasks_system_enabled', checked ? "true" : "false")}
                                 />
                             </div>
                         </CardContent>

@@ -40,7 +40,7 @@ import CalendarSyncPrompt from "@/components/calendar/CalendarSyncPrompt";
 const SYSTEM_CREATOR_EMAIL = 'natib8000@gmail.com';
 
 
-const getAdminNavItems = (userEmail) => {
+const getAdminNavItems = (userEmail, tasksEnabled = true) => {
   const items = [
     { title: "דשבורד", url: createPageUrl("AdminDashboard"), icon: Home },
     { title: "לוח אירועים", url: createPageUrl("EventsBoardPage"), icon: Calendar, tourId: "nav-events-board" },
@@ -50,8 +50,11 @@ const getAdminNavItems = (userEmail) => {
     { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star, tourId: "nav-services" },
     { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText, tourId: "nav-quotes" },
     { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck, tourId: "nav-users" },
-    { title: "המשימות שלי", url: createPageUrl("MyTasks"), icon: ListChecks, tourId: "nav-my-tasks" },
   ];
+  
+  if (tasksEnabled) {
+    items.push({ title: "המשימות שלי", url: createPageUrl("MyTasks"), icon: ListChecks, tourId: "nav-my-tasks" });
+  }
   
   items.push({ title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" });
   
@@ -382,8 +385,9 @@ export default function Layout({ children }) {
   }
 
 
+  const tasksSystemEnabled = settingsMap.tasks_system_enabled !== "false"; // default true
   const currentNavItems = user.user_type === 'admin' 
-    ? getAdminNavItems(user.email) 
+    ? getAdminNavItems(user.email, tasksSystemEnabled) 
     : (navigationItems[user.user_type] || navigationItems.client);
 
 

@@ -55,6 +55,7 @@ export const CATEGORIES = {
   event_reminder: 'תזכורות אירועים',
   payment: 'תשלומים',
   quote: 'הצעות מחיר',
+  task: 'משימות',
   system: 'מערכת'
 };
 
@@ -120,7 +121,17 @@ export const AVAILABLE_VARIABLES = {
   // קישורים
   event_link: { description: 'קישור לאירוע', example: 'https://...' },
   payment_link: { description: 'קישור לתשלום', example: 'https://...' },
-  supplier_link: { description: 'קישור לפורטל ספקים', example: 'https://...' }
+  supplier_link: { description: 'קישור לפורטל ספקים', example: 'https://...' },
+
+  // משימות (תבנית TASK_DUE_REMINDER)
+  task_title: { description: 'כותרת המשימה', example: 'להתקשר ללקוח' },
+  task_due_date: { description: 'תאריך/שעת היעד של המשימה', example: '12/05/2026 14:00' },
+  task_description: { description: 'תיאור המשימה', example: 'בירור פרטי תפריט' },
+  task_priority: { description: 'דחיפות גולמית: high/normal/low', example: 'high' },
+  task_event_name: { description: 'שם האירוע המשויך (אם קיים)', example: 'בר מצווה כהן' },
+  task_priority_line: { description: 'שורת דחיפות מוכנה (כולל אייקון, ריקה אם רגילה)', example: '\n🔴 דחיפות גבוהה' },
+  task_event_line: { description: 'שורת אירוע מוכנה (ריקה אם אין אירוע)', example: '\n📅 אירוע: בר מצווה כהן' },
+  task_description_block: { description: 'בלוק תיאור מוכן (ריק אם אין תיאור)', example: '\n\nבירור פרטי תפריט' }
 };
 
 // הגדרת שדות זמינים לתנאים - מורחב משמעותית
