@@ -1,0 +1,111 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "\u05db\u05d5\u05ea\u05e8\u05ea \u05d4\u05de\u05e9\u05d9\u05de\u05d4"
+    },
+    "description": {
+      "type": "string",
+      "description": "\u05ea\u05d9\u05d0\u05d5\u05e8 \u05d4\u05de\u05e9\u05d9\u05de\u05d4 (\u05d0\u05d5\u05e4\u05e6\u05d9\u05d5\u05e0\u05dc\u05d9)"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d4\u05de\u05e9\u05d5\u05d9\u05da. \u05d0\u05dd \u05e8\u05d9\u05e7 - \u05d6\u05d5 \u05de\u05e9\u05d9\u05de\u05d4 \u05db\u05dc\u05dc\u05d9\u05ea/\u05d2\u05dc\u05d5\u05d1\u05dc\u05d9\u05ea"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d5\u05e9\u05e2\u05ea \u05d9\u05e2\u05d3 \u05dc\u05d1\u05d9\u05e6\u05d5\u05e2 (\u05d0\u05d5\u05e4\u05e6\u05d9\u05d5\u05e0\u05dc\u05d9)"
+    },
+    "assignee_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "\u05e8\u05e9\u05d9\u05de\u05ea \u05de\u05d6\u05d4\u05d9 \u05de\u05e9\u05ea\u05de\u05e9\u05d9\u05dd (User IDs) \u05e9\u05dc \u05de\u05e0\u05d4\u05dc\u05d9\u05dd \u05e9\u05d4\u05d5\u05e7\u05e6\u05d5 \u05dc\u05de\u05e9\u05d9\u05de\u05d4. \u05e8\u05d9\u05e7 = \u05de\u05e9\u05d9\u05de\u05d4 \u05dc\u05dc\u05d0 \u05d4\u05e7\u05e6\u05d0\u05d4 (\u05d2\u05dc\u05d5\u05d9\u05d4 \u05dc\u05db\u05dc \u05d4\u05de\u05e0\u05d4\u05dc\u05d9\u05dd)"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high"
+      ],
+      "default": "normal",
+      "description": "\u05e8\u05de\u05ea \u05d3\u05d7\u05d9\u05e4\u05d5\u05ea"
+    },
+    "is_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05de\u05e9\u05d9\u05de\u05d4 \u05d4\u05d5\u05e9\u05dc\u05de\u05d4"
+    },
+    "completion_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d5\u05e9\u05e2\u05ea \u05d1\u05d9\u05e6\u05d5\u05e2 \u05d4\u05de\u05e9\u05d9\u05de\u05d4"
+    },
+    "completed_by_user_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05e9\u05e1\u05d9\u05de\u05df \u05d0\u05ea \u05d4\u05de\u05e9\u05d9\u05de\u05d4 \u05db\u05d1\u05d5\u05e6\u05e2\u05d4"
+    },
+    "completed_by_user_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05e9\u05e1\u05d9\u05de\u05df \u05d0\u05ea \u05d4\u05de\u05e9\u05d9\u05de\u05d4 \u05db\u05d1\u05d5\u05e6\u05e2\u05d4"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "\u05de\u05d6\u05d4\u05d4 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u05e9\u05dc \u05d4\u05d4\u05e2\u05e8\u05d4"
+          },
+          "content": {
+            "type": "string",
+            "description": "\u05ea\u05d5\u05db\u05df \u05d4\u05d4\u05e2\u05e8\u05d4"
+          },
+          "created_by_user_id": {
+            "type": "string"
+          },
+          "created_by_user_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "default": [],
+      "description": "\u05e8\u05e9\u05d9\u05de\u05ea \u05d4\u05e2\u05e8\u05d5\u05ea \u05e9\u05e6\u05d5\u05e8\u05e4\u05d5 \u05dc\u05de\u05e9\u05d9\u05de\u05d4"
+    },
+    "whatsapp_notification_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05e0\u05e9\u05dc\u05d7\u05d4 \u05d4\u05ea\u05e8\u05d0\u05ea \u05d5\u05d5\u05d8\u05e1\u05d0\u05e4 \u05e2\u05d1\u05d5\u05e8 \u05d4\u05de\u05e9\u05d9\u05de\u05d4 (\u05db\u05d3\u05d9 \u05dc\u05de\u05e0\u05d5\u05e2 \u05e9\u05dc\u05d9\u05d7\u05d4 \u05db\u05e4\u05d5\u05dc\u05d4)"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

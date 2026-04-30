@@ -56,6 +56,7 @@ import EventManagement from './pages/EventManagement';
 import EventsBoardPage from './pages/EventsBoardPage';
 import ManualQuoteEditor from './pages/ManualQuoteEditor';
 import MyNotificationSettings from './pages/MyNotificationSettings';
+import MyTasks from './pages/MyTasks';
 import QuoteTemplateManagement from './pages/QuoteTemplateManagement';
 import ServiceManagement from './pages/ServiceManagement';
 import SettingsPage from './pages/SettingsPage';
@@ -77,6 +78,7 @@ export const PAGES = {
     "EventsBoardPage": EventsBoardPage,
     "ManualQuoteEditor": ManualQuoteEditor,
     "MyNotificationSettings": MyNotificationSettings,
+    "MyTasks": MyTasks,
     "QuoteTemplateManagement": QuoteTemplateManagement,
     "ServiceManagement": ServiceManagement,
     "SettingsPage": SettingsPage,

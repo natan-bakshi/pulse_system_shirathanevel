@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
             pending_assignments_sent: 0,
             missing_assignments_sent: 0,
             client_payment_reminders_sent: 0,
+            task_notifications_sent: 0,
             errors: 0,
             cleaned_up: 0
         };
@@ -773,6 +774,108 @@ Deno.serve(async (req) => {
                     results.client_payment_reminders_sent++;
                 }
             }
+        }
+
+        // ============================================================
+        // PHASE 6.5: Task Notifications (משימות מנהלים - התראת WhatsApp)
+        // משלוח התראת ווטסאפ למנהלים על משימות שתאריכן (יום או יום+שעה) הוא עכשיו
+        // ============================================================
+        console.log('[DailyNotifications] Phase 6.5: Checking task notifications...');
+        try {
+            const allTasks = await base44.asServiceRole.entities.Task.list();
+            const tasksDueNow = allTasks.filter(t => {
+                if (t.is_completed) return false;
+                if (t.whatsapp_notification_sent) return false;
+                if (!t.due_date) return false;
+                
+                // ברירת מחדל - שלח אם תאריך היעד הוא היום או עבר ועדיין לא נשלחה התראה
+                const due = new Date(t.due_date);
+                if (isNaN(due.getTime())) return false;
+                
+                // אם השעה הספציפית במשימה הוגדרה - בודקים שהזמן הנוכחי >= הזמן ביעד
+                // ואם הזמן ביעד עבר את היום שלו - גם זה ייכלל (נסגור מאוחר משלא בכלל)
+                // אם השעה היא 00:00 (לא הוגדרה שעה) - שלח כל משימה שתאריכה היום (הריצה היומית מספיקה)
+                const dueDay = due.toISOString().split('T')[0];
+                const todayDay = now.toISOString().split('T')[0];
+                
+                // אם הזמן עתידי באותו יום ועדיין לא הגיע - לא נשלח עדיין
+                if (dueDay === todayDay && due.getTime() > now.getTime()) {
+                    // השעה במשימה היא להמשך היום - אם הוגדרה שעה ספציפית (לא 00:00) - לא שולחים עדיין
+                    const hh = due.getHours();
+                    const mm = due.getMinutes();
+                    if (hh === 0 && mm === 0) return true; // אין שעה ספציפית - שלח עכשיו
+                    return false; // יש שעה - חכה
+                }
+                
+                // הזמן הוא בעבר או היום (וכבר עבר) - שלח
+                return due.getTime() <= now.getTime() || dueDay === todayDay;
+            });
+            
+            console.log(`[DailyNotifications] Found ${tasksDueNow.length} tasks needing WhatsApp notifications`);
+            
+            for (const task of tasksDueNow) {
+                try {
+                    // בנה רשימת מנהלים לקבל התראה
+                    let recipients = [];
+                    if (task.assignee_ids && task.assignee_ids.length > 0) {
+                        recipients = adminUsers.filter(u => task.assignee_ids.includes(u.id));
+                    } else {
+                        // משימה ללא הקצאה - לכל המנהלים
+                        recipients = adminUsers;
+                    }
+                    
+                    if (recipients.length === 0) continue;
+                    
+                    // בנה הודעה
+                    let eventInfo = '';
+                    if (task.event_id) {
+                        const ev = eventsMap.get(task.event_id);
+                        if (ev) {
+                            eventInfo = `\n📅 אירוע: ${ev.event_name || ev.family_name || ''}`;
+                        }
+                    }
+                    
+                    const priorityLabel = task.priority === 'high' ? '🔴 דחיפות גבוהה' :
+                                          task.priority === 'low' ? '🔵 דחיפות נמוכה' : '';
+                    
+                    const dueTime = (() => {
+                        try {
+                            const d = new Date(task.due_date);
+                            const hh = String(d.getHours()).padStart(2, '0');
+                            const mm = String(d.getMinutes()).padStart(2, '0');
+                            const hasTime = !(hh === '00' && mm === '00');
+                            return hasTime ? ` ${hh}:${mm}` : '';
+                        } catch { return ''; }
+                    })();
+                    
+                    const dueDay = formatDate(task.due_date);
+                    const message = `📋 תזכורת משימה: ${task.title}\n🗓️ לביצוע: ${dueDay}${dueTime}${priorityLabel ? '\n' + priorityLabel : ''}${eventInfo}${task.description ? '\n\n' + task.description : ''}`;
+                    
+                    let sentToAtLeastOne = false;
+                    for (const admin of recipients) {
+                        if (admin.phone) {
+                            whatsappQueue.push({ phone: admin.phone, message });
+                            sentToAtLeastOne = true;
+                        }
+                    }
+                    
+                    // סמן את המשימה כשנשלחה התראה (למניעת חזרה)
+                    if (sentToAtLeastOne) {
+                        try {
+                            await base44.asServiceRole.entities.Task.update(task.id, { whatsapp_notification_sent: true });
+                            results.task_notifications_sent++;
+                        } catch (uerr) {
+                            console.warn('[DailyNotifications] Failed to mark task notification sent:', uerr.message);
+                        }
+                    }
+                } catch (terr) {
+                    console.warn('[DailyNotifications] Task notification error:', terr.message);
+                    results.errors++;
+                }
+            }
+        } catch (taskPhaseErr) {
+            console.error('[DailyNotifications] Phase 6.5 (tasks) error:', taskPhaseErr);
+            results.errors++;
         }
 
         // ============================================================

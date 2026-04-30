@@ -12,16 +12,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, Loader2, Download, Trash2, ChevronDown, Share2, Send, Clock, Edit3 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ExportDialog, PaymentDialog, SupplierAssignDialog, PackageDialog, EditPackageDialog, AddServiceDialog, AddExistingPackageDialog, AddToPackageDialog, AddServiceToPackageDialog, ReceiptDialog } from '../components/event-details/EventDetailDialogs';
-import EventOverviewCard from '../components/event-details/EventOverviewCard';
-import FamilyContactCard from '../components/event-details/FamilyContactCard';
-import ScheduleCard from '../components/event-details/ScheduleCard';
-import ServicesCard from '../components/event-details/ServicesCard';
-import PaymentsCard from '../components/event-details/PaymentsCard';
-import FinancialSummaryCard from '../components/event-details/FinancialSummaryCard';
 import { createPageUrl } from '@/utils';
 import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 import DateChangeDecisionDialog from '../components/event-details/DateChangeDecisionDialog';
+import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -1866,9 +1861,12 @@ export default function EventDetails() {
         </div>
       )}
 
-      <EventOverviewCard
+      <EventDetailsTabs
         event={event}
         isAdmin={isAdmin}
+        isClient={isClient}
+        isSupplier={isSupplier}
+        currentUser={user}
         editingSection={editingSection}
         setEditingSection={setEditingSection}
         eventDetailsData={eventDetailsData}
@@ -1877,14 +1875,6 @@ export default function EventDetails() {
         isSavingEventDetails={isSavingEventDetails}
         handleStatusChange={handleStatusChange}
         handleDeleteEvent={handleDeleteEvent}
-      />
-
-      <FamilyContactCard
-        event={event}
-        isAdmin={isAdmin}
-        isClient={isClient}
-        editingSection={editingSection}
-        setEditingSection={setEditingSection}
         editableParents={editableParents}
         setEditableParents={setEditableParents}
         editableFamilyName={editableFamilyName}
@@ -1893,31 +1883,15 @@ export default function EventDetails() {
         setEditableChildName={setEditableChildName}
         handleSaveFamilyDetails={handleSaveFamilyDetails}
         isSavingFamilyDetails={isSavingFamilyDetails}
-      />
-
-      <ScheduleCard
-        event={event}
-        isAdmin={isAdmin}
-        editingSection={editingSection}
-        setEditingSection={setEditingSection}
         editableSchedule={editableSchedule}
         setEditableSchedule={setEditableSchedule}
         handleSaveSchedule={handleSaveSchedule}
         isSavingSchedule={isSavingSchedule}
-      />
-
-      <ServicesCard
-        event={event}
         eventServices={eventServices}
         allServices={allServices}
         allSuppliers={allSuppliers}
         groupedServices={groupedServices}
-        isAdmin={isAdmin}
-        isClient={isClient}
-        isSupplier={isSupplier}
         currentSupplierId={currentSupplierId}
-        editingSection={editingSection}
-        setEditingSection={setEditingSection}
         editableServices={editableServices}
         setEditableServices={setEditableServices}
         allInclusiveData={allInclusiveData}
@@ -1950,34 +1924,18 @@ export default function EventDetails() {
         handleDeleteService={handleDeleteService}
         exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
         onPrimaryCurrencyChange={isAdmin ? async (c, updateEvent) => { await base44.entities.Event.update(eventId, updateEvent || { primary_currency: c }); await loadEventData(); } : undefined}
+        payments={payments}
+        setShowPaymentDialog={setShowPaymentDialog}
+        handleDeletePayment={handleDeletePayment}
+        setCurrentReceiptUrl={setCurrentReceiptUrl}
+        setCurrentReceiptPaymentId={setCurrentReceiptPaymentId}
+        setShowReceiptDialog={setShowReceiptDialog}
+        financials={financials}
+        financialEditData={financialEditData}
+        setFinancialEditData={setFinancialEditData}
+        handleSaveFinancial={handleSaveFinancial}
+        isSavingFinancial={isSavingFinancial}
       />
-      {(isAdmin || isClient) && (
-        <PaymentsCard
-          event={event}
-          payments={payments}
-          isAdmin={isAdmin}
-          setShowPaymentDialog={setShowPaymentDialog}
-          handleDeletePayment={handleDeletePayment}
-          setCurrentReceiptUrl={setCurrentReceiptUrl}
-          setCurrentReceiptPaymentId={setCurrentReceiptPaymentId}
-          setShowReceiptDialog={setShowReceiptDialog}
-          exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
-        />
-      )}
-
-      {(isAdmin || isClient) && (
-        <FinancialSummaryCard
-          event={event}
-          financials={financials}
-          isAdmin={isAdmin}
-          editingSection={editingSection}
-          setEditingSection={setEditingSection}
-          financialEditData={financialEditData}
-          setFinancialEditData={setFinancialEditData}
-          handleSaveFinancial={handleSaveFinancial}
-          isSavingFinancial={isSavingFinancial}
-        />
-      )}
 
       <ExportDialog open={showExportDialog} onOpenChange={setShowExportDialog} exportOptions={exportOptions} setExportOptions={setExportOptions} onConfirmExport={handleConfirmExport} />
       <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} eventPrimaryCurrency={event?.primary_currency || 'ILS'} exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()} />

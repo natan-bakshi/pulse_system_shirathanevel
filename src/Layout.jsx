@@ -17,7 +17,8 @@ import {
   UserCheck,
   ArrowRight,
   Bell,
-  UserCog } from
+  UserCog,
+  ListChecks } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -49,6 +50,7 @@ const getAdminNavItems = (userEmail) => {
     { title: "שירותים", url: createPageUrl("ServiceManagement"), icon: Star, tourId: "nav-services" },
     { title: "הצעות מחיר", url: createPageUrl("QuoteTemplateManagement"), icon: FileText, tourId: "nav-quotes" },
     { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck, tourId: "nav-users" },
+    { title: "המשימות שלי", url: createPageUrl("MyTasks"), icon: ListChecks, tourId: "nav-my-tasks" },
   ];
   
   items.push({ title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" });
@@ -284,7 +286,7 @@ export default function Layout({ children }) {
     const adminOnlyPages = [
     "/AdminDashboard", "/EventManagement", "/EventsBoardPage", "/ClientManagement",
     "/SupplierManagement", "/ServiceManagement", "/QuoteTemplateManagement",
-    "/UserManagement", "/ManualQuoteEditor"];
+    "/UserManagement", "/ManualQuoteEditor", "/MyTasks"];
     
     // Settings page is only for system creator
     const isAccessingSettingsPage = pathname.includes('SettingsPage');
