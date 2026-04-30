@@ -2,17 +2,39 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Info, Cog } from "lucide-react";
 import FieldLabel from "../FieldLabel";
 import { TRIGGER_TYPES, TIMING_UNITS } from "../constants";
+import { getSystemTemplateInfo } from "../systemTemplatesInfo";
 
 // טאב 3: מתי לשלוח? - סוג טריגר, תזמון, תזכורות
 export default function TriggerTimingTab({ template, onChange }) {
   const update = (field, value) => onChange({ ...template, [field]: value });
   const isScheduled = template.trigger_type === 'scheduled_check';
+  const isEntityTrigger = ['entity_create', 'entity_update', 'supplier_assignment_create', 'supplier_assignment_delete', 'assignment_status_change', 'event_critical_update'].includes(template.trigger_type);
+  const systemInfo = getSystemTemplateInfo(template.type);
 
   return (
     <div className="space-y-4">
+      {/* תיוג תבנית מערכת - תצוגה מודעת על תבניות עם טיפול קוד קשיח */}
+      {systemInfo && (
+        <Alert className="bg-purple-50 border-purple-200">
+          <Cog className="h-4 w-4 text-purple-600" />
+          <AlertDescription className="text-purple-800 text-sm">
+            <div className="font-semibold mb-1">תבנית מערכת - מטופלת בקוד</div>
+            <div className="text-xs space-y-1">
+              <p><span className="font-medium">פונקציה:</span> {systemInfo.handler} • {systemInfo.phase}</p>
+              <p><span className="font-medium">תדירות:</span> {systemInfo.frequency}</p>
+              <p>{systemInfo.description}</p>
+              <p className="mt-2 pt-2 border-t border-purple-200">
+                <span className="font-medium">שדות בשימוש מתוך התבנית:</span>{' '}
+                <code className="text-[10px] bg-white px-1 py-0.5 rounded">{systemInfo.controls.join(', ')}</code>
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div>
         <FieldLabel 
           label="סוג טריגר" 
@@ -164,7 +186,41 @@ export default function TriggerTimingTab({ template, onChange }) {
         </div>
       )}
 
-      {!isScheduled && (
+      {/* הגדרות לטריגרי Entity - איזו ישות לעקוב אחריה */}
+      {isEntityTrigger && (
+        <div className="border rounded-lg p-3 bg-blue-50 space-y-3">
+          <h3 className="font-medium text-sm text-blue-900">ישות מטרה</h3>
+          <p className="text-xs text-blue-700">
+            בחר על איזו ישות הטריגר עוקב. זה מצמצם את הפעלת ההתראה רק לשינויים בישות הזו.
+          </p>
+          <div>
+            <FieldLabel
+              label="שם הישות (entity_name)"
+              tooltip="שם הישות במערכת. למשל: Event לאירועים, EventService לשיבוצי ספקים"
+            />
+            <Select
+              value={template.entity_name || ''}
+              onValueChange={(v) => update('entity_name', v)}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחר ישות" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Event">Event - אירועים</SelectItem>
+                <SelectItem value="EventService">EventService - שיבוצי ספקים</SelectItem>
+                <SelectItem value="Supplier">Supplier - ספקים</SelectItem>
+                <SelectItem value="Payment">Payment - תשלומים</SelectItem>
+                <SelectItem value="Task">Task - משימות</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-blue-700 mt-1">
+              ⚠️ חובה לבחור ישות עבור טריגר מסוג זה - אחרת ההתראה לא תופעל.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isScheduled && !isEntityTrigger && (
         <Alert className="bg-amber-50 border-amber-200">
           <Info className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-800 text-sm">

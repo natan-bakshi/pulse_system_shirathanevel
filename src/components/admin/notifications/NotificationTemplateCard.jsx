@@ -2,8 +2,10 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Clock, Zap } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Pencil, Trash2, Clock, Zap, Cog } from "lucide-react";
 import { TRIGGER_TYPES, AUDIENCES, TIMING_UNITS } from "./constants";
+import { getSystemTemplateInfo } from "./systemTemplatesInfo";
 
 // כרטיס תבנית התראה בודדת - מציג את הפרטים החשובים וכפתורי פעולה
 export default function NotificationTemplateCard({ 
@@ -14,6 +16,7 @@ export default function NotificationTemplateCard({
   onManualTrigger 
 }) {
   const canManualTrigger = ['scheduled_check', 'event_status_change'].includes(template.trigger_type);
+  const systemInfo = getSystemTemplateInfo(template.type);
 
   return (
     <div 
@@ -37,6 +40,25 @@ export default function NotificationTemplateCard({
           <Badge variant="outline" className="text-xs">
             {TRIGGER_TYPES[template.trigger_type]?.label || template.trigger_type}
           </Badge>
+          {systemInfo && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-xs border-purple-200 text-purple-700 bg-purple-50 flex items-center gap-1 cursor-help">
+                    <Cog className="h-3 w-3" />
+                    תבנית מערכת
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold">{systemInfo.handler} • {systemInfo.phase}</p>
+                    <p className="text-gray-300">{systemInfo.frequency}</p>
+                    <p>{systemInfo.description}</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {template.target_audiences?.map(a => (
             <Badge key={a} variant="secondary" className="text-xs">
               {AUDIENCES[a]?.label || a}

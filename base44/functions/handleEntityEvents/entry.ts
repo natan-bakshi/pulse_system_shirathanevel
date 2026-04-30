@@ -259,12 +259,25 @@ Deno.serve(async (req) => {
                     // Case 3 - Status Change
                     else if (template.trigger_type === 'assignment_status_change' && event.changed_status_supplier_ids?.length > 0) {
                         for (const changeContext of event.changed_status_supplier_ids) {
+                            // Re-evaluate template conditions with the supplier-status context exposed at top level
+                            // so conditions like { field: 'assignment_status', operator: 'equals', value: 'rejected' } actually work.
+                            const contextEnrichedData = {
+                                ...enrichedData,
+                                assignment_status: changeContext.status,
+                                current_supplier_status: changeContext.status,
+                                previous_supplier_status: changeContext.old_status,
+                                changed_supplier_id: changeContext.id
+                            };
+
+                            const perSupplierConditionsMet = await checkConditions(base44, template, contextEnrichedData, oldData, event, triggerType);
+                            if (!perSupplierConditionsMet) continue;
+
                             const specificEvent = { 
                                 ...event, 
                                 specific_recipient_id: changeContext.id,
                                 ...changeContext 
                             };
-                            await sendNotification(base44, template, enrichedData, specificEvent, entityName);
+                            await sendNotification(base44, template, contextEnrichedData, specificEvent, entityName);
                             notificationsSent++;
                         }
                     } 
@@ -511,13 +524,33 @@ async function sendNotification(base44, template, entityData, event, entityName)
 
     // --- 3. Admin Audience ---
     if (audiences.includes('admin') || audiences.includes('system_creator')) {
+        // For assignment-status events the admin needs to know WHICH supplier triggered the event.
+        // Resolve supplier + service objects so {{supplier_name}}/{{service_name}} actually render.
+        let adminSupplierObj = supplierObj;
+        let adminServiceObj = serviceObj;
+        if (event.specific_recipient_id && !adminSupplierObj) {
+            try { adminSupplierObj = await base44.asServiceRole.entities.Supplier.get(event.specific_recipient_id); } catch (e) {}
+        }
+        if (!adminServiceObj && entityName === 'EventService') {
+            adminServiceObj = entityData;
+        }
+
         const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+        // Dedupe WhatsApp by normalized phone to avoid duplicate messages for admins sharing a phone.
+        const sentWhatsAppPhones = new Set();
         for (const admin of admins) {
+            if (audiences.includes('system_creator') && !audiences.includes('admin')) {
+                if (admin.email !== 'natib8000@gmail.com') continue;
+            }
             if (sendWhatsApp && admin.phone) {
-                await triggerWhatsApp(base44, template, admin.phone, eventObj, supplierObj, serviceObj, admin);
+                const normalizedPhone = String(admin.phone).replace(/[^0-9]/g, '');
+                if (normalizedPhone && !sentWhatsAppPhones.has(normalizedPhone)) {
+                    sentWhatsAppPhones.add(normalizedPhone);
+                    await triggerWhatsApp(base44, template, admin.phone, eventObj, adminSupplierObj, adminServiceObj, admin);
+                }
             }
             if (sendPush) {
-                await triggerInApp(base44, template, admin, eventObj, supplierObj, serviceObj);
+                await triggerInApp(base44, template, admin, eventObj, adminSupplierObj, adminServiceObj);
             }
         }
     }
