@@ -222,9 +222,39 @@ Deno.serve(async (req) => {
                 // Build a template-like clone with only the non-supplier audiences so
                 // sendNotification won't re-send to suppliers (which we already handled above).
                 const templateForOthers = { ...template, target_audiences: nonSupplierAudiences };
-                const result = await sendNotification(base44, templateForOthers, enrichedData, syntheticEvent, 'Event', log);
-                clientsNotified = result.clients_notified || 0;
-                adminsNotified = result.admins_notified || 0;
+
+                // Special handling for task-category templates: send once per open task linked to this event,
+                // injecting task variables into the template content.
+                if (template.category === 'task') {
+                    let taskCount = 0;
+                    try {
+                        const eventTasks = await base44.asServiceRole.entities.Task.filter({ event_id: event.id });
+                        const openTasks = (eventTasks || []).filter(t => !t.is_completed);
+                        log(`[ManualTrigger] Task template: found ${openTasks.length} open tasks for event`);
+
+                        for (const task of openTasks) {
+                            const taskVars = buildTaskVariables(task, event);
+                            // Pre-render template content with task variables, then send via standard pipeline.
+                            const renderedTemplate = {
+                                ...templateForOthers,
+                                title_template: replacePlaceholders(template.title_template || '', taskVars),
+                                body_template: replacePlaceholders(template.body_template || '', taskVars),
+                                whatsapp_body_template: replacePlaceholders(template.whatsapp_body_template || template.body_template || '', taskVars)
+                            };
+                            const r = await sendNotification(base44, renderedTemplate, enrichedData, syntheticEvent, 'Event', log);
+                            clientsNotified += r.clients_notified || 0;
+                            adminsNotified += r.admins_notified || 0;
+                            taskCount++;
+                        }
+                    } catch (te) {
+                        log(`[ManualTrigger] Task template error: ${te.message}`);
+                    }
+                    log(`[ManualTrigger] Task template processed ${taskCount} tasks`);
+                } else {
+                    const result = await sendNotification(base44, templateForOthers, enrichedData, syntheticEvent, 'Event', log);
+                    clientsNotified = result.clients_notified || 0;
+                    adminsNotified = result.admins_notified || 0;
+                }
             } else {
                 log(`[ManualTrigger] Event-level conditions not met for non-supplier audiences`);
             }
@@ -431,12 +461,19 @@ async function sendNotification(base44, template, entityData, event, entityName,
     // --- 3. Admin Audience ---
     if (audiences.includes('admin') || audiences.includes('system_creator')) {
         const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+        // Dedupe WhatsApp by normalized phone to avoid sending duplicate messages
+        // when multiple admin users share the same phone number.
+        const sentWhatsAppPhones = new Set();
         for (const admin of admins) {
             if (audiences.includes('system_creator') && !audiences.includes('admin')) {
                 if (admin.email !== 'natib8000@gmail.com') continue;
             }
             if (sendWhatsApp && admin.phone) {
-                await triggerWhatsApp(base44, template, admin.phone, eventObj, supplierObj, serviceObj, admin);
+                const normalizedPhone = String(admin.phone).replace(/[^0-9]/g, '');
+                if (normalizedPhone && !sentWhatsAppPhones.has(normalizedPhone)) {
+                    sentWhatsAppPhones.add(normalizedPhone);
+                    await triggerWhatsApp(base44, template, admin.phone, eventObj, supplierObj, serviceObj, admin);
+                }
             }
             if (sendPush) {
                 await triggerInApp(base44, template, admin, eventObj, supplierObj, serviceObj);
@@ -653,4 +690,54 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
     return text.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
         return vars[key] !== undefined ? vars[key] : match;
     });
+}
+
+// Simple {{var}} placeholder replacer (used to pre-render task templates before
+// they pass through the standard sendNotification pipeline).
+function replacePlaceholders(template, data) {
+    if (!template) return '';
+    return template.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
+        const value = data[key];
+        return value !== undefined && value !== null ? String(value) : match;
+    });
+}
+
+// Builds the task-related variables map used for {{task_*}} placeholders.
+// Mirrors the logic in dailyScheduledNotifications Phase 6.5 to keep behavior identical.
+function buildTaskVariables(task, eventObj) {
+    const eventName = eventObj ? (eventObj.event_name || eventObj.family_name || '') : '';
+    const eventLine = eventName ? `\n📅 אירוע: ${eventName}` : '';
+
+    const priorityLabel = task.priority === 'high' ? '🔴 דחיפות גבוהה' :
+                          task.priority === 'low' ? '🔵 דחיפות נמוכה' : '';
+    const priorityLine = priorityLabel ? '\n' + priorityLabel : '';
+
+    let dueTime = '';
+    let dueDateFormatted = '';
+    try {
+        if (task.due_date) {
+            const d = new Date(task.due_date);
+            if (!isNaN(d.getTime())) {
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mm = String(d.getMinutes()).padStart(2, '0');
+                const hasTime = !(hh === '00' && mm === '00');
+                dueTime = hasTime ? ` ${hh}:${mm}` : '';
+                dueDateFormatted = d.toLocaleDateString('he-IL') + dueTime;
+            }
+        }
+    } catch (e) {}
+
+    const descriptionBlock = task.description ? '\n\n' + task.description : '';
+
+    return {
+        task_title: task.title || '',
+        task_due_date: dueDateFormatted,
+        task_description: task.description || '',
+        task_priority: task.priority || 'normal',
+        task_event_name: eventName,
+        task_priority_line: priorityLine,
+        task_event_line: eventLine,
+        task_description_block: descriptionBlock,
+        event_id: task.event_id || (eventObj ? eventObj.id : '')
+    };
 }
