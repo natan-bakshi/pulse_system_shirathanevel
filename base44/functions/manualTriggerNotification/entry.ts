@@ -239,8 +239,14 @@ Deno.serve(async (req) => {
                                 ...templateForOthers,
                                 title_template: replacePlaceholders(template.title_template || '', taskVars),
                                 body_template: replacePlaceholders(template.body_template || '', taskVars),
-                                whatsapp_body_template: replacePlaceholders(template.whatsapp_body_template || template.body_template || '', taskVars)
+                                whatsapp_body_template: replacePlaceholders(template.whatsapp_body_template || template.body_template || '', taskVars),
+                                // Task-level admin assignment filter:
+                                // If the task has assignees -> notify only those admins; otherwise notify all admins.
+                                _task_assignee_ids: Array.isArray(task.assignee_ids) && task.assignee_ids.length > 0
+                                    ? task.assignee_ids
+                                    : null
                             };
+                            log(`[ManualTrigger] Task "${task.title}" assignees: ${renderedTemplate._task_assignee_ids ? renderedTemplate._task_assignee_ids.length + ' specific admin(s)' : 'all admins (unassigned)'}`);
                             const r = await sendNotification(base44, renderedTemplate, enrichedData, syntheticEvent, 'Event', log);
                             clientsNotified += r.clients_notified || 0;
                             adminsNotified += r.admins_notified || 0;
@@ -460,7 +466,16 @@ async function sendNotification(base44, template, entityData, event, entityName,
 
     // --- 3. Admin Audience ---
     if (audiences.includes('admin') || audiences.includes('system_creator')) {
-        const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+        let admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+
+        // Task-level admin filtering: when a task is assigned to specific admins,
+        // notify ONLY those admins. If unassigned (null) - notify all admins.
+        const taskAssigneeIds = template._task_assignee_ids;
+        if (Array.isArray(taskAssigneeIds) && taskAssigneeIds.length > 0) {
+            admins = admins.filter(a => taskAssigneeIds.includes(a.id));
+            log && log(`[ManualTrigger] Filtered admins to ${admins.length} task assignee(s)`);
+        }
+
         // Dedupe WhatsApp by normalized phone to avoid sending duplicate messages
         // when multiple admin users share the same phone number.
         const sentWhatsAppPhones = new Set();
