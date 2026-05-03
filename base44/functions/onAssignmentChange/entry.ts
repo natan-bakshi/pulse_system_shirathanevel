@@ -131,78 +131,72 @@ Deno.serve(async (req) => {
             }
         }
         
-        // Check for rejections - notify admins AND save to declined_suppliers history
+        // Check for rejections - notify admins ONLY if rejection was made by supplier (not admin)
         const rejectionTemplate = templates.find(t => t.type === 'ADMIN_ASSIGNMENT_REJECTED');
         if (rejectionTemplate) {
+            // טוענים את declined_suppliers הנוכחי כדי לבדוק מי דחה
+            let currentDeclinedRecords = [];
+            try {
+                currentDeclinedRecords = JSON.parse(data.declined_suppliers || '[]');
+                if (!Array.isArray(currentDeclinedRecords)) currentDeclinedRecords = [];
+            } catch (e) { currentDeclinedRecords = []; }
+
             for (const supplierId of currentSupplierIds) {
                 const wasRejected = oldStatuses[supplierId] !== 'rejected' && currentStatuses[supplierId] === 'rejected';
-                
-                // Save to declined_suppliers history
-                if (wasRejected) {
+
+                if (!wasRejected) continue;
+
+                // בדיקה: האם הדחייה בוצעה ע"י הספק עצמו? אם רשום declined_by_supplier=true ברשומה - כן.
+                // אם המנהל דחה (דרך ה-UI) - הרשומה לא תיווצר ע"י updateSupplierStatus, ולכן לא יהיה flag כזה.
+                const declinedRecord = currentDeclinedRecords.find(d => d.supplier_id === supplierId);
+                const wasDeclinedBySupplier = declinedRecord?.declined_by_supplier === true;
+
+                if (!wasDeclinedBySupplier) {
+                    console.log(`[AssignmentChange] Skipping admin notification - rejection of supplier ${supplierId} was made by admin, not by supplier`);
+                    continue;
+                }
+
+                const supplier = suppliersMap.get(supplierId);
+                if (!supplier) continue;
+
+                const contextData = {
+                    event_name: eventData.event_name,
+                    family_name: eventData.family_name,
+                    event_date: formatDate(eventData.event_date),
+                    supplier_name: supplier.supplier_name,
+                    service_name: service?.service_name || '',
+                    event_id: eventData.id
+                };
+
+                const title = replacePlaceholders(rejectionTemplate.title_template, contextData);
+                const message = replacePlaceholders(rejectionTemplate.body_template, contextData);
+                const link = buildDeepLink(rejectionTemplate.deep_link_base, rejectionTemplate.deep_link_params_map, contextData);
+
+                // סינון מנהלים לפי admin_recipient_ids של התבנית (אם הוגדר)
+                const targetedAdmins = filterTargetedAdmins(rejectionTemplate, adminUsers);
+
+                for (const admin of targetedAdmins) {
                     try {
-                        let declinedSuppliers = [];
-                        try {
-                            declinedSuppliers = JSON.parse(data.declined_suppliers || '[]');
-                            if (!Array.isArray(declinedSuppliers)) declinedSuppliers = [];
-                        } catch (e) { declinedSuppliers = []; }
-                        
-                        const alreadyDeclined = declinedSuppliers.some(d => d.supplier_id === supplierId);
-                        if (!alreadyDeclined) {
-                            declinedSuppliers.push({
-                                supplier_id: supplierId,
-                                declined_date: new Date().toISOString(),
-                                reason: ''
-                            });
-                            await base44.asServiceRole.entities.EventService.update(data.id, {
-                                declined_suppliers: JSON.stringify(declinedSuppliers)
-                            });
-                        }
-                    } catch (declineErr) {
-                        console.warn('[AssignmentChange] Error saving decline history:', declineErr);
+                        await base44.functions.invoke('createNotification', {
+                            target_user_id: admin.id,
+                            target_user_email: admin.email,
+                            title,
+                            message,
+                            link,
+                            template_type: 'ADMIN_ASSIGNMENT_REJECTED',
+                            related_event_id: eventData.id,
+                            related_event_service_id: data.id,
+                            related_supplier_id: supplierId,
+                            send_push: true,
+                            check_quiet_hours: true
+                        });
+                        notificationsSent++;
+                    } catch (error) {
+                        console.error('[AssignmentChange] Error notifying admin:', error);
                     }
                 }
 
-                if (wasRejected) {
-                    const supplier = suppliersMap.get(supplierId);
-                    if (!supplier) continue;
-                    
-                    const contextData = {
-                        event_name: eventData.event_name,
-                        family_name: eventData.family_name,
-                        event_date: formatDate(eventData.event_date),
-                        supplier_name: supplier.supplier_name,
-                        service_name: service?.service_name || '',
-                        event_id: eventData.id
-                    };
-                    
-                    const title = replacePlaceholders(rejectionTemplate.title_template, contextData);
-                    const message = replacePlaceholders(rejectionTemplate.body_template, contextData);
-                    const link = buildDeepLink(rejectionTemplate.deep_link_base, rejectionTemplate.deep_link_params_map, contextData);
-                    
-                    // Notify all admins
-                    for (const admin of adminUsers) {
-                        try {
-                            await base44.functions.invoke('createNotification', {
-                                target_user_id: admin.id,
-                                target_user_email: admin.email,
-                                title,
-                                message,
-                                link,
-                                template_type: 'ADMIN_ASSIGNMENT_REJECTED',
-                                related_event_id: eventData.id,
-                                related_event_service_id: data.id,
-                                related_supplier_id: supplierId,
-                                send_push: true,
-                                check_quiet_hours: true
-                            });
-                            notificationsSent++;
-                        } catch (error) {
-                            console.error('[AssignmentChange] Error notifying admin:', error);
-                        }
-                    }
-                    
-                    console.log(`[AssignmentChange] Notified admins of rejection by ${supplier.supplier_name}`);
-                }
+                console.log(`[AssignmentChange] Notified ${targetedAdmins.length} admins of rejection by supplier ${supplier.supplier_name}`);
             }
         }
         
@@ -303,8 +297,28 @@ function buildDeepLink(basePage, paramsMapJson, data) {
     return url;
 }
 
+/**
+ * פורמט תאריך dd/mm/yyyy עם תווי LRM (Left-To-Right Mark) שמכריחים תצוגה משמאל לימין
+ * גם כשההודעה נשלחת בהקשר RTL (כמו וואטסאפ בעברית).
+ */
 function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('he-IL');
+    if (isNaN(date.getTime())) return '';
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    // \u200E = LRM - מכריח תצוגה LTR בתוך הקשר RTL
+    return `\u200E${dd}/${mm}/${yyyy}`;
+}
+
+/**
+ * סינון רשימת מנהלים לפי admin_recipient_ids של התבנית.
+ * אם השדה ריק או לא קיים - מחזיר את כל המנהלים (התנהגות ברירת מחדל).
+ * אם יש רשימה - מחזיר רק מנהלים מתוכה.
+ */
+function filterTargetedAdmins(template, adminUsers) {
+    const ids = template?.admin_recipient_ids;
+    if (!Array.isArray(ids) || ids.length === 0) return adminUsers;
+    return adminUsers.filter(a => ids.includes(a.id));
 }

@@ -249,8 +249,24 @@ Deno.serve(async (req) => {
                         }
                     }
                     // Case 2 - Supplier Removal
+                    // התראה לספק על ביטול שיבוץ - רק אם הסטטוס הקודם שלו היה מאושר (approved/confirmed).
+                    // אם הוא היה pending/rejected - אין צורך להתריע (הוא לא אישר אז לא חשוב לו).
                     else if (template.trigger_type === 'supplier_assignment_delete' && event.removed_supplier_ids?.length > 0) {
+                        // טוענים את הסטטוסים הקודמים מ-oldData
+                        let oldSupplierStatuses = {};
+                        try {
+                            const raw = oldData?.supplier_statuses || oldData?.supplierstatuses;
+                            oldSupplierStatuses = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
+                            if (!oldSupplierStatuses || typeof oldSupplierStatuses !== 'object') oldSupplierStatuses = {};
+                        } catch (e) { oldSupplierStatuses = {}; }
+
                         for (const supId of event.removed_supplier_ids) {
+                            const previousStatus = oldSupplierStatuses[supId];
+                            // שולחים רק אם הסטטוס הקודם היה approved או confirmed
+                            if (previousStatus !== 'approved' && previousStatus !== 'confirmed') {
+                                console.log(`[HandleEntityEvents] Skipping cancellation notification for supplier ${supId} - previous status was '${previousStatus}' (not approved/confirmed)`);
+                                continue;
+                            }
                             const specificEvent = { ...event, specific_recipient_id: supId };
                             await sendNotification(base44, template, enrichedData, specificEvent, entityName);
                             notificationsSent++;
@@ -535,7 +551,15 @@ async function sendNotification(base44, template, entityData, event, entityName)
             adminServiceObj = entityData;
         }
 
-        const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+        let admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
+
+        // סינון מנהלים לפי admin_recipient_ids של התבנית (אם הוגדר ולא ריק)
+        const targetedAdminIds = template.admin_recipient_ids || template.adminrecipientids;
+        if (Array.isArray(targetedAdminIds) && targetedAdminIds.length > 0) {
+            admins = admins.filter(a => targetedAdminIds.includes(a.id));
+            console.log(`[HandleEntityEvents] Filtered admins to ${admins.length} specific recipients per template setting`);
+        }
+
         // Dedupe WhatsApp by normalized phone to avoid duplicate messages for admins sharing a phone.
         const sentWhatsAppPhones = new Set();
         for (const admin of admins) {
@@ -742,11 +766,23 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         return '';
     };
 
+    // פורמט תאריך dd/mm/yyyy עם LRM (\u200E) להבטחת תצוגה LTR בהקשר RTL
+    const fmtDate = (raw) => {
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `\u200E${dd}/${mm}/${yyyy}`;
+    };
+    const eventDateRaw = getVal(eventObj, ['event_date', 'eventdate']);
+
     const vars = {
         'event_name': getVal(eventObj, ['event_name', 'eventname']),
         'eventname': getVal(eventObj, ['event_name', 'eventname']),
-        'event_date': getVal(eventObj, ['event_date', 'eventdate']),
-        'eventdate': getVal(eventObj, ['event_date', 'eventdate']),
+        'event_date': fmtDate(eventDateRaw),
+        'eventdate': fmtDate(eventDateRaw),
         'event_time': getVal(eventObj, ['event_time', 'eventtime']),
         'eventtime': getVal(eventObj, ['event_time', 'eventtime']),
         'event_location': getVal(eventObj, ['location']),

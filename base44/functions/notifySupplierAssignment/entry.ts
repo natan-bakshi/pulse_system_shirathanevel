@@ -46,7 +46,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, message: 'No user accounts found for the given suppliers to notify.' }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     
-    const formattedDate = new Date(event.event_date).toLocaleDateString('he-IL');
+    // פורמט תאריך dd/mm/yyyy עם LRM (\u200E) להבטחת תצוגה LTR בהקשר RTL
+    const _d = new Date(event.event_date);
+    const formattedDate = isNaN(_d.getTime()) ? '' :
+      `\u200E${String(_d.getDate()).padStart(2,'0')}/${String(_d.getMonth()+1).padStart(2,'0')}/${_d.getFullYear()}`;
     const title = `שיבוץ חדש לאירוע`;
     const body = `שובצת לשירות '${serviceName}' באירוע של משפחת ${event.family_name} בתאריך ${formattedDate}.`;
 

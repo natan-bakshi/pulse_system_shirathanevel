@@ -87,7 +87,8 @@ Deno.serve(async (req) => {
         declinedSuppliers.push({
           supplier_id: matchingSupplier.id,
           declined_date: new Date().toISOString(),
-          reason: ''
+          reason: '',
+          declined_by_supplier: true // סימון: הדחייה בוצעה ע"י הספק עצמו (ולא ע"י המנהל)
         });
         updateData.declined_suppliers = JSON.stringify(declinedSuppliers);
       }

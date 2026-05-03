@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Plus, Trash2 } from "lucide-react";
 import FieldLabel from "../FieldLabel";
 import { AUDIENCES, CONDITION_FIELDS, OPERATORS } from "../constants";
+import AdminRecipientsSelector from "./AdminRecipientsSelector";
 
 // טאב 4: תנאים וקהלי יעד
 export default function ConditionsTargetTab({ template, onChange }) {
@@ -64,6 +65,9 @@ export default function ConditionsTargetTab({ template, onChange }) {
             </TooltipProvider>
           ))}
         </div>
+
+        {/* בורר מנהלים ספציפיים - מופיע רק אם admin/system_creator נבחר */}
+        <AdminRecipientsSelector template={template} onChange={onChange} />
       </div>
 
       {/* תנאים נוספים */}

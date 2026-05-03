@@ -468,6 +468,13 @@ async function sendNotification(base44, template, entityData, event, entityName,
     if (audiences.includes('admin') || audiences.includes('system_creator')) {
         let admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
 
+        // סינון מנהלים לפי admin_recipient_ids של התבנית (אם הוגדר)
+        const targetedAdminIds = template.admin_recipient_ids || template.adminrecipientids;
+        if (Array.isArray(targetedAdminIds) && targetedAdminIds.length > 0) {
+            admins = admins.filter(a => targetedAdminIds.includes(a.id));
+            log && log(`[ManualTrigger] Filtered admins to ${admins.length} specific recipients per template setting`);
+        }
+
         // Task-level admin filtering: when a task is assigned to specific admins,
         // notify ONLY those admins. If unassigned (null) - notify all admins.
         const taskAssigneeIds = template._task_assignee_ids;
@@ -662,11 +669,23 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         return '';
     };
 
+    // פורמט תאריך dd/mm/yyyy עם LRM (\u200E) להבטחת תצוגה LTR בהקשר RTL
+    const fmtDate = (raw) => {
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `\u200E${dd}/${mm}/${yyyy}`;
+    };
+    const eventDateRaw = getVal(eventObj, ['event_date', 'eventdate']);
+
     const vars = {
         'event_name': getVal(eventObj, ['event_name', 'eventname']),
         'eventname': getVal(eventObj, ['event_name', 'eventname']),
-        'event_date': getVal(eventObj, ['event_date', 'eventdate']),
-        'eventdate': getVal(eventObj, ['event_date', 'eventdate']),
+        'event_date': fmtDate(eventDateRaw),
+        'eventdate': fmtDate(eventDateRaw),
         'event_time': getVal(eventObj, ['event_time', 'eventtime']),
         'eventtime': getVal(eventObj, ['event_time', 'eventtime']),
         'event_location': getVal(eventObj, ['location']),

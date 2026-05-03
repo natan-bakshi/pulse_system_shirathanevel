@@ -1,0 +1,229 @@
+{
+  "name": "NotificationTemplate",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e7\u05d5\u05d3 \u05e4\u05e0\u05d9\u05de\u05d9 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u05dc\u05e1\u05d5\u05d2 \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4 (\u05dc\u05d3\u05d5\u05d2\u05de\u05d4: SUPPLIER_NEW_ASSIGNMENT)"
+    },
+    "name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d9\u05d3\u05d9\u05d3\u05d5\u05ea\u05d9 \u05dc\u05de\u05e9\u05ea\u05de\u05e9 \u05e2\u05d1\u05d5\u05e8 \u05d4\u05ea\u05d1\u05e0\u05d9\u05ea"
+    },
+    "description": {
+      "type": "string",
+      "description": "\u05ea\u05d9\u05d0\u05d5\u05e8 \u05de\u05e4\u05d5\u05e8\u05d8 \u05dc\u05de\u05e0\u05d4\u05dc \u05e2\u05dc \u05de\u05d8\u05e8\u05ea \u05d4\u05ea\u05d1\u05e0\u05d9\u05ea \u05d5\u05db\u05d9\u05e6\u05d3 \u05d4\u05d9\u05d0 \u05e4\u05d5\u05e2\u05dc\u05ea"
+    },
+    "title_template": {
+      "type": "string",
+      "description": "\u05ea\u05d1\u05e0\u05d9\u05ea \u05dc\u05db\u05d5\u05ea\u05e8\u05ea \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4 (\u05ea\u05db\u05dc\u05d5\u05dc \u05de\u05e9\u05ea\u05e0\u05d9\u05dd \u05db\u05de\u05d5 {{event_name}})"
+    },
+    "body_template": {
+      "type": "string",
+      "description": "\u05ea\u05d1\u05e0\u05d9\u05ea \u05dc\u05d2\u05d5\u05e3 \u05d4\u05d4\u05d5\u05d3\u05e2\u05d4 (\u05ea\u05db\u05dc\u05d5\u05dc \u05de\u05e9\u05ea\u05e0\u05d9\u05dd)"
+    },
+    "whatsapp_body_template": {
+      "type": "string",
+      "description": "\u05ea\u05d1\u05e0\u05d9\u05ea \u05d9\u05d9\u05e2\u05d5\u05d3\u05d9\u05ea \u05dc\u05d4\u05d5\u05d3\u05e2\u05ea \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 (\u05ea\u05db\u05dc\u05d5\u05dc \u05de\u05e9\u05ea\u05e0\u05d9\u05dd)"
+    },
+    "allowed_channels": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "push",
+          "whatsapp"
+        ]
+      },
+      "default": [
+        "push"
+      ],
+      "description": "\u05e2\u05e8\u05d5\u05e6\u05d9 \u05d4\u05e9\u05dc\u05d9\u05d7\u05d4 \u05d4\u05de\u05d5\u05d2\u05d3\u05e8\u05d9\u05dd \u05dc\u05ea\u05d1\u05e0\u05d9\u05ea \u05d6\u05d5 (\u05e4\u05d5\u05e9, \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 \u05d0\u05d5 \u05e9\u05e0\u05d9\u05d4\u05dd)"
+    },
+    "timing_value": {
+      "type": "number",
+      "description": "\u05e2\u05e8\u05da \u05de\u05e1\u05e4\u05e8\u05d9 \u05dc\u05e7\u05d1\u05d9\u05e2\u05ea \u05ea\u05d6\u05de\u05d5\u05df (\u05dc\u05d3\u05d5\u05d2\u05de\u05d4: 7 \u05d9\u05de\u05d9\u05dd \u05dc\u05e4\u05e0\u05d9 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2)"
+    },
+    "timing_unit": {
+      "type": "string",
+      "enum": [
+        "minutes",
+        "hours",
+        "days",
+        "weeks",
+        "months"
+      ],
+      "description": "\u05d9\u05d7\u05d9\u05d3\u05ea \u05d4\u05d6\u05de\u05df \u05dc-timing_value"
+    },
+    "timing_direction": {
+      "type": "string",
+      "enum": [
+        "before",
+        "after",
+        "during"
+      ],
+      "description": "\u05db\u05d9\u05d5\u05d5\u05df \u05d4\u05ea\u05d6\u05de\u05d5\u05df \u05d1\u05d9\u05d7\u05e1 \u05dc\u05e0\u05e7\u05d5\u05d3\u05ea \u05d4\u05d9\u05d7\u05d5\u05e1"
+    },
+    "timing_reference": {
+      "type": "string",
+      "enum": [
+        "event_date",
+        "event_end_time",
+        "payment_due_date",
+        "assignment_date",
+        "quote_expiration"
+      ],
+      "description": "\u05e0\u05e7\u05d5\u05d3\u05ea \u05d4\u05d9\u05d7\u05d5\u05e1 \u05dc\u05d7\u05d9\u05e9\u05d5\u05d1 \u05d4\u05d6\u05de\u05df"
+    },
+    "condition_logic": {
+      "type": "string",
+      "enum": [
+        "and",
+        "or"
+      ],
+      "default": "and",
+      "description": "\u05d4\u05dc\u05d5\u05d2\u05d9\u05e7\u05d4 \u05d1\u05d9\u05df \u05d4\u05ea\u05e0\u05d0\u05d9\u05dd (\u05d5\u05d2\u05dd / \u05d0\u05d5)"
+    },
+    "condition_field": {
+      "type": "string",
+      "description": "\u05e9\u05d3\u05d4 \u05dc\u05d1\u05d3\u05d9\u05e7\u05ea \u05ea\u05e0\u05d0\u05d9 (\u05dc\u05de\u05e9\u05dc status, payment_status) - \u05de\u05d5\u05e8\u05e9\u05ea"
+    },
+    "condition_operator": {
+      "type": "string",
+      "enum": [
+        "equals",
+        "not_equals",
+        "greater_than",
+        "less_than",
+        "contains",
+        "is_empty",
+        "is_not_empty"
+      ],
+      "description": "\u05d0\u05d5\u05e4\u05e8\u05d8\u05d5\u05e8 \u05d4\u05d4\u05e9\u05d5\u05d5\u05d0\u05d4 - \u05de\u05d5\u05e8\u05e9\u05ea"
+    },
+    "condition_value": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05da \u05dc\u05d4\u05e9\u05d5\u05d5\u05d0\u05d4 \u05d1\u05ea\u05e0\u05d0\u05d9 - \u05de\u05d5\u05e8\u05e9\u05ea"
+    },
+    "reminder_interval_value": {
+      "type": "number",
+      "description": "\u05db\u05dc \u05db\u05de\u05d4 \u05d6\u05de\u05df \u05dc\u05e9\u05dc\u05d5\u05d7 \u05ea\u05d6\u05db\u05d5\u05e8\u05ea \u05d7\u05d5\u05d6\u05e8\u05ea \u05d0\u05dd \u05d4\u05e1\u05d9\u05d1\u05d4 \u05e2\u05d3\u05d9\u05d9\u05df \u05e7\u05d9\u05d9\u05de\u05ea (0 = \u05dc\u05dc\u05d0 \u05e9\u05dc\u05d9\u05d7\u05d4 \u05d7\u05d5\u05d6\u05e8\u05ea)"
+    },
+    "reminder_interval_unit": {
+      "type": "string",
+      "enum": [
+        "hours",
+        "days",
+        "weeks"
+      ],
+      "description": "\u05d9\u05d7\u05d9\u05d3\u05ea \u05d4\u05d6\u05de\u05df \u05dc\u05ea\u05d6\u05db\u05d5\u05e8\u05ea \u05d7\u05d5\u05d6\u05e8\u05ea"
+    },
+    "max_reminders": {
+      "type": "number",
+      "default": 3,
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05de\u05e7\u05e1\u05d9\u05de\u05dc\u05d9 \u05e9\u05dc \u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea \u05d7\u05d5\u05d6\u05e8\u05d5\u05ea (0 = \u05dc\u05dc\u05d0 \u05d4\u05d2\u05d1\u05dc\u05d4)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05ea\u05d1\u05e0\u05d9\u05ea \u05e4\u05e2\u05d9\u05dc\u05d4"
+    },
+    "target_audiences": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "supplier",
+          "admin",
+          "system_creator",
+          "client"
+        ]
+      },
+      "description": "\u05e7\u05d4\u05dc \u05d4\u05d9\u05e2\u05d3 \u05e9\u05dc \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4 (\u05ea\u05de\u05d9\u05db\u05d4 \u05d1\u05d1\u05d7\u05d9\u05e8\u05d4 \u05de\u05e8\u05d5\u05d1\u05d4)"
+    },
+    "admin_recipient_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "\u05e8\u05e9\u05d9\u05de\u05ea \u05de\u05d6\u05d4\u05d9 \u05de\u05e0\u05d4\u05dc\u05d9\u05dd \u05e1\u05e4\u05e6\u05d9\u05e4\u05d9\u05d9\u05dd \u05e9\u05d9\u05e7\u05d1\u05dc\u05d5 \u05d0\u05ea \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4. \u05d0\u05dd \u05e8\u05d9\u05e7 - \u05db\u05dc \u05d4\u05de\u05e0\u05d4\u05dc\u05d9\u05dd \u05de\u05e7\u05d1\u05dc\u05d9\u05dd. \u05e8\u05dc\u05d5\u05d5\u05e0\u05d8\u05d9 \u05e8\u05e7 \u05db\u05e9-admin \u05e0\u05db\u05dc\u05dc \u05d1-target_audiences"
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "entity_create",
+        "entity_update",
+        "scheduled_check",
+        "manual",
+        "event_status_change",
+        "payment_status_change",
+        "assignment_status_change"
+      ],
+      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d8\u05e8\u05d9\u05d2\u05e8 \u05e9\u05d9\u05e4\u05e2\u05d9\u05dc \u05d0\u05ea \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4"
+    },
+    "entity_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05d9\u05e9\u05d5\u05ea \u05e9\u05e2\u05dc\u05d9\u05d4 \u05e4\u05d5\u05e2\u05dc \u05d4\u05d8\u05e8\u05d9\u05d2\u05e8 (\u05e0\u05d3\u05e8\u05e9 \u05dc\u05d8\u05e8\u05d9\u05d2\u05e8\u05d9\u05dd \u05de\u05e1\u05d5\u05d2 entity)"
+    },
+    "event_filter_condition": {
+      "type": "string",
+      "description": "\u05ea\u05e0\u05d0\u05d9 JSON \u05dc\u05e1\u05d9\u05e0\u05d5\u05df \u05d0\u05d9\u05e8\u05d5\u05e2\u05d9 \u05e2\u05d3\u05db\u05d5\u05df (\u05db-string)"
+    },
+    "deep_link_base": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05d3\u05e3 \u05d1-Base44 \u05d0\u05dc\u05d9\u05d5 \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4 \u05ea\u05e0\u05d5\u05d5\u05d8"
+    },
+    "dynamic_url_type": {
+      "type": "string",
+      "enum": [
+        "event_page",
+        "payment_page",
+        "assignment_page",
+        "calendar_page",
+        "settings_page",
+        "none"
+      ],
+      "description": "\u05e1\u05d5\u05d2 \u05d3\u05e3 \u05d3\u05d9\u05e0\u05de\u05d9 \u05dc\u05d9\u05e6\u05d9\u05e8\u05ea \u05e7\u05d9\u05e9\u05d5\u05e8 \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9"
+    },
+    "deep_link_params_map": {
+      "type": "string",
+      "description": "\u05de\u05e4\u05ea JSON \u05e9\u05ea\u05de\u05d9\u05e8 \u05de\u05e9\u05ea\u05e0\u05d9\u05dd \u05dc\u05e4\u05e8\u05de\u05d8\u05e8\u05d9\u05dd \u05e9\u05dc URL (\u05db-string)"
+    },
+    "variables_description": {
+      "type": "string",
+      "description": "\u05d0\u05d5\u05d1\u05d9\u05d9\u05e7\u05d8 JSON \u05d4\u05de\u05ea\u05d0\u05e8 \u05d0\u05ea \u05d4\u05de\u05e9\u05ea\u05e0\u05d9\u05dd \u05d4\u05d6\u05de\u05d9\u05e0\u05d9\u05dd \u05dc\u05ea\u05d1\u05e0\u05d9\u05ea \u05d6\u05d5 (\u05db-string)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "assignment",
+        "event_reminder",
+        "payment",
+        "quote",
+        "system"
+      ],
+      "description": "\u05e7\u05d8\u05d2\u05d5\u05e8\u05d9\u05d4 \u05dc\u05e1\u05d9\u05d5\u05d5\u05d2 \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4"
+    }
+  },
+  "required": [
+    "type",
+    "name",
+    "title_template",
+    "body_template",
+    "target_audiences",
+    "trigger_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

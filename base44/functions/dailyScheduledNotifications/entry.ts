@@ -81,9 +81,28 @@ function buildDeepLink(basePage, paramsMapJson, data) {
     return url;
 }
 
+/**
+ * פורמט תאריך dd/mm/yyyy עם תווי LRM (\u200E) שמכריחים תצוגה משמאל לימין
+ * גם כשההודעה נשלחת בהקשר RTL (כמו וואטסאפ בעברית).
+ */
 function formatDate(dateString) {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('he-IL');
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `\u200E${dd}/${mm}/${yyyy}`;
+}
+
+/**
+ * סינון רשימת מנהלים לפי admin_recipient_ids של התבנית.
+ * אם השדה ריק או לא קיים - מחזיר את כל המנהלים (התנהגות ברירת מחדל).
+ */
+function filterTargetedAdmins(template, adminUsers) {
+    const ids = template?.admin_recipient_ids || template?.adminrecipientids;
+    if (!Array.isArray(ids) || ids.length === 0) return adminUsers;
+    return adminUsers.filter(a => ids.includes(a.id));
 }
 
 function getIsraelEventDate(dateStr, timeStr) {
@@ -377,7 +396,9 @@ Deno.serve(async (req) => {
                 applyTimingOffset(reminderCutoff, timingUnit, -timingValue);
                 
                 if (now >= reminderCutoff) {
-                    for (const admin of adminUsers) {
+                    // סינון מנהלים ספציפיים לפי הגדרת התבנית
+                    const targetedAdmins = filterTargetedAdmins(adminReminderTemplate, adminUsers);
+                    for (const admin of targetedAdmins) {
                         const hasExisting = existingNotifications.some(n => 
                             n.template_type === 'ADMIN_EVENT_REMINDER' &&
                             n.related_event_id === event.id &&
@@ -548,22 +569,28 @@ Deno.serve(async (req) => {
                 const sevenDaysFromNow = new Date(today);
                 sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
                 
+                // סינון: רק אירועים בסטטוס 'confirmed' (סגור) - לא הצעת מחיר ולא בוטל/הושלם
                 const upcomingEvents = allEvents.filter(e => {
-                    if (e.status === 'cancelled' || e.status === 'completed') return false;
+                    if (e.status !== 'confirmed') return false;
                     const eventDate = new Date(e.event_date);
                     return eventDate >= today && eventDate <= sevenDaysFromNow;
                 });
                 
+                // סינון מנהלים ספציפיים לפי הגדרת התבנית (רק פעם אחת לכל הריצה)
+                const targetedAdmins = filterTargetedAdmins(missingTemplate, adminUsers);
+                const allowedChannels = missingTemplate.allowed_channels || ['push'];
+                
                 for (const event of upcomingEvents) {
+                    // צבירת כל השירותים שחסרים בהם ספקים באירוע הזה
+                    const missingServices = []; // [{ es, serviceName, minRequired, approvedCount }]
                     const eventServices = allEventServices.filter(es => es.event_id === event.id);
                     
                     for (const es of eventServices) {
                         const serviceDef = servicesMap.get(es.service_id);
                         const minRequired = es.min_suppliers ?? serviceDef?.default_min_suppliers ?? 0;
-                        
                         if (minRequired === 0) continue;
                         
-                        // Count confirmed/approved suppliers
+                        // ספירת ספקים מאושרים
                         let approvedCount = 0;
                         if (es.supplier_ids && es.supplier_statuses) {
                             try {
@@ -574,69 +601,102 @@ Deno.serve(async (req) => {
                                 ).length;
                             } catch (e) {}
                         }
-                        
                         if (approvedCount >= minRequired) continue;
                         
-                        // Check duplicate
-                        const serviceName = serviceDef?.service_name || '';
-                        const hasDuplicate = existingNotifications.some(n =>
-                            n.template_type === 'ADMIN_MISSING_ASSIGNMENT' &&
-                            n.related_event_id === event.id &&
-                            n.message?.includes(serviceName)
-                        );
-                        if (hasDuplicate) continue;
-                        
-                        const contextData = {
+                        missingServices.push({
+                            es,
+                            serviceName: serviceDef?.service_name || '',
+                            minRequired,
+                            approvedCount
+                        });
+                    }
+                    
+                    if (missingServices.length === 0) continue;
+                    
+                    // בדיקת כפילות: התראה אחת בלבד פר אירוע
+                    const hasDuplicate = existingNotifications.some(n =>
+                        n.template_type === 'ADMIN_MISSING_ASSIGNMENT' &&
+                        n.related_event_id === event.id
+                    );
+                    if (hasDuplicate) continue;
+                    
+                    // בניית תוכן ההתראה - הודעה כללית או ספציפית לפי כמות השירותים החסרים
+                    let contextData;
+                    let customMessage = null;
+                    let customWaMessage = null;
+                    
+                    if (missingServices.length === 1) {
+                        // שיבוץ חסר אחד - הודעה ספציפית עם פירוט (התנהגות קיימת)
+                        const ms = missingServices[0];
+                        contextData = {
                             event_name: event.event_name || '',
                             family_name: event.family_name || '',
                             event_date: formatDate(event.event_date),
-                            service_name: serviceName,
-                            min_suppliers: minRequired,
-                            current_suppliers: approvedCount,
+                            service_name: ms.serviceName,
+                            min_suppliers: ms.minRequired,
+                            current_suppliers: ms.approvedCount,
+                            missing_count: 1,
                             event_id: event.id
                         };
-                        
-                        const title = replacePlaceholders(missingTemplate.title_template, contextData);
-                        const message = replacePlaceholders(missingTemplate.body_template, contextData);
-                        const waMessage = replacePlaceholders(missingTemplate.whatsapp_body_template || missingTemplate.body_template, contextData);
-                        const link = buildDeepLink(missingTemplate.deep_link_base, missingTemplate.deep_link_params_map, contextData);
-                        const allowedChannels = missingTemplate.allowed_channels || ['push'];
-                        
-                        for (const admin of adminUsers) {
-                            // WhatsApp
-                            if (allowedChannels.includes('whatsapp') && admin.phone) {
-                                whatsappQueue.push({ phone: admin.phone, message: waMessage });
-                            }
-                            
-                            // InApp + Push
-                            try {
-                                const notifRecord = await base44.asServiceRole.entities.InAppNotification.create({
-                                    user_id: admin.id,
-                                    user_email: admin.email,
-                                    title, message, link: link || '',
-                                    is_read: false,
-                                    template_type: 'ADMIN_MISSING_ASSIGNMENT',
-                                    related_event_id: event.id,
-                                    related_event_service_id: es.id,
-                                    push_sent: false,
-                                    whatsapp_sent: allowedChannels.includes('whatsapp') && !!admin.phone,
-                                    reminder_count: 0,
-                                    is_resolved: false
-                                });
-                                
-                                if (admin.push_enabled && admin.onesignal_subscription_id) {
-                                    pushQueue.push({
-                                        subscriptionId: admin.onesignal_subscription_id,
-                                        title, message, link: link || '',
-                                        notificationRecordId: notifRecord.id
-                                    });
-                                }
-                            } catch (dbErr) {
-                                console.warn(`[DailyNotifications] DB error for missing assignment:`, dbErr.message);
-                            }
-                            
-                            results.missing_assignments_sent++;
+                    } else {
+                        // כמה שיבוצים חסרים - הודעה מצרפת אחת
+                        const servicesList = missingServices
+                            .map(ms => `• ${ms.serviceName} (${ms.approvedCount}/${ms.minRequired})`)
+                            .join('\n');
+                        contextData = {
+                            event_name: event.event_name || '',
+                            family_name: event.family_name || '',
+                            event_date: formatDate(event.event_date),
+                            service_name: '', // אין שירות יחיד
+                            min_suppliers: '',
+                            current_suppliers: '',
+                            missing_count: missingServices.length,
+                            event_id: event.id
+                        };
+                        // הודעה מותאמת מצרפת
+                        customMessage = `חסרים שיבוצים באירוע "${event.event_name || event.family_name}" בתאריך ${formatDate(event.event_date)}.\n\nשירותים חסרי שיבוץ (${missingServices.length}):\n${servicesList}`;
+                        customWaMessage = customMessage;
+                    }
+                    
+                    const title = replacePlaceholders(missingTemplate.title_template, contextData);
+                    const message = customMessage || replacePlaceholders(missingTemplate.body_template, contextData);
+                    const waMessage = customWaMessage || replacePlaceholders(missingTemplate.whatsapp_body_template || missingTemplate.body_template, contextData);
+                    const link = buildDeepLink(missingTemplate.deep_link_base, missingTemplate.deep_link_params_map, contextData);
+                    
+                    // שליחה למנהלים שעברו סינון - פעם אחת לכל מנהל לכל אירוע
+                    for (const admin of targetedAdmins) {
+                        // WhatsApp
+                        if (allowedChannels.includes('whatsapp') && admin.phone) {
+                            whatsappQueue.push({ phone: admin.phone, message: waMessage });
                         }
+                        
+                        // InApp + Push
+                        try {
+                            const notifRecord = await base44.asServiceRole.entities.InAppNotification.create({
+                                user_id: admin.id,
+                                user_email: admin.email,
+                                title, message, link: link || '',
+                                is_read: false,
+                                template_type: 'ADMIN_MISSING_ASSIGNMENT',
+                                related_event_id: event.id,
+                                push_sent: false,
+                                whatsapp_sent: allowedChannels.includes('whatsapp') && !!admin.phone,
+                                reminder_count: 0,
+                                is_resolved: false
+                            });
+                            
+                            if (admin.push_enabled && admin.onesignal_subscription_id) {
+                                pushQueue.push({
+                                    subscriptionId: admin.onesignal_subscription_id,
+                                    title, message, link: link || '',
+                                    notificationRecordId: notifRecord.id
+                                });
+                            }
+                        } catch (dbErr) {
+                            console.warn(`[DailyNotifications] DB error for missing assignment:`, dbErr.message);
+                        }
+                        
+                        results.missing_assignments_sent++;
                     }
                 }
             }
@@ -830,11 +890,14 @@ Deno.serve(async (req) => {
                 for (const task of tasksDueNow) {
                     try {
                         // קביעת מנהלים יעד
+                        // שלב א: סינון לפי הגדרת התבנית (admin_recipient_ids)
+                        const templateFilteredAdmins = filterTargetedAdmins(taskTemplate, adminUsers);
+                        // שלב ב: סינון לפי משובצי המשימה (אם המשימה משויכת למנהלים ספציפיים)
                         let recipients = [];
                         if (task.assignee_ids && task.assignee_ids.length > 0) {
-                            recipients = adminUsers.filter(u => task.assignee_ids.includes(u.id));
+                            recipients = templateFilteredAdmins.filter(u => task.assignee_ids.includes(u.id));
                         } else {
-                            recipients = adminUsers;
+                            recipients = templateFilteredAdmins;
                         }
                         
                         if (recipients.length === 0) continue;
@@ -1256,7 +1319,12 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
     
     // Admin audience
     if (audiences.includes('admin')) {
-        const admins = allUsers.filter(u => u.role === 'admin');
+        let admins = allUsers.filter(u => u.role === 'admin');
+        // סינון מנהלים לפי admin_recipient_ids של התבנית
+        const targetedAdminIds = template.admin_recipient_ids || template.adminrecipientids;
+        if (Array.isArray(targetedAdminIds) && targetedAdminIds.length > 0) {
+            admins = admins.filter(a => targetedAdminIds.includes(a.id));
+        }
         for (const admin of admins) {
             const contextData = buildEventContext(event, null, admin);
             const title = replacePlaceholders(template.title_template, contextData);
