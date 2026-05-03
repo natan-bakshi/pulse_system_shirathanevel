@@ -895,107 +895,159 @@ Deno.serve(async (req) => {
                 const sendWA = allowedChannels.includes('whatsapp');
                 const sendPush = allowedChannels.includes('push');
                 
+                // ========================================================================
+                // אגרגציה: צובר את כל המשימות פר מנהל יעד, לשליחת הודעה מאוחדת אחת לכל מנהל.
+                // המבנה: Map<adminId, { admin, tasks: [...] }>
+                // ========================================================================
+                const templateFilteredAdmins = filterTargetedAdmins(taskTemplate, adminUsers);
+                const tasksByAdmin = new Map();
+                
                 for (const task of tasksDueNow) {
+                    // קביעת מנהלים יעד עבור משימה זו
+                    let recipients = [];
+                    if (task.assignee_ids && task.assignee_ids.length > 0) {
+                        recipients = templateFilteredAdmins.filter(u => task.assignee_ids.includes(u.id));
+                    } else {
+                        recipients = templateFilteredAdmins;
+                    }
+                    if (recipients.length === 0) continue;
+                    
+                    for (const admin of recipients) {
+                        if (!tasksByAdmin.has(admin.id)) {
+                            tasksByAdmin.set(admin.id, { admin, tasks: [] });
+                        }
+                        tasksByAdmin.get(admin.id).tasks.push(task);
+                    }
+                }
+                
+                // עזר לפורמט שורת משימה בודדת בתוך רשימה מאוחדת
+                const formatTaskLine = (task) => {
+                    const ev = task.event_id ? eventsMap.get(task.event_id) : null;
+                    const eventName = ev ? (ev.event_name || ev.family_name || '') : '';
+                    const dueTime = (() => {
+                        try {
+                            const d = new Date(task.due_date);
+                            const hh = String(d.getHours()).padStart(2, '0');
+                            const mm = String(d.getMinutes()).padStart(2, '0');
+                            const hasTime = !(hh === '00' && mm === '00');
+                            return hasTime ? ` ${hh}:${mm}` : '';
+                        } catch { return ''; }
+                    })();
+                    const priorityIcon = task.priority === 'high' ? '🔴 ' :
+                                         task.priority === 'low' ? '🔵 ' : '';
+                    const eventSuffix = eventName ? ` (${eventName})` : '';
+                    const timeSuffix = dueTime ? ` -${dueTime}` : '';
+                    return `${priorityIcon}${task.title || ''}${timeSuffix}${eventSuffix}`;
+                };
+                
+                // משלוח הודעה מאוחדת לכל מנהל
+                const handledTaskIds = new Set();
+                for (const { admin, tasks } of tasksByAdmin.values()) {
                     try {
-                        // קביעת מנהלים יעד
-                        // שלב א: סינון לפי הגדרת התבנית (admin_recipient_ids)
-                        const templateFilteredAdmins = filterTargetedAdmins(taskTemplate, adminUsers);
-                        // שלב ב: סינון לפי משובצי המשימה (אם המשימה משויכת למנהלים ספציפיים)
-                        let recipients = [];
-                        if (task.assignee_ids && task.assignee_ids.length > 0) {
-                            recipients = templateFilteredAdmins.filter(u => task.assignee_ids.includes(u.id));
+                        let title, message, waMessage, link, contextDataForLink;
+                        
+                        if (tasks.length === 1) {
+                            // משימה יחידה: שמירה על ההתנהגות הקודמת (תבנית מלאה).
+                            const task = tasks[0];
+                            const ev = task.event_id ? eventsMap.get(task.event_id) : null;
+                            const eventName = ev ? (ev.event_name || ev.family_name || '') : '';
+                            const eventLine = eventName ? `\n📅 אירוע: ${eventName}` : '';
+                            const priorityLabel = task.priority === 'high' ? '🔴 דחיפות גבוהה' :
+                                                  task.priority === 'low' ? '🔵 דחיפות נמוכה' : '';
+                            const priorityLine = priorityLabel ? '\n' + priorityLabel : '';
+                            const dueTime = (() => {
+                                try {
+                                    const d = new Date(task.due_date);
+                                    const hh = String(d.getHours()).padStart(2, '0');
+                                    const mm = String(d.getMinutes()).padStart(2, '0');
+                                    const hasTime = !(hh === '00' && mm === '00');
+                                    return hasTime ? ` ${hh}:${mm}` : '';
+                                } catch { return ''; }
+                            })();
+                            const dueDateFormatted = formatDate(task.due_date) + dueTime;
+                            const descriptionBlock = task.description ? '\n\n' + task.description : '';
+                            
+                            const contextData = {
+                                task_title: task.title || '',
+                                task_due_date: dueDateFormatted,
+                                task_description: task.description || '',
+                                task_priority: task.priority || 'normal',
+                                task_event_name: eventName,
+                                task_priority_line: priorityLine,
+                                task_event_line: eventLine,
+                                task_description_block: descriptionBlock,
+                                event_id: task.event_id || ''
+                            };
+                            
+                            title = replacePlaceholders(taskTemplate.title_template, contextData);
+                            message = replacePlaceholders(taskTemplate.body_template, contextData);
+                            waMessage = replacePlaceholders(taskTemplate.whatsapp_body_template || taskTemplate.body_template, contextData);
+                            contextDataForLink = contextData;
                         } else {
-                            recipients = templateFilteredAdmins;
+                            // ריבוי משימות: רשימה מאוחדת בהודעה אחת.
+                            const lines = tasks.map(t => `• ${formatTaskLine(t)}`).join('\n');
+                            title = `📋 ${tasks.length} משימות לביצוע היום`;
+                            const body = `יש לך ${tasks.length} משימות פתוחות לביצוע היום:\n\n${lines}`;
+                            message = body;
+                            waMessage = body;
+                            // קישור עמוד "המשימות שלי" אם הוגדר בתבנית; אחרת ברירת מחדל
+                            contextDataForLink = { event_id: '' };
                         }
                         
-                        if (recipients.length === 0) continue;
-                        
-                        // בניית משתני התבנית למשימה זו
-                        const ev = task.event_id ? eventsMap.get(task.event_id) : null;
-                        const eventName = ev ? (ev.event_name || ev.family_name || '') : '';
-                        const eventLine = eventName ? `\n📅 אירוע: ${eventName}` : '';
-                        
-                        const priorityLabel = task.priority === 'high' ? '🔴 דחיפות גבוהה' :
-                                              task.priority === 'low' ? '🔵 דחיפות נמוכה' : '';
-                        const priorityLine = priorityLabel ? '\n' + priorityLabel : '';
-                        
-                        const dueTime = (() => {
-                            try {
-                                const d = new Date(task.due_date);
-                                const hh = String(d.getHours()).padStart(2, '0');
-                                const mm = String(d.getMinutes()).padStart(2, '0');
-                                const hasTime = !(hh === '00' && mm === '00');
-                                return hasTime ? ` ${hh}:${mm}` : '';
-                            } catch { return ''; }
-                        })();
-                        const dueDateFormatted = formatDate(task.due_date) + dueTime;
-                        const descriptionBlock = task.description ? '\n\n' + task.description : '';
-                        
-                        const contextData = {
-                            task_title: task.title || '',
-                            task_due_date: dueDateFormatted,
-                            task_description: task.description || '',
-                            task_priority: task.priority || 'normal',
-                            task_event_name: eventName,
-                            task_priority_line: priorityLine,
-                            task_event_line: eventLine,
-                            task_description_block: descriptionBlock,
-                            event_id: task.event_id || ''
-                        };
-                        
-                        const title = replacePlaceholders(taskTemplate.title_template, contextData);
-                        const message = replacePlaceholders(taskTemplate.body_template, contextData);
-                        const waMessage = replacePlaceholders(taskTemplate.whatsapp_body_template || taskTemplate.body_template, contextData);
-                        const link = buildDeepLink(taskTemplate.deep_link_base, taskTemplate.deep_link_params_map, contextData);
+                        link = buildDeepLink(taskTemplate.deep_link_base, taskTemplate.deep_link_params_map, contextDataForLink);
                         
                         let sentToAtLeastOne = false;
-                        for (const admin of recipients) {
-                            // WhatsApp
-                            if (sendWA && admin.phone) {
-                                whatsappQueue.push({ phone: admin.phone, message: waMessage });
-                                sentToAtLeastOne = true;
-                            }
-                            
-                            // Push + InApp
-                            if (sendPush) {
-                                try {
-                                    const notif = await base44.asServiceRole.entities.InAppNotification.create({
-                                        user_id: admin.id,
-                                        user_email: admin.email,
+                        
+                        // WhatsApp
+                        if (sendWA && admin.phone) {
+                            whatsappQueue.push({ phone: admin.phone, message: waMessage });
+                            sentToAtLeastOne = true;
+                        }
+                        
+                        // Push + InApp
+                        if (sendPush) {
+                            try {
+                                const notif = await base44.asServiceRole.entities.InAppNotification.create({
+                                    user_id: admin.id,
+                                    user_email: admin.email,
+                                    title, message, link: link || '',
+                                    is_read: false,
+                                    template_type: 'TASK_DUE_REMINDER',
+                                    related_event_id: tasks.length === 1 ? (tasks[0].event_id || null) : null,
+                                    push_sent: false,
+                                    whatsapp_sent: sendWA && !!admin.phone,
+                                    reminder_count: 0,
+                                    is_resolved: false
+                                });
+                                if (admin.push_enabled && admin.onesignal_subscription_id) {
+                                    pushQueue.push({
+                                        subscriptionId: admin.onesignal_subscription_id,
                                         title, message, link: link || '',
-                                        is_read: false,
-                                        template_type: 'TASK_DUE_REMINDER',
-                                        related_event_id: task.event_id || null,
-                                        push_sent: false,
-                                        whatsapp_sent: sendWA && !!admin.phone,
-                                        reminder_count: 0,
-                                        is_resolved: false
+                                        notificationRecordId: notif.id
                                     });
-                                    if (admin.push_enabled && admin.onesignal_subscription_id) {
-                                        pushQueue.push({
-                                            subscriptionId: admin.onesignal_subscription_id,
-                                            title, message, link: link || '',
-                                            notificationRecordId: notif.id
-                                        });
-                                    }
-                                    sentToAtLeastOne = true;
-                                } catch(e) {
-                                    console.warn('[DailyNotifications] Task push DB error:', e.message);
                                 }
+                                sentToAtLeastOne = true;
+                            } catch(e) {
+                                console.warn('[DailyNotifications] Task push DB error:', e.message);
                             }
                         }
                         
                         if (sentToAtLeastOne) {
-                            try {
-                                await base44.asServiceRole.entities.Task.update(task.id, { whatsapp_notification_sent: true });
-                                results.task_notifications_sent++;
-                            } catch (uerr) {
-                                console.warn('[DailyNotifications] Failed to mark task notification sent:', uerr.message);
-                            }
+                            tasks.forEach(t => handledTaskIds.add(t.id));
+                            results.task_notifications_sent++;
                         }
                     } catch (terr) {
                         console.warn('[DailyNotifications] Task notification error:', terr.message);
                         results.errors++;
+                    }
+                }
+                
+                // סימון המשימות ששלחו לפחות הודעה אחת ('whatsapp_notification_sent' כדגל "טופלה היום")
+                for (const taskId of handledTaskIds) {
+                    try {
+                        await base44.asServiceRole.entities.Task.update(taskId, { whatsapp_notification_sent: true });
+                    } catch (uerr) {
+                        console.warn('[DailyNotifications] Failed to mark task notification sent:', uerr.message);
                     }
                 }
             }

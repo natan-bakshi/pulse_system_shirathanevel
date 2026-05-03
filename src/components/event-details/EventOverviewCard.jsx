@@ -83,31 +83,51 @@ export default function EventOverviewCard({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>שם האירוע</Label>
-                  <Input value={eventDetailsData.event_name} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_name: e.target.value })} />
+                  <Input value={eventDetailsData.event_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_name: e.target.value })} />
+                </div>
+                <div>
+                  <Label>סוג אירוע</Label>
+                  <Select value={eventDetailsData.event_type || ''} onValueChange={(v) => setEventDetailsData({ ...eventDetailsData, event_type: v })}>
+                    <SelectTrigger><SelectValue placeholder="בחר סוג אירוע" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bar_mitzvah">בר מצווה</SelectItem>
+                      <SelectItem value="bat_mitzvah">בת מצווה</SelectItem>
+                      <SelectItem value="wedding">חתונה</SelectItem>
+                      <SelectItem value="other">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>תאריך</Label>
-                  <Input type="date" value={eventDetailsData.event_date} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_date: e.target.value })} />
+                  <Input type="date" value={eventDetailsData.event_date || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_date: e.target.value })} />
                 </div>
                 <div>
                   <Label>שעה</Label>
-                  <Input type="time" value={eventDetailsData.event_time} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_time: e.target.value })} />
+                  <Input type="time" value={eventDetailsData.event_time || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_time: e.target.value })} />
                 </div>
                 <div>
                   <Label>מיקום</Label>
-                  <Input value={eventDetailsData.location} onChange={(e) => setEventDetailsData({ ...eventDetailsData, location: e.target.value })} />
+                  <Input value={eventDetailsData.location || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, location: e.target.value })} />
                 </div>
                 <div>
-                  <Label>עיר</Label>
-                  <Input value={eventDetailsData.city} onChange={(e) => setEventDetailsData({ ...eventDetailsData, city: e.target.value })} />
+                  <Label>עיר מגורים</Label>
+                  <Input value={eventDetailsData.city || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, city: e.target.value })} />
+                </div>
+                <div>
+                  <Label>שם משפחה</Label>
+                  <Input value={eventDetailsData.family_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, family_name: e.target.value })} />
+                </div>
+                <div>
+                  <Label>שם הילד/ה</Label>
+                  <Input value={eventDetailsData.child_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, child_name: e.target.value })} />
                 </div>
                 <div>
                   <Label>מספר אורחים</Label>
-                  <Input type="number" value={eventDetailsData.guest_count} onChange={(e) => setEventDetailsData({ ...eventDetailsData, guest_count: e.target.value })} />
+                  <Input type="number" value={eventDetailsData.guest_count || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, guest_count: e.target.value })} />
                 </div>
                 <div>
                   <Label>קונספט</Label>
-                  <Input value={eventDetailsData.concept} onChange={(e) => setEventDetailsData({ ...eventDetailsData, concept: e.target.value })} />
+                  <Input value={eventDetailsData.concept || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, concept: e.target.value })} />
                 </div>
                 <div className="col-span-full">
                   <Label>הערות</Label>
@@ -138,10 +158,13 @@ export default function EventOverviewCard({
                     setEditingSection('event_details'); 
                     setEventDetailsData({ 
                       event_name: event.event_name, 
+                      event_type: event.event_type,
                       event_date: event.event_date, 
                       event_time: event.event_time, 
                       location: event.location, 
                       city: event.city, 
+                      family_name: event.family_name,
+                      child_name: event.child_name,
                       guest_count: event.guest_count, 
                       concept: event.concept, 
                       notes: event.notes 
