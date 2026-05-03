@@ -277,8 +277,11 @@ Deno.serve(async (req) => {
             if (supplierReminderTemplate) {
                 const timingValue = supplierReminderTemplate.timing_value || 1;
                 const timingUnit = supplierReminderTemplate.timing_unit || 'days';
-                const eventDateTime = getIsraelEventDate(event.event_date, event.event_time);
-                const reminderCutoff = new Date(eventDateTime);
+                // תיקון: לוקחים את תחילת היום של האירוע (00:00) במקום שעת האירוע,
+                // כך שתזכורת "יום לפני" תישלח בכל ריצה במהלך היום הקודם.
+                // אחרת, אם הריצה ב-9:00 והאירוע מחר ב-19:00, ה-cutoff היה 19:00 היום והתזכורת לא נשלחה.
+                const eventDayStart = getIsraelEventDate(event.event_date, '00:00');
+                const reminderCutoff = new Date(eventDayStart);
                 applyTimingOffset(reminderCutoff, timingUnit, -timingValue);
                 
                 if (now >= reminderCutoff) {
@@ -367,8 +370,10 @@ Deno.serve(async (req) => {
             if (adminReminderTemplate) {
                 const timingValue = adminReminderTemplate.timing_value || 1;
                 const timingUnit = adminReminderTemplate.timing_unit || 'days';
-                const adminEventDateTime = getIsraelEventDate(event.event_date, event.event_time);
-                const reminderCutoff = new Date(adminEventDateTime);
+                // תיקון: לוקחים את תחילת היום של האירוע (00:00) במקום שעת האירוע,
+                // כך שתזכורת "יום לפני" תישלח בכל ריצה במהלך היום הקודם.
+                const adminEventDayStart = getIsraelEventDate(event.event_date, '00:00');
+                const reminderCutoff = new Date(adminEventDayStart);
                 applyTimingOffset(reminderCutoff, timingUnit, -timingValue);
                 
                 if (now >= reminderCutoff) {

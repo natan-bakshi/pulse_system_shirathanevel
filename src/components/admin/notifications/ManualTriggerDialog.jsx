@@ -14,9 +14,24 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Fetch upcoming events for selection
+  // כולל אירועים סגורים (confirmed) ותפורים (in_progress) - לא רק confirmed
+  // ממוין לפי תאריך עולה כדי שאירועים קרובים יופיעו ראשונים
   const { data: upcomingEvents = [] } = useQuery({
     queryKey: ['upcomingEventsForTrigger'],
-    queryFn: () => base44.entities.Event.filter({ status: 'confirmed' }, '-event_date', 50),
+    queryFn: async () => {
+      const events = await base44.entities.Event.list('-event_date', 200);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      // מסננים: לא בוטל ולא הושלם, ואירועים עתידיים בלבד
+      return events
+        .filter(e => {
+          if (e.status === 'cancelled' || e.status === 'completed') return false;
+          if (!e.event_date) return false;
+          const evDate = new Date(e.event_date);
+          return evDate >= today;
+        })
+        .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+    },
     enabled: open
   });
 
