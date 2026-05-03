@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertTriangle, UserCheck, UserX } from 'lucide-react';
+import { Loader2, AlertTriangle, UserCheck, UserX, MinusCircle } from 'lucide-react';
 import { confirmReassignAfterDateChange } from '@/functions/confirmReassignAfterDateChange';
 import { cancelAssignmentsAfterDateChange } from '@/functions/cancelAssignmentsAfterDateChange';
+import { clearDateChangePendingAction } from '@/functions/clearDateChangePendingAction';
 import { toast } from 'sonner';
 
 /**
  * Dialog shown to admin when an event's date/time changed and there are assigned suppliers.
- * Asks whether to reassign the same suppliers (with update notification) or cancel their assignments.
+ * Asks whether to:
+ *  - Reassign the same suppliers with an update notification (only suppliers without a fixed arrival time)
+ *  - Cancel all assignments
+ *  - Do nothing (just clear the flag, change is internal-only)
  */
 export default function DateChangeDecisionDialog({ open, event, onResolved }) {
-  const [loadingAction, setLoadingAction] = useState(null); // 'reassign' | 'cancel' | null
+  const [loadingAction, setLoadingAction] = useState(null); // 'reassign' | 'cancel' | 'nothing' | null
 
   const handleReassign = async () => {
     if (!event?.id) return;
@@ -39,6 +43,21 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
     } catch (error) {
       console.error('Cancel failed:', error);
       toast.error('שגיאה בביטול שיבוצים: ' + (error.message || 'נסה שוב'));
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleDoNothing = async () => {
+    if (!event?.id) return;
+    setLoadingAction('nothing');
+    try {
+      await clearDateChangePendingAction({ event_id: event.id });
+      toast.success('השינוי נשמר במערכת בלבד. הספקים לא יקבלו התראה.');
+      onResolved?.();
+    } catch (error) {
+      console.error('Clear failed:', error);
+      toast.error('שגיאה: ' + (error.message || 'נסה שוב'));
     } finally {
       setLoadingAction(null);
     }
@@ -85,8 +104,8 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
               <UserCheck className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">שבץ את אותם ספקים לתאריך החדש</div>
-              <div className="text-xs opacity-90 font-normal">סטטוס השיבוץ של הספקים יחזור ל"ממתין" ותישלח התראת עדכון</div>
+              <div className="font-semibold">שלח עדכון לספקים</div>
+              <div className="text-xs opacity-90 font-normal">תישלח התראת עדכון רק לספקים ללא שעת התייצבות ייעודית. הסטטוס שלהם יחזור ל"ממתין".</div>
             </div>
           </Button>
 
@@ -104,6 +123,23 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
             <div className="text-right">
               <div className="font-semibold">בטל את כל השיבוצים</div>
               <div className="text-xs opacity-90 font-normal">השיבוצים יימחקו והספקים יקבלו התראת ביטול</div>
+            </div>
+          </Button>
+
+          <Button
+            onClick={handleDoNothing}
+            disabled={isLoading}
+            variant="outline"
+            className="justify-start h-auto py-3"
+          >
+            {loadingAction === 'nothing' ? (
+              <Loader2 className="h-5 w-5 ml-3 animate-spin" />
+            ) : (
+              <MinusCircle className="h-5 w-5 ml-3" />
+            )}
+            <div className="text-right">
+              <div className="font-semibold">לא לעשות דבר</div>
+              <div className="text-xs text-gray-600 font-normal">השינוי נשמר במערכת בלבד. הספקים לא יקבלו התראה והשיבוצים יישארו כפי שהם.</div>
             </div>
           </Button>
         </div>

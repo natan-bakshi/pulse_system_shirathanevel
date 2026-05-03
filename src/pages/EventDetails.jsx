@@ -15,7 +15,7 @@ import { ExportDialog, PaymentDialog, SupplierAssignDialog, PackageDialog, EditP
 import { createPageUrl } from '@/utils';
 import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
-import DateChangeDecisionDialog from '../components/event-details/DateChangeDecisionDialog';
+import EventChangeDecisionDialogs from '../components/event-details/EventChangeDecisionDialogs';
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 
 // Helper: When merging server data with local state, preserve local values
@@ -154,6 +154,9 @@ export default function EventDetails() {
 
   const [editingServiceField, setEditingServiceField] = useState(null);
   const [savingServiceField, setSavingServiceField] = useState(null);
+
+  // Dialog state for supplier_arrival_time changes on a specific EventService
+  const [arrivalTimeChangeDialog, setArrivalTimeChangeDialog] = useState(null); // { eventServiceId, serviceName, oldArrivalTime, newArrivalTime } | null
 
   // Debouncing effects for search terms
   useEffect(() => { const t = setTimeout(() => setDebouncedSupplierSearch(supplierSearchTerm), 300); return () => clearTimeout(t); }, [supplierSearchTerm]);
@@ -808,7 +811,35 @@ export default function EventDetails() {
       } else if (field === 'min_suppliers') {
         updateData[field] = parseInt(value) || 0;
       }
-      
+
+      // For supplier_arrival_time changes: if value really changed AND the service has assigned
+      // suppliers, capture the previous value so we can prompt the admin AFTER saving.
+      let arrivalTimeChangeContext = null;
+      if (field === 'supplier_arrival_time' && isAdmin) {
+        const currentService = eventServices.find(s => s.id === serviceId);
+        if (currentService) {
+          const oldVal = (currentService.supplier_arrival_time || '').trim();
+          const newVal = (value || '').trim();
+          if (oldVal !== newVal) {
+            let supplierIds = [];
+            try {
+              supplierIds = typeof currentService.supplier_ids === 'string'
+                ? JSON.parse(currentService.supplier_ids || '[]')
+                : (Array.isArray(currentService.supplier_ids) ? currentService.supplier_ids : []);
+            } catch (e) { supplierIds = []; }
+            if (Array.isArray(supplierIds) && supplierIds.length > 0) {
+              const svcDetails = allServices.find(s => s.id === currentService.service_id);
+              arrivalTimeChangeContext = {
+                eventServiceId: serviceId,
+                serviceName: svcDetails?.service_name || 'שירות',
+                oldArrivalTime: oldVal,
+                newArrivalTime: newVal
+              };
+            }
+          }
+        }
+      }
+
       await base44.entities.EventService.update(serviceId, updateData);
       base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
       
@@ -822,13 +853,18 @@ export default function EventDetails() {
       queryClient.invalidateQueries({ queryKey: ['eventServices', eventId] });
       
       setEditingServiceField(null);
+
+      // Open the supplier arrival time decision dialog AFTER the save succeeded.
+      if (arrivalTimeChangeContext) {
+        setArrivalTimeChangeDialog(arrivalTimeChangeContext);
+      }
     } catch (error) {
       console.error(`Failed to update ${field}:`, error);
       alert(`שגיאה בעדכון ${field}`);
     } finally {
       setSavingServiceField(null);
     }
-  }, [eventId, queryClient]);
+  }, [eventId, queryClient, eventServices, allServices, isAdmin]);
 
   const handleDragEnd = useCallback(async (result) => {
     const { source, destination, type } = result;
@@ -1949,7 +1985,13 @@ export default function EventDetails() {
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
-      {isAdmin && event?.date_change_pending_action && (<DateChangeDecisionDialog open={true} event={event} onResolved={loadEventData} />)}
+      <EventChangeDecisionDialogs
+        isAdmin={isAdmin}
+        event={event}
+        loadEventData={loadEventData}
+        arrivalTimeChangeDialog={arrivalTimeChangeDialog}
+        setArrivalTimeChangeDialog={setArrivalTimeChangeDialog}
+      />
     </div>
   );
 }

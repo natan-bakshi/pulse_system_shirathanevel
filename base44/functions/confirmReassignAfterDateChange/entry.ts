@@ -27,9 +27,16 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Event not found' }, { status: 404 });
         }
 
-        // 1. Reset all supplier statuses to 'pending' on every EventService of this event
+        // 1. Reset supplier statuses to 'pending' ONLY for services WITHOUT supplier_arrival_time.
+        // Services with supplier_arrival_time have a fixed supplier time that is unaffected by event time changes,
+        // so their suppliers should not be re-pending and should not receive an update notification.
         const services = await base44.asServiceRole.entities.EventService.filter({ event_id });
+        const affectedServiceIds = new Set(); // services whose suppliers are affected by the date/time change
         for (const service of services) {
+            // Skip services with a specific supplier arrival time - their suppliers are not affected
+            const arrivalTime = (service.supplier_arrival_time || '').trim();
+            if (arrivalTime) continue;
+
             let supplierIds = [];
             try {
                 supplierIds = typeof service.supplier_ids === 'string' 
@@ -41,8 +48,15 @@ Deno.serve(async (req) => {
 
             if (!Array.isArray(supplierIds) || supplierIds.length === 0) continue;
 
-            // Reset all supplier statuses to 'pending'
-            const newStatuses = {};
+            // Preserve existing statuses for suppliers in OTHER services and only reset on this service
+            let existingStatuses = {};
+            try {
+                existingStatuses = typeof service.supplier_statuses === 'string'
+                    ? JSON.parse(service.supplier_statuses || '{}')
+                    : (service.supplier_statuses || {});
+            } catch (e) { existingStatuses = {}; }
+
+            const newStatuses = { ...existingStatuses };
             for (const supId of supplierIds) {
                 newStatuses[supId] = 'pending';
             }
@@ -50,6 +64,7 @@ Deno.serve(async (req) => {
             await base44.asServiceRole.entities.EventService.update(service.id, {
                 supplier_statuses: JSON.stringify(newStatuses)
             });
+            affectedServiceIds.add(service.id);
         }
 
         // 2. Send 'event_critical_update' notification (SUPPLIER_ASSIGNMENT_UPDATE) to each assigned supplier
@@ -65,9 +80,11 @@ Deno.serve(async (req) => {
             const audiences = template.target_audiences || [];
             if (!audiences.includes('supplier')) continue;
 
-            // Collect all assigned suppliers across all services
+            // Collect suppliers ONLY from affected services (those without supplier_arrival_time).
+            // Suppliers in services with a fixed supplier_arrival_time are not impacted by the event time change.
             const supplierIdsSet = new Set();
             for (const service of services) {
+                if (!affectedServiceIds.has(service.id)) continue; // skip unaffected services
                 let sIds = [];
                 try {
                     sIds = typeof service.supplier_ids === 'string'
