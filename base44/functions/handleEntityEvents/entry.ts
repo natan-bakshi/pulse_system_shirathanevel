@@ -778,13 +778,22 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
     };
     const eventDateRaw = getVal(eventObj, ['event_date', 'eventdate']);
 
+    // שעה אפקטיבית לספקים: אם יש שעת התייצבות ספציפית ב-EventService - משתמשים בה.
+    // אחרת - שעת האירוע הרגילה.
+    const supplierArrivalTime = serviceObj && supplierObj
+        ? getVal(serviceObj, ['supplier_arrival_time', 'supplierarrivaltime'])
+        : '';
+    const arrivalTrimmed = typeof supplierArrivalTime === 'string' ? supplierArrivalTime.trim() : '';
+    const baseEventTime = getVal(eventObj, ['event_time', 'eventtime']);
+    const effectiveEventTime = arrivalTrimmed || baseEventTime;
+
     const vars = {
         'event_name': getVal(eventObj, ['event_name', 'eventname']),
         'eventname': getVal(eventObj, ['event_name', 'eventname']),
         'event_date': fmtDate(eventDateRaw),
         'eventdate': fmtDate(eventDateRaw),
-        'event_time': getVal(eventObj, ['event_time', 'eventtime']),
-        'eventtime': getVal(eventObj, ['event_time', 'eventtime']),
+        'event_time': effectiveEventTime,
+        'eventtime': effectiveEventTime,
         'event_location': getVal(eventObj, ['location']),
         'eventlocation': getVal(eventObj, ['location']),
         'event_type': getVal(eventObj, ['event_type', 'eventtype']),
