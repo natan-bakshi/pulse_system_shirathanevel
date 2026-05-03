@@ -24,7 +24,7 @@ function getLocalOverrides(localService, serverService) {
   const overrides = {};
   // Preserve local transport/text fields if they differ from server
   const fieldsToPreserve = [
-    'pickup_point', 'standing_time', 'on_site_contact_details',
+    'pickup_point', 'standing_time', 'supplier_arrival_time', 'on_site_contact_details',
     'service_description', 'client_notes', 'notes'
   ];
   for (const field of fieldsToPreserve) {
@@ -911,7 +911,8 @@ export default function EventDetails() {
           await base44.functions.invoke('notifySupplierAssignment', {
             supplierIds: supplierFormData.supplierIds,
             eventId: eventId,
-            serviceName: serviceDetails?.service_name || 'שירות'
+            serviceName: serviceDetails?.service_name || 'שירות',
+            eventServiceId: selectedServiceForSupplier.id
           });
         } catch (notifyError) {
           console.warn("Failed to notify suppliers:", notifyError);

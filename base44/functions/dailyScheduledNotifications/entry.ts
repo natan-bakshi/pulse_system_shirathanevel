@@ -28,12 +28,20 @@ function isShabbat(timezone = 'Asia/Jerusalem') {
     return false;
 }
 
-function buildEventContext(event, supplier, userOrParent) {
+function buildEventContext(event, supplier, userOrParent, eventService) {
+    // אם יש EventService עם שעת התייצבות ייעודית - משתמשים בה (רק עבור ספקים)
+    let effectiveTime = event.event_time || '';
+    if (supplier && eventService) {
+        const at = eventService.supplier_arrival_time;
+        if (at && typeof at === 'string' && at.trim() !== '') {
+            effectiveTime = at.trim();
+        }
+    }
     return {
         event_name: event.event_name || '',
         family_name: event.family_name || '',
         event_date: formatDate(event.event_date),
-        event_time: event.event_time || '',
+        event_time: effectiveTime,
         event_location: event.location || '',
         supplier_name: supplier ? (supplier.contact_person || supplier.supplier_name) : '',
         supplier_phone: supplier?.phone || '',
@@ -330,7 +338,7 @@ Deno.serve(async (req) => {
                             );
                             if (hasExisting) continue;
                             
-                            const contextData = buildEventContext(event, supplier, null);
+                            const contextData = buildEventContext(event, supplier, null, es);
                             const title = replacePlaceholders(supplierReminderTemplate.title_template, contextData);
                             const message = replacePlaceholders(supplierReminderTemplate.body_template, contextData);
                             const waMessage = replacePlaceholders(supplierReminderTemplate.whatsapp_body_template || supplierReminderTemplate.body_template, contextData);
@@ -506,7 +514,7 @@ Deno.serve(async (req) => {
                         if (existingNotification.reminder_count >= maxReminders) continue;
                     }
                     
-                    const contextData = buildEventContext(event, supplier, null);
+                    const contextData = buildEventContext(event, supplier, null, es);
                     const title = replacePlaceholders(pendingTemplate.title_template, contextData);
                     const message = replacePlaceholders(pendingTemplate.body_template, contextData);
                     const waMessage = replacePlaceholders(pendingTemplate.whatsapp_body_template || pendingTemplate.body_template, contextData);
@@ -1242,7 +1250,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
                 const supplier = suppliersMap.get(supId);
                 if (!supplier) continue;
                 
-                const contextData = buildEventContext(event, supplier, null);
+                const contextData = buildEventContext(event, supplier, null, es);
                 const title = replacePlaceholders(template.title_template, contextData);
                 const message = replacePlaceholders(template.body_template, contextData);
                 const waMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);

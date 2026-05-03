@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
                         event_name: eventData.event_name,
                         family_name: eventData.family_name,
                         event_date: formatDate(eventData.event_date),
-                        event_time: eventData.event_time || '',
+                        event_time: getEffectiveEventTimeForSupplier(eventData, data),
                         event_location: eventData.location || '',
                         supplier_name: supplier.supplier_name,
                         service_name: service?.service_name || '',
@@ -321,4 +321,17 @@ function filterTargetedAdmins(template, adminUsers) {
     const ids = template?.admin_recipient_ids;
     if (!Array.isArray(ids) || ids.length === 0) return adminUsers;
     return adminUsers.filter(a => ids.includes(a.id));
+}
+
+/**
+ * מחזיר את שעת האירוע האפקטיבית עבור ספק:
+ * אם הוגדרה שעת התייצבות ספציפית (supplier_arrival_time) ב-EventService - מחזיר אותה.
+ * אחרת - מחזיר את שעת האירוע הרגילה (event.event_time).
+ */
+function getEffectiveEventTimeForSupplier(event, eventService) {
+    const arrivalTime = eventService?.supplier_arrival_time;
+    if (arrivalTime && typeof arrivalTime === 'string' && arrivalTime.trim() !== '') {
+        return arrivalTime.trim();
+    }
+    return event?.event_time || '';
 }

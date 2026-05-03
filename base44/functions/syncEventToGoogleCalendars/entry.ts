@@ -203,12 +203,20 @@ function buildEventBody(event, userType, settingsMap, extraData) {
   // Calculate times based on user type
   let offsetMinutes = 0;
   let durationHours = 6;
+  let baseTime = event.event_time;
   if (userType === 'supplier') {
     offsetMinutes = -15;
     durationHours = 3;
+    // אם הוגדרה שעת התייצבות ייעודית לספק - נשתמש בה כשעת בסיס במקום שעת האירוע
+    const arrivalTime = extraData?.supplierArrivalTime;
+    if (arrivalTime && typeof arrivalTime === 'string' && arrivalTime.trim() !== '') {
+      baseTime = arrivalTime.trim();
+      // כששעת ההתייצבות הוגדרה, היא כבר השעה הסופית - לא להחסיר עוד 15 דקות
+      offsetMinutes = 0;
+    }
   }
 
-  const { startDateTime, endDateTime } = calculateTimes(event.event_date, event.event_time, offsetMinutes, durationHours);
+  const { startDateTime, endDateTime } = calculateTimes(event.event_date, baseTime, offsetMinutes, durationHours);
 
   return {
     summary,
@@ -534,7 +542,7 @@ Deno.serve(async (req) => {
             }
           } else {
             const note = supplierNotes[suppId] || '';
-            const eventBody = buildEventBody(event, 'supplier', settingsMap, { serviceName, supplierNote: note });
+            const eventBody = buildEventBody(event, 'supplier', settingsMap, { serviceName, supplierNote: note, supplierArrivalTime: es.supplier_arrival_time });
             const upsertResult = await upsertCalendarEvent(accessToken, supplierCalendarId, existingCalEventId, eventBody);
             results.push({ target: 'supplier', supplierId: suppId, esId: es.id, ...upsertResult, action: existingCalEventId ? 'update' : 'create' });
 

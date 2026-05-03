@@ -532,6 +532,41 @@ const handleCopyTransport = (service, serviceDetails) => {
                   </div>
                 )}
 
+                {/* שעת התייצבות לספק - אופציונלי */}
+                <div>
+                  <div className="flex items-center gap-1 mb-1">
+                    <Label className="text-xs">שעת התייצבות לספק</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">אופציונלי. אם הוגדרה - היא תופיע לספק במקום שעת האירוע (ביומן, התראות, הודעות וממשק). אם תישאר ריקה - הספק יראה את שעת האירוע הרגילה.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="time"
+                      value={editableService.supplier_arrival_time || ''}
+                      onChange={(e) => {
+                        const updatedServices = editableServices.map(s =>
+                          s.id === service.id ? { ...s, supplier_arrival_time: e.target.value } : s
+                        );
+                        setEditableServices(updatedServices);
+                      }}
+                      onBlur={(e) => handleUpdateServiceField(service.id, 'supplier_arrival_time', e.target.value)}
+                      className="text-sm h-8"
+                      disabled={isSaving && savingServiceField?.field === 'supplier_arrival_time'}
+                    />
+                    {isSaving && savingServiceField?.field === 'supplier_arrival_time' && (
+                      <Loader2 className="h-3 w-3 animate-spin absolute left-2 top-2.5 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+
                 <div className="col-span-full">
                   <Label className="text-xs">תיאור לשירות (ספציפי לאירוע)</Label>
                   <div className="relative">

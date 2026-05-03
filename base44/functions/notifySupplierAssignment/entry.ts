@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized: Admin role required.' }), { status: 401, headers: { "Content-Type": "application/json" } });
     }
 
-    const { supplierIds, eventId, serviceName } = await req.json();
+    const { supplierIds, eventId, serviceName, eventServiceId } = await req.json();
 
     if (!Array.isArray(supplierIds) || supplierIds.length === 0 || !eventId || !serviceName) {
       return new Response(JSON.stringify({ error: 'Missing required parameters: supplierIds, eventId, serviceName.' }), { status: 400, headers: { "Content-Type": "application/json" } });
@@ -20,6 +20,22 @@ Deno.serve(async (req) => {
     if (!event) {
       return new Response(JSON.stringify({ error: 'Event not found.' }), { status: 404, headers: { "Content-Type": "application/json" } });
     }
+
+    // אופציונלי: שליפת ה-EventService כדי לקבל את שעת ההתייצבות הספציפית של הספק
+    let arrivalTime = '';
+    if (eventServiceId) {
+      try {
+        const eventService = await base44.asServiceRole.entities.EventService.get(eventServiceId);
+        const at = eventService?.supplier_arrival_time;
+        if (at && typeof at === 'string' && at.trim() !== '') {
+          arrivalTime = at.trim();
+        }
+      } catch (e) {
+        // ignore - fallback to event_time
+      }
+    }
+    // שעה אפקטיבית: שעת התייצבות אם הוגדרה, אחרת שעת האירוע
+    const effectiveTime = arrivalTime || event.event_time || '';
 
     // Get all users and suppliers in one go
     const allUsers = await base44.asServiceRole.entities.User.list();
@@ -51,7 +67,8 @@ Deno.serve(async (req) => {
     const formattedDate = isNaN(_d.getTime()) ? '' :
       `\u200E${String(_d.getDate()).padStart(2,'0')}/${String(_d.getMonth()+1).padStart(2,'0')}/${_d.getFullYear()}`;
     const title = `שיבוץ חדש לאירוע`;
-    const body = `שובצת לשירות '${serviceName}' באירוע של משפחת ${event.family_name} בתאריך ${formattedDate}.`;
+    const timeText = effectiveTime ? ` בשעה ${effectiveTime}` : '';
+    const body = `שובצת לשירות '${serviceName}' באירוע של משפחת ${event.family_name} בתאריך ${formattedDate}${timeText}.`;
 
     // Invoke the other backend function to send the actual push notification
     const notificationResult = await base44.asServiceRole.functions.invoke('sendPushNotification', {

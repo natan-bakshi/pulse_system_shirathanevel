@@ -94,8 +94,17 @@ export default function SupplierCalendarDashboard() {
       } catch (e) { statuses = {}; }
       const assignmentStatus = statuses[supplier.id] || 'pending';
 
+      // שעת התייצבות אפקטיבית: אם הוגדרה לספק - היא תוצג; אחרת שעת האירוע
+      const supplierArrivalTime = (assignment.supplier_arrival_time && String(assignment.supplier_arrival_time).trim() !== '')
+        ? String(assignment.supplier_arrival_time).trim()
+        : '';
+      const effectiveTime = supplierArrivalTime || event.event_time;
+
       return {
         ...event,
+        event_time: effectiveTime,
+        original_event_time: event.event_time,
+        supplier_arrival_time: supplierArrivalTime,
         serviceName: service.service_name,
         assignmentStatus,
         eventServiceId: assignment.id
@@ -234,7 +243,16 @@ export default function SupplierCalendarDashboard() {
                     {event.event_time && (
                       <span className="flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" />
-                        {event.event_time}
+                        {event.supplier_arrival_time ? (
+                          <>
+                            <span className="font-semibold">התייצבות: {event.event_time}</span>
+                            {event.original_event_time && event.original_event_time !== event.event_time && (
+                              <span className="text-[10px] text-gray-500">(אירוע: {event.original_event_time})</span>
+                            )}
+                          </>
+                        ) : (
+                          event.event_time
+                        )}
                       </span>
                     )}
                     {event.location && (

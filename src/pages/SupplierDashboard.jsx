@@ -133,8 +133,17 @@ export default function SupplierDashboard() {
       } catch(e) { supplierNotesData = {}; }
       const noteForSupplier = supplierNotesData[supplier.id] || '';
 
+      // שעת התייצבות אפקטיבית: אם הוגדרה לספק - היא תוצג; אחרת שעת האירוע
+      const supplierArrivalTime = (assignment.supplier_arrival_time && String(assignment.supplier_arrival_time).trim() !== '')
+        ? String(assignment.supplier_arrival_time).trim()
+        : '';
+      const effectiveTime = supplierArrivalTime || event.event_time;
+
       return {
         ...event,
+        event_time: effectiveTime,
+        original_event_time: event.event_time,
+        supplier_arrival_time: supplierArrivalTime,
         serviceName: service.service_name,
         serviceDescription: assignment.service_description || service.service_description || '',
         assignmentStatus,
@@ -348,7 +357,18 @@ export default function SupplierDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-gray-500" />
-                    <span>{event.event_time}</span>
+                    <span>
+                      {event.supplier_arrival_time ? (
+                        <>
+                          <span className="font-semibold">שעת התייצבות: {event.event_time}</span>
+                          {event.original_event_time && event.original_event_time !== event.event_time && (
+                            <span className="text-xs text-gray-500 mr-2">(האירוע מתחיל בשעה {event.original_event_time})</span>
+                          )}
+                        </>
+                      ) : (
+                        event.event_time
+                      )}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-gray-500" />

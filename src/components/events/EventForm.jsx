@@ -589,6 +589,7 @@ for (const serviceItem of formData.services) {
         
         pickup_point: serviceItem.pickup_point || '',
         standing_time: serviceItem.standing_time || '',
+        supplier_arrival_time: serviceItem.supplier_arrival_time || '',
         on_site_contact_details: serviceItem.on_site_contact_details || null,
         parent_package_event_service_id: parentId,
         

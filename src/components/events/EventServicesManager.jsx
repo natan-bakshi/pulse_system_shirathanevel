@@ -949,6 +949,28 @@ export default function EventServicesManager({
                   </div>
                 </div>
               )}
+              {/* שעת התייצבות לספק - אופציונלי */}
+              <div>
+                <div className="flex items-center gap-1 mb-1">
+                  <Label className="text-xs">שעת התייצבות לספק</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">אופציונלי. אם הוגדרה - היא תופיע לספק במקום שעת האירוע (ביומן, התראות, הודעות וממשק). אם תישאר ריקה - הספק יראה את שעת האירוע הרגילה.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input
+                  type="time"
+                  value={service.supplier_arrival_time || ''}
+                  onChange={(e) => handleServiceChange(service.id, 'supplier_arrival_time', e.target.value)}
+                  className="text-sm h-8"
+                />
+              </div>
               <div className="col-span-full">
                 <Label className="text-xs">תיאור השירות</Label>
                 <ReactQuill
