@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -7,6 +8,13 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+
+// Loading fallback for lazy-loaded pages
+const PageLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-800"></div>
+  </div>
+);
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -44,7 +52,9 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={
         <LayoutWrapper currentPageName={mainPageKey}>
-          <MainPage />
+          <Suspense fallback={<PageLoadingFallback />}>
+            <MainPage />
+          </Suspense>
         </LayoutWrapper>
       } />
       {Object.entries(Pages).map(([path, Page]) => (
@@ -53,7 +63,9 @@ const AuthenticatedApp = () => {
           path={`/${path}`}
           element={
             <LayoutWrapper currentPageName={path}>
-              <Page />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Page />
+              </Suspense>
             </LayoutWrapper>
           }
         />

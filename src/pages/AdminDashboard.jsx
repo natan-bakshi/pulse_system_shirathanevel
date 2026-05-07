@@ -59,20 +59,26 @@ export default function AdminDashboard() {
   const visibleStatuses = calendarSettings || DEFAULT_VISIBLE_STATUSES;
 
   // React Query for events
+  // Note: updateExpiredEvents runs in background (fire-and-forget) — no blocking on initial load.
   const { data: events = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['events', '-event_date'],
-    queryFn: async () => {
-      try {
-        await updateExpiredEvents();
-      } catch (error) {
-        console.warn("Failed to update expired events:", error);
-      }
-      return base44.entities.Event.list('-event_date');
-    },
+    queryFn: () => base44.entities.Event.list('-event_date'),
     staleTime: 2 * 60 * 1000,
     cacheTime: 5 * 60 * 1000,
     select: (data) => Array.isArray(data) ? data : []
   });
+
+  // Fire-and-forget: refresh expired events in the background after first paint
+  useEffect(() => {
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (cancelled) return;
+      updateExpiredEvents()
+        .then(() => queryClient.invalidateQueries({ queryKey: ['events'] }))
+        .catch(error => console.warn("Failed to update expired events:", error));
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(id); };
+  }, [queryClient]);
 
   // React Query for event services
   const { data: eventServices = [] } = useQuery({
@@ -110,7 +116,7 @@ export default function AdminDashboard() {
     );
   }, [events, visibleStatuses]);
 
-  // Memoize stats calculation
+  // Memoize stats calculation — O(n) instead of O(n²) by using Maps for lookups.
   const { stats, pendingAssignments, rejectedAssignments } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -126,6 +132,11 @@ export default function AdminDashboard() {
       return eventDate.getMonth() === today.getMonth() &&
       eventDate.getFullYear() === today.getFullYear();
     });
+
+    // Build lookup Maps once: O(n) instead of O(n²) for each find.
+    const eventsMap = new Map(events.map(e => [e.id, e]));
+    const suppliersMap = new Map(suppliers.map(s => [s.id, s]));
+    const servicesMap = new Map(services.map(s => [s.id, s]));
 
     const allPending = [];
     const allRejected = [];
@@ -156,32 +167,37 @@ export default function AdminDashboard() {
         supplierStatuses = {};
       }
 
+      const event = eventsMap.get(es.event_id);
+      if (!event) return;
+
+      // Pre-compute event-level checks once per eventService (was done per supplierId before).
+      const eventDate = new Date(event.event_date);
+      eventDate.setHours(0, 0, 0, 0);
+      const isFutureEvent = eventDate >= today && event.status !== 'completed' && event.status !== 'cancelled';
+      if (!isFutureEvent) return;
+
+      const service = servicesMap.get(es.service_id);
+      if (!service) return;
+
       supplierIds.forEach((supplierId) => {
         const status = supplierStatuses[supplierId] || 'pending';
-        const event = events.find((e) => e.id === es.event_id);
-        const supplier = suppliers.find((s) => s.id === supplierId);
-        const service = services.find((s) => s.id === es.service_id);
+        if (status !== 'pending' && status !== 'rejected') return;
 
-        if (event && supplier && service) {
-          const eventDate = new Date(event.event_date);
-          eventDate.setHours(0, 0, 0, 0);
-          const isFutureEvent = eventDate >= today && event.status !== 'completed' && event.status !== 'cancelled';
+        const supplier = suppliersMap.get(supplierId);
+        if (!supplier) return;
 
-          if (isFutureEvent) {
-            const assignmentData = {
-              event,
-              supplier,
-              eventServiceId: es.id,
-              serviceName: service.service_name,
-              supplierId: supplierId
-            };
+        const assignmentData = {
+          event,
+          supplier,
+          eventServiceId: es.id,
+          serviceName: service.service_name,
+          supplierId: supplierId
+        };
 
-            if (status === 'pending') {
-              allPending.push(assignmentData);
-            } else if (status === 'rejected') {
-              allRejected.push(assignmentData);
-            }
-          }
+        if (status === 'pending') {
+          allPending.push(assignmentData);
+        } else if (status === 'rejected') {
+          allRejected.push(assignmentData);
         }
       });
     });
@@ -213,6 +229,15 @@ export default function AdminDashboard() {
     sort((a, b) => new Date(a.event_date) - new Date(b.event_date)).
     slice(0, 5);
   }, [events]);
+
+  // Lookup map for eventServices by id (used in render to avoid O(n) find per row)
+  const eventServicesById = useMemo(() => new Map(eventServices.map(es => [es.id, es])), [eventServices]);
+
+  // Pre-filtered events for the calendar (avoid recomputing on every render)
+  const calendarEvents = useMemo(() => 
+    events.filter((event) => visibleStatuses.includes(event.status)),
+    [events, visibleStatuses]
+  );
 
   const handleCreateEvent = useCallback((initialDate) => {
     setFormInitialDate(initialDate || '');
@@ -388,7 +413,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
         <div className="lg:col-span-2" data-tour="admin-calendar">
           <EventsCalendar
-            events={events.filter((event) => visibleStatuses.includes(event.status))}
+            events={calendarEvents}
             onEventClick={handleEventClick}
             onDateClick={handleDateClick} />
 
@@ -500,7 +525,7 @@ export default function AdminDashboard() {
                   </h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {filteredRejectedAssignments.map(({ event, supplier, eventServiceId, serviceName, supplierId }) => {
-                  const eventServiceData = eventServices.find((es) => es.id === eventServiceId);
+                  const eventServiceData = eventServicesById.get(eventServiceId);
                   return (
                     <div key={`rejected-${eventServiceId}-${supplierId}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-red-50 rounded-lg border border-red-200 gap-2">
                         <div className="flex-1 min-w-0 w-full">

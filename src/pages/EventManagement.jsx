@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,19 +27,25 @@ export default function EventManagement() {
         cacheTime: 10 * 60 * 1000
     });
 
+    // Note: updateExpiredEvents now runs in background — no blocking on initial load.
     const { data: events = [], isLoading: eventsLoading } = useQuery({
         queryKey: ['events'],
-        queryFn: async () => {
-            try {
-                await updateExpiredEvents();
-            } catch (error) {
-                console.warn("Failed to update expired events:", error);
-            }
-            return base44.entities.Event.list('-event_date');
-        },
+        queryFn: () => base44.entities.Event.list('-event_date'),
         staleTime: 2 * 60 * 1000,
         cacheTime: 5 * 60 * 1000
     });
+
+    // Fire-and-forget: refresh expired events in the background after first paint
+    useEffect(() => {
+        let cancelled = false;
+        const id = setTimeout(() => {
+            if (cancelled) return;
+            updateExpiredEvents()
+                .then(() => queryClient.invalidateQueries({ queryKey: ['events'] }))
+                .catch(error => console.warn("Failed to update expired events:", error));
+        }, 1500);
+        return () => { cancelled = true; clearTimeout(id); };
+    }, [queryClient]);
 
     // Fetch Services and Payments to calculate totals correctly
     const { data: allServices = [] } = useQuery({
@@ -56,14 +62,38 @@ export default function EventManagement() {
         cacheTime: 5 * 60 * 1000
     });
 
-    const calculateTotals = useCallback((event) => {
-        const eventServices = allServices.filter(es => es.event_id === event.id);
-        const payments = allPayments.filter(p => p.event_id === event.id);
-        
+    // Pre-group services & payments by event_id ONCE — avoids O(n²) filter per card.
+    const servicesByEvent = useMemo(() => {
+        const m = new Map();
+        for (const es of allServices) {
+            if (!m.has(es.event_id)) m.set(es.event_id, []);
+            m.get(es.event_id).push(es);
+        }
+        return m;
+    }, [allServices]);
+
+    const paymentsByEvent = useMemo(() => {
+        const m = new Map();
+        for (const p of allPayments) {
+            if (!m.has(p.event_id)) m.set(p.event_id, []);
+            m.get(p.event_id).push(p);
+        }
+        return m;
+    }, [allPayments]);
+
+    // Memoize VAT rate & exchange rate lookups (was recomputed for every event card).
+    const { vatRate, exRate } = useMemo(() => {
         const vatRateSetting = appSettings.find(s => s.setting_key === 'vat_rate');
-        const vatRate = vatRateSetting ? parseFloat(vatRateSetting.setting_value) / 100 : 0.18;
         const rS = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate');
-        const exRate = rS ? parseFloat(rS.setting_value) || 3.6 : 3.6;
+        return {
+            vatRate: vatRateSetting ? parseFloat(vatRateSetting.setting_value) / 100 : 0.18,
+            exRate: rS ? parseFloat(rS.setting_value) || 3.6 : 3.6
+        };
+    }, [appSettings]);
+
+    const calculateTotals = useCallback((event) => {
+        const eventServices = servicesByEvent.get(event.id) || [];
+        const payments = paymentsByEvent.get(event.id) || [];
 
         const financials = calculateEventFinancials(event, eventServices, payments, vatRate, exRate);
 
@@ -74,7 +104,7 @@ export default function EventManagement() {
             discountAmount: financials.discountAmount,
             currency: financials.currency
         };
-    }, [allServices, allPayments, appSettings]);
+    }, [servicesByEvent, paymentsByEvent, vatRate, exRate]);
 
     useEffect(() => {
         setFilteredEvents(events);

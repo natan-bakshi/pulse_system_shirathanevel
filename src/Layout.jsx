@@ -235,27 +235,37 @@ export default function Layout({ children }) {
     return () => window.removeEventListener('pulse_open_sidebar', handler);
   }, []);
 
+  // Fetch user identity ONCE on mount — not on every navigation.
+  // This eliminates the loading spinner that flashed on every page change,
+  // which was the main perceived-slowness cause across the app.
   useEffect(() => {
+    let cancelled = false;
     const fetchUser = async () => {
       setLoading(true);
       try {
         let currentUser = await base44.auth.me();
-
-
-        // Run sync on every load to ensure data consistency
-        // This handles "New User" and "Missing Data" scenarios
-        currentUser = await syncUserIdentity(currentUser);
-
-
+        if (cancelled) return;
+        // Run sync once (in background after setting initial user) to handle
+        // "New User" / "Missing Data" scenarios without blocking the UI.
         setUser(currentUser);
-      } catch (error) {
-        setUser(null);
-      } finally {
         setLoading(false);
+        // Background sync — don't block the UI on it.
+        syncUserIdentity(currentUser).then(updatedUser => {
+          if (!cancelled && updatedUser !== currentUser) {
+            setUser(updatedUser);
+          }
+        }).catch(() => {});
+      } catch (error) {
+        if (!cancelled) {
+          setUser(null);
+          setLoading(false);
+        }
       }
     };
     fetchUser();
-  }, [syncUserIdentity, location.pathname]);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   useEffect(() => {

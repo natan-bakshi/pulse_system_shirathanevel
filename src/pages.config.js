@@ -1,71 +1,32 @@
 /**
  * pages.config.js - Page routing configuration
  * 
- * This file is AUTO-GENERATED. Do not add imports or modify PAGES manually.
- * Pages are auto-registered when you create files in the ./pages/ folder.
- * 
- * THE ONLY EDITABLE VALUE: mainPage
- * This controls which page is the landing page (shown when users visit the app).
- * 
- * Example file structure:
- * 
- *   import HomePage from './pages/HomePage';
- *   import Dashboard from './pages/Dashboard';
- *   import Settings from './pages/Settings';
- *   
- *   export const PAGES = {
- *       "HomePage": HomePage,
- *       "Dashboard": Dashboard,
- *       "Settings": Settings,
- *   }
- *   
- *   export const pagesConfig = {
- *       mainPage: "HomePage",
- *       Pages: PAGES,
- *   };
- * 
- * Example with Layout (wraps all pages):
- *
- *   import Home from './pages/Home';
- *   import Settings from './pages/Settings';
- *   import __Layout from './Layout.jsx';
- *
- *   export const PAGES = {
- *       "Home": Home,
- *       "Settings": Settings,
- *   }
- *
- *   export const pagesConfig = {
- *       mainPage: "Home",
- *       Pages: PAGES,
- *       Layout: __Layout,
- *   };
- *
- * To change the main page from HomePage to Dashboard, use find_replace:
- *   Old: mainPage: "HomePage",
- *   New: mainPage: "Dashboard",
- *
- * The mainPage value must match a key in the PAGES object exactly.
+ * NOTE: Lazy loading enabled for performance optimization.
+ * Each page is loaded on-demand via React.lazy + Suspense.
+ * The main page (AdminDashboard) is preloaded immediately for instant display.
  */
+import { lazy } from 'react';
 import AdminDashboard from './pages/AdminDashboard';
-import ClientDashboard from './pages/ClientDashboard';
-import ClientGallery from './pages/ClientGallery';
-import ClientManagement from './pages/ClientManagement';
-import EventDetails from './pages/EventDetails';
-import EventManagement from './pages/EventManagement';
-import EventsBoardPage from './pages/EventsBoardPage';
-import ManualQuoteEditor from './pages/ManualQuoteEditor';
-import MyNotificationSettings from './pages/MyNotificationSettings';
-import MyTasks from './pages/MyTasks';
-import QuoteTemplateManagement from './pages/QuoteTemplateManagement';
-import ServiceManagement from './pages/ServiceManagement';
-import SettingsPage from './pages/SettingsPage';
-import SupplierCalendarDashboard from './pages/SupplierCalendarDashboard';
-import SupplierDashboard from './pages/SupplierDashboard';
-import SupplierManagement from './pages/SupplierManagement';
-import UserManagement from './pages/UserManagement';
-import UserSettings from './pages/UserSettings';
 import __Layout from './Layout.jsx';
+
+// Lazy-loaded pages (loaded only when navigated to)
+const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
+const ClientGallery = lazy(() => import('./pages/ClientGallery'));
+const ClientManagement = lazy(() => import('./pages/ClientManagement'));
+const EventDetails = lazy(() => import('./pages/EventDetails'));
+const EventManagement = lazy(() => import('./pages/EventManagement'));
+const EventsBoardPage = lazy(() => import('./pages/EventsBoardPage'));
+const ManualQuoteEditor = lazy(() => import('./pages/ManualQuoteEditor'));
+const MyNotificationSettings = lazy(() => import('./pages/MyNotificationSettings'));
+const MyTasks = lazy(() => import('./pages/MyTasks'));
+const QuoteTemplateManagement = lazy(() => import('./pages/QuoteTemplateManagement'));
+const ServiceManagement = lazy(() => import('./pages/ServiceManagement'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const SupplierCalendarDashboard = lazy(() => import('./pages/SupplierCalendarDashboard'));
+const SupplierDashboard = lazy(() => import('./pages/SupplierDashboard'));
+const SupplierManagement = lazy(() => import('./pages/SupplierManagement'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const UserSettings = lazy(() => import('./pages/UserSettings'));
 
 
 export const PAGES = {
