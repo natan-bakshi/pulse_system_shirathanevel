@@ -26,6 +26,7 @@ import PushNotificationManager from "@/components/notifications/PushNotification
 import NotificationBell from "@/components/notifications/NotificationBell";
 import OneSignalInitializer from "@/components/notifications/OneSignalInitializer";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
+import { PAGES } from "@/pages.config";
 import TermsPopup from "@/components/legal/TermsPopup";
 import { Toaster as SonnerToaster } from "sonner";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
@@ -208,13 +209,22 @@ export default function Layout({ children }) {
 
 
   // Centralized Identity Sync
+  // Optimized: skip if already synced for this user during this browser session
   const syncUserIdentity = useCallback(async (userToSync) => {
     try {
+      // Skip sync if already done in this session for this user
+      const sessionSyncKey = `pulse_user_synced_${userToSync.id}`;
+      if (sessionStorage.getItem(sessionSyncKey) === '1') {
+        return userToSync;
+      }
+
       // Invoke backend function to handle classification and data sync
       const result = await base44.functions.invoke('syncUserIdentity', { 
         data: userToSync 
       });
 
+      // Mark this user as synced for the rest of the session
+      sessionStorage.setItem(sessionSyncKey, '1');
 
       // If backend made updates, refresh the user object
       if (result.data?.updates) {
@@ -353,6 +363,19 @@ export default function Layout({ children }) {
       console.error("Logout failed:", error);
     }
   }, [navigate]);
+
+  // Prefetch a page's JS bundle when user hovers/touches a sidebar link.
+  // Makes navigation feel instant — the chunk is already loaded by click time.
+  const handlePrefetchPage = useCallback((url) => {
+    try {
+      // url looks like "/EventManagement" or "/EventManagement?foo=bar"
+      const path = (url || '').split('?')[0].replace(/^\//, '');
+      const PageComponent = PAGES[path];
+      if (PageComponent && typeof PageComponent.preload === 'function') {
+        PageComponent.preload();
+      }
+    } catch {}
+  }, []);
 
 
   if (loading) {
@@ -927,6 +950,8 @@ export default function Layout({ children }) {
                   'bg-gradient-to-r from-red-800 to-red-700 text-white shadow-lg' :
                   'text-gray-700 hover:bg-red-50'}`
                   }
+                  onMouseEnter={() => handlePrefetchPage(item.url)}
+                  onTouchStart={() => handlePrefetchPage(item.url)}
                   onClick={() => setSidebarOpen(false)}>
 
 

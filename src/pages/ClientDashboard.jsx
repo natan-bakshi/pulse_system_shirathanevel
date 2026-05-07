@@ -28,20 +28,26 @@ export default function ClientDashboard() {
   });
 
   // React Query for all events
+  // Note: updateExpiredEvents now runs in background — no longer blocks initial load.
   const { data: allEvents = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['events'],
-    queryFn: async () => {
-      try {
-        await updateExpiredEvents();
-      } catch (error) {
-        console.warn("Failed to update expired events:", error);
-      }
-      return base44.entities.Event.list();
-    },
+    queryFn: () => base44.entities.Event.list(),
     staleTime: 2 * 60 * 1000,
     cacheTime: 5 * 60 * 1000,
     select: (data) => Array.isArray(data) ? data : []
   });
+
+  // Fire-and-forget: refresh expired events in the background after first paint
+  useEffect(() => {
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (cancelled) return;
+      updateExpiredEvents()
+        .then(() => queryClient.invalidateQueries({ queryKey: ['events'] }))
+        .catch(error => console.warn("Failed to update expired events:", error));
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(id); };
+  }, [queryClient]);
 
   // React Query for event services
   const { data: allEventServices = [] } = useQuery({
@@ -95,11 +101,30 @@ export default function ClientDashboard() {
     });
   }, [allEvents, user]);
 
+  // Pre-group services & payments by event_id ONCE — avoids O(n²) filter per event card.
+  const servicesByEvent = useMemo(() => {
+    const m = new Map();
+    for (const es of allEventServices) {
+      if (!m.has(es.event_id)) m.set(es.event_id, []);
+      m.get(es.event_id).push(es);
+    }
+    return m;
+  }, [allEventServices]);
+
+  const paymentsByEvent = useMemo(() => {
+    const m = new Map();
+    for (const p of allPayments) {
+      if (!m.has(p.event_id)) m.set(p.event_id, []);
+      m.get(p.event_id).push(p);
+    }
+    return m;
+  }, [allPayments]);
+
   // Calculate event details with financials
   const eventsWithDetails = useMemo(() => {
     return clientEvents.map((event) => {
-      const eventServices = allEventServices.filter(es => es.event_id === event.id);
-      const payments = allPayments.filter(p => p.event_id === event.id);
+      const eventServices = servicesByEvent.get(event.id) || [];
+      const payments = paymentsByEvent.get(event.id) || [];
       
       let totalCostWithoutVat;
       if (event.all_inclusive && event.all_inclusive_price) {
@@ -132,7 +157,7 @@ export default function ClientDashboard() {
         discount_amount: discountAmount,
       };
     }).sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
-  }, [clientEvents, allEventServices, allPayments]);
+  }, [clientEvents, servicesByEvent, paymentsByEvent]);
 
   // Function to handle generating/viewing a quote HTML
   const handleGenerateQuote = useCallback(async (eventId) => {
