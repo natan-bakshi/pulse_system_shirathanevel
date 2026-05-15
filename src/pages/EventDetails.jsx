@@ -17,6 +17,7 @@ import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 import EventChangeDecisionDialogs from '../components/event-details/EventChangeDecisionDialogs';
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
+import { useQuoteShare } from '../components/event-details/useQuoteShare';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -68,9 +69,6 @@ export default function EventDetails() {
   });
   const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [shareStatus, setShareStatus] = useState('initial');
-  const [pdfBlob, setPdfBlob] = useState(null);
-  const [pdfFileName, setPdfFileName] = useState("");
   const [showQuoteHistory, setShowQuoteHistory] = useState(false);
   const [quoteIncludeIntro, setQuoteIncludeIntro] = useState(null); // null = not initialized yet
   const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(null);
@@ -1501,53 +1499,15 @@ export default function EventDetails() {
     }
   }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, loadEventData]);
 
-  const handleSmartShare = useCallback(async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      setShareStatus('fetching');
-      
-      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
-      const pdfUrl = response.data.pdf_url;
-      const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
-      
-      if (!pdfUrl) throw new Error('No PDF URL returned');
-
-      const pdfResponse = await fetch(pdfUrl);
-      const blob = await pdfResponse.blob();
-      const file = new File([blob], fileName, { type: "application/pdf" });
-
-      // Try native share (works on iOS/Android)
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'הצעת מחיר'
-        });
-      } else {
-        // Fallback: direct download
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }
-      // Refresh event data to update quote history
-      loadEventData();
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error("Share failed:", err);
-        alert("שגיאה בשיתוף הקובץ, נסה שוב");
-      }
-    } finally {
-      setShareStatus('initial');
-      setPdfBlob(null);
-      setPdfFileName("");
-    }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, loadEventData]);
+  // Two-step share flow: prepare PDF first, then share on a separate click.
+  // This satisfies browser "user activation" requirements on iOS & Android.
+  const { shareStatus, handlePrepareShare, handleDoShare } = useQuoteShare({
+    eventId,
+    event,
+    quoteIncludeIntro,
+    quoteIncludePaymentTerms,
+    loadEventData
+  });
 
   const handleExportEvent = useCallback(() => {
     setShowExportDialog(true);
@@ -1854,9 +1814,21 @@ export default function EventDetails() {
                 הצג
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}><Download className="h-4 w-4 ml-2" />ייצא כ-PDF</DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleSmartShare} disabled={shareStatus === 'fetching'} className="cursor-pointer">
-                {shareStatus === 'fetching' ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Share2 className="h-4 w-4 ml-2" />}
-                <span>{shareStatus === 'fetching' ? "מכין ושולח..." : "שתף הצעת מחיר"}</span>
+              <DropdownMenuItem
+                onSelect={shareStatus === 'ready' ? handleDoShare : handlePrepareShare}
+                disabled={shareStatus === 'fetching'}
+                className="cursor-pointer"
+              >
+                {shareStatus === 'fetching'
+                  ? <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                  : <Share2 className={`h-4 w-4 ml-2 ${shareStatus === 'ready' ? 'text-green-600' : ''}`} />}
+                <span className={shareStatus === 'ready' ? 'font-semibold text-green-700' : ''}>
+                  {shareStatus === 'fetching'
+                    ? 'מכין מסמך...'
+                    : shareStatus === 'ready'
+                      ? 'המסמך מוכן — לחץ לשיתוף'
+                      : 'שתף הצעת מחיר'}
+                </span>
               </DropdownMenuItem>
               <div className="border-t border-gray-100 my-1" />
               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`${createPageUrl('ManualQuoteEditor')}?fromEventId=${eventId}`); }} className="cursor-pointer">
