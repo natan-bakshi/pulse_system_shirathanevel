@@ -202,7 +202,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         // Main package item
         result.push({
           id: mainPkgTempId,
-          service_id: servicesList[0]?.id || '',
+          service_id: null,
           package_name: pkg.package_name,
           package_description: pkg.package_description,
           custom_price: pkg.package_price || 0,
@@ -516,7 +516,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
           for (const pkgItem of newPackageItems) {
              const data = {
               event_id: savedEvent.id,
-              service_id: pkgItem.service_id === 'PACKAGE_MAIN' ? currentAllServices[0]?.id || '' : pkgItem.service_id, 
+              service_id: (pkgItem.service_id === 'PACKAGE_MAIN' || !pkgItem.service_id) ? null : pkgItem.service_id, 
               custom_price: pkgItem.custom_price || 0,
               quantity: pkgItem.quantity || 1,
               includes_vat: pkgItem.includes_vat || false,
