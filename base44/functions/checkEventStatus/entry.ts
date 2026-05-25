@@ -82,15 +82,9 @@ export default Deno.serve(async (req) => {
                 supplierStatuses = {};
             }
 
-            // 1. Check if enough suppliers are assigned
-            if (supplierIds.length < minRequired) {
-                allServicesSatisfied = false;
-                break;
-            }
-
-            // 2. Check that AT LEAST `minRequired` suppliers are confirmed.
-            // לא דורשים שכל הספקים המשובצים יהיו confirmed - מספיק שעמדו במכסת המינימום.
-            // (אם משובצים 3 ספקים והמינימום הוא 1, מספיק שאחד אישר כדי שהשירות ייחשב 'מאויש'.)
+            // בודקים רק את מספר הספקים המאושרים מול המינימום הנדרש.
+            // לא חשוב כמה ספקים משובצים בסך הכל - מה שחשוב הוא שלפחות `minRequired` מהם מאושרים.
+            // אם יש יותר משובצים (מאושרים או לא) - זה לא מפריע לסטטוס "תפור".
             const confirmedCount = supplierIds.filter(id => supplierStatuses[id] === 'confirmed').length;
             
             if (confirmedCount < minRequired) {
