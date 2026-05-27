@@ -365,19 +365,18 @@ export default function AdminDashboard() {
             <h1 className="text-2xl sm:text-3xl font-bold text-white">דשבורד ניהול</h1>
             <p className="text-white/80 mt-0.5 sm:mt-1 text-sm sm:text-base">מבט כללי על האירועים והביצועים</p>
           </div>
-          <div className="flex gap-2">
+          
+          {/* Desktop/Tablet Action Buttons */}
+          <div className="hidden sm:flex gap-2">
             <Button
               onClick={() => setShowDashboardSettings(!showDashboardSettings)}
-              variant="ghost" className="text-red-700 px-3 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-9 hover:bg-white/20">
-
-
+              variant="ghost" className="text-red-700 px-3 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap ring-offset-background transition-colors hover:text-accent-foreground h-9 hover:bg-white/20">
               <Settings className="h-4 w-4 ml-2" />
               הגדרות דשבורד
             </Button>
             <Link to={createPageUrl("EventsBoardPage")}>
               <Button
                 variant="ghost" className="text-red-700 px-3 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-accent-foreground h-9 hover:bg-white/20">
-
                 <Calendar className="h-4 w-4 ml-2" />
                 לוח אירועים
               </Button>
@@ -386,10 +385,80 @@ export default function AdminDashboard() {
               data-tour="admin-create-event-btn"
               onClick={() => handleCreateEvent('')}
               className="bg-red-800 hover:bg-red-700 text-white shadow-lg">
-
               <Plus className="h-4 w-4 ml-2" />
               אירוע חדש
             </Button>
+          </div>
+        </div>
+
+        {/* Mobile Horizontal Scrollbar (Stories Style) */}
+        <div className="sm:hidden -mx-4 px-4 overflow-x-auto pb-4 pt-2 hide-scrollbar">
+          <div className="flex items-center gap-4 w-max">
+            {/* New Event */}
+            <button 
+              onClick={() => handleCreateEvent('')}
+              className="flex flex-col items-center gap-2 group min-w-[72px]"
+            >
+              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-red-600 to-red-800 p-[2px] shadow-md group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-2 border-white flex items-center justify-center bg-white">
+                  <Plus className="h-6 w-6 text-red-700" />
+                </div>
+              </div>
+              <span className="text-xs font-medium text-white/90">אירוע חדש</span>
+            </button>
+
+            {/* Events Board */}
+            <button 
+              onClick={() => navigate(createPageUrl("EventsBoardPage"))}
+              className="flex flex-col items-center gap-2 group min-w-[72px]"
+            >
+              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
+                  <Calendar className="h-6 w-6 text-gray-700" />
+                </div>
+              </div>
+              <span className="text-xs font-medium text-white/90">לוח אירועים</span>
+            </button>
+
+            {/* My Tasks */}
+            <button 
+              onClick={() => navigate(createPageUrl("MyTasks"))}
+              className="flex flex-col items-center gap-2 group min-w-[72px]"
+            >
+              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
+                  <ListChecks className="h-6 w-6 text-gray-700" />
+                </div>
+              </div>
+              <span className="text-xs font-medium text-white/90">המשימות שלי</span>
+            </button>
+            
+            {/* User Settings */}
+            <button 
+              onClick={() => navigate(createPageUrl("UserSettings"))}
+              className="flex flex-col items-center gap-2 group min-w-[72px]"
+            >
+              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
+                  <Settings className="h-6 w-6 text-gray-700" />
+                </div>
+              </div>
+              <span className="text-xs font-medium text-white/90">הגדרותיי</span>
+            </button>
+
+            {/* Dashboard Settings */}
+            <button 
+              onClick={() => setShowDashboardSettings(!showDashboardSettings)}
+              className="flex flex-col items-center gap-2 group min-w-[72px]"
+            >
+              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
+                  <Settings className="h-6 w-6 text-gray-700" />
+                </div>
+              </div>
+              <span className="text-xs font-medium text-white/90">לוח בקרה</span>
+            </button>
+
           </div>
         </div>
         
