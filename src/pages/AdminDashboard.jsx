@@ -391,72 +391,72 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Mobile Horizontal Scrollbar (Stories Style) */}
-        <div className="sm:hidden -mx-4 px-4 overflow-x-auto pb-4 pt-2 hide-scrollbar">
-          <div className="flex items-center gap-3 w-max">
+        {/* Mobile Navigation (Stories Style) */}
+        <div className="sm:hidden -mx-2 px-2 pb-4 pt-2">
+          <div className="flex items-start justify-between w-full">
             {/* New Event - Red fill, white icon (Primary action) */}
             <button 
               onClick={() => handleCreateEvent('')}
-              className="flex flex-col items-center gap-1 group min-w-[64px]"
+              className="flex flex-col items-center gap-1 group flex-1 max-w-[72px]"
             >
-              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-red-600 to-red-800 p-[2px] shadow-md group-hover:scale-105 transition-transform">
+              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-red-600 to-red-800 p-[2px] shadow-md group-hover:scale-105 transition-transform mx-auto">
                 <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-red-700">
                   <Plus className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">אירוע<br/>חדש</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">אירוע<br/>חדש</span>
             </button>
 
             {/* Events Board */}
             <button 
               onClick={() => navigate(createPageUrl("EventsBoardPage"))}
-              className="flex flex-col items-center gap-1 group min-w-[64px]"
+              className="flex flex-col items-center gap-1 group flex-1 max-w-[72px]"
             >
-              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30">
+              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30 mx-auto">
                 <div className="h-full w-full rounded-full flex items-center justify-center">
                   <Calendar className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">לוח<br/>אירועים</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">לוח<br/>אירועים</span>
             </button>
 
             {/* My Tasks */}
             <button 
               onClick={() => navigate(createPageUrl("MyTasks"))}
-              className="flex flex-col items-center gap-1 group min-w-[64px]"
+              className="flex flex-col items-center gap-1 group flex-1 max-w-[72px]"
             >
-              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30">
+              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30 mx-auto">
                 <div className="h-full w-full rounded-full flex items-center justify-center">
                   <ListChecks className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">המשימות<br/>שלי</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">המשימות<br/>שלי</span>
             </button>
             
             {/* User Settings */}
             <button 
               onClick={() => navigate(createPageUrl("UserSettings"))}
-              className="flex flex-col items-center gap-1 group min-w-[64px]"
+              className="flex flex-col items-center gap-1 group flex-1 max-w-[72px]"
             >
-              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30">
+              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30 mx-auto">
                 <div className="h-full w-full rounded-full flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-gray-700"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">אזור<br/>אישי</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">אזור<br/>אישי</span>
             </button>
 
             {/* Dashboard Settings */}
             <button 
               onClick={() => setShowDashboardSettings(!showDashboardSettings)}
-              className="flex flex-col items-center gap-1 group min-w-[64px]"
+              className="flex flex-col items-center gap-1 group flex-1 max-w-[72px]"
             >
-              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30">
+              <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30 mx-auto">
                 <div className="h-full w-full rounded-full flex items-center justify-center">
                   <Settings className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">הגדרות<br/>דשבורד</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">הגדרות<br/>דשבורד</span>
             </button>
 
           </div>
