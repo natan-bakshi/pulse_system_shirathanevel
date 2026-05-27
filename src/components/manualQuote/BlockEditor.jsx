@@ -212,6 +212,14 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
           </div>
         );
 
+      case BLOCK_TYPES.SCHEDULE:
+        if (!linkedEventId) return <NotLinkedNotice />;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-600">לוח הזמנים יוצג מתוך האירוע המשויך (אם קיים).</div>
+          </div>
+        );
+
       case BLOCK_TYPES.PAYMENT_TERMS:
         return (
           <div className="space-y-2">

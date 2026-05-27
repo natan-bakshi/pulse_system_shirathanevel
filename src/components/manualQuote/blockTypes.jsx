@@ -9,6 +9,7 @@ export const BLOCK_TYPES = {
   INTRO_TEMPLATE: 'intro_template',
   SERVICES: 'services',
   FINANCIAL_SUMMARY: 'financial_summary',
+  SCHEDULE: 'schedule',
   PAYMENT_TERMS: 'payment_terms',
   AGREEMENT_DISCLAIMER: 'agreement_disclaimer',
   SPACER: 'spacer'
@@ -21,6 +22,7 @@ export const BLOCK_LABELS = {
   [BLOCK_TYPES.INTRO_TEMPLATE]: 'פתיח / קונספט',
   [BLOCK_TYPES.SERVICES]: 'שירותים / חבילות',
   [BLOCK_TYPES.FINANCIAL_SUMMARY]: 'סיכום כספי',
+  [BLOCK_TYPES.SCHEDULE]: 'לוח זמנים',
   [BLOCK_TYPES.PAYMENT_TERMS]: 'תנאי תשלום',
   [BLOCK_TYPES.AGREEMENT_DISCLAIMER]: 'תנאי התקשרות',
   [BLOCK_TYPES.SPACER]: 'רווח / מפריד'
@@ -33,6 +35,7 @@ export const BLOCK_DESCRIPTIONS = {
   [BLOCK_TYPES.INTRO_TEMPLATE]: 'בחירת פתיח לפי קונספט',
   [BLOCK_TYPES.SERVICES]: 'רשימת שירותים וחבילות (מהאירוע המשויך)',
   [BLOCK_TYPES.FINANCIAL_SUMMARY]: 'טבלת סיכום מחירים, מע"מ, הנחה ותשלומים',
+  [BLOCK_TYPES.SCHEDULE]: 'לוח זמנים של האירוע (מהאירוע המשויך)',
   [BLOCK_TYPES.PAYMENT_TERMS]: 'תנאי תשלום (מתוך התבנית הקיימת)',
   [BLOCK_TYPES.AGREEMENT_DISCLAIMER]: 'תנאי התקשרות (מתוך התבנית הקיימת)',
   [BLOCK_TYPES.SPACER]: 'מרווח / קו מפריד'
@@ -54,6 +57,8 @@ export function createBlock(type) {
       return { ...base, options: { showPrices: true, showDescriptions: true, showQuantities: true, showClientNotes: true, showTransportDetails: true } };
     case BLOCK_TYPES.FINANCIAL_SUMMARY:
       return { ...base, options: { showVat: true, showPaid: true, showBalance: true, showDiscount: true } };
+    case BLOCK_TYPES.SCHEDULE:
+      return { ...base, options: {} };
     case BLOCK_TYPES.PAYMENT_TERMS:
       return { ...base, options: { templateId: '' } };
     case BLOCK_TYPES.AGREEMENT_DISCLAIMER:

@@ -34,6 +34,7 @@ function getEventType(typeKey) {
 async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const includeIntro = options.includeIntro !== false;
     const includePaymentTerms = options.includePaymentTerms !== false;
+    const includeSchedule = options.includeSchedule !== false;
     const [event, allServices, allEventServices, payments, templates, appSettingsList] = await Promise.all([
         base44Instance.asServiceRole.entities.Event.get(eventId),
         base44Instance.asServiceRole.entities.Service.list(),
@@ -480,6 +481,29 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
         </div>`;
     }
     
+    let scheduleHtml = '';
+    if (includeSchedule && event.schedule && event.schedule.length > 0) {
+        const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        scheduleHtml = `
+            <div class="section schedule-section" style="margin-top: 50px; page-break-inside: avoid;">
+                <h2 class="section-title">לוח זמנים</h2>
+                <table class="schedule-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <tbody>
+                        ${[...event.schedule].sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(item => `
+                            <tr>
+                                <td style="width: 80px; padding: 10px 0; font-weight: 700; color: #8B0000; font-size: ${quoteBodyFontSize}px; border-bottom: 1px solid #eee;">${esc(item.time)}</td>
+                                <td style="padding: 10px; font-size: ${quoteBodyFontSize}px; color: ${quoteTextColor}; border-bottom: 1px solid #eee;">
+                                    <strong style="display: block; margin-bottom: 4px;">${esc(item.activity)}</strong>
+                                    ${item.notes ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #666; font-style: italic; line-height: 1.4;">${esc(item.notes)}</div>` : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
     // fileAndTitleName already defined above
 
     const html = `
@@ -855,6 +879,8 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                           </table>
                       </div>
 
+                      ${scheduleHtml}
+
                       ${(paymentTemplate && includePaymentTerms) ? `
                       <div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;">
                           <h2 class="section-title">תנאי תשלום</h2>
@@ -905,13 +931,14 @@ Deno.serve(async (req) => {
         const eventId = body.eventId;
         const includeIntro = body.includeIntro !== false;
         const includePaymentTerms = body.includePaymentTerms !== false;
+        const includeSchedule = body.includeSchedule !== false;
 
         if (!eventId) {
             return Response.json({ error: 'Event ID is required' }, { status: 400 });
         }
 
         // Generate HTML content
-        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms });
+        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms, includeSchedule });
 
         const apiKey = Deno.env.get('API2PDF_API_KEY');
         if (!apiKey) {

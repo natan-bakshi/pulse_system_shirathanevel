@@ -18,6 +18,7 @@ import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 import EventChangeDecisionDialogs from '../components/event-details/EventChangeDecisionDialogs';
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
+import { useEventExport } from '../components/event-details/useEventExport';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -57,21 +58,12 @@ export default function EventDetails() {
   const [allInclusiveData, setAllInclusiveData] = useState({});
   const [editableSchedule, setEditableSchedule] = useState([]);
 
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportOptions, setExportOptions] = useState({
-    eventDetails: true,
-    familyDetails: true,
-    services: true,
-    suppliers: true,
-    payments: true,
-    financials: true,
-    notes: true
-  });
   const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [showQuoteHistory, setShowQuoteHistory] = useState(false);
   const [quoteIncludeIntro, setQuoteIncludeIntro] = useState(null); // null = not initialized yet
   const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(null);
+  const [quoteIncludeSchedule, setQuoteIncludeSchedule] = useState(null);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -248,7 +240,10 @@ export default function EventDetails() {
       const showPaymentTerms = ['quote', 'cancelled'].includes(event.status);
       setQuoteIncludePaymentTerms(showPaymentTerms);
     }
-  }, [event, quoteTemplates]);
+    if (event && quoteIncludeSchedule === null) {
+      setQuoteIncludeSchedule(!!(event.schedule && event.schedule.length > 0));
+    }
+  }, [event, quoteTemplates, quoteIncludeSchedule, quoteIncludeIntro, quoteIncludePaymentTerms]);
 
   // Initialize editable schedule when event loads
   useEffect(() => {
@@ -1467,7 +1462,7 @@ export default function EventDetails() {
   const handleGenerateQuote = useCallback(async () => {
     setIsGeneratingQuote(true);
     try {
-      const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
+      const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule });
       const html = response.data.html;
       
       const newWindow = window.open();
@@ -1488,7 +1483,7 @@ export default function EventDetails() {
   const handleGeneratePdf = useCallback(async () => {
     setIsGeneratingPdf(true);
     try {
-      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms });
+      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule });
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
 
@@ -1531,114 +1526,13 @@ export default function EventDetails() {
     event,
     quoteIncludeIntro,
     quoteIncludePaymentTerms,
+    quoteIncludeSchedule,
     loadEventData
   });
 
-  const handleExportEvent = useCallback(() => {
-    setShowExportDialog(true);
-  }, []);
-
-  const handleConfirmExport = useCallback(() => {
-    const exportData = {};
-
-    if (exportOptions.eventDetails) {
-      exportData.eventDetails = {
-        event_name: event.event_name,
-        event_type: event.event_type,
-        event_date: event.event_date,
-        location: event.location,
-        city: event.city,
-        concept: event.concept,
-        guest_count: event.guest_count,
-        status: event.status
-      };
-    }
-
-    if (exportOptions.familyDetails) {
-      exportData.familyDetails = {
-        family_name: event.family_name,
-        child_name: event.child_name,
-        parents: event.parents || []
-      };
-    }
-
-    if (exportOptions.services) {
-      exportData.services = eventServices.map(es => {
-        const serviceDetails = allServices.find(s => s.id === es.service_id);
-        return {
-          service_name: serviceDetails?.service_name || es.service_name,
-          custom_price: es.custom_price,
-          quantity: es.quantity,
-          includes_vat: es.includes_vat,
-          package_name: es.package_name,
-          notes: es.notes,
-          client_notes: es.client_notes,
-          service_description: serviceDetails?.service_description
-        };
-      });
-    }
-
-    if (exportOptions.suppliers) {
-      exportData.suppliers = eventServices.map(es => {
-        let supplierIds = [];
-        let supplierStatuses = {};
-        try {
-          supplierIds = JSON.parse(es.supplier_ids || '[]');
-          supplierStatuses = JSON.parse(es.supplier_statuses || '{}');
-        } catch (e) {}
-
-        const serviceDetails = allServices.find(s => s.id === es.service_id);
-        const assignedSuppliers = allSuppliers.filter(sup => supplierIds.includes(sup.id)).map(sup => ({
-          supplier_name: sup.supplier_name,
-          status: supplierStatuses[sup.id] || 'pending'
-        }));
-
-        return {
-          service_name: serviceDetails?.service_name || es.service_name,
-          suppliers: assignedSuppliers
-        };
-      });
-    }
-
-    if (exportOptions.payments) {
-      exportData.payments = payments.map(p => ({
-        amount: p.amount,
-        payment_date: p.payment_date,
-        payment_method: p.payment_method,
-        notes: p.notes,
-        receipt_image_url: p.receipt_image_url
-      }));
-    }
-
-    if (exportOptions.financials) {
-      exportData.financials = {
-        totalCostWithoutVat: financials.totalCostWithoutVat,
-        vatAmount: financials.vatAmount,
-        totalCostWithVat: financials.totalCostWithVat,
-        discountAmount: financials.discountAmount,
-        finalTotal: financials.finalTotal,
-        totalPaid: financials.totalPaid,
-        balance: financials.balance
-      };
-    }
-
-    if (exportOptions.notes && event.notes) {
-      exportData.notes = event.notes;
-    }
-
-    const jsonString = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `event_${event.family_name}_${event.event_date}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    setShowExportDialog(false);
-  }, [exportOptions, event, eventServices, allServices, allSuppliers, payments, financials]);
+  const { showExportDialog, setShowExportDialog, exportOptions, setExportOptions, handleExportEvent, handleConfirmExport } = useEventExport({
+    event, eventServices, allServices, allSuppliers, payments, financials
+  });
 
   const handleAddServicesToPackage = useCallback(async (saveGlobal = false) => {
     if (selectedServicesForPackage.length === 0) {
@@ -1817,7 +1711,8 @@ export default function EventDetails() {
               {(() => {
                 const hasIntroTemplate = event.concept && quoteTemplates.some(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
                 const hasPaymentTemplate = quoteTemplates.some(t => t.template_type === 'payment_terms');
-                return (hasIntroTemplate || hasPaymentTemplate) ? (
+                const hasSchedule = event?.schedule?.length > 0;
+                return (hasIntroTemplate || hasPaymentTemplate || hasSchedule) ? (
                   <div className="flex items-center gap-3 px-2 py-1.5 border-b border-gray-100">
                     {hasIntroTemplate && (
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
@@ -1829,6 +1724,12 @@ export default function EventDetails() {
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
                         <Checkbox checked={quoteIncludePaymentTerms} onCheckedChange={setQuoteIncludePaymentTerms} className="h-3.5 w-3.5" />
                         <span>תנאי תשלום</span>
+                      </label>
+                    )}
+                    {hasSchedule && (
+                      <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
+                        <Checkbox checked={quoteIncludeSchedule} onCheckedChange={setQuoteIncludeSchedule} className="h-3.5 w-3.5" />
+                        <span>לו"ז</span>
                       </label>
                     )}
                   </div>

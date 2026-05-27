@@ -19,6 +19,7 @@ export function buildBlocksFromEvent() {
     createBlock(BLOCK_TYPES.INTRO_TEMPLATE),
     createBlock(BLOCK_TYPES.SERVICES),
     createBlock(BLOCK_TYPES.FINANCIAL_SUMMARY),
+    createBlock(BLOCK_TYPES.SCHEDULE),
     createBlock(BLOCK_TYPES.PAYMENT_TERMS),
     createBlock(BLOCK_TYPES.AGREEMENT_DISCLAIMER),
   ];

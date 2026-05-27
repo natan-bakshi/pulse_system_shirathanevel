@@ -9,7 +9,7 @@ import { base44 } from '@/api/base44Client';
  * ההפרדה הזו נחוצה כי דפדפני מובייל (iOS וגם Android) דורשים
  * שקריאה ל-navigator.share תתבצע כתגובה מידית ללחיצת משתמש.
  */
-export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, loadEventData }) {
+export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, loadEventData }) {
   const [shareStatus, setShareStatus] = useState('initial'); // 'initial' | 'fetching' | 'ready'
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
@@ -27,7 +27,8 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       const response = await base44.functions.invoke('generateQuotePdf', {
         eventId,
         includeIntro: quoteIncludeIntro,
-        includePaymentTerms: quoteIncludePaymentTerms
+        includePaymentTerms: quoteIncludePaymentTerms,
+        includeSchedule: quoteIncludeSchedule
       });
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
