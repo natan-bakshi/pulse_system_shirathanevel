@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Bell,
   UserCog,
+  User,
   ListChecks } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,7 @@ const getAdminNavItems = (userEmail, tasksEnabled = true) => {
     items.push({ title: "המשימות שלי", url: createPageUrl("MyTasks"), icon: ListChecks, tourId: "nav-my-tasks" });
   }
   
-  items.push({ title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" });
+  items.push({ title: "אזור אישי", url: createPageUrl("UserSettings"), icon: User, tourId: "nav-user-settings" });
   
   // Only system creator can see settings
   if (userEmail === SYSTEM_CREATOR_EMAIL) {
@@ -73,13 +74,13 @@ const navigationItems = {
 
   client: [
   { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home, tourId: "nav-client-events" },
-  { title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" }],
+  { title: "אזור אישי", url: createPageUrl("UserSettings"), icon: User, tourId: "nav-user-settings" }],
 
 
   supplier: [
   { title: "דשבורד", url: createPageUrl("SupplierCalendarDashboard"), icon: Home, tourId: "nav-supplier-dashboard" },
   { title: "האירועים שלי", url: createPageUrl("SupplierDashboard"), icon: Calendar, tourId: "nav-supplier-events" },
-  { title: "הגדרות משתמש", url: createPageUrl("UserSettings"), icon: UserCog, tourId: "nav-user-settings" }]
+  { title: "אזור אישי", url: createPageUrl("UserSettings"), icon: User, tourId: "nav-user-settings" }]
 
 
 };

@@ -393,70 +393,71 @@ export default function AdminDashboard() {
 
         {/* Mobile Horizontal Scrollbar (Stories Style) */}
         <div className="sm:hidden -mx-4 px-4 overflow-x-auto pb-4 pt-2 hide-scrollbar">
-          <div className="flex items-center gap-4 w-max">
-            {/* New Event */}
+          <div className="flex items-center gap-3 w-max">
+            {/* New Event - Red fill, white icon */}
             <button 
               onClick={() => handleCreateEvent('')}
-              className="flex flex-col items-center gap-2 group min-w-[72px]"
+              className="flex flex-col items-center gap-1 group min-w-[64px]"
             >
-              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-red-600 to-red-800 p-[2px] shadow-md group-hover:scale-105 transition-transform">
-                <div className="h-full w-full rounded-full border-2 border-white flex items-center justify-center bg-white">
-                  <Plus className="h-6 w-6 text-red-700" />
+              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-red-600 to-red-800 p-[2px] shadow-md group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-red-700">
+                  <Plus className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <span className="text-xs font-medium text-white/90">אירוע חדש</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">אירוע<br/>חדש</span>
             </button>
 
-            {/* Events Board */}
+            {/* Events Board - Red border, white fill, red icon */}
             <button 
               onClick={() => navigate(createPageUrl("EventsBoardPage"))}
-              className="flex flex-col items-center gap-2 group min-w-[72px]"
+              className="flex flex-col items-center gap-1 group min-w-[64px]"
             >
-              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
-                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
-                  <Calendar className="h-6 w-6 text-gray-700" />
+              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-red-500 to-red-700 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-[1.5px] border-white flex items-center justify-center bg-white">
+                  <Calendar className="h-6 w-6 text-red-700" />
                 </div>
               </div>
-              <span className="text-xs font-medium text-white/90">לוח אירועים</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">לוח<br/>אירועים</span>
             </button>
 
-            {/* My Tasks */}
+            {/* My Tasks - Red border, white fill, red icon */}
             <button 
               onClick={() => navigate(createPageUrl("MyTasks"))}
-              className="flex flex-col items-center gap-2 group min-w-[72px]"
+              className="flex flex-col items-center gap-1 group min-w-[64px]"
             >
-              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
-                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
-                  <ListChecks className="h-6 w-6 text-gray-700" />
+              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-red-500 to-red-700 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-[1.5px] border-white flex items-center justify-center bg-white">
+                  <ListChecks className="h-6 w-6 text-red-700" />
                 </div>
               </div>
-              <span className="text-xs font-medium text-white/90">המשימות שלי</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">המשימות<br/>שלי</span>
             </button>
             
-            {/* User Settings */}
+            {/* User Settings - Red border, white fill, red icon */}
             <button 
               onClick={() => navigate(createPageUrl("UserSettings"))}
-              className="flex flex-col items-center gap-2 group min-w-[72px]"
+              className="flex flex-col items-center gap-1 group min-w-[64px]"
             >
-              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
-                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
-                  <Settings className="h-6 w-6 text-gray-700" />
+              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-red-500 to-red-700 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-[1.5px] border-white flex items-center justify-center bg-white">
+                  {/* Using an SVG path for a person with half moon below it (user/avatar icon) */}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-red-700"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
               </div>
-              <span className="text-xs font-medium text-white/90">הגדרותיי</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">אזור<br/>אישי</span>
             </button>
 
-            {/* Dashboard Settings */}
+            {/* Dashboard Settings - Red border, white fill, red icon */}
             <button 
               onClick={() => setShowDashboardSettings(!showDashboardSettings)}
-              className="flex flex-col items-center gap-2 group min-w-[72px]"
+              className="flex flex-col items-center gap-1 group min-w-[64px]"
             >
-              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
-                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-white">
-                  <Settings className="h-6 w-6 text-gray-700" />
+              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-red-500 to-red-700 p-[2px] shadow-sm group-hover:scale-105 transition-transform">
+                <div className="h-full w-full rounded-full border-[1.5px] border-white flex items-center justify-center bg-white">
+                  <Settings className="h-6 w-6 text-red-700" />
                 </div>
               </div>
-              <span className="text-xs font-medium text-white/90">לוח בקרה</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center">הגדרות<br/>דשבורד</span>
             </button>
 
           </div>
