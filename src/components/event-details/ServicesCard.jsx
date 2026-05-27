@@ -141,7 +141,7 @@ export default function ServicesCard({
       const newServiceRecord = await Service.create(serviceData);
       
       // Auto-add to current event
-      await base44.entities.EventService.create({
+      const newEventService = await base44.entities.EventService.create({
         event_id: event.id,
         service_id: newServiceRecord.id,
         custom_price: serviceData.base_price,
@@ -152,7 +152,11 @@ export default function ServicesCard({
         order_index: (eventServices.length + 1) * 10
       });
 
-      await base44.functions.invoke('checkEventStatus', { eventId: event.id }).catch(console.error);
+      await base44.functions.invoke('checkEventStatus', { 
+          eventId: event.id,
+          event: event,
+          eventServices: [...eventServices, newEventService]
+      }).catch(console.error);
       await loadEventData();
       
       setNewService({
@@ -207,8 +211,25 @@ export default function ServicesCard({
         phone: '',
         contact_emails: ['']
       });
+      
+      let updatedEventServices = eventServices;
+      if (showNewSupplierDialog && typeof showNewSupplierDialog === 'string') {
+          updatedEventServices = eventServices.map(es => {
+              if (es.id === showNewSupplierDialog) {
+                  let currentSupplierIds = [];
+                  try { currentSupplierIds = JSON.parse(es.supplier_ids || '[]'); } catch(e) {}
+                  return { ...es, supplier_ids: JSON.stringify([...currentSupplierIds, newSupplierRecord.id]) };
+              }
+              return es;
+          });
+      }
+      
       setShowNewSupplierDialog(null);
-      await base44.functions.invoke('checkEventStatus', { eventId: event.id }).catch(console.error);
+      await base44.functions.invoke('checkEventStatus', { 
+          eventId: event.id,
+          event: event,
+          eventServices: updatedEventServices
+      }).catch(console.error);
     } catch (error) {
       console.error("Failed to create supplier:", error);
       alert("שגיאה ביצירת הספק");
@@ -240,11 +261,21 @@ export default function ServicesCard({
         supplier_notes: JSON.stringify(localSupplierFormData.notes)
       });
 
+      const updatedEventServices = eventServices.map(es => 
+        es.id === localSelectedService.id 
+          ? { ...es, supplier_ids: JSON.stringify(localSupplierFormData.supplierIds), supplier_notes: JSON.stringify(localSupplierFormData.notes) }
+          : es
+      );
+
       setShowLocalSupplierDialog(false);
       setLocalSelectedService(null);
       setLocalSupplierFormData({ supplierIds: [], notes: {} });
       setLocalSupplierSearchTerm("");
-      await base44.functions.invoke('checkEventStatus', { eventId: event.id }).catch(console.error);
+      await base44.functions.invoke('checkEventStatus', { 
+        eventId: event.id,
+        event: event,
+        eventServices: updatedEventServices
+      }).catch(console.error);
       await loadEventData();
     } catch (error) {
       console.error("Failed to assign suppliers:", error);

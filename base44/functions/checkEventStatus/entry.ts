@@ -22,7 +22,7 @@ export default Deno.serve(async (req) => {
             return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
         }
         
-        const { eventId } = body;
+        const { eventId, event: providedEvent, eventServices: providedEventServices } = body;
         if (!eventId) {
             return Response.json({ error: 'Missing eventId' }, { status: 400 });
         }
@@ -33,10 +33,10 @@ export default Deno.serve(async (req) => {
         }
 
         // Fetch event services
-        const eventServices = await base44.entities.EventService.filter({ event_id: eventId });
+        const eventServices = providedEventServices || await base44.entities.EventService.filter({ event_id: eventId });
         
         // Fetch event to get current status
-        const event = await base44.entities.Event.get(eventId);
+        const event = providedEvent || await base44.entities.Event.get(eventId);
         if (!event) {
             return Response.json({ error: 'Event not found' }, { status: 404 });
         }

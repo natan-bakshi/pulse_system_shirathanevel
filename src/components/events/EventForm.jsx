@@ -654,7 +654,11 @@ for (const serviceItem of formData.services) {
 
       // Check if event status needs update (tied/in_progress)
       try {
-        await base44.functions.invoke('checkEventStatus', { eventId: savedEvent.id });
+        await base44.functions.invoke('checkEventStatus', { 
+            eventId: savedEvent.id,
+            event: savedEvent,
+            eventServices: formData.services
+        });
       } catch (checkError) {
         console.error("Failed to check event status:", checkError);
       }

@@ -477,7 +477,11 @@ export default function EventDetails() {
     try {
       await base44.entities.Event.update(eventId, { status: newStatus });
       
-      await base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
+      await base44.functions.invoke('checkEventStatus', { 
+          eventId: eventId,
+          event: { ...event, status: newStatus },
+          eventServices: eventServices
+      }).catch(console.error);
       await loadEventData();
     } catch (error) {
       console.error("Failed to update status:", error);
@@ -733,7 +737,16 @@ export default function EventDetails() {
         }
       }
       await base44.entities.EventService.update(eventServiceId, updateData);
-      await base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
+      
+      const updatedEventServices = eventServices.map(es => 
+          es.id === eventServiceId ? { ...es, ...updateData } : es
+      );
+
+      await base44.functions.invoke('checkEventStatus', { 
+          eventId: eventId,
+          event: event,
+          eventServices: updatedEventServices
+      }).catch(console.error);
       await loadEventData();
     } catch (error) {
       console.error("Failed to update supplier status:", error);
@@ -769,7 +782,19 @@ export default function EventDetails() {
         supplier_notes: JSON.stringify(supplierNotes)
       });
       
-      await base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
+      const updatedEventServices = eventServices.map(es => 
+          es.id === eventServiceId ? { 
+              ...es, 
+              supplier_ids: JSON.stringify(supplierIds),
+              supplier_statuses: JSON.stringify(supplierStatuses)
+          } : es
+      );
+
+      await base44.functions.invoke('checkEventStatus', { 
+          eventId: eventId,
+          event: event,
+          eventServices: updatedEventServices
+      }).catch(console.error);
       await loadEventData();
     } catch (error) {
       console.error("Failed to remove supplier:", error);
@@ -839,7 +864,11 @@ export default function EventDetails() {
       }
 
       await base44.entities.EventService.update(serviceId, updateData);
-      base44.functions.invoke('checkEventStatus', { eventId: eventId }).catch(console.error);
+      base44.functions.invoke('checkEventStatus', { 
+          eventId: eventId,
+          event: event,
+          eventServices: eventServices.map(es => es.id === serviceId ? { ...es, ...updateData } : es)
+      }).catch(console.error);
       
       // Update the local editableServices state directly instead of refetching from server.
       // This prevents overwriting user's in-progress edits on other fields.
@@ -1275,14 +1304,10 @@ export default function EventDetails() {
 
   const handleRemoveFromPackage = useCallback(async (serviceId) => {
     if (!window.confirm("האם להוציא שירות זה מהחבילה?")) return;
-    
     try {
-      const serviceToRemove = eventServices.find(es => es.id === serviceId);
-      if (!serviceToRemove) return;
-
+      if (!eventServices.find(es => es.id === serviceId)) return;
       const maxStandaloneOrderIndex = groupedServices.standalone.reduce((currentMax, s) => Math.max(currentMax, s.order_index || 0), 0);
       const newStandaloneOrderIndex = maxStandaloneOrderIndex + 1;
-
       await base44.entities.EventService.update(serviceId, {
         package_id: null,
         package_name: null,

@@ -404,7 +404,18 @@ export default function EventsBoard() {
                 supplier_notes: JSON.stringify(supplierNotes)
             });
 
-            await base44.functions.invoke('checkEventStatus', { eventId: eventService.event_id }).catch(console.error);
+            const updatedEventServices = eventServices.map(es => 
+                es.id === editingAssignment.eventServiceId 
+                ? { ...es, supplier_statuses: JSON.stringify(supplierStatuses), supplier_notes: JSON.stringify(supplierNotes) }
+                : es
+            );
+            const currentEvent = events.find(e => e.id === eventService.event_id);
+
+            await base44.functions.invoke('checkEventStatus', { 
+                eventId: eventService.event_id,
+                event: currentEvent,
+                eventServices: updatedEventServices
+            }).catch(console.error);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
             setEditingAssignment(null);
         } catch (error) {
@@ -493,7 +504,23 @@ export default function EventsBoard() {
                 min_suppliers: parseInt(editingService.minSuppliers) || 0
             });
 
-            await base44.functions.invoke('checkEventStatus', { eventId: events.find(e => e.event_name === editingService.eventName)?.id }).catch(console.error);
+            const updatedEventServices = eventServices.map(es => 
+                es.id === editingService.eventServiceId 
+                ? { 
+                    ...es, 
+                    supplier_ids: JSON.stringify(editingService.supplierIds),
+                    supplier_statuses: JSON.stringify(editingService.supplierStatuses),
+                    min_suppliers: parseInt(editingService.minSuppliers) || 0
+                  }
+                : es
+            );
+            const currentEvent = events.find(e => e.event_name === editingService.eventName);
+
+            await base44.functions.invoke('checkEventStatus', { 
+                eventId: currentEvent?.id,
+                event: currentEvent,
+                eventServices: updatedEventServices
+            }).catch(console.error);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
             setEditingService(null);
         } catch (error) {
