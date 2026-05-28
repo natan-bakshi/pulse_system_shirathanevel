@@ -24,7 +24,7 @@ export default function StatCard({ title, value, icon: Icon, color }) {
     <>
       {/* Mobile: gradient border wrapper */}
       <div className={`sm:hidden rounded-xl p-[2.5px] bg-gradient-to-br opacity-100 ${gradientBorders[color]} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
-        <div className="bg-white rounded-[10px] text-center opacity-100 p-1.">
+        <div className="bg-white rounded-[10px] text-center opacity-100 p-2.">
           <p className="text-[10px] font-medium text-gray-600 leading-tight">{title}</p>
           <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
         </div>
