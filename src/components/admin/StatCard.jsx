@@ -23,8 +23,8 @@ export default function StatCard({ title, value, icon: Icon, color }) {
   return (
     <>
       {/* Mobile: gradient border wrapper */}
-      <div className={`sm:hidden rounded-xl p-[2.5px] bg-gradient-to-br ${gradientBorders[color]} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
-        <div className="bg-white rounded-[10px] p-2.5 text-center">
+      <div className={`sm:hidden rounded-xl p-[2.5px] bg-gradient-to-br opacity-100 ${gradientBorders[color]} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
+        <div className="bg-white rounded-[10px] p-2.5 text-center opacity-5">
           <p className="text-[10px] font-medium text-gray-600 leading-tight">{title}</p>
           <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
         </div>
@@ -43,6 +43,6 @@ export default function StatCard({ title, value, icon: Icon, color }) {
           </div>
         </CardContent>
       </Card>
-    </>
-  );
+    </>);
+
 }
