@@ -23,12 +23,12 @@ export default function StatCard({ title, value, icon: Icon, color }) {
   return (
     <>
       {/* Mobile: gradient border wrapper */}
-      <div className={`sm:hidden rounded-xl p-[1.5px] bg-gradient-to-br ${gradientBorders[color]} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
-        <div className="bg-white rounded-[10px] p-2.5 text-center">
-          <p className="text-[10px] font-medium text-gray-600 leading-tight">{title}</p>
-          <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
-        </div>
+    <div className={`sm:hidden rounded-xl p-[1.5px] bg-gradient-to-br ${gradientBorders[color]} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
+      <div className="w-full h-full bg-white rounded-[10.5px] p-2.5 text-center">
+        <p className="text-[10px] font-medium text-gray-600 leading-tight">{title}</p>
+        <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
       </div>
+    </div>
       {/* Desktop: original card */}
       <Card className="hidden sm:block bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-shadow duration-300">
         <CardContent className="p-6">
