@@ -23,8 +23,8 @@ export default function StatCard({ title, value, icon: Icon, color }) {
   return (
     <>
       {/* Mobile: gradient border wrapper */}
-      <div className={`sm:hidden rounded-xl p-[2.5px] bg-gradient-to-br opacity-100 ${gradientBorders[color]} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
-        <div className="bg-white text-center p-2.5 opacity-8rounded-[10px]">
+      <div className={`sm:hidden rounded-xl p-[2.5px] bg-gradient-to-br ${gradientBorders[color]} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
+        <div className="bg-white rounded-[10px] p-2.5 text-center">
           <p className="text-[10px] font-medium text-gray-600 leading-tight">{title}</p>
           <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
         </div>
@@ -34,7 +34,7 @@ export default function StatCard({ title, value, icon: Icon, color }) {
         <CardContent className="p-6">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-600 leading-tight">{title}</p>
+              <p className="text-sm font-bold text-gray-600 leading-tight">{title}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
             </div>
             <div className={`p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} shadow-lg shrink-0`}>
@@ -43,6 +43,6 @@ export default function StatCard({ title, value, icon: Icon, color }) {
           </div>
         </CardContent>
       </Card>
-    </>);
-
+    </>
+  );
 }
