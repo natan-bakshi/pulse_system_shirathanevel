@@ -11,16 +11,31 @@ export default function StatCard({ title, value, icon: Icon, color }) {
     orange: "from-amber-500 to-amber-600"
   };
 
+  const borderColors = {
+    wine: "border-red-700",
+    gold: "border-amber-500",
+    blue: "border-red-700",
+    green: "border-amber-500",
+    purple: "border-red-700",
+    orange: "border-amber-500"
+  };
+
   return (
-    <Card className="bg-white/95 backdrop-blur-sm shadow-lg sm:shadow-xl hover:shadow-2xl transition-shadow duration-300">
-      <CardContent className="p-3 sm:p-6">
-        <div className="flex items-center justify-between gap-2">
+    <Card className={`bg-white/95 backdrop-blur-sm shadow-lg sm:shadow-xl hover:shadow-2xl transition-shadow duration-300 border-t-[3px] sm:border-t-0 ${borderColors[color]}`}>
+      <CardContent className="p-2 sm:p-6">
+        {/* Mobile: centered text only, no icon */}
+        <div className="sm:hidden text-center">
+          <p className="text-[10px] font-medium text-gray-600 leading-tight">{title}</p>
+          <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
+        </div>
+        {/* Desktop: icon + text side by side */}
+        <div className="hidden sm:flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] sm:text-sm font-medium text-gray-600 leading-tight">{title}</p>
-            <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1">{value}</p>
+            <p className="text-sm font-medium text-gray-600 leading-tight">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
           </div>
-          <div className={`p-1.5 sm:p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} shadow-lg shrink-0`}>
-            <Icon className="h-3.5 w-3.5 sm:h-6 sm:w-6 text-white" />
+          <div className={`p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} shadow-lg shrink-0`}>
+            <Icon className="h-6 w-6 text-white" />
           </div>
         </div>
       </CardContent>
