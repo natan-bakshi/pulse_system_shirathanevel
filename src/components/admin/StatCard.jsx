@@ -32,16 +32,15 @@ export default function StatCard({ title, value, icon: Icon, color }) {
       {/* Desktop: original card */}
       <Card className="hidden sm:block bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-shadow duration-300">
         <CardContent className="p-6">
-        {/* Desktop: icon + text side by side */}
-        <div className="hidden sm:flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-gray-600 leading-tight">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-600 leading-tight">{title}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+            </div>
+            <div className={`p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} shadow-lg shrink-0`}>
+              <Icon className="h-6 w-6 text-white" />
+            </div>
           </div>
-          <div className={`p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} shadow-lg shrink-0`}>
-            <Icon className="h-6 w-6 text-white" />
-          </div>
-        </div>
         </CardContent>
       </Card>
     </>
