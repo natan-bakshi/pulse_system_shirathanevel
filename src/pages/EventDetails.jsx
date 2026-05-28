@@ -1757,7 +1757,7 @@ export default function EventDetails() {
                 </span>
               </DropdownMenuItem>
               <div className="border-t border-gray-100 my-1" />
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`${createPageUrl('ManualQuoteEditor')}?fromEventId=${eventId}`); }} className="cursor-pointer">
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`${createPageUrl('ManualQuoteEditor')}?fromEventId=${eventId}&includeIntro=${quoteIncludeIntro}&includePaymentTerms=${quoteIncludePaymentTerms}&includeSchedule=${quoteIncludeSchedule}`); }} className="cursor-pointer">
                 <Edit3 className="h-4 w-4 ml-2" /><span>צור הצעה רגילה עם התאמות</span>
               </DropdownMenuItem>
               {event.quote_history && event.quote_history.length > 0 && (

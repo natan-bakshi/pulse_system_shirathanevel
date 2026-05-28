@@ -346,6 +346,28 @@ function renderFinancialSummaryBlock(block, event, eventServices, payments, sett
     </div>`;
 }
 
+function renderScheduleBlock(block, event, settings) {
+  if (!event || !event.schedule || event.schedule.length === 0) return '';
+  const esc = escapeHtml;
+  return `
+    <div class="section schedule-section" style="margin-top: 50px; page-break-inside: avoid;">
+      <h2 class="section-title">לוח זמנים</h2>
+      <table class="schedule-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <tbody>
+          ${[...event.schedule].sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(item => `
+            <tr>
+              <td style="width: 80px; padding: 10px 0; font-weight: 700; color: #8B0000; font-size: ${settings.quoteBodyFontSize}px; border-bottom: 1px solid #eee;">${esc(item.time)}</td>
+              <td style="padding: 10px; font-size: ${settings.quoteBodyFontSize}px; color: ${settings.quoteTextColor}; border-bottom: 1px solid #eee;">
+                <strong style="display: block; margin-bottom: 4px;">${esc(item.activity)}</strong>
+                ${item.notes ? `<div style="font-size: calc(${settings.quoteBodyFontSize}px * 0.9); color: #666; font-style: italic; line-height: 1.4;">${esc(item.notes)}</div>` : ''}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function renderTemplateBlock(block, templates, type, sectionTitle, settings) {
   const opts = block.options || {};
 
@@ -459,6 +481,7 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
       case 'intro_template': body += renderIntroBlock(block, event, templates, settings); break;
       case 'services': body += renderServicesBlock(block, event, allServices, eventServices, settings); break;
       case 'financial_summary': body += renderFinancialSummaryBlock(block, event, eventServices, payments, settings); break;
+      case 'schedule': body += renderScheduleBlock(block, event, settings); break;
       case 'payment_terms': body += renderTemplateBlock(block, templates, 'payment_terms', 'תנאי תשלום', settings); break;
       case 'agreement_disclaimer': body += renderTemplateBlock(block, templates, 'agreement_disclaimer', '', settings); break;
       case 'spacer': body += renderSpacerBlock(block); break;

@@ -117,9 +117,14 @@ export default function ManualQuoteEditor() {
     if (blocks.length > 0 && !confirm('פעולה זו תחליף את כל הקטעים הקיימים במבנה של הצעת מחיר רגילה. להמשיך?')) {
       return;
     }
-    setBlocks(buildBlocksFromEvent());
+    
+    const includeIntro = params.get('includeIntro') !== 'false';
+    const includePaymentTerms = params.get('includePaymentTerms') !== 'false';
+    const includeSchedule = params.get('includeSchedule') !== 'false';
+    
+    setBlocks(buildBlocksFromEvent({ includeIntro, includePaymentTerms, includeSchedule }));
     toast.success('נטענה הצעת מחיר רגילה כנקודת התחלה — ניתן לערוך, להסיר או להוסיף קטעי טקסט בין המקטעים');
-  }, [linkedEventId, blocks.length]);
+  }, [linkedEventId, blocks.length, params]);
 
   const handleSave = useCallback(async (silent = false) => {
     setIsSaving(true);

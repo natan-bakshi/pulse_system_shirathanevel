@@ -51,7 +51,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       setPdfBlob(null);
       setPdfFileName('');
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, loadEventData]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, loadEventData]);
 
   // שלב 2: שיתוף הקובץ המוכן - חייב להיות מידי, ללא await לפני navigator.share
   const handleDoShare = useCallback(async (e) => {

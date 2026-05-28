@@ -13,14 +13,15 @@ import { BLOCK_TYPES, createBlock } from './blockTypes';
  * 5. תנאי תשלום
  * 6. תנאי התקשרות
  */
-export function buildBlocksFromEvent() {
-  return [
+export function buildBlocksFromEvent(options = {}) {
+  const blocks = [
     createBlock(BLOCK_TYPES.EVENT_DETAILS),
-    createBlock(BLOCK_TYPES.INTRO_TEMPLATE),
-    createBlock(BLOCK_TYPES.SERVICES),
-    createBlock(BLOCK_TYPES.FINANCIAL_SUMMARY),
-    createBlock(BLOCK_TYPES.SCHEDULE),
-    createBlock(BLOCK_TYPES.PAYMENT_TERMS),
-    createBlock(BLOCK_TYPES.AGREEMENT_DISCLAIMER),
   ];
+  if (options.includeIntro !== false) blocks.push(createBlock(BLOCK_TYPES.INTRO_TEMPLATE));
+  blocks.push(createBlock(BLOCK_TYPES.SERVICES));
+  blocks.push(createBlock(BLOCK_TYPES.FINANCIAL_SUMMARY));
+  if (options.includeSchedule !== false) blocks.push(createBlock(BLOCK_TYPES.SCHEDULE));
+  if (options.includePaymentTerms !== false) blocks.push(createBlock(BLOCK_TYPES.PAYMENT_TERMS));
+  blocks.push(createBlock(BLOCK_TYPES.AGREEMENT_DISCLAIMER));
+  return blocks;
 }
