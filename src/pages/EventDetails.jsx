@@ -1478,7 +1478,7 @@ export default function EventDetails() {
     } finally {
       setIsGeneratingQuote(false);
     }
-  }, [eventId, quoteIncludeIntro, quoteIncludePaymentTerms]);
+  }, [eventId, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule]);
 
   const handleGeneratePdf = useCallback(async () => {
     setIsGeneratingPdf(true);
@@ -1517,7 +1517,7 @@ export default function EventDetails() {
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, loadEventData]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, loadEventData]);
 
   // Two-step share flow: prepare PDF first, then share on a separate click.
   // This satisfies browser "user activation" requirements on iOS & Android.
