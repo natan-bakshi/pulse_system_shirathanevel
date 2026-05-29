@@ -13,15 +13,15 @@ export default function OneSignalInitializer({ user }) {
   // Update browser badge when unread count changes
   const updateBadge = useCallback((count) => {
     try {
-      if ('setAppBadge' in navigator) {
+      if ('setAppBadge' in navigator && navigator.setAppBadge) {
         if (count > 0) {
-          navigator.setAppBadge(count);
-        } else {
-          navigator.clearAppBadge();
+          navigator.setAppBadge(count).catch(() => {});
+        } else if (navigator.clearAppBadge) {
+          navigator.clearAppBadge().catch(() => {});
         }
       }
     } catch (e) {
-      // Badge API not supported - silent fail
+      // Badge API not supported or insecure context - silent fail
     }
   }, []);
 
