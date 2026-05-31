@@ -380,7 +380,7 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                     `;
                 });
 
-                servicesHtml += `</div>`; // Close content
+                servicesHtml += `</div>`;
 
                 // Footer with price
                 if (!event.all_inclusive) {

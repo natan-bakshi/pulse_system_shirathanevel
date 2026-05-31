@@ -410,7 +410,7 @@ Deno.serve(async (req) => {
                     `;
                 });
 
-                servicesHtml += `</div>`; // Close content
+                servicesHtml += `</div>`;
 
                 // Footer with price
                 if (!event.all_inclusive) {
