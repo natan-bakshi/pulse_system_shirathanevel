@@ -92,7 +92,7 @@ export default function UserSettings() {
 
 
       {/* WhatsApp Agent - Admins Only */}
-      {user?.role === 'admin' && (
+      {(user?.role === 'admin' || user?.user_type === 'admin') && (
         <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
