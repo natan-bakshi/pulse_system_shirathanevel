@@ -1,0 +1,72 @@
+{
+  "name": "SignedAgreement",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05e9\u05d7\u05ea\u05dd"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05e9\u05d7\u05ea\u05dd"
+    },
+    "user_full_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05de\u05dc\u05d0 \u05e9\u05dc \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05e9\u05d7\u05ea\u05dd"
+    },
+    "signed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d5\u05e9\u05e2\u05ea \u05d4\u05d7\u05ea\u05d9\u05de\u05d4"
+    },
+    "agreement_content_uri": {
+      "type": "string",
+      "description": "URI \u05dc\u05e7\u05d5\u05d1\u05e5 \u05d4\u05d4\u05e1\u05db\u05dd \u05d4\u05d7\u05ea\u05d5\u05dd (private file)"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "\u05db\u05ea\u05d5\u05d1\u05ea IP \u05e9\u05dc \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05d1\u05e2\u05ea \u05d4\u05d7\u05ea\u05d9\u05de\u05d4"
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "User Agent \u05e9\u05dc \u05d4\u05d3\u05e4\u05d3\u05e4\u05df \u05d1\u05e2\u05ea \u05d4\u05d7\u05ea\u05d9\u05de\u05d4"
+    },
+    "content_hash": {
+      "type": "string",
+      "description": "Hash SHA256 \u05e9\u05dc \u05ea\u05d5\u05db\u05df \u05d4\u05d4\u05e1\u05db\u05dd"
+    },
+    "agreement_version": {
+      "type": "string",
+      "default": "1.0",
+      "description": "\u05d2\u05e8\u05e1\u05ea \u05d4\u05d4\u05e1\u05db\u05dd"
+    }
+  },
+  "required": [
+    "user_id",
+    "user_email",
+    "signed_date",
+    "agreement_content_uri"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_id": "{{user.id}}"
+        },
+        {
+          "user_email": "{{user.email}}"
+        }
+      ]
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
