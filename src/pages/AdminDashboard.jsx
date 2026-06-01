@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, ArrowRight, Search, Filter, Edit } from "lucide-react";
+import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, ArrowRight, Search, Filter, Edit, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link, useNavigate } from "react-router-dom";
@@ -388,6 +388,13 @@ export default function AdminDashboard() {
               <Plus className="h-4 w-4 ml-2" />
               אירוע חדש
             </Button>
+            <a href={base44.agents.getWhatsAppConnectURL('admin_event_manager')} target="_blank" rel="noopener noreferrer">
+              <Button
+                variant="ghost" className="text-green-700 px-3 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-accent-foreground h-9 hover:bg-white/20">
+                <MessageCircle className="h-4 w-4 ml-2" />
+                סוכן WhatsApp
+              </Button>
+            </a>
           </div>
         </div>
 
@@ -445,6 +452,21 @@ export default function AdminDashboard() {
               </div>
               <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">אזור<br/>אישי</span>
             </button>
+
+            {/* WhatsApp Agent */}
+            <a 
+              href={base44.agents.getWhatsAppConnectURL('admin_event_manager')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center gap-1 group flex-1 max-w-[72px]"
+            >
+              <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-green-500 to-green-600 p-[2px] shadow-md group-hover:scale-105 transition-transform mx-auto">
+                <div className="h-full w-full rounded-full border-2 border-transparent flex items-center justify-center bg-green-500">
+                  <MessageCircle className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">סוכן<br/>WhatsApp</span>
+            </a>
 
             {/* Dashboard Settings */}
             <button 
