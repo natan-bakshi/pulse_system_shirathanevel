@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Settings, Loader2, Navigation } from "lucide-react";
+import { Settings, Loader2, Navigation, MessageCircle } from "lucide-react";
 
 import UserNotificationPreferences from "@/components/notifications/UserNotificationPreferences";
 import UserCalendarSync from "@/components/calendar/UserCalendarSync";
@@ -90,6 +90,27 @@ export default function UserSettings() {
       </Card>
 
 
+
+      {/* WhatsApp Agent - Admins Only */}
+      {user?.role === 'admin' && (
+        <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+              סוכן ניהול אירועים - WhatsApp
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500 mb-3">לחץ על הקישור כדי לפתוח שיחה עם הסוכן החכם של Pulse בוואטסאפ. לאחר הלחיצה הראשונה, השיחה תישמר בצ'אטים שלך.</p>
+            <a href={base44.agents.getWhatsAppConnectURL('admin_event_manager')} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="border-green-200 text-green-700 hover:bg-green-50">
+                <MessageCircle className="h-4 w-4 ml-2" />
+                פתח שיחה עם הסוכן בוואטסאפ
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Calendar Sync */}
       <UserCalendarSync user={user} />
