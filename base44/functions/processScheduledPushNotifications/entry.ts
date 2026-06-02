@@ -39,6 +39,19 @@ Deno.serve(async (req) => {
         
         for (const pending of dueNotifications) {
             try {
+                // --- CONDITION RE-CHECK (lazy evaluation) ---
+                // לפני שליחה בפועל: אם להתראה יש תנאי עסקי, בדוק שהוא עדיין מתקיים.
+                // אם התנאי כבר לא רלוונטי (הספק הגיב / השיבוץ הושלם / החוב שולם) -
+                // סמן כנשלח (ביטול שקט) ואל תשלח.
+                if (pending.condition_type && pending.condition_type !== 'none') {
+                    const stillRelevant = await isConditionStillMet(base44, pending);
+                    if (!stillRelevant) {
+                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
+                        console.log(`[ScheduledPush] Condition '${pending.condition_type}' no longer met for ${pending.id} - skipping (silent)`);
+                        continue;
+                    }
+                }
+
                 // Check if user is still not in quiet hours
                 let targetUser = null;
                 try {
@@ -301,4 +314,90 @@ function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
     endTime.setHours(20, 0, 0, 0);
     
     return endTime;
+}
+
+// ============================================================
+// בדיקת תנאי עסקי לפני שליחה (Lazy Evaluation)
+// מחזיר true אם ההתראה עדיין רלוונטית וצריך לשלוח, אחרת false.
+// ============================================================
+async function isConditionStillMet(base44, pending) {
+    try {
+        switch (pending.condition_type) {
+            case 'supplier_still_pending': {
+                // פאזה 4: שלח רק אם הספק עדיין במצב 'pending' באותו שירות.
+                if (!pending.related_event_service_id || !pending.related_supplier_id) return false;
+                const es = await base44.asServiceRole.entities.EventService.get(pending.related_event_service_id);
+                if (!es) return false;
+                let statuses = {};
+                try { statuses = JSON.parse(es.supplier_statuses || '{}'); } catch { statuses = {}; }
+                return statuses[pending.related_supplier_id] === 'pending';
+            }
+            case 'event_still_missing_assignments': {
+                // פאזה 5: שלח רק אם עדיין חסרים שיבוצים (אירוע confirmed שעדיין חסר בו מינימום ספקים מאושרים).
+                if (!pending.related_event_id) return false;
+                const event = await base44.asServiceRole.entities.Event.get(pending.related_event_id);
+                if (!event || event.status === 'cancelled') return false;
+                const [eventServices, allServices] = await Promise.all([
+                    base44.asServiceRole.entities.EventService.filter({ event_id: pending.related_event_id }),
+                    base44.asServiceRole.entities.Service.list()
+                ]);
+                const servicesMap = new Map(allServices.map(s => [s.id, s]));
+                for (const es of eventServices) {
+                    const serviceDef = servicesMap.get(es.service_id);
+                    const minRequired = (es.min_suppliers ?? serviceDef?.default_min_suppliers) ?? 0;
+                    if (minRequired === 0) continue;
+                    let approvedCount = 0;
+                    if (es.supplier_ids && es.supplier_statuses) {
+                        try {
+                            const ids = JSON.parse(es.supplier_ids);
+                            const sts = JSON.parse(es.supplier_statuses);
+                            approvedCount = ids.filter(id => sts[id] === 'approved' || sts[id] === 'confirmed').length;
+                        } catch {}
+                    }
+                    if (approvedCount < minRequired) return true; // עדיין חסר שיבוץ
+                }
+                return false; // הכל מאויש
+            }
+            case 'event_still_has_balance': {
+                // פאזה 6: שלח רק אם עדיין יש יתרת תשלום לאירוע.
+                if (!pending.related_event_id) return false;
+                const event = await base44.asServiceRole.entities.Event.get(pending.related_event_id);
+                if (!event || event.status === 'cancelled') return false;
+                const [eventServices, allPayments, appSettings] = await Promise.all([
+                    base44.asServiceRole.entities.EventService.filter({ event_id: pending.related_event_id }),
+                    base44.asServiceRole.entities.Payment.filter({ event_id: pending.related_event_id }),
+                    base44.asServiceRole.entities.AppSettings.list()
+                ]);
+                const vatSetting = appSettings.find(s => s.setting_key === 'vat_rate');
+                const vatRate = vatSetting ? parseFloat(vatSetting.setting_value) / 100 : 0.17;
+                let totalCost = 0;
+                if (event.all_inclusive && event.all_inclusive_price) {
+                    totalCost = event.all_inclusive_price;
+                    if (!event.all_inclusive_includes_vat) totalCost *= (1 + vatRate);
+                } else if (event.total_override) {
+                    totalCost = event.total_override;
+                    if (!event.total_override_includes_vat) totalCost *= (1 + vatRate);
+                } else {
+                    for (const es of eventServices) {
+                        const price = es.custom_price || es.total_price || 0;
+                        const quantity = es.quantity || 1;
+                        let serviceCost = price * quantity;
+                        if (!es.includes_vat) serviceCost *= (1 + vatRate);
+                        totalCost += serviceCost;
+                    }
+                }
+                if (event.discount_amount) totalCost = Math.max(0, totalCost - event.discount_amount);
+                const totalPaid = allPayments
+                    .filter(p => p.payment_status === 'completed')
+                    .reduce((sum, p) => sum + (p.amount || 0), 0);
+                return (totalCost - totalPaid) > 0;
+            }
+            default:
+                return true;
+        }
+    } catch (e) {
+        console.warn(`[ScheduledPush] Condition check error for ${pending.id}:`, e.message);
+        // במקרה ספק - לא שולחים, כדי לא להציף הודעות שגויות
+        return false;
+    }
 }

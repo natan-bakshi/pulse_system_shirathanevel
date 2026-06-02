@@ -131,6 +131,82 @@ Deno.serve(async (req) => {
             }
         }
         
+        // ============================================================
+        // פאזה 4: תזכורת חוזרת לספק שעדיין לא הגיב (SUPPLIER_PENDING_REMINDER)
+        // כשספק עובר ל-'pending', יוצרים PendingPushNotification מתוזמן ל-X זמן
+        // אחרי השיבוץ (לפי timing בתבנית), עם condition_type='supplier_still_pending'.
+        // הבדיקה הסופית (האם הספק עדיין pending) נעשית שוב בזמן השליחה.
+        // ============================================================
+        const pendingReminderTemplate = templates.find(t => t.type === 'SUPPLIER_PENDING_REMINDER');
+        if (pendingReminderTemplate && shouldNotifySuppliers) {
+            for (const supplierId of currentSupplierIds) {
+                // רק ספקים שעברו עכשיו ל-'pending' (חדש או שינוי סטטוס ל-pending)
+                const becamePending = currentStatuses[supplierId] === 'pending' &&
+                    (oldStatuses[supplierId] !== 'pending');
+                if (!becamePending) continue;
+
+                const supplier = suppliersMap.get(supplierId);
+                if (!supplier) continue;
+
+                const supplierUser = allUsers.find(u =>
+                    supplier.contact_emails?.includes(u.email) ||
+                    (u.phone && supplier.phone === u.phone)
+                );
+
+                // מועד מתוזמן: timing אחרי השיבוץ (ברירת מחדל 24 שעות)
+                const timingValue = pendingReminderTemplate.timing_value || 24;
+                const timingUnit = pendingReminderTemplate.timing_unit || 'hours';
+                const scheduledFor = new Date();
+                applyTimingOffset(scheduledFor, timingUnit, timingValue);
+
+                const allowedChannels = pendingReminderTemplate.allowed_channels || ['push'];
+
+                const contextData = {
+                    event_name: eventData.event_name || '',
+                    family_name: eventData.family_name || '',
+                    event_date: formatDate(eventData.event_date),
+                    event_time: getEffectiveEventTimeForSupplier(eventData, data),
+                    event_location: eventData.location || '',
+                    supplier_name: supplier.contact_person || supplier.supplier_name || '',
+                    service_name: service?.service_name || '',
+                    event_id: eventData.id
+                };
+
+                const title = replacePlaceholders(pendingReminderTemplate.title_template, contextData);
+                const message = replacePlaceholders(pendingReminderTemplate.body_template, contextData);
+                const waMessage = replacePlaceholders(pendingReminderTemplate.whatsapp_body_template || pendingReminderTemplate.body_template, contextData);
+                const link = buildDeepLink(pendingReminderTemplate.deep_link_base, pendingReminderTemplate.deep_link_params_map, contextData);
+
+                // user_id: משתמש אמיתי אם קיים, אחרת וירטואלי (ל-push לא יישלח, אבל וואטסאפ כן)
+                const targetUserId = supplierUser?.id || `virtual_supplier_${supplierId}`;
+                const targetEmail = supplierUser?.email || supplier.contact_emails?.[0] || '';
+
+                const waData = (allowedChannels.includes('whatsapp') && supplier.phone && supplier.whatsapp_enabled !== false)
+                    ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone: supplier.phone })
+                    : JSON.stringify({});
+
+                try {
+                    await base44.asServiceRole.entities.PendingPushNotification.create({
+                        user_id: targetUserId,
+                        user_email: targetEmail,
+                        title, message, link: link || '',
+                        scheduled_for: scheduledFor.toISOString(),
+                        template_type: 'SUPPLIER_PENDING_REMINDER',
+                        is_sent: false,
+                        condition_type: 'supplier_still_pending',
+                        related_event_id: eventData.id,
+                        related_event_service_id: data.id,
+                        related_supplier_id: supplierId,
+                        data: waData
+                    });
+                    notificationsSent++;
+                    console.log(`[AssignmentChange] Scheduled pending reminder for supplier ${supplier.supplier_name} at ${scheduledFor.toISOString()}`);
+                } catch (e) {
+                    console.warn('[AssignmentChange] Failed to schedule pending reminder:', e.message);
+                }
+            }
+        }
+
         // Check for rejections - notify admins ONLY if rejection was made by supplier (not admin)
         const rejectionTemplate = templates.find(t => t.type === 'ADMIN_ASSIGNMENT_REJECTED');
         if (rejectionTemplate) {
@@ -266,6 +342,16 @@ Deno.serve(async (req) => {
 });
 
 // Helper functions
+function applyTimingOffset(date, unit, value) {
+    switch (unit) {
+        case 'minutes': date.setMinutes(date.getMinutes() + value); break;
+        case 'hours': date.setHours(date.getHours() + value); break;
+        case 'days': date.setDate(date.getDate() + value); break;
+        case 'weeks': date.setDate(date.getDate() + (value * 7)); break;
+        case 'months': date.setMonth(date.getMonth() + value); break;
+    }
+}
+
 function replacePlaceholders(template, data) {
     if (!template) return '';
     return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
