@@ -77,6 +77,14 @@ Deno.serve(async (req) => {
             if (!supplier.phone && userData.phone) {
                 supplierUpdates.phone = userData.phone;
             }
+            // השלמת מייל המשתמש לרשימת contact_emails של הספק אם אינו קיים שם.
+            // (ההתאמה נמצאה לפי מייל, אך אם המשתמש נכנס עם מייל שונה שתואם בדרך אחרת -
+            //  כאן אנו מבטיחים שמייל המשתמש קיים ברשימת המיילים של הספק.)
+            const supplierEmails = Array.isArray(supplier.contact_emails) ? supplier.contact_emails : [];
+            const hasUserEmail = supplierEmails.some(e => e && e.toLowerCase().trim() === userEmail);
+            if (!hasUserEmail && userData.email) {
+                supplierUpdates.contact_emails = [...supplierEmails, userData.email];
+            }
             // Note: We don't overwrite contact_person easily as it might be different from user name
             
             if (Object.keys(supplierUpdates).length > 0) {
