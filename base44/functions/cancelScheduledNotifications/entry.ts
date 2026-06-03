@@ -31,11 +31,34 @@ Deno.serve(async (req) => {
             const eventType = event.type; // create / update / delete
 
             if (entityName === 'Event') {
-                // מחיקת אירוע, או מעבר לסטטוס cancelled => מחק כל התזמונים של האירוע
-                const becameCancelled = eventType === 'update' &&
-                    data?.status === 'cancelled' && old_data?.status !== 'cancelled';
-                if (eventType === 'delete' || becameCancelled) {
+                // מחיקת אירוע => מחק כל התזמונים של האירוע
+                if (eventType === 'delete') {
                     deletionFilters.push({ related_event_id: entityId });
+                } else if (eventType === 'update') {
+                    const newStatus = data?.status;
+                    const oldStatus = old_data?.status;
+                    const statusChanged = newStatus !== oldStatus;
+
+                    // מעבר ל-cancelled/completed/in_progress => האירוע כבר לא רלוונטי
+                    // לתזכורות מחזור-חיים פעילות (אירוע, שיבוצים חסרים) => מחק את כל
+                    // התזמונים של האירוע (תשלום מתוזמן אחרי האירוע, אבל אם בוטל - גם הוא לא רלוונטי).
+                    if (statusChanged && ['cancelled', 'completed', 'in_progress'].includes(newStatus)) {
+                        deletionFilters.push({ related_event_id: entityId });
+                    }
+
+                    // מעבר חזרה ל-'quote' (מ-confirmed וכו') => מחק תזכורות מחזור-חיים
+                    // שתוזמנו בעת האישור (תזכורת אירוע, שיבוצים חסרים, תשלום).
+                    // התזמון של הצעת המחיר עצמה (ADMIN_QUOTE_FOLLOWUP) ייווצר מחדש ע"י scheduleQuoteFollowup.
+                    if (statusChanged && newStatus === 'quote') {
+                        deletionFilters.push({ related_event_id: entityId, template_type: 'EVENT_REMINDER_FANOUT' });
+                        deletionFilters.push({ related_event_id: entityId, template_type: 'ADMIN_MISSING_ASSIGNMENT' });
+                        deletionFilters.push({ related_event_id: entityId, template_type: 'CLIENT_PAYMENT_REMINDER' });
+                    }
+
+                    // יציאה מסטטוס 'quote' (אושר/בוטל) => מחק את תזכורת מעקב ההצעה.
+                    if (statusChanged && oldStatus === 'quote' && newStatus !== 'quote') {
+                        deletionFilters.push({ related_event_id: entityId, template_type: 'ADMIN_QUOTE_FOLLOWUP' });
+                    }
                 }
             } else if (entityName === 'Supplier') {
                 // מחיקת ספק => מחק כל התזמונים הקשורים לספק

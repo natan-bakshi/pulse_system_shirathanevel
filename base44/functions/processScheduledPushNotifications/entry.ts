@@ -39,6 +39,25 @@ Deno.serve(async (req) => {
         
         for (const pending of dueNotifications) {
             try {
+                // --- EVENT REMINDER FAN-OUT ---
+                // תזכורת אירוע אחת לאירוע, שמתפצלת בעת השליחה לכל הספקים
+                // המאושרים + המנהלים. מטופלת בנפרד מלוגיקת המשתמש-הבודד.
+                if (pending.condition_type === 'event_reminder_fanout') {
+                    // בדיקת שבת: אם שבת - דחה ליציאת השבת
+                    if (isShabbat()) {
+                        const shabbatEnd = getShabbatEndTime();
+                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
+                            scheduled_for: shabbatEnd.toISOString()
+                        });
+                        continue;
+                    }
+                    const fanoutResult = await processEventReminderFanout(base44, pending, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY);
+                    await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
+                    successCount += fanoutResult.sent;
+                    console.log(`[ScheduledPush] Fan-out for event ${pending.related_event_id}: sent ${fanoutResult.sent}`);
+                    continue;
+                }
+
                 // --- CONDITION RE-CHECK (lazy evaluation) ---
                 // לפני שליחה בפועל: אם להתראה יש תנאי עסקי, בדוק שהוא עדיין מתקיים.
                 // אם התנאי כבר לא רלוונטי (הספק הגיב / השיבוץ הושלם / החוב שולם) -
@@ -392,6 +411,21 @@ async function isConditionStillMet(base44, pending) {
                     .reduce((sum, p) => sum + (p.amount || 0), 0);
                 return (totalCost - totalPaid) > 0;
             }
+            case 'event_still_open_quote': {
+                // הצעות מחיר: שלח רק אם האירוע עדיין בסטטוס 'quote'.
+                if (!pending.related_event_id) return false;
+                const event = await base44.asServiceRole.entities.Event.get(pending.related_event_id);
+                if (!event) return false;
+                return event.status === 'quote';
+            }
+            case 'task_still_pending': {
+                // משימות: שלח רק אם המשימה עדיין קיימת ולא הושלמה.
+                if (!pending.related_task_id) return false;
+                let task = null;
+                try { task = await base44.asServiceRole.entities.Task.get(pending.related_task_id); } catch { return false; }
+                if (!task) return false;
+                return !task.is_completed;
+            }
             default:
                 return true;
         }
@@ -400,4 +434,218 @@ async function isConditionStillMet(base44, pending) {
         // במקרה ספק - לא שולחים, כדי לא להציף הודעות שגויות
         return false;
     }
+}
+
+// ============================================================
+// Event Reminder Fan-out
+// תזכורת אירוע אחת מתפצלת לכל הספקים המאושרים + מנהלים בעת השליחה.
+// מחשב את קבוצת הנמענים הדינמית כרגע (מקור אמת חי), בונה את התוכן
+// מתוך תבניות SUPPLIER_EVENT_REMINDER / ADMIN_EVENT_REMINDER, ושולח
+// push (למשתמשים רשומים) + whatsapp (ישירות לטלפון).
+// ============================================================
+async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSignalApiKey) {
+    const result = { sent: 0 };
+    const eventId = pending.related_event_id;
+    if (!eventId) return result;
+
+    const event = await base44.asServiceRole.entities.Event.get(eventId);
+    if (!event || event.status === 'cancelled') return result;
+    // לא שולחים אם האירוע כבר עבר
+    if (new Date(event.event_date) < new Date()) return result;
+    // שולחים רק לאירוע סגור (confirmed)
+    if (event.status !== 'confirmed') return result;
+
+    const [eventServices, allSuppliers, allUsers, templates] = await Promise.all([
+        base44.asServiceRole.entities.EventService.filter({ event_id: eventId }),
+        base44.asServiceRole.entities.Supplier.list(),
+        base44.asServiceRole.entities.User.list(),
+        base44.asServiceRole.entities.NotificationTemplate.filter({ is_active: true })
+    ]);
+
+    const suppliersMap = new Map(allSuppliers.map(s => [s.id, s]));
+    const adminUsers = allUsers.filter(u => u.role === 'admin');
+
+    const supplierTemplate = templates.find(t => t.type === 'SUPPLIER_EVENT_REMINDER');
+    const adminTemplate = templates.find(t => t.type === 'ADMIN_EVENT_REMINDER');
+
+    // תורים לשליחה
+    const whatsappQueue = []; // { phone, message }
+    const pushQueue = []; // { subscriptionId, title, message, link, userId }
+
+    // ---- ספקים מאושרים ----
+    if (supplierTemplate) {
+        const allowedChannels = supplierTemplate.allowed_channels || ['push'];
+        const seenSuppliers = new Set();
+        for (const es of eventServices) {
+            if (!es.supplier_ids || !es.supplier_statuses) continue;
+            let ids = [], sts = {};
+            try { ids = JSON.parse(es.supplier_ids); sts = JSON.parse(es.supplier_statuses); } catch { continue; }
+            for (const supplierId of ids) {
+                const status = sts[supplierId];
+                if (status !== 'approved' && status !== 'confirmed') continue;
+                const dedupeKey = `${supplierId}_${es.id}`;
+                if (seenSuppliers.has(dedupeKey)) continue;
+                seenSuppliers.add(dedupeKey);
+
+                const supplier = suppliersMap.get(supplierId);
+                if (!supplier) continue;
+
+                const ctx = buildEventCtx(event, supplier, null, es);
+                const title = replacePH(supplierTemplate.title_template, ctx);
+                const message = replacePH(supplierTemplate.body_template, ctx);
+                const waMessage = replacePH(supplierTemplate.whatsapp_body_template || supplierTemplate.body_template, ctx);
+                const link = buildDL(supplierTemplate.deep_link_base, supplierTemplate.deep_link_params_map, ctx);
+
+                if (allowedChannels.includes('whatsapp') && supplier.phone && supplier.whatsapp_enabled !== false) {
+                    whatsappQueue.push({ phone: supplier.phone, message: waMessage });
+                }
+                if (allowedChannels.includes('push')) {
+                    const supplierUser = allUsers.find(u => supplier.contact_emails?.includes(u.email));
+                    if (supplierUser?.push_enabled && supplierUser?.onesignal_subscription_id) {
+                        pushQueue.push({ subscriptionId: supplierUser.onesignal_subscription_id, title, message, link, userId: supplierUser.id });
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- מנהלים ----
+    if (adminTemplate) {
+        const allowedChannels = adminTemplate.allowed_channels || ['push'];
+        const ids = adminTemplate.admin_recipient_ids;
+        const targetedAdmins = (Array.isArray(ids) && ids.length > 0)
+            ? adminUsers.filter(a => ids.includes(a.id))
+            : adminUsers;
+        for (const admin of targetedAdmins) {
+            const ctx = buildEventCtx(event, null, admin, null);
+            const title = replacePH(adminTemplate.title_template, ctx);
+            const message = replacePH(adminTemplate.body_template, ctx);
+            const waMessage = replacePH(adminTemplate.whatsapp_body_template || adminTemplate.body_template, ctx);
+            const link = buildDL(adminTemplate.deep_link_base, adminTemplate.deep_link_params_map, ctx);
+
+            if (allowedChannels.includes('whatsapp') && admin.phone) {
+                whatsappQueue.push({ phone: admin.phone, message: waMessage });
+            }
+            if (allowedChannels.includes('push') && admin.push_enabled && admin.onesignal_subscription_id) {
+                pushQueue.push({ subscriptionId: admin.onesignal_subscription_id, title, message, link, userId: admin.id });
+            }
+        }
+    }
+
+    // ---- שליחת WhatsApp ----
+    const GREEN_API_INSTANCE_ID = Deno.env.get('GREEN_API_INSTANCE_ID');
+    const GREEN_API_TOKEN = Deno.env.get('GREEN_API_TOKEN');
+    if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+        for (const wa of whatsappQueue) {
+            try {
+                let cleanPhone = wa.phone.toString().replace(/[^0-9]/g, '');
+                if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+                else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+                const chatId = `${cleanPhone}@c.us`;
+                const resp = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId, message: wa.message })
+                });
+                if (resp.ok) result.sent++;
+            } catch (e) {
+                console.warn('[ScheduledPush] Fan-out WA error:', e.message);
+            }
+        }
+    }
+
+    // ---- שליחת Push ----
+    if (oneSignalAppId && oneSignalApiKey && pushQueue.length > 0) {
+        const FORCED_BASE_URL = 'https://pulse-system.base44.app';
+        // איגוד לפי הודעה זהה לשליחה יעילה
+        const groups = new Map();
+        for (const p of pushQueue) {
+            const key = `${p.title}|||${p.message}|||${p.link}`;
+            if (!groups.has(key)) groups.set(key, { ...p, subscriptionIds: [] });
+            groups.get(key).subscriptionIds.push(p.subscriptionId);
+        }
+        for (const [, group] of groups) {
+            try {
+                let pushLink = '';
+                if (group.link) pushLink = group.link.startsWith('http') ? group.link : `${FORCED_BASE_URL}${group.link.startsWith('/') ? group.link : '/' + group.link}`;
+                const resp = await fetch('https://onesignal.com/api/v1/notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${oneSignalApiKey}` },
+                    body: JSON.stringify({
+                        app_id: oneSignalAppId,
+                        include_subscription_ids: group.subscriptionIds,
+                        contents: { en: group.message, he: group.message },
+                        headings: { en: group.title, he: group.title },
+                        url: pushLink || undefined,
+                        data: { link: pushLink, delayed: true }
+                    })
+                });
+                const r = await resp.json();
+                if (r.id && r.recipients > 0) result.sent += r.recipients;
+            } catch (e) {
+                console.warn('[ScheduledPush] Fan-out push error:', e.message);
+            }
+        }
+    }
+
+    return result;
+}
+
+// בונה הקשר משתנים לתזכורת אירוע (זהה ל-buildEventContext ב-dailyScheduledNotifications)
+function buildEventCtx(event, supplier, userOrAdmin, eventService) {
+    let effectiveTime = event.event_time || '';
+    if (supplier && eventService) {
+        const at = eventService.supplier_arrival_time;
+        if (at && typeof at === 'string' && at.trim() !== '') effectiveTime = at.trim();
+    }
+    return {
+        event_name: event.event_name || '',
+        family_name: event.family_name || '',
+        event_date: fmtDate(event.event_date),
+        event_time: effectiveTime,
+        event_location: event.location || '',
+        supplier_name: supplier ? (supplier.contact_person || supplier.supplier_name) : '',
+        supplier_phone: supplier?.phone || '',
+        service_name: '',
+        event_id: event.id,
+        admin_name: userOrAdmin?.full_name || '',
+        user_name: userOrAdmin?.full_name || '',
+        client_name: userOrAdmin?.full_name || ''
+    };
+}
+
+function replacePH(template, data) {
+    if (!template) return '';
+    return template.replace(/\{\{?([\w_]+)\}?}/g, (match, key) => {
+        const value = data[key];
+        return value !== undefined && value !== null ? String(value) : match;
+    });
+}
+
+function buildDL(basePage, paramsMapJson, data) {
+    if (!basePage) return '/';
+    let url = `/${basePage}`;
+    if (paramsMapJson) {
+        try {
+            const paramsMap = JSON.parse(paramsMapJson);
+            const params = new URLSearchParams();
+            for (const [key, valueTemplate] of Object.entries(paramsMap)) {
+                const value = replacePH(valueTemplate, data);
+                if (value && !value.includes('{{')) params.append(key, value);
+            }
+            const paramString = params.toString();
+            if (paramString) url += `?${paramString}`;
+        } catch (e) {}
+    }
+    return url;
+}
+
+function fmtDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `\u200E${dd}/${mm}/${yyyy}`;
 }

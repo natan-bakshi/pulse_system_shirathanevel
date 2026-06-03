@@ -56,13 +56,36 @@ Deno.serve(async (req) => {
         }
         if (currentStatus === null) currentStatus = eventData.status;
 
-        // פועלים רק כשהאירוע 'confirmed' (סגור). אם הגיע מטריגר update -
-        // פועלים רק כשהסטטוס באמת השתנה ל-confirmed (כדי לא לכפול ביצירה).
+        // פועלים רק כשהאירוע 'confirmed' (סגור).
         if (currentStatus !== 'confirmed') {
             return Response.json({ skipped: true, reason: 'Event not confirmed' });
         }
-        if (previousStatus !== null && previousStatus === 'confirmed') {
-            return Response.json({ skipped: true, reason: 'Status unchanged (already confirmed)' });
+
+        // זיהוי שינוי תאריך אירוע (כשהאירוע כבר היה confirmed):
+        // אם השתנה event_date - מבטלים את כל התזמונים הקיימים של מחזור-החיים
+        // ויוצרים אותם מחדש לפי התאריך החדש ("מחק וצור מחדש").
+        const dateChanged = previousStatus !== null && oldData &&
+            oldData.event_date && data?.event_date &&
+            oldData.event_date !== data.event_date;
+
+        // מניעת כפילות ביצירה: אם האירוע כבר היה confirmed והתאריך לא השתנה -
+        // לא יוצרים שוב (התזמונים כבר נוצרו בעת האישור הראשוני).
+        if (previousStatus !== null && previousStatus === 'confirmed' && !dateChanged) {
+            return Response.json({ skipped: true, reason: 'Status unchanged (already confirmed), no date change' });
+        }
+
+        // אם זה שינוי תאריך - מוחקים תחילה את כל התזמונים שטרם נשלחו של מחזור-החיים
+        // (תזכורת אירוע, שיבוצים חסרים, יתרת תשלום) כדי ליצור אותם מחדש לפי התאריך החדש.
+        if (dateChanged) {
+            const lifecycleTypes = ['EVENT_REMINDER_FANOUT', 'ADMIN_MISSING_ASSIGNMENT', 'CLIENT_PAYMENT_REMINDER'];
+            const toDelete = await base44.asServiceRole.entities.PendingPushNotification.filter({
+                related_event_id: eventId, is_sent: false
+            });
+            for (const rec of toDelete) {
+                if (lifecycleTypes.includes(rec.template_type)) {
+                    try { await base44.asServiceRole.entities.PendingPushNotification.delete(rec.id); } catch {}
+                }
+            }
         }
 
         // טוענים תבניות פעילות + ישויות נדרשות
@@ -78,7 +101,7 @@ Deno.serve(async (req) => {
 
         const servicesMap = new Map(allServices.map(s => [s.id, s]));
         const adminUsers = allUsers.filter(u => u.role === 'admin');
-        const results = { missing_assignment_scheduled: 0, payment_reminder_scheduled: 0 };
+        const results = { missing_assignment_scheduled: 0, payment_reminder_scheduled: 0, event_reminder_scheduled: 0 };
 
         // ============================================================
         // פאזה 5: שיבוצים חסרים -> תזכורת שבוע לפני האירוע
@@ -261,6 +284,42 @@ Deno.serve(async (req) => {
                     });
                     results.payment_reminder_scheduled++;
                 }
+            }
+        }
+
+        // ============================================================
+        // פאזה 7: תזכורת אירוע (fan-out) -> תזכורת לפני האירוע
+        // רשומה אחת בלבד לאירוע, עם condition_type='event_reminder_fanout'.
+        // בעת השליחה, processScheduledPushNotifications מאתר את כל הספקים
+        // המאושרים + המנהלים ושולח לכולם (push + whatsapp).
+        // נשלט ע"י תבניות SUPPLIER_EVENT_REMINDER ו/או ADMIN_EVENT_REMINDER.
+        // ============================================================
+        const supplierReminderTemplate = templates.find(t => t.type === 'SUPPLIER_EVENT_REMINDER');
+        const adminReminderTemplate = templates.find(t => t.type === 'ADMIN_EVENT_REMINDER');
+        if (supplierReminderTemplate || adminReminderTemplate) {
+            // תזמון לפי התבנית הזמינה (עדיפות לספק; ברירת מחדל יום אחד לפני)
+            const timingTemplate = supplierReminderTemplate || adminReminderTemplate;
+            const timingValue = timingTemplate.timing_value || 1;
+            const timingUnit = timingTemplate.timing_unit || 'days';
+            const scheduledFor = computeScheduledBeforeEvent(eventData.event_date, timingValue, timingUnit);
+
+            // מניעת כפילות: רשומת fan-out אחת לאירוע
+            const exists = existingPending.some(p => p.template_type === 'EVENT_REMINDER_FANOUT');
+            if (!exists) {
+                await base44.asServiceRole.entities.PendingPushNotification.create({
+                    user_id: `event_fanout_${eventData.id}`,
+                    user_email: '',
+                    title: 'תזכורת אירוע',
+                    message: 'תזכורת אירוע',
+                    link: '',
+                    scheduled_for: scheduledFor.toISOString(),
+                    template_type: 'EVENT_REMINDER_FANOUT',
+                    is_sent: false,
+                    condition_type: 'event_reminder_fanout',
+                    related_event_id: eventData.id,
+                    data: JSON.stringify({})
+                });
+                results.event_reminder_scheduled++;
             }
         }
 
