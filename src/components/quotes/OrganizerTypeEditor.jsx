@@ -23,8 +23,14 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
   });
 
   // Available variables for title template
+  // Available variables for title template and blocks
+  // When custom fields are defined, use ONLY those (they replace the built-in fields)
+  // When no custom fields exist, fall back to built-in defaults
   const availableVars = useMemo(() => {
-    const builtIn = [
+    if (fields.length > 0) {
+      return fields.map(f => ({ key: f.id, label: f.name }));
+    }
+    return [
       { key: 'event_name', label: 'שם אירוע' },
       { key: 'event_type', label: 'סוג אירוע' },
       { key: 'event_date', label: 'תאריך אירוע' },
@@ -35,9 +41,6 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
       { key: 'location', label: 'מיקום' },
       { key: 'concept', label: 'קונספט' },
     ];
-    // Add custom fields
-    const custom = fields.map(f => ({ key: f.id, label: f.name }));
-    return [...builtIn, ...custom];
   }, [fields]);
 
   const handleSave = useCallback(() => {
