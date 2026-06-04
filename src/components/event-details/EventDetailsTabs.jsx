@@ -26,7 +26,7 @@ export default function EventDetailsTabs(props) {
     // Overview
     eventDetailsData, setEventDetailsData,
     handleSaveEventDetails, isSavingEventDetails,
-    handleStatusChange, handleDeleteEvent,
+    handleStatusChange, handleDeleteEvent, handleOrganizerTypeChange,
     // Family
     editableParents, setEditableParents,
     editableFamilyName, setEditableFamilyName,
@@ -106,6 +106,7 @@ export default function EventDetailsTabs(props) {
           isSavingEventDetails={isSavingEventDetails}
           handleStatusChange={handleStatusChange}
           handleDeleteEvent={handleDeleteEvent}
+          handleOrganizerTypeChange={handleOrganizerTypeChange}
         />
 
         <FamilyContactCard

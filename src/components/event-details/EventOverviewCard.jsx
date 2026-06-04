@@ -33,7 +33,8 @@ export default function EventOverviewCard({
   handleSaveEventDetails,
   isSavingEventDetails,
   handleStatusChange,
-  handleDeleteEvent
+  handleDeleteEvent,
+  handleOrganizerTypeChange
 }) {
   return (
     <>
@@ -158,7 +159,16 @@ export default function EventOverviewCard({
               <div className="flex items-center gap-2 min-w-0"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location}</span></div>
               <div className="flex items-center gap-2 min-w-0"><Home className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.city || 'לא צוין'}</span></div>
               <div className="flex items-center gap-2 min-w-0"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים</span></div>
-              {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">סוג הזמנה: {event.organizer_type}</span></div>}
+              {isAdmin && handleOrganizerTypeChange && (
+                <div className="flex items-center gap-2 min-w-0">
+                  <OrganizerTypeSelector
+                    value={event.organizer_type || ''}
+                    onChange={handleOrganizerTypeChange}
+                    className="text-xs"
+                  />
+                </div>
+              )}
+              {!isAdmin && event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">סוג הזמנה: {event.organizer_type}</span></div>}
               {event.concept && <div className="col-span-full break-words"><strong>קונספט:</strong> {event.concept}</div>}
               {event.notes && <div className="col-span-full break-words"><strong>הערות:</strong> {event.notes}</div>}
               {isAdmin && (
