@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Save, Loader2, Plus, Trash2, GripVertical, Info, Star } from "lucide-react";
 import OrganizerFieldsEditor from "./OrganizerFieldsEditor";
 import OrganizerBlocksEditor from "./OrganizerBlocksEditor";
+import RichTextEditor from "../manualQuote/RichTextEditor";
 
 export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }) {
   const [typeName, setTypeName] = useState(type.type_name || "");
@@ -107,12 +108,11 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
 
             <div>
               <Label>תבנית כותרת ראשית</Label>
-              <Textarea
+              <RichTextEditor
                 value={titleTemplate}
-                onChange={(e) => setTitleTemplate(e.target.value)}
+                onChange={setTitleTemplate}
                 placeholder='לדוגמה: הצעת מחיר עבור ((חברת [company_name] לידי)) [contact_person]'
-                rows={3}
-                className="font-mono text-sm"
+                minHeight={100}
               />
             </div>
 
