@@ -16,6 +16,7 @@ const FIELD_TYPES = [
   { value: 'textarea', label: 'תיאור (שורות)' },
   { value: 'select', label: 'בחירה מרשימה' },
   { value: 'date', label: 'תאריך' },
+  { value: 'time', label: 'שעה' },
   { value: 'url', label: 'קישור' },
 ];
 
