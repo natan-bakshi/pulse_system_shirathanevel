@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Edit, Calendar, MapPin, Users, Clock, Home, Save, Loader2, Trash2 } from 'lucide-react';
+import { Edit, Calendar, MapPin, Users, Clock, Home, Save, Loader2, Trash2, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getCurrencySymbol } from '@/components/utils/currencyUtils';
+import OrganizerTypeSelector from '@/components/quotes/OrganizerTypeSelector';
 
 function getStatusText(status) {
   const statusTexts = { quote: "הצעת מחיר", confirmed: "אירוע סגור", in_progress: "אירוע תפור", completed: "אירוע עבר", cancelled: "אירוע בוטל" };
@@ -130,6 +131,13 @@ export default function EventOverviewCard({
                   <Input value={eventDetailsData.concept || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, concept: e.target.value })} />
                 </div>
                 <div className="col-span-full">
+                  <Label>סוג הזמנה</Label>
+                  <OrganizerTypeSelector
+                    value={eventDetailsData.organizer_type || ''}
+                    onChange={(v) => setEventDetailsData({ ...eventDetailsData, organizer_type: v })}
+                  />
+                </div>
+                <div className="col-span-full">
                   <Label>הערות</Label>
                   <Textarea value={eventDetailsData.notes || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, notes: e.target.value })} rows={3} />
                 </div>
@@ -150,6 +158,7 @@ export default function EventOverviewCard({
               <div className="flex items-center gap-2 min-w-0"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location}</span></div>
               <div className="flex items-center gap-2 min-w-0"><Home className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.city || 'לא צוין'}</span></div>
               <div className="flex items-center gap-2 min-w-0"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים</span></div>
+              {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">סוג הזמנה: {event.organizer_type}</span></div>}
               {event.concept && <div className="col-span-full break-words"><strong>קונספט:</strong> {event.concept}</div>}
               {event.notes && <div className="col-span-full break-words"><strong>הערות:</strong> {event.notes}</div>}
               {isAdmin && (
@@ -167,7 +176,8 @@ export default function EventOverviewCard({
                       child_name: event.child_name,
                       guest_count: event.guest_count, 
                       concept: event.concept, 
-                      notes: event.notes 
+                      notes: event.notes,
+                      organizer_type: event.organizer_type || ''
                     }); 
                   }}>
                     <Edit className="h-4 w-4 ml-2" />ערוך פרטים
