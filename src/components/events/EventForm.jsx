@@ -26,6 +26,7 @@ import { getCurrencySymbol } from "@/components/utils/currencyUtils";
 import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QuoteTemplate } from "@/entities/QuoteTemplate";
+import OrganizerTypeSelector from "@/components/quotes/OrganizerTypeSelector";
 
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
   const [allServices, setAllServices] = useState([]);
@@ -39,6 +40,14 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   const [importText, setImportText] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [organizerType, setOrganizerType] = useState(event?.organizer_type || '');
+
+  // Sync organizerType when event changes (editing existing event)
+  useEffect(() => {
+    if (event?.organizer_type) {
+      setOrganizerType(event.organizer_type);
+    }
+  }, [event?.organizer_type]);
 
   // פונקציית העתקה ללוח
   const copyToClipboard = () => {
@@ -479,6 +488,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         discount_before_vat: formData.discount_before_vat,
         total_override: Number(formData.total_override) || 0,
         total_override_includes_vat: formData.total_override_includes_vat,
+        organizer_type: organizerType || null,
         services: undefined,
         payments: undefined
       };
@@ -698,6 +708,13 @@ for (const serviceItem of formData.services) {
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+
+          {/* Organizer Type Selector - at the very top */}
+          <OrganizerTypeSelector
+            value={organizerType}
+            onChange={setOrganizerType}
+            disabled={isSaving}
+          />
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">פרטי אירוע</h3>

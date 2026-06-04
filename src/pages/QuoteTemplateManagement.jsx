@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, Plus, Trash2, Loader2, Edit, UploadCloud, FileText } from "lucide-react";
 import ManualQuotesList from "@/components/manualQuote/ManualQuotesList";
+import OrganizerTypesTab from "@/components/quotes/OrganizerTypesTab";
 
 const quillModules = {
   toolbar: [
@@ -566,6 +567,7 @@ export default function QuoteTemplateManagement() {
             <Tabs defaultValue="settings" className="space-y-6">
                 <TabsList className="bg-white/95 backdrop-blur-sm shadow-xl flex-wrap h-auto">
                     <TabsTrigger value="settings">הגדרות הצעה</TabsTrigger>
+                    <TabsTrigger value="organizer_types">סוגי הזמנות</TabsTrigger>
                     <TabsTrigger value="intro">פתיחים</TabsTrigger>
                     <TabsTrigger value="payment">תנאי תשלום</TabsTrigger>
                     <TabsTrigger value="agreement">תנאי התקשרות</TabsTrigger>
@@ -579,6 +581,10 @@ export default function QuoteTemplateManagement() {
 
                 <TabsContent value="settings">
                     <QuoteSettings isSaving={isSaving} setIsSaving={setIsSaving} />
+                </TabsContent>
+
+                <TabsContent value="organizer_types">
+                    <OrganizerTypesTab />
                 </TabsContent>
 
                 <TabsContent value="intro" className="space-y-6">
