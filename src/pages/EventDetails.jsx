@@ -515,16 +515,6 @@ export default function EventDetails() {
     }
   }, [event, eventServices, payments, eventId, navigate]);
 
-  const handleOrganizerTypeChange = useCallback(async (newType) => {
-    try {
-      await base44.entities.Event.update(eventId, { organizer_type: newType || null });
-      await loadEventData();
-    } catch (error) {
-      console.error("Failed to update organizer type:", error);
-      alert("שגיאה בעדכון סוג ההזמנה");
-    }
-  }, [eventId, loadEventData]);
-
   const handleSaveEventDetails = useCallback(async () => {
     setIsSavingEventDetails(true);
     try {
@@ -1821,7 +1811,6 @@ export default function EventDetails() {
         isSavingEventDetails={isSavingEventDetails}
         handleStatusChange={handleStatusChange}
         handleDeleteEvent={handleDeleteEvent}
-        handleOrganizerTypeChange={handleOrganizerTypeChange}
         editableParents={editableParents}
         setEditableParents={setEditableParents}
         editableFamilyName={editableFamilyName}
