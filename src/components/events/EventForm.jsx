@@ -40,7 +40,9 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   const [importText, setImportText] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [organizerType, setOrganizerType] = useState(event?.organizer_type || '');
+  // For new events: null triggers auto-default in OrganizerTypeSelector.
+  // For existing events: use the saved value (or null if not set).
+  const [organizerType, setOrganizerType] = useState(event?.organizer_type || null);
 
   // Sync organizerType when event changes (editing existing event)
   useEffect(() => {

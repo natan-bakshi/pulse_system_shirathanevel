@@ -31,17 +31,208 @@ function getEventType(typeKey) {
     return types[typeKey] || "אירוע";
 }
 
+// Process organizer type title template with variable replacement and conditional blocks
+function processOrganizerTitleTemplate(template, event, customFieldValues) {
+    if (!template) return '';
+    
+    // Build variable map from event fields + custom fields
+    const vars = {
+        event_name: event.event_name || '',
+        event_type: getEventType(event.event_type),
+        event_date: formatDate(event.event_date),
+        family_name: event.family_name || '',
+        child_name: event.child_name || '',
+        city: event.city || '',
+        guest_count: event.guest_count ? String(event.guest_count) : '',
+        location: event.location || '',
+        concept: event.concept || '',
+        ...customFieldValues
+    };
+
+    let result = template;
+    
+    // First handle conditional blocks ((text with [var]))
+    result = result.replace(/\(\((.*?)\)\)/g, (match, content) => {
+        // Check if any variables in this block have actual values
+        let hasValue = false;
+        const processed = content.replace(/\[(.*?)\]/g, (m, key) => {
+            const val = vars[key] || '';
+            if (val) hasValue = true;
+            return val;
+        });
+        return hasValue ? processed : '';
+    });
+
+    // Then handle remaining simple variables
+    result = result.replace(/\[(.*?)\]/g, (match, key) => vars[key] || '');
+
+    return result.trim();
+}
+
+// Build the quote body HTML, either from organizer blocks or default structure
+function buildQuoteBodyHtml(ctx) {
+    const {
+        organizerBlocks, includeIntro, includePaymentTerms, includeSchedule,
+        eventDetailsHtml, introTemplate, servicesHtml, notesHtml, scheduleHtml,
+        paymentTemplate, agreementTemplate, quoteShowFooter, quoteFooterText,
+        quoteSummaryFontSize, quoteSummaryLineHeight, quoteTitleFontSize,
+        event, baseTotalWithoutDiscount, eventDiscountAmount, vatAmount,
+        totalCostWithVat, finalTotal, totalPaid
+    } = ctx;
+
+    // Financial summary HTML (reused in both paths)
+    const financialSummaryHtml = `
+        <div class="section summary-section" style="margin-top: 50px; page-break-inside: avoid;">
+            <h2 class="section-title">סיכום כספי</h2>
+            <table class="summary-table">
+                ${event.all_inclusive ? `
+                <tr><td class="label">מחיר חבילה (לפני מע"מ):</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ` : `
+                <tr><td class="label">סה"כ לפני מע"מ:</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                `}
+                ${event.discount_before_vat && eventDiscountAmount > 0 ? `
+                <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ` : ''}
+                <tr><td class="label">מע"מ (18%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                <tr><td class="label">סה"כ כולל מע"מ:</td><td class="value">₪${totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ${!event.discount_before_vat && eventDiscountAmount > 0 ? `
+                <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ` : ''}
+                <tr class="total">
+                    <td class="label">סה"כ לתשלום:</td>
+                    <td class="value">₪${finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+                <tr>
+                    <td class="label">שולם:</td>
+                    <td class="value">₪${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+                <tr class="total">
+                    <td class="label">יתרה לתשלום:</td>
+                    <td class="value">₪${(finalTotal - totalPaid).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+            </table>
+        </div>`;
+
+    // If no custom organizer blocks, use the original default structure
+    if (!organizerBlocks || organizerBlocks.length === 0) {
+        return `
+            <div class="date">תאריך הפקה: ${formatDate(new Date())}</div>
+            ${eventDetailsHtml}
+            ${(introTemplate && includeIntro) ? `<div class="section"><div class="intro-content">${introTemplate.content}</div></div>` : ''}
+            ${servicesHtml}
+            ${notesHtml}
+            ${financialSummaryHtml}
+            ${scheduleHtml}
+            ${(paymentTemplate && includePaymentTerms) ? `<div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;"><h2 class="section-title">תנאי תשלום</h2><div class="payment-terms">${paymentTemplate.content}</div></div>` : ''}
+            ${agreementTemplate ? `<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>` : ''}
+            ${quoteShowFooter ? `<div class="footer"><div>${quoteFooterText}</div></div>` : ''}
+        `;
+    }
+
+    // Build HTML from organizer blocks
+    let bodyParts = [];
+    for (const block of organizerBlocks) {
+        if (block.enabled === false) continue;
+        const subtitleHtml = block.subtitle_title ? `<h2 class="section-title">${block.subtitle_title}</h2>` : '';
+        
+        switch (block.block_type) {
+            case 'quote_date':
+                bodyParts.push(`<div class="date">תאריך הפקה: ${formatDate(new Date())}</div>`);
+                break;
+            case 'event_header':
+                bodyParts.push(eventDetailsHtml);
+                break;
+            case 'intro':
+                if (introTemplate && includeIntro) {
+                    bodyParts.push(`<div class="section">${subtitleHtml}<div class="intro-content">${introTemplate.content}</div></div>`);
+                }
+                break;
+            case 'services':
+                if (servicesHtml) {
+                    // If block has a custom subtitle, replace the default one in servicesHtml
+                    if (block.subtitle_title) {
+                        const customServicesHtml = servicesHtml.replace(/<h2 class="section-title">חבילת ההפקה כוללת<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customServicesHtml);
+                    } else {
+                        bodyParts.push(servicesHtml);
+                    }
+                }
+                break;
+            case 'financial_summary':
+                if (block.subtitle_title) {
+                    const customFinancial = financialSummaryHtml.replace(/<h2 class="section-title">סיכום כספי<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                    bodyParts.push(customFinancial);
+                } else {
+                    bodyParts.push(financialSummaryHtml);
+                }
+                break;
+            case 'schedule':
+                if (includeSchedule && scheduleHtml) {
+                    if (block.subtitle_title) {
+                        const customSchedule = scheduleHtml.replace(/<h2 class="section-title">לוח זמנים<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customSchedule);
+                    } else {
+                        bodyParts.push(scheduleHtml);
+                    }
+                }
+                break;
+            case 'payment_terms':
+                if (paymentTemplate && includePaymentTerms) {
+                    bodyParts.push(`<div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;">${subtitleHtml || '<h2 class="section-title">תנאי תשלום</h2>'}<div class="payment-terms">${paymentTemplate.content}</div></div>`);
+                }
+                break;
+            case 'agreement_disclaimer':
+                if (agreementTemplate) {
+                    bodyParts.push(`<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>`);
+                }
+                break;
+            case 'notes':
+                if (notesHtml) {
+                    if (block.subtitle_title) {
+                        const customNotes = notesHtml.replace(/<h2 class="section-title">הערות<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customNotes);
+                    } else {
+                        bodyParts.push(notesHtml);
+                    }
+                }
+                break;
+            case 'spacer':
+                bodyParts.push(`<div style="height: 30px;"></div>`);
+                break;
+            case 'divider':
+                bodyParts.push(`<hr style="border: none; border-top: 1px solid #DAA520; margin: 20px 0;" />`);
+                break;
+            case 'footer':
+                if (quoteShowFooter) {
+                    bodyParts.push(`<div class="footer"><div>${quoteFooterText}</div></div>`);
+                }
+                break;
+            case 'custom_html':
+                if (block.subtitle_title) {
+                    bodyParts.push(`<div class="section" style="margin-top: 30px;">${subtitleHtml}</div>`);
+                }
+                break;
+            default:
+                // Unknown block type - skip
+                break;
+        }
+    }
+
+    return bodyParts.join('\n');
+}
+
 async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const includeIntro = options.includeIntro !== false;
     const includePaymentTerms = options.includePaymentTerms !== false;
     const includeSchedule = options.includeSchedule !== false;
-    const [event, allServices, allEventServices, payments, templates, appSettingsList] = await Promise.all([
+    const [event, allServices, allEventServices, payments, templates, appSettingsList, allOrganizerTypes] = await Promise.all([
         base44Instance.asServiceRole.entities.Event.get(eventId),
         base44Instance.asServiceRole.entities.Service.list(),
         base44Instance.asServiceRole.entities.EventService.filter({ event_id: eventId }),
         base44Instance.asServiceRole.entities.Payment.filter({ event_id: eventId }),
         base44Instance.asServiceRole.entities.QuoteTemplate.list(),
-        base44Instance.asServiceRole.entities.AppSettings.list()
+        base44Instance.asServiceRole.entities.AppSettings.list(),
+        base44Instance.asServiceRole.entities.QuoteOrganizerType.list()
     ]);
     
     if (!event) {
@@ -52,6 +243,21 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const introTemplate = templates.find(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
     const paymentTemplate = templates.find(t => t.template_type === 'payment_terms');
     const agreementTemplate = templates.find(t => t.template_type === 'agreement_disclaimer');
+
+    // Organizer Type support
+    let organizerType = null;
+    if (event.organizer_type) {
+        organizerType = allOrganizerTypes.find(t => t.type_name === event.organizer_type && t.is_active !== false);
+    }
+    let organizerBlocks = null;
+    if (organizerType?.quote_blocks) {
+        try { organizerBlocks = JSON.parse(organizerType.quote_blocks); } catch (e) { organizerBlocks = null; }
+    }
+    // Parse custom organizer fields for title template
+    let customOrganizerFieldValues = {};
+    if (event.custom_organizer_fields) {
+        try { customOrganizerFieldValues = JSON.parse(event.custom_organizer_fields); } catch (e) { customOrganizerFieldValues = {}; }
+    }
     
     const quoteBodyFontSize = appSettings.quote_body_font_size || '15';
     const quoteTitleFontSize = appSettings.quote_title_font_size || '16';
@@ -289,10 +495,16 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     // Updated file name format as requested: EventType of Name FamilyName Date
     const fileAndTitleName = `${getEventType(event.event_type)} של ${event.child_name ? event.child_name + ' ' : ''}${event.family_name} ${formatDate(event.event_date)}`;
 
+    // Process organizer type main title template if available
+    let mainTitleHtml = familyDetailsLine;
+    if (organizerType?.quote_main_title_template) {
+        mainTitleHtml = processOrganizerTitleTemplate(organizerType.quote_main_title_template, event, customOrganizerFieldValues);
+    }
+
     const eventDetailsHtml = `
             <div class="event-details-box">
                 <div class="text-center">
-                    <span style="font-weight: 700; font-size: calc(${quoteEventDetailsFontSize}px + 1px);">${familyDetailsLine}</span><br>
+                    <span style="font-weight: 700; font-size: calc(${quoteEventDetailsFontSize}px + 1px);">${mainTitleHtml}</span><br>
                     ${event.location ? `<strong>אירוע ב${event.location}</strong> | ` : ''}${formatDate(event.event_date)}<br>
                     ${event.parents && event.parents.length > 0 && event.parents.some(p => p.name) ? `<strong>שמות ההורים:</strong> ${event.parents.map(p => p.name).filter(Boolean).join(', ')}<br>` : ''}
                     ${event.city ? `<strong>עיר מגורים:</strong> ${event.city} |` : ''} ${event.guest_count ? `<strong>כמות מוזמנים:</strong> ${event.guest_count}` : ''}
@@ -835,66 +1047,31 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
               <tr>
                 <td>
                   <div class="page-content">
-                      <div class="date">תאריך הפקה: ${formatDate(new Date())}</div>
-                      
-                      ${eventDetailsHtml}
-
-                      ${(introTemplate && includeIntro) ? `
-                      <div class="section">
-                          <div class="intro-content">${introTemplate.content}</div>
-                      </div>` : ''}
-
-                      ${servicesHtml}
-                      
-                      ${notesHtml}
-
-                      <div class="section summary-section" style="margin-top: 50px; page-break-inside: avoid;">
-                          <h2 class="section-title">סיכום כספי</h2>
-                          <table class="summary-table">
-                              ${event.all_inclusive ? `
-                              <tr><td class="label">מחיר חבילה (לפני מע"מ):</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                              ` : `
-                              <tr><td class="label">סה"כ לפני מע"מ:</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                              `}
-                              ${event.discount_before_vat && eventDiscountAmount > 0 ? `
-                              <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                              ` : ''}
-                              <tr><td class="label">מע"מ (18%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                              <tr><td class="label">סה"כ כולל מע"מ:</td><td class="value">₪${totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                              ${!event.discount_before_vat && eventDiscountAmount > 0 ? `
-                              <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
-                              ` : ''}
-                              <tr class="total">
-                                  <td class="label">סה"כ לתשלום:</td>
-                                  <td class="value">₪${finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                              </tr>
-                              <tr>
-                                  <td class="label">שולם:</td>
-                                  <td class="value">₪${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                              </tr>
-                              <tr class="total">
-                                  <td class="label">יתרה לתשלום:</td>
-                                  <td class="value">₪${(finalTotal - totalPaid).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                              </tr>
-                          </table>
-                      </div>
-
-                      ${scheduleHtml}
-
-                      ${(paymentTemplate && includePaymentTerms) ? `
-                      <div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;">
-                          <h2 class="section-title">תנאי תשלום</h2>
-                          <div class="payment-terms">${paymentTemplate.content}</div>
-                      </div>` : ''}
-
-                      ${agreementTemplate ? `
-                      <div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>` : ''}
-                      
-                      ${quoteShowFooter ? `
-                      <div class="footer">
-                          <div>${quoteFooterText}</div>
-                      </div>
-                      ` : ''}
+                      ${buildQuoteBodyHtml({
+                          organizerBlocks,
+                          includeIntro,
+                          includePaymentTerms,
+                          includeSchedule,
+                          eventDetailsHtml,
+                          introTemplate,
+                          servicesHtml,
+                          notesHtml,
+                          scheduleHtml,
+                          paymentTemplate,
+                          agreementTemplate,
+                          quoteShowFooter,
+                          quoteFooterText,
+                          quoteSummaryFontSize,
+                          quoteSummaryLineHeight,
+                          quoteTitleFontSize,
+                          event,
+                          baseTotalWithoutDiscount,
+                          eventDiscountAmount,
+                          vatAmount,
+                          totalCostWithVat,
+                          finalTotal,
+                          totalPaid
+                      })}
                   </div>
                 </td>
               </tr>

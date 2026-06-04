@@ -30,11 +30,14 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
     .filter(t => t.is_active !== false)
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  // Set default type when value is empty and types are loaded
+  // Set default type ONLY when value is strictly undefined/null (new event, not yet set).
+  // Empty string '' means user explicitly cleared it or it's being edited - don't auto-set.
+  const defaultAppliedRef = React.useRef(false);
   useEffect(() => {
-    if (!value && activeTypes.length > 0) {
+    if ((value === undefined || value === null) && activeTypes.length > 0 && !defaultAppliedRef.current) {
       const defaultType = activeTypes.find(t => t.is_default) || activeTypes[0];
       if (defaultType) {
+        defaultAppliedRef.current = true;
         onChange(defaultType.type_name);
       }
     }
