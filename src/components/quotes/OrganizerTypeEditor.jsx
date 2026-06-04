@@ -144,7 +144,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
 
           {/* Tab 3: Blocks */}
           <TabsContent value="blocks">
-            <OrganizerBlocksEditor blocks={blocks} onChange={setBlocks} />
+            <OrganizerBlocksEditor blocks={blocks} onChange={setBlocks} fields={fields} availableVars={availableVars} />
           </TabsContent>
         </Tabs>
       </CardContent>

@@ -25,11 +25,11 @@ const FIELD_TYPE_LABELS = FIELD_TYPES.reduce((acc, ft) => { acc[ft.value] = ft.l
 export default function OrganizerFieldsEditor({ fields, onChange }) {
   const [showFieldDialog, setShowFieldDialog] = useState(false);
   const [editingFieldIndex, setEditingFieldIndex] = useState(null);
-  const [fieldForm, setFieldForm] = useState({ id: '', name: '', type: 'text', required: false, placeholder: '', options: '' });
+  const [fieldForm, setFieldForm] = useState({ id: '', name: '', type: 'text', required: false, placeholder: '', options: '', category: 'event_details' });
 
   const openNewField = () => {
     setEditingFieldIndex(null);
-    setFieldForm({ id: '', name: '', type: 'text', required: false, placeholder: '', options: '' });
+    setFieldForm({ id: '', name: '', type: 'text', required: false, placeholder: '', options: '', category: 'event_details' });
     setShowFieldDialog(true);
   };
 
@@ -42,7 +42,8 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
       type: f.type || 'text',
       required: f.required || false,
       placeholder: f.placeholder || '',
-      options: Array.isArray(f.options) ? f.options.join(', ') : (f.options || '')
+      options: Array.isArray(f.options) ? f.options.join(', ') : (f.options || ''),
+      category: f.category || 'event_details'
     });
     setShowFieldDialog(true);
   };
@@ -56,6 +57,7 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
       required: fieldForm.required,
       placeholder: fieldForm.placeholder,
       options: fieldForm.type === 'select' ? fieldForm.options.split(',').map(o => o.trim()).filter(Boolean) : undefined,
+      category: fieldForm.category,
       order: editingFieldIndex !== null ? fields[editingFieldIndex].order : fields.length
     };
 
@@ -100,9 +102,12 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
                 <span className="font-medium text-sm truncate">{field.name}</span>
                 {field.required && <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
               </div>
-              <div className="text-xs text-gray-500 mt-0.5">
-                {FIELD_TYPE_LABELS[field.type] || field.type}
-                {field.type === 'select' && field.options ? ` (${Array.isArray(field.options) ? field.options.length : 0} אפשרויות)` : ''}
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5 flex-wrap">
+                <span>{FIELD_TYPE_LABELS[field.type] || field.type}</span>
+                {field.type === 'select' && field.options ? <span>({Array.isArray(field.options) ? field.options.length : 0} אפשרויות)</span> : null}
+                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${field.category === 'organizer_details' ? 'border-purple-300 text-purple-600' : 'border-blue-300 text-blue-600'}`}>
+                  {field.category === 'organizer_details' ? 'פרטי מזמין/ה' : 'פרטי אירוע'}
+                </Badge>
               </div>
             </div>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditField(index)}>
@@ -159,6 +164,16 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
                 onChange={(e) => setFieldForm(prev => ({ ...prev, placeholder: e.target.value }))}
                 placeholder="טקסט שיופיע כשהשדה ריק"
               />
+            </div>
+            <div>
+              <Label>מיקום השדה</Label>
+              <Select value={fieldForm.category} onValueChange={(v) => setFieldForm(prev => ({ ...prev, category: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="event_details">פרטי האירוע</SelectItem>
+                  <SelectItem value="organizer_details">פרטי המזמין/ה</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox

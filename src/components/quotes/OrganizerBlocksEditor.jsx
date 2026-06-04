@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -24,6 +25,7 @@ const BLOCK_TYPES = [
   { value: 'divider', label: 'קו הפרדה', color: 'bg-gray-50 text-gray-500' },
   { value: 'footer', label: 'כותרת תחתונה', color: 'bg-gray-100 text-gray-600' },
   { value: 'custom_html', label: 'טקסט חופשי', color: 'bg-cyan-100 text-cyan-700' },
+  { value: 'custom_text', label: 'טקסט חופשי (עם משתנים)', color: 'bg-violet-100 text-violet-700' },
 ];
 
 const BLOCK_LABELS = BLOCK_TYPES.reduce((acc, bt) => { acc[bt.value] = bt.label; return acc; }, {});
@@ -32,7 +34,7 @@ const BLOCK_COLORS = BLOCK_TYPES.reduce((acc, bt) => { acc[bt.value] = bt.color;
 // Blocks that don't need subtitle
 const NO_SUBTITLE_BLOCKS = ['spacer', 'divider', 'quote_date', 'footer'];
 
-export default function OrganizerBlocksEditor({ blocks, onChange }) {
+export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], availableVars = [] }) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedBlockType, setSelectedBlockType] = useState('');
 
@@ -45,6 +47,19 @@ export default function OrganizerBlocksEditor({ blocks, onChange }) {
       enabled: true,
       subtitle_title: getDefaultSubtitle(selectedBlockType),
     };
+    // Handle field blocks
+    if (selectedBlockType.startsWith('field:')) {
+      const fieldId = selectedBlockType.replace('field:', '');
+      const field = fields.find(f => f.id === fieldId);
+      newBlock.block_type = 'field';
+      newBlock.field_id = fieldId;
+      newBlock.field_label = field?.name || fieldId;
+      newBlock.subtitle_title = '';
+    }
+    // Handle custom_text blocks
+    if (selectedBlockType === 'custom_text') {
+      newBlock.content = '';
+    }
     onChange([...blocks, newBlock]);
     setShowAddDialog(false);
     setSelectedBlockType('');
@@ -67,6 +82,12 @@ export default function OrganizerBlocksEditor({ blocks, onChange }) {
   const updateBlockSubtitle = (index, value) => {
     const updated = [...blocks];
     updated[index] = { ...updated[index], subtitle_title: value };
+    onChange(updated);
+  };
+
+  const updateBlockContent = (index, value) => {
+    const updated = [...blocks];
+    updated[index] = { ...updated[index], content: value };
     onChange(updated);
   };
 
@@ -103,8 +124,8 @@ export default function OrganizerBlocksEditor({ blocks, onChange }) {
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                 </div>
-                <Badge className={`${BLOCK_COLORS[block.block_type] || 'bg-gray-100'} text-xs shrink-0`}>
-                  {BLOCK_LABELS[block.block_type] || block.block_type}
+                <Badge className={`${block.block_type === 'field' ? 'bg-emerald-100 text-emerald-700' : (BLOCK_COLORS[block.block_type] || 'bg-gray-100')} text-xs shrink-0`}>
+                  {block.block_type === 'field' ? `שדה: ${block.field_label || ''}` : (BLOCK_LABELS[block.block_type] || block.block_type)}
                 </Badge>
                 <div className="flex-1 min-w-0">
                   {showSubtitle && (
@@ -120,6 +141,35 @@ export default function OrganizerBlocksEditor({ blocks, onChange }) {
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
+              {block.block_type === 'custom_text' && (
+                <div className="mt-2 space-y-2 pr-8">
+                  <Textarea
+                    value={block.content || ''}
+                    onChange={(e) => updateBlockContent(index, e.target.value)}
+                    placeholder={'לדוגמה:\n((מיקום האירוע: [location]))\n((שעת האירוע: [event_time]))'}
+                    rows={3}
+                    className="text-sm font-mono"
+                  />
+                  {availableVars.length > 0 && (
+                    <div className="bg-blue-50 rounded p-2">
+                      <p className="text-[10px] text-blue-600 mb-1 font-medium">לחץ על משתנה להוספה · [שם] = ערך · ((טקסט [שם])) = מותנה</p>
+                      <div className="flex flex-wrap gap-1">
+                        {availableVars.map(v => (
+                          <Badge
+                            key={v.key}
+                            variant="outline"
+                            className="text-[10px] cursor-pointer hover:bg-blue-100"
+                            onClick={() => updateBlockContent(index, (block.content || '') + `[${v.key}]`)}
+                            title={v.label}
+                          >
+                            [{v.key}]
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -145,6 +195,24 @@ export default function OrganizerBlocksEditor({ blocks, onChange }) {
                 <Badge className={`${bt.color} text-xs`}>{bt.label}</Badge>
               </button>
             ))}
+            {fields.length > 0 && (
+              <>
+                <div className="text-xs font-semibold text-gray-500 pt-3 border-t mt-1">שדות מוגדרים (מטאב שדות)</div>
+                {fields.map(f => (
+                  <button
+                    key={`field:${f.id}`}
+                    onClick={() => setSelectedBlockType(`field:${f.id}`)}
+                    className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                      selectedBlockType === `field:${f.id}` 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Badge className="bg-emerald-100 text-emerald-700 text-xs">שדה: {f.name}</Badge>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>ביטול</Button>
@@ -170,6 +238,7 @@ function getDefaultSubtitle(blockType) {
     assigned_suppliers: 'ספקים משובצים',
     tasks_summary: 'משימות לביצוע',
     custom_html: '',
+    custom_text: '',
   };
   return defaults[blockType] || '';
 }
