@@ -529,14 +529,18 @@ export default function EventDetails() {
     }
   }, [eventId, eventDetailsData, loadEventData]);
 
-  const handleSaveFamilyDetails = useCallback(async () => {
+  const handleSaveFamilyDetails = useCallback(async (orgContacts) => {
     setIsSavingFamilyDetails(true);
     try {
-      await base44.entities.Event.update(eventId, { 
+      const updateData = { 
         parents: editableParents,
         family_name: editableFamilyName,
         child_name: editableChildName
-      });
+      };
+      if (orgContacts !== undefined) {
+        updateData.organizer_contacts = JSON.stringify(orgContacts.filter(c => c.name || c.phone || c.email));
+      }
+      await base44.entities.Event.update(eventId, updateData);
       setEditingSection(null);
       await loadEventData();
     } catch (error) {

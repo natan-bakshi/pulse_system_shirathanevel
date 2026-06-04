@@ -27,6 +27,8 @@ import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QuoteTemplate } from "@/entities/QuoteTemplate";
 import OrganizerTypeSelector from "@/components/quotes/OrganizerTypeSelector";
+import OrganizerContactsSection from "./OrganizerContactsSection";
+import { QuoteOrganizerType } from "@/entities/QuoteOrganizerType";
 
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
   const [allServices, setAllServices] = useState([]);
@@ -43,6 +45,10 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   // For new events: null triggers auto-default in OrganizerTypeSelector.
   // For existing events: use the saved value (or null if not set).
   const [organizerType, setOrganizerType] = useState(event?.organizer_type || null);
+  const [organizerContactsConfig, setOrganizerContactsConfig] = useState(null);
+  const [organizerContacts, setOrganizerContacts] = useState(() => {
+    try { return JSON.parse(event?.organizer_contacts || '[]'); } catch { return []; }
+  });
 
   // Sync organizerType when event changes (editing existing event)
   useEffect(() => {
@@ -50,6 +56,26 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       setOrganizerType(event.organizer_type);
     }
   }, [event?.organizer_type]);
+
+  // Load contacts config when organizer type changes
+  useEffect(() => {
+    if (!organizerType) {
+      setOrganizerContactsConfig(null);
+      return;
+    }
+    const loadConfig = async () => {
+      try {
+        const types = await QuoteOrganizerType.filter({ type_name: organizerType });
+        const match = types.find(t => t.is_active !== false);
+        if (match?.contacts_config) {
+          setOrganizerContactsConfig(JSON.parse(match.contacts_config));
+        } else {
+          setOrganizerContactsConfig(null);
+        }
+      } catch { setOrganizerContactsConfig(null); }
+    };
+    loadConfig();
+  }, [organizerType]);
 
   // פונקציית העתקה ללוח
   const copyToClipboard = () => {
@@ -491,6 +517,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         total_override: Number(formData.total_override) || 0,
         total_override_includes_vat: formData.total_override_includes_vat,
         organizer_type: organizerType || null,
+        organizer_contacts: JSON.stringify(organizerContacts.filter(c => c.name || c.phone || c.email)),
         services: undefined,
         payments: undefined
       };
@@ -915,6 +942,14 @@ for (const serviceItem of formData.services) {
               ))}
             </div>
           </div>
+
+          {/* Organizer Contacts Section */}
+          <OrganizerContactsSection
+            contacts={organizerContacts}
+            onChange={setOrganizerContacts}
+            config={organizerContactsConfig}
+            disabled={isSaving}
+          />
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">

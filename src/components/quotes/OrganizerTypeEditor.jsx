@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Save, Loader2, Plus, Trash2, GripVertical, Info, Star } from "lucide-react";
 import OrganizerFieldsEditor from "./OrganizerFieldsEditor";
 import OrganizerBlocksEditor from "./OrganizerBlocksEditor";
+import OrganizerContactsConfigEditor from "./OrganizerContactsConfigEditor";
 import RichTextEditor from "../manualQuote/RichTextEditor";
 
 export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }) {
@@ -21,6 +22,9 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
   });
   const [blocks, setBlocks] = useState(() => {
     try { return JSON.parse(type.quote_blocks || '[]'); } catch { return []; }
+  });
+  const [contactsConfig, setContactsConfig] = useState(() => {
+    try { return JSON.parse(type.contacts_config || '{}'); } catch { return {}; }
   });
 
   // Available variables for title template
@@ -51,8 +55,9 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
       quote_main_title_template: titleTemplate || null,
       event_fields: fields.length > 0 ? JSON.stringify(fields) : null,
       quote_blocks: blocks.length > 0 ? JSON.stringify(blocks) : null,
+      contacts_config: Object.keys(contactsConfig).length > 0 ? JSON.stringify(contactsConfig) : null,
     });
-  }, [type, typeName, titleTemplate, fields, blocks, onSave]);
+  }, [type, typeName, titleTemplate, fields, blocks, contactsConfig, onSave]);
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
@@ -78,12 +83,18 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
           />
         </div>
 
-        <Tabs defaultValue="fields" className="space-y-4">
+        <Tabs defaultValue="contacts" className="space-y-4">
           <TabsList className="bg-gray-100 flex-wrap h-auto">
+            <TabsTrigger value="contacts">אנשי קשר</TabsTrigger>
             <TabsTrigger value="fields">שדות</TabsTrigger>
             <TabsTrigger value="title">כותרת ראשית</TabsTrigger>
             <TabsTrigger value="blocks">בלוקים</TabsTrigger>
           </TabsList>
+
+          {/* Tab 0: Contacts Config */}
+          <TabsContent value="contacts">
+            <OrganizerContactsConfigEditor config={contactsConfig} onChange={setContactsConfig} />
+          </TabsContent>
 
           {/* Tab 1: Fields */}
           <TabsContent value="fields">

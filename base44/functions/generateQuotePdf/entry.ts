@@ -501,12 +501,25 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
         mainTitleHtml = processOrganizerTitleTemplate(organizerType.quote_main_title_template, event, customOrganizerFieldValues);
     }
 
+    // Parse organizer contacts
+    let organizerContacts = [];
+    if (event.organizer_contacts) {
+        try { organizerContacts = JSON.parse(event.organizer_contacts); } catch (e) { organizerContacts = []; }
+    }
+    // Get contacts config from organizer type
+    let contactsConfig = {};
+    if (organizerType?.contacts_config) {
+        try { contactsConfig = JSON.parse(organizerType.contacts_config); } catch (e) { contactsConfig = {}; }
+    }
+    const contactsLabel = contactsConfig.label || 'אנשי קשר';
+
     const eventDetailsHtml = `
             <div class="event-details-box">
                 <div class="text-center">
                     <span style="font-weight: 700; font-size: calc(${quoteEventDetailsFontSize}px + 1px);">${mainTitleHtml}</span><br>
                     ${event.location ? `<strong>אירוע ב${event.location}</strong> | ` : ''}${formatDate(event.event_date)}<br>
                     ${event.parents && event.parents.length > 0 && event.parents.some(p => p.name) ? `<strong>שמות ההורים:</strong> ${event.parents.map(p => p.name).filter(Boolean).join(', ')}<br>` : ''}
+                    ${organizerContacts.length > 0 && organizerContacts.some(c => c.name) ? `<strong>${contactsLabel}:</strong> ${organizerContacts.map(c => c.name).filter(Boolean).join(', ')}<br>` : ''}
                     ${event.city ? `<strong>עיר מגורים:</strong> ${event.city} |` : ''} ${event.guest_count ? `<strong>כמות מוזמנים:</strong> ${event.guest_count}` : ''}
                 </div>
             </div>
