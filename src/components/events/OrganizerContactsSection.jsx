@@ -6,6 +6,10 @@ import { Plus, Trash2 } from "lucide-react";
 import ContactPicker from "../ui/ContactPicker";
 
 export default function OrganizerContactsSection({ contacts, onChange, config, disabled }) {
+  // Don't render if no contacts_config is defined for this organizer type
+  // (config is null when no specific configuration exists)
+  if (!config) return null;
+
   const label = config?.label || "אנשי קשר";
   const itemLabel = config?.item_label || "איש קשר";
   const extraFields = config?.extra_fields || [];

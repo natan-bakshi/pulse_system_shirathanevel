@@ -139,7 +139,7 @@ export default function FamilyContactCard({
             </Button>
 
             {/* Organizer Contacts Edit */}
-            {orgContacts.length > 0 || contactsConfig ? (
+            {contactsConfig && (orgContacts.length > 0 || contactsConfig) ? (
               <div className="mt-6 pt-4 border-t">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="font-semibold">{cLabel}</h4>
@@ -227,7 +227,7 @@ export default function FamilyContactCard({
                 </div>
               ))}
             </div>
-            {orgContacts.length > 0 && (
+            {contactsConfig && orgContacts.length > 0 && (
               <div className="space-y-2 mt-3 pt-3 border-t">
                 <strong>{cLabel}:</strong>
                 {orgContacts.map((contact, index) => (
