@@ -518,7 +518,13 @@ export default function EventDetails() {
   const handleSaveEventDetails = useCallback(async () => {
     setIsSavingEventDetails(true);
     try {
-      await base44.entities.Event.update(eventId, eventDetailsData);
+      const dataToSave = { ...eventDetailsData };
+      // If dynamic fields were edited, save them as custom_organizer_fields JSON
+      if (dataToSave._customFields) {
+        dataToSave.custom_organizer_fields = JSON.stringify(dataToSave._customFields);
+        delete dataToSave._customFields;
+      }
+      await base44.entities.Event.update(eventId, dataToSave);
       setEditingSection(null);
       await loadEventData();
     } catch (error) {

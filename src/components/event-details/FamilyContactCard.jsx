@@ -26,15 +26,20 @@ export default function FamilyContactCard({
 }) {
   const [contactsConfig, setContactsConfig] = useState(null);
   const [editableOrgContacts, setEditableOrgContacts] = useState([]);
+  const [hasDynamicFields, setHasDynamicFields] = useState(false);
 
   useEffect(() => {
-    if (!event?.organizer_type) { setContactsConfig(null); return; }
+    if (!event?.organizer_type) { setContactsConfig(null); setHasDynamicFields(false); return; }
     base44.entities.QuoteOrganizerType.filter({ type_name: event.organizer_type }).then(types => {
       const match = types.find(t => t.is_active !== false);
       if (match?.contacts_config) {
         try { setContactsConfig(JSON.parse(match.contacts_config)); } catch { setContactsConfig(null); }
       } else { setContactsConfig(null); }
-    }).catch(() => setContactsConfig(null));
+      // Check if this organizer type has dynamic event_fields
+      if (match?.event_fields) {
+        try { const fields = JSON.parse(match.event_fields); setHasDynamicFields(fields && fields.length > 0); } catch { setHasDynamicFields(false); }
+      } else { setHasDynamicFields(false); }
+    }).catch(() => { setContactsConfig(null); setHasDynamicFields(false); });
   }, [event?.organizer_type]);
 
   const orgContacts = (() => {
@@ -44,11 +49,17 @@ export default function FamilyContactCard({
   const cLabel = contactsConfig?.label || "אנשי קשר של המזמין";
   const cItemLabel = contactsConfig?.item_label || "איש קשר";
   const extraFields = contactsConfig?.extra_fields || [];
+  // When organizer type has dynamic fields, family/parents are managed via custom fields
+  // Only show this card if there are contacts to manage OR if using default (non-dynamic) fields
+  if (hasDynamicFields && !contactsConfig && orgContacts.length === 0) {
+    return null;
+  }
+
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">פרטי משפחה ואנשי קשר</h3>
+          <h3 className="text-lg font-semibold">{hasDynamicFields ? 'אנשי קשר' : 'פרטי משפחה ואנשי קשר'}</h3>
           {(isAdmin || isClient) && editingSection !== 'family_details' && (
             <Button variant="outline" size="sm" onClick={() => { 
               setEditingSection('family_details'); 
@@ -65,25 +76,19 @@ export default function FamilyContactCard({
       <CardContent>
         {editingSection === 'family_details' ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded">
-              <div>
-                <label className="text-sm font-semibold mb-1 block">שם המשפחה</label>
-                <Input 
-                  placeholder="שם משפחה" 
-                  value={editableFamilyName} 
-                  onChange={(e) => setEditableFamilyName(e.target.value)} 
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold mb-1 block">שם החתן/כלה</label>
-                <Input 
-                  placeholder="שם החתן/כלה" 
-                  value={editableChildName} 
-                  onChange={(e) => setEditableChildName(e.target.value)} 
-                />
-              </div>
-            </div>
-            {editableParents.map((parent, index) => (
+            {!hasDynamicFields && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded">
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">שם המשפחה</label>
+                    <Input placeholder="שם משפחה" value={editableFamilyName} onChange={(e) => setEditableFamilyName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1 block">שם החתן/כלה</label>
+                    <Input placeholder="שם החתן/כלה" value={editableChildName} onChange={(e) => setEditableChildName(e.target.value)} />
+                  </div>
+                </div>
+                {editableParents.map((parent, index) => (
               <div key={index} className="p-3 bg-gray-50 rounded space-y-2">
                 <div className="flex justify-between items-center">
                   <h4 className="font-semibold">הורה {index + 1}</h4>
@@ -134,9 +139,11 @@ export default function FamilyContactCard({
                 </div>
               </div>
             ))}
-            <Button variant="outline" size="sm" onClick={() => setEditableParents([...editableParents, { name: '', phone: '', email: '' }])}>
-              <Plus className="h-4 w-4 ml-2" />הוסף הורה
-            </Button>
+                <Button variant="outline" size="sm" onClick={() => setEditableParents([...editableParents, { name: '', phone: '', email: '' }])}>
+                  <Plus className="h-4 w-4 ml-2" />הוסף הורה
+                </Button>
+              </>
+            )}
 
             {/* Organizer Contacts Edit */}
             {contactsConfig && (orgContacts.length > 0 || contactsConfig) ? (
@@ -215,18 +222,22 @@ export default function FamilyContactCard({
           </div>
         ) : (
           <div className="space-y-3">
-            <div><strong>משפחת:</strong> {event.family_name}</div>
-            {event.child_name && <div><strong>שם החתן/כלה:</strong> {event.child_name}</div>}
-            <div className="space-y-2">
-              <strong>אנשי קשר:</strong>
-              {(event.parents || []).map((parent, index) => (
-                <div key={index} className="p-2 bg-gray-50 rounded space-y-1">
-                  <div>{parent.name}</div>
-                  <PhoneNumber phone={parent.phone} />
-                  <EmailAddress email={parent.email} />
+            {!hasDynamicFields && (
+              <>
+                <div><strong>משפחת:</strong> {event.family_name}</div>
+                {event.child_name && <div><strong>שם החתן/כלה:</strong> {event.child_name}</div>}
+                <div className="space-y-2">
+                  <strong>אנשי קשר:</strong>
+                  {(event.parents || []).map((parent, index) => (
+                    <div key={index} className="p-2 bg-gray-50 rounded space-y-1">
+                      <div>{parent.name}</div>
+                      <PhoneNumber phone={parent.phone} />
+                      <EmailAddress email={parent.email} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
             {contactsConfig && orgContacts.length > 0 && (
               <div className="space-y-2 mt-3 pt-3 border-t">
                 <strong>{cLabel}:</strong>

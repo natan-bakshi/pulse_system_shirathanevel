@@ -12,6 +12,9 @@ import { he } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getCurrencySymbol } from '@/components/utils/currencyUtils';
 import OrganizerTypeSelector from '@/components/quotes/OrganizerTypeSelector';
+import DynamicEventFieldsSection from '@/components/events/DynamicEventFieldsSection';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 
 function getStatusText(status) {
   const statusTexts = { quote: "הצעת מחיר", confirmed: "אירוע סגור", in_progress: "אירוע תפור", completed: "אירוע עבר", cancelled: "אירוע בוטל" };
@@ -35,6 +38,20 @@ export default function EventOverviewCard({
   handleStatusChange,
   handleDeleteEvent
 }) {
+  // Load organizer type config to check for dynamic event_fields
+  const { data: organizerTypes = [] } = useQuery({
+    queryKey: ['organizerTypes'],
+    queryFn: () => base44.entities.QuoteOrganizerType.list(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const currentOrgType = organizerTypes.find(t => t.type_name === event.organizer_type && t.is_active !== false);
+  let eventFields = null;
+  try { eventFields = currentOrgType?.event_fields ? JSON.parse(currentOrgType.event_fields) : null; } catch { eventFields = null; }
+  const hasDynamicFields = eventFields && eventFields.length > 0;
+
+  let customFieldValues = {};
+  try { customFieldValues = event.custom_organizer_fields ? JSON.parse(event.custom_organizer_fields) : {}; } catch { customFieldValues = {}; }
   return (
     <>
       {/* Header Card */}
@@ -81,86 +98,73 @@ export default function EventOverviewCard({
         <CardContent className="p-3 sm:p-6">
           {editingSection === 'event_details' ? (
             <div className="col-span-full space-y-4 p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>שם האירוע</Label>
-                  <Input value={eventDetailsData.event_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_name: e.target.value })} />
+              {hasDynamicFields ? (
+                <DynamicEventFieldsSection
+                  fields={eventFields}
+                  values={eventDetailsData._customFields || customFieldValues}
+                  onChange={(vals) => setEventDetailsData(prev => ({ ...prev, _customFields: vals }))}
+                  disabled={isSavingEventDetails}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><Label>שם האירוע</Label><Input value={eventDetailsData.event_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_name: e.target.value })} /></div>
+                  <div><Label>סוג אירוע</Label><Select value={eventDetailsData.event_type || ''} onValueChange={(v) => setEventDetailsData({ ...eventDetailsData, event_type: v })}><SelectTrigger><SelectValue placeholder="בחר סוג אירוע" /></SelectTrigger><SelectContent><SelectItem value="bar_mitzvah">בר מצווה</SelectItem><SelectItem value="bat_mitzvah">בת מצווה</SelectItem><SelectItem value="wedding">חתונה</SelectItem><SelectItem value="other">אחר</SelectItem></SelectContent></Select></div>
+                  <div><Label>תאריך</Label><Input type="date" value={eventDetailsData.event_date || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_date: e.target.value })} /></div>
+                  <div><Label>שעה</Label><Input type="time" value={eventDetailsData.event_time || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_time: e.target.value })} /></div>
+                  <div><Label>מיקום</Label><Input value={eventDetailsData.location || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, location: e.target.value })} /></div>
+                  <div><Label>עיר מגורים</Label><Input value={eventDetailsData.city || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, city: e.target.value })} /></div>
+                  <div><Label>שם משפחה</Label><Input value={eventDetailsData.family_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, family_name: e.target.value })} /></div>
+                  <div><Label>שם הילד/ה</Label><Input value={eventDetailsData.child_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, child_name: e.target.value })} /></div>
+                  <div><Label>מספר אורחים</Label><Input type="number" value={eventDetailsData.guest_count || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, guest_count: e.target.value })} /></div>
+                  <div><Label>קונספט</Label><Input value={eventDetailsData.concept || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, concept: e.target.value })} /></div>
                 </div>
-                <div>
-                  <Label>סוג אירוע</Label>
-                  <Select value={eventDetailsData.event_type || ''} onValueChange={(v) => setEventDetailsData({ ...eventDetailsData, event_type: v })}>
-                    <SelectTrigger><SelectValue placeholder="בחר סוג אירוע" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bar_mitzvah">בר מצווה</SelectItem>
-                      <SelectItem value="bat_mitzvah">בת מצווה</SelectItem>
-                      <SelectItem value="wedding">חתונה</SelectItem>
-                      <SelectItem value="other">אחר</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>תאריך</Label>
-                  <Input type="date" value={eventDetailsData.event_date || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_date: e.target.value })} />
-                </div>
-                <div>
-                  <Label>שעה</Label>
-                  <Input type="time" value={eventDetailsData.event_time || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, event_time: e.target.value })} />
-                </div>
-                <div>
-                  <Label>מיקום</Label>
-                  <Input value={eventDetailsData.location || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, location: e.target.value })} />
-                </div>
-                <div>
-                  <Label>עיר מגורים</Label>
-                  <Input value={eventDetailsData.city || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, city: e.target.value })} />
-                </div>
-                <div>
-                  <Label>שם משפחה</Label>
-                  <Input value={eventDetailsData.family_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, family_name: e.target.value })} />
-                </div>
-                <div>
-                  <Label>שם הילד/ה</Label>
-                  <Input value={eventDetailsData.child_name || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, child_name: e.target.value })} />
-                </div>
-                <div>
-                  <Label>מספר אורחים</Label>
-                  <Input type="number" value={eventDetailsData.guest_count || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, guest_count: e.target.value })} />
-                </div>
-                <div>
-                  <Label>קונספט</Label>
-                  <Input value={eventDetailsData.concept || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, concept: e.target.value })} />
-                </div>
-                <div className="col-span-full">
-                  <Label>סוג הזמנה</Label>
-                  <OrganizerTypeSelector
-                    value={eventDetailsData.organizer_type || ''}
-                    onChange={(v) => setEventDetailsData({ ...eventDetailsData, organizer_type: v })}
-                  />
-                </div>
+              )}
+              <div className="col-span-full">
+                <Label>סוג הזמנה</Label>
+                <OrganizerTypeSelector value={eventDetailsData.organizer_type || ''} onChange={(v) => setEventDetailsData({ ...eventDetailsData, organizer_type: v })} />
+              </div>
+              {!hasDynamicFields && (
                 <div className="col-span-full">
                   <Label>הערות</Label>
                   <Textarea value={eventDetailsData.notes || ''} onChange={(e) => setEventDetailsData({ ...eventDetailsData, notes: e.target.value })} rows={3} />
                 </div>
-              </div>
+              )}
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setEditingSection(null)} disabled={isSavingEventDetails}>ביטול</Button>
                 <Button onClick={handleSaveEventDetails} disabled={isSavingEventDetails}>
                   {isSavingEventDetails && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-                  <Save className="h-4 w-4 ml-2" />
-                  שמור
+                  <Save className="h-4 w-4 ml-2" />שמור
                 </Button>
               </div>
             </div>
           ) : (
             <div className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex items-center gap-2 min-w-0"><Calendar className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{format(new Date(event.event_date), 'dd/MM/yyyy', { locale: he })}</span></div>
-              <div className="flex items-center gap-2 min-w-0"><Clock className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.event_time}</span></div>
-              <div className="flex items-center gap-2 min-w-0"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location}</span></div>
-              <div className="flex items-center gap-2 min-w-0"><Home className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.city || 'לא צוין'}</span></div>
-              <div className="flex items-center gap-2 min-w-0"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים</span></div>
-              {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">סוג הזמנה: {event.organizer_type}</span></div>}
-              {event.concept && <div className="col-span-full break-words"><strong>קונספט:</strong> {event.concept}</div>}
-              {event.notes && <div className="col-span-full break-words"><strong>הערות:</strong> {event.notes}</div>}
+              {hasDynamicFields ? (
+                <>
+                  {eventFields.sort((a,b) => (a.order||0) - (b.order||0)).map(field => {
+                    const val = customFieldValues[field.id];
+                    if (!val) return null;
+                    return (
+                      <div key={field.id} className={`flex items-center gap-2 min-w-0 ${field.type === 'textarea' ? 'col-span-full break-words' : ''}`}>
+                        <strong className="text-gray-600 text-sm shrink-0">{field.name}:</strong>
+                        <span className="truncate">{val}</span>
+                      </div>
+                    );
+                  })}
+                  {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">סוג הזמנה: {event.organizer_type}</span></div>}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 min-w-0"><Calendar className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{format(new Date(event.event_date), 'dd/MM/yyyy', { locale: he })}</span></div>
+                  <div className="flex items-center gap-2 min-w-0"><Clock className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.event_time}</span></div>
+                  <div className="flex items-center gap-2 min-w-0"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location}</span></div>
+                  <div className="flex items-center gap-2 min-w-0"><Home className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.city || 'לא צוין'}</span></div>
+                  <div className="flex items-center gap-2 min-w-0"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים</span></div>
+                  {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">סוג הזמנה: {event.organizer_type}</span></div>}
+                  {event.concept && <div className="col-span-full break-words"><strong>קונספט:</strong> {event.concept}</div>}
+                  {event.notes && <div className="col-span-full break-words"><strong>הערות:</strong> {event.notes}</div>}
+                </>
+              )}
               {isAdmin && (
                 <div className="col-span-full">
                   <Button variant="outline" size="sm" onClick={() => { 
@@ -177,7 +181,8 @@ export default function EventOverviewCard({
                       guest_count: event.guest_count, 
                       concept: event.concept, 
                       notes: event.notes,
-                      organizer_type: event.organizer_type || ''
+                      organizer_type: event.organizer_type || '',
+                      _customFields: customFieldValues
                     }); 
                   }}>
                     <Edit className="h-4 w-4 ml-2" />ערוך פרטים
