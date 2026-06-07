@@ -92,40 +92,7 @@ export default function FamilyContactCard({
               <div key={index} className="p-3 bg-gray-50 rounded space-y-2">
                 <div className="flex justify-between items-center">
                   <h4 className="font-semibold">הורה {index + 1}</h4>
-                  <Button variant="ghost" size="sm" onClick={() => setEditableParents(editableParents.filter((_, i) => i !== index))}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <Input 
-                    placeholder="שם" 
-                    value={parent.name} 
-                    onChange={(e) => { 
-                      const updated = [...editableParents]; 
-                      updated[index].name = e.target.value; 
-                      setEditableParents(updated); 
-                    }} 
-                  />
-                  <Input 
-                    placeholder="טלפון" 
-                    value={parent.phone} 
-                    onChange={(e) => { 
-                      const updated = [...editableParents]; 
-                      updated[index].phone = e.target.value; 
-                      setEditableParents(updated); 
-                    }} 
-                  />
-                  <Input 
-                    placeholder="אימייל" 
-                    type="email" 
-                    value={parent.email} 
-                    onChange={(e) => { 
-                      const updated = [...editableParents]; 
-                      updated[index].email = e.target.value; 
-                      setEditableParents(updated); 
-                    }} 
-                  />
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center gap-1">
                     <ContactPicker 
                         onContactSelect={(contact) => {
                             const updated = [...editableParents];
@@ -134,6 +101,45 @@ export default function FamilyContactCard({
                             if (contact.email) updated[index].email = contact.email;
                             setEditableParents(updated);
                         }}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => setEditableParents(editableParents.filter((_, i) => i !== index))}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex-1 min-w-[150px]">
+                    <Input 
+                      placeholder="שם מלא" 
+                      value={parent.name} 
+                      onChange={(e) => { 
+                        const updated = [...editableParents]; 
+                        updated[index].name = e.target.value; 
+                        setEditableParents(updated); 
+                      }} 
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <Input 
+                      placeholder="טלפון" 
+                      value={parent.phone} 
+                      onChange={(e) => { 
+                        const updated = [...editableParents]; 
+                        updated[index].phone = e.target.value; 
+                        setEditableParents(updated); 
+                      }} 
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <Input 
+                      placeholder="אימייל" 
+                      type="email" 
+                      value={parent.email} 
+                      onChange={(e) => { 
+                        const updated = [...editableParents]; 
+                        updated[index].email = e.target.value; 
+                        setEditableParents(updated); 
+                      }} 
                     />
                   </div>
                 </div>
@@ -175,21 +181,27 @@ export default function FamilyContactCard({
                         </Button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <Input placeholder="שם" value={contact.name || ''} onChange={(e) => {
-                        const u = [...editableOrgContacts]; u[index] = { ...u[index], name: e.target.value }; setEditableOrgContacts(u);
-                      }} />
-                      <Input placeholder="טלפון" value={contact.phone || ''} onChange={(e) => {
-                        const u = [...editableOrgContacts]; u[index] = { ...u[index], phone: e.target.value }; setEditableOrgContacts(u);
-                      }} />
-                      <Input placeholder="אימייל" type="email" value={contact.email || ''} onChange={(e) => {
-                        const u = [...editableOrgContacts]; u[index] = { ...u[index], email: e.target.value }; setEditableOrgContacts(u);
-                      }} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex-1 min-w-[150px]">
+                        <Input placeholder="שם מלא" value={contact.name || ''} onChange={(e) => {
+                          const u = [...editableOrgContacts]; u[index] = { ...u[index], name: e.target.value }; setEditableOrgContacts(u);
+                        }} />
+                      </div>
+                      <div className="flex-1 min-w-[150px]">
+                        <Input placeholder="טלפון" value={contact.phone || ''} onChange={(e) => {
+                          const u = [...editableOrgContacts]; u[index] = { ...u[index], phone: e.target.value }; setEditableOrgContacts(u);
+                        }} />
+                      </div>
+                      <div className="flex-1 min-w-[150px]">
+                        <Input placeholder="אימייל" type="email" value={contact.email || ''} onChange={(e) => {
+                          const u = [...editableOrgContacts]; u[index] = { ...u[index], email: e.target.value }; setEditableOrgContacts(u);
+                        }} />
+                      </div>
                     </div>
                     {extraFields.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div className="flex flex-wrap gap-2 mt-2">
                         {extraFields.map(f => (
-                          <div key={f.id}>
+                          <div key={f.id} className="flex-1 min-w-[150px]">
                             {f.type === 'select' ? (
                               <Select value={contact[f.id] || ''} onValueChange={(v) => {
                                 const u = [...editableOrgContacts]; u[index] = { ...u[index], [f.id]: v }; setEditableOrgContacts(u);
