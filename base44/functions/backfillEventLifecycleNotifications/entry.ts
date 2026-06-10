@@ -18,8 +18,12 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
-        // שליפת כל האירועים confirmed
-        const allEvents = await base44.asServiceRole.entities.Event.filter({ status: 'confirmed' });
+        // שליפת כל האירועים confirmed + in_progress
+        const [confirmedEvents, inProgressEvents] = await Promise.all([
+            base44.asServiceRole.entities.Event.filter({ status: 'confirmed' }),
+            base44.asServiceRole.entities.Event.filter({ status: 'in_progress' })
+        ]);
+        const allEvents = [...confirmedEvents, ...inProgressEvents];
 
         // שליפת כל ה-PendingPushNotification שטרם נשלחו (lifecycle)
         const lifecycleTypes = ['ADMIN_MISSING_ASSIGNMENT', 'CLIENT_PAYMENT_REMINDER', 'EVENT_REMINDER_FANOUT'];
@@ -81,8 +85,8 @@ Deno.serve(async (req) => {
 
                 const existingPending = allPending.filter(p => p.related_event_id === eventData.id && !p.is_sent);
 
-                // === פאזה 5: שיבוצים חסרים ===
-                if (missingTemplate) {
+                // === פאזה 5: שיבוצים חסרים (לא רלוונטי לאירועים in_progress - כבר משובצים ב-100%) ===
+                if (missingTemplate && eventData.status !== 'in_progress') {
                     let hasMissing = false;
                     const missingServices = [];
                     for (const es of eventServices) {

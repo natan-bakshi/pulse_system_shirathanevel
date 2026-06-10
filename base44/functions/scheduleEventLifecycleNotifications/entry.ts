@@ -56,9 +56,10 @@ Deno.serve(async (req) => {
         }
         if (currentStatus === null) currentStatus = eventData.status;
 
-        // פועלים רק כשהאירוע 'confirmed' (סגור).
-        if (currentStatus !== 'confirmed') {
-            return Response.json({ skipped: true, reason: 'Event not confirmed' });
+        // פועלים רק כשהאירוע 'confirmed' או 'in_progress' (סגור/משובץ).
+        const activeStatuses = ['confirmed', 'in_progress'];
+        if (!activeStatuses.includes(currentStatus)) {
+            return Response.json({ skipped: true, reason: 'Event not confirmed or in_progress' });
         }
 
         // זיהוי שינוי תאריך אירוע (כשהאירוע כבר היה confirmed):
@@ -68,10 +69,10 @@ Deno.serve(async (req) => {
             oldData.event_date && data?.event_date &&
             oldData.event_date !== data.event_date;
 
-        // מניעת כפילות ביצירה: אם האירוע כבר היה confirmed והתאריך לא השתנה -
+        // מניעת כפילות ביצירה: אם האירוע כבר היה באותו סטטוס פעיל והתאריך לא השתנה -
         // לא יוצרים שוב (התזמונים כבר נוצרו בעת האישור הראשוני).
-        if (previousStatus !== null && previousStatus === 'confirmed' && !dateChanged) {
-            return Response.json({ skipped: true, reason: 'Status unchanged (already confirmed), no date change' });
+        if (previousStatus !== null && activeStatuses.includes(previousStatus) && activeStatuses.includes(currentStatus) && !dateChanged) {
+            return Response.json({ skipped: true, reason: 'Status unchanged (already active), no date change' });
         }
 
         // אם זה שינוי תאריך - מוחקים תחילה את כל התזמונים שטרם נשלחו של מחזור-החיים
@@ -106,8 +107,9 @@ Deno.serve(async (req) => {
         // ============================================================
         // פאזה 5: שיבוצים חסרים -> תזכורת שבוע לפני האירוע
         // ============================================================
+        // פאזה 5 לא רלוונטית לאירועים in_progress (כבר משובצים ב-100%)
         const missingTemplate = templates.find(t => t.type === 'ADMIN_MISSING_ASSIGNMENT');
-        if (missingTemplate) {
+        if (missingTemplate && currentStatus !== 'in_progress') {
             // בדיקה: האם יש כרגע שיבוצים חסרים?
             let hasMissing = false;
             const missingServices = [];
