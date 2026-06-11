@@ -625,6 +625,7 @@ Deno.serve(async (req) => {
     if (!result.pdf) throw new Error('No PDF URL in API2PDF response');
     const pdfUrl = result.pdf;
     const fileName = `${fileBaseName}.pdf`;
+    let savedFileUri = null;
 
     // Save to private storage + update quote history (if linked) + update manual quote record
     try {
@@ -634,6 +635,7 @@ Deno.serve(async (req) => {
       const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
       const uploadResult = await base44.asServiceRole.integrations.Core.UploadPrivateFile({ file: pdfFile });
       const fileUri = uploadResult.file_uri;
+      savedFileUri = fileUri;
 
       // Update manual quote record
       await base44.asServiceRole.entities.ManualQuote.update(manualQuoteId, {
@@ -661,7 +663,7 @@ Deno.serve(async (req) => {
       console.error('Non-blocking: failed to save PDF to storage/history:', historyError);
     }
 
-    return Response.json({ pdf_url: pdfUrl, fileName });
+    return Response.json({ pdf_url: pdfUrl, fileName, file_uri: savedFileUri });
   } catch (error) {
     console.error('Error in generateManualQuotePdf:', error);
     return Response.json({ error: error.message }, { status: 500 });

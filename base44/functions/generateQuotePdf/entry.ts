@@ -1172,6 +1172,7 @@ Deno.serve(async (req) => {
 
         const pdfUrl = result.pdf;
         const fileName = `${fileAndTitleName}.pdf`;
+        let savedFileUri = null;
 
         // Save PDF to private storage and update quote history
         try {
@@ -1187,6 +1188,7 @@ Deno.serve(async (req) => {
             // Upload to private storage
             const uploadResult = await base44.asServiceRole.integrations.Core.UploadPrivateFile({ file: pdfFile });
             const fileUri = uploadResult.file_uri;
+            savedFileUri = fileUri;
 
             // Get current event to read existing quote_history
             const currentEvent = await base44.asServiceRole.entities.Event.get(eventId);
@@ -1211,7 +1213,7 @@ Deno.serve(async (req) => {
             console.error('Failed to save quote to history (non-blocking):', historyError);
         }
 
-        return Response.json({ pdf_url: pdfUrl, fileName });
+        return Response.json({ pdf_url: pdfUrl, fileName, file_uri: savedFileUri });
 
     } catch (error) {
         console.error('Error generating PDF:', error);
