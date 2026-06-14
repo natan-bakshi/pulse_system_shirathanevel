@@ -98,8 +98,23 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
         }, 0);
     }
 
+    // --- Price Per Guest logic ---
+    // If price_per_guest mode is active, the total is price_per_guest * guest_count
+    const isPricePerGuest = event.is_price_per_guest === true || event.is_price_per_guest === 'true';
+    const guestCount = safeFloat(event.guest_count) || 0;
+    const pricePerGuest = safeFloat(event.price_per_guest);
+
+    if (isPricePerGuest && pricePerGuest > 0 && guestCount > 0) {
+        totalCostWithoutVat = pricePerGuest * guestCount;
+    }
+
     // Apply Discount BEFORE VAT if applicable
-    let discountAmount = safeFloat(event.discount_amount);
+    // Discount type: "per_guest" means discount_amount is per-person and gets multiplied
+    const discountType = event.discount_type || 'fixed';
+    const rawDiscount = safeFloat(event.discount_amount);
+    let discountAmount = discountType === 'per_guest' && guestCount > 0
+        ? rawDiscount * guestCount
+        : rawDiscount;
     
     // Ensure we don't have negative base
     let baseForVat = totalCostWithoutVat;
@@ -133,6 +148,12 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
     }, 0);
     const balance = finalTotal - totalPaid;
 
+    // Compute effective price per guest for display
+    let effectivePricePerGuest = 0;
+    if (isPricePerGuest && guestCount > 0) {
+        effectivePricePerGuest = pricePerGuest > 0 ? pricePerGuest : (totalCostWithoutVat / guestCount);
+    }
+
     return {
         totalCostWithoutVat,
         vatAmount,
@@ -141,6 +162,11 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
         finalTotal,
         totalPaid,
         balance,
-        currency: eventCurrency
+        currency: eventCurrency,
+        isPricePerGuest,
+        effectivePricePerGuest,
+        guestCount,
+        discountType,
+        rawDiscountAmount: rawDiscount
     };
 };

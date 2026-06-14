@@ -30,6 +30,9 @@ import OrganizerTypeSelector from "@/components/quotes/OrganizerTypeSelector";
 import OrganizerContactsSection from "./OrganizerContactsSection";
 import DynamicEventFieldsSection from "./DynamicEventFieldsSection";
 import { QuoteOrganizerType } from "@/entities/QuoteOrganizerType";
+import { Switch } from "@/components/ui/switch";
+import GuestCountChangeDialog from "./GuestCountChangeDialog";
+import { toast } from "sonner";
 
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
   const [allServices, setAllServices] = useState([]);
@@ -177,9 +180,15 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
     discount_amount: 0,
     discount_reason: "",
     discount_before_vat: false,
+    discount_type: "fixed",
     total_override: 0,
-    total_override_includes_vat: true
+    total_override_includes_vat: true,
+    is_price_per_guest: false,
+    price_per_guest: 0
   });
+
+  // Guest count change dialog state
+  const [guestChangeDialog, setGuestChangeDialog] = useState(null);
 
   const navigate = useNavigate();
   // Ref to track the currently loaded event ID to prevent overwriting formData on background refetches
@@ -376,8 +385,11 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       discount_amount: event?.discount_amount || 0,
       discount_reason: event?.discount_reason || "",
       discount_before_vat: event?.discount_before_vat || false,
+      discount_type: event?.discount_type || "fixed",
       total_override: event?.total_override || 0,
-      total_override_includes_vat: event?.total_override_includes_vat !== undefined ? event.total_override_includes_vat : true
+      total_override_includes_vat: event?.total_override_includes_vat !== undefined ? event.total_override_includes_vat : true,
+      is_price_per_guest: event?.is_price_per_guest || false,
+      price_per_guest: event?.price_per_guest || 0
     };
 
         const initialServicesFromEvent = event?.services?.length ? event.services.map(s => {
@@ -428,7 +440,62 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   }, [event?.id, allServices.length, conceptDefaults.length, initialDate]); // Reduced dependencies
 
   const handleInputChange = (field, value) => {
+    // Special handling for guest_count when price_per_guest is enabled
+    if (field === 'guest_count' && formData.is_price_per_guest && formData.price_per_guest > 0) {
+      const newCount = parseInt(value) || 0;
+      const oldCount = parseInt(formData.guest_count) || 0;
+      if (newCount > 0 && oldCount > 0 && newCount !== oldCount) {
+        // Calculate current total for display
+        const currentTotal = formData.price_per_guest * oldCount;
+        setGuestChangeDialog({
+          oldGuestCount: oldCount,
+          newGuestCount: newCount,
+          currentPricePerGuest: formData.price_per_guest,
+          currentTotal
+        });
+        // Still update guest_count immediately so the field reflects the new number
+        setFormData(prev => ({ ...prev, guest_count: value }));
+        return;
+      }
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Toggle price per guest
+  const handleTogglePricePerGuest = (checked) => {
+    const guestCount = parseInt(formData.guest_count) || 0;
+    if (checked && guestCount <= 0) {
+      toast.info("יש להזין מספר משתתפים לפני הפעלת מחיר למשתתף");
+      return;
+    }
+    if (checked) {
+      // Calculate current total and derive price per guest
+      const tempEvent = {
+        ...formData,
+        all_inclusive_price: Number(formData.all_inclusive_price),
+        discount_amount: Number(formData.discount_amount),
+        total_override: Number(formData.total_override),
+        is_price_per_guest: false // calculate without ppg to get base total
+      };
+      const financials = calculateEventFinancials(tempEvent, formData.services, [], 0.18);
+      const ppg = financials.totalCostWithoutVat / guestCount;
+      setFormData(prev => ({ ...prev, is_price_per_guest: true, price_per_guest: Math.round(ppg * 100) / 100 }));
+    } else {
+      setFormData(prev => ({ ...prev, is_price_per_guest: false, price_per_guest: 0 }));
+    }
+  };
+
+  // Guest count change dialog handlers
+  const handleKeepPricePerGuest = () => {
+    // Price per guest stays, total changes
+    setGuestChangeDialog(null);
+  };
+
+  const handleKeepTotalPrice = () => {
+    if (!guestChangeDialog) return;
+    const newPpg = guestChangeDialog.currentTotal / guestChangeDialog.newGuestCount;
+    setFormData(prev => ({ ...prev, price_per_guest: Math.round(newPpg * 100) / 100 }));
+    setGuestChangeDialog(null);
   };
 
   const handleParentChange = (index, field, value) => {
@@ -538,8 +605,11 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         all_inclusive_price: Number(formData.all_inclusive_price) || 0,
         discount_amount: Number(formData.discount_amount) || 0,
         discount_before_vat: formData.discount_before_vat,
+        discount_type: formData.discount_type || "fixed",
         total_override: Number(formData.total_override) || 0,
         total_override_includes_vat: formData.total_override_includes_vat,
+        is_price_per_guest: formData.is_price_per_guest || false,
+        price_per_guest: Number(formData.price_per_guest) || 0,
         organizer_type: organizerType || null,
         organizer_contacts: JSON.stringify(organizerContacts.filter(c => c.name || c.phone || c.email)),
         custom_organizer_fields: organizerEventFields ? JSON.stringify(customFieldValues) : (event?.custom_organizer_fields || null),
@@ -831,6 +901,21 @@ for (const serviceItem of formData.services) {
                   <Input id="city" value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} placeholder="עיר מגורים" disabled={isSaving} />
                   <Input id="guest_count" type="number" value={formData.guest_count} onChange={(e) => handleInputChange("guest_count", e.target.value)} placeholder="מספר אורחים" disabled={isSaving} />
                 </div>
+                {/* Price Per Guest Toggle */}
+                <div className="col-span-1 sm:col-span-2 flex items-center gap-3 pt-2">
+                  <Switch
+                    id="price_per_guest_toggle"
+                    checked={formData.is_price_per_guest}
+                    onCheckedChange={handleTogglePricePerGuest}
+                    disabled={isSaving}
+                  />
+                  <Label htmlFor="price_per_guest_toggle" className="text-sm cursor-pointer">מחיר למשתתף</Label>
+                  {formData.is_price_per_guest && formData.price_per_guest > 0 && (
+                    <span className="text-sm text-blue-700 font-medium">
+                      ({getCurrencySymbol(formData.primary_currency)}{formData.price_per_guest.toLocaleString(undefined, { maximumFractionDigits: 2 })} למשתתף)
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
@@ -1083,7 +1168,32 @@ for (const serviceItem of formData.services) {
                           />
                           <Label htmlFor="discount_before_vat" className="text-xs text-gray-600">הנחה לפני מע"מ (משפיעה על חישוב המע"מ)</Label>
                         </div>
+                        {formData.is_price_per_guest && (
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            <Checkbox 
+                              id="discount_per_guest"
+                              checked={formData.discount_type === 'per_guest'}
+                              onCheckedChange={(checked) => handleInputChange("discount_type", checked ? 'per_guest' : 'fixed')}
+                            />
+                            <Label htmlFor="discount_per_guest" className="text-xs text-gray-600">
+                              הנחה למשתתף (תוכפל ב-{parseInt(formData.guest_count) || 0} משתתפים
+                              {formData.discount_type === 'per_guest' && Number(formData.discount_amount) > 0 && (
+                                <> = סה"כ {getCurrencySymbol(formData.primary_currency)}{((Number(formData.discount_amount) || 0) * (parseInt(formData.guest_count) || 0)).toLocaleString()}</>
+                              )})
+                            </Label>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Price Per Guest Info */}
+                      {financials.isPricePerGuest && financials.effectivePricePerGuest > 0 && (
+                        <div className="flex justify-between items-center bg-blue-50 p-3 rounded border border-blue-200 mb-2">
+                          <span className="text-sm font-medium text-blue-800">מחיר למשתתף ({financials.guestCount} משתתפים):</span>
+                          <span className="text-sm font-bold text-blue-700">
+                            {getCurrencySymbol(formData.primary_currency)}{financials.effectivePricePerGuest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Final Total */}
                       <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
@@ -1148,6 +1258,20 @@ for (const serviceItem of formData.services) {
             </Button>
           </CardFooter>
         </form>
+
+        {guestChangeDialog && (
+          <GuestCountChangeDialog
+            isOpen={!!guestChangeDialog}
+            onClose={() => setGuestChangeDialog(null)}
+            oldGuestCount={guestChangeDialog.oldGuestCount}
+            newGuestCount={guestChangeDialog.newGuestCount}
+            currentPricePerGuest={guestChangeDialog.currentPricePerGuest}
+            currentTotal={guestChangeDialog.currentTotal}
+            currency={formData.primary_currency}
+            onKeepPricePerGuest={handleKeepPricePerGuest}
+            onKeepTotalPrice={handleKeepTotalPrice}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

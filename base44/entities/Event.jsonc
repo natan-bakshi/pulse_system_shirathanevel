@@ -97,10 +97,19 @@
       "default": true,
       "description": "\u05d4\u05d0\u05dd \u05d3\u05e8\u05d9\u05e1\u05ea \u05d4\u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc\u05ea \u05de\u05e2''\u05de"
     },
+    "is_price_per_guest": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05ea\u05de\u05d7\u05d5\u05e8 \u05d4\u05d5\u05d0 \u05dc\u05e4\u05d9 \u05de\u05d7\u05d9\u05e8 \u05dc\u05de\u05e9\u05ea\u05ea\u05e3"
+    },
+    "price_per_guest": {
+      "type": "number",
+      "description": "\u05d4\u05de\u05d7\u05d9\u05e8 \u05dc\u05de\u05e9\u05ea\u05ea\u05e3 \u05d1\u05d5\u05d3\u05d3 (\u05de\u05d7\u05d5\u05e9\u05d1: \u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc / \u05de\u05e1\u05e4\u05e8 \u05d0\u05d5\u05e8\u05d7\u05d9\u05dd)"
+    },
     "discount_amount": {
       "type": "number",
       "default": 0,
-      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05e0\u05d7\u05d4"
+      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05d4\u05e0\u05d7\u05d4"
     },
     "discount_before_vat": {
       "type": "boolean",
@@ -110,6 +119,15 @@
     "discount_reason": {
       "type": "string",
       "description": "\u05e1\u05d9\u05d1\u05ea \u05d4\u05d4\u05e0\u05d7\u05d4"
+    },
+    "discount_type": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "per_guest"
+      ],
+      "default": "fixed",
+      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d4\u05e0\u05d7\u05d4: fixed = \u05d4\u05e0\u05d7\u05d4 \u05e7\u05d1\u05d5\u05e2\u05d4 \u05e2\u05dc \u05db\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2, per_guest = \u05d4\u05e0\u05d7\u05d4 \u05dc\u05db\u05dc \u05de\u05e9\u05ea\u05ea\u05e3 (\u05de\u05d5\u05db\u05e4\u05dc\u05ea \u05d1\u05de\u05e1\u05e4\u05e8 \u05d0\u05d5\u05e8\u05d7\u05d9\u05dd)"
     },
     "notes": {
       "type": "string",

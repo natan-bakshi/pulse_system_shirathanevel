@@ -578,8 +578,11 @@ export default function EventDetails() {
         discount_amount: parseFloat(financialEditData.discount_amount) || null,
         discount_reason: financialEditData.discount_reason || null,
         discount_before_vat: financialEditData.discount_before_vat,
+        discount_type: financialEditData.discount_type || 'fixed',
         total_override: parseFloat(financialEditData.total_override) || null,
-        total_override_includes_vat: financialEditData.total_override_includes_vat
+        total_override_includes_vat: financialEditData.total_override_includes_vat,
+        is_price_per_guest: financialEditData.is_price_per_guest || false,
+        price_per_guest: parseFloat(financialEditData.price_per_guest) || null
       });
       setEditingSection(null);
       await loadEventData();

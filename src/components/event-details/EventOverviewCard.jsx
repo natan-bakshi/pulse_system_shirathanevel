@@ -159,7 +159,7 @@ export default function EventOverviewCard({
                   <div className="flex items-center gap-2 min-w-0"><Clock className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.event_time}</span></div>
                   <div className="flex items-center gap-2 min-w-0"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location}</span></div>
                   <div className="flex items-center gap-2 min-w-0"><Home className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.city || 'לא צוין'}</span></div>
-                  <div className="flex items-center gap-2 min-w-0"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים</span></div>
+                  <div className="flex items-center gap-2 min-w-0"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים{event.is_price_per_guest && event.price_per_guest > 0 && ` (${getCurrencySymbol(event.primary_currency || 'ILS')}${event.price_per_guest.toLocaleString(undefined, { maximumFractionDigits: 2 })} למשתתף)`}</span></div>
                   {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">סוג הזמנה: {event.organizer_type}</span></div>}
                   {event.concept && <div className="col-span-full break-words"><strong>קונספט:</strong> {event.concept}</div>}
                   {event.notes && <div className="col-span-full break-words"><strong>הערות:</strong> {event.notes}</div>}
