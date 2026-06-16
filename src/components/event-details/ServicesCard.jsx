@@ -391,6 +391,14 @@ const handleCopyTransport = (service, serviceDetails) => {
                 {service.client_notes && (
                   <div className="text-xs text-gray-500 italic mt-1 break-words">הערה: {service.client_notes}</div>
                 )}
+                {isAdmin && service.price_display_mode && service.price_display_mode !== 'default' && (
+                  <div className="text-xs text-purple-600 mt-1">
+                    {service.price_display_mode === 'direct_payment' && '💳 תשלום ישיר'}
+                    {service.price_display_mode === 'estimated_price' && '~ מחיר מוערך'}
+                    {service.price_display_mode === 'custom_text' && service.price_display_text && `📝 ${service.price_display_text}`}
+                    {service.show_price_in_quote === false && ' · מחיר מוסתר'}
+                  </div>
+                )}
                 {!isSupplier && service.quantity > 1 && (
                   <div className="text-sm text-gray-600">
                     כמות: {service.quantity}
@@ -563,6 +571,54 @@ const handleCopyTransport = (service, serviceDetails) => {
                     </div>
                   </div>
                 )}
+
+                {/* תצוגת מחיר בהצעה */}
+                <div className="col-span-full">
+                  <Label className="text-xs font-semibold text-gray-500">תצוגת מחיר בהצעת מחיר</Label>
+                  <div className="flex flex-wrap items-center gap-3 mt-1 p-2 bg-gray-50 rounded border">
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox
+                        id={`show-price-${service.id}`}
+                        checked={editableService.show_price_in_quote !== false}
+                        onCheckedChange={(checked) => handleUpdateServiceField(service.id, 'show_price_in_quote', checked)}
+                      />
+                      <Label htmlFor={`show-price-${service.id}`} className="text-xs cursor-pointer">הצג מחיר</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-gray-500 whitespace-nowrap">כיתוב נוסף:</Label>
+                      <Select
+                        value={editableService.price_display_mode || 'default'}
+                        onValueChange={(value) => handleUpdateServiceField(service.id, 'price_display_mode', value)}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">ללא כיתוב נוסף</SelectItem>
+                          <SelectItem value="direct_payment">תשלום ישיר</SelectItem>
+                          <SelectItem value="estimated_price">מחיר מוערך</SelectItem>
+                          <SelectItem value="custom_text">טקסט חופשי</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {editableService.price_display_mode === 'custom_text' && (
+                      <div className="flex items-center gap-1.5 flex-1 min-w-[150px]">
+                        <Input
+                          value={editableService.price_display_text || ''}
+                          onChange={(e) => {
+                            const updatedServices = editableServices.map(s =>
+                              s.id === service.id ? { ...s, price_display_text: e.target.value } : s
+                            );
+                            setEditableServices(updatedServices);
+                          }}
+                          onBlur={(e) => handleUpdateServiceField(service.id, 'price_display_text', e.target.value)}
+                          placeholder="הזן טקסט חופשי..."
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* שעת התייצבות לספק - אופציונלי */}
                 <div>
