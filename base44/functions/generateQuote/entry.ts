@@ -73,12 +73,12 @@ function processOrganizerTitleTemplate(template, event, customFieldValues) {
 function buildQuoteBodyHtmlForView(ctx) {
     const {
         organizerBlocks, includeIntro, includePaymentTerms, includeSchedule,
-        eventDetailsHtml, introTemplate, servicesHtml, notesHtml, scheduleHtml,
+        eventDetailsHtml, introTemplate, servicesHtml, externalServicesHtml, notesHtml, scheduleHtml,
         paymentTemplate, agreementTemplate, quoteShowFooter, quoteFooterText,
         quoteSummaryFontSize, quoteSummaryLineHeight, quoteTitleFontSize,
         event, baseTotalWithoutDiscount, eventDiscountAmount, vatAmount,
         totalCostWithVat, finalTotal, totalPaid,
-        quoteHideLogo, appSettings
+        quoteHideLogo, appSettings, includeExternalServices
     } = ctx;
 
     const financialSummaryHtml = `
@@ -122,6 +122,7 @@ function buildQuoteBodyHtmlForView(ctx) {
             ${servicesHtml}
             ${notesHtml}
             ${financialSummaryHtml}
+            ${includeExternalServices && externalServicesHtml ? externalServicesHtml : ''}
             ${scheduleHtml}
             ${(paymentTemplate && includePaymentTerms) ? `<div class="section payment-section" style="margin-top: 50px;"><h2 class="section-title">תנאי תשלום</h2><div class="payment-terms">${paymentTemplate.content}</div></div>` : ''}
             ${agreementTemplate ? `<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>` : ''}
@@ -181,6 +182,15 @@ function buildQuoteBodyHtmlForView(ctx) {
                     bodyParts.push(`<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>`);
                 }
                 break;
+            case 'excluded_services':
+                if (includeExternalServices && externalServicesHtml) {
+                    if (block.subtitle_title) {
+                        bodyParts.push(externalServicesHtml.replace(/<h2 class="section-title">שירותים נוספים<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`));
+                    } else {
+                        bodyParts.push(externalServicesHtml);
+                    }
+                }
+                break;
             case 'notes':
                 if (notesHtml) {
                     if (block.subtitle_title) {
@@ -232,6 +242,7 @@ Deno.serve(async (req) => {
     const includeIntro = body.includeIntro !== false; // default true
     const includePaymentTerms = body.includePaymentTerms !== false; // default true
     const includeSchedule = body.includeSchedule !== false; // default true
+    const includeExternalServices = body.includeExternalServices !== false; // default true
 
     if (!eventId) {
       return Response.json({ error: 'Event ID is required' }, { status: 400 });
@@ -307,8 +318,12 @@ Deno.serve(async (req) => {
     // CRITICAL FIX: Sort by order_index BEFORE processing
     const sortedEventServices = [...allEventServices].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
+    // Separate included vs external services
+    const includedEventServices = sortedEventServices.filter(es => !es.is_external);
+    const externalEventServices = sortedEventServices.filter(es => es.is_external);
+
     // CRITICAL FIX: Spread serviceDetails FIRST, then es, so EventService properties take precedence
-    const populatedServices = sortedEventServices.map(es => {
+    const populatedServices = includedEventServices.map(es => {
         const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
         return {
             ...serviceDetails, // Service properties first
@@ -706,6 +721,54 @@ Deno.serve(async (req) => {
         servicesHtml += `</div>`;
     }
 
+    // Build external services HTML
+    const externalServicesTitle = event.external_services_title || appSettings.default_external_services_title || 'שירותים נוספים';
+    let externalServicesHtml = '';
+    const populatedExternalServices = externalEventServices.map(es => {
+        const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
+        return { ...serviceDetails, ...es, details: serviceDetails };
+    });
+    
+    if (populatedExternalServices.length > 0) {
+        externalServicesHtml = `<div class="section services-section" style="margin-top: 40px;"><h2 class="section-title">${externalServicesTitle}</h2>`;
+        
+        populatedExternalServices.forEach(service => {
+            const serviceDescription = service.service_description || '';
+            const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
+            
+            const displayMode = service.price_display_mode || 'default';
+            const showPrice = service.show_price_in_quote !== false;
+            let priceLabel = '';
+            if (displayMode === 'direct_payment') priceLabel = 'תשלום ישיר';
+            else if (displayMode === 'estimated_price') priceLabel = 'מחיר מוערך';
+            else if (displayMode === 'custom_text') priceLabel = service.price_display_text || '';
+            
+            const priceHtml = displayMode === 'default' 
+                ? `<strong style="color: #8B0000; font-size: ${quoteBodyFontSize}px;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                   ${service.includes_vat ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(כולל מע"מ)</div>` : `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(לא כולל מע"מ)</div>`}`
+                : `${priceLabel ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #b45309; font-weight: 600;">${priceLabel}</div>` : ''}
+                   ${showPrice && serviceTotal > 0 ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #6b7280;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}`;
+            
+            externalServicesHtml += `
+                <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
+                            ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
+                            ${service.client_notes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${service.client_notes}</div>` : ''}
+                            ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}</div>` : ''}
+                        </div>
+                        <div style="text-align: left; margin-top: 10px;">
+                            ${priceHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        externalServicesHtml += `</div>`;
+    }
+
     let notesHtml = '';
     if (event.notes) {
         notesHtml = `
@@ -996,31 +1059,33 @@ Deno.serve(async (req) => {
           <button onclick="window.close(); if(!window.closed) history.back();" style="position:fixed;top:12px;left:12px;z-index:9999;background:#8B0000;color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);line-height:1;" title="סגור">✕</button>
           <div class="page-content">
               ${buildQuoteBodyHtmlForView({
-                  organizerBlocks,
-                  includeIntro,
-                  includePaymentTerms,
-                  includeSchedule,
-                  eventDetailsHtml,
-                  introTemplate,
-                  servicesHtml,
-                  notesHtml,
-                  scheduleHtml,
-                  paymentTemplate,
-                  agreementTemplate,
-                  quoteShowFooter,
-                  quoteFooterText,
-                  quoteSummaryFontSize,
-                  quoteSummaryLineHeight,
-                  quoteTitleFontSize,
-                  event,
-                  baseTotalWithoutDiscount,
-                  eventDiscountAmount,
-                  vatAmount,
-                  totalCostWithVat,
-                  finalTotal,
-                  totalPaid,
-                  quoteHideLogo,
-                  appSettings
+                 organizerBlocks,
+                 includeIntro,
+                 includePaymentTerms,
+                 includeSchedule,
+                 includeExternalServices,
+                 eventDetailsHtml,
+                 introTemplate,
+                 servicesHtml,
+                 externalServicesHtml,
+                 notesHtml,
+                 scheduleHtml,
+                 paymentTemplate,
+                 agreementTemplate,
+                 quoteShowFooter,
+                 quoteFooterText,
+                 quoteSummaryFontSize,
+                 quoteSummaryLineHeight,
+                 quoteTitleFontSize,
+                 event,
+                 baseTotalWithoutDiscount,
+                 eventDiscountAmount,
+                 vatAmount,
+                 totalCostWithVat,
+                 finalTotal,
+                 totalPaid,
+                 quoteHideLogo,
+                 appSettings
               })}
           </div>
       </body>

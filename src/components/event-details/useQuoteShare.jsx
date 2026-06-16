@@ -9,7 +9,7 @@ import { base44 } from '@/api/base44Client';
  * ההפרדה הזו נחוצה כי דפדפני מובייל (iOS וגם Android) דורשים
  * שקריאה ל-navigator.share תתבצע כתגובה מידית ללחיצת משתמש.
  */
-export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, loadEventData }) {
+export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, loadEventData }) {
   const [shareStatus, setShareStatus] = useState('initial'); // 'initial' | 'fetching' | 'ready'
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
@@ -28,7 +28,8 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
         eventId,
         includeIntro: quoteIncludeIntro,
         includePaymentTerms: quoteIncludePaymentTerms,
-        includeSchedule: quoteIncludeSchedule
+        includeSchedule: quoteIncludeSchedule,
+        includeExternalServices: quoteIncludeExternalServices
       });
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
@@ -51,7 +52,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       setPdfBlob(null);
       setPdfFileName('');
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, loadEventData]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, loadEventData]);
 
   // שלב 2: שיתוף הקובץ המוכן - חייב להיות מידי, ללא await לפני navigator.share
   const handleDoShare = useCallback(async (e) => {
