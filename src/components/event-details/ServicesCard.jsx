@@ -100,6 +100,7 @@ export default function ServicesCard({
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
   const [serviceTabs, setServiceTabs] = useState({}); // לניהול לשוניות עריכה לכל שירות
   const [copiedId, setCopiedId] = useState(null); // לניהול אייקון ה-V
+  const [externalTitleInput, setExternalTitleInput] = useState(event?.external_services_title || '');
   const [showNewSupplierDialog, setShowNewSupplierDialog] = useState(null);
   const queryClient = useQueryClient();
   const [showLocalSupplierDialog, setShowLocalSupplierDialog] = useState(false);
@@ -1446,8 +1447,9 @@ const handleCopyTransport = (service, serviceDetails) => {
                 </h4>
                 {handleSaveExternalServicesTitle && (
                   <Input 
-                    value={event.external_services_title || ''}
-                    onChange={(e) => handleSaveExternalServicesTitle(e.target.value)}
+                    value={externalTitleInput}
+                    onChange={(e) => setExternalTitleInput(e.target.value)}
+                    onBlur={() => handleSaveExternalServicesTitle(externalTitleInput)}
                     placeholder="כותרת מקטע (ברירת מחדל: שירותים נוספים)"
                     className="text-sm h-7 max-w-[250px]"
                   />
@@ -1456,67 +1458,96 @@ const handleCopyTransport = (service, serviceDetails) => {
               <Badge className="bg-orange-100 text-orange-700 text-xs shrink-0">לא כלול בסיכום הכספי</Badge>
             </div>
 
+            <DragDropContext onDragEnd={handleDragEnd}>
             {/* External packages */}
-            {groupedExternalServices.packages.map((pkg) => (
-              <div key={pkg.package_id} className="border border-orange-200 rounded-lg overflow-hidden mb-3 bg-orange-50/30">
-                <div className="bg-orange-50 p-3 flex items-center gap-2">
-                  <GripVertical className="h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
-                    <strong className="text-orange-800">{pkg.package_name}</strong>
-                    {pkg.package_description && (
-                      <div className="text-sm text-gray-600 mt-1" dangerouslySetInnerHTML={{ __html: pkg.package_description }} />
-                    )}
-                    {!event.all_inclusive && <div className="text-sm text-orange-600">{getCurrencySymbol(event?.primary_currency || 'ILS')}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>}
-                  </div>
+            <Droppable droppableId="external-packages" type="external-package" isDropDisabled={!isAdmin}>
+              {(provided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3 mb-3">
+                  {groupedExternalServices.packages.map((pkg, index) => (
+                    <Draggable key={pkg.package_id} draggableId={`ext-pkg-${pkg.package_id}`} index={index} isDragDisabled={!isAdmin}>
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.draggableProps} className="border border-orange-200 rounded-lg overflow-hidden bg-orange-50/30">
+                          <div {...provided.dragHandleProps} className="bg-orange-50 p-3 flex items-center gap-2">
+                            {isAdmin && <GripVertical className="h-5 w-5 text-gray-400" />}
+                            <div className="flex-1">
+                              <strong className="text-orange-800">{pkg.package_name}</strong>
+                              {pkg.package_description && (
+                                <div className="text-sm text-gray-600 mt-1" dangerouslySetInnerHTML={{ __html: pkg.package_description }} />
+                              )}
+                              {!event.all_inclusive && <div className="text-sm text-orange-600">{getCurrencySymbol(event?.primary_currency || 'ILS')}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>}
+                            </div>
+                          </div>
+                          <Droppable droppableId={`ext-pkg-inner-${pkg.package_id}`} type="external-service-in-package" isDropDisabled={!isAdmin}>
+                            {(provided) => (
+                              <div {...provided.droppableProps} ref={provided.innerRef} className="p-3 space-y-2">
+                                {pkg.services.map((service, sIndex) => {
+                                  const serviceDetails = allServices.find(s => s.id === service.service_id);
+                                  let supplierIds = [];
+                                  let supplierNotes = {};
+                                  try {
+                                    supplierIds = JSON.parse(service.supplier_ids || '[]');
+                                    supplierNotes = JSON.parse(service.supplier_notes || '{}');
+                                  } catch (e) {}
+                                  const assignedSuppliers = allSuppliers.filter(sup => supplierIds.includes(sup.id));
+                                  const isSaving = savingServiceField?.serviceId === service.id;
+                                  return (
+                                    <Draggable key={service.id} draggableId={service.id} index={sIndex} isDragDisabled={!isAdmin}>
+                                      {(provided) => (
+                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="p-3 bg-white/80 rounded">
+                                          {renderServiceCard(service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, '', isSaving, true)}
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  );
+                                })}
+                                {provided.placeholder}
+                              </div>
+                            )}
+                          </Droppable>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
                 </div>
-                <div className="p-3 space-y-2">
-                  {pkg.services.map((service) => {
-                    const serviceDetails = allServices.find(s => s.id === service.service_id);
-                    let supplierIds = [];
-                    let supplierNotes = {};
-                    try {
-                      supplierIds = JSON.parse(service.supplier_ids || '[]');
-                      supplierNotes = JSON.parse(service.supplier_notes || '{}');
-                    } catch (e) {}
-                    const assignedSuppliers = allSuppliers.filter(sup => supplierIds.includes(sup.id));
-                    const isSaving = savingServiceField?.serviceId === service.id;
-                    return (
-                      <div key={service.id} className="p-3 bg-white/80 rounded">
-                        {renderServiceCard(service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, '', isSaving, true)}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+              )}
+            </Droppable>
 
             {/* External standalone services */}
             {groupedExternalServices.standalone.length > 0 && (
-              <div className="space-y-2">
-                {groupedExternalServices.standalone.map((service) => {
-                  const serviceDetails = allServices.find(s => s.id === service.service_id);
-                  let supplierIds = [];
-                  let supplierNotes = {};
-                  try {
-                    supplierIds = JSON.parse(service.supplier_ids || '[]');
-                    supplierNotes = JSON.parse(service.supplier_notes || '{}');
-                  } catch (e) {}
-                  const assignedSuppliers = allSuppliers.filter(sup => supplierIds.includes(sup.id));
-                  const isSaving = savingServiceField?.serviceId === service.id;
-                  return (
-                    <div key={service.id} className="border border-orange-100 rounded p-3 bg-orange-50/20">
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-3 flex-1">
-                          <div className="flex-1">
-                            {renderServiceCard(service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, '', isSaving, false)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <Droppable droppableId="external-standalone" type="external-standalone" isDropDisabled={!isAdmin}>
+                {(provided) => (
+                  <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                    {groupedExternalServices.standalone.map((service, index) => {
+                      const serviceDetails = allServices.find(s => s.id === service.service_id);
+                      let supplierIds = [];
+                      let supplierNotes = {};
+                      try {
+                        supplierIds = JSON.parse(service.supplier_ids || '[]');
+                        supplierNotes = JSON.parse(service.supplier_notes || '{}');
+                      } catch (e) {}
+                      const assignedSuppliers = allSuppliers.filter(sup => supplierIds.includes(sup.id));
+                      const isSaving = savingServiceField?.serviceId === service.id;
+                      return (
+                        <Draggable key={service.id} draggableId={service.id} index={index} isDragDisabled={!isAdmin}>
+                          {(provided) => (
+                            <div ref={provided.innerRef} {...provided.draggableProps} className="border border-orange-100 rounded p-3 bg-orange-50/20">
+                              <div className="flex gap-3 flex-1">
+                                <div {...provided.dragHandleProps} className="flex-1">
+                                  {renderServiceCard(service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, '', isSaving, false)}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
             )}
+            </DragDropContext>
           </div>
         )}
       </CardContent>
