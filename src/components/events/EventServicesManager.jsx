@@ -53,6 +53,7 @@ export default function EventServicesManager({
   // New state for multi-select service adding
   const [serviceSearchTerm, setServiceSearchTerm] = useState("");
   const [servicesToMultiAdd, setServicesToMultiAdd] = useState([]);
+  const [addAsExternal, setAddAsExternal] = useState(false);
   const [showAddToPackageDialog, setShowAddToPackageDialog] = useState(false);
   const [targetPackageId, setTargetPackageId] = useState('new');
   const [newPackageData, setNewPackageData] = useState({ name: '', description: '', price: '', includes_vat: false });
@@ -271,7 +272,8 @@ export default function EventServicesManager({
         supplier_statuses: {},
         supplier_notes: {},
         admin_notes: '',
-        notes: ''
+        notes: '',
+        is_external: addAsExternal || false
       };
     }).filter(Boolean);
 
@@ -281,6 +283,7 @@ export default function EventServicesManager({
     
     setServicesToMultiAdd([]);
     setServiceSearchTerm("");
+    setAddAsExternal(false);
   };
 
   const toggleServiceSelection = (serviceId) => {
@@ -1343,9 +1346,25 @@ export default function EventServicesManager({
               )}
             </div>
 
+            {/* External Service Toggle */}
+            {servicesToMultiAdd.length > 0 && (
+              <div className="mt-2 pt-2 border-t">
+                <div
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-orange-50 cursor-pointer"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAddAsExternal(prev => !prev); }}
+                >
+                  <Checkbox
+                    checked={addAsExternal}
+                    className="pointer-events-none"
+                  />
+                  <span className="text-xs text-orange-800">הוסף כשירות חיצוני (לא כלול בחישוב הכספי)</span>
+                </div>
+              </div>
+            )}
+
             {/* Add Button */}
             {servicesToMultiAdd.length > 0 && (
-              <div className="mt-2 pt-2 border-t sticky bottom-0 bg-white">
+              <div className="mt-2 pt-1 sticky bottom-0 bg-white">
                 <Button 
                   className="w-full bg-green-600 hover:bg-green-700 h-9 text-xs font-medium shadow-sm"
                   onClick={handleAddMultipleServices}
