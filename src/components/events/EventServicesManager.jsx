@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, GripVertical, Edit, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, HelpCircle, X, Check, Copy  } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Edit, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, HelpCircle, X, Check, Copy, ArrowLeftRight } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -952,6 +952,48 @@ export default function EventServicesManager({
                   </div>
                 </div>
               )}
+
+              {/* תצוגת מחיר בהצעה */}
+              <div className="col-span-full">
+                <Label className="text-xs font-semibold text-gray-500">תצוגת מחיר בהצעת מחיר</Label>
+                <div className="flex flex-wrap items-center gap-3 mt-1 p-2 bg-gray-50 rounded border">
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id={`show-price-${service.id}`}
+                      checked={service.show_price_in_quote !== false}
+                      onCheckedChange={(checked) => handleServiceChange(service.id, 'show_price_in_quote', checked)}
+                    />
+                    <Label htmlFor={`show-price-${service.id}`} className="text-xs cursor-pointer">הצג מחיר</Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-xs text-gray-500 whitespace-nowrap">כיתוב נוסף:</Label>
+                    <Select
+                      value={service.price_display_mode || 'default'}
+                      onValueChange={(value) => handleServiceChange(service.id, 'price_display_mode', value)}
+                    >
+                      <SelectTrigger className="h-7 text-xs w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">ללא כיתוב נוסף</SelectItem>
+                        <SelectItem value="direct_payment">תשלום ישיר</SelectItem>
+                        <SelectItem value="estimated_price">מחיר מוערך</SelectItem>
+                        <SelectItem value="custom_text">טקסט חופשי</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {service.price_display_mode === 'custom_text' && (
+                    <div className="flex items-center gap-1.5 flex-1 min-w-[150px]">
+                      <Input
+                        value={service.price_display_text || ''}
+                        onChange={(e) => handleServiceChange(service.id, 'price_display_text', e.target.value)}
+                        placeholder="הזן טקסט חופשי..."
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
               {/* שעת התייצבות לספק - אופציונלי */}
               <div>
                 <div className="flex items-center gap-1 mb-1">
@@ -1116,56 +1158,73 @@ export default function EventServicesManager({
           )}
         </div>
         
-        <div className="flex gap-2">
-          <Button 
-            type="button"
-            variant="outline" 
-            size="sm" 
-            onClick={() => handleOpenSupplierDialog(service)}
-            className="text-xs"
-          >
-                <Button type="button" variant="ghost" size="icon" onClick={(e) => {
-          e.stopPropagation();
-          let units = [];
-          try { units = JSON.parse(service.pickuppoint || '[]'); } catch { units = []; }
-          if (!Array.isArray(units) || units.length === 0) {
-               units = [{ pickupPoints: [{ time: service.standingtime, location: service.pickuppoint, contact: service.onsitecontactdetails }] }];
-          }
-          const dateStr = service.eventdate ? new Date(service.eventdate).toLocaleDateString('he-IL') : '';
-          let fullText = "";
-          units.forEach((unit, uIdx) => {
-              if (fullText) fullText += "\n";
-              if (units.length > 1) fullText += `--- רכב ${uIdx + 1} ---\n`;
-              unit.pickupPoints.forEach((point, pIdx) => {
-                   const time = point.time || '';
-                   const loc = point.location || '';
-                   const cName = point.contact?.name || '';
-                   const cPhone = point.contact?.phone || '';
-                   if (pIdx === 0) fullText += `${dateStr} | ${time} | ${serviceDetails?.servicename} | ${loc} | ${cName} ${cPhone}\n`;
-                   else fullText += ` -> ${time} | ${loc} | ${cName} ${cPhone}\n`;
-              });
-          });
-          navigator.clipboard.writeText(fullText).then(() => {
-              setCopiedId(service.id || service.serviceid);
-              setTimeout(() => setCopiedId(null), 2000);
-          });
-      }}>
-          {copiedId === (service.id || service.serviceid) ? 
-              <Check className="h-4 w-4 text-green-600 animate-in zoom-in" /> : 
-              <Copy className="h-4 w-4 text-gray-400" />
-          }
-      </Button>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="text-xs">
+                      שבץ ספק
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleOpenSupplierDialog(service)}>
+                      בחר מרשימת ספקים
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent><p>שבץ ספק לשירות זה</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-            שבץ ספק
-          </Button>
           {isInPackage && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveFromPackage(service.id)}>
-              הוצא מחבילה
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveFromPackage(service.id)}>
+                    <LogOut className="h-4 w-4 text-orange-500" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>הוצא שירות זה מהחבילה והפוך אותו לשירות עצמאי</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
-          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveService(service.service_id)}>
-            <Trash2 className="h-4 w-4 text-red-500" />
-          </Button>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const updatedServices = selectedServices.map(s =>
+                      s.id === service.id ? { ...s, is_external: !s.is_external } : s
+                    );
+                    onServicesChange(updatedServices);
+                  }}
+                >
+                  <ArrowLeftRight className={`h-4 w-4 ${service.is_external ? 'text-green-600' : 'text-orange-500'}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{service.is_external ? 'העבר להצעה (כלול במחיר)' : 'העבר לשירותים חיצוניים (לא כלול במחיר)'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveService(service.service_id)}>
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>מחק שירות זה מהאירוע</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     );
