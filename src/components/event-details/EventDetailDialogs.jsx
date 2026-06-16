@@ -210,7 +210,7 @@ export function EditPackageDialog({ open, onOpenChange, form, setForm, isSaving,
   );
 }
 
-export function AddServiceDialog({ open, onOpenChange, searchTerm, setSearchTerm, filteredServices, selected, setSelected, isAdding, onAdd }) {
+export function AddServiceDialog({ open, onOpenChange, searchTerm, setSearchTerm, filteredServices, selected, setSelected, isAdding, onAdd, isExternal, setIsExternal }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -228,6 +228,18 @@ export function AddServiceDialog({ open, onOpenChange, searchTerm, setSearchTerm
               ))}
             </div>
           </div>
+          {setIsExternal && (
+            <div className="flex items-center gap-2 p-2 bg-orange-50 rounded border border-orange-100">
+              <Checkbox
+                id="add-service-external"
+                checked={isExternal || false}
+                onCheckedChange={setIsExternal}
+              />
+              <Label htmlFor="add-service-external" className="cursor-pointer text-orange-800 text-sm">
+                הוסף כשירות חיצוני (לא כלול בחישוב הכספי)
+              </Label>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(""); }} disabled={isAdding}>ביטול</Button>

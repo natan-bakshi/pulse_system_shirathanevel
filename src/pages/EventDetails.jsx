@@ -113,6 +113,7 @@ export default function EventDetails() {
   const [showAddServiceDialog, setShowAddServiceDialog] = useState(false);
   const [selectedServicesToAdd, setSelectedServicesToAdd] = useState([]);
   const [addServiceSearchTerm, setAddServiceSearchTerm] = useState("");
+  const [addServiceAsExternal, setAddServiceAsExternal] = useState(false);
   const [debouncedAddServiceSearch, setDebouncedAddServiceSearch] = useState("");
 
   const [showAddExistingPackageDialog, setShowAddExistingPackageDialog] = useState(false);
@@ -982,7 +983,61 @@ export default function EventDetails() {
       }
       reorderServicesMutation.mutate(updates);
     }
-  }, [isAdmin, groupedServices, reorderServicesMutation]);
+
+    if (type === 'external-package') {
+      const currentPackages = Array.from(groupedExternalServices.packages);
+      const [movedPackage] = currentPackages.splice(source.index, 1);
+      currentPackages.splice(destination.index, 0, movedPackage);
+
+      for (let i = 0; i < currentPackages.length; i++) {
+        const pkg = currentPackages[i];
+        const newPackageBaseOrderIndex = (i + 1) * 1000 + 50000; // offset to avoid collision with regular services
+
+        for (const service of pkg.services) {
+          updates.push({
+            id: service.id,
+            order_index: newPackageBaseOrderIndex + (service.order_index % 1000 || 0)
+          });
+        }
+      }
+      reorderServicesMutation.mutate(updates);
+      return;
+    }
+
+    if (type === 'external-service-in-package') {
+      const pkgId = source.droppableId.replace('ext-pkg-inner-', '');
+      const targetPackage = groupedExternalServices.packages.find(pkg => pkg.package_id === pkgId);
+      if (!targetPackage) return;
+
+      const servicesInPackage = Array.from(targetPackage.services);
+      const [movedService] = servicesInPackage.splice(source.index, 1);
+      servicesInPackage.splice(destination.index, 0, movedService);
+
+      const packageMajorIndex = Math.floor((targetPackage.order_index || 0) / 1000);
+      for (let i = 0; i < servicesInPackage.length; i++) {
+        updates.push({
+          id: servicesInPackage[i].id,
+          order_index: packageMajorIndex * 1000 + i
+        });
+      }
+      reorderServicesMutation.mutate(updates);
+      return;
+    }
+
+    if (type === 'external-standalone') {
+      const currentStandaloneServices = Array.from(groupedExternalServices.standalone);
+      const [movedService] = currentStandaloneServices.splice(source.index, 1);
+      currentStandaloneServices.splice(destination.index, 0, movedService);
+
+      for (let i = 0; i < currentStandaloneServices.length; i++) {
+        updates.push({
+          id: currentStandaloneServices[i].id,
+          order_index: 50000 + i // offset to avoid collision with regular services
+        });
+      }
+      reorderServicesMutation.mutate(updates);
+    }
+  }, [isAdmin, groupedServices, groupedExternalServices, reorderServicesMutation]);
 
   const handleAssignSuppliers = useCallback(async () => {
     if (!selectedServiceForSupplier) return;
@@ -1438,13 +1493,15 @@ export default function EventDetails() {
           quantity: 1,
           includes_vat: serviceDetails?.default_includes_vat || false,
           service_description: serviceDetails?.service_description || '',
-          order_index: serviceDetails?.default_order_index !== undefined ? serviceDetails.default_order_index : (maxOrderIndex + i + 1)
+          order_index: serviceDetails?.default_order_index !== undefined ? serviceDetails.default_order_index : (maxOrderIndex + i + 1),
+          is_external: addServiceAsExternal || false
         });
       }
 
       setShowAddServiceDialog(false);
       setSelectedServicesToAdd([]);
       setAddServiceSearchTerm("");
+      setAddServiceAsExternal(false);
       await loadEventData();
     } catch (error) {
       console.error("Failed to add services:", error);
@@ -1941,7 +1998,7 @@ export default function EventDetails() {
       <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
       <PackageDialog open={showPackageDialog} onOpenChange={setShowPackageDialog} form={packageForm} setForm={setPackageForm} searchTerm={packageServiceSearchTerm} setSearchTerm={setPackageServiceSearchTerm} filteredServices={filteredServicesForPackage} isCreating={isCreatingPackage} onCreate={handleCreatePackage} />
       <EditPackageDialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog} form={editPackageForm} setForm={setEditPackageForm} isSaving={isSavingPackageEdit} onSave={handleSavePackageEdit} primaryCurrency={event?.primary_currency || 'ILS'} exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()} />
-      <AddServiceDialog open={showAddServiceDialog} onOpenChange={setShowAddServiceDialog} searchTerm={addServiceSearchTerm} setSearchTerm={setAddServiceSearchTerm} filteredServices={filteredServicesForAdd} selected={selectedServicesToAdd} setSelected={setSelectedServicesToAdd} isAdding={isAddingServices} onAdd={handleAddStandaloneServices} />
+      <AddServiceDialog open={showAddServiceDialog} onOpenChange={setShowAddServiceDialog} searchTerm={addServiceSearchTerm} setSearchTerm={setAddServiceSearchTerm} filteredServices={filteredServicesForAdd} selected={selectedServicesToAdd} setSelected={setSelectedServicesToAdd} isAdding={isAddingServices} onAdd={handleAddStandaloneServices} isExternal={addServiceAsExternal} setIsExternal={setAddServiceAsExternal} />
       <AddExistingPackageDialog open={showAddExistingPackageDialog} onOpenChange={setShowAddExistingPackageDialog} searchTerm={existingPackageSearchTerm} setSearchTerm={setExistingPackageSearchTerm} filteredPackages={filteredExistingPackages} selected={selectedExistingPackage} setSelected={setSelectedExistingPackage} isAdding={isAddingExistingPackage} onAdd={handleAddExistingPackage} />
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
