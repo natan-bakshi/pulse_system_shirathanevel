@@ -53,6 +53,9 @@ export default function EventDetailsTabs(props) {
     savingServiceField, setSavingServiceField, handleUpdateServiceField,
     setSelectedServiceForSupplier, setSupplierFormData, setShowSupplierDialog,
     handleRemoveFromPackage, handleDeleteService,
+    handleToggleServiceExternal,
+    groupedExternalServices,
+    handleSaveExternalServicesTitle,
     exchangeRate, onPrimaryCurrencyChange,
     // Payments
     payments,
@@ -180,6 +183,9 @@ export default function EventDetailsTabs(props) {
           setShowSupplierDialog={setShowSupplierDialog}
           handleRemoveFromPackage={handleRemoveFromPackage}
           handleDeleteService={handleDeleteService}
+          handleToggleServiceExternal={handleToggleServiceExternal}
+          groupedExternalServices={groupedExternalServices}
+          handleSaveExternalServicesTitle={handleSaveExternalServicesTitle}
           exchangeRate={exchangeRate}
           onPrimaryCurrencyChange={onPrimaryCurrencyChange}
         />
