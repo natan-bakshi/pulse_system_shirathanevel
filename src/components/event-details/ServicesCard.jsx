@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Edit, Plus, Trash2, Save, Loader2, GripVertical, Minus, X, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, Info, HelpCircle } from 'lucide-react';
+import { Edit, Plus, Trash2, Save, Loader2, GripVertical, Minus, X, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, Info, HelpCircle, ArrowLeftRight, ArrowRight } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -90,6 +90,9 @@ export default function ServicesCard({
   setShowSupplierDialog,
   handleRemoveFromPackage,
   handleDeleteService,
+  handleToggleServiceExternal,
+  groupedExternalServices = { packages: [], standalone: [] },
+  handleSaveExternalServicesTitle,
   exchangeRate = 3.6,
   onPrimaryCurrencyChange
 }) {
@@ -937,6 +940,21 @@ const handleCopyTransport = (service, serviceDetails) => {
                   </TooltipProvider>
                 )}
                 
+                {handleToggleServiceExternal && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" onClick={() => handleToggleServiceExternal(service.id, !service.is_external)}>
+                          <ArrowLeftRight className={`h-4 w-4 ${service.is_external ? 'text-green-600' : 'text-orange-500'}`} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{service.is_external ? 'העבר להצעה (כלול במחיר)' : 'העבר לשירותים חיצוניים (לא כלול במחיר)'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1360,6 +1378,90 @@ const handleCopyTransport = (service, serviceDetails) => {
               )}
             </div>
           </DragDropContext>
+        )}
+
+        {/* External Services Section */}
+        {isAdmin && (groupedExternalServices.packages.length > 0 || groupedExternalServices.standalone.length > 0) && (
+          <div className="mt-8 border-t-2 border-orange-200 pt-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <h4 className="text-base font-semibold text-orange-800 shrink-0">
+                  {event.external_services_title || 'שירותים נוספים'}
+                </h4>
+                {handleSaveExternalServicesTitle && (
+                  <Input 
+                    value={event.external_services_title || ''}
+                    onChange={(e) => handleSaveExternalServicesTitle(e.target.value)}
+                    placeholder="כותרת מקטע (ברירת מחדל: שירותים נוספים)"
+                    className="text-sm h-7 max-w-[250px]"
+                  />
+                )}
+              </div>
+              <Badge className="bg-orange-100 text-orange-700 text-xs shrink-0">לא כלול בסיכום הכספי</Badge>
+            </div>
+
+            {/* External packages */}
+            {groupedExternalServices.packages.map((pkg) => (
+              <div key={pkg.package_id} className="border border-orange-200 rounded-lg overflow-hidden mb-3 bg-orange-50/30">
+                <div className="bg-orange-50 p-3 flex items-center gap-2">
+                  <GripVertical className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <strong className="text-orange-800">{pkg.package_name}</strong>
+                    {pkg.package_description && (
+                      <div className="text-sm text-gray-600 mt-1" dangerouslySetInnerHTML={{ __html: pkg.package_description }} />
+                    )}
+                    {!event.all_inclusive && <div className="text-sm text-orange-600">{getCurrencySymbol(event?.primary_currency || 'ILS')}{(pkg.package_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>}
+                  </div>
+                </div>
+                <div className="p-3 space-y-2">
+                  {pkg.services.map((service) => {
+                    const serviceDetails = allServices.find(s => s.id === service.service_id);
+                    let supplierIds = [];
+                    let supplierNotes = {};
+                    try {
+                      supplierIds = JSON.parse(service.supplier_ids || '[]');
+                      supplierNotes = JSON.parse(service.supplier_notes || '{}');
+                    } catch (e) {}
+                    const assignedSuppliers = allSuppliers.filter(sup => supplierIds.includes(sup.id));
+                    const isSaving = savingServiceField?.serviceId === service.id;
+                    return (
+                      <div key={service.id} className="p-3 bg-white/80 rounded">
+                        {renderServiceCard(service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, '', isSaving, true)}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* External standalone services */}
+            {groupedExternalServices.standalone.length > 0 && (
+              <div className="space-y-2">
+                {groupedExternalServices.standalone.map((service) => {
+                  const serviceDetails = allServices.find(s => s.id === service.service_id);
+                  let supplierIds = [];
+                  let supplierNotes = {};
+                  try {
+                    supplierIds = JSON.parse(service.supplier_ids || '[]');
+                    supplierNotes = JSON.parse(service.supplier_notes || '{}');
+                  } catch (e) {}
+                  const assignedSuppliers = allSuppliers.filter(sup => supplierIds.includes(sup.id));
+                  const isSaving = savingServiceField?.serviceId === service.id;
+                  return (
+                    <div key={service.id} className="border border-orange-100 rounded p-3 bg-orange-50/20">
+                      <div className="flex justify-between items-start">
+                        <div className="flex gap-3 flex-1">
+                          <div className="flex-1">
+                            {renderServiceCard(service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, '', isSaving, false)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
       

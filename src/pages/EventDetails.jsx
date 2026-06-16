@@ -64,6 +64,7 @@ export default function EventDetails() {
   const [quoteIncludeIntro, setQuoteIncludeIntro] = useState(null); // null = not initialized yet
   const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(null);
   const [quoteIncludeSchedule, setQuoteIncludeSchedule] = useState(null);
+  const [quoteIncludeExternalServices, setQuoteIncludeExternalServices] = useState(null);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -243,7 +244,12 @@ export default function EventDetails() {
     if (event && quoteIncludeSchedule === null) {
       setQuoteIncludeSchedule(!!(event.schedule && event.schedule.length > 0));
     }
-  }, [event, quoteTemplates, quoteIncludeSchedule, quoteIncludeIntro, quoteIncludePaymentTerms]);
+    if (event && quoteIncludeExternalServices === null) {
+      // Default: include external services if they exist
+      const hasExternalServices = eventServices.some(es => es.is_external);
+      setQuoteIncludeExternalServices(hasExternalServices);
+    }
+  }, [event, quoteTemplates, quoteIncludeSchedule, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeExternalServices, eventServices]);
 
   // Initialize editable schedule when event loads
   useEffect(() => {
@@ -375,14 +381,9 @@ export default function EventDetails() {
     });
   }, [eventServices, isSupplier, user, allSuppliers]);
 
-  const groupedServices = useMemo(() => {
-    const servicesToUse = isSupplier ? filteredServicesForSupplier : eventServices;
+  // Helper to group services into packages/standalone (reused for both included and external)
+  const buildGroupedServices = useCallback((servicesToUse) => {
     const servicesSorted = [...servicesToUse].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-
-    // Suppliers see only their assigned services as flat list - no package grouping
-    if (isSupplier) {
-      return { packages: [], standalone: servicesSorted };
-    }
 
     const packagesMap = new Map();
     const standalone = [];
@@ -390,11 +391,10 @@ export default function EventDetails() {
     // First pass: Identify main package items and legacy packages
     servicesSorted.forEach(es => {
       if (es.is_package_main_item) {
-        // New structure: Main Item
         packagesMap.set(es.id, {
           package_id: es.id,
           package_name: es.package_name || 'חבילה',
-          package_price: es.custom_price || 0, // In new structure, custom_price on main item is the package price
+          package_price: es.custom_price || 0,
           package_includes_vat: es.includes_vat || false,
           package_description: es.package_description || es.service_description || '',
           services: [],
@@ -402,7 +402,6 @@ export default function EventDetails() {
           main_item: es
         });
       } else if (es.package_id && !es.parent_package_event_service_id) {
-        // Legacy fallback: Group by package_id if exists and not using new structure
         if (!packagesMap.has(es.package_id)) {
           packagesMap.set(es.package_id, {
             package_id: es.package_id,
@@ -419,13 +418,11 @@ export default function EventDetails() {
 
     // Second pass: Assign services to packages or standalone
     servicesSorted.forEach(es => {
-      if (es.is_package_main_item) return; // Already handled
+      if (es.is_package_main_item) return;
 
       if (es.parent_package_event_service_id && packagesMap.has(es.parent_package_event_service_id)) {
-        // New structure: Child Item
         packagesMap.get(es.parent_package_event_service_id).services.push(es);
       } else if (es.package_id && packagesMap.has(es.package_id) && !es.parent_package_event_service_id) {
-        // Legacy fallback
         packagesMap.get(es.package_id).services.push(es);
       } else {
         standalone.push(es);
@@ -433,7 +430,6 @@ export default function EventDetails() {
     });
 
     const packagesWithServices = Array.from(packagesMap.values()).map(pkg => {
-        // For legacy, calculate min order index. For new, use main item's order index.
         if (pkg.order_index === Infinity) {
              pkg.order_index = Math.min(...pkg.services.map(s => s.order_index || 0));
         }
@@ -444,7 +440,27 @@ export default function EventDetails() {
     standalone.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
     return { packages: packagesWithServices, standalone };
-  }, [eventServices, isSupplier, filteredServicesForSupplier]);
+  }, []);
+
+  const groupedServices = useMemo(() => {
+    const servicesToUse = isSupplier ? filteredServicesForSupplier : eventServices;
+
+    // Suppliers see only their assigned services as flat list - no package grouping, no external split
+    if (isSupplier) {
+      const servicesSorted = [...servicesToUse].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      return { packages: [], standalone: servicesSorted };
+    }
+
+    // Filter to only included (non-external) services
+    const includedServices = servicesToUse.filter(es => !es.is_external);
+    return buildGroupedServices(includedServices);
+  }, [eventServices, isSupplier, filteredServicesForSupplier, buildGroupedServices]);
+
+  const groupedExternalServices = useMemo(() => {
+    if (isSupplier) return { packages: [], standalone: [] };
+    const externalServices = eventServices.filter(es => es.is_external);
+    return buildGroupedServices(externalServices);
+  }, [eventServices, isSupplier, buildGroupedServices]);
 
   // Calculate financials based on EDIT state if editing, otherwise DB state
   const eventForCalculation = useMemo(() => {
@@ -1343,6 +1359,29 @@ export default function EventDetails() {
     }
   }, [loadEventData]);
 
+  const handleToggleServiceExternal = useCallback(async (serviceId, makeExternal) => {
+    try {
+      await base44.entities.EventService.update(serviceId, { is_external: makeExternal });
+      // Update local state immediately
+      setEditableServices(prev => prev.map(s => 
+        s.id === serviceId ? { ...s, is_external: makeExternal } : s
+      ));
+      queryClient.invalidateQueries({ queryKey: ['eventServices', eventId] });
+    } catch (error) {
+      console.error("Failed to toggle service external status:", error);
+      alert("שגיאה בעדכון סטטוס השירות");
+    }
+  }, [eventId, queryClient]);
+
+  const handleSaveExternalServicesTitle = useCallback(async (title) => {
+    try {
+      await base44.entities.Event.update(eventId, { external_services_title: title });
+      queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+    } catch (error) {
+      console.error("Failed to save external services title:", error);
+    }
+  }, [eventId, queryClient]);
+
   const handleDeleteSelectedServices = useCallback(async () => {
     if (selectedServicesForAction.length === 0) return;
     
@@ -1475,7 +1514,7 @@ export default function EventDetails() {
   const handleGenerateQuote = useCallback(async () => {
     setIsGeneratingQuote(true);
     try {
-      const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule });
+      const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices });
       const html = response.data.html;
       
       const newWindow = window.open();
@@ -1496,7 +1535,7 @@ export default function EventDetails() {
   const handleGeneratePdf = useCallback(async () => {
     setIsGeneratingPdf(true);
     try {
-      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule });
+      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices });
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
 
@@ -1540,6 +1579,7 @@ export default function EventDetails() {
     quoteIncludeIntro,
     quoteIncludePaymentTerms,
     quoteIncludeSchedule,
+    quoteIncludeExternalServices,
     loadEventData
   });
 
@@ -1725,8 +1765,9 @@ export default function EventDetails() {
                 const hasIntroTemplate = event.concept && quoteTemplates.some(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
                 const hasPaymentTemplate = quoteTemplates.some(t => t.template_type === 'payment_terms');
                 const hasSchedule = event?.schedule?.length > 0;
-                return (hasIntroTemplate || hasPaymentTemplate || hasSchedule) ? (
-                  <div className="flex items-center gap-3 px-2 py-1.5 border-b border-gray-100">
+                const hasExternalServices = eventServices.some(es => es.is_external);
+                return (hasIntroTemplate || hasPaymentTemplate || hasSchedule || hasExternalServices) ? (
+                  <div className="flex items-center gap-3 px-2 py-1.5 border-b border-gray-100 flex-wrap">
                     {hasIntroTemplate && (
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
                         <Checkbox checked={quoteIncludeIntro} onCheckedChange={setQuoteIncludeIntro} className="h-3.5 w-3.5" />
@@ -1743,6 +1784,12 @@ export default function EventDetails() {
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
                         <Checkbox checked={quoteIncludeSchedule} onCheckedChange={setQuoteIncludeSchedule} className="h-3.5 w-3.5" />
                         <span>לו"ז</span>
+                      </label>
+                    )}
+                    {hasExternalServices && (
+                      <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
+                        <Checkbox checked={quoteIncludeExternalServices} onCheckedChange={setQuoteIncludeExternalServices} className="h-3.5 w-3.5" />
+                        <span>שירותים חיצוניים</span>
                       </label>
                     )}
                   </div>
@@ -1871,6 +1918,9 @@ export default function EventDetails() {
         setShowSupplierDialog={setShowSupplierDialog}
         handleRemoveFromPackage={handleRemoveFromPackage}
         handleDeleteService={handleDeleteService}
+        handleToggleServiceExternal={handleToggleServiceExternal}
+        groupedExternalServices={groupedExternalServices}
+        handleSaveExternalServicesTitle={handleSaveExternalServicesTitle}
         exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
         onPrimaryCurrencyChange={isAdmin ? async (c, updateEvent) => { await base44.entities.Event.update(eventId, updateEvent || { primary_currency: c }); await loadEventData(); } : undefined}
         payments={payments}

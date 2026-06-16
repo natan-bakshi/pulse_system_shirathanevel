@@ -73,11 +73,11 @@ function processOrganizerTitleTemplate(template, event, customFieldValues) {
 function buildQuoteBodyHtml(ctx) {
     const {
         organizerBlocks, includeIntro, includePaymentTerms, includeSchedule,
-        eventDetailsHtml, introTemplate, servicesHtml, notesHtml, scheduleHtml,
+        eventDetailsHtml, introTemplate, servicesHtml, externalServicesHtml, notesHtml, scheduleHtml,
         paymentTemplate, agreementTemplate, quoteShowFooter, quoteFooterText,
         quoteSummaryFontSize, quoteSummaryLineHeight, quoteTitleFontSize,
         event, baseTotalWithoutDiscount, eventDiscountAmount, vatAmount,
-        totalCostWithVat, finalTotal, totalPaid
+        totalCostWithVat, finalTotal, totalPaid, includeExternalServices
     } = ctx;
 
     // Financial summary HTML (reused in both paths)
@@ -122,6 +122,7 @@ function buildQuoteBodyHtml(ctx) {
             ${servicesHtml}
             ${notesHtml}
             ${financialSummaryHtml}
+            ${includeExternalServices && externalServicesHtml ? externalServicesHtml : ''}
             ${scheduleHtml}
             ${(paymentTemplate && includePaymentTerms) ? `<div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;"><h2 class="section-title">תנאי תשלום</h2><div class="payment-terms">${paymentTemplate.content}</div></div>` : ''}
             ${agreementTemplate ? `<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>` : ''}
@@ -184,6 +185,16 @@ function buildQuoteBodyHtml(ctx) {
             case 'agreement_disclaimer':
                 if (agreementTemplate) {
                     bodyParts.push(`<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>`);
+                }
+                break;
+            case 'excluded_services':
+                if (includeExternalServices && externalServicesHtml) {
+                    if (block.subtitle_title) {
+                        const customExternalHtml = externalServicesHtml.replace(/<h2 class="section-title">שירותים נוספים<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customExternalHtml);
+                    } else {
+                        bodyParts.push(externalServicesHtml);
+                    }
                 }
                 break;
             case 'notes':
@@ -297,7 +308,11 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
     const sortedEventServices = [...allEventServices].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
-    const populatedServices = sortedEventServices.map(es => {
+    // Separate included vs external services
+    const includedEventServices = sortedEventServices.filter(es => !es.is_external);
+    const externalEventServices = sortedEventServices.filter(es => es.is_external);
+
+    const populatedServices = includedEventServices.map(es => {
         const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
         return {
             ...serviceDetails,
@@ -697,6 +712,55 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
         servicesHtml += `</div>`;
     }
 
+    // Build external services HTML
+    const externalServicesTitle = event.external_services_title || appSettings.default_external_services_title || 'שירותים נוספים';
+    let externalServicesHtml = '';
+    const populatedExternalServices = externalEventServices.map(es => {
+        const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
+        return { ...serviceDetails, ...es, details: serviceDetails };
+    });
+    
+    if (populatedExternalServices.length > 0) {
+        externalServicesHtml = `<div class="section services-section" style="margin-top: 40px;"><h2 class="section-title">${externalServicesTitle}</h2>`;
+        
+        populatedExternalServices.forEach(service => {
+            const serviceDescription = service.service_description || '';
+            const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
+            
+            // Price display logic
+            const displayMode = service.price_display_mode || 'default';
+            const showPrice = service.show_price_in_quote !== false;
+            let priceLabel = '';
+            if (displayMode === 'direct_payment') priceLabel = 'תשלום ישיר';
+            else if (displayMode === 'estimated_price') priceLabel = 'מחיר מוערך';
+            else if (displayMode === 'custom_text') priceLabel = service.price_display_text || '';
+            
+            const priceHtml = displayMode === 'default' 
+                ? `<strong style="color: #8B0000; font-size: ${quoteBodyFontSize}px;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                   ${service.includes_vat ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(כולל מע"מ)</div>` : `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(לא כולל מע"מ)</div>`}`
+                : `${priceLabel ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #b45309; font-weight: 600;">${priceLabel}</div>` : ''}
+                   ${showPrice && serviceTotal > 0 ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #6b7280;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}`;
+            
+            externalServicesHtml += `
+                <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
+                            ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
+                            ${service.client_notes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${service.client_notes}</div>` : ''}
+                            ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}</div>` : ''}
+                        </div>
+                        <div style="text-align: left; margin-top: 10px;">
+                            ${priceHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        externalServicesHtml += `</div>`;
+    }
+
     let notesHtml = '';
     if (event.notes) {
         notesHtml = `
@@ -1065,9 +1129,11 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                           includeIntro,
                           includePaymentTerms,
                           includeSchedule,
+                          includeExternalServices: options.includeExternalServices !== false,
                           eventDetailsHtml,
                           introTemplate,
                           servicesHtml,
+                          externalServicesHtml,
                           notesHtml,
                           scheduleHtml,
                           paymentTemplate,
@@ -1122,13 +1188,14 @@ Deno.serve(async (req) => {
         const includeIntro = body.includeIntro !== false;
         const includePaymentTerms = body.includePaymentTerms !== false;
         const includeSchedule = body.includeSchedule !== false;
+        const includeExternalServices = body.includeExternalServices !== false;
 
         if (!eventId) {
             return Response.json({ error: 'Event ID is required' }, { status: 400 });
         }
 
         // Generate HTML content
-        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms, includeSchedule });
+        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms, includeSchedule, includeExternalServices });
 
         const apiKey = Deno.env.get('API2PDF_API_KEY');
         if (!apiKey) {
