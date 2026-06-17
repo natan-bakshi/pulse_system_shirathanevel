@@ -32,7 +32,9 @@ export default function EventServicesManager({
   onAllInclusiveChange,
   primaryCurrency = 'ILS',
   onPrimaryCurrencyChange,
-  exchangeRate = 3.6
+  exchangeRate = 3.6,
+  externalServicesTitle = '',
+  onExternalServicesTitleChange
 }) {
   const [expandedServices, setExpandedServices] = useState({});
   const [copiedId, setCopiedId] = useState(null);
@@ -95,14 +97,14 @@ export default function EventServicesManager({
   const [isSavingNewService, setIsSavingNewService] = useState(false);
   const [isSavingNewSupplier, setIsSavingNewSupplier] = useState(false);
 
-  // Group services into packages and standalone
+  // Group included services into packages and standalone
   const groupedServices = useMemo(() => {
     const packagesMap = new Map();
     const standalone = [];
     const mainPackageItems = [];
     const childItems = [];
     
-    selectedServices.forEach(es => {
+    selectedServices.filter(es => !es.is_external).forEach(es => {
       if (es.is_package_main_item) {
         mainPackageItems.push(es);
       } else if (es.parent_package_event_service_id) {
@@ -149,10 +151,18 @@ export default function EventServicesManager({
       }
     });
 
-    const packages = Array.from(packagesMap.values());
+    const packages = Array.from(packagesMap.values()).filter(pkg => pkg.services.length > 0);
     standalone.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
     return { packages, standalone };
+  }, [selectedServices]);
+
+  const groupedExternalServices = useMemo(() => {
+    const standalone = selectedServices
+      .filter(es => es.is_external && !es.is_package_main_item)
+      .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+
+    return { standalone };
   }, [selectedServices]);
 
   const toggleServiceExpanded = (itemId) => {
@@ -1200,9 +1210,29 @@ export default function EventServicesManager({
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    const updatedServices = selectedServices.map(s =>
-                      s.id === service.id ? { ...s, is_external: !s.is_external } : s
-                    );
+                    const makeExternal = !service.is_external;
+                    const serviceDetails = allServices.find(as => as.id === service.service_id);
+                    const updatedServices = selectedServices.map(s => {
+                      if (s.id !== service.id) return s;
+
+                      if (makeExternal) {
+                        return {
+                          ...s,
+                          is_external: true,
+                          parent_package_event_service_id: null,
+                          package_id: null,
+                          package_name: undefined,
+                          package_description: undefined,
+                          package_price: undefined,
+                          package_includes_vat: undefined,
+                          is_package_main_item: false,
+                          custom_price: s.custom_price || serviceDetails?.base_price || 0,
+                          includes_vat: s.includes_vat !== undefined ? s.includes_vat : (serviceDetails?.default_includes_vat || false)
+                        };
+                      }
+
+                      return { ...s, is_external: false };
+                    });
                     onServicesChange(updatedServices);
                   }}
                 >
@@ -1534,6 +1564,36 @@ export default function EventServicesManager({
           )}
         </div>
       </DragDropContext>
+
+      {/* External Services Section */}
+      {groupedExternalServices.standalone.length > 0 && (
+        <div className="mt-8 border-t-2 border-orange-200 pt-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <h4 className="text-base font-semibold text-orange-800 shrink-0">
+                {externalServicesTitle || 'שירותים נוספים'}
+              </h4>
+              {onExternalServicesTitleChange && (
+                <Input
+                  value={externalServicesTitle || ''}
+                  onChange={(e) => onExternalServicesTitleChange(e.target.value)}
+                  placeholder="כותרת מקטע (ברירת מחדל: שירותים נוספים)"
+                  className="text-sm h-7 max-w-[250px]"
+                />
+              )}
+            </div>
+            <Badge className="bg-orange-100 text-orange-700 text-xs shrink-0">לא כלול בסיכום הכספי</Badge>
+          </div>
+
+          <div className="space-y-2">
+            {groupedExternalServices.standalone.map((service) => (
+              <div key={service.id || service.service_id} className="border border-orange-100 rounded p-3 bg-orange-50/20">
+                {renderServiceCard(service, false)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Supplier Assignment Dialog */}
       <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>

@@ -184,7 +184,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
     total_override: 0,
     total_override_includes_vat: true,
     is_price_per_guest: false,
-    price_per_guest: 0
+    price_per_guest: 0,
+    external_services_title: ''
   });
 
   // Guest count change dialog state
@@ -389,7 +390,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       total_override: event?.total_override || 0,
       total_override_includes_vat: event?.total_override_includes_vat !== undefined ? event.total_override_includes_vat : true,
       is_price_per_guest: event?.is_price_per_guest || false,
-      price_per_guest: event?.price_per_guest || 0
+      price_per_guest: event?.price_per_guest || 0,
+      external_services_title: event?.external_services_title || ''
     };
 
         const initialServicesFromEvent = event?.services?.length ? event.services.map(s => {
@@ -610,6 +612,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         total_override_includes_vat: formData.total_override_includes_vat,
         is_price_per_guest: formData.is_price_per_guest || false,
         price_per_guest: Number(formData.price_per_guest) || 0,
+        external_services_title: formData.external_services_title || '',
         organizer_type: organizerType || null,
         organizer_contacts: JSON.stringify(organizerContacts.filter(c => c.name || c.phone || c.email)),
         custom_organizer_fields: organizerEventFields ? JSON.stringify(customFieldValues) : (event?.custom_organizer_fields || null),
@@ -640,9 +643,13 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
 
         if (formData.services.length > 0) {
           const currentAllServices = await Service.list();
+          const servicesForSave = formData.services.filter(serviceItem => {
+            if (!serviceItem.is_package_main_item) return true;
+            return formData.services.some(child => !child.is_external && child.parent_package_event_service_id === serviceItem.id);
+          });
 
           // 1. First Pass: Create new Main Package Items immediately to get their IDs
-          const newPackageItems = formData.services.filter(s => 
+          const newPackageItems = servicesForSave.filter(s => 
             s.is_package_main_item && 
             s.id && (String(s.id).startsWith('temp_') || String(s.id).startsWith('def_pkg_'))
           );
@@ -674,7 +681,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
           }
 
           // 2. Second Pass: Process all services
-for (const serviceItem of formData.services) {
+for (const serviceItem of servicesForSave) {
     // Skip if we just created it in pass 1
     if (serviceItem.is_package_main_item && (String(serviceItem.id).startsWith('temp') || String(serviceItem.id).startsWith('def_pkg_'))) continue;
 
@@ -725,15 +732,19 @@ for (const serviceItem of formData.services) {
         standing_time: serviceItem.standing_time || '',
         supplier_arrival_time: serviceItem.supplier_arrival_time || '',
         on_site_contact_details: serviceItem.on_site_contact_details || null,
-        parent_package_event_service_id: parentId,
+        parent_package_event_service_id: serviceItem.is_external ? null : parentId,
         
         is_package_main_item: serviceItem.is_package_main_item,
         package_name: finalPkgName,
         package_price: finalPrice,
         package_description: finalDesc,
         package_includes_vat: finalVat,
-        package_id: serviceItem.package_id,
-        currency: serviceItem.currency || undefined
+        package_id: serviceItem.is_external ? null : serviceItem.package_id,
+        currency: serviceItem.currency || undefined,
+        is_external: !!serviceItem.is_external,
+        price_display_mode: serviceItem.price_display_mode || 'default',
+        price_display_text: serviceItem.price_display_text || '',
+        show_price_in_quote: serviceItem.show_price_in_quote !== false
     };
 
     let existingIndex = -1;
@@ -1068,6 +1079,8 @@ for (const serviceItem of formData.services) {
               primaryCurrency={formData.primary_currency}
               onPrimaryCurrencyChange={(value) => handleInputChange("primary_currency", value)}
               exchangeRate={exchangeRate}
+              externalServicesTitle={formData.external_services_title}
+              onExternalServicesTitleChange={(value) => handleInputChange("external_services_title", value)}
             />
           </div>
 

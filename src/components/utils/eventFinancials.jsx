@@ -56,6 +56,7 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
         const processedLegacyPackages = new Set();
 
         totalCostWithoutVat = services.reduce((sum, s) => {
+            if (s.is_external) return sum;
             const quantity = safeFloat(s.quantity) || 1;
             
             // 1. New Structure: Main Package Item
