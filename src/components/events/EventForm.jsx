@@ -704,7 +704,7 @@ for (const serviceItem of servicesForSave) {
     const finalVat = Boolean(isPkgMain ? (serviceItem.includes_vat ?? serviceItem.package_includes_vat ?? false) : (serviceItem.includes_vat ?? false));
     
     // תיאור
-    const finalDesc = isPkgMain ? (serviceItem.service_description ?? serviceItem.package_description ?? '') : (serviceItem.service_description ?? serviceDetails?.service_description ?? '');
+    const finalDesc = isPkgMain ? (serviceItem.service_description || serviceItem.package_description || '') : (serviceItem.service_description || serviceDetails?.service_description || '');
     
     // שם חבילה - רק עבור Main Package Item, ילדים לא צריכים package_name
     const finalPkgName = isPkgMain ? (serviceItem.package_name ?? serviceItem.service_name ?? '') : undefined;

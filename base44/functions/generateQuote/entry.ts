@@ -733,7 +733,8 @@ Deno.serve(async (req) => {
         externalServicesHtml = `<div class="section services-section" style="margin-top: 40px;"><h2 class="section-title">${externalServicesTitle}</h2>`;
         
         populatedExternalServices.forEach(service => {
-            const serviceDescription = service.service_description || '';
+            const serviceDescription = service.service_description || service.details?.service_description || '';
+            const serviceNotes = service.client_notes || service.notes || '';
             const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
             
             const displayMode = service.price_display_mode || 'default';
@@ -755,7 +756,7 @@ Deno.serve(async (req) => {
                         <div style="flex: 1; min-width: 200px;">
                             <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name}</strong>
                             ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
-                            ${service.client_notes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${service.client_notes}</div>` : ''}
+                            ${serviceNotes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${serviceNotes}</div>` : ''}
                             ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}</div>` : ''}
                         </div>
                         <div style="text-align: left; margin-top: 10px;">
