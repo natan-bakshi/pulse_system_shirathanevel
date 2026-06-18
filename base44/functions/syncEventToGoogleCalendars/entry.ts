@@ -18,6 +18,82 @@ const EVENT_TYPE_HEBREW = {
 };
 
 const SYNCED_STATUSES = ['confirmed', 'in_progress', 'completed'];
+const CALENDAR_SYNC_FAILURE_KEY = 'google_calendar_sync_failure_state';
+const CALENDAR_SYNC_FAILURE_THRESHOLD = 3;
+const CALENDAR_SYNC_COOLDOWN_MINUTES = 60;
+
+function normalizeEntityName(value) {
+  return value || '';
+}
+
+function normalizeEntityId(event) {
+  return event?.entity_id || event?.entityid || event?.entityId || null;
+}
+
+function hasRelevantCalendarChange(entityName, triggerAction, changedFields) {
+  if (triggerAction !== 'update') return true;
+  if (!Array.isArray(changedFields) || changedFields.length === 0) return true;
+
+  const eventFields = new Set([
+    'status', 'event_name', 'event_type', 'event_date', 'event_time', 'location', 'concept',
+    'family_name', 'child_name', 'guest_count', 'notes', 'schedule', 'parents',
+    'organizer_contacts', 'custom_organizer_fields'
+  ]);
+  const eventServiceFields = new Set([
+    'event_id', 'service_id', 'supplier_ids', 'supplier_statuses', 'supplier_notes',
+    'supplier_arrival_time', 'pickup_point', 'standing_time', 'on_site_contact_details'
+  ]);
+
+  const relevantFields = entityName === 'EventService' ? eventServiceFields : eventFields;
+  return changedFields.some(field => relevantFields.has(field));
+}
+
+function getSyncFailureState(settingsMap) {
+  try {
+    return JSON.parse(settingsMap[CALENDAR_SYNC_FAILURE_KEY] || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveSyncFailureState(base44, allSettings, state) {
+  const value = JSON.stringify(state);
+  const existing = allSettings.find(s => s.setting_key === CALENDAR_SYNC_FAILURE_KEY);
+  if (existing) {
+    await base44.asServiceRole.entities.AppSettings.update(existing.id, { setting_value: value });
+  } else {
+    await base44.asServiceRole.entities.AppSettings.create({
+      setting_key: CALENDAR_SYNC_FAILURE_KEY,
+      setting_value: value,
+      setting_type: 'object',
+      description: 'מצב כשלים זמני לסנכרון Google Calendar כדי לעצור לולאות כשל ובזבוז קרדיטים'
+    });
+  }
+}
+
+async function clearSyncFailureState(base44, allSettings) {
+  const existing = allSettings.find(s => s.setting_key === CALENDAR_SYNC_FAILURE_KEY);
+  if (existing && existing.setting_value !== JSON.stringify({ count: 0 })) {
+    await base44.asServiceRole.entities.AppSettings.update(existing.id, { setting_value: JSON.stringify({ count: 0 }) });
+  }
+}
+
+async function recordSyncFailure(base44, allSettings, settingsMap, errorMessage) {
+  const current = getSyncFailureState(settingsMap);
+  const count = (current.count || 0) + 1;
+  const state = {
+    count,
+    last_error: String(errorMessage || '').slice(0, 500),
+    last_failure_at: new Date().toISOString()
+  };
+
+  if (count >= CALENDAR_SYNC_FAILURE_THRESHOLD) {
+    state.paused_until = new Date(Date.now() + CALENDAR_SYNC_COOLDOWN_MINUTES * 60 * 1000).toISOString();
+  }
+
+  await saveSyncFailureState(base44, allSettings, state);
+  return state;
+}
 
 // Default templates (used when no custom templates are configured)
 const DEFAULT_TEMPLATES = {
@@ -287,18 +363,26 @@ async function deleteCalendarEvent(accessToken, calendarId, existingEventId) {
 
 
 Deno.serve(async (req) => {
+  let base44;
   try {
-    const base44 = createClientFromRequest(req);
+    base44 = createClientFromRequest(req);
 
-    const body = await req.json();
-    const eventId = body.eventId || body.data?.id || body.event?.entity_id;
+    const body = await req.json().catch(() => ({}));
+    const entityName = normalizeEntityName(body.event?.entity_name || body.event?.entityname || body.entity_name || body.entityName);
+    const entityId = normalizeEntityId(body.event);
     const triggerAction = body.action || body.event?.type;
-    const eventServiceId = body.eventServiceId;
-    const entityName = body.event?.entity_name;
+    const eventServiceId = body.eventServiceId || body.event_service_id || (entityName === 'EventService' ? entityId : null);
+    const eventId = body.eventId || body.event_id || body.data?.id || body.data?.event_id || (entityName === 'Event' ? entityId : null);
+    const changedFields = body.changed_fields || body.changedFields || [];
     const deletedEntityData = triggerAction === 'delete' ? body.data : null;
 
     if (!eventId && !eventServiceId) {
-      return Response.json({ error: 'Missing eventId or eventServiceId' }, { status: 400 });
+      console.warn('[GoogleCalendarSync] Skipping empty trigger payload', JSON.stringify({ entityName, triggerAction, entityId }));
+      return Response.json({ skipped: true, reason: 'Missing eventId/eventServiceId - no calendar work performed' });
+    }
+
+    if (!hasRelevantCalendarChange(entityName, triggerAction, changedFields)) {
+      return Response.json({ skipped: true, reason: 'No calendar-relevant fields changed', changed_fields: changedFields });
     }
 
     // ====================================================
@@ -313,6 +397,16 @@ Deno.serve(async (req) => {
 
     if (!adminSyncEnabled && !supplierSyncEnabled && !clientSyncEnabled) {
       return Response.json({ skipped: true, message: 'Google Calendar sync is disabled' });
+    }
+
+    const failureState = getSyncFailureState(settingsMap);
+    if (failureState.paused_until && new Date(failureState.paused_until) > new Date()) {
+      return Response.json({
+        skipped: true,
+        reason: 'Google Calendar sync is temporarily paused after repeated failures',
+        paused_until: failureState.paused_until,
+        last_error: failureState.last_error || ''
+      });
     }
 
     const adminCalendarId = settingsMap.admin_google_calendar_id || 'primary';
@@ -344,7 +438,7 @@ Deno.serve(async (req) => {
     }
 
     if (!actualEventId) {
-      return Response.json({ error: 'Could not determine eventId' }, { status: 400 });
+      return Response.json({ skipped: true, reason: 'Could not determine eventId - no calendar work performed' });
     }
 
     // ====================================================
@@ -362,6 +456,10 @@ Deno.serve(async (req) => {
     const isStatusSynced = event && SYNCED_STATUSES.includes(event.status);
     const shouldDelete = isDeleteAction || !isStatusSynced;
 
+    if (entityName === 'Event' && isDeleteAction && !eventForCalendarIds) {
+      return Response.json({ skipped: true, reason: 'Event data unavailable for delete - no calendar ids to remove' });
+    }
+
     // ====================================================
     // GET SHARED CONNECTOR TOKEN (1 integration credit)
     // ====================================================
@@ -371,7 +469,14 @@ Deno.serve(async (req) => {
       accessToken = connection.accessToken;
     } catch (e) {
       console.error('Failed to get Google Calendar connector token:', e);
-      return Response.json({ error: 'Google Calendar connector not authorized', details: e.message }, { status: 500 });
+      const failure = await recordSyncFailure(base44, allSettings, settingsMap, e.message);
+      return Response.json({
+        success: false,
+        handled: true,
+        error: 'Google Calendar connector not authorized',
+        details: e.message,
+        paused_until: failure.paused_until || null
+      });
     }
 
     const results = [];
@@ -626,10 +731,17 @@ Deno.serve(async (req) => {
       }
     }
 
+    const failedResults = results.filter(r => r && r.success === false);
+    if (failedResults.length > 0) {
+      const failure = await recordSyncFailure(base44, allSettings, settingsMap, failedResults.map(r => r.error).filter(Boolean).join('; '));
+      return Response.json({ success: false, handled: true, failures: failedResults, paused_until: failure.paused_until || null, results });
+    }
+
+    await clearSyncFailureState(base44, allSettings);
     return Response.json({ success: true, results });
 
   } catch (error) {
     console.error('Error in syncEventToGoogleCalendars:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ success: false, handled: true, error: error.message });
   }
 });

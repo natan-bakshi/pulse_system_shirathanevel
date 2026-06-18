@@ -25,6 +25,18 @@ Deno.serve(async (req) => {
         const pendingNotifications = await base44.asServiceRole.entities.PendingPushNotification.filter({
             is_sent: false
         });
+
+        if (pendingNotifications.length === 0) {
+            return Response.json({
+                success: true,
+                skipped: true,
+                reason: 'No pending notifications',
+                processed: 0,
+                sent: 0,
+                errors: 0,
+                cleaned_up: 0
+            });
+        }
         
         // Filter to only those that are due (scheduled_for <= now)
         const dueNotifications = pendingNotifications.filter(n => {
@@ -33,6 +45,18 @@ Deno.serve(async (req) => {
         });
         
         console.log(`[ScheduledPush] Found ${dueNotifications.length} due notifications`);
+
+        if (dueNotifications.length === 0) {
+            return Response.json({
+                success: true,
+                skipped: true,
+                reason: 'No due notifications',
+                processed: 0,
+                sent: 0,
+                errors: 0,
+                cleaned_up: 0
+            });
+        }
         
         let successCount = 0;
         let errorCount = 0;
