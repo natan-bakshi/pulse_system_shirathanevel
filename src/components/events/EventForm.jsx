@@ -34,6 +34,11 @@ import { Switch } from "@/components/ui/switch";
 import GuestCountChangeDialog from "./GuestCountChangeDialog";
 import { toast } from "sonner";
 
+function isSystemEventDateField(field) {
+  const normalizedName = String(field?.name || '').replace(/\s/g, '');
+  return field?.id === 'event_date' || (field?.type === 'date' && (normalizedName === 'תאריך' || normalizedName === 'תאריךהאירוע'));
+}
+
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
   const [allServices, setAllServices] = useState([]);
   const [allSuppliers, setAllSuppliers] = useState([]);
@@ -595,7 +600,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         return;
       }
       // Validate required dynamic fields
-      const missingRequired = organizerEventFields.filter(f => f.required && !customFieldValues[f.id]);
+      const missingRequired = organizerEventFields.filter(f => !isSystemEventDateField(f) && f.required && !customFieldValues[f.id]);
       if (missingRequired.length > 0) {
         alert(`נא למלא את השדות הנדרשים: ${missingRequired.map(f => f.name).join(', ')}`);
         return;

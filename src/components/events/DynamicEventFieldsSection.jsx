@@ -4,6 +4,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+function isSystemEventDateField(field) {
+  const normalizedName = String(field?.name || '').replace(/\s/g, '');
+  return field?.id === 'event_date' || (field?.type === 'date' && (normalizedName === 'תאריך' || normalizedName === 'תאריךהאירוע'));
+}
+
 function renderField(field, value, onChange, disabled) {
   switch (field.type) {
     case 'textarea':
@@ -36,7 +41,8 @@ function renderField(field, value, onChange, disabled) {
 
 export default function DynamicEventFieldsSection({ fields, values, onChange, disabled, eventDate, onEventDateChange }) {
   const sorted = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
-  const eventDetailFields = sorted.filter(f => f.category !== 'organizer_details');
+  const systemDateField = sorted.find(isSystemEventDateField);
+  const eventDetailFields = sorted.filter(f => f.category !== 'organizer_details' && !(onEventDateChange && isSystemEventDateField(f)));
   const organizerFields = sorted.filter(f => f.category === 'organizer_details');
 
   const handleFieldChange = (fieldId, value) => {
@@ -51,7 +57,7 @@ export default function DynamicEventFieldsSection({ fields, values, onChange, di
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {onEventDateChange && (
               <div>
-                <Label>תאריך האירוע *</Label>
+                <Label>{systemDateField?.name || 'תאריך האירוע'} *</Label>
                 <Input type="date" value={eventDate || ''} onChange={e => onEventDateChange(e.target.value)} required disabled={disabled} />
                 <p className="text-xs text-gray-500 mt-1">שדה מערכת קבוע שמגדיר את תאריך האירוע בלוח ובכל ההתראות.</p>
               </div>

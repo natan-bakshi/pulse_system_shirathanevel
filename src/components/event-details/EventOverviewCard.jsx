@@ -26,6 +26,18 @@ function getStatusColor(status) {
   return colors[status] || "bg-gray-100";
 }
 
+function isSystemEventDateField(field) {
+  const normalizedName = String(field?.name || '').replace(/\s/g, '');
+  return field?.id === 'event_date' || (field?.type === 'date' && (normalizedName === 'תאריך' || normalizedName === 'תאריךהאירוע'));
+}
+
+function formatDisplayDate(dateValue) {
+  if (!dateValue) return 'לא צוין';
+  const date = new Date(dateValue);
+  if (isNaN(date.getTime())) return dateValue;
+  return format(date, 'yyyy-MM-dd');
+}
+
 export default function EventOverviewCard({ 
   event, 
   isAdmin, 
@@ -49,6 +61,8 @@ export default function EventOverviewCard({
   let eventFields = null;
   try { eventFields = currentOrgType?.event_fields ? JSON.parse(currentOrgType.event_fields) : null; } catch { eventFields = null; }
   const hasDynamicFields = eventFields && eventFields.length > 0;
+  const systemEventDateField = hasDynamicFields ? eventFields.find(isSystemEventDateField) : null;
+  const visibleEventFields = hasDynamicFields ? eventFields.filter(field => !isSystemEventDateField(field)) : [];
 
   let customFieldValues = {};
   try { customFieldValues = event.custom_organizer_fields ? JSON.parse(event.custom_organizer_fields) : {}; } catch { customFieldValues = {}; }
@@ -104,6 +118,8 @@ export default function EventOverviewCard({
                   values={eventDetailsData._customFields || customFieldValues}
                   onChange={(vals) => setEventDetailsData(prev => ({ ...prev, _customFields: vals }))}
                   disabled={isSavingEventDetails}
+                  eventDate={eventDetailsData.event_date || event.event_date || ''}
+                  onEventDateChange={(value) => setEventDetailsData(prev => ({ ...prev, event_date: value }))}
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -141,7 +157,12 @@ export default function EventOverviewCard({
             <div className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {hasDynamicFields ? (
                 <>
-                  {eventFields.sort((a,b) => (a.order||0) - (b.order||0)).map(field => {
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Calendar className="h-4 w-4 text-gray-500 shrink-0" />
+                    <strong className="text-gray-600 text-sm shrink-0">{systemEventDateField?.name || 'תאריך'}:</strong>
+                    <span className="truncate">{formatDisplayDate(event.event_date)}</span>
+                  </div>
+                  {visibleEventFields.sort((a,b) => (a.order||0) - (b.order||0)).map(field => {
                     const val = customFieldValues[field.id];
                     if (!val) return null;
                     return (
