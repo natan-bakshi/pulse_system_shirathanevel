@@ -211,6 +211,28 @@ Deno.serve(async (req) => {
             }
         }
 
+        // תזמון תזכורת לספק שלא התייחס לשיבוץ: פועל מיד כשספק נוסף/עובר לסטטוס pending.
+        if (entityName === 'EventService' && triggerType === 'entity_update') {
+            const currentStatusesForPending = safeParse(data.supplier_statuses || data.supplierstatuses);
+            const addedForPending = Array.isArray(event.added_supplier_ids) ? event.added_supplier_ids : [];
+            const changedForPending = Array.isArray(event.changed_status_supplier_ids) ? event.changed_status_supplier_ids : [];
+
+            for (const supId of addedForPending) {
+                const currentStatus = currentStatusesForPending && typeof currentStatusesForPending === 'object'
+                    ? (currentStatusesForPending[supId] || 'pending')
+                    : 'pending';
+                if (currentStatus === 'pending') {
+                    await scheduleSupplierPendingReminder(base44, data, supId);
+                }
+            }
+
+            for (const changeContext of changedForPending) {
+                if (changeContext.status === 'pending') {
+                    await scheduleSupplierPendingReminder(base44, data, changeContext.id);
+                }
+            }
+        }
+
         // Fetch all matching templates
         let templates = [];
         
@@ -288,6 +310,11 @@ Deno.serve(async (req) => {
                             const perSupplierConditionsMet = await checkConditions(base44, template, contextEnrichedData, oldData, event, triggerType);
                             if (!perSupplierConditionsMet) continue;
 
+                            if (template.type === 'ADMIN_ASSIGNMENT_REJECTED' && !wasDeclinedBySupplier(data, changeContext.id)) {
+                                console.log(`[HandleEntityEvents] Skipping admin rejection alert for supplier ${changeContext.id} - rejection was not made by supplier`);
+                                continue;
+                            }
+
                             const specificEvent = { 
                                 ...event, 
                                 specific_recipient_id: changeContext.id,
@@ -316,6 +343,114 @@ Deno.serve(async (req) => {
     }
 });
 
+
+async function scheduleSupplierPendingReminder(base44, eventServiceData, supplierId) {
+    if (!eventServiceData?.id || !eventServiceData?.event_id || !supplierId) return false;
+
+    const existing = await base44.asServiceRole.entities.PendingPushNotification.filter({
+        related_event_service_id: eventServiceData.id,
+        related_supplier_id: supplierId,
+        template_type: 'SUPPLIER_PENDING_REMINDER',
+        is_sent: false
+    });
+    if (existing.length > 0) return false;
+
+    const templates = await base44.asServiceRole.entities.NotificationTemplate.filter({
+        type: 'SUPPLIER_PENDING_REMINDER',
+        is_active: true
+    });
+    const template = templates[0];
+    if (!template) return false;
+
+    const [eventObj, supplierObj, serviceObj, allUsers] = await Promise.all([
+        base44.asServiceRole.entities.Event.get(eventServiceData.event_id),
+        base44.asServiceRole.entities.Supplier.get(supplierId),
+        eventServiceData.service_id ? base44.asServiceRole.entities.Service.get(eventServiceData.service_id).catch(() => null) : Promise.resolve(null),
+        base44.asServiceRole.entities.User.list()
+    ]);
+
+    if (!eventObj || !supplierObj) return false;
+
+    const supplierUser = allUsers.find(u =>
+        (u.email && Array.isArray(supplierObj.contact_emails) && supplierObj.contact_emails.includes(u.email)) ||
+        (u.phone && supplierObj.phone && u.phone === supplierObj.phone)
+    );
+
+    const timingValue = template.timing_value || template.reminder_interval_value || 24;
+    const timingUnit = template.timing_unit || template.reminder_interval_unit || 'hours';
+    const scheduledFor = new Date();
+    applyTimingOffset(scheduledFor, timingUnit, timingValue);
+
+    const allowedChannels = template.allowed_channels || ['push'];
+    const targetUserId = supplierUser?.id || `virtual_supplier_${supplierId}`;
+    const targetEmail = supplierUser?.email || supplierObj.contact_emails?.[0] || '';
+    const serviceName = serviceObj?.service_name || '';
+
+    const title = replaceVariables(template.title_template || '', eventObj, supplierObj, eventServiceData, supplierUser, serviceName, '');
+    const message = replaceVariables(template.body_template || '', eventObj, supplierObj, eventServiceData, supplierUser, serviceName, '');
+    const waMessage = replaceVariables(template.whatsapp_body_template || template.body_template || '', eventObj, supplierObj, eventServiceData, supplierUser, serviceName, '');
+    const link = buildDeepLink(template.deep_link_base, template.deep_link_params_map, { event_id: eventObj.id });
+    const waData = (allowedChannels.includes('whatsapp') && supplierObj.phone && supplierObj.whatsapp_enabled !== false)
+        ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone: supplierObj.phone })
+        : JSON.stringify({});
+
+    await base44.asServiceRole.entities.PendingPushNotification.create({
+        user_id: targetUserId,
+        user_email: targetEmail,
+        title,
+        message,
+        link: link || '',
+        scheduled_for: scheduledFor.toISOString(),
+        template_type: 'SUPPLIER_PENDING_REMINDER',
+        is_sent: false,
+        condition_type: 'supplier_still_pending',
+        related_event_id: eventObj.id,
+        related_event_service_id: eventServiceData.id,
+        related_supplier_id: supplierId,
+        data: waData
+    });
+
+    return true;
+}
+
+function wasDeclinedBySupplier(eventServiceData, supplierId) {
+    let declinedRecords = [];
+    try {
+        declinedRecords = JSON.parse(eventServiceData?.declined_suppliers || eventServiceData?.declinedsuppliers || '[]');
+        if (!Array.isArray(declinedRecords)) declinedRecords = [];
+    } catch (e) {
+        declinedRecords = [];
+    }
+    return declinedRecords.some(record => record.supplier_id === supplierId && record.declined_by_supplier === true);
+}
+
+function applyTimingOffset(date, unit, value) {
+    switch (unit) {
+        case 'minutes': date.setMinutes(date.getMinutes() + value); break;
+        case 'hours': date.setHours(date.getHours() + value); break;
+        case 'days': date.setDate(date.getDate() + value); break;
+        case 'weeks': date.setDate(date.getDate() + (value * 7)); break;
+        case 'months': date.setMonth(date.getMonth() + value); break;
+    }
+}
+
+function buildDeepLink(basePage, paramsMapJson, data) {
+    if (!basePage) return '';
+    let url = `/${basePage}`;
+    if (paramsMapJson) {
+        try {
+            const paramsMap = JSON.parse(paramsMapJson);
+            const params = new URLSearchParams();
+            for (const [key, valueTemplate] of Object.entries(paramsMap)) {
+                const value = String(valueTemplate).replace(/\{\{?([\w_]+)\}?}/g, (match, field) => data[field] || '');
+                if (value) params.append(key, value);
+            }
+            const paramString = params.toString();
+            if (paramString) url += `?${paramString}`;
+        } catch (e) {}
+    }
+    return url;
+}
 
 async function checkConditions(base44, template, data, oldData, event, triggerType) {
     const logic = template.condition_logic || template.conditionlogic || 'and';

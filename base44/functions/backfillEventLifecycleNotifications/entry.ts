@@ -23,7 +23,10 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.Event.filter({ status: 'confirmed' }),
             base44.asServiceRole.entities.Event.filter({ status: 'in_progress' })
         ]);
-        const allEvents = [...confirmedEvents, ...inProgressEvents];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const allEvents = [...confirmedEvents, ...inProgressEvents]
+            .filter(ev => ev.event_date && new Date(ev.event_date).getTime() >= today.getTime());
 
         // שליפת כל ה-PendingPushNotification שטרם נשלחו (lifecycle)
         const lifecycleTypes = ['ADMIN_MISSING_ASSIGNMENT', 'CLIENT_PAYMENT_REMINDER', 'EVENT_REMINDER_FANOUT'];

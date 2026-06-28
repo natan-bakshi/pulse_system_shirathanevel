@@ -372,8 +372,11 @@ async function isConditionStillMet(base44, pending) {
                 const es = await base44.asServiceRole.entities.EventService.get(pending.related_event_service_id);
                 if (!es) return false;
                 let statuses = {};
+                let supplierIds = [];
                 try { statuses = JSON.parse(es.supplier_statuses || '{}'); } catch { statuses = {}; }
-                return statuses[pending.related_supplier_id] === 'pending';
+                try { supplierIds = JSON.parse(es.supplier_ids || '[]'); } catch { supplierIds = []; }
+                if (!Array.isArray(supplierIds) || !supplierIds.includes(pending.related_supplier_id)) return false;
+                return (statuses[pending.related_supplier_id] || 'pending') === 'pending';
             }
             case 'event_still_missing_assignments': {
                 // פאזה 5: שלח רק אם עדיין חסרים שיבוצים (אירוע confirmed שעדיין חסר בו מינימום ספקים מאושרים).

@@ -198,11 +198,15 @@ export default function ServicesCard({
         const eventService = eventServices.find(es => es.id === eventServiceId);
         if (eventService) {
             let currentSupplierIds = [];
+            let currentSupplierStatuses = {};
             try { currentSupplierIds = JSON.parse(eventService.supplier_ids || '[]'); } catch(e) {}
+            try { currentSupplierStatuses = JSON.parse(eventService.supplier_statuses || '{}'); } catch(e) {}
             const updatedSupplierIds = [...currentSupplierIds, newSupplierRecord.id];
+            currentSupplierStatuses[newSupplierRecord.id] = 'pending';
             
             await base44.entities.EventService.update(eventServiceId, {
-                supplier_ids: JSON.stringify(updatedSupplierIds)
+                supplier_ids: JSON.stringify(updatedSupplierIds),
+                supplier_statuses: JSON.stringify(currentSupplierStatuses)
             });
         }
       }
@@ -221,8 +225,11 @@ export default function ServicesCard({
           updatedEventServices = eventServices.map(es => {
               if (es.id === showNewSupplierDialog) {
                   let currentSupplierIds = [];
+                  let currentSupplierStatuses = {};
                   try { currentSupplierIds = JSON.parse(es.supplier_ids || '[]'); } catch(e) {}
-                  return { ...es, supplier_ids: JSON.stringify([...currentSupplierIds, newSupplierRecord.id]) };
+                  try { currentSupplierStatuses = JSON.parse(es.supplier_statuses || '{}'); } catch(e) {}
+                  currentSupplierStatuses[newSupplierRecord.id] = 'pending';
+                  return { ...es, supplier_ids: JSON.stringify([...currentSupplierIds, newSupplierRecord.id]), supplier_statuses: JSON.stringify(currentSupplierStatuses) };
               }
               return es;
           });
@@ -260,14 +267,25 @@ export default function ServicesCard({
     if (!localSelectedService) return;
     
     try {
+      let existingStatuses = {};
+      try { existingStatuses = JSON.parse(localSelectedService.supplier_statuses || '{}'); } catch(e) {}
+      const nextStatuses = { ...existingStatuses };
+      localSupplierFormData.supplierIds.forEach(id => {
+        if (!nextStatuses[id]) nextStatuses[id] = 'pending';
+      });
+      Object.keys(nextStatuses).forEach(id => {
+        if (!localSupplierFormData.supplierIds.includes(id)) delete nextStatuses[id];
+      });
+
       await base44.entities.EventService.update(localSelectedService.id, {
         supplier_ids: JSON.stringify(localSupplierFormData.supplierIds),
+        supplier_statuses: JSON.stringify(nextStatuses),
         supplier_notes: JSON.stringify(localSupplierFormData.notes)
       });
 
       const updatedEventServices = eventServices.map(es => 
         es.id === localSelectedService.id 
-          ? { ...es, supplier_ids: JSON.stringify(localSupplierFormData.supplierIds), supplier_notes: JSON.stringify(localSupplierFormData.notes) }
+          ? { ...es, supplier_ids: JSON.stringify(localSupplierFormData.supplierIds), supplier_statuses: JSON.stringify(nextStatuses), supplier_notes: JSON.stringify(localSupplierFormData.notes) }
           : es
       );
 
