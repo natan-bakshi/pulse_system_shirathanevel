@@ -476,8 +476,8 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
     if (!event || event.status === 'cancelled') return result;
     // לא שולחים אם האירוע כבר עבר
     if (new Date(event.event_date) < new Date()) return result;
-    // שולחים רק לאירוע סגור (confirmed)
-    if (event.status !== 'confirmed') return result;
+    // שולחים רק לאירוע פעיל (confirmed / in_progress)
+    if (!['confirmed', 'in_progress'].includes(event.status)) return result;
 
     const [eventServices, allSuppliers, allUsers, templates] = await Promise.all([
         base44.asServiceRole.entities.EventService.filter({ event_id: eventId }),

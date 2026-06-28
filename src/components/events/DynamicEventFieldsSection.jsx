@@ -34,7 +34,7 @@ function renderField(field, value, onChange, disabled) {
   }
 }
 
-export default function DynamicEventFieldsSection({ fields, values, onChange, disabled }) {
+export default function DynamicEventFieldsSection({ fields, values, onChange, disabled, eventDate, onEventDateChange }) {
   const sorted = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
   const eventDetailFields = sorted.filter(f => f.category !== 'organizer_details');
   const organizerFields = sorted.filter(f => f.category === 'organizer_details');
@@ -45,10 +45,17 @@ export default function DynamicEventFieldsSection({ fields, values, onChange, di
 
   return (
     <>
-      {eventDetailFields.length > 0 && (
+      {(eventDetailFields.length > 0 || onEventDateChange) && (
         <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">פרטי אירוע</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {onEventDateChange && (
+              <div>
+                <Label>תאריך האירוע *</Label>
+                <Input type="date" value={eventDate || ''} onChange={e => onEventDateChange(e.target.value)} required disabled={disabled} />
+                <p className="text-xs text-gray-500 mt-1">שדה מערכת קבוע שמגדיר את תאריך האירוע בלוח ובכל ההתראות.</p>
+              </div>
+            )}
             {eventDetailFields.map(field => (
               <div key={field.id} className={field.type === 'textarea' ? 'col-span-full' : ''}>
                 <Label>{field.name}{field.required ? ' *' : ''}</Label>

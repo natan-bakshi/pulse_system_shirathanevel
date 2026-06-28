@@ -590,6 +590,10 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         return;
       }
     } else {
+      if (!formData.event_date) {
+        alert("נא למלא תאריך אירוע.");
+        return;
+      }
       // Validate required dynamic fields
       const missingRequired = organizerEventFields.filter(f => f.required && !customFieldValues[f.id]);
       if (missingRequired.length > 0) {
@@ -858,6 +862,8 @@ for (const serviceItem of servicesForSave) {
               values={customFieldValues}
               onChange={setCustomFieldValues}
               disabled={isSaving}
+              eventDate={formData.event_date}
+              onEventDateChange={(value) => handleInputChange("event_date", value)}
             />
           ) : (
             <>
