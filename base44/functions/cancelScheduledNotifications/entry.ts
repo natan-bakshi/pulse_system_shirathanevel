@@ -73,8 +73,11 @@ Deno.serve(async (req) => {
                     deletionFilters.push({ related_event_service_id: entityId });
                 } else if (eventType === 'update') {
                     // ביטול אישור שיבוץ: ספק שעבר מ-approved/confirmed ל-rejected/pending/cancelled
-                    // => מחק את התזמונים של אותו ספק באותו שירות.
-                    const changedSuppliers = getSuppliersThatLostApproval(old_data, data);
+                    // או ספק מאושר שהוסר ידנית מרשימת הספקים => מחק את התזמונים של אותו ספק באותו שירות.
+                    const changedSuppliers = new Set([
+                        ...getSuppliersThatLostApproval(old_data, data),
+                        ...getApprovedSuppliersRemovedFromAssignment(old_data, data)
+                    ]);
                     for (const sid of changedSuppliers) {
                         deletionFilters.push({
                             related_event_service_id: entityId,
@@ -151,4 +154,21 @@ function getSuppliersThatLostApproval(oldData, newData) {
     }
 
     return result;
+}
+
+function getApprovedSuppliersRemovedFromAssignment(oldData, newData) {
+    if (!oldData) return [];
+
+    let oldIds = [];
+    let newIds = [];
+    let oldStatuses = {};
+    try { oldIds = JSON.parse(oldData.supplier_ids || '[]'); } catch { oldIds = []; }
+    try { newIds = JSON.parse(newData?.supplier_ids || '[]'); } catch { newIds = []; }
+    try { oldStatuses = JSON.parse(oldData.supplier_statuses || '{}'); } catch { oldStatuses = {}; }
+
+    if (!Array.isArray(oldIds)) oldIds = [];
+    if (!Array.isArray(newIds)) newIds = [];
+
+    const APPROVED = ['approved', 'confirmed'];
+    return oldIds.filter((supplierId) => !newIds.includes(supplierId) && APPROVED.includes(oldStatuses[supplierId]));
 }
