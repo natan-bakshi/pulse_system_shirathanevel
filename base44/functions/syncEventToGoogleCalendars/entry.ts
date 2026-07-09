@@ -30,6 +30,18 @@ function normalizeEntityId(event) {
   return event?.entity_id || event?.entityid || event?.entityId || null;
 }
 
+function isCalendarMetadataOnlyChange(changedFields) {
+  if (!Array.isArray(changedFields) || changedFields.length === 0) return false;
+  const calendarMetadataFields = new Set([
+    'google_calendar_event_id',
+    'client_google_calendar_event_id',
+    'client_google_calendar_id',
+    'admin_other_google_calendar_ids',
+    'supplier_calendar_ids'
+  ]);
+  return changedFields.every(field => calendarMetadataFields.has(field));
+}
+
 function hasRelevantCalendarChange(entityName, triggerAction, changedFields) {
   if (triggerAction !== 'update') return true;
   if (!Array.isArray(changedFields) || changedFields.length === 0) return true;
@@ -379,6 +391,10 @@ Deno.serve(async (req) => {
     if (!eventId && !eventServiceId) {
       console.warn('[GoogleCalendarSync] Skipping empty trigger payload', JSON.stringify({ entityName, triggerAction, entityId }));
       return Response.json({ skipped: true, reason: 'Missing eventId/eventServiceId - no calendar work performed' });
+    }
+
+    if (isCalendarMetadataOnlyChange(changedFields)) {
+      return Response.json({ skipped: true, reason: 'Calendar metadata fields changed only', changed_fields: changedFields });
     }
 
     if (!hasRelevantCalendarChange(entityName, triggerAction, changedFields)) {

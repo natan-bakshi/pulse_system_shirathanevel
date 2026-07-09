@@ -21,27 +21,11 @@ Deno.serve(async (req) => {
         
         const now = new Date().toISOString();
         
-        // Get all pending notifications that are due
-        const pendingNotifications = await base44.asServiceRole.entities.PendingPushNotification.filter({
-            is_sent: false
-        });
-
-        if (pendingNotifications.length === 0) {
-            return Response.json({
-                success: true,
-                skipped: true,
-                reason: 'No pending notifications',
-                processed: 0,
-                sent: 0,
-                errors: 0,
-                cleaned_up: 0
-            });
-        }
-        
-        // Filter to only those that are due (scheduled_for <= now)
-        const dueNotifications = pendingNotifications.filter(n => {
-            if (!n.scheduled_for) return false;
-            return new Date(n.scheduled_for) <= new Date(now);
+        // Get only pending notifications that are due now.
+        // This prevents loading the full unsent queue into memory on every scheduled run.
+        const dueNotifications = await base44.asServiceRole.entities.PendingPushNotification.filter({
+            is_sent: false,
+            scheduled_for: { "$lte": now }
         });
         
         console.log(`[ScheduledPush] Found ${dueNotifications.length} due notifications`);
@@ -247,9 +231,10 @@ Deno.serve(async (req) => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        const oldNotifications = pendingNotifications.filter(n => 
-            n.is_sent && new Date(n.created_date) < sevenDaysAgo
-        );
+        const oldNotifications = await base44.asServiceRole.entities.PendingPushNotification.filter({
+            is_sent: true,
+            created_date: { "$lt": sevenDaysAgo.toISOString() }
+        });
         
         for (const old of oldNotifications) {
             try {

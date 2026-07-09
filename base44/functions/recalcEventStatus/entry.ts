@@ -32,8 +32,15 @@ Deno.serve(async (req) => {
             // מחיקת ספק: מאתרים את כל ה-EventServices שבהם הספק שובץ
             const supplierId = event.entity_id;
             if (supplierId) {
-                const allEventServices = await base44.asServiceRole.entities.EventService.list();
-                for (const es of allEventServices) {
+                let relevantEventServices = [];
+                try {
+                    relevantEventServices = await base44.asServiceRole.entities.EventService.filter({
+                        supplier_ids: { "$like": `%${supplierId}%` }
+                    });
+                } catch {
+                    relevantEventServices = await base44.asServiceRole.entities.EventService.list();
+                }
+                for (const es of relevantEventServices) {
                     if (!es.supplier_ids) continue;
                     let ids = [];
                     try { ids = JSON.parse(es.supplier_ids); } catch { continue; }
