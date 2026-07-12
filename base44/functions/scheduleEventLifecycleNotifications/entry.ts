@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
 /**
  * scheduleEventLifecycleNotifications
@@ -86,13 +86,12 @@ Deno.serve(async (req) => {
         // (תזכורת אירוע, שיבוצים חסרים, יתרת תשלום) כדי ליצור אותם מחדש לפי התאריך החדש.
         if (dateChanged) {
             const lifecycleTypes = ['EVENT_REMINDER_FANOUT', 'ADMIN_MISSING_ASSIGNMENT', 'CLIENT_PAYMENT_REMINDER'];
-            const toDelete = await base44.asServiceRole.entities.PendingPushNotification.filter({
-                related_event_id: eventId, is_sent: false
-            });
-            for (const rec of toDelete) {
-                if (lifecycleTypes.includes(rec.template_type)) {
-                    try { await base44.asServiceRole.entities.PendingPushNotification.delete(rec.id); } catch {}
-                }
+            for (const templateType of lifecycleTypes) {
+                await base44.asServiceRole.entities.PendingPushNotification.deleteMany({
+                    related_event_id: eventId,
+                    is_sent: false,
+                    template_type: templateType
+                });
             }
         }
 

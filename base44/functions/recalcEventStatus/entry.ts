@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
 /**
  * recalcEventStatus
@@ -68,11 +68,7 @@ Deno.serve(async (req) => {
             return Response.json({ success: true, message: 'No event to recalc' });
         }
 
-        const allServicesDefinitions = await base44.asServiceRole.entities.Service.list();
-        const servicesMap = new Map(allServicesDefinitions.map(s => [s.id, s]));
-
-        const updates = [];
-
+        const eligibleEvents = [];
         for (const eventId of eventIds) {
             let eventData = null;
             try {
@@ -84,7 +80,20 @@ Deno.serve(async (req) => {
             if (['quote', 'completed', 'cancelled'].includes(eventData.status)) {
                 continue;
             }
+            eligibleEvents.push(eventData);
+        }
 
+        if (eligibleEvents.length === 0) {
+            return Response.json({ success: true, updates: [], skipped: true, reason: 'No eligible active events' });
+        }
+
+        const allServicesDefinitions = await base44.asServiceRole.entities.Service.list();
+        const servicesMap = new Map(allServicesDefinitions.map(s => [s.id, s]));
+
+        const updates = [];
+
+        for (const eventData of eligibleEvents) {
+            const eventId = eventData.id;
             const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: eventId });
 
             let allServicesSatisfied = true;

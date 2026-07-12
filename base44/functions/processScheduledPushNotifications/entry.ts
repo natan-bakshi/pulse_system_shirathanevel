@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
                         });
                         continue;
                     }
-                    const fanoutResult = await processEventReminderFanout(base44, pending, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY);
+                    const fanoutResult = await processEventReminderFanout(base44, pending, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY, allUsers);
                     await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
                     successCount += fanoutResult.sent;
                     console.log(`[ScheduledPush] Fan-out for event ${pending.related_event_id}: sent ${fanoutResult.sent}`);
@@ -230,25 +230,18 @@ Deno.serve(async (req) => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        const oldNotifications = await base44.asServiceRole.entities.PendingPushNotification.filter({
+        const cleanupResult = await base44.asServiceRole.entities.PendingPushNotification.deleteMany({
             is_sent: true,
             created_date: { "$lt": sevenDaysAgo.toISOString() }
         });
-        
-        for (const old of oldNotifications) {
-            try {
-                await base44.asServiceRole.entities.PendingPushNotification.delete(old.id);
-            } catch (e) {
-                console.warn(`[ScheduledPush] Could not delete old notification ${old.id}:`, e.message);
-            }
-        }
+        const cleanedUpCount = cleanupResult?.deleted_count || cleanupResult?.deletedCount || cleanupResult?.count || 0;
         
         return Response.json({
             success: true,
             processed: dueNotifications.length,
             sent: successCount,
             errors: errorCount,
-            cleaned_up: oldNotifications.length
+            cleaned_up: cleanedUpCount
         });
         
     } catch (error) {
@@ -460,7 +453,7 @@ async function isConditionStillMet(base44, pending, cache) {
 // מתוך תבניות SUPPLIER_EVENT_REMINDER / ADMIN_EVENT_REMINDER, ושולח
 // push (למשתמשים רשומים) + whatsapp (ישירות לטלפון).
 // ============================================================
-async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSignalApiKey) {
+async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSignalApiKey, preloadedUsers = null) {
     const result = { sent: 0 };
     const eventId = pending.related_event_id;
     if (!eventId) return result;
@@ -472,14 +465,15 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
     // שולחים רק לאירוע פעיל (confirmed / in_progress)
     if (!['confirmed', 'in_progress'].includes(event.status)) return result;
 
-    const [eventServices, allSuppliers, allUsers, templates] = await Promise.all([
+    const [eventServices, allSuppliers, templates] = await Promise.all([
         base44.asServiceRole.entities.EventService.filter({ event_id: eventId }),
         base44.asServiceRole.entities.Supplier.list(),
-        base44.asServiceRole.entities.User.list(),
         base44.asServiceRole.entities.NotificationTemplate.filter({ is_active: true })
     ]);
+    const allUsers = preloadedUsers || await base44.asServiceRole.entities.User.list();
 
     const suppliersMap = new Map(allSuppliers.map(s => [s.id, s]));
+    const usersByEmail = new Map(allUsers.filter(u => u.email).map(u => [u.email.toLowerCase(), u]));
     const adminUsers = allUsers.filter(u => u.role === 'admin');
 
     const supplierTemplate = templates.find(t => t.type === 'SUPPLIER_EVENT_REMINDER');
@@ -517,7 +511,9 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
                     whatsappQueue.push({ phone: supplier.phone, message: waMessage });
                 }
                 if (allowedChannels.includes('push')) {
-                    const supplierUser = allUsers.find(u => supplier.contact_emails?.includes(u.email));
+                    const supplierUser = (supplier.contact_emails || [])
+                        .map(email => usersByEmail.get(String(email).toLowerCase()))
+                        .find(Boolean);
                     if (supplierUser?.push_enabled && supplierUser?.onesignal_subscription_id) {
                         pushQueue.push({ subscriptionId: supplierUser.onesignal_subscription_id, title, message, link, userId: supplierUser.id });
                     }
