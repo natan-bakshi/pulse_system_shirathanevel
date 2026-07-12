@@ -121,18 +121,14 @@ Deno.serve(async (req) => {
                 if (whatsappData && whatsappData.send_whatsapp) {
                     // Use stored phone from data (preferred) or fallback to targetUser.phone
                     const phoneToUse = whatsappData.phone || targetUser?.phone;
+                    const chatId = whatsappData.chat_id || normalizePhoneChatId(phoneToUse);
                     
-                    if (phoneToUse) {
+                    if (chatId) {
                         try {
                             const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
                             const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
                             
                             if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-                                let cleanPhone = phoneToUse.toString().replace(/[^0-9]/g, '');
-                                if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                                else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-                                
-                                const chatId = `${cleanPhone}@c.us`;
                                 const waMsg = whatsappData.whatsapp_message || pending.message;
                                 
                                 await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
@@ -507,8 +503,9 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
                 const waMessage = replacePH(supplierTemplate.whatsapp_body_template || supplierTemplate.body_template, ctx);
                 const link = buildDL(supplierTemplate.deep_link_base, supplierTemplate.deep_link_params_map, ctx);
 
-                if (allowedChannels.includes('whatsapp') && supplier.phone && supplier.whatsapp_enabled !== false) {
-                    whatsappQueue.push({ phone: supplier.phone, message: waMessage });
+                if (allowedChannels.includes('whatsapp') && supplier.whatsapp_enabled !== false) {
+                  const whatsappTarget = getSupplierWhatsAppTarget(supplier);
+                  if (whatsappTarget.chatId) whatsappQueue.push({ chatId: whatsappTarget.chatId, phone: supplier.phone, message: waMessage });
                 }
                 if (allowedChannels.includes('push')) {
                     const supplierUser = (supplier.contact_emails || [])
@@ -551,10 +548,8 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
     if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
         for (const wa of whatsappQueue) {
             try {
-                let cleanPhone = wa.phone.toString().replace(/[^0-9]/g, '');
-                if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-                const chatId = `${cleanPhone}@c.us`;
+                const chatId = wa.chatId || normalizePhoneChatId(wa.phone);
+                if (!chatId) continue;
                 const resp = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -651,6 +646,33 @@ function buildDL(basePage, paramsMapJson, data) {
         } catch (e) {}
     }
     return url;
+}
+
+function normalizePhoneChatId(phone) {
+    if (!phone) return '';
+    let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+    return cleanPhone ? `${cleanPhone}@c.us` : '';
+}
+
+function normalizeGroupChatId(groupValue) {
+    if (!groupValue) return '';
+    const raw = String(groupValue).trim();
+    const existingMatch = raw.match(/[A-Za-z0-9_-]+@g\.us/);
+    if (existingMatch) return existingMatch[0];
+    const bareGroupId = raw.replace(/\s/g, '');
+    if (/^[0-9-]{8,}$/.test(bareGroupId)) return `${bareGroupId}@g.us`;
+    return '';
+}
+
+function getSupplierWhatsAppTarget(supplier) {
+    const preferredChannel = supplier?.preferred_channel || supplier?.preferredchannel || 'phone';
+    const groupChatId = normalizeGroupChatId(supplier?.whatsapp_group_url || supplier?.whatsappgroupurl);
+    if (preferredChannel === 'group' && groupChatId) {
+        return { chatId: groupChatId, phone: supplier?.phone || '' };
+    }
+    return { chatId: normalizePhoneChatId(supplier?.phone), phone: supplier?.phone || '' };
 }
 
 function fmtDate(dateString) {

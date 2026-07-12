@@ -13,10 +13,10 @@ Deno.serve(async (req) => {
         // We allow service role calls (from handleEntityEvents)
         
         const payload = await req.json();
-        const { phone, message, file_url } = payload;
+        const { phone, message, file_url, chat_id } = payload;
 
-        if (!phone || !message) {
-            return Response.json({ success: false, error: 'Missing phone or message' }, { status: 400 });
+        if ((!phone && !chat_id) || !message) {
+            return Response.json({ success: false, error: 'Missing target or message' }, { status: 400 });
         }
 
         const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
@@ -27,20 +27,23 @@ Deno.serve(async (req) => {
             return Response.json({ success: false, error: 'Configuration Error' }, { status: 500 });
         }
 
-        // Normalize Phone Number
-        // Remove non-digits
-        let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-        
-        // Handle Israeli numbers (05X) -> 9725X
-        if (cleanPhone.startsWith('05')) {
-            cleanPhone = '972' + cleanPhone.substring(1);
-        } 
-        // Handle numbers without country code but 9 digits (rare, but safety net)
-        else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) {
-            cleanPhone = '972' + cleanPhone;
-        }
+        let chatId = chat_id || '';
+        if (!chatId) {
+            // Normalize Phone Number
+            // Remove non-digits
+            let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+            
+            // Handle Israeli numbers (05X) -> 9725X
+            if (cleanPhone.startsWith('05')) {
+                cleanPhone = '972' + cleanPhone.substring(1);
+            } 
+            // Handle numbers without country code but 9 digits (rare, but safety net)
+            else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) {
+                cleanPhone = '972' + cleanPhone;
+            }
 
-        const chatId = `${cleanPhone}@c.us`;
+            chatId = `${cleanPhone}@c.us`;
+        }
 
         console.log(`[SendWhatsApp] Sending to ${chatId}`);
 

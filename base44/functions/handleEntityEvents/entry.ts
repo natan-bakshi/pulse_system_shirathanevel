@@ -390,8 +390,9 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     const message = replaceVariables(template.body_template || '', eventObj, supplierObj, eventServiceData, supplierUser, serviceName, '');
     const waMessage = replaceVariables(template.whatsapp_body_template || template.body_template || '', eventObj, supplierObj, eventServiceData, supplierUser, serviceName, '');
     const link = buildDeepLink(template.deep_link_base, template.deep_link_params_map, { event_id: eventObj.id });
-    const waData = (allowedChannels.includes('whatsapp') && supplierObj.phone && supplierObj.whatsapp_enabled !== false)
-        ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone: supplierObj.phone })
+    const waTarget = getSupplierWhatsAppTarget(supplierObj);
+    const waData = (allowedChannels.includes('whatsapp') && supplierObj.whatsapp_enabled !== false && waTarget.chatId)
+        ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone: supplierObj.phone || '', chat_id: waTarget.chatId })
         : JSON.stringify({});
 
     await base44.asServiceRole.entities.PendingPushNotification.create({
@@ -633,9 +634,10 @@ async function sendNotification(base44, template, entityData, event, entityName)
             // WhatsApp
             if (sendWhatsApp) {
                 // Default to true if missing/null
-                const isEnabled = currentSupplierObj.whatsapp_enabled !== false; 
-                if (isEnabled && currentSupplierObj.phone) {
-                    await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null);
+                const isEnabled = currentSupplierObj.whatsapp_enabled !== false;
+                const whatsappTarget = getSupplierWhatsAppTarget(currentSupplierObj);
+                if (isEnabled && whatsappTarget.chatId) {
+                    await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null, true);
                 }
             }
 
@@ -715,8 +717,41 @@ async function sendNotification(base44, template, entityData, event, entityName)
     }
 }
 
-async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj) {
-    if (!phone) return;
+function normalizePhoneChatId(phone) {
+    if (!phone) return '';
+    let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
+    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
+    return cleanPhone ? `${cleanPhone}@c.us` : '';
+}
+
+function normalizeGroupChatId(groupValue) {
+    if (!groupValue) return '';
+    const raw = String(groupValue).trim();
+    const existingMatch = raw.match(/[A-Za-z0-9_-]+@g\.us/);
+    if (existingMatch) return existingMatch[0];
+    const bareGroupId = raw.replace(/\s/g, '');
+    if (/^[0-9-]{8,}$/.test(bareGroupId)) return `${bareGroupId}@g.us`;
+    return '';
+}
+
+function getPhoneWhatsAppTarget(phone) {
+    return { chatId: normalizePhoneChatId(phone), phone, label: phone || '' };
+}
+
+function getSupplierWhatsAppTarget(supplierObj, fallbackPhone = null) {
+    const preferredChannel = supplierObj?.preferred_channel || supplierObj?.preferredchannel || 'phone';
+    const groupChatId = normalizeGroupChatId(supplierObj?.whatsapp_group_url || supplierObj?.whatsappgroupurl);
+    if (preferredChannel === 'group' && groupChatId) {
+        return { chatId: groupChatId, phone: fallbackPhone || supplierObj?.phone || '', label: groupChatId };
+    }
+    return getPhoneWhatsAppTarget(fallbackPhone || supplierObj?.phone);
+}
+
+async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj, useSupplierTarget = false) {
+    const whatsappTarget = useSupplierTarget && supplierObj ? getSupplierWhatsAppTarget(supplierObj, phone) : getPhoneWhatsAppTarget(phone);
+    if (!whatsappTarget.chatId) return;
+    const targetLabel = whatsappTarget.label || phone || whatsappTarget.chatId;
     
     // Resolve real Service name from Service entity (serviceObj is EventService, not Service)
     let resolvedServiceName = '';
@@ -769,9 +804,9 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
                 scheduled_for: quietEnd.toISOString(),
                 template_type: template.type,
                 is_sent: false,
-                data: JSON.stringify({ send_whatsapp: true, whatsapp_message: message, phone: phone })
+                data: JSON.stringify({ send_whatsapp: true, whatsapp_message: message, phone: phone || '', chat_id: whatsappTarget.chatId })
             });
-            console.log(`[HandleEntityEvents] WhatsApp QUEUED for ${phone} until ${quietEnd.toISOString()}`);
+            console.log(`[HandleEntityEvents] WhatsApp QUEUED for ${targetLabel} until ${quietEnd.toISOString()}`);
         } catch (qErr) {
             console.error(`[HandleEntityEvents] Failed to queue WhatsApp:`, qErr);
         }
@@ -784,11 +819,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
         const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
         
         if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-            let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-            if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-            else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-            const chatId = `${cleanPhone}@c.us`;
+            const chatId = whatsappTarget.chatId;
             const body = { chatId, message };
 
             const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
@@ -798,7 +829,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
             });
             
             if (response.ok) {
-                console.log(`[HandleEntityEvents] WhatsApp sent to ${phone}`);
+                console.log(`[HandleEntityEvents] WhatsApp sent to ${targetLabel}`);
             } else {
                 const err = await response.text();
                 console.error(`[HandleEntityEvents] Green API Error: ${err}`);
