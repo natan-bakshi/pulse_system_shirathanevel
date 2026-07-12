@@ -44,6 +44,13 @@ Deno.serve(async (req) => {
         
         let successCount = 0;
         let errorCount = 0;
+
+        const shabbatActive = isShabbat();
+        const shabbatEndTime = shabbatActive ? getShabbatEndTime() : null;
+
+        const allUsers = await base44.asServiceRole.entities.User.list();
+        const usersById = new Map(allUsers.map(u => [u.id, u]));
+        const conditionCache = new Map();
         
         for (const pending of dueNotifications) {
             try {
@@ -52,10 +59,9 @@ Deno.serve(async (req) => {
                 // המאושרים + המנהלים. מטופלת בנפרד מלוגיקת המשתמש-הבודד.
                 if (pending.condition_type === 'event_reminder_fanout') {
                     // בדיקת שבת: אם שבת - דחה ליציאת השבת
-                    if (isShabbat()) {
-                        const shabbatEnd = getShabbatEndTime();
+                    if (shabbatActive) {
                         await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
-                            scheduled_for: shabbatEnd.toISOString()
+                            scheduled_for: shabbatEndTime.toISOString()
                         });
                         continue;
                     }
@@ -71,7 +77,7 @@ Deno.serve(async (req) => {
                 // אם התנאי כבר לא רלוונטי (הספק הגיב / השיבוץ הושלם / החוב שולם) -
                 // סמן כנשלח (ביטול שקט) ואל תשלח.
                 if (pending.condition_type && pending.condition_type !== 'none') {
-                    const stillRelevant = await isConditionStillMet(base44, pending);
+                    const stillRelevant = await isConditionStillMet(base44, pending, conditionCache);
                     if (!stillRelevant) {
                         await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
                         console.log(`[ScheduledPush] Condition '${pending.condition_type}' no longer met for ${pending.id} - skipping (silent)`);
@@ -80,21 +86,14 @@ Deno.serve(async (req) => {
                 }
 
                 // Check if user is still not in quiet hours
-                let targetUser = null;
-                try {
-                    const users = await base44.asServiceRole.entities.User.filter({ id: pending.user_id });
-                    targetUser = users.length > 0 ? users[0] : null;
-                } catch (e) {
-                    console.warn(`[ScheduledPush] Could not fetch user ${pending.user_id}:`, e.message);
-                }
+                const targetUser = usersById.get(pending.user_id) || null;
 
                 // Verify not in Shabbat (Friday 16:00 - Saturday 20:00)
-                if (isShabbat()) {
-                    const shabbatEnd = getShabbatEndTime();
+                if (shabbatActive) {
                     await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
-                        scheduled_for: shabbatEnd.toISOString()
+                        scheduled_for: shabbatEndTime.toISOString()
                     });
-                    console.log(`[ScheduledPush] Shabbat active. Rescheduled for ${shabbatEnd.toISOString()}`);
+                    console.log(`[ScheduledPush] Shabbat active. Rescheduled for ${shabbatEndTime.toISOString()}`);
                     continue;
                 }
 
@@ -344,17 +343,23 @@ function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
     return endTime;
 }
 
+async function getCached(cache, key, loader) {
+    if (!cache) return await loader();
+    if (!cache.has(key)) cache.set(key, loader());
+    return await cache.get(key);
+}
+
 // ============================================================
 // בדיקת תנאי עסקי לפני שליחה (Lazy Evaluation)
 // מחזיר true אם ההתראה עדיין רלוונטית וצריך לשלוח, אחרת false.
 // ============================================================
-async function isConditionStillMet(base44, pending) {
+async function isConditionStillMet(base44, pending, cache) {
     try {
         switch (pending.condition_type) {
             case 'supplier_still_pending': {
                 // פאזה 4: שלח רק אם הספק עדיין במצב 'pending' באותו שירות.
                 if (!pending.related_event_service_id || !pending.related_supplier_id) return false;
-                const es = await base44.asServiceRole.entities.EventService.get(pending.related_event_service_id);
+                const es = await getCached(cache, `eventService:${pending.related_event_service_id}`, () => base44.asServiceRole.entities.EventService.get(pending.related_event_service_id));
                 if (!es) return false;
                 let statuses = {};
                 let supplierIds = [];
@@ -366,11 +371,11 @@ async function isConditionStillMet(base44, pending) {
             case 'event_still_missing_assignments': {
                 // פאזה 5: שלח רק אם עדיין חסרים שיבוצים (אירוע confirmed שעדיין חסר בו מינימום ספקים מאושרים).
                 if (!pending.related_event_id) return false;
-                const event = await base44.asServiceRole.entities.Event.get(pending.related_event_id);
+                const event = await getCached(cache, `event:${pending.related_event_id}`, () => base44.asServiceRole.entities.Event.get(pending.related_event_id));
                 if (!event || event.status === 'cancelled') return false;
                 const [eventServices, allServices] = await Promise.all([
-                    base44.asServiceRole.entities.EventService.filter({ event_id: pending.related_event_id }),
-                    base44.asServiceRole.entities.Service.list()
+                    getCached(cache, `eventServices:${pending.related_event_id}`, () => base44.asServiceRole.entities.EventService.filter({ event_id: pending.related_event_id })),
+                    getCached(cache, 'services:all', () => base44.asServiceRole.entities.Service.list())
                 ]);
                 const servicesMap = new Map(allServices.map(s => [s.id, s]));
                 for (const es of eventServices) {
@@ -392,12 +397,12 @@ async function isConditionStillMet(base44, pending) {
             case 'event_still_has_balance': {
                 // פאזה 6: שלח רק אם עדיין יש יתרת תשלום לאירוע.
                 if (!pending.related_event_id) return false;
-                const event = await base44.asServiceRole.entities.Event.get(pending.related_event_id);
+                const event = await getCached(cache, `event:${pending.related_event_id}`, () => base44.asServiceRole.entities.Event.get(pending.related_event_id));
                 if (!event || event.status === 'cancelled') return false;
                 const [eventServices, allPayments, appSettings] = await Promise.all([
-                    base44.asServiceRole.entities.EventService.filter({ event_id: pending.related_event_id }),
-                    base44.asServiceRole.entities.Payment.filter({ event_id: pending.related_event_id }),
-                    base44.asServiceRole.entities.AppSettings.list()
+                    getCached(cache, `eventServices:${pending.related_event_id}`, () => base44.asServiceRole.entities.EventService.filter({ event_id: pending.related_event_id })),
+                    getCached(cache, `payments:${pending.related_event_id}`, () => base44.asServiceRole.entities.Payment.filter({ event_id: pending.related_event_id })),
+                    getCached(cache, 'appSettings:all', () => base44.asServiceRole.entities.AppSettings.list())
                 ]);
                 const vatSetting = appSettings.find(s => s.setting_key === 'vat_rate');
                 const vatRate = vatSetting ? parseFloat(vatSetting.setting_value) / 100 : 0.17;
@@ -426,7 +431,7 @@ async function isConditionStillMet(base44, pending) {
             case 'event_still_open_quote': {
                 // הצעות מחיר: שלח רק אם האירוע עדיין בסטטוס 'quote'.
                 if (!pending.related_event_id) return false;
-                const event = await base44.asServiceRole.entities.Event.get(pending.related_event_id);
+                const event = await getCached(cache, `event:${pending.related_event_id}`, () => base44.asServiceRole.entities.Event.get(pending.related_event_id));
                 if (!event) return false;
                 return event.status === 'quote';
             }
@@ -434,7 +439,7 @@ async function isConditionStillMet(base44, pending) {
                 // משימות: שלח רק אם המשימה עדיין קיימת ולא הושלמה.
                 if (!pending.related_task_id) return false;
                 let task = null;
-                try { task = await base44.asServiceRole.entities.Task.get(pending.related_task_id); } catch { return false; }
+                try { task = await getCached(cache, `task:${pending.related_task_id}`, () => base44.asServiceRole.entities.Task.get(pending.related_task_id)); } catch { return false; }
                 if (!task) return false;
                 return !task.is_completed;
             }
