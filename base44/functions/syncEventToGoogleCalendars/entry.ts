@@ -42,6 +42,27 @@ function isCalendarMetadataOnlyChange(changedFields) {
   return changedFields.every(field => calendarMetadataFields.has(field));
 }
 
+function inferChangedFields(data, oldData) {
+  if (!data || !oldData) return [];
+  const keys = new Set([...Object.keys(data), ...Object.keys(oldData)]);
+  const changed = [];
+  for (const key of keys) {
+    if (JSON.stringify(data[key] ?? null) !== JSON.stringify(oldData[key] ?? null)) {
+      changed.push(key);
+    }
+  }
+  return changed;
+}
+
+function stableStringifyObject(value) {
+  const obj = value && typeof value === 'object' ? value : {};
+  const sorted = {};
+  for (const key of Object.keys(obj).sort()) {
+    sorted[key] = obj[key];
+  }
+  return JSON.stringify(sorted);
+}
+
 function hasRelevantCalendarChange(entityName, triggerAction, changedFields) {
   if (triggerAction !== 'update') return true;
   if (!Array.isArray(changedFields) || changedFields.length === 0) return true;
@@ -385,7 +406,8 @@ Deno.serve(async (req) => {
     const triggerAction = body.action || body.event?.type;
     const eventServiceId = body.eventServiceId || body.event_service_id || (entityName === 'EventService' ? entityId : null);
     const eventId = body.eventId || body.event_id || body.data?.id || body.data?.event_id || (entityName === 'Event' ? entityId : null);
-    const changedFields = body.changed_fields || body.changedFields || [];
+    const providedChangedFields = body.changed_fields || body.changedFields;
+    const changedFields = Array.isArray(providedChangedFields) ? providedChangedFields : inferChangedFields(body.data, body.old_data);
     const deletedEntityData = triggerAction === 'delete' ? body.data : null;
 
     if (!eventId && !eventServiceId) {
@@ -556,6 +578,7 @@ Deno.serve(async (req) => {
 
       let adminOtherCalendarIds = {};
       try { adminOtherCalendarIds = JSON.parse(event?.admin_other_google_calendar_ids || eventForCalendarIds?.admin_other_google_calendar_ids || '{}'); } catch (e) {}
+      const originalAdminOtherCalendarIdsJson = stableStringifyObject(adminOtherCalendarIds);
       let adminOtherChanged = false;
 
       for (const adminUser of additionalAdmins) {
@@ -576,7 +599,7 @@ Deno.serve(async (req) => {
           const upsertResult = await upsertCalendarEvent(accessToken, userCalendarId, existingCalEventId, eventBody);
           results.push({ target: 'admin_other', userId: adminUser.id, ...upsertResult, action: existingCalEventId ? 'update' : 'create' });
 
-          if (upsertResult.success) {
+          if (upsertResult.success && adminOtherCalendarIds[adminUser.id] !== upsertResult.eventId) {
             adminOtherCalendarIds[adminUser.id] = upsertResult.eventId;
             adminOtherChanged = true;
           }
@@ -596,9 +619,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (adminOtherChanged && event) {
+      if (adminOtherChanged && event && stableStringifyObject(adminOtherCalendarIds) !== originalAdminOtherCalendarIdsJson) {
         await base44.asServiceRole.entities.Event.update(actualEventId, {
-          admin_other_google_calendar_ids: JSON.stringify(adminOtherCalendarIds)
+          admin_other_google_calendar_ids: stableStringifyObject(adminOtherCalendarIds)
         });
       }
     }
@@ -628,6 +651,7 @@ Deno.serve(async (req) => {
         try { supplierStatuses = JSON.parse(es.supplier_statuses || '{}'); } catch (e) {}
         let supplierCalendarIds = {};
         try { supplierCalendarIds = JSON.parse(es.supplier_calendar_ids || '{}'); } catch (e) {}
+        const originalSupplierCalendarIdsJson = stableStringifyObject(supplierCalendarIds);
         let supplierNotes = {};
         try { supplierNotes = JSON.parse(es.supplier_notes || '{}'); } catch (e) {}
 
@@ -667,7 +691,7 @@ Deno.serve(async (req) => {
             const upsertResult = await upsertCalendarEvent(accessToken, supplierCalendarId, existingCalEventId, eventBody);
             results.push({ target: 'supplier', supplierId: suppId, esId: es.id, ...upsertResult, action: existingCalEventId ? 'update' : 'create' });
 
-            if (upsertResult.success) {
+            if (upsertResult.success && supplierCalendarIds[suppId] !== upsertResult.eventId) {
               supplierCalendarIds[suppId] = upsertResult.eventId;
               calendarIdsChanged = true;
             }
@@ -687,9 +711,9 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (calendarIdsChanged && es.id) {
+        if (calendarIdsChanged && es.id && stableStringifyObject(supplierCalendarIds) !== originalSupplierCalendarIdsJson) {
           await base44.asServiceRole.entities.EventService.update(es.id, {
-            supplier_calendar_ids: JSON.stringify(supplierCalendarIds)
+            supplier_calendar_ids: stableStringifyObject(supplierCalendarIds)
           }).catch(e => console.log('Could not update ES supplier_calendar_ids:', e));
         }
       }
