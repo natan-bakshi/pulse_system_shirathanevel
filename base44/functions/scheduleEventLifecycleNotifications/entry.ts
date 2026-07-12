@@ -40,6 +40,13 @@ Deno.serve(async (req) => {
             previousStatus = oldData ? oldData.status : null;
         }
 
+        if (event?.entity_name === 'Event' && event?.type === 'update' && data && oldData) {
+            const lifecycleRelevantChanged = oldData.status !== data.status || oldData.event_date !== data.event_date;
+            if (!lifecycleRelevantChanged) {
+                return Response.json({ skipped: true, reason: 'No lifecycle-relevant Event change' });
+            }
+        }
+
         if (!eventId) {
             return Response.json({ skipped: true, reason: 'No eventId' });
         }

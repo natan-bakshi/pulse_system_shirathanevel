@@ -21,6 +21,16 @@ Deno.serve(async (req) => {
         const payload = await req.json().catch(() => ({}));
         const { event, data, old_data } = payload;
 
+        if (event?.entity_name === 'EventService' && event?.type === 'update' && data && old_data) {
+            const relevantFields = ['event_id', 'service_id', 'supplier_ids', 'supplier_statuses', 'min_suppliers'];
+            const hasRelevantChange = relevantFields.some(field =>
+                JSON.stringify(data?.[field] ?? null) !== JSON.stringify(old_data?.[field] ?? null)
+            );
+            if (!hasRelevantChange) {
+                return Response.json({ success: true, skipped: true, reason: 'No status-relevant EventService change' });
+            }
+        }
+
         // איסוף רשימת מזהי אירועים לחישוב מחדש
         const eventIds = new Set();
 
