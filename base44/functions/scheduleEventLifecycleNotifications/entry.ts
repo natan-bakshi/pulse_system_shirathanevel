@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
                 const waMessage = customMessage || replacePlaceholders(missingTemplate.whatsapp_body_template || missingTemplate.body_template, contextData);
                 const link = buildDeepLink(missingTemplate.deep_link_base, missingTemplate.deep_link_params_map, contextData);
 
+                const missingAssignmentRecords = [];
                 for (const admin of targetedAdmins) {
                     // מניעת כפילות: כבר קיימת תזכורת מסוג זה לאירוע ולמנהל
                     const exists = existingPending.some(p =>
@@ -191,7 +192,7 @@ Deno.serve(async (req) => {
                         ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone: admin.phone })
                         : JSON.stringify({});
 
-                    await base44.asServiceRole.entities.PendingPushNotification.create({
+                    missingAssignmentRecords.push({
                         user_id: admin.id,
                         user_email: admin.email,
                         title, message, link: link || '',
@@ -202,7 +203,10 @@ Deno.serve(async (req) => {
                         related_event_id: eventData.id,
                         data: waData
                     });
-                    results.missing_assignment_scheduled++;
+                }
+                if (missingAssignmentRecords.length > 0) {
+                    await base44.asServiceRole.entities.PendingPushNotification.bulkCreate(missingAssignmentRecords);
+                    results.missing_assignment_scheduled += missingAssignmentRecords.length;
                 }
             }
         }
@@ -256,6 +260,7 @@ Deno.serve(async (req) => {
                     }
                 }
 
+                const paymentReminderRecords = [];
                 for (const { user: clientUser, phone } of clientUsers) {
                     const exists = existingPending.some(p =>
                         p.template_type === 'CLIENT_PAYMENT_REMINDER' && p.user_id === clientUser.id
@@ -280,7 +285,7 @@ Deno.serve(async (req) => {
                         ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone })
                         : JSON.stringify({});
 
-                    await base44.asServiceRole.entities.PendingPushNotification.create({
+                    paymentReminderRecords.push({
                         user_id: clientUser.id,
                         user_email: clientUser.email,
                         title, message, link: link || '',
@@ -291,7 +296,10 @@ Deno.serve(async (req) => {
                         related_event_id: eventData.id,
                         data: waData
                     });
-                    results.payment_reminder_scheduled++;
+                }
+                if (paymentReminderRecords.length > 0) {
+                    await base44.asServiceRole.entities.PendingPushNotification.bulkCreate(paymentReminderRecords);
+                    results.payment_reminder_scheduled += paymentReminderRecords.length;
                 }
             }
         }
