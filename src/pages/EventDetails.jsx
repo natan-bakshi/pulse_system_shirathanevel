@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, Loader2, Download, Trash2, ChevronDown, Share2, Send, Clock, Edit3 } from 'lucide-react';
@@ -103,6 +104,7 @@ export default function EventDetails() {
 
   const [showAddServiceToPackageDialog, setShowAddServiceToPackageDialog] = useState(false);
   const [targetPackageForService, setTargetPackageForService] = useState(null);
+  const [newServiceTargetPackageId, setNewServiceTargetPackageId] = useState(null);
   const [availableServicesToAdd, setAvailableServicesToAdd] = useState([]);
   const [selectedServiceToAdd, setSelectedServiceToAdd] = useState([]);
   const [addToPackageSearchTerm, setAddToPackageSearchTerm] = useState("");
@@ -114,6 +116,15 @@ export default function EventDetails() {
   const [selectedServicesToAdd, setSelectedServicesToAdd] = useState([]);
   const [addServiceSearchTerm, setAddServiceSearchTerm] = useState("");
   const [addServiceAsExternal, setAddServiceAsExternal] = useState(false);
+  const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
+  const [newService, setNewService] = useState({
+    service_name: '',
+    service_description: '',
+    category: '',
+    base_price: '',
+    default_includes_vat: false
+  });
+  const [isSavingNewService, setIsSavingNewService] = useState(false);
   const [debouncedAddServiceSearch, setDebouncedAddServiceSearch] = useState("");
 
   const [showAddExistingPackageDialog, setShowAddExistingPackageDialog] = useState(false);
@@ -462,6 +473,95 @@ export default function EventDetails() {
     const externalServices = eventServices.filter(es => es.is_external);
     return buildGroupedServices(externalServices);
   }, [eventServices, isSupplier, buildGroupedServices]);
+
+  const handleCreateService = useCallback(async () => {
+    if (!newService.service_name.trim()) return;
+    setIsSavingNewService(true);
+    try {
+      const serviceData = {
+        service_name: newService.service_name.trim(),
+        service_description: newService.service_description,
+        category: newService.category,
+        base_price: parseFloat(newService.base_price) || 0,
+        default_includes_vat: newService.default_includes_vat,
+        default_min_suppliers: 0,
+        is_active: true
+      };
+
+      const newServiceRecord = await base44.entities.Service.create(serviceData);
+      const targetPackageIdForNewService = newServiceTargetPackageId;
+      let eventServiceData = {
+        event_id: eventId,
+        service_id: newServiceRecord.id,
+        custom_price: serviceData.base_price,
+        quantity: 1,
+        includes_vat: serviceData.default_includes_vat,
+        service_description: serviceData.service_description,
+        min_suppliers: 0,
+        order_index: (eventServices.length + 1) * 10
+      };
+
+      if (targetPackageIdForNewService) {
+        let packageMainItem = eventServices.find(es => es.id === targetPackageIdForNewService && es.is_package_main_item);
+        let isNewStructure = true;
+        if (!packageMainItem) {
+          packageMainItem = eventServices.find(es => es.package_id === targetPackageIdForNewService);
+          isNewStructure = false;
+        }
+        if (!packageMainItem) {
+          alert("חבילת היעד לא נמצאה");
+          return;
+        }
+
+        const currentPackageServices = groupedServices.packages.find(p => p.package_id === targetPackageIdForNewService)?.services || [];
+        const maxExistingServiceOrder = currentPackageServices.reduce((currentMax, s) => Math.max(currentMax, s.order_index || 0), 0);
+        const packageBaseOrderIndex = currentPackageServices.length > 0
+          ? Math.floor(maxExistingServiceOrder / 1000) * 1000
+          : Math.floor((packageMainItem.order_index || 0) / 1000) * 1000;
+
+        eventServiceData = {
+          ...eventServiceData,
+          custom_price: 0,
+          package_name: packageMainItem.package_name,
+          package_price: packageMainItem.package_price || packageMainItem.custom_price || 0,
+          package_includes_vat: packageMainItem.package_includes_vat || packageMainItem.includes_vat || false,
+          package_description: packageMainItem.package_description || packageMainItem.service_description || '',
+          order_index: packageBaseOrderIndex + (currentPackageServices.length > 0 ? (maxExistingServiceOrder % 1000) + 1 : 1)
+        };
+
+        if (isNewStructure) {
+          eventServiceData.parent_package_event_service_id = packageMainItem.id;
+          eventServiceData.is_package_main_item = false;
+          eventServiceData.package_id = null;
+        } else {
+          eventServiceData.package_id = targetPackageIdForNewService;
+        }
+      }
+
+      const createdEventService = await base44.entities.EventService.create(eventServiceData);
+      await base44.functions.invoke('checkEventStatus', {
+        eventId,
+        event,
+        eventServices: [...eventServices, createdEventService]
+      }).catch(console.error);
+
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      await loadEventData();
+      setNewService({ service_name: '', service_description: '', category: '', base_price: '', default_includes_vat: false });
+      setNewServiceTargetPackageId(null);
+      setShowNewServiceDialog(false);
+      if (targetPackageIdForNewService) {
+        setShowAddServiceToPackageDialog(false);
+        setTargetPackageForService(null);
+        setAddToPackageSearchTerm("");
+      }
+    } catch (error) {
+      console.error("Failed to create service:", error);
+      alert("שגיאה ביצירת השירות");
+    } finally {
+      setIsSavingNewService(false);
+    }
+  }, [newService, newServiceTargetPackageId, eventServices, groupedServices, eventId, event, loadEventData, queryClient]);
 
   // Calculate financials based on EDIT state if editing, otherwise DB state
   const eventForCalculation = useMemo(() => {
@@ -1384,23 +1484,32 @@ export default function EventDetails() {
   const handleRemoveFromPackage = useCallback(async (serviceId) => {
     if (!window.confirm("האם להוציא שירות זה מהחבילה?")) return;
     try {
-      if (!eventServices.find(es => es.id === serviceId)) return;
-      const maxStandaloneOrderIndex = groupedServices.standalone.reduce((currentMax, s) => Math.max(currentMax, s.order_index || 0), 0);
-      const newStandaloneOrderIndex = maxStandaloneOrderIndex + 1;
+      const eventService = eventServices.find(es => es.id === serviceId);
+      if (!eventService) return;
+      const serviceDetails = allServices.find(s => s.id === eventService.service_id);
+      const standaloneGroup = eventService.is_external ? groupedExternalServices.standalone : groupedServices.standalone;
+      const maxStandaloneOrderIndex = standaloneGroup.reduce((currentMax, s) => Math.max(currentMax, s.order_index || 0), eventService.is_external ? 50000 : 0);
+      const fallbackPrice = serviceDetails?.base_price || 0;
+      const shouldRestorePrice = !eventService.custom_price || parseFloat(eventService.custom_price) === 0;
+
       await base44.entities.EventService.update(serviceId, {
+        parent_package_event_service_id: null,
+        is_package_main_item: false,
         package_id: null,
         package_name: null,
         package_price: null,
-        package_includes_vat: false,
+        package_includes_vat: null,
         package_description: null,
-        order_index: newStandaloneOrderIndex
+        custom_price: shouldRestorePrice ? fallbackPrice : eventService.custom_price,
+        includes_vat: serviceDetails?.default_includes_vat || false,
+        order_index: maxStandaloneOrderIndex + 1
       });
       await loadEventData();
     } catch (error) {
       console.error("Failed to remove from package:", error);
       alert("שגיאה בהוצאת השירות מהחבילה");
     }
-  }, [eventServices, groupedServices, loadEventData]);
+  }, [eventServices, allServices, groupedServices, groupedExternalServices, loadEventData]);
 
   const handleDeleteService = useCallback(async (serviceId) => {
     if (!window.confirm("האם למחוק שירות זה?")) return;
@@ -1509,7 +1618,7 @@ export default function EventDetails() {
     } finally {
       setIsAddingServices(false);
     }
-  }, [selectedServicesToAdd, eventServices, allServices, eventId, loadEventData]);
+  }, [selectedServicesToAdd, eventServices, allServices, eventId, loadEventData, addServiceAsExternal]);
 
   const handleAddExistingPackage = useCallback(async () => {
     if (!selectedExistingPackage) {
@@ -1996,12 +2105,28 @@ export default function EventDetails() {
       <ExportDialog open={showExportDialog} onOpenChange={setShowExportDialog} exportOptions={exportOptions} setExportOptions={setExportOptions} onConfirmExport={handleConfirmExport} />
       <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} eventPrimaryCurrency={event?.primary_currency || 'ILS'} exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()} />
       <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
+      <Dialog open={showNewServiceDialog} onOpenChange={(open) => { setShowNewServiceDialog(open); if (!open) setNewServiceTargetPackageId(null); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>יצירת שירות חדש</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>שם השירות</Label><Input value={newService.service_name} onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))} placeholder="שם השירות" /></div>
+            <div><Label>תיאור השירות</Label><Textarea value={newService.service_description} onChange={(e) => setNewService(prev => ({ ...prev, service_description: e.target.value }))} placeholder="תיאור מפורט של השירות" /></div>
+            <div><Label>קטגוריה</Label><Input value={newService.category} onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))} placeholder="קטגורית השירות" /></div>
+            <div><Label>מחיר בסיס</Label><Input type="number" value={newService.base_price} onChange={(e) => setNewService(prev => ({ ...prev, base_price: e.target.value }))} placeholder="0" /></div>
+            <div className="flex items-center gap-2"><Checkbox id="new-service-vat-event-details" checked={newService.default_includes_vat} onCheckedChange={(checked) => setNewService(prev => ({ ...prev, default_includes_vat: checked }))} /><Label htmlFor="new-service-vat-event-details">כולל מע״מ כברירת מחדל</Label></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowNewServiceDialog(false); setNewServiceTargetPackageId(null); }} disabled={isSavingNewService}>ביטול</Button>
+            <Button onClick={handleCreateService} disabled={isSavingNewService || !newService.service_name}>{isSavingNewService ? 'שומר...' : 'צור שירות'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <PackageDialog open={showPackageDialog} onOpenChange={setShowPackageDialog} form={packageForm} setForm={setPackageForm} searchTerm={packageServiceSearchTerm} setSearchTerm={setPackageServiceSearchTerm} filteredServices={filteredServicesForPackage} isCreating={isCreatingPackage} onCreate={handleCreatePackage} />
       <EditPackageDialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog} form={editPackageForm} setForm={setEditPackageForm} isSaving={isSavingPackageEdit} onSave={handleSavePackageEdit} primaryCurrency={event?.primary_currency || 'ILS'} exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()} />
       <AddServiceDialog open={showAddServiceDialog} onOpenChange={setShowAddServiceDialog} searchTerm={addServiceSearchTerm} setSearchTerm={setAddServiceSearchTerm} filteredServices={filteredServicesForAdd} selected={selectedServicesToAdd} setSelected={setSelectedServicesToAdd} isAdding={isAddingServices} onAdd={handleAddStandaloneServices} isExternal={addServiceAsExternal} setIsExternal={setAddServiceAsExternal} />
       <AddExistingPackageDialog open={showAddExistingPackageDialog} onOpenChange={setShowAddExistingPackageDialog} searchTerm={existingPackageSearchTerm} setSearchTerm={setExistingPackageSearchTerm} filteredPackages={filteredExistingPackages} selected={selectedExistingPackage} setSelected={setSelectedExistingPackage} isAdding={isAddingExistingPackage} onAdd={handleAddExistingPackage} />
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
-      <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} />
+      <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} onCreateNewService={() => { setNewServiceTargetPackageId(targetPackageForService); setShowNewServiceDialog(true); }} />
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
       <EventChangeDecisionDialogs
         isAdmin={isAdmin}

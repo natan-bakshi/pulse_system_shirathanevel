@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { FileText, Loader2, Search, Download, Trash2 } from 'lucide-react';
+import { FileText, Loader2, Search, Download, Trash2, Plus } from 'lucide-react';
 import { getCurrencySymbol, convertCurrency } from '@/components/utils/currencyUtils';
 
 export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptions, onConfirmExport }) {
@@ -332,14 +332,22 @@ export function AddToPackageDialog({ open, onOpenChange, searchTerm, setSearchTe
   );
 }
 
-export function AddServiceToPackageDialog({ open, onOpenChange, searchTerm, setSearchTerm, filteredServices, selected, setSelected, isAdding, onAdd }) {
+export function AddServiceToPackageDialog({ open, onOpenChange, searchTerm, setSearchTerm, filteredServices, selected, setSelected, isAdding, onAdd, onCreateNewService }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>הוסף שירות לחבילה</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>בחר שירותים</Label>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <Label>בחר שירותים</Label>
+              {onCreateNewService && (
+                <Button type="button" size="sm" variant="outline" onClick={onCreateNewService}>
+                  <Plus className="h-4 w-4 ml-1" />
+                  צור שירות חדש
+                </Button>
+              )}
+            </div>
             <div className="relative mb-2"><Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" /><Input placeholder="חיפוש שירותים..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pr-10" /></div>
             <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
               {filteredServices.map(service => (
