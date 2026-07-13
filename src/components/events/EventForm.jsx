@@ -190,6 +190,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
     total_override_includes_vat: true,
     is_price_per_guest: false,
     price_per_guest: 0,
+    services_section_title: '',
+    standalone_services_title: '',
     external_services_title: ''
   });
 
@@ -396,6 +398,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       total_override_includes_vat: event?.total_override_includes_vat !== undefined ? event.total_override_includes_vat : true,
       is_price_per_guest: event?.is_price_per_guest || false,
       price_per_guest: event?.price_per_guest || 0,
+      services_section_title: event?.services_section_title || '',
+      standalone_services_title: event?.standalone_services_title || '',
       external_services_title: event?.external_services_title || ''
     };
 
@@ -621,6 +625,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         total_override_includes_vat: formData.total_override_includes_vat,
         is_price_per_guest: formData.is_price_per_guest || false,
         price_per_guest: Number(formData.price_per_guest) || 0,
+        services_section_title: formData.services_section_title || '',
+        standalone_services_title: formData.standalone_services_title || '',
         external_services_title: formData.external_services_title || '',
         organizer_type: organizerType || null,
         organizer_contacts: JSON.stringify(organizerContacts.filter(c => c.name || c.phone || c.email)),
@@ -1090,6 +1096,10 @@ for (const serviceItem of servicesForSave) {
               primaryCurrency={formData.primary_currency}
               onPrimaryCurrencyChange={(value) => handleInputChange("primary_currency", value)}
               exchangeRate={exchangeRate}
+              servicesSectionTitle={formData.services_section_title}
+              onServicesSectionTitleChange={(value) => handleInputChange("services_section_title", value)}
+              standaloneServicesTitle={formData.standalone_services_title}
+              onStandaloneServicesTitleChange={(value) => handleInputChange("standalone_services_title", value)}
               externalServicesTitle={formData.external_services_title}
               onExternalServicesTitleChange={(value) => handleInputChange("external_services_title", value)}
             />

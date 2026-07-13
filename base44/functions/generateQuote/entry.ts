@@ -150,7 +150,7 @@ function buildQuoteBodyHtmlForView(ctx) {
             case 'services':
                 if (servicesHtml) {
                     if (block.subtitle_title) {
-                        bodyParts.push(servicesHtml.replace(/<h2 class="section-title">חבילת ההפקה כוללת<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`));
+                        bodyParts.push(servicesHtml.replace(/<h2 class="section-title">[^<]*<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`));
                     } else {
                         bodyParts.push(servicesHtml);
                     }
@@ -512,6 +512,8 @@ Deno.serve(async (req) => {
 
     const hasPackages = structuredServices.some(item => item.type === 'package');
     const hasStandaloneServices = structuredServices.some(item => item.type === 'standalone');
+    const servicesSectionTitle = event.services_section_title || 'חבילת ההפקה כוללת';
+    const standaloneServicesTitle = event.standalone_services_title || '';
     
     const familyDetailsLine = `${getEventType(event.event_type)} של ${event.child_name || ''} ${event.family_name}`.trim();
     
@@ -550,7 +552,8 @@ Deno.serve(async (req) => {
 
     let servicesHtml = '';
     if (structuredServices.length > 0) {
-        servicesHtml = `<div class="section services-section"><h2 class="section-title">חבילת ההפקה כוללת</h2>`;
+        servicesHtml = `<div class="section services-section"><h2 class="section-title">${servicesSectionTitle}</h2>`;
+        let standaloneServicesTitleRendered = false;
         
         structuredServices.forEach(item => {
             if (item.type === 'package') {
@@ -646,6 +649,10 @@ Deno.serve(async (req) => {
                 servicesHtml += `</div>`; // Close group
 
             } else if (item.type === 'standalone') {
+                if (standaloneServicesTitle && !standaloneServicesTitleRendered) {
+                    servicesHtml += `<h3 class="category-title">${standaloneServicesTitle}</h3>`;
+                    standaloneServicesTitleRendered = true;
+                }
                 const service = item.service;
                 const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
                 const serviceDescription = service.service_description || '';

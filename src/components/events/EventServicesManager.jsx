@@ -33,6 +33,10 @@ export default function EventServicesManager({
   primaryCurrency = 'ILS',
   onPrimaryCurrencyChange,
   exchangeRate = 3.6,
+  servicesSectionTitle = '',
+  onServicesSectionTitleChange,
+  standaloneServicesTitle = '',
+  onStandaloneServicesTitleChange,
   externalServicesTitle = '',
   onExternalServicesTitleChange
 }) {
@@ -1327,6 +1331,28 @@ export default function EventServicesManager({
         )}
       </div>
 
+      {/* Section titles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 rounded border">
+        <div>
+          <Label className="text-xs text-gray-600">כותרת מקטע השירותים בהצעה</Label>
+          <Input
+            value={servicesSectionTitle || ''}
+            onChange={(e) => onServicesSectionTitleChange && onServicesSectionTitleChange(e.target.value)}
+            placeholder="ברירת מחדל: חבילת ההפקה כוללת"
+            className="text-sm h-8"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-gray-600">כותרת לפני שירותים בודדים ללא חבילה</Label>
+          <Input
+            value={standaloneServicesTitle || ''}
+            onChange={(e) => onStandaloneServicesTitleChange && onStandaloneServicesTitleChange(e.target.value)}
+            placeholder="אופציונלי — ברירת מחדל ריק"
+            className="text-sm h-8"
+          />
+        </div>
+      </div>
+
       {/* Action Buttons */}
       <div className="flex gap-2 flex-wrap items-center">
         {selectedServicesForAction.length > 0 && (
@@ -1547,7 +1573,9 @@ export default function EventServicesManager({
             <Droppable droppableId="standalone" type="standalone">
               {(provided) => (
                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                  <h4 className="font-semibold text-sm text-gray-600">שירותים בודדים</h4>
+                  {standaloneServicesTitle && (
+                    <h4 className="font-semibold text-sm text-gray-600">{standaloneServicesTitle}</h4>
+                  )}
                   {groupedServices.standalone.map((service, index) => (
                     <Draggable key={service.id || service.service_id} draggableId={service.id || service.service_id} index={index}>
                       {(provided) => (

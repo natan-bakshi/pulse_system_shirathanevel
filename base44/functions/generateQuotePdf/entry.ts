@@ -152,7 +152,7 @@ function buildQuoteBodyHtml(ctx) {
                 if (servicesHtml) {
                     // If block has a custom subtitle, replace the default one in servicesHtml
                     if (block.subtitle_title) {
-                        const customServicesHtml = servicesHtml.replace(/<h2 class="section-title">חבילת ההפקה כוללת<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        const customServicesHtml = servicesHtml.replace(/<h2 class="section-title">[^<]*<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
                         bodyParts.push(customServicesHtml);
                     } else {
                         bodyParts.push(servicesHtml);
@@ -503,6 +503,8 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     // Check if there are packages and standalone services based on the new structure
     const hasPackages = structuredServices.some(item => item.type === 'package');
     const hasStandaloneServices = structuredServices.some(item => item.type === 'standalone');
+    const servicesSectionTitle = event.services_section_title || 'חבילת ההפקה כוללת';
+    const standaloneServicesTitle = event.standalone_services_title || '';
     
     // Updated format for family details
     const familyDetailsLine = `${getEventType(event.event_type)} של ${event.child_name || ''} ${event.family_name}`.trim();
@@ -542,7 +544,8 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
     let servicesHtml = '';
     if (structuredServices.length > 0) {
-        servicesHtml = `<div class="section services-section"><h2 class="section-title">חבילת ההפקה כוללת</h2>`;
+        servicesHtml = `<div class="section services-section"><h2 class="section-title">${servicesSectionTitle}</h2>`;
+        let standaloneServicesTitleRendered = false;
         
         structuredServices.forEach(item => {
             if (item.type === 'package') {
@@ -637,6 +640,10 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                 servicesHtml += `</div>`; // Close group
 
             } else if (item.type === 'standalone') {
+                if (standaloneServicesTitle && !standaloneServicesTitleRendered) {
+                    servicesHtml += `<h3 class="category-title">${standaloneServicesTitle}</h3>`;
+                    standaloneServicesTitleRendered = true;
+                }
                 const service = item.service;
                 const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
                 const serviceDescription = service.service_description || '';

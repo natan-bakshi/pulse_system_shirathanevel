@@ -174,7 +174,10 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
 
   const fmt = (n) => `₪${safeFloat(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  let html = `<div class="section services-section"><h2 class="section-title">חבילת ההפקה כוללת</h2>`;
+  const servicesSectionTitle = event.services_section_title || 'חבילת ההפקה כוללת';
+  const standaloneServicesTitle = event.standalone_services_title || '';
+  let standaloneServicesTitleRendered = false;
+  let html = `<div class="section services-section"><h2 class="section-title">${servicesSectionTitle}</h2>`;
 
   // New packages
   mainPackages.forEach(mp => {
@@ -253,6 +256,10 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
 
   // Standalone
   standalones.forEach(s => {
+    if (standaloneServicesTitle && !standaloneServicesTitleRendered) {
+      html += `<h3 class="category-title" style="font-size: calc(${settings.quoteTitleFontSize}px * 0.9); font-weight: 600; color: #8B0000; padding-bottom: 8px; margin: 15px 0 10px 0; border-bottom: 1px solid #DAA520;">${escapeHtml(standaloneServicesTitle)}</h3>`;
+      standaloneServicesTitleRendered = true;
+    }
     const total = safeFloat(s.custom_price) * (s.quantity || 1);
     html += `
       <div style="padding: 15px 0; border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">

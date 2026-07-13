@@ -92,6 +92,8 @@ export default function ServicesCard({
   handleDeleteService,
   handleToggleServiceExternal,
   groupedExternalServices = { packages: [], standalone: [] },
+  handleSaveServicesSectionTitle,
+  handleSaveStandaloneServicesTitle,
   handleSaveExternalServicesTitle,
   exchangeRate = 3.6,
   onPrimaryCurrencyChange
@@ -100,6 +102,8 @@ export default function ServicesCard({
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
   const [serviceTabs, setServiceTabs] = useState({}); // לניהול לשוניות עריכה לכל שירות
   const [copiedId, setCopiedId] = useState(null); // לניהול אייקון ה-V
+  const [servicesTitleInput, setServicesTitleInput] = useState(event?.services_section_title || '');
+  const [standaloneTitleInput, setStandaloneTitleInput] = useState(event?.standalone_services_title || '');
   const [externalTitleInput, setExternalTitleInput] = useState(event?.external_services_title || '');
   const [showNewSupplierDialog, setShowNewSupplierDialog] = useState(null);
   const queryClient = useQueryClient();
@@ -107,6 +111,12 @@ export default function ServicesCard({
   const [localSelectedService, setLocalSelectedService] = useState(null);
   const [localSupplierFormData, setLocalSupplierFormData] = useState({ supplierIds: [], notes: {} });
   const [localSupplierSearchTerm, setLocalSupplierSearchTerm] = useState("");
+
+  React.useEffect(() => {
+    setServicesTitleInput(event?.services_section_title || '');
+    setStandaloneTitleInput(event?.standalone_services_title || '');
+    setExternalTitleInput(event?.external_services_title || '');
+  }, [event?.services_section_title, event?.standalone_services_title, event?.external_services_title]);
   
   const [newService, setNewService] = useState({
     service_name: '',
@@ -1058,7 +1068,33 @@ const handleCopyTransport = (service, serviceDetails) => {
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h3 className="text-lg font-semibold">שירותים</h3>
+          <div className="flex-1 min-w-0 space-y-2">
+            <h3 className="text-lg font-semibold">שירותים</h3>
+            {isAdmin && !editingSection && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-w-3xl">
+                <div>
+                  <Label className="text-xs text-gray-600">כותרת מקטע השירותים בהצעה</Label>
+                  <Input
+                    value={servicesTitleInput}
+                    onChange={(e) => setServicesTitleInput(e.target.value)}
+                    onBlur={() => handleSaveServicesSectionTitle && handleSaveServicesSectionTitle(servicesTitleInput)}
+                    placeholder="ברירת מחדל: חבילת ההפקה כוללת"
+                    className="text-sm h-8"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-600">כותרת לפני שירותים בודדים ללא חבילה</Label>
+                  <Input
+                    value={standaloneTitleInput}
+                    onChange={(e) => setStandaloneTitleInput(e.target.value)}
+                    onBlur={() => handleSaveStandaloneServicesTitle && handleSaveStandaloneServicesTitle(standaloneTitleInput)}
+                    placeholder="אופציונלי — ברירת מחדל ריק"
+                    className="text-sm h-8"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
           {isAdmin && !editingSection && (
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {selectedServicesForAction.length > 0 && (
@@ -1381,7 +1417,9 @@ const handleCopyTransport = (service, serviceDetails) => {
                 <Droppable droppableId="standalone" type="standalone" isDropDisabled={!isAdmin}>
                   {(provided) => (
                     <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                      <h4 className="font-semibold text-sm text-gray-600">שירותים בודדים</h4>
+                      {event.standalone_services_title && (
+                        <h4 className="font-semibold text-sm text-gray-600">{event.standalone_services_title}</h4>
+                      )}
                       {groupedServices.standalone.map((service, index) => {
                         const serviceDetails = allServices.find(s => s.id === service.service_id);
                         let supplierIds = [];

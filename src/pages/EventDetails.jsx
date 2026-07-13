@@ -1537,6 +1537,24 @@ export default function EventDetails() {
     }
   }, [eventId, queryClient]);
 
+  const handleSaveServicesSectionTitle = useCallback(async (title) => {
+    try {
+      await base44.entities.Event.update(eventId, { services_section_title: title });
+      queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+    } catch (error) {
+      console.error("Failed to save services section title:", error);
+    }
+  }, [eventId, queryClient]);
+
+  const handleSaveStandaloneServicesTitle = useCallback(async (title) => {
+    try {
+      await base44.entities.Event.update(eventId, { standalone_services_title: title });
+      queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+    } catch (error) {
+      console.error("Failed to save standalone services title:", error);
+    }
+  }, [eventId, queryClient]);
+
   const handleSaveExternalServicesTitle = useCallback(async (title) => {
     try {
       await base44.entities.Event.update(eventId, { external_services_title: title });
@@ -2086,6 +2104,8 @@ export default function EventDetails() {
         handleDeleteService={handleDeleteService}
         handleToggleServiceExternal={handleToggleServiceExternal}
         groupedExternalServices={groupedExternalServices}
+        handleSaveServicesSectionTitle={handleSaveServicesSectionTitle}
+        handleSaveStandaloneServicesTitle={handleSaveStandaloneServicesTitle}
         handleSaveExternalServicesTitle={handleSaveExternalServicesTitle}
         exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
         onPrimaryCurrencyChange={isAdmin ? async (c, updateEvent) => { await base44.entities.Event.update(eventId, updateEvent || { primary_currency: c }); await loadEventData(); } : undefined}

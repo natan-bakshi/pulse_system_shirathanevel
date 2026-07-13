@@ -55,6 +55,8 @@ export default function EventDetailsTabs(props) {
     handleRemoveFromPackage, handleDeleteService,
     handleToggleServiceExternal,
     groupedExternalServices,
+    handleSaveServicesSectionTitle,
+    handleSaveStandaloneServicesTitle,
     handleSaveExternalServicesTitle,
     exchangeRate, onPrimaryCurrencyChange,
     // Payments
@@ -185,6 +187,8 @@ export default function EventDetailsTabs(props) {
           handleDeleteService={handleDeleteService}
           handleToggleServiceExternal={handleToggleServiceExternal}
           groupedExternalServices={groupedExternalServices}
+          handleSaveServicesSectionTitle={handleSaveServicesSectionTitle}
+          handleSaveStandaloneServicesTitle={handleSaveStandaloneServicesTitle}
           handleSaveExternalServicesTitle={handleSaveExternalServicesTitle}
           exchangeRate={exchangeRate}
           onPrimaryCurrencyChange={onPrimaryCurrencyChange}
