@@ -23,6 +23,7 @@ import 'react-quill/dist/quill.snow.css';
 import { format } from 'date-fns';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
+import SectionTitleEditor from '@/components/events/SectionTitleEditor';
 
 function SupplierNoteInput({ serviceId, supplierId, initialNote, handleUpdateSupplierNote }) {
   const [localNote, setLocalNote] = React.useState(initialNote || '');
@@ -1076,30 +1077,7 @@ const handleCopyTransport = (service, serviceDetails) => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex-1 min-w-0 space-y-2">
             <h3 className="text-lg font-semibold">שירותים</h3>
-            {isAdmin && !editingSection && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-w-3xl">
-                <div>
-                  <Label className="text-xs text-gray-600">כותרת מקטע השירותים בהצעה</Label>
-                  <Input
-                    value={servicesTitleInput}
-                    onChange={(e) => setServicesTitleInput(e.target.value)}
-                    onBlur={() => handleSaveServicesSectionTitle && handleSaveServicesSectionTitle(servicesTitleInput)}
-                    placeholder="ברירת מחדל: חבילת ההפקה כוללת"
-                    className="text-sm h-8"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-600">כותרת לפני שירותים בודדים ללא חבילה</Label>
-                  <Input
-                    value={standaloneTitleInput}
-                    onChange={(e) => setStandaloneTitleInput(e.target.value)}
-                    onBlur={() => handleSaveStandaloneServicesTitle && handleSaveStandaloneServicesTitle(standaloneTitleInput)}
-                    placeholder="אופציונלי — ברירת מחדל ריק"
-                    className="text-sm h-8"
-                  />
-                </div>
-              </div>
-            )}
+
           </div>
           {isAdmin && !editingSection && (
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -1312,6 +1290,17 @@ const handleCopyTransport = (service, serviceDetails) => {
                 </div>
               )}
 
+              {(isAdmin || event.services_section_title) && (
+                <SectionTitleEditor
+                  value={servicesTitleInput}
+                  fallback="חבילת ההפקה כוללת"
+                  placeholder="ברירת מחדל: חבילת ההפקה כוללת"
+                  onChange={isAdmin ? setServicesTitleInput : undefined}
+                  onBlur={isAdmin ? () => handleSaveServicesSectionTitle && handleSaveServicesSectionTitle(servicesTitleInput) : undefined}
+                  color="red"
+                />
+              )}
+
               <Droppable droppableId="packages" type="package" isDropDisabled={!isAdmin}>
                 {(provided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
@@ -1423,8 +1412,15 @@ const handleCopyTransport = (service, serviceDetails) => {
                 <Droppable droppableId="standalone" type="standalone" isDropDisabled={!isAdmin}>
                   {(provided) => (
                     <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                      {event.standalone_services_title && (
-                        <h4 className="font-semibold text-sm text-gray-600">{event.standalone_services_title}</h4>
+                      {(isAdmin || event.standalone_services_title) && (
+                        <SectionTitleEditor
+                          value={standaloneTitleInput}
+                          fallback="שירותים בודדים"
+                          placeholder="אופציונלי — כותרת לפני שירותים בודדים"
+                          onChange={isAdmin ? setStandaloneTitleInput : undefined}
+                          onBlur={isAdmin ? () => handleSaveStandaloneServicesTitle && handleSaveStandaloneServicesTitle(standaloneTitleInput) : undefined}
+                          color="purple"
+                        />
                       )}
                       {groupedServices.standalone.map((service, index) => {
                         const serviceDetails = allServices.find(s => s.id === service.service_id);
