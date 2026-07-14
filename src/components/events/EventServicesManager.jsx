@@ -441,6 +441,7 @@ export default function EventServicesManager({
     const packageMainItem = {
         id: mainPackageTempId,
         service_id: allServices[0]?.id || '',
+        service_name: packageData.package_name,
         package_name: packageData.package_name,
         package_description: packageData.package_description,
         custom_price: packageData.package_price || 0,
@@ -623,6 +624,7 @@ export default function EventServicesManager({
       packageMainItem = {
         id: mainPackageTempId,
         service_id: allServices[0]?.id || '',
+        service_name: newPackageData.name,
         package_name: newPackageData.name,
         package_description: newPackageData.description,
         custom_price: parseFloat(newPackageData.price) || 0,
@@ -786,6 +788,7 @@ export default function EventServicesManager({
     const serviceDetails = allServices.find(s => s.id === service.service_id);
     const isExpanded = expandedServices[service.id];
     const isTransportService = serviceDetails?.category === 'נסיעות';
+    const effectiveServiceName = service.service_name || serviceDetails?.service_name || 'שירות';
     
     // Get assigned suppliers info
     const supplierIds = Array.isArray(service.supplier_ids) ? service.supplier_ids : [];
@@ -808,7 +811,7 @@ export default function EventServicesManager({
                   }
                 }}
             />
-            <div className="font-medium">{serviceDetails?.service_name || 'שירות'}</div>
+            <div className="font-medium">{effectiveServiceName}</div>
             <Button
               type="button"
               variant="ghost"
@@ -891,6 +894,16 @@ export default function EventServicesManager({
           {/* תצוגה מורחבת */}
           {isExpanded && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mr-6 mt-2">
+              <div className="col-span-full">
+                <Label className="text-xs">שם השירות באירוע זה</Label>
+                <Input
+                  value={service.service_name || serviceDetails?.service_name || ''}
+                  onChange={(e) => handleServiceChange(service.id, 'service_name', e.target.value)}
+                  placeholder="שם השירות באירוע"
+                  className="text-sm h-8"
+                />
+                <div className="text-xs text-blue-600 italic mt-1">שינוי כאן ישפיע רק על אירוע זה ולא על השירות הגלובלי</div>
+              </div>
               {!allInclusive && (
                 <div>
                   <Label className="text-xs">מחיר ליחידה</Label>
@@ -2000,7 +2013,7 @@ export default function EventServicesManager({
               <div className="space-y-2 max-h-48 overflow-y-auto border rounded p-2">
                 {selectedServices.filter(s => !s.package_id).filter(s => {
                     const serviceDetails = allServices.find(s2 => s2.id === s.service_id);
-                    const name = serviceDetails?.service_name || s.service_name || '';
+                    const name = s.service_name || serviceDetails?.service_name || '';
                     return name.toLowerCase().includes(packageServiceSearchTerm.toLowerCase());
                 }).map(service => {
                   const serviceDetails = allServices.find(s2 => s2.id === service.service_id);
@@ -2017,13 +2030,13 @@ export default function EventServicesManager({
                           setPackageServiceSearchTerm("");
                         }}
                       />
-                      <Label>{serviceDetails?.service_name || service.service_name || 'שירות'}</Label>
+                      <Label>{service.service_name || serviceDetails?.service_name || 'שירות'}</Label>
                     </div>
                   );
                 })}
                 {selectedServices.filter(s => !s.package_id).filter(s => {
                     const serviceDetails = allServices.find(s2 => s2.id === s.service_id);
-                    const name = serviceDetails?.service_name || s.service_name || '';
+                    const name = s.service_name || serviceDetails?.service_name || '';
                     return name.toLowerCase().includes(packageServiceSearchTerm.toLowerCase());
                 }).length === 0 && (
                     <div className="text-center text-gray-500 text-sm py-2">לא נמצאו שירותים</div>

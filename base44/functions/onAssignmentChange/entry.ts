@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
                         event_time: getEffectiveEventTimeForSupplier(eventData, data),
                         event_location: eventData.location || '',
                         supplier_name: supplier.supplier_name,
-                        service_name: service?.service_name || '',
+                        service_name: data.service_name || service?.service_name || '',
                         supplier_note: supplierNote,
                         event_id: eventData.id
                     };
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
                     event_time: getEffectiveEventTimeForSupplier(eventData, data),
                     event_location: eventData.location || '',
                     supplier_name: supplier.contact_person || supplier.supplier_name || '',
-                    service_name: service?.service_name || '',
+                    service_name: data.service_name || service?.service_name || '',
                     event_id: eventData.id
                 };
 
@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
                     family_name: eventData.family_name,
                     event_date: formatDate(eventData.event_date),
                     supplier_name: supplier.supplier_name,
-                    service_name: service?.service_name || '',
+                    service_name: data.service_name || service?.service_name || '',
                     event_id: eventData.id
                 };
 

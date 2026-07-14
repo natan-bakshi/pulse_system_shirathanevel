@@ -160,6 +160,7 @@ export default function ServicesCard({
       const newEventService = await base44.entities.EventService.create({
         event_id: event.id,
         service_id: newServiceRecord.id,
+        service_name: serviceData.service_name,
         custom_price: serviceData.base_price,
         quantity: 1,
         includes_vat: serviceData.default_includes_vat,
@@ -390,6 +391,7 @@ const handleCopyTransport = (service, serviceDetails) => {
   const renderServiceCard = (service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, currentSupplierNote, isSaving, isInPackage = false) => {
     const isExpanded = expandedServices[service.id];
     const isTransportService = serviceDetails?.category === 'נסיעות';
+    const effectiveServiceName = service.service_name || serviceDetails?.service_name || 'שירות';
     
     // PERFECT FIX: Find the editable service from state
     const editableService = editableServices.find(es => es.id === service.id) || service;
@@ -400,7 +402,7 @@ const handleCopyTransport = (service, serviceDetails) => {
         <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 min-w-0">
               {isAdmin && <GripVertical className="h-4 w-4 text-gray-400 shrink-0" />}
-              <div className="font-medium break-words min-w-0 flex-1">{serviceDetails?.service_name || 'שירות'}</div>
+              <div className="font-medium break-words min-w-0 flex-1">{effectiveServiceName}</div>
               {isAdmin && (
                 <Button
                   variant="ghost"
@@ -489,6 +491,27 @@ const handleCopyTransport = (service, serviceDetails) => {
                         {/* תצוגה מורחבת - כל שדות העריכה */}
             {isExpanded && isAdmin && !isSupplier && !isClient && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mr-6 mt-2">
+                <div className="col-span-full">
+                  <Label className="text-xs">שם השירות באירוע זה</Label>
+                  <div className="relative">
+                    <Input
+                      value={editableService.service_name || serviceDetails?.service_name || ''}
+                      onChange={(e) => {
+                        const updatedServices = editableServices.map(s =>
+                          s.id === service.id ? { ...s, service_name: e.target.value } : s
+                        );
+                        setEditableServices(updatedServices);
+                      }}
+                      onBlur={(e) => handleUpdateServiceField(service.id, 'service_name', e.target.value)}
+                      className="text-sm h-8"
+                      disabled={isSaving && savingServiceField?.field === 'service_name'}
+                    />
+                    {isSaving && savingServiceField?.field === 'service_name' && (
+                      <Loader2 className="h-3 w-3 animate-spin absolute left-2 top-2.5 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="text-xs text-blue-600 italic mt-1">שינוי כאן ישפיע רק על אירוע זה ולא על השירות הגלובלי</div>
+                </div>
                 {!event.all_inclusive && (
                   <>
                     <div>

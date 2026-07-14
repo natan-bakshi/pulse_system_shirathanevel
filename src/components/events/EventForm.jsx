@@ -271,6 +271,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         result.push({
           id: mainPkgTempId,
           service_id: null,
+          service_name: pkg.package_name,
           package_name: pkg.package_name,
           package_description: pkg.package_description,
           custom_price: pkg.package_price || 0,
@@ -672,7 +673,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
           for (const pkgItem of newPackageItems) {
              const data = {
               event_id: savedEvent.id,
-              service_id: (pkgItem.service_id === 'PACKAGE_MAIN' || !pkgItem.service_id) ? null : pkgItem.service_id, 
+              service_id: (pkgItem.service_id === 'PACKAGE_MAIN' || !pkgItem.service_id) ? null : pkgItem.service_id,
+              service_name: pkgItem.service_name || pkgItem.package_name || '',
               custom_price: pkgItem.custom_price || 0,
               quantity: pkgItem.quantity || 1,
               includes_vat: pkgItem.includes_vat || false,
@@ -723,11 +725,13 @@ for (const serviceItem of servicesForSave) {
     
     // שם חבילה - רק עבור Main Package Item, ילדים לא צריכים package_name
     const finalPkgName = isPkgMain ? (serviceItem.package_name ?? serviceItem.service_name ?? '') : undefined;
+    const finalServiceName = isPkgMain ? (serviceItem.service_name || finalPkgName || '') : (serviceItem.service_name || serviceDetails?.service_name || '');
     // ----------------------------
 
     const data = {
         event_id: savedEvent.id,
         service_id: serviceItem.service_id,
+        service_name: finalServiceName,
         
         custom_price: finalPrice,
         quantity: serviceItem.quantity || 1,

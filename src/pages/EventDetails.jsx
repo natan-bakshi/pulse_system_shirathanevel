@@ -29,7 +29,7 @@ function getLocalOverrides(localService, serverService) {
   // Preserve local transport/text fields if they differ from server
   const fieldsToPreserve = [
     'pickup_point', 'standing_time', 'supplier_arrival_time', 'on_site_contact_details',
-    'service_description', 'client_notes', 'notes'
+    'service_name', 'service_description', 'client_notes', 'notes'
   ];
   for (const field of fieldsToPreserve) {
     const localVal = localService[field];
@@ -492,9 +492,10 @@ export default function EventDetails() {
       const newServiceRecord = await base44.entities.Service.create(serviceData);
       const targetPackageIdForNewService = newServiceTargetPackageId;
       let eventServiceData = {
-        event_id: eventId,
-        service_id: newServiceRecord.id,
-        custom_price: serviceData.base_price,
+      event_id: eventId,
+      service_id: newServiceRecord.id,
+      service_name: serviceData.service_name,
+      custom_price: serviceData.base_price,
         quantity: 1,
         includes_vat: serviceData.default_includes_vat,
         service_description: serviceData.service_description,
@@ -980,7 +981,7 @@ export default function EventDetails() {
               const svcDetails = allServices.find(s => s.id === currentService.service_id);
               arrivalTimeChangeContext = {
                 eventServiceId: serviceId,
-                serviceName: svcDetails?.service_name || 'שירות',
+                serviceName: currentService.service_name || svcDetails?.service_name || 'שירות',
                 oldArrivalTime: oldVal,
                 newArrivalTime: newVal
               };
@@ -1154,7 +1155,7 @@ export default function EventDetails() {
           await base44.functions.invoke('notifySupplierAssignment', {
             supplierIds: supplierFormData.supplierIds,
             eventId: eventId,
-            serviceName: serviceDetails?.service_name || 'שירות',
+            serviceName: selectedServiceForSupplier.service_name || serviceDetails?.service_name || 'שירות',
             eventServiceId: selectedServiceForSupplier.id
           });
         } catch (notifyError) {
@@ -1242,6 +1243,7 @@ export default function EventDetails() {
         const newServiceData = {
           event_id: eventId,
           service_id: serviceId,
+          service_name: serviceDetails?.service_name || '',
           package_name: packageMainItem.package_name,
           package_price: packageMainItem.package_price || packageMainItem.custom_price || 0,
           package_includes_vat: packageMainItem.package_includes_vat || packageMainItem.includes_vat || false,
@@ -1334,6 +1336,7 @@ export default function EventDetails() {
           await base44.entities.EventService.create({
             event_id: eventId,
             service_id: serviceId,
+            service_name: serviceDetails?.service_name || '',
             custom_price: serviceDetails?.base_price || 0,
             quantity: 1,
             includes_vat: serviceDetails?.default_includes_vat || false,
@@ -1617,6 +1620,7 @@ export default function EventDetails() {
         await base44.entities.EventService.create({
           event_id: eventId,
           service_id: serviceId,
+          service_name: serviceDetails?.service_name || '',
           custom_price: serviceDetails?.base_price || 0,
           quantity: 1,
           includes_vat: serviceDetails?.default_includes_vat || false,
@@ -1671,6 +1675,7 @@ export default function EventDetails() {
         await base44.entities.EventService.create({
           event_id: eventId,
           service_id: serviceId,
+          service_name: serviceDetails.service_name || '',
           package_id: newEventPackageId,
           package_name: packageData.package_name,
           package_description: packageData.package_description,
@@ -1804,6 +1809,7 @@ export default function EventDetails() {
         mainPackageItem = await base44.entities.EventService.create({
           event_id: eventId,
           service_id: allServices[0]?.id || '',
+          service_name: newPackageData.name,
           package_name: newPackageData.name,
           package_description: newPackageData.description,
           custom_price: parseFloat(newPackageData.price) || 0, // In new logic, main item holds the price in custom_price
@@ -1861,9 +1867,10 @@ export default function EventDetails() {
             const serviceDetails = allServices.find(s => s.id === serviceId);
             if (serviceDetails) {
                  await base44.entities.EventService.create({
-                    event_id: eventId,
-                    service_id: serviceId,
-                    custom_price: 0, // In package = 0
+                   event_id: eventId,
+                   service_id: serviceId,
+                   service_name: serviceDetails.service_name || '',
+                   custom_price: 0, // In package = 0
                     quantity: 1,
                     includes_vat: false,
                     service_description: serviceDetails.service_description || '',

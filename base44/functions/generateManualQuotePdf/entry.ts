@@ -194,7 +194,7 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
             <div class="package-service-item" style="padding: 8px 0; border-bottom: 1px solid rgba(220,220,220,0.4); display: flex; align-items: flex-start;">
               <div style="color: #DAA520; margin-left: 10px;">•</div>
               <div style="flex: 1;">
-                <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || '')}</strong>
+                <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || child.details?.service_name || 'שירות')}</strong>
                 ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
                 ${showClientNotes && child.client_notes ? `<div style="color: #888; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${child.client_notes}</div>` : ''}
                 ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
@@ -233,7 +233,7 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
               <div style="padding: 8px 0; border-bottom: 1px solid rgba(220,220,220,0.4); display: flex; align-items: flex-start;">
                 <div style="color: #DAA520; margin-left: 10px;">•</div>
                 <div style="flex: 1;">
-                  <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || '')}</strong>
+                  <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || child.details?.service_name || 'שירות')}</strong>
                   ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
                   ${showClientNotes && child.client_notes ? `<div style="color: #888; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${child.client_notes}</div>` : ''}
                   ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
@@ -265,7 +265,7 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
       <div style="padding: 15px 0; border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
           <div style="flex: 1; min-width: 200px;">
-            <strong style="color: #1f2937; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(s.service_name || '')}</strong>
+            <strong style="color: #1f2937; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(s.service_name || s.details?.service_name || 'שירות')}</strong>
             ${showDescriptions && s.service_description ? `<div style="color: #6b7280; font-size: ${settings.quoteBodyFontSize}px; margin-top: 5px;">${s.service_description}</div>` : ''}
             ${showClientNotes && s.client_notes ? `<div style="color: #9ca3af; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${s.client_notes}</div>` : ''}
             ${showQuantities && s.quantity > 1 ? `<div style="color: #6b7280; font-size: ${settings.quoteBodyFontSize}px; margin-top: 3px;">כמות: ${s.quantity}</div>` : ''}

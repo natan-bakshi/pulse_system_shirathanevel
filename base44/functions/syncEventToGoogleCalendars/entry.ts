@@ -74,7 +74,7 @@ function hasRelevantCalendarChange(entityName, triggerAction, changedFields) {
   ]);
   const eventServiceFields = new Set([
     'event_id', 'service_id', 'supplier_ids', 'supplier_statuses', 'supplier_notes',
-    'supplier_arrival_time', 'pickup_point', 'standing_time', 'on_site_contact_details'
+    'service_name', 'supplier_arrival_time', 'pickup_point', 'standing_time', 'on_site_contact_details'
   ]);
 
   const relevantFields = entityName === 'EventService' ? eventServiceFields : eventFields;
@@ -196,7 +196,7 @@ function buildSuppliersList(allEventServices, allServices, allSuppliers, selecte
       .filter(Boolean);
 
     if (confirmedSuppliers.length > 0) {
-      lines.push(`${service.service_name}: ${confirmedSuppliers.join(', ')}`);
+      lines.push(`${es.service_name || service.service_name}: ${confirmedSuppliers.join(', ')}`);
     }
   }
 
@@ -656,7 +656,7 @@ Deno.serve(async (req) => {
         try { supplierNotes = JSON.parse(es.supplier_notes || '{}'); } catch (e) {}
 
         let calendarIdsChanged = false;
-        const serviceName = servicesMap[es.service_id]?.service_name || 'שירות';
+        const serviceName = es.service_name || servicesMap[es.service_id]?.service_name || 'שירות';
 
         for (const suppId of supplierIds) {
           const supplier = suppliersMap[suppId];

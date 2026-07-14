@@ -44,7 +44,7 @@ export function useEventExport({ event, eventServices, allServices, allSuppliers
       exportData.services = eventServices.map(es => {
         const serviceDetails = allServices.find(s => s.id === es.service_id);
         return {
-          service_name: serviceDetails?.service_name || es.service_name,
+          service_name: es.service_name || serviceDetails?.service_name,
           custom_price: es.custom_price,
           quantity: es.quantity,
           includes_vat: es.includes_vat,
@@ -72,7 +72,7 @@ export function useEventExport({ event, eventServices, allServices, allSuppliers
         }));
 
         return {
-          service_name: serviceDetails?.service_name || es.service_name,
+          service_name: es.service_name || serviceDetails?.service_name,
           suppliers: assignedSuppliers
         };
       });
