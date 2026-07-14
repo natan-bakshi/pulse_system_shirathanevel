@@ -1673,6 +1673,7 @@ export default function EventServicesManager({
                             notes: newNotes
                           });
                         }
+                        setSupplierSearchTerm("");
                       }}
                     />
                     <Label className="flex items-center gap-1.5">
@@ -2016,6 +2017,7 @@ export default function EventServicesManager({
                           } else {
                             setPackageForm({ ...packageForm, selectedServices: packageForm.selectedServices.filter(id => id !== service.service_id) });
                           }
+                          setPackageServiceSearchTerm("");
                         }}
                       />
                       <Label>{serviceDetails?.service_name || service.service_name || 'שירות'}</Label>

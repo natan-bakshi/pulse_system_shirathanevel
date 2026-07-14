@@ -136,6 +136,7 @@ export default function SupplierAssignmentDialog({
         supplierNotes: newNotes
       };
     });
+    setSupplierSearchInDialog('');
   }, [declinedSuppliers, editingService, suppliers]);
 
   const handleCreateSupplier = useCallback(async () => {
@@ -240,14 +241,27 @@ export default function SupplierAssignmentDialog({
                 {suppliers.filter(s => editingService.supplierIds.includes(s.id)).length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs text-gray-500 font-medium">ספקים משובצים</Label>
-                    {suppliers.filter(s => editingService.supplierIds.includes(s.id)).map(s => (
-                      <div key={s.id} className="p-2 rounded-lg border bg-green-50 border-green-200 flex items-center justify-between group">
-                        <div className="text-sm font-medium text-green-900">{s.supplier_name}</div>
-                        <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
-                          <X className="h-4 w-4" />
-                        </button>
+                    {suppliers.filter(s => editingService.supplierIds.includes(s.id)).map(s => {
+                      const hasDeclined = declinedSuppliers.some(d => d.supplier_id === s.id);
+                      return (
+                      <div key={s.id} className="space-y-1">
+                        <div className="p-2 rounded-lg border bg-green-50 border-green-200 flex items-center justify-between group">
+                          <div className="text-sm font-medium text-green-900 flex items-center gap-1.5">
+                            {s.supplier_name}
+                            {hasDeclined && <span className="text-[10px] text-red-500 bg-white/70 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}
+                          </div>
+                          <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <Input
+                          placeholder="הערה לספק..."
+                          value={editingService.supplierNotes[s.id] || ''}
+                          onChange={(e) => setEditingService(p => ({ ...p, supplierNotes: { ...p.supplierNotes, [s.id]: e.target.value } }))}
+                          className="text-xs h-7"
+                        />
                       </div>
-                    ))}
+                    );})}
                   </div>
                 )}
 

@@ -33,6 +33,7 @@ export default function AdminMultiSelect({ admins = [], selectedIds = [], onChan
     } else {
       onChange([...selectedIds, adminId]);
     }
+    setSearch("");
   };
 
   const removeAdmin = (e, adminId) => {

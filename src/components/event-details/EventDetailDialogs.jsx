@@ -97,6 +97,7 @@ export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm,
 }
 
 export function SupplierAssignDialog({ open, onOpenChange, searchTerm, setSearchTerm, filteredSuppliers, formData, setFormData, onAssign }) {
+  const declinedSuppliers = Array.isArray(formData.declinedSuppliers) ? formData.declinedSuppliers : [];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -107,14 +108,27 @@ export function SupplierAssignDialog({ open, onOpenChange, searchTerm, setSearch
             <Input placeholder="חיפוש ספקים..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pr-10" />
           </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {filteredSuppliers.map(supplier => (
-              <div key={supplier.id} className="space-y-2">
+            {filteredSuppliers.map(supplier => {
+              const declineRecord = declinedSuppliers.find(d => d.supplier_id === supplier.id);
+              const hasDeclined = !!declineRecord;
+              return (
+              <div key={supplier.id} className={`space-y-2 ${hasDeclined && !formData.supplierIds.includes(supplier.id) ? 'bg-red-50/50 border border-red-200 rounded-lg p-2' : ''}`}>
                 <div className="flex items-center gap-2">
                   <Checkbox checked={formData.supplierIds.includes(supplier.id)} onCheckedChange={(checked) => {
-                    if (checked) { setFormData({ ...formData, supplierIds: [...formData.supplierIds, supplier.id] }); }
+                    if (checked) {
+                      if (hasDeclined) {
+                        const dateStr = declineRecord.declined_date ? ' בתאריך ' + new Date(declineRecord.declined_date).toLocaleDateString('he-IL') : '';
+                        if (!window.confirm(`⚠️ שים לב: הספק "${supplier.supplier_name}" דחה שירות זה בעבר${dateStr}.\n\nלשבץ בכל זאת?`)) return;
+                      }
+                      setFormData({ ...formData, supplierIds: [...formData.supplierIds, supplier.id] });
+                    }
                     else { const n = { ...formData.notes }; delete n[supplier.id]; setFormData({ ...formData, supplierIds: formData.supplierIds.filter(id => id !== supplier.id), notes: n }); }
+                    setSearchTerm("");
                   }} />
-                  <Label>{supplier.supplier_name}</Label>
+                  <Label className="flex items-center gap-1.5">
+                    {supplier.supplier_name}
+                    {hasDeclined && <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}
+                  </Label>
                 </div>
                 {formData.supplierIds.includes(supplier.id) && (
                   <div className="mr-6"><Label className="text-xs">הערה לספק</Label>
@@ -122,7 +136,7 @@ export function SupplierAssignDialog({ open, onOpenChange, searchTerm, setSearch
                   </div>
                 )}
               </div>
-            ))}
+            );})}
           </div>
         </div>
         <DialogFooter>
@@ -152,7 +166,7 @@ export function PackageDialog({ open, onOpenChange, form, setForm, searchTerm, s
             <div className="space-y-2 max-h-48 overflow-y-auto border rounded p-2">
               {filteredServices.map(service => (
                 <div key={service.id} className="flex items-center gap-2">
-                  <Checkbox checked={form.selectedServices.includes(service.id)} onCheckedChange={(checked) => { if (checked) setForm({ ...form, selectedServices: [...form.selectedServices, service.id] }); else setForm({ ...form, selectedServices: form.selectedServices.filter(id => id !== service.id) }); }} />
+                  <Checkbox checked={form.selectedServices.includes(service.id)} onCheckedChange={(checked) => { if (checked) setForm({ ...form, selectedServices: [...form.selectedServices, service.id] }); else setForm({ ...form, selectedServices: form.selectedServices.filter(id => id !== service.id) }); setSearchTerm(""); }} />
                   <Label>{service.service_name}</Label>
                 </div>
               ))}
@@ -222,7 +236,7 @@ export function AddServiceDialog({ open, onOpenChange, searchTerm, setSearchTerm
             <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
               {filteredServices.map(service => (
                 <div key={service.id} className="flex items-center gap-2">
-                  <Checkbox checked={selected.includes(service.id)} onCheckedChange={(checked) => { if (checked) setSelected([...selected, service.id]); else setSelected(selected.filter(id => id !== service.id)); }} />
+                  <Checkbox checked={selected.includes(service.id)} onCheckedChange={(checked) => { if (checked) setSelected([...selected, service.id]); else setSelected(selected.filter(id => id !== service.id)); setSearchTerm(""); }} />
                   <Label>{service.service_name}</Label>
                 </div>
               ))}
@@ -262,7 +276,7 @@ export function AddExistingPackageDialog({ open, onOpenChange, searchTerm, setSe
             <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
               {filteredPackages.map(pkg => (
                 <div key={pkg.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                  <Checkbox checked={selected === pkg.id} onCheckedChange={(checked) => setSelected(checked ? pkg.id : null)} />
+                  <Checkbox checked={selected === pkg.id} onCheckedChange={(checked) => { setSelected(checked ? pkg.id : null); setSearchTerm(""); }} />
                   <div className="flex-1">
                     <div className="font-medium">{pkg.package_name}</div>
                     <div className="text-sm text-gray-600">{(pkg.package_price || 0).toLocaleString()} {pkg.package_includes_vat && '(כולל מע"מ)'}</div>
@@ -294,7 +308,7 @@ export function AddToPackageDialog({ open, onOpenChange, searchTerm, setSearchTe
             <div className="space-y-2 max-h-48 overflow-y-auto border rounded p-2">
               {filteredServices.map(service => (
                 <div key={service.id} className="flex items-center gap-2">
-                  <Checkbox checked={selectedServices.includes(service.id)} onCheckedChange={(checked) => { if (checked) setSelectedServices([...selectedServices, service.id]); else setSelectedServices(selectedServices.filter(id => id !== service.id)); }} />
+                  <Checkbox checked={selectedServices.includes(service.id)} onCheckedChange={(checked) => { if (checked) setSelectedServices([...selectedServices, service.id]); else setSelectedServices(selectedServices.filter(id => id !== service.id)); setSearchTerm(""); }} />
                   <Label>{service.service_name}</Label>
                 </div>
               ))}
@@ -352,7 +366,7 @@ export function AddServiceToPackageDialog({ open, onOpenChange, searchTerm, setS
             <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
               {filteredServices.map(service => (
                 <div key={service.id} className="flex items-center gap-2">
-                  <Checkbox checked={selected.includes(service.id)} onCheckedChange={(checked) => { if (checked) setSelected([...selected, service.id]); else setSelected(selected.filter(id => id !== service.id)); }} />
+                  <Checkbox checked={selected.includes(service.id)} onCheckedChange={(checked) => { if (checked) setSelected([...selected, service.id]); else setSelected(selected.filter(id => id !== service.id)); setSearchTerm(""); }} />
                   <Label>{service.service_name}</Label>
                 </div>
               ))}

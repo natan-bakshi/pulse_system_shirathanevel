@@ -1653,6 +1653,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                             notes: newNotes
                           });
                         }
+                        setLocalSupplierSearchTerm("");
                       }}
                     />
                     <Label className={hasDeclined ? 'flex items-center gap-1.5' : ''}>
