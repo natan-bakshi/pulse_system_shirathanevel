@@ -432,11 +432,14 @@ export default function EventsBoard() {
         let supplierIds = [];
         let supplierStatuses = {};
         let supplierNotes = {};
+        let declinedSuppliers = [];
 
         try {
             supplierIds = JSON.parse(eventServiceData.supplier_ids || '[]');
             supplierStatuses = JSON.parse(eventServiceData.supplier_statuses || '{}');
             supplierNotes = JSON.parse(eventServiceData.supplier_notes || '{}');
+            declinedSuppliers = JSON.parse(eventServiceData.declined_suppliers || '[]');
+            if (!Array.isArray(declinedSuppliers)) declinedSuppliers = [];
         } catch (e) {
             console.error('Error parsing supplier data:', e);
         }
@@ -470,6 +473,7 @@ export default function EventsBoard() {
             supplierIds,
             supplierStatuses,
             supplierNotes,
+            declinedSuppliers,
             serviceNotes: eventServiceData.client_notes || '',
             units: units,
             minSuppliers: (eventServiceData.min_suppliers !== undefined && eventServiceData.min_suppliers !== null)
@@ -510,6 +514,7 @@ export default function EventsBoard() {
                     ...es, 
                     supplier_ids: JSON.stringify(editingService.supplierIds),
                     supplier_statuses: JSON.stringify(editingService.supplierStatuses),
+                    supplier_notes: JSON.stringify(editingService.supplierNotes),
                     min_suppliers: parseInt(editingService.minSuppliers) || 0
                   }
                 : es
@@ -920,10 +925,15 @@ export default function EventsBoard() {
                                             const supplierStatus = editingService.supplierStatuses[s.id] || 'pending';
                                             const statusBg = supplierStatus === 'confirmed' ? 'bg-green-50 border-green-200' : supplierStatus === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200';
                                             const statusTextColor = supplierStatus === 'confirmed' ? 'text-green-900' : supplierStatus === 'rejected' ? 'text-red-900' : 'text-yellow-900';
+                                            const declineRecord = (editingService.declinedSuppliers || []).find(d => d.supplier_id === s.id);
+                                            const hasDeclined = !!declineRecord;
                                             return (
                                                 <div key={s.id} className="space-y-1">
                                                     <div className={`p-2 rounded-lg border ${statusBg} flex items-center justify-between group`}>
-                                                        <div className={`text-sm font-medium ${statusTextColor}`}>{s.supplier_name}</div>
+                                                        <div className={`text-sm font-medium ${statusTextColor} flex items-center gap-1.5`}>
+                                                            {s.supplier_name}
+                                                            {hasDeclined && <span className="text-[10px] text-red-500 bg-white/70 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}
+                                                        </div>
                                                         <div className="flex items-center gap-1">
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
@@ -960,12 +970,25 @@ export default function EventsBoard() {
                                     {filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).length === 0 ? (
                                         <div className="text-sm text-gray-400 italic text-center py-4 border border-dashed rounded-lg">לא נמצאו ספקים</div>
                                     ) : (
-                                        filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).map(s => (
-                                            <div key={s.id} className="p-2 rounded-lg border bg-white flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                                                <Checkbox id={`sup-${s.id}`} checked={false} onCheckedChange={() => handleToggleSupplier(s.id)} />
-                                                <Label htmlFor={`sup-${s.id}`} className="text-sm cursor-pointer flex-1 py-1">{s.supplier_name}</Label>
+                                        filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).map(s => {
+                                            const declineRecord = (editingService.declinedSuppliers || []).find(d => d.supplier_id === s.id);
+                                            const hasDeclined = !!declineRecord;
+                                            const toggleSupplier = () => {
+                                                if (hasDeclined) {
+                                                    const dateStr = declineRecord.declined_date ? ' בתאריך ' + new Date(declineRecord.declined_date).toLocaleDateString('he-IL') : '';
+                                                    if (!window.confirm(`⚠️ שים לב: הספק "${s.supplier_name}" דחה שירות זה בעבר${dateStr}.\n\nלשבץ בכל זאת?`)) return;
+                                                }
+                                                handleToggleSupplier(s.id);
+                                            };
+                                            return (
+                                            <div key={s.id} className={`p-2 rounded-lg border flex items-center gap-3 hover:bg-gray-50 transition-colors ${hasDeclined ? 'bg-red-50/50 border-red-200' : 'bg-white'}`}>
+                                                <Checkbox id={`sup-${s.id}`} checked={false} onCheckedChange={toggleSupplier} />
+                                                <Label htmlFor={`sup-${s.id}`} className="text-sm cursor-pointer flex-1 py-1 flex items-center gap-1.5">
+                                                    {s.supplier_name}
+                                                    {hasDeclined && <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}
+                                                </Label>
                                             </div>
-                                        ))
+                                        );})
                                     )}
                                 </div>
                             </div>

@@ -786,7 +786,7 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                 <h2 class="section-title">לוח זמנים</h2>
                 <table class="schedule-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
                     <tbody>
-                        ${[...event.schedule].sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(item => `
+                        ${(event.schedule || []).map(item => `
                             <tr>
                                 <td style="width: 80px; padding: 10px 0; font-weight: 700; color: #8B0000; font-size: ${quoteBodyFontSize}px; border-bottom: 1px solid #eee;">${esc(item.time)}</td>
                                 <td style="padding: 10px; font-size: ${quoteBodyFontSize}px; color: ${quoteTextColor}; border-bottom: 1px solid #eee;">
@@ -890,6 +890,16 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   padding-bottom: 10px;
                   margin-top: 0;
                   margin-bottom: 20px;
+                  page-break-after: avoid;
+              }
+
+              .category-title {
+                  font-size: calc(${quoteTitleFontSize}px * 0.9);
+                  font-weight: 600;
+                  color: #8B0000;
+                  padding-bottom: 8px;
+                  margin: 15px 0 10px 0;
+                  border-bottom: 1px solid #DAA520;
                   page-break-after: avoid;
               }
 

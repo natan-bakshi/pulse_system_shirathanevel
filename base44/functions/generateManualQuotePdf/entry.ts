@@ -361,7 +361,7 @@ function renderScheduleBlock(block, event, settings) {
       <h2 class="section-title">לוח זמנים</h2>
       <table class="schedule-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
         <tbody>
-          ${[...event.schedule].sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(item => `
+          ${(event.schedule || []).map(item => `
             <tr>
               <td style="width: 80px; padding: 10px 0; font-weight: 700; color: #8B0000; font-size: ${settings.quoteBodyFontSize}px; border-bottom: 1px solid #eee;">${esc(item.time)}</td>
               <td style="padding: 10px; font-size: ${settings.quoteBodyFontSize}px; color: ${settings.quoteTextColor}; border-bottom: 1px solid #eee;">
