@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import ExportDialog from "../components/export/ExportDialog";
 import SupplierDeclineStatsDialog from "../components/suppliers/SupplierDeclineStatsDialog";
+import CategorySelector from "@/components/common/CategorySelector";
 
 const SupplierEventsList = ({ supplierId }) => {
   const [events, setEvents] = useState([]);
@@ -139,6 +140,13 @@ export default function SupplierManagement() {
     queryFn: () => base44.entities.Supplier.list(sortBy),
     staleTime: 2 * 60 * 1000,
     cacheTime: 5 * 60 * 1000
+  });
+
+  const { data: servicesForCategories = [] } = useQuery({
+    queryKey: ['services'],
+    queryFn: () => base44.entities.Service.list(),
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000
   });
 
   const { data: allEventServices = [] } = useQuery({
@@ -267,6 +275,13 @@ export default function SupplierManagement() {
       return nameMatch || contactMatch || phoneMatch || emailMatch || servicesMatch || categoriesMatch;
     });
   }, [suppliers, debouncedSearchTerm]);
+
+  const supplierCategoryOptions = useMemo(() => {
+    return [
+      ...servicesForCategories.map(service => service.category),
+      ...suppliers.flatMap(supplier => supplier.categories || [])
+    ].filter(Boolean);
+  }, [servicesForCategories, suppliers]);
   
   const exportColumns = useMemo(() => [
     { key: 'supplier_name', title: 'שם ספק' },
@@ -457,7 +472,13 @@ export default function SupplierManagement() {
             </div>
 
             <div className="mt-4"><Label htmlFor="s_services">שירותים (מופרדים בפסיק)</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
-            <div><Label htmlFor="s_categories">קטגוריות שיבוץ (מופרדות בפסיק)</Label><Input id="s_categories" value={formData.categories} onChange={e => setFormData({...formData, categories: e.target.value})} placeholder="לדוגמה: צילום, אטרקציות, נסיעות" /></div>
+            <CategorySelector
+              label="קטגוריות שיבוץ"
+              options={supplierCategoryOptions}
+              selectedCategories={formData.categories.split(',').map(category => category.trim()).filter(Boolean)}
+              onChange={(categories) => setFormData({ ...formData, categories: categories.join(', ') })}
+              multiple
+            />
 
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center gap-2 mb-4">

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Edit, Trash2, Star, Settings, Loader2, Download, Package as PackageIcon, X, GripVertical, HelpCircle } from "lucide-react";
 import ConceptDefaultsManager from "../components/services/ConceptDefaultsManager";
+import CategorySelector from "@/components/common/CategorySelector";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -310,6 +311,10 @@ export default function ServiceManagement() {
       (pkg.category && pkg.category.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
     );
   }, [packages, debouncedSearchTerm]);
+
+  const serviceCategoryOptions = useMemo(() => {
+    return services.map(service => service.category).filter(Boolean);
+  }, [services]);
   
   const exportColumns = useMemo(() => [
     { key: 'service_name', title: 'שם השירות' },
@@ -575,14 +580,12 @@ export default function ServiceManagement() {
                 onChange={e => setFormData({ ...formData, base_price: e.target.value })} 
               />
             </div>
-            <div>
-              <Label>קטגוריה</Label>
-              <Input 
-                placeholder="קטגוריה" 
-                value={formData.category} 
-                onChange={e => setFormData({ ...formData, category: e.target.value })} 
-              />
-            </div>
+            <CategorySelector
+              label="קטגוריה"
+              options={serviceCategoryOptions}
+              selectedCategories={formData.category ? [formData.category] : []}
+              onChange={(categories) => setFormData({ ...formData, category: categories[0] || "" })}
+            />
             
             <div>
               <div className="flex items-center gap-1 mb-1">
