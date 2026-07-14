@@ -121,6 +121,7 @@ export default function SupplierManagement() {
     phone: "",
     contact_emails: "",
     services_provided: "",
+    categories: "",
     whatsapp_group_url: "",
     whatsapp_enabled: true,
     preferred_channel: "phone",
@@ -183,6 +184,7 @@ export default function SupplierManagement() {
       phone: "",
       contact_emails: "",
       services_provided: "",
+      categories: "",
       whatsapp_group_url: "",
       whatsapp_enabled: true,
       preferred_channel: "phone",
@@ -199,6 +201,7 @@ export default function SupplierManagement() {
       phone: supplier.phone,
       contact_emails: (supplier.contact_emails || []).join(', '),
       services_provided: (supplier.services_provided || []).join(', '),
+      categories: (supplier.categories || []).join(', '),
       whatsapp_group_url: supplier.whatsapp_group_url || "",
       whatsapp_enabled: supplier.whatsapp_enabled ?? true,
       preferred_channel: supplier.preferred_channel || "phone",
@@ -226,6 +229,7 @@ export default function SupplierManagement() {
         ...formData,
         contact_emails: formData.contact_emails.split(',').map(s => s.trim()).filter(Boolean),
         services_provided: formData.services_provided.split(',').map(s => s.trim()).filter(Boolean),
+        categories: formData.categories.split(',').map(s => s.trim()).filter(Boolean),
         whatsapp_group_url: formData.whatsapp_group_url,
         whatsapp_enabled: formData.whatsapp_enabled,
         preferred_channel: formData.preferred_channel,
@@ -257,8 +261,10 @@ export default function SupplierManagement() {
         s.contact_emails.some(email => (email || "").toLowerCase().includes(term));
       const servicesMatch = Array.isArray(s.services_provided) && 
         s.services_provided.some(service => (service || "").toLowerCase().includes(term));
+      const categoriesMatch = Array.isArray(s.categories) &&
+        s.categories.some(category => (category || "").toLowerCase().includes(term));
       
-      return nameMatch || contactMatch || phoneMatch || emailMatch || servicesMatch;
+      return nameMatch || contactMatch || phoneMatch || emailMatch || servicesMatch || categoriesMatch;
     });
   }, [suppliers, debouncedSearchTerm]);
   
@@ -268,6 +274,7 @@ export default function SupplierManagement() {
     { key: 'phone', title: 'טלפון' },
     { key: 'contact_emails', title: 'אימיילים', render: (val) => Array.isArray(val) ? val.join(', ') : '' },
     { key: 'services_provided', title: 'שירותים', render: (val) => Array.isArray(val) ? val.join(', ') : '' },
+    { key: 'categories', title: 'קטגוריות', render: (val) => Array.isArray(val) ? val.join(', ') : '' },
   ], []);
 
   return (
@@ -346,6 +353,16 @@ export default function SupplierManagement() {
                         ))}
                     </div>
                 </div>
+                {(supplier.categories || []).length > 0 && (
+                  <div className="pt-2">
+                    <h4 className="text-sm font-semibold mb-1">קטגוריות:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {(supplier.categories || []).map(category => (
+                        <Badge key={category} variant="outline">{category}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {supplier.whatsapp_enabled && (
                   <div className="pt-2 flex items-center gap-2 text-green-600 text-xs font-medium">
                     <MessageCircle className="h-3.5 w-3.5" />
@@ -440,6 +457,7 @@ export default function SupplierManagement() {
             </div>
 
             <div className="mt-4"><Label htmlFor="s_services">שירותים (מופרדים בפסיק)</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
+            <div><Label htmlFor="s_categories">קטגוריות שיבוץ (מופרדות בפסיק)</Label><Input id="s_categories" value={formData.categories} onChange={e => setFormData({...formData, categories: e.target.value})} placeholder="לדוגמה: צילום, אטרקציות, נסיעות" /></div>
 
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center gap-2 mb-4">

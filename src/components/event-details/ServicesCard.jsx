@@ -22,6 +22,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { format } from 'date-fns';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
+import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 
 function SupplierNoteInput({ serviceId, supplierId, initialNote, handleUpdateSupplierNote }) {
   const [localNote, setLocalNote] = React.useState(initialNote || '');
@@ -1060,9 +1061,14 @@ const handleCopyTransport = (service, serviceDetails) => {
     );
   };
 
-  const filteredLocalSuppliers = allSuppliers.filter(supplier =>
-    supplier.supplier_name.toLowerCase().includes(localSupplierSearchTerm.toLowerCase())
-  );
+  const filteredLocalSuppliers = React.useMemo(() => {
+    const serviceDetails = allServices.find(service => service.id === localSelectedService?.service_id);
+    return prioritizeSuppliers(allSuppliers, {
+      serviceCategory: serviceDetails?.category,
+      eventServices,
+      searchTerm: localSupplierSearchTerm
+    });
+  }, [allSuppliers, allServices, localSelectedService?.service_id, eventServices, localSupplierSearchTerm]);
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">

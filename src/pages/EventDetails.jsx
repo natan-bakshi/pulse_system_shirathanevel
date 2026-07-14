@@ -20,6 +20,7 @@ import EventChangeDecisionDialogs from '../components/event-details/EventChangeD
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
+import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -1905,9 +1906,11 @@ export default function EventDetails() {
   }
 
   // Filtered lists for dialogs (using debounced search terms)
-  const filteredSuppliersForDialog = allSuppliers.filter(supplier =>
-    supplier.supplier_name.toLowerCase().includes(debouncedSupplierSearch.toLowerCase())
-  );
+  const filteredSuppliersForDialog = prioritizeSuppliers(allSuppliers, {
+    serviceCategory: allServices.find(service => service.id === selectedServiceForSupplier?.service_id)?.category,
+    eventServices,
+    searchTerm: debouncedSupplierSearch
+  });
 
   const filteredServicesForPackage = allServices.filter(service =>
     service.service_name.toLowerCase().includes(debouncedPackageServiceSearch.toLowerCase())

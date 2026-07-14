@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { createPageUrl } from '@/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ContactPicker from '@/components/ui/ContactPicker';
+import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 
 
 export default function EventsBoard() {
@@ -573,10 +574,12 @@ export default function EventsBoard() {
     }, []);
 
     const filteredSuppliersInDialog = useMemo(() => {
-        return suppliers.filter(supplier =>
-            supplier.supplier_name.toLowerCase().includes(supplierSearchInDialog.toLowerCase())
-        );
-    }, [suppliers, supplierSearchInDialog]);
+        return prioritizeSuppliers(suppliers, {
+            serviceCategory: editingService?.category,
+            eventServices,
+            searchTerm: supplierSearchInDialog
+        });
+    }, [suppliers, editingService?.category, eventServices, supplierSearchInDialog]);
 
     const handleEventClick = useCallback((eventId) => {
         navigate(createPageUrl(`EventDetails?id=${eventId}`));

@@ -19,6 +19,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import ContactPicker from '../ui/ContactPicker';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
+import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 
 export default function EventServicesManager({
   allServices,
@@ -772,9 +773,13 @@ export default function EventServicesManager({
     onServicesChange(updatedServices);
   };
 
-  const filteredSuppliersForDialog = allSuppliers.filter(supplier =>
-    supplier.supplier_name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
-  );
+  const filteredSuppliersForDialog = useMemo(() => {
+    const serviceDetails = allServices.find(service => service.id === selectedServiceForSupplier?.service_id);
+    return prioritizeSuppliers(allSuppliers, {
+      serviceCategory: serviceDetails?.category,
+      searchTerm: supplierSearchTerm
+    });
+  }, [allSuppliers, allServices, selectedServiceForSupplier?.service_id, supplierSearchTerm]);
 
   const renderServiceCard = (service, isInPackage = false) => {
     const serviceDetails = allServices.find(s => s.id === service.service_id);

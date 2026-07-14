@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Save, X, Plus, Search, AlertTriangle } from 'lucide-react';
 import ContactPicker from '@/components/ui/ContactPicker';
+import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 
 export default function SupplierAssignmentDialog({
   isOpen,
@@ -60,6 +61,7 @@ export default function SupplierAssignmentDialog({
         supplierStatuses,
         supplierNotes,
         serviceNotes: eventServiceData.client_notes || '',
+        serviceCategory: service?.category || '',
         minSuppliers: (eventServiceData.min_suppliers !== undefined && eventServiceData.min_suppliers !== null)
           ? eventServiceData.min_suppliers
           : (service?.default_min_suppliers || 0)
@@ -179,10 +181,11 @@ export default function SupplierAssignmentDialog({
   }, [newSupplier, queryClient, editingService]);
 
   const filteredSuppliersInDialog = useMemo(() => {
-    return suppliers.filter(supplier =>
-      supplier.supplier_name.toLowerCase().includes(supplierSearchInDialog.toLowerCase())
-    );
-  }, [suppliers, supplierSearchInDialog]);
+    return prioritizeSuppliers(suppliers, {
+      serviceCategory: editingService?.serviceCategory,
+      searchTerm: supplierSearchInDialog
+    });
+  }, [suppliers, supplierSearchInDialog, editingService?.serviceCategory]);
 
   if (!editingService) return null;
 
