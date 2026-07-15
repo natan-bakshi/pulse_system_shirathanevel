@@ -345,9 +345,9 @@ export default function ServicesCard({
   };
 
 const handleCopyTransport = (service, serviceDetails) => {
-    const dateStr = event.event_date ? format(new Date(event.event_date), 'dd/MM/yyyy') : '';
-    const eventLoc = event.location || '';
-    const sName = serviceDetails?.service_name || 'שירות';
+  const dateStr = event.event_date ? format(new Date(event.event_date), 'dd/MM/yyyy') : '';
+  const eventLoc = event.location || '';
+  const sName = service.service_name || serviceDetails?.service_name || 'שירות';
 
     let units = [];
     try {
@@ -391,10 +391,10 @@ const handleCopyTransport = (service, serviceDetails) => {
   const renderServiceCard = (service, serviceDetails, assignedSuppliers, supplierIds, supplierNotes, currentSupplierNote, isSaving, isInPackage = false) => {
     const isExpanded = expandedServices[service.id];
     const isTransportService = serviceDetails?.category === 'נסיעות';
-    const effectiveServiceName = service.service_name || serviceDetails?.service_name || 'שירות';
     
-    // PERFECT FIX: Find the editable service from state
+    // Find the editable service from state so the card reflects local edits immediately
     const editableService = editableServices.find(es => es.id === service.id) || service;
+    const effectiveServiceName = editableService.service_name || service.service_name || serviceDetails?.service_name || 'שירות';
     
     return (
       <div className="mb-2">

@@ -51,7 +51,7 @@ export function useEventExport({ event, eventServices, allServices, allSuppliers
           package_name: es.package_name,
           notes: es.notes,
           client_notes: es.client_notes,
-          service_description: serviceDetails?.service_description
+          service_description: es.service_description || serviceDetails?.service_description
         };
       });
     }

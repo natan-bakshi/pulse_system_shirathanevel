@@ -997,13 +997,16 @@ export default function EventDetails() {
           eventServices: eventServices.map(es => es.id === serviceId ? { ...es, ...updateData } : es)
       }).catch(console.error);
       
-      // Update the local editableServices state directly instead of refetching from server.
-      // This prevents overwriting user's in-progress edits on other fields.
+      // Update local edit state and the visible card/query data immediately.
       setEditableServices(prev => prev.map(s => 
         s.id === serviceId ? { ...s, ...updateData } : s
       ));
+      queryClient.setQueryData(['eventServices', eventId], (old) => {
+        if (!old) return old;
+        return old.map(s => s.id === serviceId ? { ...s, ...updateData } : s);
+      });
       
-      // Silently refresh the query cache in the background without triggering re-render of editableServices
+      // Silently refresh the query cache in the background
       queryClient.invalidateQueries({ queryKey: ['eventServices', eventId] });
       
       setEditingServiceField(null);
