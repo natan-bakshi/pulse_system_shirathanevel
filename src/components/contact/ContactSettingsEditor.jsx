@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,17 +21,30 @@ const emailToggles = [
 ];
 
 export default function ContactSettingsEditor({ value, onChange }) {
+  const [expandedContactId, setExpandedContactId] = React.useState(null);
   const contacts = parseContactSettings(value);
 
   const updateContacts = (nextContacts) => onChange(stringifyContactSettings(nextContacts));
   const updateContact = (id, patch) => updateContacts(contacts.map(contact => contact.id === id ? { ...contact, ...patch } : contact));
-  const addContact = () => updateContacts([...contacts, normalizeContact({ name: 'איש קשר חדש' })]);
-  const addContactFromPhone = (contactData) => updateContacts([...contacts, normalizeContact({
-    name: contactData.name || 'איש קשר חדש',
-    phone: contactData.phone || '',
-    email: contactData.email || '',
-  })]);
-  const deleteContact = (id) => updateContacts(contacts.filter(contact => contact.id !== id));
+  const addContact = () => {
+    const nextContact = normalizeContact({ name: 'איש קשר חדש' });
+    updateContacts([...contacts, nextContact]);
+    setExpandedContactId(nextContact.id);
+  };
+  const addContactFromPhone = (contactData) => {
+    const nextContact = normalizeContact({
+      name: contactData.name || 'איש קשר חדש',
+      phone: contactData.phone || '',
+      email: contactData.email || '',
+    });
+    updateContacts([...contacts, nextContact]);
+    setExpandedContactId(nextContact.id);
+  };
+  const deleteContact = (id) => {
+    updateContacts(contacts.filter(contact => contact.id !== id));
+    if (expandedContactId === id) setExpandedContactId(null);
+  };
+  const toggleContact = (id) => setExpandedContactId(expandedContactId === id ? null : id);
 
   return (
     <div className="space-y-4">
@@ -53,38 +66,53 @@ export default function ContactSettingsEditor({ value, onChange }) {
 
       {contacts.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-500">לא הוגדרו אנשי קשר להצגה.</div>}
 
-      {contacts.map((contact, index) => (
-        <div key={contact.id} className="rounded-xl border bg-gray-50 p-4 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h4 className="font-semibold text-gray-900">איש קשר {index + 1}</h4>
-            <Button type="button" variant="ghost" size="icon" onClick={() => deleteContact(contact.id)} aria-label="מחק איש קשר" title="מחק איש קשר">
-              <Trash2 className="h-4 w-4 text-red-600" />
-            </Button>
-          </div>
+      {contacts.map((contact, index) => {
+        const isExpanded = expandedContactId === contact.id;
+        return (
+          <div key={contact.id} className="rounded-xl border bg-gray-50 overflow-hidden">
+            <div className="flex items-center justify-between gap-2 p-3">
+              <button
+                type="button"
+                onClick={() => toggleContact(contact.id)}
+                className="flex flex-1 items-center justify-between gap-3 text-right min-w-0"
+                aria-expanded={isExpanded}
+              >
+                <span className="font-semibold text-gray-900 truncate">{contact.name || `איש קשר ${index + 1}`}</span>
+                <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+              </button>
+              <Button type="button" variant="ghost" size="icon" onClick={() => deleteContact(contact.id)} aria-label="מחק איש קשר" title="מחק איש קשר">
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </Button>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor={`contact-name-${contact.id}`}>שם</Label>
-              <Input id={`contact-name-${contact.id}`} value={contact.name} onChange={e => updateContact(contact.id, { name: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor={`contact-role-${contact.id}`}>תפקיד / תיאור קצר</Label>
-              <Input id={`contact-role-${contact.id}`} value={contact.role} onChange={e => updateContact(contact.id, { role: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor={`contact-phone-${contact.id}`}>מספר טלפון</Label>
-              <Input id={`contact-phone-${contact.id}`} value={contact.phone} onChange={e => updateContact(contact.id, { phone: e.target.value })} dir="ltr" />
-            </div>
-            <div>
-              <Label htmlFor={`contact-email-${contact.id}`}>מייל</Label>
-              <Input id={`contact-email-${contact.id}`} value={contact.email} onChange={e => updateContact(contact.id, { email: e.target.value })} dir="ltr" />
-            </div>
-          </div>
+            {isExpanded && (
+              <div className="border-t p-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor={`contact-name-${contact.id}`}>שם</Label>
+                    <Input id={`contact-name-${contact.id}`} value={contact.name} onChange={e => updateContact(contact.id, { name: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor={`contact-role-${contact.id}`}>תפקיד / תיאור קצר</Label>
+                    <Input id={`contact-role-${contact.id}`} value={contact.role} onChange={e => updateContact(contact.id, { role: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor={`contact-phone-${contact.id}`}>מספר טלפון</Label>
+                    <Input id={`contact-phone-${contact.id}`} value={contact.phone} onChange={e => updateContact(contact.id, { phone: e.target.value })} dir="ltr" />
+                  </div>
+                  <div>
+                    <Label htmlFor={`contact-email-${contact.id}`}>מייל</Label>
+                    <Input id={`contact-email-${contact.id}`} value={contact.email} onChange={e => updateContact(contact.id, { email: e.target.value })} dir="ltr" />
+                  </div>
+                </div>
 
-          <ToggleGroup title="טלפון" items={phoneToggles} contact={contact} onChange={updateContact} />
-          <ToggleGroup title="מייל" items={emailToggles} contact={contact} onChange={updateContact} />
-        </div>
-      ))}
+                <ToggleGroup title="טלפון" items={phoneToggles} contact={contact} onChange={updateContact} />
+                <ToggleGroup title="מייל" items={emailToggles} contact={contact} onChange={updateContact} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
