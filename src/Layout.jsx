@@ -19,7 +19,8 @@ import {
   Bell,
   UserCog,
   User,
-  ListChecks } from
+  ListChecks,
+  PhoneCall } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -74,12 +75,14 @@ const navigationItems = {
 
   client: [
   { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home, tourId: "nav-client-events" },
+  { title: "צור קשר", url: createPageUrl("ContactDirectory"), icon: PhoneCall },
   { title: "אזור אישי", url: createPageUrl("UserSettings"), icon: User, tourId: "nav-user-settings" }],
 
 
   supplier: [
   { title: "דשבורד", url: createPageUrl("SupplierCalendarDashboard"), icon: Home, tourId: "nav-supplier-dashboard" },
   { title: "האירועים שלי", url: createPageUrl("SupplierDashboard"), icon: Calendar, tourId: "nav-supplier-events" },
+  { title: "צור קשר", url: createPageUrl("ContactDirectory"), icon: PhoneCall },
   { title: "אזור אישי", url: createPageUrl("UserSettings"), icon: User, tourId: "nav-user-settings" }]
 
 
@@ -323,6 +326,7 @@ export default function Layout({ children }) {
     // Allow all users to access MyNotificationSettings and UserSettings
     const isAccessingNotificationSettings = pathname.includes('MyNotificationSettings');
     const isAccessingUserSettings = pathname.includes('UserSettings');
+    const isAccessingContactDirectory = pathname.includes('ContactDirectory');
 
 
     // Allow system creator to access SettingsPage
@@ -347,7 +351,7 @@ export default function Layout({ children }) {
     const isAccessingSupplierPage = pathname.includes('SupplierDashboard') || pathname.includes('SupplierCalendarDashboard');
 
 
-    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingSupplierPage) {
+    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingContactDirectory && !isAccessingSupplierPage) {
       navigate(homePage, { replace: true });
     }
 

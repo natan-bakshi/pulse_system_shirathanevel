@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar, RefreshCw, ListChecks } from "lucide-react";
+import { Image, UploadCloud, Loader2, Save, Building, Lock, Calculator, FileText, LayoutGrid, HardDrive, Bell, Calendar, RefreshCw, ListChecks, PhoneCall } from "lucide-react";
 import { syncAllEventsToCalendar } from "@/functions/syncAllEventsToCalendar";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BackupManager from "@/components/backup/BackupManager";
 import NotificationManagementTab from "@/components/admin/NotificationManagementTab";
 import CalendarTemplateSettings from "@/components/calendar/CalendarTemplateSettings";
+import ContactSettingsEditor from "@/components/contact/ContactSettingsEditor";
 
 const settingKeys = [
     'background_image_url', 
@@ -39,7 +40,8 @@ const settingKeys = [
     'google_calendar_supplier_sync_enabled',
     'google_calendar_client_sync_enabled',
     'admin_google_calendar_id',
-    'tasks_system_enabled'
+    'tasks_system_enabled',
+    'contact_entries'
     ];
 
 export default function SettingsPage() {
@@ -72,7 +74,8 @@ export default function SettingsPage() {
         google_calendar_supplier_sync_enabled: "false",
         google_calendar_client_sync_enabled: "false",
         admin_google_calendar_id: "primary",
-        tasks_system_enabled: "true"
+        tasks_system_enabled: "true",
+        contact_entries: "[]"
         });
     const queryClient = useQueryClient();
     const location = useLocation();
@@ -246,6 +249,16 @@ export default function SettingsPage() {
                                 </div>
                                 {settings.company_logo_url && <img src={settings.company_logo_url} alt="לוגו" className="h-16 w-auto mt-2 rounded border" />}
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><PhoneCall className="h-5 w-5" />צור קשר ללקוחות וספקים</CardTitle></CardHeader>
+                        <CardContent>
+                            <ContactSettingsEditor
+                                value={settings.contact_entries}
+                                onChange={(value) => handleSettingChange('contact_entries', value)}
+                            />
                         </CardContent>
                     </Card>
 
