@@ -6,6 +6,7 @@ import { Users, Calendar, Clock, MapPin, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { getCurrencySymbol } from "@/components/utils/currencyUtils";
+import { getEventTitle } from '@/lib/eventDisplayName';
 
 export default function EventCard({ event, onSelect, onStatusChange, totals }) {
   const getStatusText = (status) => {
@@ -41,7 +42,7 @@ export default function EventCard({ event, onSelect, onStatusChange, totals }) {
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl flex flex-col hover:shadow-2xl transition-shadow duration-300 h-full w-full max-w-full overflow-hidden">
       <CardHeader className="p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
-            <CardTitle className="text-lg text-gray-900 break-words w-full">{event.event_name} - {event.family_name}</CardTitle>
+            <CardTitle className="text-lg text-gray-900 break-words w-full">{getEventTitle(event)}</CardTitle>
             <Badge className={`${getStatusColor(event.status)} shrink-0`}>{getStatusText(event.status)}</Badge>
         </div>
         <p className="text-sm text-gray-600">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>

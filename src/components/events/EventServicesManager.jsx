@@ -21,6 +21,7 @@ import ContactPicker from '../ui/ContactPicker';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 import SectionTitleEditor from '@/components/events/SectionTitleEditor';
+import AddServiceToPackageDraftDialog from '@/components/events/AddServiceToPackageDraftDialog';
 
 export default function EventServicesManager({
   allServices,
@@ -65,6 +66,10 @@ export default function EventServicesManager({
   const [showAddToPackageDialog, setShowAddToPackageDialog] = useState(false);
   const [targetPackageId, setTargetPackageId] = useState('new');
   const [newPackageData, setNewPackageData] = useState({ name: '', description: '', price: '', includes_vat: false });
+  const [showDirectPackageServiceDialog, setShowDirectPackageServiceDialog] = useState(false);
+  const [directPackageId, setDirectPackageId] = useState(null);
+  const [directPackageServiceSearch, setDirectPackageServiceSearch] = useState('');
+  const [directPackageSelectedServices, setDirectPackageSelectedServices] = useState([]);
   
   const [newService, setNewService] = useState({
     service_name: '',
@@ -321,6 +326,18 @@ export default function EventServicesManager({
     );
   }, [allServices, serviceSearchTerm, selectedServices]);
 
+  const targetPackageForDirectAdd = useMemo(() => {
+    return groupedServices.packages.find(pkg => pkg.package_id === directPackageId) || null;
+  }, [groupedServices, directPackageId]);
+
+  const filteredServicesForDirectPackageAdd = useMemo(() => {
+    const search = directPackageServiceSearch.toLowerCase();
+    return allServices.filter(service =>
+      service.service_name.toLowerCase().includes(search) &&
+      !selectedServices.some(s => s.service_id === service.id)
+    );
+  }, [allServices, directPackageServiceSearch, selectedServices]);
+
   const handleRemoveService = (serviceId) => {
     onServicesChange(selectedServices.filter(s => s.service_id !== serviceId));
   };
@@ -509,6 +526,69 @@ export default function EventServicesManager({
       package_currency: pkgCurrency
     });
     setShowEditPackageDialog(true);
+  };
+
+  const handleOpenDirectPackageServiceDialog = (pkg) => {
+    setDirectPackageId(pkg.package_id);
+    setDirectPackageSelectedServices([]);
+    setDirectPackageServiceSearch('');
+    setShowDirectPackageServiceDialog(true);
+  };
+
+  const handleAddServicesDirectlyToPackage = () => {
+    if (!targetPackageForDirectAdd || directPackageSelectedServices.length === 0) return;
+
+    const packageServices = targetPackageForDirectAdd.services || [];
+    const maxPackageOrderIndex = packageServices.reduce((currentMax, service) => Math.max(currentMax, service.order_index || 0), 0);
+    const baseOrderIndex = maxPackageOrderIndex || 0;
+
+    const newServices = directPackageSelectedServices.map((serviceId, index) => {
+      const service = allServices.find(s => s.id === serviceId);
+      if (!service) return null;
+
+      const commonData = {
+        id: `temp_pkg_service_${Date.now()}_${index}`,
+        service_id: service.id,
+        service_name: service.service_name,
+        custom_price: 0,
+        quantity: 1,
+        includes_vat: targetPackageForDirectAdd.package_includes_vat || false,
+        service_description: service.service_description || '',
+        supplier_ids: [],
+        supplier_statuses: {},
+        supplier_notes: {},
+        admin_notes: '',
+        client_notes: '',
+        order_index: baseOrderIndex + index + 1
+      };
+
+      if (targetPackageForDirectAdd.is_new_structure) {
+        return {
+          ...commonData,
+          parent_package_event_service_id: targetPackageForDirectAdd.package_id,
+          is_package_main_item: false,
+          package_id: null
+        };
+      }
+
+      return {
+        ...commonData,
+        package_id: targetPackageForDirectAdd.package_id,
+        package_name: targetPackageForDirectAdd.package_name,
+        package_price: targetPackageForDirectAdd.package_price || 0,
+        package_includes_vat: targetPackageForDirectAdd.package_includes_vat || false,
+        package_description: targetPackageForDirectAdd.package_description || ''
+      };
+    }).filter(Boolean);
+
+    if (newServices.length > 0) {
+      onServicesChange([...selectedServices, ...newServices]);
+    }
+
+    setShowDirectPackageServiceDialog(false);
+    setDirectPackageId(null);
+    setDirectPackageSelectedServices([]);
+    setDirectPackageServiceSearch('');
   };
 
   const handleSavePackageEdit = () => {
@@ -1550,6 +1630,9 @@ export default function EventServicesManager({
                   <Button type="button" size="sm" variant="outline" onClick={() => handleOpenEditPackage(pkg)}>
                     <Edit className="h-4 w-4 ml-1" />ערוך
                   </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => handleOpenDirectPackageServiceDialog(pkg)}>
+                    <Plus className="h-4 w-4 ml-1" />הוסף שירות
+                  </Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => handleDeletePackage(pkg.package_id)}>
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
@@ -1633,6 +1716,18 @@ export default function EventServicesManager({
         </div>
       )}
       
+      <AddServiceToPackageDraftDialog
+        open={showDirectPackageServiceDialog}
+        onOpenChange={setShowDirectPackageServiceDialog}
+        packageName={targetPackageForDirectAdd?.package_name || ''}
+        searchTerm={directPackageServiceSearch}
+        setSearchTerm={setDirectPackageServiceSearch}
+        filteredServices={filteredServicesForDirectPackageAdd}
+        selected={directPackageSelectedServices}
+        setSelected={setDirectPackageSelectedServices}
+        onAdd={handleAddServicesDirectlyToPackage}
+      />
+
       {/* Supplier Assignment Dialog */}
       <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">

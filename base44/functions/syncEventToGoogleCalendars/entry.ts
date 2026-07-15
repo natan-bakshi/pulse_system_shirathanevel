@@ -18,6 +18,12 @@ const EVENT_TYPE_HEBREW = {
 };
 
 const SYNCED_STATUSES = ['confirmed', 'in_progress', 'completed'];
+
+function getEventDisplayName(event) {
+  const familyName = String(event?.family_name || '').trim();
+  const eventName = String(event?.event_name || '').trim();
+  return familyName || eventName || 'אירוע ללא שם';
+}
 const CALENDAR_SYNC_FAILURE_KEY = 'google_calendar_sync_failure_state';
 const CALENDAR_SYNC_FAILURE_THRESHOLD = 3;
 const CALENDAR_SYNC_COOLDOWN_MINUTES = 60;
@@ -292,7 +298,7 @@ function buildEventBody(event, userType, settingsMap, extraData) {
     event_type_hebrew: eventType,
     event_name: event.event_name || '',
     child_name: event.child_name || '',
-    family_name: event.family_name || '',
+    family_name: getEventDisplayName(event),
     concept: event.concept || '',
     guest_count: event.guest_count ? String(event.guest_count) : '',
     notes: event.notes || '',

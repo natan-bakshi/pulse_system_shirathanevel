@@ -313,7 +313,7 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         'event_type': getVal(eventObj, ['event_type']),
         'guest_count': getVal(eventObj, ['guest_count']),
         'city': getVal(eventObj, ['city']),
-        'family_name': getVal(eventObj, ['family_name']),
+        'family_name': getVal(eventObj, ['family_name']) || getVal(eventObj, ['event_name']) || 'אירוע ללא שם',
         'child_name': getVal(eventObj, ['child_name']),
         'event_id': getVal(eventObj, ['id']),
         'supplier_name': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name']),

@@ -11,6 +11,7 @@ import { format, getYear, getMonth } from "date-fns";
 import { he } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { getEventDisplayName, getEventTitle } from '@/lib/eventDisplayName';
 const YEARS = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
 const MONTHS = [
   { value: 0, label: "ינואר" }, { value: 1, label: "פברואר" }, { value: 2, label: "מרץ" },
@@ -144,7 +145,7 @@ export default function SupplierDashboard() {
         event_time: effectiveTime,
         original_event_time: event.event_time,
         supplier_arrival_time: supplierArrivalTime,
-        serviceName: service.service_name,
+        serviceName: assignment.service_name || service.service_name,
         serviceDescription: assignment.service_description || service.service_description || '',
         assignmentStatus,
         eventServiceId: assignment.id,
@@ -172,7 +173,7 @@ export default function SupplierDashboard() {
         const search = debouncedSearchTerm.toLowerCase();
         return (
           event.event_name.toLowerCase().includes(search) ||
-          event.family_name.toLowerCase().includes(search) ||
+          getEventDisplayName(event).toLowerCase().includes(search) ||
           event.serviceName.toLowerCase().includes(search)
         );
       })
@@ -333,7 +334,7 @@ export default function SupplierDashboard() {
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <CardTitle className="text-base sm:text-xl text-gray-900 break-words">
-                      {event.event_name} - משפחת {event.family_name}
+                      {getEventTitle(event)}
                     </CardTitle>
                     <p className="text-gray-600 mt-1">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
                     <p className="text-lg font-semibold text-red-800 mt-2">שירות: {event.serviceName}</p>

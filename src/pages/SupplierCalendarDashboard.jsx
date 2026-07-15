@@ -10,6 +10,7 @@ import { he } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import EventsCalendar from "@/components/admin/EventsCalendar";
+import { getEventTitle } from '@/lib/eventDisplayName';
 
 export default function SupplierCalendarDashboard() {
   const navigate = useNavigate();
@@ -105,7 +106,7 @@ export default function SupplierCalendarDashboard() {
         event_time: effectiveTime,
         original_event_time: event.event_time,
         supplier_arrival_time: supplierArrivalTime,
-        serviceName: service.service_name,
+        serviceName: assignment.service_name || service.service_name,
         assignmentStatus,
         eventServiceId: assignment.id
       };
@@ -233,7 +234,7 @@ export default function SupplierCalendarDashboard() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900 text-sm sm:text-base">
-                    {event.event_name} - משפחת {event.family_name}
+                    {getEventTitle(event)}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 mt-1">
                     <span className="flex items-center gap-1">

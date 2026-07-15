@@ -18,6 +18,7 @@ import EventForm from "../components/events/EventForm";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SupplierAssignmentDialog from "../components/assignments/SupplierAssignmentDialog";
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 
 const DEFAULT_VISIBLE_STATUSES = ["confirmed", "in_progress"];
 
@@ -190,7 +191,7 @@ export default function AdminDashboard() {
           event,
           supplier,
           eventServiceId: es.id,
-          serviceName: service.service_name,
+          serviceName: es.service_name || service.service_name,
           supplierId: supplierId
         };
 
@@ -294,7 +295,7 @@ export default function AdminDashboard() {
     let filtered = assignments.filter((a) => {
       const searchLower = debouncedAssignmentSearch.toLowerCase();
 
-      const familyName = a.event?.family_name?.toLowerCase() || '';
+      const familyName = getEventDisplayName(a.event).toLowerCase();
       const supplierName = a.supplier?.supplier_name?.toLowerCase() || '';
       const serviceName = a.serviceName?.toLowerCase() || '';
       const eventDateFormatted = a.event?.event_date ? format(new Date(a.event.event_date), "dd/MM/yyyy") : '';
@@ -309,7 +310,7 @@ export default function AdminDashboard() {
 
     // Sort by selected criteria
     if (assignmentSortBy === 'event') {
-      filtered.sort((a, b) => (a.event?.family_name || '').localeCompare(b.event?.family_name || '', 'he'));
+      filtered.sort((a, b) => getEventDisplayName(a.event).localeCompare(getEventDisplayName(b.event), 'he'));
     } else if (assignmentSortBy === 'supplier') {
       filtered.sort((a, b) => (a.supplier?.supplier_name || '').localeCompare(b.supplier?.supplier_name || '', 'he'));
     } else if (assignmentSortBy === 'service') {
@@ -508,7 +509,7 @@ export default function AdminDashboard() {
                             <div className="flex justify-between items-start gap-2">
                               <div className="min-w-0 flex-1">
                                 <h4 className="font-medium text-gray-900 break-words">{event.event_name}</h4>
-                                <p className="text-sm text-gray-600 break-words">משפחת {event.family_name}</p>
+                                <p className="text-sm text-gray-600 break-words">{getEventDisplayName(event)}</p>
                                 <div className="flex items-center gap-2 mt-1">
                                   <Calendar className="h-3 w-3 text-gray-400" />
                                   <span className="text-xs text-gray-500">
@@ -600,7 +601,7 @@ export default function AdminDashboard() {
                     <div key={`rejected-${eventServiceId}-${supplierId}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-red-50 rounded-lg border border-red-200 gap-2">
                         <div className="flex-1 min-w-0 w-full">
                           <Link to={createPageUrl(`EventDetails?id=${event.id}`)} className="font-semibold text-blue-600 hover:underline break-words block">
-                            {event.family_name} - {format(new Date(event.event_date), "dd/MM/yy", { locale: he })}
+                            {getEventDisplayName(event)} - {format(new Date(event.event_date), "dd/MM/yy", { locale: he })}
                           </Link>
                           <p className="text-sm text-gray-600 break-words">ספק: {supplier.supplier_name}</p>
                           <p className="text-sm text-gray-500 break-words">שירות: {serviceName}</p>
@@ -659,7 +660,7 @@ export default function AdminDashboard() {
                 <div key={`pending-${eventServiceId}-${supplierId}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200 gap-2">
                         <div className="flex-1 min-w-0 w-full">
                           <Link to={createPageUrl(`EventDetails?id=${event.id}`)} className="font-semibold text-blue-600 hover:underline break-words block">
-                            {event.family_name} - {format(new Date(event.event_date), "dd/MM/yy", { locale: he })}
+                            {getEventDisplayName(event)} - {format(new Date(event.event_date), "dd/MM/yy", { locale: he })}
                           </Link>
                           <p className="text-sm text-gray-600 break-words">ספק: {supplier.supplier_name}</p>
                           <p className="text-sm text-gray-500 break-words">שירות: {serviceName}</p>

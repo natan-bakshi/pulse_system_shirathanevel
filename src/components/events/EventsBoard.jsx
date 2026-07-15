@@ -20,6 +20,7 @@ import { createPageUrl } from '@/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ContactPicker from '@/components/ui/ContactPicker';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 
 
 export default function EventsBoard() {
@@ -260,7 +261,7 @@ export default function EventsBoard() {
         if (searchTerm.trim()) {
             const search = searchTerm.toLowerCase();
             yearEvents = yearEvents.filter(event =>
-                event.family_name?.toLowerCase().includes(search) ||
+                getEventDisplayName(event).toLowerCase().includes(search) ||
                 event.event_name?.toLowerCase().includes(search) ||
                 event.child_name?.toLowerCase().includes(search)
             );
@@ -350,7 +351,7 @@ export default function EventsBoard() {
 
             return {
                 serviceId: es.service_id,
-                serviceName: service?.service_name || 'שירות לא ידוע',
+                serviceName: es.service_name || service?.service_name || 'שירות לא ידוע',
                 suppliers: assignedSuppliers,
                 eventServiceData: es,
                 minSuppliers: (es.min_suppliers !== undefined && es.min_suppliers !== null)
@@ -806,7 +807,7 @@ export default function EventsBoard() {
                                                         {monthEvents.map((event, idx) => (
                                                             <tr key={event.id} className={`border-b border-gray-100 hover:bg-red-50/30 transition-all duration-200 ${event.status === 'in_progress' ? 'bg-green-50/40 hover:bg-green-100/50 border-r-4 border-r-green-400' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
                                                                 <td onClick={() => handleEventClick(event.id)} className={`px-4 py-3 text-sm font-semibold text-gray-900 border-l border-gray-100 whitespace-nowrap cursor-pointer hover:text-red-700 hover:bg-red-50/50 transition-all ${isStickyEnabled ? 'sticky right-0 z-20 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.08)]' : ''}`} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb' }}>{format(new Date(event.event_date), 'dd/MM')}</td>
-                                                                <td onClick={() => handleEventClick(event.id)} className={`px-4 py-3 text-sm font-bold text-gray-900 border-l border-gray-100 cursor-pointer hover:text-red-700 hover:bg-red-50/50 transition-all ${isStickyEnabled ? 'sticky right-[80px] z-20 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.08)]' : ''}`} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb' }}><div className="flex flex-col gap-0.5"><span className="hover:underline">{event.family_name}</span>{event.event_time && (<span className="text-xs text-gray-500 font-normal">{event.event_time}</span>)}{event.location && (<span className="text-xs text-gray-500 font-normal">{event.location}</span>)}{event.concept && (<span className="text-xs text-gray-500 font-normal text-red-600">{event.concept}</span>)}</div></td>
+                                                                <td onClick={() => handleEventClick(event.id)} className={`px-4 py-3 text-sm font-bold text-gray-900 border-l border-gray-100 cursor-pointer hover:text-red-700 hover:bg-red-50/50 transition-all ${isStickyEnabled ? 'sticky right-[80px] z-20 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.08)]' : ''}`} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb' }}><div className="flex flex-col gap-0.5"><span className="hover:underline">{getEventDisplayName(event)}</span>{event.event_time && (<span className="text-xs text-gray-500 font-normal">{event.event_time}</span>)}{event.location && (<span className="text-xs text-gray-500 font-normal">{event.location}</span>)}{event.concept && (<span className="text-xs text-gray-500 font-normal text-red-600">{event.concept}</span>)}</div></td>
                                                                 {boardColumns.map(category => {
                                                                     const categoryServices = getEventCategoryServices(event.id, category);
                                                                     return (

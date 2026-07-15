@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 import { generateQuote } from '@/functions/generateQuote';
+import { getEventTitle } from '@/lib/eventDisplayName';
 
 
 export default function ClientDashboard() {
@@ -212,7 +213,7 @@ export default function ClientDashboard() {
             <Card key={event.id} data-tour={idx === 0 ? "client-event-card" : undefined} className="bg-white/95 backdrop-blur-sm shadow-lg sm:shadow-xl flex flex-col h-full">
               <CardHeader className="p-3 sm:p-4">
                 <div className="flex flex-wrap justify-between items-start gap-2">
-                    <CardTitle className="text-lg text-gray-900 break-words">{event.event_name} - {event.family_name}</CardTitle>
+                    <CardTitle className="text-lg text-gray-900 break-words">{getEventTitle(event)}</CardTitle>
                     <Badge className="bg-red-100 text-red-800 shrink-0">{event.status === 'quote' ? 'הצעת מחיר' : 'אירוע'}</Badge>
                 </div>
                 <p className="text-sm text-gray-600">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>

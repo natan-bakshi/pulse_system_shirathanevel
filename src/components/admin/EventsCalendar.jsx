@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, setMonth, setYear } from "date-fns";
 import { he } from "date-fns/locale";
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 
 export default function EventsCalendar({ events, onDateClick, onEventClick }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -208,9 +209,9 @@ export default function EventsCalendar({ events, onDateClick, onEventClick }) {
                       key={event.id}
                       onClick={(e) => handleEventClick(event, e)}
                       className={`text-[9px] sm:text-xs p-0.5 sm:p-1 rounded truncate cursor-pointer hover:opacity-80 ${getStatusColor(event.status)}`}
-                      title={`${event.event_name} - משפחת ${event.family_name}`}
+                      title={`${event.event_name} - ${getEventDisplayName(event)}`}
                     >
-                      {event.family_name}
+                      {getEventDisplayName(event)}
                     </div>
                   ))}
                 </div>
