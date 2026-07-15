@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import ContactPicker from '@/components/ui/ContactPicker';
 import { normalizeContact, parseContactSettings, stringifyContactSettings } from '@/lib/contactSettings';
 
 const phoneToggles = [
@@ -25,6 +26,11 @@ export default function ContactSettingsEditor({ value, onChange }) {
   const updateContacts = (nextContacts) => onChange(stringifyContactSettings(nextContacts));
   const updateContact = (id, patch) => updateContacts(contacts.map(contact => contact.id === id ? { ...contact, ...patch } : contact));
   const addContact = () => updateContacts([...contacts, normalizeContact({ name: 'איש קשר חדש' })]);
+  const addContactFromPhone = (contactData) => updateContacts([...contacts, normalizeContact({
+    name: contactData.name || 'איש קשר חדש',
+    phone: contactData.phone || '',
+    email: contactData.email || '',
+  })]);
   const deleteContact = (id) => updateContacts(contacts.filter(contact => contact.id !== id));
 
   return (
@@ -34,9 +40,15 @@ export default function ContactSettingsEditor({ value, onChange }) {
           <h3 className="text-sm font-semibold text-gray-900">אנשי קשר שיופיעו ללקוחות וספקים</h3>
           <p className="text-xs text-gray-500">כל אייקון יוצג רק אם הופעל כאן וקיים עבורו מספר או מייל.</p>
         </div>
-        <Button type="button" variant="outline" onClick={addContact} className="border-red-200 text-red-800 hover:bg-red-50">
-          <Plus className="h-4 w-4 ml-2" />הוסף איש קשר
-        </Button>
+        <div className="flex items-center gap-2">
+          <ContactPicker
+            onContactSelect={addContactFromPhone}
+            className="h-9 w-9 border border-red-200 text-red-800 hover:bg-red-50"
+          />
+          <Button type="button" variant="outline" onClick={addContact} className="border-red-200 text-red-800 hover:bg-red-50">
+            <Plus className="h-4 w-4 ml-2" />הוסף איש קשר
+          </Button>
+        </div>
       </div>
 
       {contacts.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-500">לא הוגדרו אנשי קשר להצגה.</div>}
