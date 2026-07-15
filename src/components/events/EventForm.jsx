@@ -673,7 +673,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
           for (const pkgItem of newPackageItems) {
              const data = {
               event_id: savedEvent.id,
-              service_id: (pkgItem.service_id === 'PACKAGE_MAIN' || !pkgItem.service_id) ? null : pkgItem.service_id,
+              service_id: (pkgItem.service_id === 'PACKAGE_MAIN' || !pkgItem.service_id) ? (currentAllServices[0]?.id || '') : pkgItem.service_id,
               service_name: pkgItem.service_name || pkgItem.package_name || '',
               custom_price: pkgItem.custom_price || 0,
               quantity: pkgItem.quantity || 1,
