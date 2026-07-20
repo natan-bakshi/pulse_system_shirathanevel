@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * scheduleEventLifecycleNotifications
@@ -155,6 +156,7 @@ Deno.serve(async (req) => {
                         event_name: eventData.event_name || '',
                         family_name: eventData.family_name || '',
                         event_date: formatDate(eventData.event_date),
+                        event_contacts: formatEventContacts(eventData),
                         service_name: ms.serviceName,
                         min_suppliers: ms.minRequired,
                         current_suppliers: ms.approvedCount,
@@ -167,6 +169,7 @@ Deno.serve(async (req) => {
                         event_name: eventData.event_name || '',
                         family_name: eventData.family_name || '',
                         event_date: formatDate(eventData.event_date),
+                        event_contacts: formatEventContacts(eventData),
                         service_name: '',
                         missing_count: missingServices.length,
                         event_id: eventData.id
@@ -270,6 +273,7 @@ Deno.serve(async (req) => {
                         event_name: eventData.event_name || '',
                         family_name: eventData.family_name || '',
                         event_date: formatDate(eventData.event_date),
+                        event_contacts: formatEventContacts(eventData),
                         balance: formatCurrency(balance),
                         event_id: eventData.id,
                         client_name: clientUser.full_name || ''

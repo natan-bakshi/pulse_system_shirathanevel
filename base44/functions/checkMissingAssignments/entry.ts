@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Checks for events approaching with missing essential assignments
@@ -136,6 +137,7 @@ Deno.serve(async (req) => {
                     event_name: event.event_name,
                     family_name: event.family_name,
                     event_date: formatDate(event.event_date),
+                    event_contacts: formatEventContacts(event),
                     service_name: service.service_name,
                     min_suppliers: minSuppliers,
                     current_suppliers: approvedCount,

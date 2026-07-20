@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Checks for open quotes that haven't been converted and sends reminders to admins
@@ -100,6 +101,7 @@ Deno.serve(async (req) => {
                     event_name: event.event_name,
                     family_name: event.family_name,
                     event_date: formatDate(event.event_date),
+                    event_contacts: formatEventContacts(event),
                     days_open: daysOpen,
                     event_id: event.id
                 };

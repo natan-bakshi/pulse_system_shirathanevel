@@ -89,6 +89,7 @@ export const AVAILABLE_VARIABLES = {
   guest_count: { description: 'מספר אורחים', example: '300' },
   city: { description: 'עיר', example: 'תל אביב' },
   event_id: { description: 'מזהה האירוע', example: 'evt_123' },
+  event_contacts: { description: 'אנשי הקשר של האירוע כולל טלפון ומייל אם קיימים', example: '• משה כהן: טלפון: 050-1234567 | מייל: moshe@example.com' },
   
   // משפחה / לקוח
   family_name: { description: 'שם משפחה', example: 'כהן' },

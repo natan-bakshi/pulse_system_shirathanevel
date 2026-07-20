@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * backfillEventLifecycleNotifications
@@ -121,10 +122,10 @@ Deno.serve(async (req) => {
                         let customMessage = null;
                         if (missingServices.length === 1) {
                             const ms = missingServices[0];
-                            contextData = { event_name: eventData.event_name || '', family_name: eventData.family_name || '', event_date: formatDate(eventData.event_date), service_name: ms.serviceName, min_suppliers: ms.minRequired, current_suppliers: ms.approvedCount, missing_count: 1, event_id: eventData.id };
+                            contextData = { event_name: eventData.event_name || '', family_name: eventData.family_name || '', event_date: formatDate(eventData.event_date), event_contacts: formatEventContacts(eventData), service_name: ms.serviceName, min_suppliers: ms.minRequired, current_suppliers: ms.approvedCount, missing_count: 1, event_id: eventData.id };
                         } else {
                             const servicesList = missingServices.map(ms => `• ${ms.serviceName} (${ms.approvedCount}/${ms.minRequired})`).join('\n');
-                            contextData = { event_name: eventData.event_name || '', family_name: eventData.family_name || '', event_date: formatDate(eventData.event_date), service_name: '', missing_count: missingServices.length, event_id: eventData.id };
+                            contextData = { event_name: eventData.event_name || '', family_name: eventData.family_name || '', event_date: formatDate(eventData.event_date), event_contacts: formatEventContacts(eventData), service_name: '', missing_count: missingServices.length, event_id: eventData.id };
                             customMessage = `חסרים שיבוצים באירוע "${eventData.event_name || eventData.family_name}" בתאריך ${formatDate(eventData.event_date)}.\n\nשירותים חסרי שיבוץ (${missingServices.length}):\n${servicesList}`;
                         }
 
@@ -189,7 +190,7 @@ Deno.serve(async (req) => {
                         for (const { user: clientUser, phone } of clientUsers) {
                             const exists = existingPending.some(p => p.template_type === 'CLIENT_PAYMENT_REMINDER' && p.user_id === clientUser.id);
                             if (exists) continue;
-                            const contextData = { event_name: eventData.event_name || '', family_name: eventData.family_name || '', event_date: formatDate(eventData.event_date), balance: formatCurrency(balance), event_id: eventData.id, client_name: clientUser.full_name || '' };
+                            const contextData = { event_name: eventData.event_name || '', family_name: eventData.family_name || '', event_date: formatDate(eventData.event_date), event_contacts: formatEventContacts(eventData), balance: formatCurrency(balance), event_id: eventData.id, client_name: clientUser.full_name || '' };
                             const title = replacePlaceholders(paymentTemplate.title_template, contextData);
                             const message = replacePlaceholders(paymentTemplate.body_template, contextData);
                             const waMessage = replacePlaceholders(paymentTemplate.whatsapp_body_template || paymentTemplate.body_template, contextData);

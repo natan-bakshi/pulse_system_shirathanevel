@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Checks for pending supplier assignments and sends reminder notifications
@@ -143,6 +144,7 @@ Deno.serve(async (req) => {
                     event_date: formatDate(event.event_date),
                     event_time: event.event_time || '',
                     event_location: event.location || '',
+                    event_contacts: formatEventContacts(event),
                     supplier_name: supplier.supplier_name,
                     event_id: event.id
                 };

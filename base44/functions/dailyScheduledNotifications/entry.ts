@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -47,6 +48,7 @@ function buildEventContext(event, supplier, userOrParent, eventService) {
         supplier_phone: supplier?.phone || '',
         service_name: '',
         event_id: event.id,
+        event_contacts: formatEventContacts(event),
         admin_name: userOrParent?.full_name || userOrParent?.name || '',
         user_name: userOrParent?.full_name || userOrParent?.name || '',
         client_name: userOrParent?.name || userOrParent?.full_name || ''
@@ -640,6 +642,7 @@ Deno.serve(async (req) => {
                             event_name: event.event_name || '',
                             family_name: event.family_name || '',
                             event_date: formatDate(event.event_date),
+                            event_contacts: formatEventContacts(event),
                             service_name: ms.serviceName,
                             min_suppliers: ms.minRequired,
                             current_suppliers: ms.approvedCount,
@@ -655,6 +658,7 @@ Deno.serve(async (req) => {
                             event_name: event.event_name || '',
                             family_name: event.family_name || '',
                             event_date: formatDate(event.event_date),
+                            event_contacts: formatEventContacts(event),
                             service_name: '', // אין שירות יחיד
                             min_suppliers: '',
                             current_suppliers: '',
@@ -800,6 +804,7 @@ Deno.serve(async (req) => {
                         event_name: event.event_name || '',
                         family_name: event.family_name || '',
                         event_date: formatDate(event.event_date),
+                        event_contacts: formatEventContacts(event),
                         balance: formatCurrency(balance),
                         event_id: event.id,
                         client_name: clientUser.full_name || ''

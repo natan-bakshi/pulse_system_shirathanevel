@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Handles a change to supplier_arrival_time on a specific EventService.
@@ -316,6 +317,7 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         'family_name': getVal(eventObj, ['family_name']) || getVal(eventObj, ['event_name']) || 'אירוע ללא שם',
         'child_name': getVal(eventObj, ['child_name']),
         'event_id': getVal(eventObj, ['id']),
+        'event_contacts': formatEventContacts(eventObj),
         'supplier_name': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name']),
         'supplier_phone': getVal(supplierObj, ['phone']),
         'service_name': resolvedServiceName || getVal(serviceObj, ['service_name']),

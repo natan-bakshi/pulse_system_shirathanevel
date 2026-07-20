@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Called when admin confirms to reassign the same suppliers to an event after a date change.
@@ -242,6 +243,7 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         'family_name': getVal(eventObj, ['family_name']),
         'child_name': getVal(eventObj, ['child_name']),
         'event_id': getVal(eventObj, ['id']),
+        'event_contacts': formatEventContacts(eventObj),
         'supplier_name': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name']),
         'supplier_phone': getVal(supplierObj, ['phone']),
         'service_name': resolvedServiceName || getVal(serviceObj, ['service_name']),

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Checks for completed events with outstanding payments and notifies clients
@@ -167,6 +168,7 @@ Deno.serve(async (req) => {
                     event_name: event.event_name,
                     family_name: event.family_name,
                     event_date: formatDate(event.event_date),
+                    event_contacts: formatEventContacts(event),
                     balance: formatCurrency(balance),
                     event_id: event.id
                 };

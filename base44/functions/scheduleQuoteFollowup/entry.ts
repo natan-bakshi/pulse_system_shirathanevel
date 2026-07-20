@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * scheduleQuoteFollowup
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
             event_name: eventData.event_name || '',
             family_name: eventData.family_name || '',
             event_date: formatDate(eventData.event_date),
+            event_contacts: formatEventContacts(eventData),
             days_open: daysOpenAtReminder,
             event_id: eventData.id
         };

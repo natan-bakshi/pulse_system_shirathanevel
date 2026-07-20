@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Sends event reminders to suppliers and admins before events
@@ -137,6 +138,7 @@ Deno.serve(async (req) => {
                                 event_date: formatDate(event.event_date),
                                 event_time: event.event_time || '',
                                 event_location: event.location || '',
+                                event_contacts: formatEventContacts(event),
                                 supplier_name: supplier.contact_person || supplier.supplier_name,
                                 supplier_phone: supplier.phone,
                                 event_id: event.id
@@ -262,6 +264,7 @@ Deno.serve(async (req) => {
                             event_date: formatDate(event.event_date),
                             event_time: event.event_time || '',
                             event_location: event.location || '',
+                            event_contacts: formatEventContacts(event),
                             event_id: event.id,
                             admin_name: admin.full_name,
                             user_name: admin.full_name

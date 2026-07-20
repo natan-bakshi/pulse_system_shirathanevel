@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * scheduleTaskReminder
@@ -131,6 +132,7 @@ Deno.serve(async (req) => {
             task_priority_line: priorityLine,
             task_event_line: eventLine,
             task_description_block: descriptionBlock,
+            event_contacts: formatEventContacts(event_obj),
             event_id: task.event_id || ''
         };
 

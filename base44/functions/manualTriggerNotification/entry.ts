@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 /**
  * Manual Trigger for Notification Templates
@@ -706,6 +707,7 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         'familyname': getVal(eventObj, ['family_name', 'familyname']),
         'child_name': getVal(eventObj, ['child_name', 'childname']),
         'event_id': getVal(eventObj, ['id']),
+        'event_contacts': formatEventContacts(eventObj),
         'supplier_name': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name', 'suppliername']),
         'suppliername': getVal(supplierObj, ['contact_person']) || getVal(supplierObj, ['supplier_name', 'suppliername']),
         'supplier_phone': getVal(supplierObj, ['phone']),

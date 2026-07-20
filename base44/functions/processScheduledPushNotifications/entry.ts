@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { formatEventContacts } from '../../shared/eventContacts.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -616,6 +617,7 @@ function buildEventCtx(event, supplier, userOrAdmin, eventService) {
         supplier_phone: supplier?.phone || '',
         service_name: '',
         event_id: event.id,
+        event_contacts: formatEventContacts(event),
         admin_name: userOrAdmin?.full_name || '',
         user_name: userOrAdmin?.full_name || '',
         client_name: userOrAdmin?.full_name || ''
