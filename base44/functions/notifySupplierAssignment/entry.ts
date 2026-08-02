@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.7.0';
+import { getEventDisplayName } from '../../shared/eventName.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
       `\u200E${String(_d.getDate()).padStart(2,'0')}/${String(_d.getMonth()+1).padStart(2,'0')}/${_d.getFullYear()}`;
     const title = `שיבוץ חדש לאירוע`;
     const timeText = effectiveTime ? ` בשעה ${effectiveTime}` : '';
-    const eventDisplayName = String(event.event_name || '').trim() || String(event.family_name || '').trim() || 'אירוע ללא שם';
+    const eventDisplayName = getEventDisplayName(event);
     const body = `שובצת לשירות '${serviceName}' באירוע ${eventDisplayName} בתאריך ${formattedDate}${timeText}.`;
 
     // Invoke the other backend function to send the actual push notification

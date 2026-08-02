@@ -21,7 +21,7 @@ import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
-import { getEventDisplayName } from '@/lib/eventDisplayName';
+import { getEventDisplayName, getCustomEventNameFromFields } from '@/lib/eventDisplayName';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -641,6 +641,11 @@ export default function EventDetails() {
       const dataToSave = { ...eventDetailsData };
       // If dynamic fields were edited, save them as custom_organizer_fields JSON
       if (dataToSave._customFields) {
+        const dynamicEventName = getCustomEventNameFromFields(dataToSave._customFields);
+        if (dynamicEventName) {
+          dataToSave.event_name = dynamicEventName;
+          dataToSave.family_name = dataToSave.family_name || dynamicEventName;
+        }
         dataToSave.custom_organizer_fields = JSON.stringify(dataToSave._customFields);
         delete dataToSave._customFields;
       }

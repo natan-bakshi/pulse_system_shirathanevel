@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { getEventDisplayName } from '../../shared/eventName.ts';
 
 /**
  * Handles a change to supplier_arrival_time on a specific EventService.
@@ -307,14 +308,14 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
     const eventDateRaw = getVal(eventObj, ['event_date']);
 
     const vars = {
-        'event_name': getVal(eventObj, ['event_name']),
+        'event_name': getEventDisplayName(eventObj),
         'event_date': fmtDate(eventDateRaw),
         'event_time': effectiveEventTime,
         'event_location': getVal(eventObj, ['location']),
         'event_type': getVal(eventObj, ['event_type']),
         'guest_count': getVal(eventObj, ['guest_count']),
         'city': getVal(eventObj, ['city']),
-        'family_name': getVal(eventObj, ['event_name']) || getVal(eventObj, ['family_name']) || 'אירוע ללא שם',
+        'family_name': getEventDisplayName(eventObj),
         'child_name': getVal(eventObj, ['child_name']),
         'event_id': getVal(eventObj, ['id']),
         'event_contacts': formatEventContacts(eventObj),

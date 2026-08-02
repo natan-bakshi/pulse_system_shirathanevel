@@ -1,23 +1,25 @@
-function parseCustomFields(customFields) {
+function parseCustomFields(customFields: unknown): Record<string, unknown> {
   if (!customFields) return {};
   if (typeof customFields === 'string') {
     try {
       const parsed = JSON.parse(customFields);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
     } catch {
       return {};
     }
   }
-  return typeof customFields === 'object' && !Array.isArray(customFields) ? customFields : {};
+  return typeof customFields === 'object' && !Array.isArray(customFields) ? customFields as Record<string, unknown> : {};
 }
 
-function normalizeFieldKey(key) {
+function normalizeFieldKey(key: string): string {
   return String(key || '').replace(/[\s_\-–—:]+/g, '').toLowerCase();
 }
 
-export function getCustomEventNameFromFields(customFields) {
+export function getCustomEventNameFromFields(customFields: unknown): string {
   const fields = parseCustomFields(customFields);
-  const entry = Object.entries(fields).find(([key, value]) => {
+  const entries = Object.entries(fields);
+
+  const preferred = entries.find(([key, value]) => {
     const normalized = normalizeFieldKey(key);
     return value && (
       normalized.startsWith('שםהאירוע') ||
@@ -27,16 +29,12 @@ export function getCustomEventNameFromFields(customFields) {
     );
   });
 
-  return String(entry?.[1] || '').trim();
+  return String(preferred?.[1] || '').trim();
 }
 
-export function getEventDisplayName(event) {
+export function getEventDisplayName(event: any): string {
   const eventName = String(event?.event_name || '').trim();
   const customEventName = getCustomEventNameFromFields(event?.custom_organizer_fields);
   const familyName = String(event?.family_name || '').trim();
   return eventName || customEventName || familyName || 'אירוע ללא שם';
-}
-
-export function getEventTitle(event) {
-  return getEventDisplayName(event);
 }

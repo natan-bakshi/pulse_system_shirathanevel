@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { getEventDisplayName } from '../../shared/eventName.ts';
 
 /**
  * syncAllEventsToCalendar - Mass sync all relevant events to Google Calendar.
@@ -105,11 +106,6 @@ function calculateTimes(eventDate, eventTime, offsetMinutes, durationHours) {
   };
 }
 
-function getEventDisplayName(event) {
-  const eventName = String(event?.event_name || '').trim();
-  const familyName = String(event?.family_name || '').trim();
-  return eventName || familyName || 'אירוע ללא שם';
-}
 
 function buildEventBody(event, userType, settingsMap, extraData) {
   const eventType = EVENT_TYPE_HEBREW[event.event_type] || 'אירוע';

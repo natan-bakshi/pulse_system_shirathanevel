@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import puppeteer from 'npm:puppeteer@23.11.1';
+import { getEventDisplayName } from '../../shared/eventName.ts';
 
 // Import helper functions
 function formatDate(dateStringOrDate) {
@@ -37,10 +38,10 @@ function processOrganizerTitleTemplate(template, event, customFieldValues) {
     
     // Build variable map from event fields + custom fields
     const vars = {
-        event_name: event.event_name || '',
+        event_name: getEventDisplayName(event),
         event_type: getEventType(event.event_type),
         event_date: formatDate(event.event_date),
-        family_name: event.event_name || event.family_name || '',
+        family_name: getEventDisplayName(event),
         child_name: event.child_name || '',
         city: event.city || '',
         guest_count: event.guest_count ? String(event.guest_count) : '',
@@ -507,7 +508,7 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const standaloneServicesTitle = event.standalone_services_title || '';
     
     // שם תצוגה לאירוע: שם האירוע מחליף את שם המשפחה בכל מקום שמייצג את האירוע
-    const eventIdentityName = event.event_name || event.family_name || 'אירוע ללא שם';
+    const eventIdentityName = getEventDisplayName(event);
     const familyDetailsLine = event.child_name
         ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
         : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();

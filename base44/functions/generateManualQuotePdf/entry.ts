@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { getEventDisplayName } from '../../shared/eventName.ts';
 
 // =====================================================================
 // Helpers
@@ -56,7 +57,7 @@ function renderFreeTextBlock(block, settings) {
 function renderEventDetailsBlock(block, event, settings) {
   if (!event) return '';
   const opts = block.options || {};
-  const eventIdentityName = event.event_name || event.family_name || 'אירוע ללא שם';
+  const eventIdentityName = getEventDisplayName(event);
   const familyLine = event.child_name
     ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
     : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
@@ -502,7 +503,7 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
   // Build file name
   let fileBaseName = manualQuote.title || 'הצעת מחיר ידנית';
   if (event) {
-    const eventIdentityName = event.event_name || event.family_name || 'אירוע ללא שם';
+    const eventIdentityName = getEventDisplayName(event);
     const eventTitle = event.child_name
       ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
       : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();

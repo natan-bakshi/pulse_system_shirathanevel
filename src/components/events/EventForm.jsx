@@ -33,6 +33,7 @@ import { QuoteOrganizerType } from "@/entities/QuoteOrganizerType";
 import { Switch } from "@/components/ui/switch";
 import GuestCountChangeDialog from "./GuestCountChangeDialog";
 import { toast } from "sonner";
+import { getCustomEventNameFromFields } from "@/lib/eventDisplayName";
 
 function isSystemEventDateField(field) {
   const normalizedName = String(field?.name || '').replace(/\s/g, '');
@@ -614,9 +615,12 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
 
     setIsSaving(true);
     try {
+      const dynamicEventName = organizerEventFields ? getCustomEventNameFromFields(customFieldValues) : '';
+      const normalizedEventName = String(formData.event_name || dynamicEventName || '').trim();
       const eventDataToSave = {
         ...formData,
-        family_name: formData.family_name || formData.event_name,
+        event_name: normalizedEventName,
+        family_name: formData.family_name || normalizedEventName,
         parents: formData.parents.filter(p => p.name || p.phone || p.email),
         guest_count: parseInt(formData.guest_count) || 0,
         all_inclusive_price: Number(formData.all_inclusive_price) || 0,

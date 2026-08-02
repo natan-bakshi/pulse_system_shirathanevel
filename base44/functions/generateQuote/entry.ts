@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { getEventDisplayName } from '../../shared/eventName.ts';
 
 // Helper functions from generateQuotePdf
 function groupBy(arr, keyAccessor) {
@@ -45,10 +46,10 @@ function getEventType(typeKey) {
 function processOrganizerTitleTemplate(template, event, customFieldValues) {
     if (!template) return '';
     const vars = {
-        event_name: event.event_name || '',
+        event_name: getEventDisplayName(event),
         event_type: getEventType(event.event_type),
         event_date: formatDate(event.event_date),
-        family_name: event.event_name || event.family_name || '',
+        family_name: getEventDisplayName(event),
         child_name: event.child_name || '',
         city: event.city || '',
         guest_count: event.guest_count ? String(event.guest_count) : '',
@@ -515,7 +516,7 @@ Deno.serve(async (req) => {
     const servicesSectionTitle = event.services_section_title || 'חבילת ההפקה כוללת';
     const standaloneServicesTitle = event.standalone_services_title || '';
     
-    const eventIdentityName = event.event_name || event.family_name || 'אירוע ללא שם';
+    const eventIdentityName = getEventDisplayName(event);
     const familyDetailsLine = event.child_name
         ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
         : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { getEventDisplayName } from '../../shared/eventName.ts';
 
 /**
  * syncEventToGoogleCalendars - Full calendar sync via Shared Connector
@@ -19,11 +20,6 @@ const EVENT_TYPE_HEBREW = {
 
 const SYNCED_STATUSES = ['confirmed', 'in_progress', 'completed'];
 
-function getEventDisplayName(event) {
-  const eventName = String(event?.event_name || '').trim();
-  const familyName = String(event?.family_name || '').trim();
-  return eventName || familyName || 'אירוע ללא שם';
-}
 const CALENDAR_SYNC_FAILURE_KEY = 'google_calendar_sync_failure_state';
 const CALENDAR_SYNC_FAILURE_THRESHOLD = 3;
 const CALENDAR_SYNC_COOLDOWN_MINUTES = 60;
