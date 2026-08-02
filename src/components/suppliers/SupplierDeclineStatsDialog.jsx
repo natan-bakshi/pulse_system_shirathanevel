@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Search, TrendingDown, Calendar, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 
 export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServices = [], allSuppliers = [], allServices = [], allEvents = [] }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +35,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
         supplierMap[d.supplier_id].declines.push({
           event_name: event?.event_name || '',
           family_name: event?.family_name || '',
+          display_name: getEventDisplayName(event),
           event_date: event?.event_date || '',
           service_name: service?.service_name || '',
           declined_date: d.declined_date || '',
@@ -108,7 +110,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
                         <div className="flex items-center gap-1.5 text-gray-700">
                           <Calendar className="h-3 w-3 text-gray-400" />
                           <span className="font-medium">
-                            {d.family_name ? `משפחת ${d.family_name}` : d.event_name}
+                            {d.display_name}
                           </span>
                           {d.event_date && (
                             <span className="text-gray-400">

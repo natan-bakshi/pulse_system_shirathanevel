@@ -20,8 +20,8 @@ const SORT_OPTIONS = [
   { value: "-event_date", label: "תאריך אירוע (הרחוק ביותר)" },
   { value: "created_date", label: "תאריך יצירה (הישן ביותר)" },
   { value: "-created_date", label: "תאריך יצירה (החדש ביותר)" },
-  { value: "family_name", label: "שם משפחה (א-ת)" },
-  { value: "-family_name", label: "שם משפחה (ת-א)" }
+  { value: "event_name", label: "שם אירוע (א-ת)" },
+  { value: "-event_name", label: "שם אירוע (ת-א)" }
 ];
 
 export default function EventFilters({ events, setFilteredEvents }) {

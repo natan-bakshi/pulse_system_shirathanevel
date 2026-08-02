@@ -40,7 +40,7 @@ function processOrganizerTitleTemplate(template, event, customFieldValues) {
         event_name: event.event_name || '',
         event_type: getEventType(event.event_type),
         event_date: formatDate(event.event_date),
-        family_name: event.family_name || '',
+        family_name: event.event_name || event.family_name || '',
         child_name: event.child_name || '',
         city: event.city || '',
         guest_count: event.guest_count ? String(event.guest_count) : '',
@@ -506,11 +506,13 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const servicesSectionTitle = event.services_section_title || 'חבילת ההפקה כוללת';
     const standaloneServicesTitle = event.standalone_services_title || '';
     
-    // Updated format for family details
-    const familyDetailsLine = `${getEventType(event.event_type)} של ${event.child_name || ''} ${event.family_name}`.trim();
+    // שם תצוגה לאירוע: שם האירוע מחליף את שם המשפחה בכל מקום שמייצג את האירוע
+    const eventIdentityName = event.event_name || event.family_name || 'אירוע ללא שם';
+    const familyDetailsLine = event.child_name
+        ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
+        : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
     
-    // Updated file name format as requested: EventType of Name FamilyName Date
-    const fileAndTitleName = `${getEventType(event.event_type)} של ${event.child_name ? event.child_name + ' ' : ''}${event.family_name} ${formatDate(event.event_date)}`;
+    const fileAndTitleName = `${familyDetailsLine} ${formatDate(event.event_date)}`.trim();
 
     // Process organizer type main title template if available
     let mainTitleHtml = familyDetailsLine;

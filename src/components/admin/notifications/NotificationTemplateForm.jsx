@@ -48,7 +48,7 @@ export default function NotificationTemplateForm({
       
       const testVariables = {
         event_name: 'אירוע לדוגמה',
-        family_name: 'ישראלי',
+        family_name: 'חתונת חברה',
         event_date: '15/03/2025',
         event_time: '19:00',
         event_location: 'אולמי הזהב',

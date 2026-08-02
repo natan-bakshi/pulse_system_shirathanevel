@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       `\u200E${String(_d.getDate()).padStart(2,'0')}/${String(_d.getMonth()+1).padStart(2,'0')}/${_d.getFullYear()}`;
     const title = `שיבוץ חדש לאירוע`;
     const timeText = effectiveTime ? ` בשעה ${effectiveTime}` : '';
-    const eventDisplayName = String(event.family_name || '').trim() || String(event.event_name || '').trim() || 'אירוע ללא שם';
+    const eventDisplayName = String(event.event_name || '').trim() || String(event.family_name || '').trim() || 'אירוע ללא שם';
     const body = `שובצת לשירות '${serviceName}' באירוע ${eventDisplayName} בתאריך ${formattedDate}${timeText}.`;
 
     // Invoke the other backend function to send the actual push notification

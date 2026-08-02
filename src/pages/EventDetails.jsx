@@ -21,6 +21,7 @@ import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -608,7 +609,7 @@ export default function EventDetails() {
     
     if (!window.confirm(confirmMessage)) return;
     
-    const doubleConfirm = window.confirm(`אישור נוסף:\n\nהאם אתה בטוח ב-100% שברצונך למחוק את אירוע "${event.family_name}"?\n\nהקלד "אישור" בחלון הבא למחיקה סופית.`);
+    const doubleConfirm = window.confirm(`אישור נוסף:\n\nהאם אתה בטוח ב-100% שברצונך למחוק את אירוע "${getEventDisplayName(event)}"?\n\nהקלד "אישור" בחלון הבא למחיקה סופית.`);
     
     if (!doubleConfirm) return;
     
@@ -1730,7 +1731,7 @@ export default function EventDetails() {
     try {
       const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices });
       const pdfUrl = response.data.pdf_url;
-      const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
+      const fileName = response.data.fileName || `quote_${event?.event_name || event?.family_name || eventId}.pdf`;
 
       if (pdfUrl) {
         // Direct download using fetch to get blob

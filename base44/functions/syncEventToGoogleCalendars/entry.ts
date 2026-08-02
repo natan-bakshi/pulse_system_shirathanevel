@@ -20,9 +20,9 @@ const EVENT_TYPE_HEBREW = {
 const SYNCED_STATUSES = ['confirmed', 'in_progress', 'completed'];
 
 function getEventDisplayName(event) {
-  const familyName = String(event?.family_name || '').trim();
   const eventName = String(event?.event_name || '').trim();
-  return familyName || eventName || 'אירוע ללא שם';
+  const familyName = String(event?.family_name || '').trim();
+  return eventName || familyName || 'אירוע ללא שם';
 }
 const CALENDAR_SYNC_FAILURE_KEY = 'google_calendar_sync_failure_state';
 const CALENDAR_SYNC_FAILURE_THRESHOLD = 3;

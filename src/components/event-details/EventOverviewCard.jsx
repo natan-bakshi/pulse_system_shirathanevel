@@ -15,6 +15,7 @@ import OrganizerTypeSelector from '@/components/quotes/OrganizerTypeSelector';
 import DynamicEventFieldsSection from '@/components/events/DynamicEventFieldsSection';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getEventTitle } from '@/lib/eventDisplayName';
 
 function getStatusText(status) {
   const statusTexts = { quote: "הצעת מחיר", confirmed: "אירוע סגור", in_progress: "אירוע תפור", completed: "אירוע עבר", cancelled: "אירוע בוטל" };
@@ -73,7 +74,7 @@ export default function EventOverviewCard({
         <CardHeader className="p-3 sm:p-6">
           <div className="flex flex-col gap-3">
             <div className="min-w-0 w-full">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold break-words leading-tight">{event.event_name} - משפחת {event.family_name}</h2>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold break-words leading-tight">{getEventTitle(event)}</h2>
               {event.child_name && <p className="text-gray-600 mt-1 text-sm sm:text-base break-words">שם החתן/כלה: {event.child_name}</p>}
             </div>
             <div className="flex flex-wrap gap-2">

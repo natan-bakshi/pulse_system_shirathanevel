@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Link as LinkIcon, X, Plus, Search, CalendarPlus } from 'lucide-react';
 import QuickEventCreateDialog from './QuickEventCreateDialog';
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 
 /**
  * בורר שיוך אירוע להצעת מחיר ידנית.
@@ -104,7 +105,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
                   <div>
                     <div className="font-medium text-sm">{ev.event_name}</div>
                     <div className="text-xs text-gray-500">
-                      {ev.family_name} {ev.child_name ? `• ${ev.child_name}` : ''} • {ev.event_date}
+                      {getEventDisplayName(ev)} {ev.child_name ? `• ${ev.child_name}` : ''} • {ev.event_date}
                     </div>
                   </div>
                   <Badge variant="outline" className="text-xs">{ev.status}</Badge>

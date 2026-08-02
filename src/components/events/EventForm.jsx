@@ -595,8 +595,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
 
     // Validation: when using dynamic fields, skip default field validation
     if (!organizerEventFields || organizerEventFields.length === 0) {
-      if (!formData.event_name || !formData.family_name || !formData.event_date) {
-        alert("נא למלא את כל השדות הנדרשים: שם אירוע, שם משפחה, תאריך אירוע.");
+      if (!formData.event_name || !formData.event_date) {
+        alert("נא למלא את כל השדות הנדרשים: שם אירוע ותאריך אירוע.");
         return;
       }
     } else {
@@ -616,6 +616,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
     try {
       const eventDataToSave = {
         ...formData,
+        family_name: formData.family_name || formData.event_name,
         parents: formData.parents.filter(p => p.name || p.phone || p.email),
         guest_count: parseInt(formData.guest_count) || 0,
         all_inclusive_price: Number(formData.all_inclusive_price) || 0,
@@ -928,7 +929,7 @@ for (const serviceItem of servicesForSave) {
               <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
                 <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">פרטי משפחה</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                  <Input id="family_name" value={formData.family_name} onChange={(e) => handleInputChange("family_name", e.target.value)} placeholder="שם משפחה" required disabled={isSaving} />
+                  <Input id="family_name" value={formData.family_name} onChange={(e) => handleInputChange("family_name", e.target.value)} placeholder="שם משפחה" disabled={isSaving} />
                   <Input id="child_name" value={formData.child_name} onChange={(e) => handleInputChange("child_name", e.target.value)} placeholder="שם הילד/ה" disabled={isSaving} />
                   <Input id="city" value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} placeholder="עיר מגורים" disabled={isSaving} />
                   <Input id="guest_count" type="number" value={formData.guest_count} onChange={(e) => handleInputChange("guest_count", e.target.value)} placeholder="מספר אורחים" disabled={isSaving} />

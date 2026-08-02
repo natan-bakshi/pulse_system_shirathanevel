@@ -56,7 +56,10 @@ function renderFreeTextBlock(block, settings) {
 function renderEventDetailsBlock(block, event, settings) {
   if (!event) return '';
   const opts = block.options || {};
-  const familyLine = `${getEventType(event.event_type)} של ${event.child_name || ''} ${event.family_name || ''}`.trim();
+  const eventIdentityName = event.event_name || event.family_name || 'אירוע ללא שם';
+  const familyLine = event.child_name
+    ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
+    : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
   const parts = [];
   const showFamilyName = opts.showFamilyName !== false;
   const showChildName = opts.showChildName !== false;
@@ -499,7 +502,11 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
   // Build file name
   let fileBaseName = manualQuote.title || 'הצעת מחיר ידנית';
   if (event) {
-    fileBaseName = `${getEventType(event.event_type)} של ${event.child_name ? event.child_name + ' ' : ''}${event.family_name || ''} ${formatDate(event.event_date)}`.trim();
+    const eventIdentityName = event.event_name || event.family_name || 'אירוע ללא שם';
+    const eventTitle = event.child_name
+      ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
+      : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
+    fileBaseName = `${eventTitle} ${formatDate(event.event_date)}`.trim();
   }
 
   const html = `

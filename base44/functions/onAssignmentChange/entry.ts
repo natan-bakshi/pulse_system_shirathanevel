@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
                     
                     const contextData = {
                         event_name: eventData.event_name,
-                        family_name: eventData.family_name,
+                        family_name: eventData.event_name || eventData.family_name,
                         event_date: formatDate(eventData.event_date),
                         event_time: getEffectiveEventTimeForSupplier(eventData, data),
                         event_location: eventData.location || '',
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
 
                 const contextData = {
                     event_name: eventData.event_name || '',
-                    family_name: eventData.family_name || '',
+                    family_name: eventData.event_name || eventData.family_name || '',
                     event_date: formatDate(eventData.event_date),
                     event_time: getEffectiveEventTimeForSupplier(eventData, data),
                     event_location: eventData.location || '',
@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
 
                 const contextData = {
                     event_name: eventData.event_name,
-                    family_name: eventData.family_name,
+                    family_name: eventData.event_name || eventData.family_name,
                     event_date: formatDate(eventData.event_date),
                     event_contacts: formatEventContacts(eventData),
                     supplier_name: supplier.supplier_name,
@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
                     
                     const contextData = {
                         event_name: eventData.event_name,
-                        family_name: eventData.family_name,
+                        family_name: eventData.event_name || eventData.family_name,
                         event_date: formatDate(eventData.event_date),
                         event_contacts: formatEventContacts(eventData),
                         supplier_name: supplier.supplier_name,

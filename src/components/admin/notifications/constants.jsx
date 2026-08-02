@@ -92,7 +92,7 @@ export const AVAILABLE_VARIABLES = {
   event_contacts: { description: 'אנשי הקשר של האירוע כולל טלפון ומייל אם קיימים', example: '• משה כהן: טלפון: 050-1234567 | מייל: moshe@example.com' },
   
   // משפחה / לקוח
-  family_name: { description: 'שם משפחה', example: 'כהן' },
+  family_name: { description: 'שם האירוע לתצוגה (מחליף שם משפחה כשצריך)', example: 'חתונת חברה' },
   child_name: { description: 'שם הילד/ה', example: 'נועה' },
   client_name: { description: 'שם הלקוח (הורה ראשי)', example: 'משה כהן' },
   client_phone: { description: 'טלפון הלקוח', example: '050-1234567' },

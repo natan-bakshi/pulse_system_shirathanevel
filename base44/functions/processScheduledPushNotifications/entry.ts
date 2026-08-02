@@ -609,7 +609,7 @@ function buildEventCtx(event, supplier, userOrAdmin, eventService) {
     }
     return {
         event_name: event.event_name || '',
-        family_name: event.family_name || '',
+        family_name: event.event_name || event.family_name || '',
         event_date: fmtDate(event.event_date),
         event_time: effectiveTime,
         event_location: event.location || '',

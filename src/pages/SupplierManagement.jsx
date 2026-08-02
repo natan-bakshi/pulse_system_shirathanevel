@@ -21,6 +21,7 @@ import { he } from 'date-fns/locale';
 import ExportDialog from "../components/export/ExportDialog";
 import SupplierDeclineStatsDialog from "../components/suppliers/SupplierDeclineStatsDialog";
 import CategorySelector from "@/components/common/CategorySelector";
+import { getEventDisplayName } from "@/lib/eventDisplayName";
 
 const SupplierEventsList = ({ supplierId }) => {
   const [events, setEvents] = useState([]);
@@ -88,7 +89,7 @@ const SupplierEventsList = ({ supplierId }) => {
         <div key={`${event.id}-${event.eventServiceId}`} className="flex justify-between items-center bg-gray-50 p-2 rounded">
           <div className="text-sm">
             <Link to={createPageUrl(`EventDetails?id=${event.id}`)} className="font-medium text-blue-600 hover:underline">
-              משפחת {event.family_name}
+              {getEventDisplayName(event)}
             </Link>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <Calendar className="h-3 w-3" />

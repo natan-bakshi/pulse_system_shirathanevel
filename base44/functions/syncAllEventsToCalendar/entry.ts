@@ -105,13 +105,19 @@ function calculateTimes(eventDate, eventTime, offsetMinutes, durationHours) {
   };
 }
 
+function getEventDisplayName(event) {
+  const eventName = String(event?.event_name || '').trim();
+  const familyName = String(event?.family_name || '').trim();
+  return eventName || familyName || 'אירוע ללא שם';
+}
+
 function buildEventBody(event, userType, settingsMap, extraData) {
   const eventType = EVENT_TYPE_HEBREW[event.event_type] || 'אירוע';
   const summaryTemplate = settingsMap[`google_calendar_${userType}_summary_template`] || DEFAULT_TEMPLATES[userType].summary;
   const descriptionTemplate = settingsMap[`google_calendar_${userType}_description_template`] || DEFAULT_TEMPLATES[userType].description;
   const data = {
     event_type_hebrew: eventType, event_name: event.event_name || '', child_name: event.child_name || '',
-    family_name: event.family_name || '', concept: event.concept || '',
+    family_name: getEventDisplayName(event), concept: event.concept || '',
     guest_count: event.guest_count ? String(event.guest_count) : '', notes: event.notes || '',
     schedule_text: buildScheduleText(event.schedule), company_name: settingsMap.company_name || '',
     app_link: settingsMap.app_base_url || '',

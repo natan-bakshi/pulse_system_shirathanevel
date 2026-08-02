@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { getEventDisplayName } from "@/lib/eventDisplayName";
 
 export default function RecentEvents({ events }) {
   const getStatusColor = (status) => {
@@ -44,8 +45,10 @@ export default function RecentEvents({ events }) {
               className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div className="flex-1">
-                <h4 className="font-medium text-gray-900">{event.event_name}</h4>
-                <p className="text-sm text-gray-600">{event.family_name}</p>
+                <h4 className="font-medium text-gray-900">{getEventDisplayName(event)}</h4>
+                {event.family_name && event.family_name !== getEventDisplayName(event) && (
+                  <p className="text-sm text-gray-600">{event.family_name}</p>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   <Calendar className="h-3 w-3 text-gray-400" />
                   <span className="text-xs text-gray-500">

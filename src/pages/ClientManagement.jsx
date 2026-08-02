@@ -14,6 +14,7 @@ import { he } from "date-fns/locale";
 import ExportDialog from "../components/export/ExportDialog";
 import PhoneNumber from "../components/ui/PhoneNumber";
 import EmailAddress from "../components/ui/EmailAddress";
+import { getEventDisplayName } from "@/lib/eventDisplayName";
 
 const ParentInfo = ({ parent }) => {
     return (
@@ -53,7 +54,8 @@ export default function ClientManagement() {
 
   const filteredClients = useMemo(() => {
     return (events || []).filter(event => 
-      event.family_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      getEventDisplayName(event).toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (event.family_name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       (event.child_name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       (event.parents || []).some(p => p.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
     );
@@ -112,8 +114,8 @@ export default function ClientManagement() {
                 <SelectContent>
                   <SelectItem value="-event_date">תאריך אירוע (האחרון קודם)</SelectItem>
                   <SelectItem value="event_date">תאריך אירוע (הקרוב קודם)</SelectItem>
-                  <SelectItem value="family_name">שם משפחה (א-ת)</SelectItem>
-                  <SelectItem value="-family_name">שם משפחה (ת-א)</SelectItem>
+                  <SelectItem value="event_name">שם אירוע (א-ת)</SelectItem>
+                  <SelectItem value="-event_name">שם אירוע (ת-א)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -132,8 +134,10 @@ export default function ClientManagement() {
             <Card key={event.id} className="bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-shadow duration-300 h-full flex flex-col">
               <CardHeader>
                 <Link to={createPageUrl(`EventDetails?id=${event.id}`)}>
-                    <CardTitle>משפחת {event.family_name}</CardTitle>
-                    <p className="text-sm text-gray-600">אירוע: {event.event_name}</p>
+                    <CardTitle>{getEventDisplayName(event)}</CardTitle>
+                    {event.family_name && event.family_name !== getEventDisplayName(event) && (
+                      <p className="text-sm text-gray-600">משפחה: {event.family_name}</p>
+                    )}
                 </Link>
               </CardHeader>
               <CardContent className="space-y-2 flex-grow">

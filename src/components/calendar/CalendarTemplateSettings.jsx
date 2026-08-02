@@ -15,7 +15,7 @@ const TEMPLATE_VARIABLES = [
   { key: '{{event_type_hebrew}}', desc: 'סוג האירוע (בר מצווה, בת מצווה, חתונה, אירוע)' },
   { key: '{{event_name}}', desc: 'שם האירוע' },
   { key: '{{child_name}}', desc: 'שם הילד/ה' },
-  { key: '{{family_name}}', desc: 'שם המשפחה' },
+  { key: '{{family_name}}', desc: 'שם האירוע לתצוגה (מחליף שם משפחה כשצריך)' },
   { key: '{{concept}}', desc: 'קונספט האירוע' },
   { key: '{{guest_count}}', desc: 'מספר אורחים' },
   { key: '{{notes}}', desc: 'הערות כלליות מהאירוע' },

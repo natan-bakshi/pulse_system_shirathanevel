@@ -32,7 +32,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
         includeExternalServices: quoteIncludeExternalServices
       });
       const pdfUrl = response.data.pdf_url;
-      const fileName = response.data.fileName || `quote_${event?.family_name || eventId}.pdf`;
+      const fileName = response.data.fileName || `quote_${event?.event_name || event?.family_name || eventId}.pdf`;
 
       if (!pdfUrl) throw new Error('No PDF URL returned');
 

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 
 export function useEventExport({ event, eventServices, allServices, allSuppliers, payments, financials }) {
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -109,7 +110,7 @@ export function useEventExport({ event, eventServices, allServices, allSuppliers
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `event_${event.family_name}_${event.event_date}.json`;
+    link.download = `event_${getEventDisplayName(event)}_${event.event_date}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

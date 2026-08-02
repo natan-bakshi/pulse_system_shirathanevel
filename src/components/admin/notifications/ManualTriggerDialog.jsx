@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
+import { getEventTitle } from "@/lib/eventDisplayName";
 
 // דיאלוג שליחה ידנית של תבנית התראה לאירוע ספציפי
 export default function ManualTriggerDialog({ open, onOpenChange, template }) {
@@ -79,7 +80,7 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
               <SelectContent>
                 {upcomingEvents.map(event => (
                   <SelectItem key={event.id} value={event.id}>
-                     {event.family_name} - {event.event_name} ({new Date(event.event_date).toLocaleDateString('he-IL')})
+                     {getEventTitle(event)} ({new Date(event.event_date).toLocaleDateString('he-IL')})
                   </SelectItem>
                 ))}
               </SelectContent>
