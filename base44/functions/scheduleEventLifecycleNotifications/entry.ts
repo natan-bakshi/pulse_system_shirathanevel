@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
                     const ms = missingServices[0];
                     contextData = {
                         event_name: eventData.event_name || '',
-                        family_name: eventData.event_name || eventData.family_name || '',
+                        family_name: eventData.family_name || eventData.event_name || '',
                         event_date: formatDate(eventData.event_date),
                         event_contacts: formatEventContacts(eventData),
                         service_name: ms.serviceName,
@@ -167,14 +167,14 @@ Deno.serve(async (req) => {
                     const servicesList = missingServices.map(ms => `• ${ms.serviceName} (${ms.approvedCount}/${ms.minRequired})`).join('\n');
                     contextData = {
                         event_name: eventData.event_name || '',
-                        family_name: eventData.event_name || eventData.family_name || '',
+                        family_name: eventData.family_name || eventData.event_name || '',
                         event_date: formatDate(eventData.event_date),
                         event_contacts: formatEventContacts(eventData),
                         service_name: '',
                         missing_count: missingServices.length,
                         event_id: eventData.id
                     };
-                    customMessage = `חסרים שיבוצים באירוע "${eventData.event_name || eventData.family_name}" בתאריך ${formatDate(eventData.event_date)}.\n\nשירותים חסרי שיבוץ (${missingServices.length}):\n${servicesList}`;
+                    customMessage = `חסרים שיבוצים באירוע "${eventData.family_name || eventData.event_name}" בתאריך ${formatDate(eventData.event_date)}.\n\nשירותים חסרי שיבוץ (${missingServices.length}):\n${servicesList}`;
                 }
 
                 const title = replacePlaceholders(missingTemplate.title_template, contextData);
@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
 
                     const contextData = {
                         event_name: eventData.event_name || '',
-                        family_name: eventData.event_name || eventData.family_name || '',
+                        family_name: eventData.family_name || eventData.event_name || '',
                         event_date: formatDate(eventData.event_date),
                         event_contacts: formatEventContacts(eventData),
                         balance: formatCurrency(balance),

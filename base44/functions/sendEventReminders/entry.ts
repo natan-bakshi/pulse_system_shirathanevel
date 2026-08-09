@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
                             // Prepare Content
                             const contextData = {
                                 event_name: event.event_name,
-                                family_name: event.event_name || event.family_name,
+                                family_name: event.family_name || event.event_name,
                                 event_date: formatDate(event.event_date),
                                 event_time: event.event_time || '',
                                 event_location: event.location || '',
@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
                         
                         const contextData = {
                             event_name: event.event_name,
-                            family_name: event.event_name || event.family_name,
+                            family_name: event.family_name || event.event_name,
                             event_date: formatDate(event.event_date),
                             event_time: event.event_time || '',
                             event_location: event.location || '',

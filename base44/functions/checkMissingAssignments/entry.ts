@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
                 // Build notification content
                 const contextData = {
                     event_name: event.event_name,
-                    family_name: event.event_name || event.family_name,
+                    family_name: event.family_name || event.event_name,
                     event_date: formatDate(event.event_date),
                     event_contacts: formatEventContacts(event),
                     service_name: service.service_name,

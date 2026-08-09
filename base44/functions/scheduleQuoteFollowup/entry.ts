@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
         const contextData = {
             event_name: eventData.event_name || '',
-            family_name: eventData.event_name || eventData.family_name || '',
+            family_name: eventData.family_name || eventData.event_name || '',
             event_date: formatDate(eventData.event_date),
             event_contacts: formatEventContacts(eventData),
             days_open: daysOpenAtReminder,

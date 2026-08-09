@@ -40,7 +40,7 @@ function buildEventContext(event, supplier, userOrParent, eventService) {
     }
     return {
         event_name: event.event_name || '',
-        family_name: event.event_name || event.family_name || '',
+        family_name: event.family_name || event.event_name || '',
         event_date: formatDate(event.event_date),
         event_time: effectiveTime,
         event_location: event.location || '',
@@ -640,7 +640,7 @@ Deno.serve(async (req) => {
                         const ms = missingServices[0];
                         contextData = {
                             event_name: event.event_name || '',
-                            family_name: event.event_name || event.family_name || '',
+                            family_name: event.family_name || event.event_name || '',
                             event_date: formatDate(event.event_date),
                             event_contacts: formatEventContacts(event),
                             service_name: ms.serviceName,
@@ -656,7 +656,7 @@ Deno.serve(async (req) => {
                             .join('\n');
                         contextData = {
                             event_name: event.event_name || '',
-                            family_name: event.event_name || event.family_name || '',
+                            family_name: event.family_name || event.event_name || '',
                             event_date: formatDate(event.event_date),
                             event_contacts: formatEventContacts(event),
                             service_name: '', // אין שירות יחיד
@@ -666,7 +666,7 @@ Deno.serve(async (req) => {
                             event_id: event.id
                         };
                         // הודעה מותאמת מצרפת
-                        customMessage = `חסרים שיבוצים באירוע "${event.event_name || event.family_name}" בתאריך ${formatDate(event.event_date)}.\n\nשירותים חסרי שיבוץ (${missingServices.length}):\n${servicesList}`;
+                        customMessage = `חסרים שיבוצים באירוע "${event.family_name || event.event_name}" בתאריך ${formatDate(event.event_date)}.\n\nשירותים חסרי שיבוץ (${missingServices.length}):\n${servicesList}`;
                         customWaMessage = customMessage;
                     }
                     
@@ -802,7 +802,7 @@ Deno.serve(async (req) => {
                     
                     const contextData = {
                         event_name: event.event_name || '',
-                        family_name: event.event_name || event.family_name || '',
+                        family_name: event.family_name || event.event_name || '',
                         event_date: formatDate(event.event_date),
                         event_contacts: formatEventContacts(event),
                         balance: formatCurrency(balance),
@@ -928,7 +928,7 @@ Deno.serve(async (req) => {
                 // עזר לפורמט שורת משימה בודדת בתוך רשימה מאוחדת
                 const formatTaskLine = (task) => {
                     const ev = task.event_id ? eventsMap.get(task.event_id) : null;
-                    const eventName = ev ? (ev.event_name || ev.family_name || '') : '';
+                    const eventName = ev ? (ev.family_name || ev.event_name || '') : '';
                     const dueTime = (() => {
                         try {
                             const d = new Date(task.due_date);
@@ -955,7 +955,7 @@ Deno.serve(async (req) => {
                             // משימה יחידה: שמירה על ההתנהגות הקודמת (תבנית מלאה).
                             const task = tasks[0];
                             const ev = task.event_id ? eventsMap.get(task.event_id) : null;
-                            const eventName = ev ? (ev.event_name || ev.family_name || '') : '';
+                            const eventName = ev ? (ev.family_name || ev.event_name || '') : '';
                             const eventLine = eventName ? `\n📅 אירוע: ${eventName}` : '';
                             const priorityLabel = task.priority === 'high' ? '🔴 דחיפות גבוהה' :
                                                   task.priority === 'low' ? '🔵 דחיפות נמוכה' : '';

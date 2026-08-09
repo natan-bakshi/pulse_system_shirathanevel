@@ -329,7 +329,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
         event_date: event.event_date,
         event_time: event.event_time,
         event_location: event.location,
-        family_name: event.event_name || event.family_name,
+        family_name: event.family_name || event.event_name,
         supplier_name: supplier ? (supplier.contact_person || supplier.supplier_name) : '',
         service_name: eventService ? eventService.service_name : '',
         user_name: user ? user.full_name : '',
