@@ -645,7 +645,6 @@ export default function EventDetails() {
         const dynamicEventName = getCustomEventNameFromFields(dataToSave._customFields);
         if (dynamicEventName) {
           dataToSave.event_name = dynamicEventName;
-          dataToSave.family_name = dataToSave.family_name || dynamicEventName;
         }
         dataToSave.custom_organizer_fields = JSON.stringify(dataToSave._customFields);
         delete dataToSave._customFields;

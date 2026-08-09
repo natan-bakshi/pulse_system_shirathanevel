@@ -31,10 +31,10 @@ export function getCustomEventNameFromFields(customFields) {
 }
 
 export function getEventDisplayName(event) {
+  const familyName = String(event?.family_name || '').trim();
   const eventName = String(event?.event_name || '').trim();
   const customEventName = getCustomEventNameFromFields(event?.custom_organizer_fields);
-  const familyName = String(event?.family_name || '').trim();
-  return eventName || customEventName || familyName || 'אירוע ללא שם';
+  return familyName || eventName || customEventName || 'אירוע ללא שם';
 }
 
 export function getEventTitle(event) {

@@ -620,7 +620,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       const eventDataToSave = {
         ...formData,
         event_name: normalizedEventName,
-        family_name: formData.family_name || normalizedEventName,
+        family_name: formData.family_name,
         parents: formData.parents.filter(p => p.name || p.phone || p.email),
         guest_count: parseInt(formData.guest_count) || 0,
         all_inclusive_price: Number(formData.all_inclusive_price) || 0,
