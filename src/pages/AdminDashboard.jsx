@@ -143,6 +143,8 @@ export default function AdminDashboard() {
     const allRejected = [];
 
     eventServices.forEach((es) => {
+      if (es.is_external) return;
+
       let supplierIds = [];
       let supplierStatuses = {};
 

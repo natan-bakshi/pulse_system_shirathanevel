@@ -20,6 +20,9 @@ Deno.serve(async (req) => {
         if (!data) {
             return Response.json({ success: true, message: 'No data provided' });
         }
+        if (data.is_external) {
+            return Response.json({ success: true, skipped: true, reason: 'External services do not create assignments' });
+        }
         
         console.log(`[AssignmentChange] Processing EventService change: ${event?.type}`);
         

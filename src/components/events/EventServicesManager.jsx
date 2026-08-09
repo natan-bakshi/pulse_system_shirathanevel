@@ -357,6 +357,7 @@ export default function EventServicesManager({
   }, [selectedServices, onServicesChange]);
 
   const handleOpenSupplierDialog = (service) => {
+    if (service.is_external) return;
     setSelectedServiceForSupplier(service);
     const supplierIds = Array.isArray(service.supplier_ids) ? service.supplier_ids : [];
     const supplierNotes = typeof service.supplier_notes === 'object' ? service.supplier_notes : {};
@@ -378,7 +379,7 @@ export default function EventServicesManager({
   };
 
   const handleAssignSuppliers = () => {
-    if (!selectedServiceForSupplier) return;
+    if (!selectedServiceForSupplier || selectedServiceForSupplier.is_external) return;
     
     const updatedServices = selectedServices.map(s => {
       if (s.service_id === selectedServiceForSupplier.service_id) {

@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         let skippedCount = 0;
         
         for (const es of allEventServices) {
-            if (!es.supplier_ids || !es.supplier_statuses) continue;
+            if (es.is_external || !es.supplier_ids || !es.supplier_statuses) continue;
             
             const event = eventsMap.get(es.event_id);
             if (!event) continue;

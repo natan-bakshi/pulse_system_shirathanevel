@@ -22,6 +22,9 @@ Deno.serve(async (req) => {
             // console.error('[HandleEntityEvents] Invalid payload structure');
             return Response.json({ skipped: true, reason: 'Invalid payload' });
         }
+        if ((event.entity_name || event.entityname) === 'EventService' && data.is_external) {
+            return Response.json({ skipped: true, reason: 'External services do not trigger assignments or notifications' });
+        }
 
         // FIX: Handle both snake_case and lowercase variations from SDK
         const entityName = event.entity_name || event.entityname;

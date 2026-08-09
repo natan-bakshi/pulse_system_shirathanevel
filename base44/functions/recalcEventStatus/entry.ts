@@ -21,6 +21,10 @@ Deno.serve(async (req) => {
         const payload = await req.json().catch(() => ({}));
         const { event, data, old_data } = payload;
 
+        if (event?.entity_name === 'EventService' && data?.is_external && old_data?.is_external) {
+            return Response.json({ success: true, skipped: true, reason: 'External service does not affect event status' });
+        }
+
         if (event?.entity_name === 'EventService' && event?.type === 'update' && data && old_data) {
             const relevantFields = ['event_id', 'service_id', 'supplier_ids', 'supplier_statuses', 'min_suppliers'];
             const hasRelevantChange = relevantFields.some(field =>
@@ -99,6 +103,7 @@ Deno.serve(async (req) => {
             let allServicesSatisfied = true;
 
             for (const es of eventServices) {
+                if (es.is_external) continue;
                 const serviceDef = servicesMap.get(es.service_id);
                 let minRequired = 0;
                 if (es.min_suppliers !== undefined && es.min_suppliers !== null) {

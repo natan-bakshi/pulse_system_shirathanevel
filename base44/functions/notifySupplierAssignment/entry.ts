@@ -27,6 +27,9 @@ Deno.serve(async (req) => {
     if (eventServiceId) {
       try {
         const eventService = await base44.asServiceRole.entities.EventService.get(eventServiceId);
+        if (eventService?.is_external) {
+          return Response.json({ success: true, skipped: true, reason: 'External services do not receive assignments' });
+        }
         const at = eventService?.supplier_arrival_time;
         if (at && typeof at === 'string' && at.trim() !== '') {
           arrivalTime = at.trim();

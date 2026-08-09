@@ -75,6 +75,7 @@ export default function SupplierCalendarDashboard() {
   const supplierEvents = useMemo(() => {
     if (!supplier) return [];
     const supplierAssignments = allEventServices.filter(es => {
+      if (es.is_external) return false;
       let ids = [];
       try {
         if (es.supplier_ids) ids = JSON.parse(es.supplier_ids);

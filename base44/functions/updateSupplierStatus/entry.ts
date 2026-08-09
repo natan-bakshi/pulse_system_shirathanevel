@@ -40,6 +40,9 @@ Deno.serve(async (req) => {
     if (!eventService) {
       return Response.json({ error: 'Event service not found' }, { status: 404 });
     }
+    if (eventService.is_external) {
+      return Response.json({ error: 'External services do not accept supplier assignments' }, { status: 403 });
+    }
 
     // Verify the supplier is assigned to this service
     let supplierIds = [];

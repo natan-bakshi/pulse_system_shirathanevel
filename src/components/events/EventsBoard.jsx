@@ -306,7 +306,7 @@ export default function EventsBoard() {
             .map(s => s.id);
 
         const categoryEventServices = eventServices.filter(
-            es => es.event_id === eventId && categoryServiceIds.includes(es.service_id) && !es.is_package_main_item
+            es => es.event_id === eventId && categoryServiceIds.includes(es.service_id) && !es.is_package_main_item && !es.is_external
         );
 
         if (categoryEventServices.length === 0) return [];

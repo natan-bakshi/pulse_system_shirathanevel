@@ -381,6 +381,7 @@ export default function EventDetails() {
     if (!isSupplier || !user) return eventServices;
     
     return eventServices.filter(es => {
+      if (es.is_external) return false;
       let supplierIds = [];
       try {
         supplierIds = JSON.parse(es.supplier_ids || '[]');
@@ -1151,7 +1152,7 @@ export default function EventDetails() {
   }, [isAdmin, groupedServices, groupedExternalServices, reorderServicesMutation]);
 
   const handleAssignSuppliers = useCallback(async () => {
-    if (!selectedServiceForSupplier) return;
+    if (!selectedServiceForSupplier || selectedServiceForSupplier.is_external) return;
     try {
       await base44.entities.EventService.update(selectedServiceForSupplier.id, {
         supplier_ids: JSON.stringify(supplierFormData.supplierIds),
@@ -1538,7 +1539,15 @@ export default function EventDetails() {
 
   const handleToggleServiceExternal = useCallback(async (serviceId, makeExternal) => {
     try {
-      await base44.entities.EventService.update(serviceId, { is_external: makeExternal });
+      const updateData = makeExternal
+        ? { is_external: true, supplier_ids: JSON.stringify([]), supplier_statuses: JSON.stringify({}), supplier_notes: JSON.stringify({}) }
+        : { is_external: false };
+      await base44.entities.EventService.update(serviceId, updateData);
+      await base44.functions.invoke('checkEventStatus', {
+        eventId,
+        event,
+        eventServices: eventServices.map(service => service.id === serviceId ? { ...service, ...updateData } : service)
+      });
       // Update local state immediately
       setEditableServices(prev => prev.map(s => 
         s.id === serviceId ? { ...s, is_external: makeExternal } : s
@@ -1548,7 +1557,7 @@ export default function EventDetails() {
       console.error("Failed to toggle service external status:", error);
       alert("שגיאה בעדכון סטטוס השירות");
     }
-  }, [eventId, queryClient]);
+  }, [eventId, event, eventServices, queryClient]);
 
   const handleSaveServicesSectionTitle = useCallback(async (title) => {
     try {

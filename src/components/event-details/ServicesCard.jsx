@@ -263,6 +263,7 @@ export default function ServicesCard({
   };
 
   const handleOpenLocalSupplierDialog = (service) => {
+    if (service.is_external) return;
     let currentNotes = {};
     let supplierIds = [];
     try {
@@ -277,7 +278,7 @@ export default function ServicesCard({
   };
 
   const handleAssignLocalSuppliers = async () => {
-    if (!localSelectedService) return;
+    if (!localSelectedService || localSelectedService.is_external) return;
     
     try {
       let existingStatuses = {};

@@ -135,6 +135,7 @@ export default function ClientDashboard() {
           }
       } else {
           totalCostWithoutVat = eventServices.reduce((sum, s) => {
+              if (s.is_external) return sum;
               const serviceTotal = (s.custom_price || 0) * (s.quantity || 1);
               return sum + (s.includes_vat ? serviceTotal / 1.18 : serviceTotal);
           }, 0);

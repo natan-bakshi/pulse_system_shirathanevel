@@ -54,6 +54,7 @@ export default Deno.serve(async (req) => {
         let allServicesSatisfied = true;
 
         for (const es of eventServices) {
+            if (es.is_external) continue;
             const serviceDef = servicesMap.get(es.service_id);
             // Determine required count
             let minRequired = 0; // Default to 0

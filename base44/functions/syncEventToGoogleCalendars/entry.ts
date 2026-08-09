@@ -532,7 +532,7 @@ Deno.serve(async (req) => {
     const allUsers = await base44.asServiceRole.entities.User.list();
 
     // Build admin suppliers list
-    const suppliersList = event ? buildSuppliersList(allEventServices, allServices, allSuppliers, adminSupplierCategories) : '';
+    const suppliersList = event ? buildSuppliersList(allEventServices.filter(es => !es.is_external), allServices, allSuppliers, adminSupplierCategories) : '';
 
     // ====================================================
     // ADMIN PRIMARY SYNC
@@ -647,6 +647,20 @@ Deno.serve(async (req) => {
       }
 
       for (const es of eventServicesToProcess) {
+        if (es.is_external) {
+          let externalCalendarIds = {};
+          try { externalCalendarIds = JSON.parse(es.supplier_calendar_ids || '{}'); } catch (e) {}
+          for (const [supplierId, calendarEventId] of Object.entries(externalCalendarIds)) {
+            const supplier = suppliersMap[supplierId];
+            const supplierUser = allUsers.find(user => user.email && supplier?.contact_emails?.includes(user.email));
+            const calendarId = supplierUser?.google_calendar_id;
+            if (calendarId && calendarEventId) await deleteCalendarEvent(accessToken, calendarId, calendarEventId);
+          }
+          if (Object.keys(externalCalendarIds).length > 0 && es.id) {
+            await base44.asServiceRole.entities.EventService.update(es.id, { supplier_calendar_ids: JSON.stringify({}) });
+          }
+          continue;
+        }
         let supplierIds = [];
         try { supplierIds = JSON.parse(es.supplier_ids || '[]'); } catch (e) {}
         let supplierStatuses = {};

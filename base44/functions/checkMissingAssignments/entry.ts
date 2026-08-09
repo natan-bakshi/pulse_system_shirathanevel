@@ -82,8 +82,10 @@ Deno.serve(async (req) => {
                 }
                 
                 // Find the EventService for this service type
-                const eventService = eventServices.find(es => es.service_id === service.id);
+                const eventService = eventServices.find(es => es.service_id === service.id && !es.is_external);
                 
+                if (!eventService) continue;
+
                 // Determine required suppliers
                 const minSuppliers = eventService?.min_suppliers ?? service.default_min_suppliers ?? 0;
                 
