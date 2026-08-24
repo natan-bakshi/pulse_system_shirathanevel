@@ -20,6 +20,7 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 const ContactDirectory = React.lazy(() => import('@/pages/ContactDirectory'));
+const BarMitzvahCalculator = React.lazy(() => import('@/pages/BarMitzvahCalculator'));
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -75,6 +76,13 @@ const AuthenticatedApp = () => {
         <LayoutWrapper currentPageName="ContactDirectory">
           <Suspense fallback={<PageLoadingFallback />}>
             <ContactDirectory />
+          </Suspense>
+        </LayoutWrapper>
+      } />
+      <Route path="/BarMitzvahCalculator" element={
+        <LayoutWrapper currentPageName="BarMitzvahCalculator">
+          <Suspense fallback={<PageLoadingFallback />}>
+            <BarMitzvahCalculator />
           </Suspense>
         </LayoutWrapper>
       } />

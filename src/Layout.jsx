@@ -20,7 +20,8 @@ import {
   UserCog,
   User,
   ListChecks,
-  PhoneCall } from
+  PhoneCall,
+  Calculator } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -58,6 +59,8 @@ const getAdminNavItems = (userEmail, tasksEnabled = true) => {
   if (tasksEnabled) {
     items.push({ title: "המשימות שלי", url: createPageUrl("MyTasks"), icon: ListChecks, tourId: "nav-my-tasks" });
   }
+
+  items.push({ title: "מחשבון בר מצווה", url: createPageUrl("BarMitzvahCalculator"), icon: Calculator });
   
   items.push({ title: "אזור אישי", url: createPageUrl("UserSettings"), icon: User, tourId: "nav-user-settings" });
   
@@ -76,6 +79,7 @@ const navigationItems = {
   client: [
   { title: "האירועים שלי", url: createPageUrl("ClientDashboard"), icon: Home, tourId: "nav-client-events" },
   { title: "צור קשר", url: createPageUrl("ContactDirectory"), icon: PhoneCall },
+  { title: "מחשבון בר מצווה", url: createPageUrl("BarMitzvahCalculator"), icon: Calculator },
   { title: "אזור אישי", url: createPageUrl("UserSettings"), icon: User, tourId: "nav-user-settings" }],
 
 
@@ -327,6 +331,7 @@ export default function Layout({ children }) {
     const isAccessingNotificationSettings = pathname.includes('MyNotificationSettings');
     const isAccessingUserSettings = pathname.includes('UserSettings');
     const isAccessingContactDirectory = pathname.includes('ContactDirectory');
+    const isAccessingBarMitzvahCalculator = pathname.includes('BarMitzvahCalculator');
 
 
     // Allow system creator to access SettingsPage
@@ -351,7 +356,7 @@ export default function Layout({ children }) {
     const isAccessingSupplierPage = pathname.includes('SupplierDashboard') || pathname.includes('SupplierCalendarDashboard');
 
 
-    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingContactDirectory && !isAccessingSupplierPage) {
+    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingContactDirectory && !isAccessingBarMitzvahCalculator && !isAccessingSupplierPage) {
       navigate(homePage, { replace: true });
     }
 

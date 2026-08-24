@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, ArrowRight, Search, Filter, Edit } from "lucide-react";
+import { Calendar, Clock, Plus, ListChecks, Settings, Home, AlertTriangle, ArrowRight, Search, Filter, Edit, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link, useNavigate } from "react-router-dom";
@@ -34,6 +34,8 @@ export default function AdminDashboard() {
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const calendarMonth = new URLSearchParams(window.location.search).get('month');
+  const calendarInitialDate = calendarMonth ? new Date(`${calendarMonth}-01T12:00:00`) : null;
 
   // Debouncing effect for assignment search
   useEffect(() => {
@@ -437,17 +439,17 @@ export default function AdminDashboard() {
               <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">המשימות<br/>שלי</span>
             </button>
             
-            {/* User Settings */}
+            {/* Bar Mitzvah Calculator */}
             <button 
-              onClick={() => navigate(createPageUrl("UserSettings"))}
+              onClick={() => navigate(createPageUrl("BarMitzvahCalculator"))}
               className="flex flex-col items-center gap-1 group flex-1 max-w-[72px]"
             >
               <div className="h-14 w-14 rounded-full bg-white shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all border border-white/30 mx-auto">
                 <div className="h-full w-full rounded-full flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-gray-700"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <Calculator className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">אזור<br/>אישי</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">מחשבון<br/>בר מצווה</span>
             </button>
 
             {/* Dashboard Settings */}
@@ -487,6 +489,7 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2" data-tour="admin-calendar">
           <EventsCalendar
             events={calendarEvents}
+            initialDate={calendarInitialDate}
             onEventClick={handleEventClick}
             onDateClick={handleDateClick} />
 
