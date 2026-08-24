@@ -116,6 +116,10 @@ export default function EventsCalendar({ events, initialDate, onDateClick, onEve
 
   // ימי השבוע מיום ראשון עד שבת
   const weekDays = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+  const highlightedHolidayDays = new Set([
+    "תשרי-א'", "תשרי-ב'", "תשרי-י'", "תשרי-ט\"ו", "תשרי-כ\"ב",
+    "ניסן-ט\"ו", "ניסן-כ\"א", "סיוון-ו'"
+  ]);
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
@@ -176,9 +180,11 @@ export default function EventsCalendar({ events, initialDate, onDateClick, onEve
             const hebDayNumber = new Intl.DateTimeFormat('he-u-ca-hebrew', {day: 'numeric'}).format(date);
             const hebDaySymbol = hebrewDaysGematria[parseInt(hebDayNumber)] || hebDayNumber;
             const hebMonthName = new Intl.DateTimeFormat('he-u-ca-hebrew', {month: 'long'}).format(date);
-            
+            const hasHighlightedHoliday = highlightedHolidayDays.has(`${hebMonthName}-${hebDaySymbol}`);
+
             const holidayName = holidays[dateKey];
             const parasha = getSaturdayParasha(date);
+            const isHolidaySaturday = date.getDay() === 6 && Boolean(holidayName);
             const isExpanded = expandedDays[dateKey];
 
             return (
@@ -187,7 +193,7 @@ export default function EventsCalendar({ events, initialDate, onDateClick, onEve
                 onClick={() => handleDateClick(date)}
                 className={`
                   min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-1 border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors
-                  ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : parasha ? 'bg-amber-50/60' : 'bg-white'}
+                  ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : parasha || hasHighlightedHoliday || isHolidaySaturday ? 'bg-amber-50/60' : 'bg-white'}
                   ${isToday ? 'ring-2 ring-blue-500' : ''}
                 `}
               >
@@ -207,7 +213,7 @@ export default function EventsCalendar({ events, initialDate, onDateClick, onEve
                   </div>
                 )}
                 {parasha && (
-                  <div className="text-[7px] sm:text-[9px] text-amber-700 font-semibold leading-tight truncate mb-0.5 sm:mb-1" title={`פרשת ${parasha}`}>
+                  <div className="text-[7px] sm:text-[9px] text-amber-700 font-semibold leading-tight truncate mb-0.5 sm:mb-1" title={parasha}>
                     {parasha}
                   </div>
                 )}

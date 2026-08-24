@@ -15,6 +15,7 @@ export default function BarMitzvahCalculator() {
   const [birthDate, setBirthDate] = useState('');
   const [type, setType] = useState('bar');
   const [isAfterSunset, setIsAfterSunset] = useState(false);
+  const [isIsrael, setIsIsrael] = useState(true);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
@@ -23,14 +24,19 @@ export default function BarMitzvahCalculator() {
     base44.auth.me().then(setUser);
   }, []);
 
-  const handleCalculate = () => {
+  const handleCalculate = (traditionIsIsrael = isIsrael) => {
     try {
-      setResult(calculateBarMitzvah(birthDate, isAfterSunset, type));
+      setResult(calculateBarMitzvah(birthDate, isAfterSunset, type, traditionIsIsrael));
       setError('');
     } catch (calculationError) {
       setResult(null);
       setError(calculationError.message);
     }
+  };
+
+  const handleTraditionChange = (traditionIsIsrael) => {
+    setIsIsrael(traditionIsIsrael);
+    handleCalculate(traditionIsIsrael);
   };
 
   const goToCalendar = () => {
@@ -84,7 +90,7 @@ export default function BarMitzvahCalculator() {
           </Button>
 
             </div>
-            {result && <BarMitzvahResult result={result} title={title} canOpenCalendar={user?.role === 'admin'} onOpenCalendar={goToCalendar} />}
+            {result && <BarMitzvahResult result={result} title={title} isIsrael={isIsrael} onTraditionChange={handleTraditionChange} canOpenCalendar={user?.role === 'admin'} onOpenCalendar={goToCalendar} />}
           </div>
         </CardContent>
       </Card>

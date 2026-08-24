@@ -2,7 +2,7 @@ import React from 'react';
 import { CalendarDays, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function BarMitzvahResult({ result, title, canOpenCalendar, onOpenCalendar }) {
+export default function BarMitzvahResult({ result, title, isIsrael, onTraditionChange, canOpenCalendar, onOpenCalendar }) {
   const gregorianDate = result.barMitzvahGregorianDate.toLocaleDateString('he-IL');
 
   return (
@@ -22,6 +22,16 @@ export default function BarMitzvahResult({ result, title, canOpenCalendar, onOpe
       <div className="rounded-xl bg-gray-50 p-3 text-center">
         <p className="text-xs text-gray-500">פרשת השבוע</p>
         <p className="mt-1 text-sm font-bold text-gray-800">{result.parashatHashavua}</p>
+      </div>
+      <div className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2 text-xs text-gray-500">
+        <span>חישוב פרשה לפי</span>
+        <div className="flex rounded-lg bg-gray-100 p-0.5">
+          {[{ label: 'ארץ ישראל', value: true }, { label: 'חו״ל', value: false }].map((option) => (
+            <button key={option.label} type="button" aria-pressed={isIsrael === option.value} onClick={() => onTraditionChange(option.value)} className={`rounded-md px-2 py-1 font-medium transition-colors ${isIsrael === option.value ? 'bg-white text-red-800 shadow-sm' : 'text-gray-500'}`}>
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
       {canOpenCalendar && (
         <Button variant="outline" onClick={onOpenCalendar} className="h-11 w-full border-red-200 text-red-800 hover:bg-red-50">

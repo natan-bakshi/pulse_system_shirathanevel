@@ -44,15 +44,19 @@ const findBarMitzvahDate = (birthDate, age) => {
   return candidate.getMonth() === targetMonth ? candidate : new HDate(1, targetMonth + 1, targetYear);
 };
 
-const findWeeklyParasha = (targetDate) => {
+const removeParashaPrefix = (name) => name
+  .replace(/^פרשת\s+/, '')
+  .replace(/^פ[\u0591-\u05C7]*ר[\u0591-\u05C7]*ש[\u0591-\u05C7]*ת\s+/, '');
+
+const findWeeklyParasha = (targetDate, isIsrael = true) => {
   const saturday = new HDate(targetDate.greg());
   const daysToSaturday = (6 - saturday.greg().getDay() + 7) % 7;
   const weeklyDate = daysToSaturday ? saturday.next().add(daysToSaturday - 1) : saturday;
-  const sedra = HebrewCalendar.getSedra(weeklyDate.getFullYear(), true).lookup(weeklyDate);
-  return sedra.chag ? 'אין פרשה בשבת זו' : new ParshaEvent(sedra).render('he');
+  const sedra = HebrewCalendar.getSedra(weeklyDate.getFullYear(), isIsrael).lookup(weeklyDate);
+  return sedra.chag ? 'אין פרשה בשבת זו' : removeParashaPrefix(new ParshaEvent(sedra).render('he'));
 };
 
-export const calculateBarMitzvah = (birthDateValue, isAfterSunset, type = 'bar') => {
+export const calculateBarMitzvah = (birthDateValue, isAfterSunset, type = 'bar', isIsrael = true) => {
   if (!birthDateValue) throw new Error('יש לבחור תאריך לידה');
 
   const gregorianBirthDate = new Date(`${birthDateValue}T12:00:00`);
@@ -68,7 +72,7 @@ export const calculateBarMitzvah = (birthDateValue, isAfterSunset, type = 'bar')
     birthHebrewDate: formatHebrewDate(birthHebrewDate),
     barMitzvahHebrewDate: formatHebrewDate(mitzvahDate),
     barMitzvahGregorianDate: mitzvahGregorianDate,
-    parashatHashavua: findWeeklyParasha(mitzvahDate),
+    parashatHashavua: findWeeklyParasha(mitzvahDate, isIsrael),
   };
 };
 
@@ -76,5 +80,5 @@ export const getSaturdayParasha = (date) => {
   if (date.getDay() !== 6) return null;
   const hebrewDate = new HDate(date);
   const sedra = HebrewCalendar.getSedra(hebrewDate.getFullYear(), true).lookup(hebrewDate);
-  return sedra.chag ? null : new ParshaEvent(sedra).render('he');
+  return sedra.chag ? null : removeParashaPrefix(new ParshaEvent(sedra).render('he'));
 };
