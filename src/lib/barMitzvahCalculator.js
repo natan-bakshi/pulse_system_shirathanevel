@@ -1,6 +1,31 @@
 import { HDate, HebrewCalendar, ParshaEvent } from '@hebcal/core';
 
-const formatHebrewDate = (date) => date.render('he');
+const HEBREW_MONTHS = {
+  1: 'ניסן', 2: 'אייר', 3: 'סיוון', 4: 'תמוז', 5: 'אב', 6: 'אלול',
+  7: 'תשרי', 8: 'חשוון', 9: 'כסלו', 10: 'טבת', 11: 'שבט', 12: 'אדר', 13: 'אדר ב׳',
+};
+
+const toHebrewNumeral = (number) => {
+  const specialNumbers = { 15: 'טו', 16: 'טז' };
+  const letters = [[400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'], [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'], [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'], [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'], [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א']];
+  let remaining = specialNumbers[number] ? 0 : number;
+  let output = specialNumbers[number] || '';
+
+  letters.forEach(([value, letter]) => {
+    while (remaining >= value) {
+      output += letter;
+      remaining -= value;
+    }
+  });
+
+  return output.length === 1 ? `${output}׳` : `${output.slice(0, -1)}״${output.slice(-1)}`;
+};
+
+const formatHebrewDate = (date) => {
+  const month = date.getMonth() === 12 && HDate.isLeapYear(date.getFullYear()) ? 'אדר א׳' : HEBREW_MONTHS[date.getMonth()];
+  const year = `ה${toHebrewNumeral(date.getFullYear() % 1000)}`;
+  return `${toHebrewNumeral(date.getDate())} ${month} ${year}`;
+};
 
 const resolveTargetMonth = (birthDate, targetYear) => {
   const month = birthDate.getMonth();
