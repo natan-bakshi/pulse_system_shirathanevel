@@ -44,7 +44,7 @@ import CalendarSyncPrompt from "@/components/calendar/CalendarSyncPrompt";
 const SYSTEM_CREATOR_EMAIL = 'natib8000@gmail.com';
 
 
-const getAdminNavItems = (userEmail, tasksEnabled = true) => {
+const getAdminNavItems = (userEmail, tasksEnabled = true, billingEnabled = false) => {
   const items = [
     { title: "דשבורד", url: createPageUrl("AdminDashboard"), icon: Home },
     { title: "לוח אירועים", url: createPageUrl("EventsBoardPage"), icon: Calendar, tourId: "nav-events-board" },
@@ -58,6 +58,9 @@ const getAdminNavItems = (userEmail, tasksEnabled = true) => {
   
   if (tasksEnabled) {
     items.push({ title: "המשימות שלי", url: createPageUrl("MyTasks"), icon: ListChecks, tourId: "nav-my-tasks" });
+  }
+  if (billingEnabled) {
+    items.push({ title: "תשלומים וחשבוניות", url: createPageUrl("BillingDashboard"), icon: FileText });
   }
 
   items.push({ title: "מחשבון בר מצווה", url: createPageUrl("BarMitzvahCalculator"), icon: Calculator });
@@ -142,6 +145,8 @@ export default function Layout({ children }) {
     }, {});
   }, [appSettings]);
 
+
+  const billingEnabled = settingsMap.billing_enabled === "true";
 
   // Track active dark state for background selection
   const [isDarkActive, setIsDarkActive] = useState(() => {
@@ -341,7 +346,12 @@ export default function Layout({ children }) {
 
 
     const isTryingToAccessAdminPage = adminOnlyPages.some((p) => pathname.startsWith(createPageUrl(p.substring(1))));
+    const isAccessingBillingPage = pathname.startsWith(createPageUrl("BillingDashboard"));
 
+    if (isAccessingBillingPage && (!billingEnabled || userType !== 'admin')) {
+      navigate(homePage, { replace: true });
+      return;
+    }
 
     if (userType !== 'admin' && isTryingToAccessAdminPage) {
       navigate(homePage, { replace: true });
@@ -361,7 +371,7 @@ export default function Layout({ children }) {
     }
 
 
-  }, [user, location, navigate, loading]);
+  }, [user, location, navigate, loading, billingEnabled]);
 
 
   const handleLogout = useCallback(async () => {
@@ -430,7 +440,7 @@ export default function Layout({ children }) {
 
   const tasksSystemEnabled = settingsMap.tasks_system_enabled !== "false"; // default true
   const currentNavItems = user.user_type === 'admin' 
-    ? getAdminNavItems(user.email, tasksSystemEnabled) 
+    ? getAdminNavItems(user.email, tasksSystemEnabled, billingEnabled) 
     : (navigationItems[user.user_type] || navigationItems.client);
 
 
