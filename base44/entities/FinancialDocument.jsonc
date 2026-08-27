@@ -1,0 +1,100 @@
+{
+  "name": "FinancialDocument",
+  "type": "object",
+  "properties": {
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "invoice",
+        "receipt",
+        "invoice_receipt",
+        "invoice_credit",
+        "proforma",
+        "work_order",
+        "quote",
+        "delivery_note"
+      ]
+    },
+    "document_number": {
+      "type": "string"
+    },
+    "invoice4u_id": {
+      "type": "string"
+    },
+    "invoice4u_unique_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "fully_credited",
+        "partially_credited",
+        "cancelled"
+      ],
+      "default": "open"
+    },
+    "total": {
+      "type": "number"
+    },
+    "total_without_tax": {
+      "type": "number"
+    },
+    "total_tax": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "ILS",
+        "USD",
+        "EUR"
+      ],
+      "default": "ILS"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "linked_event_id": {
+      "type": "string"
+    },
+    "linked_payment_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "customer_identifier": {
+      "type": "string"
+    },
+    "pdf_original_url": {
+      "type": "string"
+    },
+    "pdf_certified_url": {
+      "type": "string"
+    },
+    "cipher_text": {
+      "type": "string"
+    },
+    "ref_document_id": {
+      "type": "string"
+    },
+    "is_detached_from_event": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "document_type",
+    "status"
+  ],
+  "rls": {
+    "read": {},
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
