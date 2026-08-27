@@ -16,6 +16,7 @@ import BackupManager from "@/components/backup/BackupManager";
 import NotificationManagementTab from "@/components/admin/NotificationManagementTab";
 import CalendarTemplateSettings from "@/components/calendar/CalendarTemplateSettings";
 import ContactSettingsEditor from "@/components/contact/ContactSettingsEditor";
+import BillingSettings from "@/components/billing/BillingSettings";
 
 const settingKeys = [
     'background_image_url', 
@@ -41,7 +42,23 @@ const settingKeys = [
     'google_calendar_client_sync_enabled',
     'admin_google_calendar_id',
     'tasks_system_enabled',
-    'contact_entries'
+    'contact_entries',
+    'billing_enabled',
+    'invoice4u_env',
+    'invoice4u_branch_id',
+    'default_document_type',
+    'default_language',
+    'default_tax_included',
+    'default_subject',
+    'default_email_comment',
+    'owner_copy_email',
+    'processing_fee_enabled',
+    'processing_fee_type',
+    'processing_fee_value',
+    'processing_fee_label',
+    'default_advance_amount',
+    'client_clearing_allowed',
+    'manual_payment_invoice_enabled'
     ];
 
 export default function SettingsPage() {
@@ -75,7 +92,23 @@ export default function SettingsPage() {
         google_calendar_client_sync_enabled: "false",
         admin_google_calendar_id: "primary",
         tasks_system_enabled: "true",
-        contact_entries: "[]"
+        contact_entries: "[]",
+        billing_enabled: "false",
+        invoice4u_env: "qa",
+        invoice4u_branch_id: "",
+        default_document_type: "invoice_receipt",
+        default_language: "he",
+        default_tax_included: "true",
+        default_subject: "",
+        default_email_comment: "",
+        owner_copy_email: "",
+        processing_fee_enabled: "false",
+        processing_fee_type: "percent",
+        processing_fee_value: "0",
+        processing_fee_label: "עמלת סליקה",
+        default_advance_amount: "2500",
+        client_clearing_allowed: "false",
+        manual_payment_invoice_enabled: "false"
         });
     const queryClient = useQueryClient();
     const location = useLocation();
@@ -323,6 +356,8 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <BillingSettings settings={settings} onChange={handleSettingChange} />
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
                         <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />הגדרות הצעת מחיר</CardTitle></CardHeader>
