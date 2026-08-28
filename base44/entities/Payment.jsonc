@@ -16,11 +16,11 @@
         "ILS",
         "USD"
       ],
-      "description": "\u05de\u05d8\u05d1\u05e2 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd. \u05d0\u05dd \u05dc\u05d0 \u05de\u05d5\u05d2\u05d3\u05e8, \u05d9\u05d5\u05e8\u05e9 \u05de\u05de\u05d8\u05d1\u05e2 \u05e8\u05d0\u05e9\u05d9 \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "\u05de\u05d8\u05d1\u05e2 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd"
     },
     "converted_amount": {
       "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05de\u05d5\u05de\u05e8 \u05dc\u05de\u05d8\u05d1\u05e2 \u05d4\u05e8\u05d0\u05e9\u05d9 \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 (\u05e8\u05e7 \u05d0\u05dd currency \u05e9\u05d5\u05e0\u05d4 \u05de\u05de\u05d8\u05d1\u05e2 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2)"
+      "description": "\u05e1\u05db\u05d5\u05dd \u05de\u05d5\u05de\u05e8 \u05dc\u05de\u05d8\u05d1\u05e2 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
     },
     "payment_date": {
       "type": "string",
@@ -42,7 +42,8 @@
       "enum": [
         "completed",
         "pending",
-        "cancelled"
+        "cancelled",
+        "failed"
       ],
       "default": "completed",
       "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd"
@@ -57,42 +58,46 @@
     },
     "receipt_image_url": {
       "type": "string",
-      "description": "\u05e7\u05d9\u05e9\u05d5\u05e8 \u05dc\u05ea\u05de\u05d5\u05e0\u05ea \u05d0\u05e1\u05de\u05db\u05ea\u05d0"
+      "description": "\u05e7\u05d9\u05e9\u05d5\u05e8 \u05dc\u05d0\u05e1\u05de\u05db\u05ea\u05d0"
     },
     "invoice4u_payment_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05dc\u05d9\u05e7\u05d4 \u05d1-Invoice4U"
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05dc\u05d9\u05e7\u05d4 \u05d1-Invoice4U"
     },
     "invoice4u_clearing_status": {
       "type": "string",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05e1\u05dc\u05d9\u05e7\u05d4 \u05e9\u05d4\u05ea\u05e7\u05d1\u05dc \u05de-Invoice4U"
+      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05e1\u05dc\u05d9\u05e7\u05d4"
     },
     "invoice4u_document_number": {
       "type": "string",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05d4\u05de\u05e1\u05de\u05da \u05e9\u05d4\u05d5\u05e4\u05e7 \u05d1-Invoice4U"
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05de\u05e1\u05de\u05da Invoice4U"
+    },
+    "invoice4u_callback_token": {
+      "type": "string",
+      "description": "\u05d0\u05e1\u05d9\u05de\u05d5\u05df \u05d0\u05d9\u05de\u05d5\u05ea \u05dc\u05e7\u05e8\u05d9\u05d0\u05ea \u05d7\u05d6\u05e8\u05d4"
     },
     "financial_document_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05de\u05e1\u05de\u05da \u05e4\u05d9\u05e0\u05e0\u05e1\u05d9 \u05de\u05e7\u05d5\u05e9\u05e8"
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05de\u05e1\u05de\u05da \u05e4\u05d9\u05e0\u05e0\u05e1\u05d9"
     },
     "clearing_method": {
       "type": "string",
       "enum": [
         "hosted_page"
       ],
-      "description": "\u05e9\u05d9\u05d8\u05ea \u05d4\u05e1\u05dc\u05d9\u05e7\u05d4 \u05d4\u05de\u05d0\u05d5\u05d1\u05d8\u05d7\u05ea"
+      "description": "\u05e9\u05d9\u05d8\u05ea \u05e1\u05dc\u05d9\u05e7\u05d4"
     },
     "customer_name_on_card": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d1\u05e2\u05dc \u05d4\u05db\u05e8\u05d8\u05d9\u05e1 \u05db\u05e4\u05d9 \u05e9\u05d7\u05d6\u05e8 \u05de\u05d4\u05e1\u05dc\u05d9\u05e7\u05d4"
+      "description": "\u05e9\u05dd \u05d1\u05e2\u05dc \u05d4\u05db\u05e8\u05d8\u05d9\u05e1"
     },
     "is_interested_in_invoice": {
       "type": "boolean",
-      "description": "\u05d4\u05d0\u05dd \u05d4\u05dc\u05e7\u05d5\u05d7 \u05d1\u05d9\u05e7\u05e9 \u05dc\u05e7\u05d1\u05dc \u05d7\u05e9\u05d1\u05d5\u05e0\u05d9\u05ea"
+      "description": "\u05d1\u05e7\u05e9\u05d4 \u05dc\u05d7\u05e9\u05d1\u05d5\u05e0\u05d9\u05ea"
     },
     "client_ip": {
       "type": "string",
-      "description": "\u05db\u05ea\u05d5\u05d1\u05ea IP \u05e9\u05d4\u05ea\u05e7\u05d1\u05dc\u05d4 \u05de\u05d4\u05e1\u05dc\u05d9\u05e7\u05d4, \u05d0\u05dd \u05e7\u05d9\u05d9\u05de\u05ea"
+      "description": "\u05db\u05ea\u05d5\u05d1\u05ea IP \u05de\u05d4\u05e1\u05dc\u05d9\u05e7\u05d4"
     }
   },
   "required": [

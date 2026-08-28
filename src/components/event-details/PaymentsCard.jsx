@@ -19,14 +19,17 @@ export default function PaymentsCard({
   setCurrentReceiptUrl,
   setCurrentReceiptPaymentId,
   setShowReceiptDialog,
-  exchangeRate = 3.6
+  exchangeRate = 3.6,
+  billingEnabled = false,
+  clientClearingAllowed = false,
+  onStartClearing
 }) {
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">תשלומים</h3>
-          {isAdmin && <Button size="sm" onClick={() => setShowPaymentDialog(true)}><Plus className="h-4 w-4 ml-2" />הוסף תשלום</Button>}
+          <div className="flex gap-2">{(isAdmin || clientClearingAllowed) && billingEnabled && <Button size="sm" onClick={onStartClearing}><FileText className="h-4 w-4 ml-2" />תשלום בכרטיס</Button>}{isAdmin && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)}><Plus className="h-4 w-4 ml-2" />הוסף תשלום</Button>}</div>
         </div>
       </CardHeader>
       <CardContent>

@@ -366,7 +366,7 @@ export default function Layout({ children }) {
     const isAccessingSupplierPage = pathname.includes('SupplierDashboard') || pathname.includes('SupplierCalendarDashboard');
 
 
-    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingContactDirectory && !isAccessingBarMitzvahCalculator && !isAccessingSupplierPage) {
+    if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingBillingPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingContactDirectory && !isAccessingBarMitzvahCalculator && !isAccessingSupplierPage) {
       navigate(homePage, { replace: true });
     }
 

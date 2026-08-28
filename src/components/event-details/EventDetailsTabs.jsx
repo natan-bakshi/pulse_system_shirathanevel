@@ -63,6 +63,7 @@ export default function EventDetailsTabs(props) {
     payments,
     setShowPaymentDialog, handleDeletePayment,
     setCurrentReceiptUrl, setCurrentReceiptPaymentId, setShowReceiptDialog,
+    billingEnabled, clientClearingAllowed, onStartClearing,
     // Financial
     financials, financialEditData, setFinancialEditData,
     handleSaveFinancial, isSavingFinancial,
@@ -208,6 +209,9 @@ export default function EventDetailsTabs(props) {
             setCurrentReceiptPaymentId={setCurrentReceiptPaymentId}
             setShowReceiptDialog={setShowReceiptDialog}
             exchangeRate={exchangeRate}
+            billingEnabled={billingEnabled}
+            clientClearingAllowed={clientClearingAllowed}
+            onStartClearing={onStartClearing}
           />
         )}
 

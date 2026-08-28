@@ -18,6 +18,7 @@ import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 import EventChangeDecisionDialogs from '../components/event-details/EventChangeDecisionDialogs';
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
+import ClearingPaymentDialog from '../components/billing/ClearingPaymentDialog';
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
@@ -156,6 +157,8 @@ export default function EventDetails() {
 
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [currentReceiptUrl, setCurrentReceiptUrl] = useState('');  const [currentReceiptPaymentId, setCurrentReceiptPaymentId] = useState(null);
+  const [showClearingDialog, setShowClearingDialog] = useState(false);
+  const [isStartingClearing, setIsStartingClearing] = useState(false);
 
   const [editingServiceField, setEditingServiceField] = useState(null);
   const [savingServiceField, setSavingServiceField] = useState(null);
@@ -242,6 +245,8 @@ export default function EventDetails() {
   const isAdmin = user?.role === 'admin';
   const isClient = user?.user_type === 'client';
   const isSupplier = user?.user_type === 'supplier';
+  const billingEnabled = appSettings.find((item) => item.setting_key === 'billing_enabled')?.setting_value === 'true';
+  const clientClearingAllowed = appSettings.find((item) => item.setting_key === 'client_clearing_allowed')?.setting_value === 'true';
 
   // Initialize quote options defaults when event loads
   useEffect(() => {
@@ -819,6 +824,20 @@ export default function EventDetails() {
       alert("שגיאה בהוספת התשלום: " + (error.response?.data?.message || error.message || "שגיאת רשת"));
     }
   }, [eventId, paymentForm, loadEventData]);
+
+  const handleStartClearing = useCallback(async (payer) => {
+    const amount = Math.max(0, Number(financials.balance) || 0);
+    if (!amount) { alert("אין יתרה פתוחה לתשלום באירוע זה"); return; }
+    setIsStartingClearing(true);
+    try {
+      const response = await base44.functions.invoke('invoice4uCreateClearingRequest', { eventId, amount, payer });
+      const redirectUrl = response.data?.redirectUrl;
+      if (!redirectUrl) throw new Error(response.data?.error || "לא התקבל קישור תשלום");
+      window.location.assign(redirectUrl);
+    } catch (error) {
+      alert("לא ניתן לפתוח תשלום: " + (error.response?.data?.error || error.message));
+    } finally { setIsStartingClearing(false); }
+  }, [eventId, financials.balance]);
 
   const handleDeletePayment = useCallback(async (paymentId) => {
     if (window.confirm("האם למחוק תשלום זה?")) {
@@ -2143,6 +2162,9 @@ export default function EventDetails() {
         setCurrentReceiptUrl={setCurrentReceiptUrl}
         setCurrentReceiptPaymentId={setCurrentReceiptPaymentId}
         setShowReceiptDialog={setShowReceiptDialog}
+        billingEnabled={billingEnabled}
+        clientClearingAllowed={clientClearingAllowed}
+        onStartClearing={() => setShowClearingDialog(true)}
         financials={financials}
         financialEditData={financialEditData}
         setFinancialEditData={setFinancialEditData}
@@ -2152,6 +2174,7 @@ export default function EventDetails() {
 
       <ExportDialog open={showExportDialog} onOpenChange={setShowExportDialog} exportOptions={exportOptions} setExportOptions={setExportOptions} onConfirmExport={handleConfirmExport} />
       <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} eventPrimaryCurrency={event?.primary_currency || 'ILS'} exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()} />
+      <ClearingPaymentDialog open={showClearingDialog} onOpenChange={setShowClearingDialog} event={event} amount={Math.max(0, Number(financials.balance) || 0)} onStart={handleStartClearing} loading={isStartingClearing} />
       <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
       <Dialog open={showNewServiceDialog} onOpenChange={(open) => { setShowNewServiceDialog(open); if (!open) setNewServiceTargetPackageId(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
