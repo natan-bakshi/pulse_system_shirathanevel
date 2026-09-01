@@ -56,11 +56,13 @@ const getAdminNavItems = (userEmail, tasksEnabled = true, billingEnabled = false
     { title: "ניהול משתמשים", url: createPageUrl("UserManagement"), icon: UserCheck, tourId: "nav-users" },
   ];
   
+  // לשונית התשלומים ממוקמת מיד לאחר "הצעות מחיר"
+  if (billingEnabled) {
+    const quotesIndex = items.findIndex((item) => item.url === createPageUrl("QuoteTemplateManagement"));
+    items.splice(quotesIndex + 1, 0, { title: "תשלומים וחשבוניות", url: createPageUrl("BillingDashboard"), icon: FileText });
+  }
   if (tasksEnabled) {
     items.push({ title: "המשימות שלי", url: createPageUrl("MyTasks"), icon: ListChecks, tourId: "nav-my-tasks" });
-  }
-  if (billingEnabled) {
-    items.push({ title: "תשלומים וחשבוניות", url: createPageUrl("BillingDashboard"), icon: FileText });
   }
 
   items.push({ title: "מחשבון בר מצווה", url: createPageUrl("BarMitzvahCalculator"), icon: Calculator });

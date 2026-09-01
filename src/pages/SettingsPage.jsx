@@ -17,12 +17,17 @@ import NotificationManagementTab from "@/components/admin/NotificationManagement
 import CalendarTemplateSettings from "@/components/calendar/CalendarTemplateSettings";
 import ContactSettingsEditor from "@/components/contact/ContactSettingsEditor";
 import BillingSettings from "@/components/billing/BillingSettings";
+import BusinessDetailsFields from "@/components/settings/BusinessDetailsFields";
 
 const settingKeys = [
     'background_image_url', 
     'background_image_dark_url',
     'company_name', 
     'company_logo_url', 
+    'business_tax_id',
+    'business_address',
+    'business_phone',
+    'business_email',
     'vat_rate',
     'usd_ils_exchange_rate',
     'quote_body_font_size',
@@ -73,6 +78,10 @@ export default function SettingsPage() {
         background_image_dark_url: "",
         company_name: "",
         company_logo_url: "",
+        business_tax_id: "",
+        business_address: "",
+        business_phone: "",
+        business_email: "",
         vat_rate: "18",
         usd_ils_exchange_rate: "3.6",
         quote_body_font_size: "15",
@@ -282,6 +291,7 @@ export default function SettingsPage() {
                                 </div>
                                 {settings.company_logo_url && <img src={settings.company_logo_url} alt="לוגו" className="h-16 w-auto mt-2 rounded border" />}
                             </div>
+                            <BusinessDetailsFields settings={settings} onChange={handleSettingChange} />
                         </CardContent>
                     </Card>
 

@@ -7,7 +7,7 @@ import { Save } from "lucide-react";
 import BillingDocumentDefaults from "@/components/billing/BillingDocumentDefaults";
 import BillingClearingRules from "@/components/billing/BillingClearingRules";
 
-const defaults = { invoice4u_env: "qa", invoice4u_branch_id: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false" };
+const defaults = { invoice4u_env: "qa", invoice4u_branch_id: "", default_email_comment: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false" };
 
 export default function BillingConfiguration() {
   const queryClient = useQueryClient();

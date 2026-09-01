@@ -14,6 +14,7 @@ export default function BillingDocumentDefaults({ settings, onChange }) {
         <div><Label htmlFor="default_subject">נושא מסמך</Label><Input id="default_subject" value={settings.default_subject} onChange={(e) => onChange("default_subject", e.target.value)} placeholder="אופציונלי" /></div>
         <div><Label htmlFor="owner_copy_email">מייל להעתק</Label><Input id="owner_copy_email" type="email" dir="ltr" value={settings.owner_copy_email} onChange={(e) => onChange("owner_copy_email", e.target.value)} placeholder="אופציונלי" /></div>
       </div>
+      <div><Label htmlFor="default_email_comment">טקסט מייל נלווה למסמך</Label><Input id="default_email_comment" value={settings.default_email_comment} onChange={(e) => onChange("default_email_comment", e.target.value)} placeholder="אופציונלי" /></div>
       <div className="flex items-center justify-between"><Label htmlFor="default_tax_included">המחירים כוללים מע״מ כברירת מחדל</Label><Switch id="default_tax_included" checked={settings.default_tax_included === "true"} onCheckedChange={(value) => onChange("default_tax_included", value ? "true" : "false")} /></div>
     </section>
   );
