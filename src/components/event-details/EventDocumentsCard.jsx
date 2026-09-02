@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileDown, RotateCcw, Share2, Unlink } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import CreditDocumentDialog from "@/components/billing/CreditDocumentDialog";
+import CancelInvoiceWizard from "@/components/billing/CancelInvoiceWizard";
 import ShareDocumentDialog from "@/components/billing/ShareDocumentDialog";
 import { getEventContactList } from "@/lib/eventContactList";
 
@@ -18,6 +18,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
   const queryClient = useQueryClient();
   const [busyId, setBusyId] = useState(null);
   const [documentToCredit, setDocumentToCredit] = useState(null);
+  const [cancelStep, setCancelStep] = useState("credit");
   const [documentToShare, setDocumentToShare] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -50,10 +51,27 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
 
   const handleCredit = async (reason) => {
     setActionLoading(true);
-    await runAction(() => base44.functions.invoke("invoice4uCancelInvoice", { documentId: documentToCredit.id, reason }), "מסמך הזיכוי הופק");
+    try {
+      await base44.functions.invoke("invoice4uCancelInvoice", { documentId: documentToCredit.id, reason });
+      refresh();
+      toast.success("מסמך הזיכוי הופק");
+      setCancelStep("refund");
+    } catch (error) { toast.error(error.response?.data?.error || error.message); }
     setActionLoading(false);
-    setDocumentToCredit(null);
   };
+
+  const handleRefundReceipt = async (reason) => {
+    setActionLoading(true);
+    try {
+      await base44.functions.invoke("invoice4uCancelInvoice", { documentId: documentToCredit.id, reason, step: "refund_receipt" });
+      refresh();
+      toast.success("הקבלה השלילית הופקה");
+      setCancelStep("done");
+    } catch (error) { toast.error(error.response?.data?.error || error.message); }
+    setActionLoading(false);
+  };
+
+  const closeCancelWizard = () => { setDocumentToCredit(null); setCancelStep("credit"); };
 
   const handleShare = async (payload) => {
     setActionLoading(true);
@@ -83,7 +101,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
                     {pdf && <Button asChild variant="ghost" size="icon" title="צפייה והורדה"><a href={pdf} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a></Button>}
                     {isAdmin && doc.invoice4u_id && <Button variant="ghost" size="icon" title={pdf ? "רענן קישור PDF" : "הפק PDF"} disabled={busyId === doc.id} onClick={() => handleRefreshPdf(doc)}><FileDown className="h-4 w-4" /></Button>}
                     {isAdmin && pdf && <Button variant="ghost" size="icon" title="שיתוף" onClick={() => setDocumentToShare(doc)}><Share2 className="h-4 w-4" /></Button>}
-                    {canCredit && <Button variant="ghost" size="icon" title="הפק זיכוי מלא" onClick={() => setDocumentToCredit(doc)}><RotateCcw className="h-4 w-4" /></Button>}
+                    {canCredit && <Button variant="ghost" size="icon" title="ביטול מסמך (זיכוי + קבלה שלילית)" onClick={() => { setCancelStep("credit"); setDocumentToCredit(doc); }}><RotateCcw className="h-4 w-4" /></Button>}
                     {isAdmin && <Button variant="ghost" size="icon" title="נתק מאירוע" onClick={() => handleDetach(doc)}><Unlink className="h-4 w-4" /></Button>}
                   </div>
                 </div>
@@ -92,7 +110,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
           </div>
         )}
       </CardContent>
-      <CreditDocumentDialog document={documentToCredit} onClose={() => setDocumentToCredit(null)} onConfirm={handleCredit} loading={actionLoading} />
+      <CancelInvoiceWizard document={documentToCredit} step={cancelStep} onClose={closeCancelWizard} onCredit={handleCredit} onRefund={handleRefundReceipt} loading={actionLoading} />
       <ShareDocumentDialog document={documentToShare} onClose={() => setDocumentToShare(null)} onConfirm={handleShare} loading={actionLoading} contacts={contacts} />
     </Card>
   );
