@@ -7,8 +7,16 @@ export function calcProcessingFee(settings, amount) {
   return { amount: Math.round(fee * 100) / 100, label: settings.processing_fee_label || "עמלת סליקה" };
 }
 
+// אחוז המקדמה מההגדרות. אם לא הוגדר כלל - ברירת המחדל היא 20%.
+export function advancePercent(settings) {
+  const raw = settings?.default_advance_percent;
+  if (raw === undefined || raw === null || raw === "") return 20;
+  const parsed = parseFloat(raw);
+  return Number.isNaN(parsed) || parsed < 0 ? 0 : parsed;
+}
+
 export function calcAdvanceAmount(settings, balance) {
   const configured = parseFloat(settings?.default_advance_amount) || 0;
-  const suggested = Math.max(configured, (Number(balance) || 0) * 0.2);
+  const suggested = Math.max(configured, (Number(balance) || 0) * advancePercent(settings) / 100);
   return Math.round(Math.min(Number(balance) || 0, suggested) * 100) / 100;
 }

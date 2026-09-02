@@ -85,10 +85,12 @@ export function calculateProcessingFee(config, amount, language = "he") {
   return { amount: round2(fee), label };
 }
 
-// סכום מקדמה מוצע - הגבוה מבין הסכום המוגדר ל-20% מהיתרה.
+// סכום מקדמה מוצע - הגבוה מבין הסכום המינימלי המוגדר לאחוז מהיתרה שהוגדר בהגדרות (ברירת מחדל 20%).
 export function calculateAdvanceAmount(config, balance) {
   const configured = num(config.default_advance_amount);
-  return round2(Math.min(balance, Math.max(configured, balance * 0.2)));
+  const rawPercent = config.default_advance_percent;
+  const percent = rawPercent === undefined || rawPercent === null || rawPercent === "" ? 20 : Math.max(0, num(rawPercent));
+  return round2(Math.min(balance, Math.max(configured, balance * percent / 100)));
 }
 
 // בונה שורות מסמך. פירוט מלא רק כשנסלק כל הסכום, אחרת שורה כללית -
