@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, FileText } from 'lucide-react';
+import { Plus, Trash2, FileText, ChevronDown, CreditCard, Link2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ManualDocumentButton from './ManualDocumentButton';
 import { format } from 'date-fns';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '@/components/utils/currencyUtils';
@@ -33,7 +34,20 @@ export default function PaymentsCard({
       <CardHeader>
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">תשלומים</h3>
-          <div className="flex gap-2">{(isAdmin || clientClearingAllowed) && billingEnabled && <Button size="sm" onClick={onStartClearing}><FileText className="h-4 w-4 ml-2" />תשלום בכרטיס</Button>}{isAdmin && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)}><Plus className="h-4 w-4 ml-2" />הוסף תשלום</Button>}</div>
+          <div className="flex gap-2">
+            {(isAdmin || clientClearingAllowed) && billingEnabled && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="bg-red-800 text-white hover:bg-red-900"><CreditCard className="h-4 w-4 ml-2" />תשלום בכרטיס<ChevronDown className="h-4 w-4 mr-1" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[240px]">
+                  <DropdownMenuItem onSelect={() => onStartClearing('direct')}><CreditCard className="h-4 w-4 ml-2" />סליקת לקוח כאן ועכשיו</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onStartClearing('link')}><Link2 className="h-4 w-4 ml-2" />שליחת דרישת תשלום בקישור</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)}><Plus className="h-4 w-4 ml-2" />הוסף תשלום</Button>}
+          </div>
         </div>
       </CardHeader>
       <CardContent>

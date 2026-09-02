@@ -23,6 +23,7 @@ import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 import { getEventDisplayName, getCustomEventNameFromFields } from '@/lib/eventDisplayName';
+import { getEventContactList } from '@/lib/eventContactList';
 
 // Helper: When merging server data with local state, preserve local values
 // for fields that may differ from server (user is actively editing them)
@@ -159,6 +160,8 @@ export default function EventDetails() {
   const [currentReceiptUrl, setCurrentReceiptUrl] = useState('');  const [currentReceiptPaymentId, setCurrentReceiptPaymentId] = useState(null);
   const [showClearingDialog, setShowClearingDialog] = useState(false);
   const [isStartingClearing, setIsStartingClearing] = useState(false);
+  const [clearingMode, setClearingMode] = useState('direct');
+  const [paymentLinkResult, setPaymentLinkResult] = useState(null);
 
   const [editingServiceField, setEditingServiceField] = useState(null);
   const [savingServiceField, setSavingServiceField] = useState(null);
@@ -826,18 +829,28 @@ export default function EventDetails() {
     }
   }, [eventId, paymentForm, loadEventData]);
 
-  const handleStartClearing = useCallback(async ({ amount, chargeType, ...payer }) => {
+  const handleStartClearing = useCallback(async ({ amount, chargeType, mode, via, ...payer }) => {
     if (!amount || amount <= 0) { alert("אין יתרה פתוחה לתשלום באירוע זה"); return; }
+    const isLink = mode === 'link';
     setIsStartingClearing(true);
     try {
-      const response = await base44.functions.invoke('invoice4uCreateClearingRequest', { eventId, amount, chargeType, payer });
+      const response = await base44.functions.invoke('invoice4uCreateClearingRequest', {
+        eventId, amount, chargeType, payer,
+        ...(isLink ? { mode: 'link', sendLink: { via, phone: payer.phone, email: payer.email } } : {})
+      });
+      if (response.data?.error) throw new Error(response.data.error);
+      if (isLink) {
+        setPaymentLinkResult({ paymentLink: response.data.paymentLink });
+        await loadEventData();
+        return;
+      }
       const redirectUrl = response.data?.redirectUrl;
-      if (!redirectUrl) throw new Error(response.data?.error || "לא התקבל קישור תשלום");
+      if (!redirectUrl) throw new Error("לא התקבל קישור תשלום");
       window.location.assign(redirectUrl);
     } catch (error) {
-      alert("לא ניתן לפתוח תשלום: " + (error.response?.data?.error || error.message));
+      alert(isLink ? "לא ניתן לשלוח קישור לתשלום: " + (error.response?.data?.error || error.message) : "לא ניתן לפתוח תשלום: " + (error.response?.data?.error || error.message));
     } finally { setIsStartingClearing(false); }
-  }, [eventId]);
+  }, [eventId, loadEventData]);
 
   // הפקת חשבונית מס/קבלה עבור תשלום שנרשם ידנית (מזומן, העברה, צ'ק)
   const [creatingDocumentPaymentId, setCreatingDocumentPaymentId] = React.useState(null);
@@ -2181,7 +2194,7 @@ export default function EventDetails() {
         setShowReceiptDialog={setShowReceiptDialog}
         billingEnabled={billingEnabled}
         clientClearingAllowed={clientClearingAllowed}
-        onStartClearing={() => setShowClearingDialog(true)}
+        onStartClearing={(mode) => { setClearingMode(mode === 'link' ? 'link' : 'direct'); setPaymentLinkResult(null); setShowClearingDialog(true); }}
         manualInvoiceEnabled={billingSettings.manual_payment_invoice_enabled === 'true'}
         onCreateManualDocument={handleCreateManualDocument}
         creatingDocumentPaymentId={creatingDocumentPaymentId}
@@ -2194,7 +2207,7 @@ export default function EventDetails() {
 
       <ExportDialog open={showExportDialog} onOpenChange={setShowExportDialog} exportOptions={exportOptions} setExportOptions={setExportOptions} onConfirmExport={handleConfirmExport} />
       <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} eventPrimaryCurrency={event?.primary_currency || 'ILS'} exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()} />
-      <ClearingPaymentDialog open={showClearingDialog} onOpenChange={setShowClearingDialog} event={event} balance={Math.max(0, Number(financials.balance) || 0)} totalPaid={Number(financials.totalPaid) || 0} settings={billingSettings} isAdmin={isAdmin} onStart={handleStartClearing} loading={isStartingClearing} />
+      <ClearingPaymentDialog open={showClearingDialog} onOpenChange={setShowClearingDialog} event={event} balance={Math.max(0, Number(financials.balance) || 0)} totalPaid={Number(financials.totalPaid) || 0} settings={billingSettings} isAdmin={isAdmin} onStart={handleStartClearing} loading={isStartingClearing} initialMode={clearingMode} contacts={getEventContactList(event)} linkResult={paymentLinkResult} onResetLinkResult={() => setPaymentLinkResult(null)} />
       <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
       <Dialog open={showNewServiceDialog} onOpenChange={(open) => { setShowNewServiceDialog(open); if (!open) setNewServiceTargetPackageId(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
