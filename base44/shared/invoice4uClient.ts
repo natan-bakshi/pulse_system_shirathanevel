@@ -1,3 +1,14 @@
+import { secrets } from "base44:runtime";
+
+// לסביבת ה-QA נדרש APIKEY נפרד לחלוטין מסביבת האמת (חשבון QA נפרד ב-Invoice4U).
+// אם עדיין לא הוגדר מפתח QA - נופלים חזרה למפתח הרגיל כדי לא לשבור את הקיים.
+export function invoice4uToken(environment) {
+  if (environment === "qa") {
+    return secrets.get("INVOICE4U_API_TOKEN_QA") || secrets.get("INVOICE4U_API_TOKEN");
+  }
+  return secrets.get("INVOICE4U_API_TOKEN");
+}
+
 export const invoice4uUrls = {
   qa: "https://apiqa.invoice4u.co.il/Services/ApiService.svc",
   production: "https://api.invoice4u.co.il/Services/ApiService.svc"

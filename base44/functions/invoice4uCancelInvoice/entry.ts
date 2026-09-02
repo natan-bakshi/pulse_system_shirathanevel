@@ -1,6 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
-import { secrets } from "base44:runtime";
-import { invoice4uErrors, invoice4uRequest } from "../../shared/invoice4uClient.ts";
+import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
 
 export default async function(req) {
   try {
@@ -18,7 +17,7 @@ export default async function(req) {
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
     const referenceType = document.document_type === "invoice" ? 1 : 3;
     const total = Number(document.total);
-    const response = await invoice4uRequest(environment, "CreateDocument", { token: secrets.get("INVOICE4U_API_TOKEN"), doc: { DocumentType: 4, DocumentReffType: referenceType, ClientID: Number(document.customer_identifier), Subject: reason || `זיכוי מלא למסמך ${document.document_number}`, TaxIncluded: true, Currency: document.currency || "ILS", Invoices: [{ ID: document.invoice4u_id, ReceiptAmount: total }], Items: [{ Name: reason || `זיכוי למסמך ${document.document_number}`, Quantity: 1, Price: total }] } });
+    const response = await invoice4uRequest(environment, "CreateDocument", { token: invoice4uToken(environment), doc: { DocumentType: 4, DocumentReffType: referenceType, ClientID: Number(document.customer_identifier), Subject: reason || `זיכוי מלא למסמך ${document.document_number}`, TaxIncluded: true, Currency: document.currency || "ILS", Invoices: [{ ID: document.invoice4u_id, ReceiptAmount: total }], Items: [{ Name: reason || `זיכוי למסמך ${document.document_number}`, Quantity: 1, Price: total }] } });
     const result = response.CreateDocumentResult || response;
     const errorMessage = invoice4uErrors(result);
     if (errorMessage) return Response.json({ error: errorMessage }, { status: 400 });

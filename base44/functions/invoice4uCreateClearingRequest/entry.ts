@@ -1,6 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
-import { secrets } from "base44:runtime";
-import { invoice4uErrors, invoice4uRequest } from "../../shared/invoice4uClient.ts";
+import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
 import { buildDocumentItems, calculateAdvanceAmount, calculateEventBalance, calculateProcessingFee, itemsToPipedFields } from "../../shared/eventBilling.ts";
 
 const appUrl = "https://pulse-system.base44.app";
@@ -60,7 +59,7 @@ export default async function(req) {
 
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
     const request = {
-      Invoice4UUserApiKey: secrets.get("INVOICE4U_API_TOKEN"),
+      Invoice4UUserApiKey: invoice4uToken(environment),
       Sum: chargeTotal,
       Currency: financials.currency === "ILS" ? "NIS" : financials.currency,
       Type: 1,

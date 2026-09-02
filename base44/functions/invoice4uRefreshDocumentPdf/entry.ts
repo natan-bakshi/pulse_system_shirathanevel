@@ -1,6 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
-import { secrets } from "base44:runtime";
-import { invoice4uErrors, invoice4uRequest } from "../../shared/invoice4uClient.ts";
+import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
 
 // שליפת קישורי ה-PDF (מקור והעתק נאמן למקור) של מסמך מ-Invoice4U ושמירתם על הרשומה.
 export default async function(req) {
@@ -21,7 +20,7 @@ export default async function(req) {
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
 
     const response = await invoice4uRequest(environment, "GetDocument", {
-      token: secrets.get("INVOICE4U_API_TOKEN"),
+      token: invoice4uToken(environment),
       docId: document.invoice4u_id
     });
     const result = response.GetDocumentResult || response;
