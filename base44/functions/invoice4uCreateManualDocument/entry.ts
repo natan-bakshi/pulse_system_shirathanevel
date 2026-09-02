@@ -1,5 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { invoice4uErrors, invoice4uFindOrCreateCustomer, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
+import { buildDocumentBody, round2 } from "../../shared/invoice4uDocuments.ts";
 
 // איש הקשר הראשון של האירוע (הורה או איש קשר של המזמין) - לפרטי הלקוח במסמך.
 function firstEventContact(event) {
@@ -7,11 +8,7 @@ function firstEventContact(event) {
   return [...parse(event?.parents), ...parse(event?.organizer_contacts)].find((contact) => contact?.name || contact?.phone || contact?.email) || {};
 }
 
-// סוגי תשלום ב-Invoice4U: מזומן, צ'ק, אשראי, העברה בנקאית.
-const paymentTypes: Record<string, number> = { cash: 1, check: 2, credit_card: 3, bank_transfer: 4 };
-const round2 = (value: number) => Math.round(value * 100) / 100;
-// Invoice4U מצפה לתאריכים בפורמט WCF: /Date(מילישניות)/
-const wcfDate = (value: string) => `/Date(${new Date(value).getTime()})/`;
+
 
 // הפקת חשבונית מס/קבלה עבור תשלום שנרשם ידנית במערכת (מזומן, העברה, צ'ק).
 export default async function(req) {
@@ -53,20 +50,17 @@ export default async function(req) {
       ? await invoice4uFindOrCreateCustomer(environment, token, { name: customerName, email: customerEmail, phone: customerPhone, identifier: customer?.identifier || "" })
       : null;
 
-    const response = await invoice4uRequest(environment, "CreateDocument", {
-      token,
-      doc: {
-        // 2 = קבלה, 3 = חשבונית מס/קבלה
-        DocumentType: isReceiptOnly ? 2 : 3,
-        Subject: subject,
-        Currency: payment.currency || "ILS",
-        ...(isReceiptOnly
-          ? { TaxIncluded: true, ClientID: clientId }
-          : { Items: [{ Name: subject, Quantity: 1, Price: round2(amount / (1 + vatRate)), TaxRate: vatPercent }] }),
-        Payments: [{ Amount: amount, PaymentType: paymentTypes[payment.payment_method] ?? 1, Date: wcfDate(payment.payment_date) }],
-        ...(isReceiptOnly ? {} : { GeneralCustomer: { Name: customerName, Email: customerEmail, Phone: customerPhone, Identifier: customer?.identifier || "" } })
-      }
+    const doc = buildDocumentBody({
+      slug: isReceiptOnly ? "receipt" : "invoice_receipt",
+      subject,
+      currency: payment.currency || "ILS",
+      items: [{ name: subject, quantity: 1, price: round2(amount / (1 + vatRate)), taxRate: vatPercent }],
+      payments: [{ amount, type: payment.payment_method, date: payment.payment_date }],
+      customer: { name: customerName, email: customerEmail, phone: customerPhone, identifier: customer?.identifier || "" },
+      clientId,
+      vatPercent
     });
+    const response = await invoice4uRequest(environment, "CreateDocument", { token, doc });
     const result = response.CreateDocumentResult || response;
     const errorMessage = invoice4uErrors(result);
     if (errorMessage) return Response.json({ error: errorMessage }, { status: 400 });
