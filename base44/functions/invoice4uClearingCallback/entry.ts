@@ -1,12 +1,22 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
+import { notifyAdminsClearingResult } from "../../shared/billingNotifications.ts";
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const token = new URL(req.url).searchParams.get("token");
-    const form = await req.formData();
-    const rawData = form.get("Data");
-    const data = typeof rawData === "string" ? JSON.parse(rawData) : null;
+    let token = new URL(req.url).searchParams.get("token");
+    // Invoice4U שולח form-data עם שדה Data, אך יש חשבונות ששולחים JSON ישר.
+    const contentType = req.headers.get("content-type") || "";
+    let data = null;
+    if (contentType.includes("json")) {
+      const body = await req.json();
+      data = typeof body?.Data === "string" ? JSON.parse(body.Data) : (body?.Data || body);
+      if (!token && body?.token) token = body.token;
+    } else {
+      const form = await req.formData();
+      const rawData = form.get("Data");
+      data = typeof rawData === "string" ? JSON.parse(rawData) : null;
+    }
     if (!token || !data?.OrderIdClientUsage) return Response.json({ error: "בקשת עדכון לא תקינה" }, { status: 400 });
     const payment = await base44.asServiceRole.entities.Payment.get(data.OrderIdClientUsage);
     if (!payment || payment.invoice4u_callback_token !== token) return Response.json({ error: "בקשת עדכון לא מורשית" }, { status: 403 });
@@ -17,6 +27,18 @@ export default async function(req) {
       update.financial_document_id = document.id;
     }
     await base44.asServiceRole.entities.Payment.update(payment.id, update);
+
+    // התראת מנהלים על תוצאת הסליקה (מוצלחת או נכשלה) לפי תבניות המערכת.
+    try {
+      const event = await base44.asServiceRole.entities.Event.get(payment.event_id);
+      await notifyAdminsClearingResult(base44, {
+        templateType: successful ? "PAYMENT_CLEARED_SUCCESS" : "PAYMENT_CLEARED_FAILED",
+        event,
+        payment: { ...payment, ...update },
+        extra: { error_message: successful ? "" : (data.ErrorMessage || "") }
+      });
+    } catch (notifyError) { console.warn(`[ClearingCallback] notify failed: ${notifyError.message}`); }
+
     return Response.json({ received: true });
   } catch (error) { return Response.json({ error: error.message }, { status: 500 }); }
 }
