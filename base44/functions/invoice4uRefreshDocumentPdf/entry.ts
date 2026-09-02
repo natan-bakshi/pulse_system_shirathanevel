@@ -23,7 +23,8 @@ export default async function(req) {
       token: invoice4uToken(environment),
       docId: document.invoice4u_id
     });
-    const result = response.GetDocumentResult || response;
+    const result = response?.GetDocumentResult || response;
+    if (!result) return Response.json({ error: "המסמך לא נמצא ב-Invoice4U" }, { status: 404 });
     const errorMessage = invoice4uErrors(result);
     if (errorMessage) return Response.json({ error: errorMessage }, { status: 400 });
 

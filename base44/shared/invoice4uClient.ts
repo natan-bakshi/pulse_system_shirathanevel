@@ -22,7 +22,8 @@ export async function invoice4uRequest(environment, endpoint, body) {
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data?.Message || "שגיאה בתקשורת עם Invoice4U");
-  return data;
+  // ה-REST של Invoice4U עוטף את התוצאה במפתח "d" - מחזירים את התוכן עצמו.
+  return data && typeof data === "object" && "d" in data ? data.d : data;
 }
 
 export function invoice4uErrors(result) {
