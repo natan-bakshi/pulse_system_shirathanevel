@@ -6,6 +6,7 @@ import FamilyContactCard from './FamilyContactCard';
 import ScheduleCard from './ScheduleCard';
 import ServicesCard from './ServicesCard';
 import PaymentsCard from './PaymentsCard';
+import EventDocumentsCard from './EventDocumentsCard';
 import FinancialSummaryCard from './FinancialSummaryCard';
 import EventTasksTab from '../tasks/EventTasksTab';
 
@@ -213,6 +214,10 @@ export default function EventDetailsTabs(props) {
             clientClearingAllowed={clientClearingAllowed}
             onStartClearing={onStartClearing}
           />
+        )}
+
+        {(isAdmin || isClient) && billingEnabled && (
+          <EventDocumentsCard eventId={event?.id} isAdmin={isAdmin} />
         )}
 
         {(isAdmin || isClient) && (

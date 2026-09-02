@@ -1,0 +1,89 @@
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
+import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
+
+// איש הקשר הראשון של האירוע (הורה או איש קשר של המזמין) - לפרטי הלקוח במסמך.
+function firstEventContact(event) {
+  const parse = (value) => { if (Array.isArray(value)) return value; try { const parsed = JSON.parse(value || "[]"); return Array.isArray(parsed) ? parsed : []; } catch { return []; } };
+  return [...parse(event?.parents), ...parse(event?.organizer_contacts)].find((contact) => contact?.name || contact?.phone || contact?.email) || {};
+}
+
+// סוגי תשלום ב-Invoice4U: מזומן, צ'ק, אשראי, העברה בנקאית.
+const paymentTypes: Record<string, number> = { cash: 1, check: 2, credit_card: 3, bank_transfer: 4 };
+const round2 = (value: number) => Math.round(value * 100) / 100;
+// Invoice4U מצפה לתאריכים בפורמט WCF: /Date(מילישניות)/
+const wcfDate = (value: string) => `/Date(${new Date(value).getTime()})/`;
+
+// הפקת חשבונית מס/קבלה עבור תשלום שנרשם ידנית במערכת (מזומן, העברה, צ'ק).
+export default async function(req) {
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
+
+    const { paymentId, customer } = await req.json();
+    if (!paymentId) return Response.json({ error: "חסר מזהה תשלום" }, { status: 400 });
+
+    const settings = await base44.asServiceRole.entities.AppSettings.list();
+    const config = Object.fromEntries(settings.map((item) => [item.setting_key, item.setting_value]));
+    if (config.billing_enabled !== "true") return Response.json({ error: "מודול החיוב אינו פעיל" }, { status: 403 });
+    if (config.manual_payment_invoice_enabled !== "true") return Response.json({ error: "הפקת מסמך לתשלום ידני אינה מופעלת בהגדרות" }, { status: 403 });
+
+    const payment = await base44.asServiceRole.entities.Payment.get(paymentId);
+    if (!payment) return Response.json({ error: "התשלום לא נמצא" }, { status: 404 });
+    if (payment.financial_document_id) return Response.json({ error: "לתשלום זה כבר הופק מסמך" }, { status: 400 });
+    if (payment.payment_status && payment.payment_status !== "completed") return Response.json({ error: "ניתן להפיק מסמך רק לתשלום שהושלם" }, { status: 400 });
+    const amount = round2(Number(payment.amount));
+    if (!Number.isFinite(amount) || amount <= 0) return Response.json({ error: "סכום התשלום אינו תקין" }, { status: 400 });
+
+    const event = payment.event_id ? await base44.asServiceRole.entities.Event.get(payment.event_id) : null;
+    const vatPercent = Number(config.vat_rate) || 18;
+    const vatRate = vatPercent / 100;
+    const subject = event ? `תשלום עבור ${event.event_name}` : (payment.notes || "תשלום");
+    const contact = firstEventContact(event);
+    const customerName = customer?.name || payment.payer_name || contact.name || event?.family_name || "לקוח";
+
+    const environment = config.invoice4u_env === "production" ? "production" : "qa";
+    const response = await invoice4uRequest(environment, "CreateDocument", {
+      token: invoice4uToken(environment),
+      doc: {
+        DocumentType: 3,
+        Subject: subject,
+        Currency: payment.currency || "ILS",
+        Items: [{ Name: subject, Quantity: 1, Price: round2(amount / (1 + vatRate)), TaxRate: vatPercent }],
+        Payments: [{ Amount: amount, PaymentType: paymentTypes[payment.payment_method] ?? 1, Date: wcfDate(payment.payment_date) }],
+        GeneralCustomer: {
+          Name: customerName,
+          Email: customer?.email || payment.payer_email || contact.email || "",
+          Phone: customer?.phone || payment.payer_phone || contact.phone || "",
+          Identifier: customer?.identifier || ""
+        }
+      }
+    });
+    const result = response.CreateDocumentResult || response;
+    const errorMessage = invoice4uErrors(result);
+    if (errorMessage) return Response.json({ error: errorMessage }, { status: 400 });
+
+    const document = await base44.asServiceRole.entities.FinancialDocument.create({
+      document_type: "invoice_receipt",
+      document_number: String(result.DocumentNumber || ""),
+      invoice4u_id: result.ID || "",
+      status: "open",
+      total: Number(result.Total || amount),
+      total_without_tax: Number(result.TotalWithoutTax || 0),
+      total_tax: Number(result.TotalTaxAmount || 0),
+      currency: payment.currency || "ILS",
+      issue_date: new Date().toISOString(),
+      linked_event_id: payment.event_id || "",
+      linked_payment_id: payment.id,
+      customer_name: customerName,
+      customer_identifier: String(result.ClientID || ""),
+      pdf_original_url: result.PrintOriginalPDFLink || "",
+      pdf_certified_url: result.PrintCertifiedCopyPDFLink || ""
+    });
+    await base44.asServiceRole.entities.Payment.update(payment.id, { financial_document_id: document.id, invoice4u_document_number: document.document_number });
+    return Response.json({ document });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+}
