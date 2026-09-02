@@ -21,7 +21,7 @@ export default async function(req) {
     const payment = await base44.asServiceRole.entities.Payment.get(data.OrderIdClientUsage);
     if (!payment || payment.invoice4u_callback_token !== token) return Response.json({ error: "בקשת עדכון לא מורשית" }, { status: 403 });
     const successful = String(data.Success).toLowerCase() === "true";
-    const update = { payment_status: successful ? "completed" : "failed", invoice4u_clearing_status: successful ? "approved" : (data.ErrorMessage || "declined"), invoice4u_payment_id: data.PaymentId || "", invoice4u_document_number: data.DocumentNumber || "", customer_name_on_card: data.CustomerName || "", client_ip: data.ClientIp || "" };
+    const update = { payment_status: successful ? "completed" : "failed", invoice4u_clearing_status: successful ? "approved" : (data.ErrorMessage || "declined"), invoice4u_payment_id: data.PaymentId || "", invoice4u_document_number: data.DocumentNumber || "", customer_name_on_card: data.CustomerName || "", client_ip: data.ClientIp || "", auth_number: String(data.AuthNumber || data.ConfirmationNumber || ""), card_suffix: String(data.CardSuffix || data.CardNumber || "").slice(-4) };
     if (successful && String(data.DocCreated).toLowerCase() === "true" && !payment.financial_document_id) {
       const document = await base44.asServiceRole.entities.FinancialDocument.create({ document_type: "invoice_receipt", document_number: String(data.DocumentNumber || ""), invoice4u_id: data.DocumentId || "", invoice4u_unique_id: data.UniqueId || "", status: "open", total: Number(data.Amount || payment.amount), currency: payment.currency || "ILS", issue_date: new Date().toISOString(), linked_event_id: payment.event_id, linked_payment_id: payment.id, customer_name: data.CustomerName || "", customer_identifier: data.CustomerId || "", cipher_text: data.CipherText || "", pdf_original_url: data.CipherTextOriginal ? `https://newview.invoice4u.co.il/Views/PDF.aspx?cipher=${data.CipherTextOriginal}` : "", pdf_certified_url: data.CipherText ? `https://newview.invoice4u.co.il/Views/PDF.aspx?cipher=${data.CipherText}` : "" });
       update.financial_document_id = document.id;
@@ -29,7 +29,9 @@ export default async function(req) {
     await base44.asServiceRole.entities.Payment.update(payment.id, update);
 
     // התראת מנהלים על תוצאת הסליקה (מוצלחת או נכשלה) לפי תבניות המערכת.
+    // סליקה כללית אינה משויכת לאירוע ולכן אינה מפעילה תבנית מבוססת-אירוע.
     try {
+      if (!payment.event_id) return Response.json({ received: true });
       const event = await base44.asServiceRole.entities.Event.get(payment.event_id);
       await notifyAdminsClearingResult(base44, {
         templateType: successful ? "PAYMENT_CLEARED_SUCCESS" : "PAYMENT_CLEARED_FAILED",
