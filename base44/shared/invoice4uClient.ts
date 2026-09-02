@@ -26,12 +26,34 @@ export async function invoice4uRequest(environment, endpoint, body) {
   return data && typeof data === "object" && "d" in data ? data.d : data;
 }
 
-// קבלה ב-Invoice4U חייבת להיות מקושרת ללקוח קיים (לא "לקוח מזדמן"),
-// לכן מאתרים לקוח לפי שם ואם אינו קיים - יוצרים אותו.
+// קבלה ב-Invoice4U חייבת להיות מקושרת ללקוח קיים (לא "לקוח מזדמן").
+// זיהוי הלקוח נעשה לפי ח.פ./ת.ז תחילה, אחריו אימייל, ורק לבסוף לפי שם -
+// כדי שלא נמזג שתי משפחות שונות בעלות אותו שם לאותו כרטיס לקוח.
 export async function invoice4uFindOrCreateCustomer(environment, token, customer) {
   const name = customer.name;
-  const found = await invoice4uRequest(environment, "GetCustomers", { token, cust: { Name: name, Active: true } });
-  const existing = Array.isArray(found?.Response) ? found.Response.find((item) => item?.Name === name) : null;
+  const identifier = String(customer.identifier || "").trim();
+  const email = String(customer.email || "").trim().toLowerCase();
+
+  const search = async (cust) => {
+    const found = await invoice4uRequest(environment, "GetCustomers", { token, cust });
+    return Array.isArray(found?.Response) ? found.Response : [];
+  };
+
+  if (identifier) {
+    const byIdentifier = (await search({ Identifier: identifier, Active: true }))
+      .find((item) => String(item?.Identifier || "").trim() === identifier);
+    if (byIdentifier?.ID) return byIdentifier.ID;
+  }
+
+  if (email) {
+    const byEmail = (await search({ Email: email, Active: true }))
+      .find((item) => String(item?.Email || "").trim().toLowerCase() === email);
+    if (byEmail?.ID) return byEmail.ID;
+  }
+
+  // התאמה לפי שם מתקבלת רק כשאין ח.פ. סותר על הלקוח הקיים.
+  const existing = (await search({ Name: name, Active: true })).find((item) => item?.Name === name
+    && (!identifier || !String(item?.Identifier || "").trim() || String(item.Identifier).trim() === identifier));
   if (existing?.ID) return existing.ID;
 
   const created = await invoice4uRequest(environment, "CreateCustomer", {

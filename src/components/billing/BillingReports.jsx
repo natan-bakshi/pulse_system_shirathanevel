@@ -7,10 +7,11 @@ import ReportFilters from "@/components/billing/reports/ReportFilters";
 import ReportSummaryCards from "@/components/billing/reports/ReportSummaryCards";
 import ReportCharts from "@/components/billing/reports/ReportCharts";
 import ReportDetailTable from "@/components/billing/reports/ReportDetailTable";
+import OpenBalancesTable from "@/components/billing/reports/OpenBalancesTable";
 import { buildReportRows, buildStats, byStatusSeries, byTypeSeries, defaultFilters, downloadCsv, filterDocuments, monthlySeries, topEventsSeries } from "@/components/billing/reports/billingReportUtils";
 
 // דוחות וסטטיסטיקות כספיות - מבוססים על המסמכים הפיננסיים והסליקות הקיימים.
-export default function BillingReports({ documents = [], events = [], eventsById, generalPayments = [] }) {
+export default function BillingReports({ documents = [], events = [], eventsById, generalPayments = [], eventServices = [], allPayments = [], vatRate = 0.18, exchangeRate = 3.6, balancesLoading = false }) {
   const [filters, setFilters] = useState(defaultFilters);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
@@ -56,6 +57,7 @@ export default function BillingReports({ documents = [], events = [], eventsById
         </CardContent>
       </Card>
 
+      <OpenBalancesTable events={events} eventServices={eventServices} payments={allPayments} vatRate={vatRate} exchangeRate={exchangeRate} loading={balancesLoading} />
       <ReportSummaryCards stats={stats} />
       <ReportCharts monthly={monthly} byType={byType} byStatus={byStatus} topEvents={topEvents} />
       <ReportDetailTable rows={rows} />

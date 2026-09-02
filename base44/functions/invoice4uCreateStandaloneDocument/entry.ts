@@ -1,6 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { invoice4uErrors, invoice4uFindOrCreateCustomer, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
-import { buildDocumentBody, documentRequirements, documentTypeLabels, round2, standaloneDocumentTypes, summarizeItems } from "../../shared/invoice4uDocuments.ts";
+import { buildDocumentBody, documentLabel, documentRequirements, round2, standaloneDocumentTypes, summarizeItems } from "../../shared/invoice4uDocuments.ts";
 
 // הפקת מסמך פיננסי עצמאי (ללא תלות בתשלום קיים) מלשונית התשלומים.
 export default async function(req) {
@@ -10,7 +10,9 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
 
-    const { documentType, customer = {}, items = [], payments = [], linkedEventId, subject, comments } = await req.json();
+    const { documentType, customer = {}, items = [], payments = [], linkedEventId, subject, comments, language } = await req.json();
+    // שפת המסמך - עברית כברירת מחדל. Invoice4U יפיק את פרטי העסק בשפה זו.
+    const docLanguage = language === "en" ? "en" : "he";
     if (!standaloneDocumentTypes.includes(documentType)) return Response.json({ error: "סוג מסמך לא נתמך" }, { status: 400 });
 
     const settings = await base44.asServiceRole.entities.AppSettings.list();
@@ -34,7 +36,7 @@ export default async function(req) {
     const vatPercent = Number(config.vat_rate) || 18;
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
     const token = invoice4uToken(environment);
-    const label = documentTypeLabels[documentType];
+    const label = documentLabel(documentType, docLanguage);
     const docSubject = String(subject || "").trim() || label;
 
     const clientId = requirements.needsRegisteredCustomer
@@ -51,9 +53,10 @@ export default async function(req) {
         payments: cleanPayments,
         customer: { ...customer, name: customerName },
         clientId,
-        comments: comments || config.default_email_comment || "",
+        comments: comments || (docLanguage === "en" ? config.default_email_comment_en : config.default_email_comment) || "",
         associatedEmails: customer.email ? [customer.email] : [],
-        vatPercent
+        vatPercent,
+        language: docLanguage
       })
     });
     const result = response.CreateDocumentResult || response;

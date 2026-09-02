@@ -252,6 +252,15 @@ export default function EventDetails() {
   const clientClearingAllowed = appSettings.find((item) => item.setting_key === 'client_clearing_allowed')?.setting_value === 'true';
   const billingSettings = useMemo(() => appSettings.reduce((all, item) => ({ ...all, [item.setting_key]: item.setting_value }), {}), [appSettings]);
 
+  // כניסה מדוח היתרות הפתוחות (?clearing=link) פותחת מיד את דיאלוג דרישת התשלום
+  const clearingParam = urlParams.get('clearing');
+  useEffect(() => {
+    if (!clearingParam || !isAdmin || !billingEnabled) return;
+    setClearingMode(clearingParam === 'link' ? 'link' : 'direct');
+    setPaymentLinkResult(null);
+    setShowClearingDialog(true);
+  }, [clearingParam, isAdmin, billingEnabled]);
+
   // Initialize quote options defaults when event loads
   useEffect(() => {
     if (event && quoteIncludeIntro === null) {
@@ -829,13 +838,13 @@ export default function EventDetails() {
     }
   }, [eventId, paymentForm, loadEventData]);
 
-  const handleStartClearing = useCallback(async ({ amount, chargeType, mode, via, ...payer }) => {
+  const handleStartClearing = useCallback(async ({ amount, chargeType, mode, via, language, ...payer }) => {
     if (!amount || amount <= 0) { alert("אין יתרה פתוחה לתשלום באירוע זה"); return; }
     const isLink = mode === 'link';
     setIsStartingClearing(true);
     try {
       const response = await base44.functions.invoke('invoice4uCreateClearingRequest', {
-        eventId, amount, chargeType, payer,
+        eventId, amount, chargeType, payer, language,
         ...(isLink ? { mode: 'link', sendLink: { via, phone: payer.phone, email: payer.email } } : {})
       });
       if (response.data?.error) throw new Error(response.data.error);

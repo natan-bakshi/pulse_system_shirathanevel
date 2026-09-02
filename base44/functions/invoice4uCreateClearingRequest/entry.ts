@@ -7,10 +7,12 @@ const appUrl = "https://pulse-system.base44.app";
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
 const defaultLinkTemplate = "שלום {{name}},\nהתקבלה עבורך דרישת תשלום מ{{business_name}}.\n\n{{description}}\nסכום לתשלום: {{amount}}\n\nלתשלום מאובטח בכרטיס אשראי:\n{{link}}";
+const defaultLinkTemplateEn = "Hello {{name}},\nYou have received a payment request from {{business_name}}.\n\n{{description}}\nAmount due: {{amount}}\n\nPay securely by credit card:\n{{link}}";
 
-// בונה את הודעת דרישת התשלום מתבנית ההגדרות (או מתבנית ברירת המחדל).
-function renderLinkMessage(config, values) {
-  const template = String(config.payment_link_message_template || "").trim() || defaultLinkTemplate;
+// בונה את הודעת דרישת התשלום מתבנית ההגדרות (או מתבנית ברירת המחדל) לפי שפת הבקשה.
+function renderLinkMessage(config, values, language = "he") {
+  const configured = language === "en" ? config.payment_link_message_template_en : config.payment_link_message_template;
+  const template = String(configured || "").trim() || (language === "en" ? defaultLinkTemplateEn : defaultLinkTemplate);
   return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value ?? "")), template);
 }
 
@@ -19,7 +21,9 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    const { eventId, amount, chargeType, payer, description, mode, sendLink } = await req.json();
+    const { eventId, amount, chargeType, payer, description, mode, sendLink, language } = await req.json();
+    // שפת הסליקה והמסמך שיופק - עברית כברירת מחדל.
+    const docLanguage = language === "en" ? "en" : "he";
     // mode='link' - יצירת קישור לדף תשלום ושליחתו ללקוח, במקום הפניה מיידית.
     const isLinkMode = mode === "link";
     const settings = await base44.asServiceRole.entities.AppSettings.list();
@@ -47,7 +51,7 @@ export default async function(req) {
     const vatRate = (Number(config.vat_rate) || 18) / 100;
     const usdIlsRate = Number(config.usd_ils_exchange_rate) || 3.6;
     const isInterested = payer.isInterestedInInvoice !== false;
-    const fee = calculateProcessingFee(config, requestedAmount);
+    const fee = calculateProcessingFee(config, requestedAmount, docLanguage);
     const chargeTotal = round2(requestedAmount + fee.amount);
     const feeItems = fee.amount > 0 ? [{ name: fee.label, quantity: 1, price: round2(fee.amount / (1 + vatRate)) }] : [];
 
@@ -76,10 +80,12 @@ export default async function(req) {
       if (requestedAmount > financials.balance + 0.01) return Response.json({ error: `לא ניתן לסלוק יותר מהיתרה לתשלום (${financials.balance.toLocaleString()})` }, { status: 400 });
       isAdvance = chargeType === "advance";
       if (isAdvance && financials.totalPaid > 0) return Response.json({ error: "מקדמה זמינה רק כאשר טרם התקבל תשלום באירוע" }, { status: 400 });
-      subject = isAdvance ? `מקדמה עבור ${event.event_name}` : `תשלום עבור ${event.event_name}`;
+      subject = docLanguage === "en"
+        ? (isAdvance ? `Advance payment for ${event.event_name}` : `Payment for ${event.event_name}`)
+        : (isAdvance ? `מקדמה עבור ${event.event_name}` : `תשלום עבור ${event.event_name}`);
       items = isAdvance
-        ? [{ name: `מקדמה - ${event.event_name}`, quantity: 1, price: round2(requestedAmount / (1 + vatRate)) }, ...feeItems]
-        : buildDocumentItems({ event, services, amount: requestedAmount, fee, itemized: isAdmin && payer.itemized === true, financials, vatRate, usdIlsRate });
+        ? [{ name: docLanguage === "en" ? `Advance payment - ${event.event_name}` : `מקדמה - ${event.event_name}`, quantity: 1, price: round2(requestedAmount / (1 + vatRate)) }, ...feeItems]
+        : buildDocumentItems({ event, services, amount: requestedAmount, fee, itemized: isAdmin && payer.itemized === true, financials, vatRate, usdIlsRate, language: docLanguage });
     }
 
     const callbackToken = crypto.randomUUID();
@@ -98,6 +104,8 @@ export default async function(req) {
       payer_email: payer.email || "",
       is_interested_in_invoice: isInterested,
       invoice4u_callback_token: callbackToken,
+      document_language: docLanguage,
+      is_payment_link: isLinkMode,
       notes: [isGeneral ? subject : (isAdvance ? "מקדמה" : ""), isLinkMode ? "דרישת תשלום בקישור" : ""].filter(Boolean).join(" - ")
     });
 
@@ -117,10 +125,11 @@ export default async function(req) {
       IsDocCreate: true,
       IsManualDocCreationsWithParams: true,
       ...itemsToPipedFields(items, Number(config.vat_rate) || 18),
-      DocHeadline: config.default_subject || subject,
-      DocComments: config.default_email_comment || "",
+      DocHeadline: docLanguage === "en" ? subject : (config.default_subject || subject),
+      DocComments: docLanguage === "en" ? (config.default_email_comment_en || "") : (config.default_email_comment || ""),
       DocBranchId: config.invoice4u_branch_id || undefined,
-      Language: config.default_language || "he",
+      // Invoice4U מפיק את המסמך עם פרטי העסק בשפה שנבחרה כאן.
+      Language: docLanguage,
       // בשליחת קישור הלקוח אינו בהכרח משתמש רשום - מפנים לדף הבית של המערכת.
       ReturnUrl: isLinkMode ? appUrl : (isGeneral ? `${appUrl}/BillingDashboard?payment=${payment.id}` : `${appUrl}/EventDetails?id=${eventId}&payment=${payment.id}`),
       CallBackUrl: `${appUrl}/functions/invoice4uClearingCallback?token=${callbackToken}`,
@@ -138,6 +147,13 @@ export default async function(req) {
 
     if (!isLinkMode) return Response.json({ paymentId: payment.id, redirectUrl, chargedTotal: chargeTotal, fee: fee.amount });
 
+    // שומרים את הקישור ומועד התפוגה - לתזכורת אוטומטית ולביטול דרישה שלא שולמה.
+    const expiryDays = Number(config.payment_link_expiry_days);
+    const expiresAt = Number.isFinite(expiryDays) && expiryDays > 0
+      ? new Date(Date.now() + expiryDays * 86400000).toISOString()
+      : null;
+    await base44.asServiceRole.entities.Payment.update(payment.id, { payment_link_url: redirectUrl, ...(expiresAt ? { link_expires_at: expiresAt } : {}) });
+
     const businessName = config.business_name || config.company_name || "המערכת";
     const currencySymbol = currency === "USD" ? "$" : "₪";
     const messageBody = renderLinkMessage(config, {
@@ -146,13 +162,13 @@ export default async function(req) {
       description: subject,
       amount: `${currencySymbol}${chargeTotal.toLocaleString()}`,
       link: redirectUrl
-    });
+    }, docLanguage);
 
     const failures: string[] = [];
     for (const channel of linkChannels) {
       try {
         if (channel === "whatsapp") await sendWhatsAppText(linkPhone, messageBody);
-        else await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
+        else await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === "en" ? `Payment request - ${subject}` : `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
       } catch (sendError) {
         failures.push(`${channel === "whatsapp" ? "וואטסאפ" : "אימייל"}: ${sendError.message}`);
       }

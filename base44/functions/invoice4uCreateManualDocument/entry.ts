@@ -18,7 +18,8 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
 
-    const { paymentId, customer, documentType } = await req.json();
+    const { paymentId, customer, documentType, language } = await req.json();
+    const docLanguage = language === "en" ? "en" : "he";
     const isReceiptOnly = documentType === "receipt";
     if (!paymentId) return Response.json({ error: "חסר מזהה תשלום" }, { status: 400 });
 
@@ -37,9 +38,11 @@ export default async function(req) {
     const event = payment.event_id ? await base44.asServiceRole.entities.Event.get(payment.event_id) : null;
     const vatPercent = Number(config.vat_rate) || 18;
     const vatRate = vatPercent / 100;
-    const subject = event ? `תשלום עבור ${event.event_name}` : (payment.notes || "תשלום");
+    const subject = event
+      ? (docLanguage === "en" ? `Payment for ${event.event_name}` : `תשלום עבור ${event.event_name}`)
+      : (payment.notes || (docLanguage === "en" ? "Payment" : "תשלום"));
     const contact = firstEventContact(event);
-    const customerName = customer?.name || payment.payer_name || contact.name || event?.family_name || "לקוח";
+    const customerName = customer?.name || payment.payer_name || contact.name || event?.family_name || (docLanguage === "en" ? "Customer" : "לקוח");
 
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
     const token = invoice4uToken(environment);
@@ -58,7 +61,8 @@ export default async function(req) {
       payments: [{ amount, type: payment.payment_method, date: payment.payment_date }],
       customer: { name: customerName, email: customerEmail, phone: customerPhone, identifier: customer?.identifier || "" },
       clientId,
-      vatPercent
+      vatPercent,
+      language: docLanguage
     });
     const response = await invoice4uRequest(environment, "CreateDocument", { token, doc });
     const result = response.CreateDocumentResult || response;

@@ -20,6 +20,20 @@ export const documentTypeLabels: Record<string, string> = {
   work_order: "הזמנת עבודה"
 };
 
+// תוויות אנגליות - נדרשות כשהמסמך מופק בשפה האנגלית.
+export const documentTypeLabelsEn: Record<string, string> = {
+  invoice: "Tax Invoice",
+  receipt: "Receipt",
+  invoice_receipt: "Tax Invoice / Receipt",
+  invoice_credit: "Credit Invoice",
+  proforma: "Proforma Invoice",
+  work_order: "Work Order"
+};
+
+export function documentLabel(slug: string, language = "he") {
+  return language === "en" ? (documentTypeLabelsEn[slug] || documentTypeLabels[slug]) : documentTypeLabels[slug];
+}
+
 // סוגי המסמכים שניתן להנפיק ידנית באופן עצמאי מתוך המערכת.
 export const standaloneDocumentTypes = ["invoice", "receipt", "invoice_receipt", "proforma", "work_order"];
 
@@ -42,12 +56,15 @@ export function documentRequirements(slug: string) {
 }
 
 // בונה את גוף ה-doc עבור CreateDocument לפי סוג המסמך והנתונים שהוזנו.
-export function buildDocumentBody({ slug, subject, currency = "ILS", items = [], payments = [], customer = {}, clientId = null, comments = "", associatedEmails = [], vatPercent = 18 }) {
+export function buildDocumentBody({ slug, subject, currency = "ILS", items = [], payments = [], customer = {}, clientId = null, comments = "", associatedEmails = [], vatPercent = 18, language = "he" }) {
   const requirements = documentRequirements(slug);
+  // Invoice4U מחזיק את פרטי העסק בעברית ובאנגלית - שדה Language קובע באיזו גרסה
+  // יופק המסמך (כולל שם העסק, הכתובת והכיתובים הקבועים).
   const doc: Record<string, unknown> = {
     DocumentType: documentTypeCodes[slug],
     Subject: subject,
-    Currency: currency
+    Currency: currency,
+    Language: language === "en" ? "en" : "he"
   };
 
   if (requirements.needsItems) {
@@ -72,7 +89,7 @@ export function buildDocumentBody({ slug, subject, currency = "ILS", items = [],
     doc.TaxIncluded = true;
   } else {
     doc.GeneralCustomer = {
-      Name: customer.name || "לקוח",
+      Name: customer.name || (language === "en" ? "Customer" : "לקוח"),
       Email: customer.email || "",
       Phone: customer.phone || "",
       Identifier: customer.identifier || "",

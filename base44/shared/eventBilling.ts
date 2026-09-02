@@ -74,12 +74,15 @@ export function calculateEventBalance(event, services = [], payments = [], vatRa
 }
 
 // עמלת סליקה לפי הגדרות המערכת - אחוזים או סכום קבוע.
-export function calculateProcessingFee(config, amount) {
+export function calculateProcessingFee(config, amount, language = "he") {
   if (config.processing_fee_enabled !== "true") return { amount: 0, label: "" };
   const value = num(config.processing_fee_value);
   if (value <= 0) return { amount: 0, label: "" };
   const fee = config.processing_fee_type === "fixed" ? value : amount * value / 100;
-  return { amount: round2(fee), label: config.processing_fee_label || "עמלת סליקה" };
+  const label = language === "en"
+    ? (config.processing_fee_label_en || "Processing fee")
+    : (config.processing_fee_label || "עמלת סליקה");
+  return { amount: round2(fee), label };
 }
 
 // סכום מקדמה מוצע - הגבוה מבין הסכום המוגדר ל-20% מהיתרה.
@@ -90,7 +93,7 @@ export function calculateAdvanceAmount(config, balance) {
 
 // בונה שורות מסמך. פירוט מלא רק כשנסלק כל הסכום, אחרת שורה כללית -
 // כדי שסך השורות יהיה תמיד זהה לסכום שנסלק בפועל.
-export function buildDocumentItems({ event, services = [], amount, fee, itemized, financials, vatRate = 0.18, usdIlsRate = 3.6 }) {
+export function buildDocumentItems({ event, services = [], amount, fee, itemized, financials, vatRate = 0.18, usdIlsRate = 3.6, language = "he" }) {
   const items = [];
   const eventCurrency = event.primary_currency || "ILS";
   const canItemize = itemized && Math.abs(amount - financials.finalTotal) < 0.01 && financials.totalPaid === 0;
@@ -119,10 +122,10 @@ export function buildDocumentItems({ event, services = [], amount, fee, itemized
       if (price <= 0) return;
       items.push({ name: service.service_name || "שירות", quantity, price: round2(convert(price, service.currency || eventCurrency, eventCurrency, usdIlsRate)) });
     });
-    if (financials.discountAmount > 0) items.push({ name: event.discount_reason || "הנחה", quantity: 1, price: -round2(financials.discountAmount / (1 + vatRate)) });
+    if (financials.discountAmount > 0) items.push({ name: event.discount_reason || (language === "en" ? "Discount" : "הנחה"), quantity: 1, price: -round2(financials.discountAmount / (1 + vatRate)) });
   }
 
-  if (!items.length) items.push({ name: `תשלום עבור ${event.event_name}`, quantity: 1, price: round2(amount / (1 + vatRate)) });
+  if (!items.length) items.push({ name: language === "en" ? `Payment for ${event.event_name}` : `תשלום עבור ${event.event_name}`, quantity: 1, price: round2(amount / (1 + vatRate)) });
   if (fee?.amount > 0) items.push({ name: fee.label, quantity: 1, price: round2(fee.amount / (1 + vatRate)) });
   return items;
 }
