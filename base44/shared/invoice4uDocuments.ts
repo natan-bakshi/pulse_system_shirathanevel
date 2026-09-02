@@ -64,7 +64,8 @@ export function buildDocumentBody({ slug, subject, currency = "ILS", items = [],
     DocumentType: documentTypeCodes[slug],
     Subject: subject,
     Currency: currency,
-    Language: language === "en" ? "en" : "he"
+    // Invoice4U מצפה לקוד מספרי: 0 = עברית, 1 = אנגלית.
+    Language: language === "en" ? 1 : 0
   };
 
   if (requirements.needsItems) {
