@@ -841,11 +841,11 @@ export default function EventDetails() {
 
   // הפקת חשבונית מס/קבלה עבור תשלום שנרשם ידנית (מזומן, העברה, צ'ק)
   const [creatingDocumentPaymentId, setCreatingDocumentPaymentId] = React.useState(null);
-  const handleCreateManualDocument = useCallback(async (paymentId) => {
-    if (!window.confirm("להפיק חשבונית מס/קבלה עבור תשלום זה?")) return;
+  const handleCreateManualDocument = useCallback(async (paymentId, documentType = 'invoice_receipt') => {
+    if (!window.confirm(documentType === 'receipt' ? "להפיק קבלה עבור תשלום זה?" : "להפיק חשבונית מס/קבלה עבור תשלום זה?")) return;
     setCreatingDocumentPaymentId(paymentId);
     try {
-      const response = await base44.functions.invoke('invoice4uCreateManualDocument', { paymentId });
+      const response = await base44.functions.invoke('invoice4uCreateManualDocument', { paymentId, documentType });
       if (response.data?.error) throw new Error(response.data.error);
       queryClient.invalidateQueries({ queryKey: ['eventFinancialDocuments', eventId] });
       await loadEventData();

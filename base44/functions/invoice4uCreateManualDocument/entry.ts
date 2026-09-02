@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
-import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
+import { invoice4uErrors, invoice4uFindOrCreateCustomer, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
 
 // איש הקשר הראשון של האירוע (הורה או איש קשר של המזמין) - לפרטי הלקוח במסמך.
 function firstEventContact(event) {
@@ -21,7 +21,8 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
 
-    const { paymentId, customer } = await req.json();
+    const { paymentId, customer, documentType } = await req.json();
+    const isReceiptOnly = documentType === "receipt";
     if (!paymentId) return Response.json({ error: "חסר מזהה תשלום" }, { status: 400 });
 
     const settings = await base44.asServiceRole.entities.AppSettings.list();
@@ -44,20 +45,26 @@ export default async function(req) {
     const customerName = customer?.name || payment.payer_name || contact.name || event?.family_name || "לקוח";
 
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
+    const token = invoice4uToken(environment);
+    const customerEmail = customer?.email || payment.payer_email || contact.email || "";
+    const customerPhone = customer?.phone || payment.payer_phone || contact.phone || "";
+    // קבלה מחייבת לקוח קיים במערכת Invoice4U, בעוד חשבונית מס/קבלה מאפשרת לקוח מזדמן.
+    const clientId = isReceiptOnly
+      ? await invoice4uFindOrCreateCustomer(environment, token, { name: customerName, email: customerEmail, phone: customerPhone, identifier: customer?.identifier || "" })
+      : null;
+
     const response = await invoice4uRequest(environment, "CreateDocument", {
-      token: invoice4uToken(environment),
+      token,
       doc: {
-        DocumentType: 3,
+        // 2 = קבלה, 3 = חשבונית מס/קבלה
+        DocumentType: isReceiptOnly ? 2 : 3,
         Subject: subject,
         Currency: payment.currency || "ILS",
-        Items: [{ Name: subject, Quantity: 1, Price: round2(amount / (1 + vatRate)), TaxRate: vatPercent }],
+        ...(isReceiptOnly
+          ? { TaxIncluded: true, ClientID: clientId }
+          : { Items: [{ Name: subject, Quantity: 1, Price: round2(amount / (1 + vatRate)), TaxRate: vatPercent }] }),
         Payments: [{ Amount: amount, PaymentType: paymentTypes[payment.payment_method] ?? 1, Date: wcfDate(payment.payment_date) }],
-        GeneralCustomer: {
-          Name: customerName,
-          Email: customer?.email || payment.payer_email || contact.email || "",
-          Phone: customer?.phone || payment.payer_phone || contact.phone || "",
-          Identifier: customer?.identifier || ""
-        }
+        ...(isReceiptOnly ? {} : { GeneralCustomer: { Name: customerName, Email: customerEmail, Phone: customerPhone, Identifier: customer?.identifier || "" } })
       }
     });
     const result = response.CreateDocumentResult || response;
@@ -65,7 +72,7 @@ export default async function(req) {
     if (errorMessage) return Response.json({ error: errorMessage }, { status: 400 });
 
     const document = await base44.asServiceRole.entities.FinancialDocument.create({
-      document_type: "invoice_receipt",
+      document_type: isReceiptOnly ? "receipt" : "invoice_receipt",
       document_number: String(result.DocumentNumber || ""),
       invoice4u_id: result.ID || "",
       status: "open",

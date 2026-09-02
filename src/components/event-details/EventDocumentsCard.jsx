@@ -8,11 +8,13 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import CreditDocumentDialog from "@/components/billing/CreditDocumentDialog";
 import ShareDocumentDialog from "@/components/billing/ShareDocumentDialog";
+import { getEventContactList } from "@/lib/eventContactList";
 
 const labels = { invoice: "חשבונית מס", receipt: "קבלה", invoice_receipt: "חשבונית מס/קבלה", invoice_credit: "חשבונית זיכוי", proforma: "חשבונית עסקה" };
 const statuses = { open: "פתוח", fully_credited: "זוכה במלואו", partially_credited: "זוכה חלקית", cancelled: "בוטל" };
 
-export default function EventDocumentsCard({ eventId, isAdmin }) {
+export default function EventDocumentsCard({ eventId, isAdmin, event }) {
+  const contacts = React.useMemo(() => getEventContactList(event), [event]);
   const queryClient = useQueryClient();
   const [busyId, setBusyId] = useState(null);
   const [documentToCredit, setDocumentToCredit] = useState(null);
@@ -91,7 +93,7 @@ export default function EventDocumentsCard({ eventId, isAdmin }) {
         )}
       </CardContent>
       <CreditDocumentDialog document={documentToCredit} onClose={() => setDocumentToCredit(null)} onConfirm={handleCredit} loading={actionLoading} />
-      <ShareDocumentDialog document={documentToShare} onClose={() => setDocumentToShare(null)} onConfirm={handleShare} loading={actionLoading} />
+      <ShareDocumentDialog document={documentToShare} onClose={() => setDocumentToShare(null)} onConfirm={handleShare} loading={actionLoading} contacts={contacts} />
     </Card>
   );
 }

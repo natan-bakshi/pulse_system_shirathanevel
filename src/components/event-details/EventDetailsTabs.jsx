@@ -221,7 +221,7 @@ export default function EventDetailsTabs(props) {
         )}
 
         {(isAdmin || isClient) && billingEnabled && (
-          <EventDocumentsCard eventId={event?.id} isAdmin={isAdmin} />
+          <EventDocumentsCard eventId={event?.id} isAdmin={isAdmin} event={event} />
         )}
 
         {(isAdmin || isClient) && (

@@ -11,8 +11,11 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
 
-    const { documentId, channel, recipient, message } = await req.json();
-    if (!documentId || !recipient) return Response.json({ error: "חסרים פרטי שיתוף" }, { status: 400 });
+    const { documentId, channel, recipient, recipients, message } = await req.json();
+    const targets = (Array.isArray(recipients) ? recipients : [recipient])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+    if (!documentId || targets.length === 0) return Response.json({ error: "חסרים פרטי שיתוף" }, { status: 400 });
     if (!["email", "whatsapp"].includes(channel)) return Response.json({ error: "ערוץ שיתוף לא נתמך" }, { status: 400 });
 
     const document = await base44.asServiceRole.entities.FinancialDocument.get(documentId);
@@ -24,14 +27,27 @@ export default async function(req) {
     const title = `${label} ${document.document_number || ""}`.trim();
     const body = `${message ? message + "\n\n" : ""}${title}\nלצפייה והורדה: ${pdfUrl}`;
 
+    let fromName;
     if (channel === "email") {
       const settings = await base44.asServiceRole.entities.AppSettings.list();
       const config = Object.fromEntries(settings.map((item) => [item.setting_key, item.setting_value]));
-      await base44.asServiceRole.integrations.Core.SendEmail({ to: recipient, subject: title, body, from_name: config.business_name || config.company_name || undefined });
-    } else {
-      await sendWhatsAppText(recipient, body);
+      fromName = config.business_name || config.company_name || undefined;
     }
-    return Response.json({ shared: true, channel, recipient });
+
+    const failures: string[] = [];
+    for (const target of targets) {
+      try {
+        if (channel === "email") {
+          await base44.asServiceRole.integrations.Core.SendEmail({ to: target, subject: title, body, from_name: fromName });
+        } else {
+          await sendWhatsAppText(target, body);
+        }
+      } catch (sendError) {
+        failures.push(`${target}: ${sendError.message}`);
+      }
+    }
+    if (failures.length === targets.length) return Response.json({ error: `השליחה נכשלה - ${failures.join(", ")}` }, { status: 400 });
+    return Response.json({ shared: true, channel, sent: targets.length - failures.length, failures });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
