@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, FileText } from 'lucide-react';
+import { Plus, Trash2, FileText, Receipt, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '@/components/utils/currencyUtils';
 
@@ -22,7 +22,10 @@ export default function PaymentsCard({
   exchangeRate = 3.6,
   billingEnabled = false,
   clientClearingAllowed = false,
-  onStartClearing
+  onStartClearing,
+  manualInvoiceEnabled = false,
+  onCreateManualDocument,
+  creatingDocumentPaymentId = null
 }) {
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
@@ -73,6 +76,22 @@ export default function PaymentsCard({
                     </Button>
                   )}
                 </div>
+                {isAdmin && billingEnabled && manualInvoiceEnabled && onCreateManualDocument &&
+                  !payment.financial_document_id && payment.payment_method !== 'credit_card' &&
+                  (!payment.payment_status || payment.payment_status === 'completed') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-2"
+                    disabled={creatingDocumentPaymentId === payment.id}
+                    onClick={() => onCreateManualDocument(payment.id)}
+                  >
+                    {creatingDocumentPaymentId === payment.id
+                      ? <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                      : <Receipt className="h-4 w-4 ml-2" />}
+                    הפק חשבונית
+                  </Button>
+                )}
                 {isAdmin && (
                   <Button variant="ghost" size="sm" onClick={() => handleDeletePayment(payment.id)}>
                     <Trash2 className="h-4 w-4 text-red-500" />

@@ -65,6 +65,7 @@ export default function EventDetailsTabs(props) {
     setShowPaymentDialog, handleDeletePayment,
     setCurrentReceiptUrl, setCurrentReceiptPaymentId, setShowReceiptDialog,
     billingEnabled, clientClearingAllowed, onStartClearing,
+    manualInvoiceEnabled, onCreateManualDocument, creatingDocumentPaymentId,
     // Financial
     financials, financialEditData, setFinancialEditData,
     handleSaveFinancial, isSavingFinancial,
@@ -213,6 +214,9 @@ export default function EventDetailsTabs(props) {
             billingEnabled={billingEnabled}
             clientClearingAllowed={clientClearingAllowed}
             onStartClearing={onStartClearing}
+            manualInvoiceEnabled={manualInvoiceEnabled}
+            onCreateManualDocument={onCreateManualDocument}
+            creatingDocumentPaymentId={creatingDocumentPaymentId}
           />
         )}
 

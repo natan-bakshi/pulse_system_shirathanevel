@@ -839,6 +839,23 @@ export default function EventDetails() {
     } finally { setIsStartingClearing(false); }
   }, [eventId]);
 
+  // הפקת חשבונית מס/קבלה עבור תשלום שנרשם ידנית (מזומן, העברה, צ'ק)
+  const [creatingDocumentPaymentId, setCreatingDocumentPaymentId] = React.useState(null);
+  const handleCreateManualDocument = useCallback(async (paymentId) => {
+    if (!window.confirm("להפיק חשבונית מס/קבלה עבור תשלום זה?")) return;
+    setCreatingDocumentPaymentId(paymentId);
+    try {
+      const response = await base44.functions.invoke('invoice4uCreateManualDocument', { paymentId });
+      if (response.data?.error) throw new Error(response.data.error);
+      queryClient.invalidateQueries({ queryKey: ['eventFinancialDocuments', eventId] });
+      await loadEventData();
+    } catch (error) {
+      alert("שגיאה בהפקת המסמך: " + (error.response?.data?.error || error.message));
+    } finally {
+      setCreatingDocumentPaymentId(null);
+    }
+  }, [eventId, queryClient, loadEventData]);
+
   const handleDeletePayment = useCallback(async (paymentId) => {
     if (window.confirm("האם למחוק תשלום זה?")) {
       try {
@@ -2165,6 +2182,9 @@ export default function EventDetails() {
         billingEnabled={billingEnabled}
         clientClearingAllowed={clientClearingAllowed}
         onStartClearing={() => setShowClearingDialog(true)}
+        manualInvoiceEnabled={billingSettings.manual_payment_invoice_enabled === 'true'}
+        onCreateManualDocument={handleCreateManualDocument}
+        creatingDocumentPaymentId={creatingDocumentPaymentId}
         financials={financials}
         financialEditData={financialEditData}
         setFinancialEditData={setFinancialEditData}
