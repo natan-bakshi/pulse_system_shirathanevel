@@ -18,7 +18,8 @@ import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 import EventChangeDecisionDialogs from '../components/event-details/EventChangeDecisionDialogs';
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
-import ClearingPaymentDialog from '../components/billing/ClearingPaymentDialog';
+// דיאלוג הסליקה נטען רק כשנפתח בפועל - כדי לא להעמיס את טעינת דף האירוע.
+const ClearingPaymentDialog = React.lazy(() => import('../components/billing/ClearingPaymentDialog'));
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
@@ -2216,7 +2217,11 @@ export default function EventDetails() {
 
       <ExportDialog open={showExportDialog} onOpenChange={setShowExportDialog} exportOptions={exportOptions} setExportOptions={setExportOptions} onConfirmExport={handleConfirmExport} />
       <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} paymentForm={paymentForm} setPaymentForm={setPaymentForm} onAddPayment={handleAddPayment} onUploadReceipt={handleUploadReceipt} uploadingReceipt={uploadingReceipt} eventPrimaryCurrency={event?.primary_currency || 'ILS'} exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()} />
-      <ClearingPaymentDialog open={showClearingDialog} onOpenChange={setShowClearingDialog} event={event} balance={Math.max(0, Number(financials.balance) || 0)} totalPaid={Number(financials.totalPaid) || 0} settings={billingSettings} isAdmin={isAdmin} onStart={handleStartClearing} loading={isStartingClearing} initialMode={clearingMode} contacts={getEventContactList(event)} linkResult={paymentLinkResult} onResetLinkResult={() => setPaymentLinkResult(null)} />
+      {showClearingDialog && (
+        <React.Suspense fallback={null}>
+          <ClearingPaymentDialog open onOpenChange={setShowClearingDialog} event={event} balance={Math.max(0, Number(financials.balance) || 0)} totalPaid={Number(financials.totalPaid) || 0} settings={billingSettings} isAdmin={isAdmin} onStart={handleStartClearing} loading={isStartingClearing} initialMode={clearingMode} contacts={getEventContactList(event)} linkResult={paymentLinkResult} onResetLinkResult={() => setPaymentLinkResult(null)} />
+        </React.Suspense>
+      )}
       <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
       <Dialog open={showNewServiceDialog} onOpenChange={(open) => { setShowNewServiceDialog(open); if (!open) setNewServiceTargetPackageId(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
