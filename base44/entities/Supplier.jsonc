@@ -89,10 +89,10 @@
           }
         },
         {
-          "contact_emails": "{{user.email}}"
+          "data.contact_emails": "{{user.email}}"
         },
         {
-          "phone": "{{user.phone}}"
+          "data.phone": "{{user.data.phone}}"
         }
       ]
     },
