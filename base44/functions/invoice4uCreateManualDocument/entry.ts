@@ -18,7 +18,7 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
 
-    const { paymentId, customer, documentType, language } = await req.json();
+    const { paymentId, customer, documentType, language, item, paymentMethod, subject: subjectOverride } = await req.json();
     const docLanguage = language === "en" ? "en" : "he";
     const isReceiptOnly = documentType === "receipt";
     if (!paymentId) return Response.json({ error: "חסר מזהה תשלום" }, { status: 400 });
@@ -37,10 +37,10 @@ export default async function(req) {
 
     const event = payment.event_id ? await base44.asServiceRole.entities.Event.get(payment.event_id) : null;
     const vatPercent = Number(config.vat_rate) || 18;
-    const vatRate = vatPercent / 100;
-    const subject = event
+    const defaultSubject = event
       ? (docLanguage === "en" ? `Payment for ${event.event_name}` : `תשלום עבור ${event.event_name}`)
       : (payment.notes || (docLanguage === "en" ? "Payment" : "תשלום"));
+    const subject = String(subjectOverride || "").trim() || defaultSubject;
     const contact = firstEventContact(event);
     const customerName = customer?.name || payment.payer_name || contact.name || event?.family_name || (docLanguage === "en" ? "Customer" : "לקוח");
 
@@ -53,12 +53,22 @@ export default async function(req) {
       ? await invoice4uFindOrCreateCustomer(environment, token, { name: customerName, email: customerEmail, phone: customerPhone, identifier: customer?.identifier || "" })
       : null;
 
+    // שורת הפריט מגיעה מדיאלוג ההפקה (תיאור/כמות/מחיר) - המחיר כולל מע"מ.
+    // חייבת להסתכם בסכום התשלום, אחרת המסמך לא יתאים לתשלום שנרשם.
+    const itemName = String(item?.name || "").trim() || subject;
+    const itemQuantity = Number(item?.quantity) > 0 ? Number(item.quantity) : 1;
+    const itemPrice = item?.price === undefined || item?.price === null || item?.price === "" ? round2(amount / itemQuantity) : round2(item.price);
+    if (!Number.isFinite(itemPrice) || itemPrice <= 0) return Response.json({ error: "מחיר הפריט אינו תקין" }, { status: 400 });
+    if (Math.abs(round2(itemPrice * itemQuantity) - amount) > 0.01) return Response.json({ error: `סך שורת הפריט (${round2(itemPrice * itemQuantity)}) אינו זהה לסכום התשלום (${amount})` }, { status: 400 });
+
     const doc = buildDocumentBody({
       slug: isReceiptOnly ? "receipt" : "invoice_receipt",
       subject,
       currency: payment.currency || "ILS",
-      items: [{ name: subject, quantity: 1, price: round2(amount / (1 + vatRate)), taxRate: vatPercent }],
-      payments: [{ amount, type: payment.payment_method, date: payment.payment_date }],
+      // TaxIncluded - המחיר נשלח כולל מע"מ ו-Invoice4U מחשב את המע"מ לאחור, כך שאין פער עיגול.
+      taxIncluded: true,
+      items: [{ name: itemName, quantity: itemQuantity, price: itemPrice, taxRate: vatPercent }],
+      payments: [{ amount, type: paymentMethod || payment.payment_method, date: payment.payment_date }],
       customer: { name: customerName, email: customerEmail, phone: customerPhone, identifier: customer?.identifier || "" },
       clientId,
       vatPercent,
@@ -82,7 +92,7 @@ export default async function(req) {
       linked_event_id: payment.event_id || "",
       linked_payment_id: payment.id,
       customer_name: customerName,
-      customer_identifier: String(result.ClientID || ""),
+      customer_identifier: String(customer?.identifier || result.ClientID || ""),
       pdf_original_url: result.PrintOriginalPDFLink || "",
       pdf_certified_url: result.PrintCertifiedCopyPDFLink || ""
     });

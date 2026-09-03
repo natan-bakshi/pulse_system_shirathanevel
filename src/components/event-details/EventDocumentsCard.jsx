@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileDown, RotateCcw, Share2, Unlink } from "lucide-react";
+import { Download, Eye, FileDown, RotateCcw, Share2, Unlink } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import CancelInvoiceWizard from "@/components/billing/CancelInvoiceWizard";
@@ -98,7 +98,8 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
                     <div className="text-sm text-gray-600">₪{Number(doc.total || 0).toLocaleString()} · {statuses[doc.status] || doc.status}{doc.issue_date ? ` · ${format(new Date(doc.issue_date), "dd/MM/yyyy")}` : ""}</div>
                   </div>
                   <div className="flex gap-1">
-                    {pdf && <Button asChild variant="ghost" size="icon" title="צפייה והורדה"><a href={pdf} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a></Button>}
+                    {pdf && <Button asChild variant="ghost" size="icon" title="צפייה"><a href={pdf} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /></a></Button>}
+                    {pdf && <Button asChild variant="ghost" size="icon" title="הורדה"><a href={pdf} download target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a></Button>}
                     {isAdmin && doc.invoice4u_id && <Button variant="ghost" size="icon" title={pdf ? "רענן קישור PDF" : "הפק PDF"} disabled={busyId === doc.id} onClick={() => handleRefreshPdf(doc)}><FileDown className="h-4 w-4" /></Button>}
                     {isAdmin && pdf && <Button variant="ghost" size="icon" title="שיתוף" onClick={() => setDocumentToShare(doc)}><Share2 className="h-4 w-4" /></Button>}
                     {canCredit && <Button variant="ghost" size="icon" title="ביטול מסמך (זיכוי + קבלה שלילית)" onClick={() => { setCancelStep("credit"); setDocumentToCredit(doc); }}><RotateCcw className="h-4 w-4" /></Button>}

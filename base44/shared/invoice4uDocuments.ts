@@ -56,7 +56,9 @@ export function documentRequirements(slug: string) {
 }
 
 // בונה את גוף ה-doc עבור CreateDocument לפי סוג המסמך והנתונים שהוזנו.
-export function buildDocumentBody({ slug, subject, currency = "ILS", items = [], payments = [], customer = {}, clientId = null, comments = "", associatedEmails = [], vatPercent = 18, language = "he" }) {
+// taxIncluded=true - מחירי הפריטים כוללים מע"מ ו-Invoice4U מחשב את המע"מ לאחור.
+// מונע פער עיגול אגורות (שורת "General item" של 0.01-) כשמפיקים מסמך לסכום נתון.
+export function buildDocumentBody({ slug, subject, currency = "ILS", items = [], payments = [], customer = {}, clientId = null, comments = "", associatedEmails = [], vatPercent = 18, language = "he", taxIncluded = false }) {
   const requirements = documentRequirements(slug);
   // Invoice4U מחזיק את פרטי העסק בעברית ובאנגלית - שדה Language קובע באיזו גרסה
   // יופק המסמך (כולל שם העסק, הכתובת והכיתובים הקבועים).
@@ -89,6 +91,7 @@ export function buildDocumentBody({ slug, subject, currency = "ILS", items = [],
     doc.ClientID = clientId;
     doc.TaxIncluded = true;
   } else {
+    if (taxIncluded) doc.TaxIncluded = true;
     doc.GeneralCustomer = {
       Name: customer.name || (language === "en" ? "Customer" : "לקוח"),
       Email: customer.email || "",

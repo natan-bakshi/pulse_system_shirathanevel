@@ -124,7 +124,7 @@ export default async function(req) {
       OrderIdClientUsage: payment.id,
       IsDocCreate: true,
       IsManualDocCreationsWithParams: true,
-      ...itemsToPipedFields(items, Number(config.vat_rate) || 18),
+      ...itemsToPipedFields(items, Number(config.vat_rate) || 18, chargeTotal),
       DocHeadline: docLanguage === "en" ? subject : (config.default_subject || subject),
       DocComments: docLanguage === "en" ? (config.default_email_comment_en || "") : (config.default_email_comment || ""),
       DocBranchId: config.invoice4u_branch_id || undefined,
@@ -136,8 +136,11 @@ export default async function(req) {
       IsQaMode: environment === "qa",
       Platform: "Pulse"
     };
+    // תיעוד הבקשה והתגובה לאבחון תקלות סליקה. מפתח ה-API מוסתר כדי שלא ייחשף בלוגים.
+    console.log("[clearing] request", JSON.stringify({ ...request, Invoice4UUserApiKey: "***" }));
     const response = await invoice4uRequest(environment, "ProcessApiRequestV2", { request });
     const result = response.ProcessApiRequestV2Result || response;
+    console.log("[clearing] response", JSON.stringify(result));
     const errorMessage = invoice4uErrors(result);
     if (errorMessage || !result.ClearingRedirectUrl) {
       await base44.asServiceRole.entities.Payment.update(payment.id, { payment_status: "failed", invoice4u_clearing_status: errorMessage || "לא התקבל קישור לתשלום" });

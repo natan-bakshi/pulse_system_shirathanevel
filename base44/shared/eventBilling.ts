@@ -133,11 +133,26 @@ export function buildDocumentItems({ event, services = [], amount, fee, itemized
 }
 
 // Invoice4U מקבל את שורות המסמך כמחרוזות מופרדות בצינור, שדה לכל מאפיין.
-export function itemsToPipedFields(items, vatPercent) {
+// expectedTotal (הסכום הכולל שנסלק בפועל, כולל מע"מ) - מיישר את השורה האחרונה כך
+// שסך השורות לפני מע"מ יהיה מדויק מול הסכום. בלעדיו עיגול כל שורה בנפרד יוצר פער
+// אגורות שגורם ל-Invoice4U להוסיף שורת התאמה (General item) של 0.01-.
+export function itemsToPipedFields(items, vatPercent, expectedTotal) {
+  const rate = (Number(vatPercent) || 0) / 100;
+  const lines = items.map((item) => ({ ...item, price: round2(num(item.price)) }));
+  const total = num(expectedTotal);
+  if (lines.length && total > 0) {
+    const targetWithoutVat = round2(total / (1 + rate));
+    const currentWithoutVat = round2(lines.reduce((sum, item) => sum + item.price * (num(item.quantity) || 1), 0));
+    const gap = round2(targetWithoutVat - currentWithoutVat);
+    if (gap !== 0) {
+      const last = lines[lines.length - 1];
+      last.price = round2(last.price + gap / (num(last.quantity) || 1));
+    }
+  }
   return {
-    DocItemName: items.map((item) => item.name).join("|"),
-    DocItemQuantity: items.map((item) => item.quantity).join("|"),
-    DocItemPrice: items.map((item) => item.price).join("|"),
-    DocItemTaxRate: items.map(() => vatPercent).join("|")
+    DocItemName: lines.map((item) => item.name).join("|"),
+    DocItemQuantity: lines.map((item) => item.quantity).join("|"),
+    DocItemPrice: lines.map((item) => item.price).join("|"),
+    DocItemTaxRate: lines.map(() => vatPercent).join("|")
   };
 }

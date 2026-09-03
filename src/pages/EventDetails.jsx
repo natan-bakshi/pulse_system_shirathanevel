@@ -20,6 +20,8 @@ import EventChangeDecisionDialogs from '../components/event-details/EventChangeD
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 // דיאלוג הסליקה נטען רק כשנפתח בפועל - כדי לא להעמיס את טעינת דף האירוע.
 const ClearingPaymentDialog = React.lazy(() => import('../components/billing/ClearingPaymentDialog'));
+// דיאלוג הפקת מסמך לתשלום ידני - נטען רק כשנפתח בפועל.
+const PaymentDocumentDialog = React.lazy(() => import('../components/event-details/PaymentDocumentDialog'));
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
@@ -862,21 +864,15 @@ export default function EventDetails() {
     } finally { setIsStartingClearing(false); }
   }, [eventId, loadEventData]);
 
-  // הפקת חשבונית מס/קבלה עבור תשלום שנרשם ידנית (מזומן, העברה, צ'ק)
-  const [creatingDocumentPaymentId, setCreatingDocumentPaymentId] = React.useState(null);
-  const handleCreateManualDocument = useCallback(async (paymentId, documentType = 'invoice_receipt') => {
-    if (!window.confirm(documentType === 'receipt' ? "להפיק קבלה עבור תשלום זה?" : "להפיק חשבונית מס/קבלה עבור תשלום זה?")) return;
-    setCreatingDocumentPaymentId(paymentId);
-    try {
-      const response = await base44.functions.invoke('invoice4uCreateManualDocument', { paymentId, documentType });
-      if (response.data?.error) throw new Error(response.data.error);
-      queryClient.invalidateQueries({ queryKey: ['eventFinancialDocuments', eventId] });
-      await loadEventData();
-    } catch (error) {
-      alert("שגיאה בהפקת המסמך: " + (error.response?.data?.error || error.message));
-    } finally {
-      setCreatingDocumentPaymentId(null);
-    }
+  // הפקת חשבונית מס/קבלה עבור תשלום שנרשם ידנית - נפתח דיאלוג עריכה מולא-מראש
+  const [documentDialogState, setDocumentDialogState] = useState(null); // { paymentId, documentType } | null
+  const handleCreateManualDocument = useCallback((paymentId, documentType = 'invoice_receipt') => {
+    setDocumentDialogState({ paymentId, documentType });
+  }, []);
+
+  const handleManualDocumentCreated = useCallback(async () => {
+    queryClient.invalidateQueries({ queryKey: ['eventFinancialDocuments', eventId] });
+    await loadEventData();
   }, [eventId, queryClient, loadEventData]);
 
   const handleDeletePayment = useCallback(async (paymentId) => {
@@ -2207,7 +2203,7 @@ export default function EventDetails() {
         onStartClearing={(mode) => { setClearingMode(mode === 'link' ? 'link' : 'direct'); setPaymentLinkResult(null); setShowClearingDialog(true); }}
         manualInvoiceEnabled={billingSettings.manual_payment_invoice_enabled === 'true'}
         onCreateManualDocument={handleCreateManualDocument}
-        creatingDocumentPaymentId={creatingDocumentPaymentId}
+        creatingDocumentPaymentId={null}
         financials={financials}
         financialEditData={financialEditData}
         setFinancialEditData={setFinancialEditData}
@@ -2245,6 +2241,18 @@ export default function EventDetails() {
       <AddExistingPackageDialog open={showAddExistingPackageDialog} onOpenChange={setShowAddExistingPackageDialog} searchTerm={existingPackageSearchTerm} setSearchTerm={setExistingPackageSearchTerm} filteredPackages={filteredExistingPackages} selected={selectedExistingPackage} setSelected={setSelectedExistingPackage} isAdding={isAddingExistingPackage} onAdd={handleAddExistingPackage} />
       <AddToPackageDialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selectedServices={selectedServicesForPackage} setSelectedServices={setSelectedServicesForPackage} targetPackageId={targetPackageId} setTargetPackageId={setTargetPackageId} groupedPackages={groupedServices.packages} newPackageData={newPackageData} setNewPackageData={setNewPackageData} saveGlobalPackage={saveGlobalPackage} setSaveGlobalPackage={setSaveGlobalPackage} isAdding={isAddingServicesToPackage} onAdd={handleAddServicesToPackage} />
       <AddServiceToPackageDialog open={showAddServiceToPackageDialog} onOpenChange={setShowAddServiceToPackageDialog} searchTerm={addToPackageSearchTerm} setSearchTerm={setAddToPackageSearchTerm} filteredServices={filteredServicesForAddToPackage} selected={selectedServiceToAdd} setSelected={setSelectedServiceToAdd} isAdding={isAddingServiceToPackage} onAdd={handleAddServiceToExistingPackage} onCreateNewService={() => { setNewServiceTargetPackageId(targetPackageForService); setShowNewServiceDialog(true); }} />
+      {documentDialogState && (
+        <React.Suspense fallback={null}>
+          <PaymentDocumentDialog
+            open
+            onOpenChange={(isOpen) => { if (!isOpen) setDocumentDialogState(null); }}
+            payment={payments.find(p => p.id === documentDialogState.paymentId)}
+            event={event}
+            documentType={documentDialogState.documentType}
+            onCreated={handleManualDocumentCreated}
+          />
+        </React.Suspense>
+      )}
       <ReceiptDialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog} receiptUrl={currentReceiptUrl} paymentId={currentReceiptPaymentId} isAdmin={isAdmin} onDeleteReceipt={handleDeleteReceipt} />
       <EventChangeDecisionDialogs
         isAdmin={isAdmin}
