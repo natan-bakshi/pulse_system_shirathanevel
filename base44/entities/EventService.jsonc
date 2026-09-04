@@ -178,28 +178,20 @@
   ],
   "rls": {
     "read": {},
-    "write": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "$and": [
-            {
-              "supplier_ids": {
-                "$like": "%{{user.id}}%"
-              }
-            },
-            {
-              "_allowed_fields": [
-                "supplier_statuses"
-              ]
-            }
-          ]
-        }
-      ]
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
     }
   }
 }
