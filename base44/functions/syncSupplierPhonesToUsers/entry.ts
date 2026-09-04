@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
-import { SYNC_ENTITIES, isValidEntityId, syncEntityRecordToUsers } from '../../shared/identitySync.ts';
+import {
+    SYNC_ENTITIES,
+    isValidEntityId,
+    syncEntityRecordToUsers,
+    accumulateFromEntity,
+    applyCandidatesToUsers
+} from '../../shared/identitySync.ts';
 
 /**
  * סנכרון טלפון ושם תצוגה מהישויות העסקיות אל המשתמשים.
@@ -82,34 +88,27 @@ Deno.serve(async (req) => {
             serviceRole.entities.Event.list()
         ]);
 
-        let updatesCount = 0;
-        let conflictsCount = 0;
-        let errorsCount = 0;
-        const fieldsTouched = new Set();
+        // איגוד כל המועמדים לפי מייל מנורמל לפני כתיבה:
+        // ספק מקבל עדיפות, ערכים סותרים מדולגים, וכל מייל נכתב פעם אחת בלבד.
+        // התוצאה אינה תלויה בסדר הרשומות.
+        const candidateMap = new Map();
+        for (const supplier of suppliers) accumulateFromEntity(candidateMap, 'Supplier', supplier);
+        for (const eventRecord of events) accumulateFromEntity(candidateMap, 'Event', eventRecord);
 
-        for (const supplier of suppliers) {
-            const result = await syncEntityRecordToUsers(serviceRole, 'Supplier', supplier, SYNC_OPTIONS);
-            updatesCount += result.updatesCount;
-            conflictsCount += result.conflictsCount;
-            errorsCount += result.errorsCount;
-            result.updated_fields.forEach(f => fieldsTouched.add(f));
-        }
+        const aggregated = await applyCandidatesToUsers(serviceRole, candidateMap, SYNC_OPTIONS);
+        const updatesCount = aggregated.updatesCount;
+        const conflictsCount = aggregated.conflictsCount;
+        const errorsCount = aggregated.errorsCount;
+        const fieldsTouched = new Set(aggregated.updated_fields);
 
-        for (const eventRecord of events) {
-            const result = await syncEntityRecordToUsers(serviceRole, 'Event', eventRecord, SYNC_OPTIONS);
-            updatesCount += result.updatesCount;
-            conflictsCount += result.conflictsCount;
-            errorsCount += result.errorsCount;
-            result.updated_fields.forEach(f => fieldsTouched.add(f));
-        }
-
-        console.log(`[SyncPhones] full sync: ${updatesCount} updates, ${conflictsCount} conflicts, ${errorsCount} errors`);
+        console.log(`[SyncPhones] full sync: ${candidateMap.size} unique emails, ${updatesCount} updates, ${conflictsCount} conflicts, ${errorsCount} errors`);
 
         return Response.json({
             success: true,
             mode: 'full',
             processed_suppliers: suppliers.length,
             processed_events: events.length,
+            unique_emails: candidateMap.size,
             updates_count: updatesCount,
             updated_fields: [...fieldsTouched],
             conflicts_count: conflictsCount,

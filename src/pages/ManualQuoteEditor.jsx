@@ -261,14 +261,18 @@ export default function ManualQuoteEditor() {
 
   // צפייה ב-PDF הקיים — פותח את ה-PDF השמור האחרון בלי להפיק מחדש.
   const handleViewExistingPdf = useCallback(async () => {
-    if (!lastPdfUri) {
+    if (!lastPdfUri || !quoteId) {
       toast.error('עדיין לא הופק PDF להצעה זו');
       return;
     }
     setIsViewing(true);
     try {
-      const res = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: lastPdfUri, expires_in: 600 });
-      const signedUrl = res?.signed_url;
+      // הקישור החתום מופק בשרת מתוך רשומת ההצעה - ללא שליחת URI מהלקוח.
+      const res = await base44.functions.invoke('createSignedUrl', {
+        resource_type: 'manual_quote',
+        manual_quote_id: quoteId
+      });
+      const signedUrl = res?.data?.signed_url;
       if (!signedUrl) {
         toast.error('שגיאה בקבלת קישור צפייה');
         return;
@@ -280,7 +284,7 @@ export default function ManualQuoteEditor() {
     } finally {
       setIsViewing(false);
     }
-  }, [lastPdfUri]);
+  }, [lastPdfUri, quoteId]);
 
   const handleDelete = useCallback(async () => {
     if (!quoteId) {

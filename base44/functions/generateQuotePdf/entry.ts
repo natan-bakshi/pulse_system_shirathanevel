@@ -78,7 +78,7 @@ function buildQuoteBodyHtml(ctx) {
         paymentTemplate, agreementTemplate, quoteShowFooter, quoteFooterText,
         quoteSummaryFontSize, quoteSummaryLineHeight, quoteTitleFontSize,
         event, baseTotalWithoutDiscount, eventDiscountAmount, vatAmount,
-        totalCostWithVat, finalTotal, totalPaid, includeExternalServices
+        totalCostWithVat, finalTotal, totalPaid, vatRateLabel, includeExternalServices
     } = ctx;
 
     // Financial summary HTML (reused in both paths)
@@ -94,7 +94,7 @@ function buildQuoteBodyHtml(ctx) {
                 ${event.discount_before_vat && eventDiscountAmount > 0 ? `
                 <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                 ` : ''}
-                <tr><td class="label">מע"מ (18%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                <tr><td class="label">מע"מ (${vatRateLabel}%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                 <tr><td class="label">סה"כ כולל מע"מ:</td><td class="value">₪${totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                 ${!event.discount_before_vat && eventDiscountAmount > 0 ? `
                 <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
@@ -238,7 +238,7 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const includePaymentTerms = options.includePaymentTerms !== false;
     const includeSchedule = options.includeSchedule !== false;
     const [event, allServices, allEventServices, payments, templates, appSettingsList, allOrganizerTypes] = await Promise.all([
-        base44Instance.asServiceRole.entities.Event.get(eventId),
+        options.preloadedEvent ? Promise.resolve(options.preloadedEvent) : base44Instance.asServiceRole.entities.Event.get(eventId),
         base44Instance.asServiceRole.entities.Service.list(),
         base44Instance.asServiceRole.entities.EventService.filter({ event_id: eventId }),
         base44Instance.asServiceRole.entities.Payment.filter({ event_id: eventId }),
@@ -424,7 +424,12 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     }
     
     const baseTotalWithoutDiscount = totalCostWithoutVat; // For display compatibility
-    const totalPaid = payments.reduce((sum, p) => sum + safeFloat(p.amount), 0);
+    // רק תשלומים שהושלמו נחשבים ככסף ששולם.
+    const totalPaid = payments
+        .filter(p => p.payment_status === 'completed')
+        .reduce((sum, p) => sum + safeFloat(p.amount), 0);
+    // שיעור המע"מ להצגה נגזר מאותו vatRate שבו מתבצע החישוב.
+    const vatRateLabel = String(Math.round(vatRate * 1000) / 10);
     
     // Group services by new and legacy structure for HTML generation
     const structuredServices = [];
@@ -1170,7 +1175,8 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                           vatAmount,
                           totalCostWithVat,
                           finalTotal,
-                          totalPaid
+                          totalPaid,
+                          vatRateLabel
                       })}
                   </div>
                 </td>
@@ -1195,32 +1201,49 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        const user = await base44.auth.me();
+        // אימות לפני קריאת body ולפני כל שימוש ב-asServiceRole. ההרשאה לפי role בלבד.
+        let user = null;
+        try {
+            user = await base44.auth.me();
+        } catch (e) {
+            user = null;
+        }
         if (!user) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
-
-        if (user.user_type === 'supplier') {
-            return Response.json({ error: 'Unauthorized - Suppliers cannot generate quotes' }, { status: 403 });
+        if (user.role !== 'admin') {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
-        const body = await req.json();
+        const body = await req.json().catch(() => ({}));
         const eventId = body.eventId;
         const includeIntro = body.includeIntro !== false;
         const includePaymentTerms = body.includePaymentTerms !== false;
         const includeSchedule = body.includeSchedule !== false;
         const includeExternalServices = body.includeExternalServices !== false;
 
-        if (!eventId) {
-            return Response.json({ error: 'Event ID is required' }, { status: 400 });
+        if (typeof eventId !== 'string' || !/^[A-Za-z0-9_\-:.]{1,64}$/.test(eventId.trim())) {
+            return Response.json({ error: 'Invalid event id' }, { status: 400 });
+        }
+
+        // קריאת האירוע המבוקש מיד לאחר האימות - לפני שאר הישויות ולפני API2PDF.
+        let requestedEvent = null;
+        try {
+            requestedEvent = await base44.asServiceRole.entities.Event.get(eventId);
+        } catch (e) {
+            requestedEvent = null;
+        }
+        if (!requestedEvent) {
+            return Response.json({ error: 'Event not found' }, { status: 404 });
         }
 
         // Generate HTML content
-        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms, includeSchedule, includeExternalServices });
+        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms, includeSchedule, includeExternalServices, preloadedEvent: requestedEvent });
 
         const apiKey = Deno.env.get('API2PDF_API_KEY');
         if (!apiKey) {
-            throw new Error('API2PDF_API_KEY is not set');
+            console.error('[GenerateQuotePdf] PDF service is not configured');
+            return Response.json({ error: 'PDF service unavailable' }, { status: 503 });
         }
 
         const response = await fetch('https://v2.api2pdf.com/chrome/html', {
@@ -1248,63 +1271,75 @@ Deno.serve(async (req) => {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API2PDF failed: ${errorText}`);
+            // שגיאת ספק ה-PDF נרשמת כסטטוס בלבד, ללא גוף התשובה הגולמי ובלי להחזירה ללקוח.
+            console.error(`[GenerateQuotePdf] PDF service rejected the request (status ${response.status})`);
+            return Response.json({ error: 'Could not generate PDF' }, { status: 502 });
         }
 
-        const result = await response.json();
+        let result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
         
-        if (!result.pdf) {
-             throw new Error('No PDF URL in API2PDF response');
+        if (!result?.pdf) {
+            console.error('[GenerateQuotePdf] PDF service returned no file');
+            return Response.json({ error: 'Could not generate PDF' }, { status: 502 });
         }
 
         const pdfUrl = result.pdf;
         const fileName = `${fileAndTitleName}.pdf`;
         let savedFileUri = null;
 
-        // Save PDF to private storage and update quote history
+        // שמירה לאחסון הפרטי, ורק לאחר העלאה מוצלחת - כתיבה ל-quote_history.
         try {
-            // Download the PDF from API2PDF
             const pdfDownload = await fetch(pdfUrl);
-            const pdfArrayBuffer = await pdfDownload.arrayBuffer();
-            const pdfUint8Array = new Uint8Array(pdfArrayBuffer);
-            
-            // Create a File-like blob for upload
-            const pdfBlob = new Blob([pdfUint8Array], { type: 'application/pdf' });
-            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+            // חובה לוודא הורדה תקינה (2xx) לפני העלאה.
+            if (!pdfDownload.ok) {
+                console.error(`[GenerateQuotePdf] PDF download failed (status ${pdfDownload.status}) - history not updated`);
+            } else {
+                const pdfArrayBuffer = await pdfDownload.arrayBuffer();
+                if (!pdfArrayBuffer || pdfArrayBuffer.byteLength === 0) {
+                    console.error('[GenerateQuotePdf] Empty PDF payload - history not updated');
+                } else {
+                    const pdfUint8Array = new Uint8Array(pdfArrayBuffer);
+                    const pdfBlob = new Blob([pdfUint8Array], { type: 'application/pdf' });
+                    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-            // Upload to private storage
-            const uploadResult = await base44.asServiceRole.integrations.Core.UploadPrivateFile({ file: pdfFile });
-            const fileUri = uploadResult.file_uri;
-            savedFileUri = fileUri;
+                    const uploadResult = await base44.asServiceRole.integrations.Core.UploadPrivateFile({ file: pdfFile });
+                    const fileUri = uploadResult?.file_uri;
 
-            // Get current event to read existing quote_history
-            const currentEvent = await base44.asServiceRole.entities.Event.get(eventId);
-            const existingHistory = currentEvent.quote_history || [];
+                    if (!fileUri) {
+                        console.error('[GenerateQuotePdf] Upload returned no file reference - history not updated');
+                    } else {
+                        savedFileUri = fileUri;
 
-            // Add new entry to history
-            const newEntry = {
-                file_uri: fileUri,
-                file_name: fileName,
-                created_at: new Date().toISOString(),
-                created_by_user_name: user.full_name || user.email || 'לא ידוע',
-                event_status: currentEvent.status || 'quote'
-            };
+                        const currentEvent = await base44.asServiceRole.entities.Event.get(eventId);
+                        const existingHistory = currentEvent?.quote_history || [];
 
-            await base44.asServiceRole.entities.Event.update(eventId, {
-                quote_history: [...existingHistory, newEntry]
-            });
+                        const newEntry = {
+                            file_uri: fileUri,
+                            file_name: fileName,
+                            created_at: new Date().toISOString(),
+                            created_by_user_name: user.full_name || 'לא ידוע',
+                            event_status: currentEvent?.status || 'quote'
+                        };
 
-            console.log('Quote PDF saved to history successfully');
+                        await base44.asServiceRole.entities.Event.update(eventId, {
+                            quote_history: [...existingHistory, newEntry]
+                        });
+
+                        console.log('[GenerateQuotePdf] Quote stored and history updated');
+                    }
+                }
+            }
         } catch (historyError) {
-            // Don't fail the whole request if history save fails
-            console.error('Failed to save quote to history (non-blocking):', historyError);
+            // כשל בשמירה אינו מפיל את הבקשה, אך גם אינו רושם היסטוריה.
+            console.error('[GenerateQuotePdf] Storing the quote failed (non-blocking)');
         }
 
         return Response.json({ pdf_url: pdfUrl, fileName, file_uri: savedFileUri });
 
     } catch (error) {
-        console.error('Error generating PDF:', error);
-        return Response.json({ error: error.message }, { status: 500 });
+        // ללא הודעות שגיאה גולמיות של ספק ה-PDF וללא stack trace ללקוח.
+        console.error('[GenerateQuotePdf] failed');
+        return Response.json({ error: 'Could not generate PDF' }, { status: 500 });
     }
 });

@@ -2099,6 +2099,7 @@ export default function EventDetails() {
                   </DropdownMenuItem>
                   {showQuoteHistory && (
                     <QuoteHistoryPanel 
+                      eventId={eventId}
                       quoteHistory={event.quote_history} 
                       onClose={() => setShowQuoteHistory(false)}
                       onDelete={async (item) => {

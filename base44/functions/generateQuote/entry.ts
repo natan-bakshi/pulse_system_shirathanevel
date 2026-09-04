@@ -78,7 +78,7 @@ function buildQuoteBodyHtmlForView(ctx) {
         paymentTemplate, agreementTemplate, quoteShowFooter, quoteFooterText,
         quoteSummaryFontSize, quoteSummaryLineHeight, quoteTitleFontSize,
         event, baseTotalWithoutDiscount, eventDiscountAmount, vatAmount,
-        totalCostWithVat, finalTotal, totalPaid,
+        totalCostWithVat, finalTotal, totalPaid, vatRateLabel,
         quoteHideLogo, appSettings, includeExternalServices
     } = ctx;
 
@@ -94,7 +94,7 @@ function buildQuoteBodyHtmlForView(ctx) {
                 ${event.discount_before_vat && eventDiscountAmount > 0 ? `
                 <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                 ` : ''}
-                <tr><td class="label">מע"מ (18%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                <tr><td class="label">מע"מ (${vatRateLabel}%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                 <tr><td class="label">סה"כ כולל מע"מ:</td><td class="value">₪${totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
                 ${!event.discount_before_vat && eventDiscountAmount > 0 ? `
                 <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
@@ -228,30 +228,45 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    const user = await base44.auth.me();
+    // אימות לפני קריאת body ולפני כל שימוש ב-asServiceRole. ההרשאה לפי role בלבד.
+    let user = null;
+    try {
+      user = await base44.auth.me();
+    } catch (e) {
+      user = null;
+    }
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Prevent suppliers from generating quotes
-    if (user.user_type === 'supplier') {
-      return Response.json({ error: 'Unauthorized - Suppliers cannot generate quotes' }, { status: 403 });
+    if (user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const eventId = body.eventId;
     const includeIntro = body.includeIntro !== false; // default true
     const includePaymentTerms = body.includePaymentTerms !== false; // default true
     const includeSchedule = body.includeSchedule !== false; // default true
     const includeExternalServices = body.includeExternalServices !== false; // default true
 
-    if (!eventId) {
-      return Response.json({ error: 'Event ID is required' }, { status: 400 });
+    if (typeof eventId !== 'string' || !/^[A-Za-z0-9_\-:.]{1,64}$/.test(eventId.trim())) {
+      return Response.json({ error: 'Invalid event id' }, { status: 400 });
+    }
+
+    // קריאת האירוע המבוקש מיד לאחר האימות - לפני קריאת שאר הישויות.
+    let requestedEvent = null;
+    try {
+      requestedEvent = await base44.asServiceRole.entities.Event.get(eventId);
+    } catch (e) {
+      requestedEvent = null;
+    }
+    if (!requestedEvent) {
+      return Response.json({ error: 'Event not found' }, { status: 404 });
     }
 
     // Using the same logic as generateQuotePdf
     const [event, allServices, allEventServices, payments, templates, appSettingsList, allOrganizerTypes] = await Promise.all([
-      base44.asServiceRole.entities.Event.get(eventId),
+      Promise.resolve(requestedEvent),
       base44.asServiceRole.entities.Service.list(),
       base44.asServiceRole.entities.EventService.filter({ event_id: eventId }),
       base44.asServiceRole.entities.Payment.filter({ event_id: eventId }),
@@ -435,7 +450,12 @@ Deno.serve(async (req) => {
     }
     
     const baseTotalWithoutDiscount = totalCostWithoutVat; // For display compatibility
-    const totalPaid = payments.reduce((sum, p) => sum + safeFloat(p.amount), 0);
+    // רק תשלומים שהושלמו נחשבים ככסף ששולם.
+    const totalPaid = payments
+      .filter(p => p.payment_status === 'completed')
+      .reduce((sum, p) => sum + safeFloat(p.amount), 0);
+    // שיעור המע"מ להצגה נגזר מאותו vatRate שבו מתבצע החישוב.
+    const vatRateLabel = String(Math.round(vatRate * 1000) / 10);
     
     // Group services by new and legacy structure
     const structuredServices = [];
@@ -1095,6 +1115,7 @@ Deno.serve(async (req) => {
                  totalCostWithVat,
                  finalTotal,
                  totalPaid,
+                 vatRateLabel,
                  quoteHideLogo,
                  appSettings
               })}
@@ -1106,7 +1127,8 @@ Deno.serve(async (req) => {
     return Response.json({ html: html });
 
   } catch (error) {
-    console.error('Error in generateQuote:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    // ללא הודעות שגיאה גולמיות וללא stack trace ללקוח.
+    console.error('[GenerateQuote] failed');
+    return Response.json({ error: 'Could not generate quote' }, { status: 500 });
   }
 });

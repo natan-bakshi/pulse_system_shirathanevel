@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText, sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
+import { isShabbat, getShabbatEndTime, resolveNotificationDelay } from '../../shared/quietHours.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -87,30 +88,16 @@ Deno.serve(async (req) => {
                     }
                 }
 
-                // Check if user is still not in quiet hours
                 const targetUser = usersById.get(pending.user_id) || null;
 
-                // Verify not in Shabbat (Friday 16:00 - Saturday 20:00)
-                if (shabbatActive) {
+                // שבת ושעות שקט - אותה לוגיקה בדיוק כמו ביוצר ההתראות (shared/quietHours.ts),
+                // לפי העדפות המשתמש: quiet_hours_start/end, quiet_hours_enabled, respect_shabbat.
+                const delayDecision = resolveNotificationDelay(targetUser, { checkQuietHours: true });
+                if (delayDecision.shouldDelay && delayDecision.scheduledFor) {
                     await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
-                        scheduled_for: shabbatEndTime.toISOString()
+                        scheduled_for: delayDecision.scheduledFor.toISOString()
                     });
-                    console.log(`[ScheduledPush] Shabbat active. Rescheduled for ${shabbatEndTime.toISOString()}`);
-                    continue;
-                }
-
-                // Verify user is no longer in quiet hours before sending
-                // Use defaults if not set (22:00-08:00)
-                const startHour = targetUser?.quiet_start_hour !== undefined ? targetUser.quiet_start_hour : 22;
-                const endHour = targetUser?.quiet_end_hour !== undefined ? targetUser.quiet_end_hour : 8;
-
-                if (isInQuietHours(startHour, endHour)) {
-                    // Still in quiet hours - reschedule for next quiet end
-                    const newScheduledFor = getQuietHoursEndTime(endHour);
-                    await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
-                        scheduled_for: newScheduledFor.toISOString()
-                    });
-                    console.log(`[ScheduledPush] User ${pending.user_id} still in quiet hours (${startHour}-${endHour}). Rescheduled for ${newScheduledFor.toISOString()}`);
+                    console.log(`[ScheduledPush] Delayed (${delayDecision.reason}) for ${pending.id}. Rescheduled for ${delayDecision.scheduledFor.toISOString()}`);
                     continue;
                 }
                 
@@ -273,91 +260,7 @@ Deno.serve(async (req) => {
     }
 });
 
-// Helper functions (duplicated from createNotification.js for standalone execution)
-function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
-    if (quietStart === undefined || quietEnd === undefined) {
-        return false;
-    }
-    
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        hour12: false,
-        timeZone: timezone
-    });
-    const currentHour = parseInt(formatter.format(now), 10);
-    
-    if (quietStart > quietEnd) {
-        return currentHour >= quietStart || currentHour < quietEnd;
-    }
-    
-    return currentHour >= quietStart && currentHour < quietEnd;
-}
-
-function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        hour12: false,
-        timeZone: timezone
-    });
-    const currentHour = parseInt(formatter.format(now), 10);
-    
-    const endTime = new Date(now);
-    endTime.setHours(quietEnd, 0, 0, 0);
-    
-    if (currentHour >= quietEnd) {
-        endTime.setDate(endTime.getDate() + 1);
-    }
-    
-    return endTime;
-}
-
-// Helper function: Check if current time is during Shabbat (Friday 16:00 - Saturday 20:00)
-function isShabbat(timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        weekday: 'short',
-        hour: 'numeric',
-        hour12: false,
-        timeZone: timezone
-    });
-    const parts = formatter.formatToParts(now);
-    const dayPart = parts.find(p => p.type === 'weekday');
-    const hourPart = parts.find(p => p.type === 'hour');
-    
-    const day = dayPart?.value; // 'Fri', 'Sat', etc.
-    const hour = parseInt(hourPart?.value || '0', 10);
-    
-    // Friday after 16:00
-    if (day === 'Fri' && hour >= 16) return true;
-    // All day Saturday until 20:00
-    if (day === 'Sat' && hour < 20) return true;
-    
-    return false;
-}
-
-// Helper function: Get end of Shabbat time
-function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        weekday: 'short',
-        timeZone: timezone
-    });
-    const day = formatter.format(now);
-    
-    // Calculate next Saturday 20:00
-    const endTime = new Date(now);
-    
-    if (day === 'Fri') {
-        // Move to Saturday
-        endTime.setDate(endTime.getDate() + 1);
-    }
-    // Set to 20:00
-    endTime.setHours(20, 0, 0, 0);
-    
-    return endTime;
-}
+// חישובי שבת/שעות שקט מיובאים מ-shared/quietHours.ts (מקור אמת אחד עם יוצר ההתראות).
 
 async function getCached(cache, key, loader) {
     if (!cache) return await loader();

@@ -158,7 +158,7 @@ function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoadi
   );
 }
 
-export default function QuoteHistoryPanel({ quoteHistory = [], onClose, onDelete }) {
+export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose, onDelete }) {
   const [showFullDialog, setShowFullDialog] = useState(false);
   const [loadingItem, setLoadingItem] = useState(null);
   const [loadingAction, setLoadingAction] = useState(null);
@@ -166,16 +166,24 @@ export default function QuoteHistoryPanel({ quoteHistory = [], onClose, onDelete
   // Sort by newest first
   const sorted = [...quoteHistory].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-  const getSignedUrl = async (fileUri) => {
-    const res = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: fileUri, expires_in: 300 });
-    return res.signed_url;
+  // הקישור החתום מופק בשרת מתוך רשומת האירוע - הלקוח שולח reference עסקי בלבד.
+  const getSignedUrl = async (item) => {
+    const res = await base44.functions.invoke('createSignedUrl', {
+      resource_type: 'event_quote',
+      event_id: eventId,
+      quote_created_at: item.created_at,
+      quote_file_name: item.file_name
+    });
+    const signedUrl = res?.data?.signed_url;
+    if (!signedUrl) throw new Error('signed url unavailable');
+    return signedUrl;
   };
 
   const handleView = async (item) => {
     setLoadingItem(item.file_uri);
     setLoadingAction("view");
     try {
-      const url = await getSignedUrl(item.file_uri);
+      const url = await getSignedUrl(item);
       window.open(url, "_blank");
     } catch (e) {
       console.error("Failed to get signed URL:", e);
@@ -190,7 +198,7 @@ export default function QuoteHistoryPanel({ quoteHistory = [], onClose, onDelete
     setLoadingItem(item.file_uri);
     setLoadingAction("download");
     try {
-      const url = await getSignedUrl(item.file_uri);
+      const url = await getSignedUrl(item);
       const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
@@ -214,7 +222,7 @@ export default function QuoteHistoryPanel({ quoteHistory = [], onClose, onDelete
     setLoadingItem(item.file_uri);
     setLoadingAction("share");
     try {
-      const url = await getSignedUrl(item.file_uri);
+      const url = await getSignedUrl(item);
       const response = await fetch(url);
       const blob = await response.blob();
       const file = new File([blob], item.file_name || "quote.pdf", { type: "application/pdf" });

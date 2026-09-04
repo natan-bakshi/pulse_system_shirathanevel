@@ -2,6 +2,7 @@
 // נקרא ישירות מפונקציות ה-backend, ומ-endpoint ה-HTTP המאומת createNotification.
 import { validateNotificationInput, sanitizeLink, PULSE_ORIGIN } from "./notificationValidation.ts";
 import { sendWhatsAppText } from "./whatsappSend.ts";
+import { resolveNotificationDelay } from "./quietHours.ts";
 
 /**
  * יוצר התראה פנימית, ובאופן אופציונלי שולח Push ו/או WhatsApp.
@@ -134,20 +135,13 @@ export async function createNotificationCore(base44, payload, options = {}) {
     }
 
     // --- 5. בדיקת השהיה (שבת / שעות שקט) ---
-    let shouldDelay = false;
-    let scheduledFor = null;
-
-    if (isShabbat()) {
-        shouldDelay = true;
-        scheduledFor = getShabbatEndTime();
-    } else if (input.check_quiet_hours) {
-        const startHour = targetUser?.quiet_start_hour ?? 22;
-        const endHour = targetUser?.quiet_end_hour ?? 8;
-        if (isInQuietHours(startHour, endHour)) {
-            shouldDelay = true;
-            scheduledFor = getQuietHoursEndTime(endHour);
-        }
-    }
+    // הלוגיקה מרוכזת ב-quietHours.ts ומשותפת עם המעבד המתוזמן.
+    // שדות הסכמה: quiet_hours_start / quiet_hours_end / quiet_hours_enabled / respect_shabbat.
+    const delayDecision = resolveNotificationDelay(targetUser, {
+        checkQuietHours: input.check_quiet_hours !== false
+    });
+    const shouldDelay = delayDecision.shouldDelay;
+    const scheduledFor = delayDecision.scheduledFor;
 
     if (shouldDelay && scheduledFor) {
         // חישוב נפרד לכל ערוץ: מתזמנים רק ערוץ שאכן מיועד לשליחה.
@@ -355,42 +349,4 @@ function generateDynamicUrl(type, context) {
     return path ? `${PULSE_ORIGIN}${path}` : '';
 }
 
-function isShabbat(timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false, timeZone: timezone });
-    const parts = formatter.formatToParts(now);
-    const day = parts.find(p => p.type === 'weekday')?.value;
-    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-    if (day === 'Fri' && hour >= 16) return true;
-    if (day === 'Sat' && hour < 20) return true;
-    return false;
-}
-
-function getShabbatEndTime(timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone });
-    const day = formatter.format(now);
-    const endTime = new Date(now);
-    if (day === 'Fri') endTime.setDate(endTime.getDate() + 1);
-    endTime.setHours(20, 0, 0, 0);
-    return endTime;
-}
-
-function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
-    if (quietStart === undefined || quietEnd === undefined) return false;
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
-    const currentHour = parseInt(formatter.format(now), 10);
-    if (quietStart > quietEnd) return currentHour >= quietStart || currentHour < quietEnd;
-    return currentHour >= quietStart && currentHour < quietEnd;
-}
-
-function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
-    const currentHour = parseInt(formatter.format(now), 10);
-    const endTime = new Date(now);
-    endTime.setHours(quietEnd, 0, 0, 0);
-    if (currentHour >= quietEnd) endTime.setDate(endTime.getDate() + 1);
-    return endTime;
-}
+// חישובי שבת/שעות שקט מרוכזים ב-shared/quietHours.ts (שעון ירושלים, כולל שעון קיץ).

@@ -46,36 +46,70 @@ export function collectEventContacts(eventRecord) {
     return list.filter(c => c && typeof c === 'object');
 }
 
-/**
- * בונה מועמדי סנכרון לפי מייל מתוך רשומת Supplier/Event אמיתית שנקראה מהמערכת.
- * מחזיר Map: email -> { type, phones[], displayNames[], fullNames[] }
- */
-export function buildCandidatesFromEntity(entityName, record) {
-    const byEmail = new Map();
-    const push = (email, data) => {
-        const key = normalizeEmail(email);
-        if (!key) return;
-        if (!byEmail.has(key)) byEmail.set(key, { type: data.type, phones: [], displayNames: [], fullNames: [] });
-        const entry = byEmail.get(key);
-        if (data.phone) entry.phones.push(data.phone);
-        if (data.displayName) entry.displayNames.push(data.displayName);
-        if (data.fullName) entry.fullNames.push(data.fullName);
-    };
+function emptyCandidate(type = '') {
+    return { type, phones: [], displayNames: [], fullNames: [] };
+}
 
+/**
+ * צובר מועמדים לתוך מפה משותפת לפי מייל מנורמל.
+ * ספק מקבל עדיפות מוחלטת: ברגע שקיימת התאמת Supplier למייל,
+ * נתוני אנשי קשר מאירועים לא נכנסים ולא דורסים.
+ * התוצאה אינה תלויה בסדר הרשומות.
+ */
+export function accumulateCandidate(map, email, data) {
+    const key = normalizeEmail(email);
+    if (!key) return;
+
+    if (!map.has(key)) map.set(key, emptyCandidate(data.type));
+    const entry = map.get(key);
+
+    if (data.type === 'supplier' && entry.type !== 'supplier') {
+        // מעבר לעדיפות ספק: מאפסים נתוני לקוח שנאספו קודם.
+        entry.type = 'supplier';
+        entry.phones = [];
+        entry.displayNames = [];
+        entry.fullNames = [];
+    } else if (data.type === 'client' && entry.type === 'supplier') {
+        // ספק כבר תפס את המייל - נתוני אירוע לא נאספים בכלל.
+        return;
+    }
+
+    if (data.phone) entry.phones.push(data.phone);
+    if (data.displayName) entry.displayNames.push(data.displayName);
+    if (data.fullName) entry.fullNames.push(data.fullName);
+}
+
+/**
+ * צובר את כל המועמדים מרשומת Supplier/Event אמיתית אל מפה משותפת.
+ */
+export function accumulateFromEntity(map, entityName, record) {
     if (entityName === 'Supplier') {
         const emails = Array.isArray(record?.contact_emails) ? record.contact_emails : [];
         const name = record?.contact_person || record?.supplier_name || '';
         for (const email of emails) {
-            push(email, { type: 'supplier', phone: record?.phone, displayName: name, fullName: record?.contact_person || '' });
+            accumulateCandidate(map, email, {
+                type: 'supplier',
+                phone: record?.phone,
+                displayName: name,
+                fullName: record?.contact_person || ''
+            });
         }
     } else if (entityName === 'Event') {
         for (const contact of collectEventContacts(record)) {
-            const displayName = `${contact.name || ''} ${record?.family_name || ''}`.trim();
-            push(contact.email, { type: 'client', phone: contact.phone, displayName, fullName: contact.name || '' });
+            accumulateCandidate(map, contact.email, {
+                type: 'client',
+                phone: contact.phone,
+                displayName: `${contact.name || ''} ${record?.family_name || ''}`.trim(),
+                fullName: contact.name || ''
+            });
         }
     }
+    return map;
+}
 
-    return byEmail;
+/** גרסה לרשומה בודדת (משמשת את המסלול האינקרמנטלי). */
+export function buildCandidatesFromEntity(entityName, record) {
+    return accumulateFromEntity(new Map(), entityName, record);
 }
 
 /**
@@ -132,51 +166,35 @@ export function buildUserUpdates(user, candidate, options = {}) {
  */
 export async function resolveSelfBusinessMatch(serviceRole, email) {
     const normalized = normalizeEmail(email);
-    if (!normalized) return { type: '', phones: [], displayNames: [], fullNames: [] };
+    if (!normalized) return emptyCandidate();
+
+    const map = new Map();
 
     const suppliers = await serviceRole.entities.Supplier.list();
     const matchedSuppliers = suppliers.filter(s => Array.isArray(s.contact_emails)
         && s.contact_emails.some(e => normalizeEmail(e) === normalized));
 
     if (matchedSuppliers.length > 0) {
-        const candidate = { type: 'supplier', phones: [], displayNames: [], fullNames: [] };
-        for (const supplier of matchedSuppliers) {
-            if (supplier.phone) candidate.phones.push(supplier.phone);
-            const name = supplier.contact_person || supplier.supplier_name || '';
-            if (name) candidate.displayNames.push(name);
-            if (supplier.contact_person) candidate.fullNames.push(supplier.contact_person);
-        }
-        return candidate;
+        for (const supplier of matchedSuppliers) accumulateFromEntity(map, 'Supplier', supplier);
+        return map.get(normalized) || emptyCandidate('supplier');
     }
 
     const events = await serviceRole.entities.Event.filter({ status: { $ne: 'cancelled' } });
-    const candidate = { type: '', phones: [], displayNames: [], fullNames: [] };
-    for (const eventRecord of events) {
-        for (const contact of collectEventContacts(eventRecord)) {
-            if (normalizeEmail(contact.email) !== normalized) continue;
-            candidate.type = 'client';
-            if (contact.phone) candidate.phones.push(contact.phone);
-            if (contact.name) {
-                candidate.fullNames.push(contact.name);
-                candidate.displayNames.push(`${contact.name} ${eventRecord.family_name || ''}`.trim());
-            }
-        }
-    }
-    return candidate;
+    for (const eventRecord of events) accumulateFromEntity(map, 'Event', eventRecord);
+    return map.get(normalized) || emptyCandidate();
 }
 
 /**
- * מסנכרן רשומת Supplier/Event אמיתית אל המשתמשים התואמים לפי מייל.
- * הפעולה idempotent: אין עדכון כשהערכים זהים.
+ * כותב מפת מועמדים מאוגדת אל המשתמשים התואמים.
+ * כל מייל מעובד פעם אחת בלבד, והפעולה idempotent (אין עדכון כשהערכים זהים).
  */
-export async function syncEntityRecordToUsers(serviceRole, entityName, record, options = {}) {
-    const candidates = buildCandidatesFromEntity(entityName, record);
+export async function applyCandidatesToUsers(serviceRole, candidateMap, options = {}) {
     let updatesCount = 0;
     let conflictsCount = 0;
     let errorsCount = 0;
     const fieldsTouched = new Set();
 
-    for (const [email, candidate] of candidates) {
+    for (const [email, candidate] of candidateMap) {
         try {
             const users = await serviceRole.entities.User.filter({ email });
             for (const user of users) {
@@ -194,4 +212,36 @@ export async function syncEntityRecordToUsers(serviceRole, entityName, record, o
     }
 
     return { updatesCount, conflictsCount, errorsCount, updated_fields: [...fieldsTouched] };
+}
+
+/**
+ * מסלול אינקרמנטלי: מסנכרן רשומה בודדת אמיתית.
+ * עדכון Event אינו מורשה לדרוס משתמש שהמייל שלו משויך לספק -
+ * לכן מיילים שספק תופס מסוננים לפני הכתיבה.
+ */
+export async function syncEntityRecordToUsers(serviceRole, entityName, record, options = {}) {
+    const candidates = buildCandidatesFromEntity(entityName, record);
+
+    if (entityName === 'Event' && candidates.size > 0) {
+        const supplierEmails = await loadSupplierEmailSet(serviceRole);
+        for (const email of [...candidates.keys()]) {
+            if (supplierEmails.has(email)) candidates.delete(email);
+        }
+    }
+
+    return await applyCandidatesToUsers(serviceRole, candidates, options);
+}
+
+/** אוסף את כל המיילים שמשויכים לספקים (לצורך עדיפות ספק). */
+export async function loadSupplierEmailSet(serviceRole) {
+    const suppliers = await serviceRole.entities.Supplier.list();
+    const set = new Set();
+    for (const supplier of suppliers) {
+        const emails = Array.isArray(supplier.contact_emails) ? supplier.contact_emails : [];
+        for (const email of emails) {
+            const normalized = normalizeEmail(email);
+            if (normalized) set.add(normalized);
+        }
+    }
+    return set;
 }

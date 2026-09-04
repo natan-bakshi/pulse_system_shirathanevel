@@ -1,22 +1,20 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Users, Calendar, Clock, MapPin, Eye, Loader2, FileText } from "lucide-react";
+import { Users, Calendar, Clock, MapPin, Eye, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
-import { generateQuote } from '@/functions/generateQuote';
 import { getEventTitle } from '@/lib/eventDisplayName';
 
 
 export default function ClientDashboard() {
-  const [isGeneratingQuote, setIsGeneratingQuote] = useState(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -68,11 +66,22 @@ export default function ClientDashboard() {
     select: (data) => Array.isArray(data) ? data : []
   });
 
-  const loading = eventsLoading;
+  // הגדרות מערכת - שיעור המע"מ נלקח מ-AppSettings ולא מקובע בקוד
+  const { data: appSettings = [] } = useQuery({
+    queryKey: ['appSettings'],
+    queryFn: () => base44.entities.AppSettings.list(),
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 30 * 60 * 1000,
+    select: (data) => Array.isArray(data) ? data : []
+  });
 
-  // Determine user roles
-  const isClient = useMemo(() => !!user, [user]);
-  const isAdmin = useMemo(() => user?.role === 'admin', [user]);
+  const vatRate = useMemo(() => {
+    const setting = appSettings.find(s => s.setting_key === 'vat_rate');
+    const parsed = setting ? parseFloat(setting.setting_value) / 100 : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.18;
+  }, [appSettings]);
+
+  const loading = eventsLoading;
 
   // Filter events for current client
   const clientEvents = useMemo(() => {
@@ -131,22 +140,25 @@ export default function ClientDashboard() {
       if (event.all_inclusive && event.all_inclusive_price) {
           totalCostWithoutVat = event.all_inclusive_price;
           if (event.all_inclusive_includes_vat) {
-              totalCostWithoutVat /= 1.18;
+              totalCostWithoutVat /= (1 + vatRate);
           }
       } else {
           totalCostWithoutVat = eventServices.reduce((sum, s) => {
               if (s.is_external) return sum;
               const serviceTotal = (s.custom_price || 0) * (s.quantity || 1);
-              return sum + (s.includes_vat ? serviceTotal / 1.18 : serviceTotal);
+              return sum + (s.includes_vat ? serviceTotal / (1 + vatRate) : serviceTotal);
           }, 0);
       }
 
-      const vatAmount = totalCostWithoutVat * 0.18;
+      const vatAmount = totalCostWithoutVat * vatRate;
       const totalCostWithVat = totalCostWithoutVat + vatAmount;
       const discountAmount = event.discount_amount || 0;
       const finalTotal = totalCostWithVat - discountAmount;
       
-      const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      // רק תשלומים שהושלמו נחשבים ככסף ששולם - זהה לחישוב בהצעת המחיר.
+      const totalPaid = payments
+        .filter(p => p.payment_status === 'completed')
+        .reduce((sum, p) => sum + (p.amount || 0), 0);
       const balance = finalTotal - totalPaid;
       const progress = finalTotal > 0 ? (totalPaid / finalTotal) * 100 : 0;
       
@@ -159,28 +171,7 @@ export default function ClientDashboard() {
         discount_amount: discountAmount,
       };
     }).sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
-  }, [clientEvents, servicesByEvent, paymentsByEvent]);
-
-  // Function to handle generating/viewing a quote HTML
-  const handleGenerateQuote = useCallback(async (eventId) => {
-    setIsGeneratingQuote(eventId);
-    try {
-      const response = await generateQuote({ eventId: eventId });
-      const html = response.data.html; 
-      const newWindow = window.open();
-      if (newWindow) {
-        newWindow.document.write(html);
-        newWindow.document.close();
-      } else {
-        alert("חוסם החלונות הקופצים מנע את פתיחת ההצעה. אנא אפשר חלונות קופצים עבור אתר זה.");
-      }
-    } catch (error) {
-      console.error("Failed to generate quote:", error);
-      alert("שגיאה ביצירת הצעת המחיר");
-    } finally {
-      setIsGeneratingQuote(null);
-    }
-  }, []);
+  }, [clientEvents, servicesByEvent, paymentsByEvent, vatRate]);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>;
@@ -256,20 +247,6 @@ export default function ClientDashboard() {
                       <Eye className="h-4 w-4 ml-2 shrink-0" />
                       צפה בפרטי האירוע
                   </Button>
-                  {(isClient || isAdmin) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleGenerateQuote(event.id)}
-                      disabled={isGeneratingQuote === event.id}
-                      className="w-full border-red-200 text-red-800 hover:bg-red-50 h-auto py-2 whitespace-normal"
-                    >
-                      <FileText className="h-4 w-4 ml-2 shrink-0" />
-                      הצג הצעת מחיר
-                      {isGeneratingQuote === event.id && <Loader2 className="h-4 w-4 mr-2 animate-spin shrink-0" />}
-                    </Button>
-                  )}
-
                 </div>
               </CardFooter>
             </Card>
