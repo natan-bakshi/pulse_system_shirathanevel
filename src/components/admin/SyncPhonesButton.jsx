@@ -10,12 +10,12 @@ export default function SyncPhonesButton() {
     const handleSync = async () => {
         setLoading(true);
         try {
-            const response = await base44.functions.invoke('syncSupplierPhonesToUsers', {});
+            const response = await base44.functions.invoke('syncSupplierPhonesToUsers', { mode: 'full' });
             
             if (response.data?.success) {
-                const { processed_suppliers, updates_count } = response.data;
+                const { processed_suppliers = 0, processed_events = 0, updates_count = 0, conflicts_count = 0 } = response.data;
                 toast.success("סנכרון הושלם בהצלחה", {
-                    description: `נבדקו ${processed_suppliers} ספקים, בוצעו ${updates_count} עדכונים.`
+                    description: `נבדקו ${processed_suppliers} ספקים ו-${processed_events} אירועים, בוצעו ${updates_count} עדכונים${conflicts_count > 0 ? `, ${conflicts_count} שדות עמומים דולגו` : ''}.`
                 });
             } else {
                 toast.error("שגיאה בסנכרון", {

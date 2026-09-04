@@ -23,28 +23,41 @@ export async function createNotificationCore(base44, payload, options = {}) {
     let link = input.link;
 
     // --- 1. פתרון המשתמש היעד ---
+    // אין fallback ממזהה שגוי לחיפוש לפי מייל: מזהה שהתקבל חייב להתאים למשתמש קיים,
+    // ואם התקבל גם מייל - הוא חייב להיות המייל של אותו משתמש בדיוק.
     let targetUser = null;
-    try {
-        if (targetUserId && !targetUserId.startsWith('virtual')) {
-            const users = await base44.asServiceRole.entities.User.filter({ id: targetUserId });
-            targetUser = users.length > 0 ? users[0] : null;
-        }
-        if (input.target_user_email && !targetUser) {
-            const usersByEmail = await base44.asServiceRole.entities.User.filter({ email: input.target_user_email });
-            if (usersByEmail.length > 0) {
-                targetUser = usersByEmail[0];
-                if (!targetUserId) targetUserId = targetUser.id;
-            }
-        }
-    } catch (e) {
-        console.warn('[Notification] user resolution failed');
+    const isVirtual = targetUserId.startsWith('virtual');
+
+    if (isVirtual && options.allowVirtualTarget !== true) {
+        return { ok: false, status: 400, body: { error: 'virtual target is not allowed' } };
     }
 
-    // אימות התאמה בין מזהה למייל כשמתקבלים שניהם
-    if (targetUser && input.target_user_id && input.target_user_email) {
-        const resolvedEmail = String(targetUser.email || '').toLowerCase().trim();
-        if (targetUser.id === input.target_user_id && resolvedEmail && resolvedEmail !== input.target_user_email) {
-            return { ok: false, status: 400, body: { error: 'target_user_id and target_user_email do not match the same user' } };
+    if (!isVirtual) {
+        try {
+            if (targetUserId) {
+                const users = await base44.asServiceRole.entities.User.filter({ id: targetUserId });
+                targetUser = users.length > 0 ? users[0] : null;
+                if (!targetUser) {
+                    return { ok: false, status: 404, body: { error: 'target user not found' } };
+                }
+                if (input.target_user_email) {
+                    const resolvedEmail = String(targetUser.email || '').toLowerCase().trim();
+                    if (resolvedEmail !== input.target_user_email) {
+                        return { ok: false, status: 400, body: { error: 'target_user_id and target_user_email do not match the same user' } };
+                    }
+                }
+            } else {
+                const usersByEmail = await base44.asServiceRole.entities.User.filter({ email: input.target_user_email });
+                targetUser = usersByEmail.length > 0 ? usersByEmail[0] : null;
+                if (!targetUser) {
+                    return { ok: false, status: 404, body: { error: 'target user not found' } };
+                }
+                // אימוץ המזהה האמיתי של המשתמש שנמצא לפי המייל.
+                targetUserId = targetUser.id;
+            }
+        } catch (e) {
+            console.warn('[Notification] user resolution failed');
+            return { ok: false, status: 500, body: { error: 'user resolution failed' } };
         }
     }
 
@@ -94,7 +107,6 @@ export async function createNotificationCore(base44, payload, options = {}) {
 
     // --- 4. רישום ההתראה הפנימית ---
     let notificationRecordId = null;
-    const isVirtual = !!targetUserId && targetUserId.startsWith('virtual');
 
     try {
         if (targetUserId && !isVirtual) {
@@ -137,10 +149,38 @@ export async function createNotificationCore(base44, payload, options = {}) {
         }
     }
 
-    if (shouldDelay && scheduledFor && notificationRecordId) {
-        const pendingData = (allowWhatsApp && whatsappTargetPhone)
-            ? JSON.stringify({ send_whatsapp: true, whatsapp_message: input.message, phone: whatsappTargetPhone })
-            : JSON.stringify({});
+    if (shouldDelay && scheduledFor) {
+        // חישוב נפרד לכל ערוץ: מתזמנים רק ערוץ שאכן מיועד לשליחה.
+        const wantsDelayedPush = !!(sendPush && userHasPushEnabled && notificationRecordId);
+        const wantsDelayedWhatsApp = !!(allowWhatsApp && whatsappTargetPhone);
+
+        const pushReason = !sendPush
+            ? 'Push not requested'
+            : (!userHasPushEnabled ? 'User disabled push' : 'No in-app notification record');
+
+        const delayedBody = {
+            success: true,
+            notification_id: notificationRecordId || 'virtual',
+            push: wantsDelayedPush
+                ? { sent: false, scheduled: true }
+                : { sent: false, scheduled: false, reason: pushReason }
+        };
+        if (allowWhatsApp) {
+            delayedBody.whatsapp = wantsDelayedWhatsApp
+                ? { sent: false, scheduled: true }
+                : { sent: false, scheduled: false, reason: whatsappBlockedReason || 'No WhatsApp target' };
+        }
+
+        // אין ערוץ לשליחה - לא יוצרים רשומת תזמון בכלל.
+        if (!wantsDelayedPush && !wantsDelayedWhatsApp) {
+            return { ok: true, status: 200, body: delayedBody };
+        }
+
+        const pendingData = { send_push: wantsDelayedPush, send_whatsapp: wantsDelayedWhatsApp };
+        if (wantsDelayedWhatsApp) {
+            pendingData.whatsapp_message = input.message;
+            pendingData.phone = whatsappTargetPhone;
+        }
 
         await base44.asServiceRole.entities.PendingPushNotification.create({
             user_id: targetUserId,
@@ -150,30 +190,23 @@ export async function createNotificationCore(base44, payload, options = {}) {
             link: link || '',
             scheduled_for: scheduledFor.toISOString(),
             template_type: input.template_type || 'CUSTOM',
-            in_app_notification_id: notificationRecordId,
+            in_app_notification_id: notificationRecordId || '',
             is_sent: false,
-            data: pendingData
+            data: JSON.stringify(pendingData)
         });
 
-        await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
-            push_scheduled_for: scheduledFor.toISOString()
-        });
-
-        const delayedBody = {
-            success: true,
-            notification_id: notificationRecordId,
-            push: { sent: false, scheduled: true }
-        };
-        if (allowWhatsApp) {
-            delayedBody.whatsapp = whatsappTargetPhone
-                ? { sent: false, scheduled: true }
-                : { sent: false, scheduled: false, reason: whatsappBlockedReason || 'No WhatsApp target' };
+        // push_scheduled_for נכתב רק כאשר Push אכן תוזמן.
+        if (wantsDelayedPush && notificationRecordId) {
+            await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
+                push_scheduled_for: scheduledFor.toISOString()
+            });
         }
+
         return { ok: true, status: 200, body: delayedBody };
     }
 
     // --- 6. Push מיידי ---
-    let pushResult = { sent: false };
+    let pushResult = { sent: false, scheduled: false };
 
     if (sendPush && userHasPushEnabled && notificationRecordId) {
         try {
@@ -200,16 +233,18 @@ export async function createNotificationCore(base44, payload, options = {}) {
 
             if (result.id && result.recipients > 0) {
                 await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, { push_sent: true });
-                pushResult = { sent: true, recipients: result.recipients, onesignal_id: result.id };
+                pushResult = { sent: true, scheduled: false, recipients: result.recipients };
             } else {
-                pushResult = { sent: false, error: 'No recipients' };
+                pushResult = { sent: false, scheduled: false, reason: 'No recipients' };
             }
         } catch (pushError) {
             console.error('[Notification] push send error');
-            pushResult = { sent: false, error: 'Push send failed' };
+            pushResult = { sent: false, scheduled: false, reason: 'Push send failed' };
         }
-    } else if (sendPush && !userHasPushEnabled) {
-        pushResult = { sent: false, reason: 'User disabled push' };
+    } else if (!sendPush) {
+        pushResult = { sent: false, scheduled: false, reason: 'Push not requested' };
+    } else if (!userHasPushEnabled) {
+        pushResult = { sent: false, scheduled: false, reason: 'User disabled push' };
     }
 
     // --- 7. WhatsApp מיידי (מנהל מאומת בלבד) ---

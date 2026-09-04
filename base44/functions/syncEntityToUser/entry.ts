@@ -1,112 +1,78 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
+import { SYNC_ENTITIES, isValidEntityId, syncEntityRecordToUsers } from '../../shared/identitySync.ts';
 
 /**
- * Sync Business Entity Changes TO User
- * 
- * Triggered by: Supplier or Event create/update.
- * Purpose: If a Supplier/Event is updated, ensure the linked User (if exists) is updated.
+ * סנכרון שינוי בישות עסקית (Supplier/Event) אל המשתמש התואם.
+ *
+ * מאובטח: מנהל מאומת בלבד. מהאירוע נלקח metadata מצומצם בלבד
+ * (entity_name, entity_id, type), והרשומה האמיתית נקראת מחדש מהמערכת.
+ * payload.data / old_data / changed_fields אינם מקור לערכים שנכתבים ל-User.
  */
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const payload = await req.json();
-        
-        // Payload structure from entity automation:
-        // { event: { type, entity_name, entity_id }, data: { ... } }
-        
-        const { event, data } = payload;
-        
-        if (!event || !data) {
-            return Response.json({ skipped: true, reason: 'Invalid payload' });
+
+        // אימות לפני קריאת body ולפני כל שימוש ב-asServiceRole.
+        let user = null;
+        try {
+            user = await base44.auth.me();
+        } catch (e) {
+            user = null;
         }
-        
-        console.log(`[SyncEntityToUser] Processing ${event.entity_name} ${event.type}`);
-        
-        let targetEmails = [];
-        let sourcePhone = '';
-        let targetRole = '';
-        
-        if (event.entity_name === 'Supplier') {
-            if (data.contact_emails && Array.isArray(data.contact_emails)) {
-                targetEmails = data.contact_emails;
-            }
-            sourcePhone = data.phone;
-            targetRole = 'supplier';
-        } else if (event.entity_name === 'Event') {
-            if (data.parents && Array.isArray(data.parents)) {
-                // Collect all emails from parents that have a phone number (source of truth)
-                // or just all emails to sync role
-                data.parents.forEach(p => {
-                    if (p.email) targetEmails.push(p.email);
-                });
-            }
-            targetRole = 'client';
-            // Note: Event has multiple parents, so we can't just pick one phone.
-            // We need to match Email -> Parent Object -> Phone.
+        if (!user) {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        
-        if (targetEmails.length === 0) {
-            return Response.json({ skipped: true, reason: 'No emails found in entity' });
+        if (user.role !== 'admin') {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
-        
-        let updatesCount = 0;
-        
-        for (const email of targetEmails) {
-            if (!email) continue;
-            const normalizedEmail = email.toLowerCase().trim();
-            
-            // Find User
-            const users = await base44.asServiceRole.entities.User.filter({ email: normalizedEmail });
-            if (users.length === 0) continue;
-            
-            const user = users[0];
-            let userUpdates = {};
-            
-            // Determine Phone for this specific email (especially for Event parents)
-            let phoneToSync = sourcePhone;
-            let nameToSync = '';
-            
-            if (event.entity_name === 'Event') {
-                const parent = data.parents.find(p => p.email && p.email.toLowerCase().trim() === normalizedEmail);
-                if (parent) {
-                    phoneToSync = parent.phone;
-                    nameToSync = parent.name;
-                }
-            } else if (event.entity_name === 'Supplier') {
-                 nameToSync = data.contact_person;
-            }
-            
-            // Check Role
-            if (user.user_type !== 'admin' && user.user_type !== 'supplier') { // Don't downgrade admins/suppliers
-                 if (targetRole === 'supplier') {
-                     if (user.user_type !== 'supplier') userUpdates.user_type = 'supplier';
-                 } else if (targetRole === 'client') {
-                     if (user.user_type !== 'client' && user.user_type !== 'supplier') userUpdates.user_type = 'client';
-                 }
-            }
-            
-            // Check Phone (Only if user missing it? Or force sync? User said "Two way... missing info... will be pulled")
-            // Safest: Fill if missing.
-            if (!user.phone && phoneToSync) {
-                userUpdates.phone = phoneToSync;
-            }
-            
-            // Check Name
-            if (!user.full_name && nameToSync) {
-                userUpdates.full_name = nameToSync;
-            }
-            
-            if (Object.keys(userUpdates).length > 0) {
-                await base44.asServiceRole.entities.User.update(user.id, userUpdates);
-                updatesCount++;
-                console.log(`[SyncEntityToUser] Updated User ${user.email}`, userUpdates);
-            }
+
+        const payload = await req.json().catch(() => ({}));
+        const event = payload?.event;
+        const entityName = String(event?.entity_name || '');
+        const entityId = event?.entity_id;
+        const eventType = String(event?.type || '');
+
+        if (!SYNC_ENTITIES.includes(entityName)) {
+            return Response.json({ skipped: true, reason: 'Unsupported entity' });
         }
-        
-        return Response.json({ success: true, updates: updatesCount });
-        
+        if (eventType !== 'create' && eventType !== 'update') {
+            return Response.json({ skipped: true, reason: 'Unsupported event type' });
+        }
+        if (!isValidEntityId(entityId)) {
+            return Response.json({ error: 'Invalid entity_id' }, { status: 400 });
+        }
+
+        const serviceRole = base44.asServiceRole;
+
+        // קריאה מחדש של הרשומה האמיתית - מקור האמת היחיד.
+        let record = null;
+        try {
+            record = await serviceRole.entities[entityName].get(entityId);
+        } catch (e) {
+            record = null;
+        }
+        if (!record) {
+            return Response.json({ skipped: true, reason: 'Entity not found' }, { status: 404 });
+        }
+
+        const result = await syncEntityRecordToUsers(serviceRole, entityName, record, {
+            overwritePhone: false,
+            syncDisplayName: false
+        });
+
+        console.log(`[SyncEntityToUser] ${entityName} ${eventType}: ${result.updatesCount} updates, ${result.conflictsCount} conflicts`);
+
+        return Response.json({
+            success: true,
+            entity: entityName,
+            updates_count: result.updatesCount,
+            updated_fields: result.updated_fields,
+            conflicts_count: result.conflictsCount,
+            errors_count: result.errorsCount
+        });
+
     } catch (error) {
-        console.error('[SyncEntityToUser] Error:', error);
-        return Response.json({ error: error.message }, { status: 500 });
+        console.error('[SyncEntityToUser] failed');
+        return Response.json({ error: 'Sync failed' }, { status: 500 });
     }
 });

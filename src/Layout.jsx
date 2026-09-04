@@ -233,12 +233,14 @@ export default function Layout({ children }) {
         return userToSync;
       }
 
-      // Invoke backend function to handle classification and data sync
-      const result = await base44.functions.invoke('syncUserIdentity', { 
-        data: userToSync 
-      });
+      // בקשת self ריקה: הזהות נקבעת בשרת מ-auth.me() בלבד.
+      const result = await base44.functions.invoke('syncUserIdentity', {});
 
-      // Mark this user as synced for the rest of the session
+      if (!result.data?.success) {
+        return userToSync;
+      }
+
+      // מסמנים סנכרון מוצלח לשאר הסשן.
       sessionStorage.setItem(sessionSyncKey, '1');
 
       // If backend made updates, refresh the user object

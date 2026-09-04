@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { sendWhatsAppText, sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -113,53 +114,62 @@ Deno.serve(async (req) => {
                     continue;
                 }
                 
-                // --- WhatsApp Sending Logic ---
-                let whatsappData = null;
+                // --- ערוצים מתוזמנים לפי הדגלים שנשמרו ברשומה ---
+                let pendingData = {};
                 try {
-                    whatsappData = pending.data ? JSON.parse(pending.data) : {};
-                } catch(e) {}
+                    pendingData = pending.data ? (JSON.parse(pending.data) || {}) : {};
+                } catch (e) { pendingData = {}; }
 
-                if (whatsappData && whatsappData.send_whatsapp) {
-                    // Use stored phone from data (preferred) or fallback to targetUser.phone
-                    const phoneToUse = whatsappData.phone || targetUser?.phone;
-                    const chatId = whatsappData.chat_id || normalizePhoneChatId(phoneToUse);
-                    
-                    if (chatId) {
+                // תאימות לאחור: רשומה ישנה ללא send_push נחשבת כבקשת Push.
+                let remainingPush = pendingData.send_push !== false;
+                let remainingWhatsApp = pendingData.send_whatsapp === true;
+
+                // מסמן ניסיון חוזר: ערוץ שנכשל בשגיאת רשת/ספק נשאר לריצה הבאה.
+                const finalize = async () => {
+                    if (remainingPush || remainingWhatsApp) {
+                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
+                            data: JSON.stringify({ ...pendingData, send_push: remainingPush, send_whatsapp: remainingWhatsApp })
+                        });
+                        errorCount++;
+                    } else {
+                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
+                    }
+                };
+
+                // --- WhatsApp ---
+                if (remainingWhatsApp) {
+                    const phoneToUse = pendingData.phone || targetUser?.phone || '';
+                    if (!phoneToUse) {
+                        // אין יעד - כשל סופי, לא מנסים שוב.
+                        remainingWhatsApp = false;
+                        console.log(`[ScheduledPush] No phone for pending ${pending.id} - WhatsApp skipped`);
+                    } else {
                         try {
-                            const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-                            const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-                            
-                            if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-                                const waMsg = whatsappData.whatsapp_message || pending.message;
-                                
-                                await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ chatId, message: waMsg })
+                            await sendWhatsAppText(phoneToUse, pendingData.whatsapp_message || pending.message);
+                            remainingWhatsApp = false;
+                            successCount++;
+                            if (pending.in_app_notification_id) {
+                                await base44.asServiceRole.entities.InAppNotification.update(pending.in_app_notification_id, {
+                                    whatsapp_sent: true
                                 });
-                                console.log(`[ScheduledPush] WhatsApp sent to ${chatId}`);
-                                
-                                // Update in-app status
-                                if (pending.in_app_notification_id) {
-                                    await base44.asServiceRole.entities.InAppNotification.update(pending.in_app_notification_id, {
-                                        whatsapp_sent: true
-                                    });
-                                }
                             }
                         } catch (waErr) {
-                            console.error(`[ScheduledPush] WhatsApp error:`, waErr);
+                            console.error(`[ScheduledPush] WhatsApp failed for ${pending.id} (will retry)`);
                         }
-                    } else {
-                        console.log(`[ScheduledPush] No phone found for pending WhatsApp ${pending.id}`);
                     }
+                }
+
+                // --- Push ---
+                if (!remainingPush) {
+                    await finalize();
+                    continue;
                 }
 
                 // Check if user has push enabled
                 if (!targetUser?.push_enabled || !targetUser?.onesignal_subscription_id) {
-                    console.log(`[ScheduledPush] User ${pending.user_id} has no push subscription, marking as sent (WhatsApp processed if enabled)`);
-                    await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
-                        is_sent: true
-                    });
+                    console.log(`[ScheduledPush] User ${pending.user_id} has no push subscription - push skipped`);
+                    remainingPush = false;
+                    await finalize();
                     continue;
                 }
                 
@@ -186,36 +196,52 @@ Deno.serve(async (req) => {
                     oneSignalPayload.url = pending.link;
                 }
                 
-                const pushResponse = await fetch('https://onesignal.com/api/v1/notifications', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Basic ${ONESIGNAL_API_KEY}`
-                    },
-                    body: JSON.stringify(oneSignalPayload)
-                });
-                
-                const pushResult = await pushResponse.json();
-                console.log(`[ScheduledPush] OneSignal response for user ${pending.user_id}:`, JSON.stringify(pushResult));
-                
-                // Mark as sent
-                await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
-                    is_sent: true
-                });
-                
-                // Update the in-app notification
-                if (pending.in_app_notification_id) {
-                    try {
-                        await base44.asServiceRole.entities.InAppNotification.update(pending.in_app_notification_id, {
-                            push_sent: true
-                        });
-                    } catch (e) {
-                        console.warn(`[ScheduledPush] Could not update in-app notification:`, e.message);
-                    }
+                let pushResponse;
+                try {
+                    pushResponse = await fetch('https://onesignal.com/api/v1/notifications', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Basic ${ONESIGNAL_API_KEY}`
+                        },
+                        body: JSON.stringify(oneSignalPayload)
+                    });
+                } catch (netErr) {
+                    // שגיאת רשת - לא מסמנים כנשלח, נשמר לניסיון חוזר.
+                    console.error(`[ScheduledPush] Push transport failure for ${pending.id} (will retry)`);
+                    await finalize();
+                    continue;
                 }
-                
-                successCount++;
-                console.log(`[ScheduledPush] Sent push to user ${pending.user_id}: ${pending.title}`);
+
+                if (!pushResponse.ok) {
+                    console.error(`[ScheduledPush] Push rejected with status ${pushResponse.status} (will retry)`);
+                    await finalize();
+                    continue;
+                }
+
+                let pushResult = null;
+                try { pushResult = await pushResponse.json(); } catch (e) { pushResult = null; }
+
+                // כשל סופי (אין נמען) - לא מסמנים push_sent אך גם לא מנסים שוב.
+                remainingPush = false;
+
+                if (pushResult?.id && pushResult?.recipients > 0) {
+                    if (pending.in_app_notification_id) {
+                        try {
+                            await base44.asServiceRole.entities.InAppNotification.update(pending.in_app_notification_id, {
+                                push_sent: true
+                            });
+                        } catch (e) {
+                            console.warn('[ScheduledPush] Could not update in-app notification');
+                        }
+                    }
+                    successCount++;
+                    console.log(`[ScheduledPush] Push delivered for ${pending.id} (recipients: ${pushResult.recipients})`);
+                } else {
+                    console.log(`[ScheduledPush] Push had no recipients for ${pending.id}`);
+                }
+
+                await finalize();
                 
             } catch (error) {
                 errorCount++;
@@ -543,23 +569,15 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
         }
     }
 
-    // ---- שליחת WhatsApp ----
-    const GREEN_API_INSTANCE_ID = Deno.env.get('GREEN_API_INSTANCE_ID');
-    const GREEN_API_TOKEN = Deno.env.get('GREEN_API_TOKEN');
-    if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-        for (const wa of whatsappQueue) {
-            try {
-                const chatId = wa.chatId || normalizePhoneChatId(wa.phone);
-                if (!chatId) continue;
-                const resp = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chatId, message: wa.message })
-                });
-                if (resp.ok) result.sent++;
-            } catch (e) {
-                console.warn('[ScheduledPush] Fan-out WA error:', e.message);
-            }
+    // ---- שליחת WhatsApp (דרך המודול המשותף) ----
+    for (const wa of whatsappQueue) {
+        try {
+            const chatId = wa.chatId || toChatId(wa.phone);
+            if (!chatId) continue;
+            await sendWhatsAppToChat(chatId, wa.message);
+            result.sent++;
+        } catch (e) {
+            console.warn('[ScheduledPush] Fan-out WhatsApp failed for one recipient');
         }
     }
 
@@ -650,14 +668,6 @@ function buildDL(basePage, paramsMapJson, data) {
     return url;
 }
 
-function normalizePhoneChatId(phone) {
-    if (!phone) return '';
-    let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-    return cleanPhone ? `${cleanPhone}@c.us` : '';
-}
-
 function normalizeGroupChatId(groupValue) {
     if (!groupValue) return '';
     const raw = String(groupValue).trim();
@@ -674,7 +684,7 @@ function getSupplierWhatsAppTarget(supplier) {
     if (preferredChannel === 'group' && groupChatId) {
         return { chatId: groupChatId, phone: supplier?.phone || '' };
     }
-    return { chatId: normalizePhoneChatId(supplier?.phone), phone: supplier?.phone || '' };
+    return { chatId: toChatId(supplier?.phone), phone: supplier?.phone || '' };
 }
 
 function fmtDate(dateString) {
