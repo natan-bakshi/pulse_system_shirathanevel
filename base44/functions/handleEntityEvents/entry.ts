@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { createNotificationCore } from '../../shared/notificationCore.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -10,6 +11,21 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+
+        // אימות קשיח: מנהל בלבד, לפני קריאת ה-payload ולפני שימוש ב-service role.
+        let user = null;
+        try {
+            user = await base44.auth.me();
+        } catch (e) {
+            user = null;
+        }
+        if (!user) {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        if (user.role !== 'admin') {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+        }
+
         const payload = await req.json();
         
         // Payload: { event: { type, entity_name, entity_id }, data: {...}, old_data: {...} }
@@ -908,7 +924,7 @@ async function triggerInApp(base44, template, user, eventObj, supplierObj, servi
     message = replaceVariables(message, eventObj, supplierObj, serviceObj, user, resolvedServiceName, supplierNote);
 
     try {
-         await base44.asServiceRole.functions.invoke('createNotification', {
+         await createNotificationCore(base44, {
             target_user_id: user.id,
             target_user_email: user.email,
             title, 

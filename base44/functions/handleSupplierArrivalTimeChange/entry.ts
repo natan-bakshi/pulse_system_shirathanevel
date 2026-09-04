@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { getEventDisplayName } from '../../shared/eventName.ts';
+import { createNotificationCore } from '../../shared/notificationCore.ts';
 
 /**
  * Handles a change to supplier_arrival_time on a specific EventService.
@@ -139,7 +140,7 @@ Deno.serve(async (req) => {
                                     const users = await base44.asServiceRole.entities.User.filter({ email });
                                     for (const u of users) {
                                         try {
-                                            await base44.asServiceRole.functions.invoke('createNotification', {
+                                            await createNotificationCore(base44, {
                                                 target_user_id: u.id,
                                                 target_user_email: u.email,
                                                 title,
@@ -212,7 +213,7 @@ Deno.serve(async (req) => {
                                     const users = await base44.asServiceRole.entities.User.filter({ email });
                                     for (const u of users) {
                                         try {
-                                            await base44.asServiceRole.functions.invoke('createNotification', {
+                                            await createNotificationCore(base44, {
                                                 target_user_id: u.id,
                                                 target_user_email: u.email,
                                                 title,

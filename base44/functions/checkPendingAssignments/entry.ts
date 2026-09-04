@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { createNotificationCore } from '../../shared/notificationCore.ts';
 
 /**
  * Checks for pending supplier assignments and sends reminder notifications
@@ -155,7 +156,7 @@ Deno.serve(async (req) => {
                 
                 // Send notification
                 try {
-                    await base44.functions.invoke('createNotification', {
+                    await createNotificationCore(base44, {
                         target_user_id: supplierUser.id,
                         target_user_email: supplierUser.email,
                         title,

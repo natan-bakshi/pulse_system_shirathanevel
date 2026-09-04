@@ -77,7 +77,6 @@ export default function NotificationTemplateForm({
         send_push: true,
         send_whatsapp: !!testPhoneNumber,
         target_phone: testPhoneNumber,
-        base_url: window.location.origin,
         check_quiet_hours: false
       });
       

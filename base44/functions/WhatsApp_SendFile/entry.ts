@@ -1,75 +1,60 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.11';
+import { sendWhatsAppFileByUrl } from '../../shared/whatsappSend.ts';
 
+/**
+ * שליחת קובץ בוואטסאפ. מנהלים בלבד.
+ * לא מתקבל URL שרירותי מהלקוח: הלקוח מעביר FileUri מהאחסון הפרטי של Base44,
+ * והשרת מפיק קישור חתום קצר-מועד בעצמו (allowlist בטוחה של hosts אינה ניתנת להוכחה).
+ */
 Deno.serve(async (req) => {
     try {
-        // קריאת הפרמטרים מהבקשה
-        const { Phone, FileUrl, FileName, Caption } = await req.json();
-
-        // ולידציה בסיסית
-        if (!Phone || !FileUrl) {
-            return Response.json(
-                { error: "Missing required parameters: Phone or FileUrl" },
-                { status: 400 }
-            );
+        if (req.method !== 'POST') {
+            return Response.json({ success: false, error: 'Method not allowed' }, { status: 405 });
         }
 
-        // 1. ניקוי מספר הטלפון
-        let cleanPhone = Phone.replace(/[^0-9]/g, '');
+        const base44 = createClientFromRequest(req);
 
-        if (cleanPhone.startsWith('05')) {
-            cleanPhone = '972' + cleanPhone.substring(1);
-        } else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) {
-             cleanPhone = '972' + cleanPhone;
+        let user = null;
+        try {
+            user = await base44.auth.me();
+        } catch (e) {
+            user = null;
+        }
+        if (!user) return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        if (user.role !== 'admin') {
+            return Response.json({ success: false, error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
-        // 2. שרשור סיומת @c.us
-        const chatId = `${cleanPhone}@c.us`;
-
-        // שליפת משתני סביבה
-        const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
-        const token = Deno.env.get("GREEN_API_TOKEN");
-        const baseUrl = "https://api.green-api.com";
-
-        if (!instanceId || !token) {
-            return Response.json({ error: "Configuration error" }, { status: 500 });
+        let payload = null;
+        try {
+            payload = await req.json();
+        } catch (e) {
+            return Response.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
         }
 
-        // 3. ביצוע קריאת HTTP POST לשליחת קובץ
-        const url = `${baseUrl}/waInstance${instanceId}/sendFileByUrl/${token}`;
+        const { Phone, FileUri, FileName, Caption } = payload || {};
+        if (!Phone || !FileUri) {
+            return Response.json({ success: false, error: 'Missing required parameters (Phone, FileUri)' }, { status: 400 });
+        }
 
-        // חילוץ שם קובץ מה-URL אם לא סופק
-        const finalFileName = FileName || FileUrl.split('/').pop() || 'file';
-
-        console.log(`Sending WhatsApp File to ${chatId}...`);
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                chatId: chatId,
-                urlFile: FileUrl,
-                fileName: finalFileName,
-                caption: Caption || ""
-            })
+        const signed = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({
+            file_uri: FileUri,
+            expires_in: 300
         });
 
-        const data = await response.json();
-
-        // בדיקת הצלחה
-        if (!response.ok) {
-            console.error("Green API File Error:", data);
-            return Response.json(
-                { error: "Failed to send file via Green API", details: data },
-                { status: response.status }
-            );
+        if (!signed?.signed_url) {
+            return Response.json({ success: false, error: 'Failed to prepare file link' }, { status: 400 });
         }
 
-        return Response.json(data);
+        const result = await sendWhatsAppFileByUrl(Phone, signed.signed_url, FileName, Caption);
+        return Response.json({ success: true, messageId: result.messageId || '' });
 
     } catch (error) {
-        console.error("WhatsApp_SendFile Exception:", error);
-        return Response.json({ error: error.message }, { status: 500 });
+        const errorCode = error?.errorCode;
+        console.error('[WhatsApp_SendFile] failed');
+        return Response.json(
+            { success: false, error: 'Failed to send WhatsApp file', errorCode: errorCode || null },
+            { status: errorCode ? 400 : 500 }
+        );
     }
 });

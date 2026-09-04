@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { createNotificationCore } from '../../shared/notificationCore.ts';
 
 /**
  * Handles EventService changes and sends appropriate notifications
@@ -114,7 +115,7 @@ Deno.serve(async (req) => {
                     const link = buildDeepLink(newAssignmentTemplate.deep_link_base, newAssignmentTemplate.deep_link_params_map, contextData);
                     
                     try {
-                        await base44.functions.invoke('createNotification', {
+                        await createNotificationCore(base44, {
                             target_user_id: supplierUser.id,
                             target_user_email: supplierUser.email,
                             title,
@@ -260,7 +261,7 @@ Deno.serve(async (req) => {
 
                 for (const admin of targetedAdmins) {
                     try {
-                        await base44.functions.invoke('createNotification', {
+                        await createNotificationCore(base44, {
                             target_user_id: admin.id,
                             target_user_email: admin.email,
                             title,
@@ -317,7 +318,7 @@ Deno.serve(async (req) => {
                     const link = buildDeepLink(updateTemplate.deep_link_base, updateTemplate.deep_link_params_map, contextData);
                     
                     try {
-                        await base44.functions.invoke('createNotification', {
+                        await createNotificationCore(base44, {
                             target_user_id: supplierUser.id,
                             target_user_email: supplierUser.email,
                             title,

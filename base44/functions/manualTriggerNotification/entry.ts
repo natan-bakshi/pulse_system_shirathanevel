@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { createNotificationCore } from '../../shared/notificationCore.ts';
 
 /**
  * Manual Trigger for Notification Templates
@@ -615,7 +616,7 @@ async function triggerInApp(base44, template, user, eventObj, supplierObj, servi
     message = replaceVariables(message, eventObj, supplierObj, serviceObj, user, resolvedServiceName, supplierNote);
 
     try {
-        await base44.asServiceRole.functions.invoke('createNotification', {
+        await createNotificationCore(base44, {
             target_user_id: user.id,
             target_user_email: user.email,
             title,
