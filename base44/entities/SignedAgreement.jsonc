@@ -48,6 +48,11 @@
     "agreement_content_uri"
   ],
   "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "read": {
       "$or": [
         {
@@ -56,14 +61,19 @@
           }
         },
         {
-          "user_id": "{{user.id}}"
+          "data.user_id": "{{user.id}}"
         },
         {
-          "user_email": "{{user.email}}"
+          "data.user_email": "{{user.email}}"
         }
       ]
     },
-    "write": {
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
       "user_condition": {
         "role": "admin"
       }
