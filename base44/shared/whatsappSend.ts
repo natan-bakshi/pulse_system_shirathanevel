@@ -45,6 +45,13 @@ export function sanitizeFileName(name) {
   return cleaned || "file";
 }
 
+// שגיאת ולידציית קלט - מתורגמת ל-400 בשכבת ה-endpoint.
+function invalidInput(message) {
+  const error = new Error(message);
+  error.errorCode = 400;
+  return error;
+}
+
 function getCredentials() {
   const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
   const token = Deno.env.get("GREEN_API_TOKEN");
@@ -93,9 +100,9 @@ async function callGreenApi(method, body) {
  */
 export async function sendWhatsAppText(phone, message) {
   const chatId = toChatId(phone);
-  if (!chatId) throw new Error("Invalid WhatsApp phone number");
+  if (!chatId) throw invalidInput("Invalid WhatsApp phone number");
   const safeMessage = sanitizeMessage(message);
-  if (!safeMessage) throw new Error("Empty WhatsApp message");
+  if (!safeMessage) throw invalidInput("Empty WhatsApp message");
   return await callGreenApi("sendMessage", { chatId, message: safeMessage });
 }
 
@@ -104,9 +111,9 @@ export async function sendWhatsAppText(phone, message) {
  */
 export async function sendWhatsAppToChat(chatId, message) {
   const safeChatId = sanitizeText(chatId, 80);
-  if (!/^[0-9A-Za-z_-]+@(c|g)\.us$/.test(safeChatId)) throw new Error("Invalid WhatsApp target");
+  if (!/^[0-9A-Za-z_-]+@(c|g)\.us$/.test(safeChatId)) throw invalidInput("Invalid WhatsApp target");
   const safeMessage = sanitizeMessage(message);
-  if (!safeMessage) throw new Error("Empty WhatsApp message");
+  if (!safeMessage) throw invalidInput("Empty WhatsApp message");
   return await callGreenApi("sendMessage", { chatId: safeChatId, message: safeMessage });
 }
 
@@ -115,16 +122,16 @@ export async function sendWhatsAppToChat(chatId, message) {
  */
 export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption) {
   const chatId = toChatId(phone);
-  if (!chatId) throw new Error("Invalid WhatsApp phone number");
+  if (!chatId) throw invalidInput("Invalid WhatsApp phone number");
 
   let parsed;
   try {
     parsed = new URL(String(fileUrl || ''));
   } catch (e) {
-    throw new Error("Invalid file url");
+    throw invalidInput("Invalid file url");
   }
-  if (parsed.protocol !== 'https:') throw new Error("Invalid file url");
-  if (parsed.username || parsed.password) throw new Error("Invalid file url");
+  if (parsed.protocol !== 'https:') throw invalidInput("Invalid file url");
+  if (parsed.username || parsed.password) throw invalidInput("Invalid file url");
 
   return await callGreenApi("sendFileByUrl", {
     chatId,
