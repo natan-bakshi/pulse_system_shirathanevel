@@ -24,7 +24,7 @@ export default function MyNotificationSettings() {
     );
   }
 
-  const dashboardUrl = user?.user_type === 'admin' 
+  const dashboardUrl = user?.role === 'admin'
     ? createPageUrl("AdminDashboard")
     : user?.user_type === 'supplier'
     ? createPageUrl("SupplierDashboard")

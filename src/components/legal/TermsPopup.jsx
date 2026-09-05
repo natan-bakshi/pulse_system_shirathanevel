@@ -15,7 +15,7 @@ export default function TermsPopup({ user }) {
   useEffect(() => {
     const checkAgreementStatus = async () => {
       // Don't show popup for admin or supplier users (check both role and user_type)
-      if (!user || user.role === 'admin' || user.user_type === 'admin' || user.user_type === 'supplier') {
+      if (!user || user.role === 'admin' || user.user_type === 'supplier') {
         setIsLoading(false);
         return;
       }
