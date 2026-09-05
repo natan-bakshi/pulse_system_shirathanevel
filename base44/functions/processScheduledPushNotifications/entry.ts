@@ -90,9 +90,18 @@ Deno.serve(async (req) => {
 
                 const targetUser = usersById.get(pending.user_id) || null;
 
+                // --- ערוצים ודגלים שנשמרו ברשומה ---
+                let pendingData = {};
+                try {
+                    pendingData = pending.data ? (JSON.parse(pending.data) || {}) : {};
+                } catch (e) { pendingData = {}; }
+
                 // שבת ושעות שקט - אותה לוגיקה בדיוק כמו ביוצר ההתראות (shared/quietHours.ts),
                 // לפי העדפות המשתמש: quiet_hours_start/end, quiet_hours_enabled, respect_shabbat.
-                const delayDecision = resolveNotificationDelay(targetUser, { checkQuietHours: true });
+                // דגל check_quiet_hours נשמר ברשומה ומכובד גם כאן (תאימות לאחור: חסר = true).
+                const delayDecision = resolveNotificationDelay(targetUser, {
+                    checkQuietHours: pendingData.check_quiet_hours !== false
+                });
                 if (delayDecision.shouldDelay && delayDecision.scheduledFor) {
                     await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
                         scheduled_for: delayDecision.scheduledFor.toISOString()
@@ -101,12 +110,6 @@ Deno.serve(async (req) => {
                     continue;
                 }
                 
-                // --- ערוצים מתוזמנים לפי הדגלים שנשמרו ברשומה ---
-                let pendingData = {};
-                try {
-                    pendingData = pending.data ? (JSON.parse(pending.data) || {}) : {};
-                } catch (e) { pendingData = {}; }
-
                 // תאימות לאחור: רשומה ישנה ללא send_push נחשבת כבקשת Push.
                 let remainingPush = pendingData.send_push !== false;
                 let remainingWhatsApp = pendingData.send_whatsapp === true;

@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Bell, Clock, Moon, Save, Loader2, MessageCircle } from "lucide-react";
+import { Bell, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import PushPermissionButton from "./PushPermissionButton";
-
-const HOURS = Array.from({ length: 24 }, (_, i) => ({
-  value: i,
-  label: `${i.toString().padStart(2, '0')}:00`
-}));
+import QuietHoursSettings from "./QuietHoursSettings";
 
 const CATEGORY_LABELS = {
   assignment: 'שיבוצים',
@@ -34,8 +29,10 @@ const AUDIENCE_LABELS = {
 export default function UserNotificationPreferences({ user, onClose }) {
   const queryClient = useQueryClient();
   const [preferences, setPreferences] = useState({});
-  const [quietStartHour, setQuietStartHour] = useState(null);
-  const [quietEndHour, setQuietEndHour] = useState(null);
+  const [quietStart, setQuietStart] = useState('22:00');
+  const [quietEnd, setQuietEnd] = useState('08:00');
+  const [quietEnabled, setQuietEnabled] = useState(true);
+  const [respectShabbat, setRespectShabbat] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch notification templates
@@ -49,8 +46,10 @@ export default function UserNotificationPreferences({ user, onClose }) {
   useEffect(() => {
     if (user) {
       setPreferences(user.notification_preferences || {});
-      setQuietStartHour(user.quiet_start_hour ?? 22);
-      setQuietEndHour(user.quiet_end_hour ?? 8);
+      setQuietStart(user.quiet_hours_start || '22:00');
+      setQuietEnd(user.quiet_hours_end || '08:00');
+      setQuietEnabled(user.quiet_hours_enabled !== false);
+      setRespectShabbat(user.respect_shabbat !== false);
     }
   }, [user]);
 
@@ -75,8 +74,10 @@ export default function UserNotificationPreferences({ user, onClose }) {
     mutationFn: async () => {
       await base44.auth.updateMe({
         notification_preferences: preferences,
-        quiet_start_hour: quietStartHour,
-        quiet_end_hour: quietEndHour
+        quiet_hours_start: quietStart,
+        quiet_hours_end: quietEnd,
+        quiet_hours_enabled: quietEnabled,
+        respect_shabbat: respectShabbat
       });
     },
     onSuccess: () => {
@@ -99,14 +100,12 @@ export default function UserNotificationPreferences({ user, onClose }) {
     setHasChanges(true);
   };
 
-  // Handle quiet hours change
-  const handleQuietHourChange = (type, value) => {
-    const numValue = value === 'none' ? null : parseInt(value, 10);
-    if (type === 'start') {
-      setQuietStartHour(numValue);
-    } else {
-      setQuietEndHour(numValue);
-    }
+  // Handle quiet hours / shabbat change
+  const handleQuietSettingChange = (field, value) => {
+    if (field === 'quiet_hours_start') setQuietStart(value);
+    else if (field === 'quiet_hours_end') setQuietEnd(value);
+    else if (field === 'quiet_hours_enabled') setQuietEnabled(value);
+    else if (field === 'respect_shabbat') setRespectShabbat(value);
     setHasChanges(true);
   };
 
@@ -146,62 +145,13 @@ export default function UserNotificationPreferences({ user, onClose }) {
 
 
         {/* Quiet Hours Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Moon className="h-4 w-4" />
-            שעות שקט
-          </div>
-          <p className="text-xs text-gray-500">
-            בשעות אלו לא יישלחו התראות Push. התראות שנוצרו יישלחו בתחילת הפעילות הבאה.
-          </p>
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="quiet-start" className="text-sm">משעה:</Label>
-              <Select 
-                value={quietStartHour?.toString() ?? 'none'} 
-                onValueChange={(v) => handleQuietHourChange('start', v)}
-              >
-                <SelectTrigger id="quiet-start" className="w-24">
-                  <SelectValue placeholder="בחר" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">ללא</SelectItem>
-                  {HOURS.map(h => (
-                    <SelectItem key={h.value} value={h.value.toString()}>
-                      {h.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="quiet-end" className="text-sm">עד שעה:</Label>
-              <Select 
-                value={quietEndHour?.toString() ?? 'none'} 
-                onValueChange={(v) => handleQuietHourChange('end', v)}
-              >
-                <SelectTrigger id="quiet-end" className="w-24">
-                  <SelectValue placeholder="בחר" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">ללא</SelectItem>
-                  {HOURS.map(h => (
-                    <SelectItem key={h.value} value={h.value.toString()}>
-                      {h.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          {quietStartHour !== null && quietEndHour !== null && (
-            <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-              <Clock className="h-3 w-3 inline ml-1" />
-              התראות Push יושהו בין השעות {quietStartHour.toString().padStart(2, '0')}:00 
-              ל-{quietEndHour.toString().padStart(2, '0')}:00
-            </p>
-          )}
-        </div>
+        <QuietHoursSettings
+          quietStart={quietStart}
+          quietEnd={quietEnd}
+          quietEnabled={quietEnabled}
+          respectShabbat={respectShabbat}
+          onChange={handleQuietSettingChange}
+        />
 
         <Separator />
 

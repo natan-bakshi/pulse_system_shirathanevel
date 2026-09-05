@@ -300,7 +300,9 @@ export default function Layout({ children }) {
     if (!user) return;
 
 
-    const userType = user.user_type;
+    // הרשאות מנהל נקבעות לפי role בלבד (user_type משמש לניווט לקוח/ספק).
+    const isAdmin = user.role === 'admin';
+    const userType = isAdmin ? 'admin' : user.user_type;
     const { pathname } = location;
 
 
@@ -352,12 +354,12 @@ export default function Layout({ children }) {
     const isTryingToAccessAdminPage = adminOnlyPages.some((p) => pathname.startsWith(createPageUrl(p.substring(1))));
     const isAccessingBillingPage = pathname.startsWith(createPageUrl("BillingDashboard"));
 
-    if (isAccessingBillingPage && (!billingEnabled || userType !== 'admin')) {
+    if (isAccessingBillingPage && (!billingEnabled || !isAdmin)) {
       navigate(homePage, { replace: true });
       return;
     }
 
-    if (userType !== 'admin' && isTryingToAccessAdminPage) {
+    if (!isAdmin && isTryingToAccessAdminPage) {
       navigate(homePage, { replace: true });
       return;
     }
@@ -443,7 +445,7 @@ export default function Layout({ children }) {
 
 
   const tasksSystemEnabled = settingsMap.tasks_system_enabled !== "false"; // default true
-  const currentNavItems = user.user_type === 'admin' 
+  const currentNavItems = user.role === 'admin'
     ? getAdminNavItems(user.email, tasksSystemEnabled, billingEnabled) 
     : (navigationItems[user.user_type] || navigationItems.client);
 

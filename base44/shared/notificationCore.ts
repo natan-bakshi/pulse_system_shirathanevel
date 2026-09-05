@@ -170,7 +170,11 @@ export async function createNotificationCore(base44, payload, options = {}) {
             return { ok: true, status: 200, body: delayedBody };
         }
 
-        const pendingData = { send_push: wantsDelayedPush, send_whatsapp: wantsDelayedWhatsApp };
+        const pendingData = {
+            send_push: wantsDelayedPush,
+            send_whatsapp: wantsDelayedWhatsApp,
+            check_quiet_hours: input.check_quiet_hours !== false
+        };
         if (wantsDelayedWhatsApp) {
             pendingData.whatsapp_message = input.message;
             pendingData.phone = whatsappTargetPhone;
