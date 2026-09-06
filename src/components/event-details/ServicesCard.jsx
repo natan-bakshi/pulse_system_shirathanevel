@@ -1,3 +1,4 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -157,7 +158,7 @@ export default function ServicesCard({
       const newServiceRecord = await Service.create(serviceData);
       
       // Auto-add to current event
-      const newEventService = await base44.entities.EventService.create({
+      await base44.entities.EventService.create({
         event_id: event.id,
         service_id: newServiceRecord.id,
         service_name: serviceData.service_name,
@@ -169,11 +170,7 @@ export default function ServicesCard({
         order_index: (eventServices.length + 1) * 10
       });
 
-      await base44.functions.invoke('checkEventStatus', { 
-          eventId: event.id,
-          event: event,
-          eventServices: [...eventServices, newEventService]
-      }).catch(console.error);
+      await refreshEventStatus(event.id);
       await loadEventData();
       
       setNewService({
@@ -233,27 +230,8 @@ export default function ServicesCard({
         contact_emails: ['']
       });
       
-      let updatedEventServices = eventServices;
-      if (showNewSupplierDialog && typeof showNewSupplierDialog === 'string') {
-          updatedEventServices = eventServices.map(es => {
-              if (es.id === showNewSupplierDialog) {
-                  let currentSupplierIds = [];
-                  let currentSupplierStatuses = {};
-                  try { currentSupplierIds = JSON.parse(es.supplier_ids || '[]'); } catch(e) {}
-                  try { currentSupplierStatuses = JSON.parse(es.supplier_statuses || '{}'); } catch(e) {}
-                  currentSupplierStatuses[newSupplierRecord.id] = 'pending';
-                  return { ...es, supplier_ids: JSON.stringify([...currentSupplierIds, newSupplierRecord.id]), supplier_statuses: JSON.stringify(currentSupplierStatuses) };
-              }
-              return es;
-          });
-      }
-      
       setShowNewSupplierDialog(null);
-      await base44.functions.invoke('checkEventStatus', { 
-          eventId: event.id,
-          event: event,
-          eventServices: updatedEventServices
-      }).catch(console.error);
+      await refreshEventStatus(event.id);
     } catch (error) {
       console.error("Failed to create supplier:", error);
       alert("שגיאה ביצירת הספק");
@@ -297,21 +275,12 @@ export default function ServicesCard({
         supplier_notes: JSON.stringify(localSupplierFormData.notes)
       });
 
-      const updatedEventServices = eventServices.map(es => 
-        es.id === localSelectedService.id 
-          ? { ...es, supplier_ids: JSON.stringify(localSupplierFormData.supplierIds), supplier_statuses: JSON.stringify(nextStatuses), supplier_notes: JSON.stringify(localSupplierFormData.notes) }
-          : es
-      );
 
       setShowLocalSupplierDialog(false);
       setLocalSelectedService(null);
       setLocalSupplierFormData({ supplierIds: [], notes: {} });
       setLocalSupplierSearchTerm("");
-      await base44.functions.invoke('checkEventStatus', { 
-        eventId: event.id,
-        event: event,
-        eventServices: updatedEventServices
-      }).catch(console.error);
+      await refreshEventStatus(event.id);
       await loadEventData();
     } catch (error) {
       console.error("Failed to assign suppliers:", error);

@@ -1,3 +1,5 @@
+import { loadEventReadiness } from '../../shared/eventReadiness.ts';
+import { isMissingAssignmentAlertDue, renderMissingAssignmentAlert } from '../../shared/missingAssignmentAlert.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText, sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
@@ -95,6 +97,28 @@ Deno.serve(async (req) => {
                 try {
                     pendingData = pending.data ? (JSON.parse(pending.data) || {}) : {};
                 } catch (e) { pendingData = {}; }
+
+                if (pending.condition_type === 'event_still_missing_assignments') {
+                    const templates = await getCached(conditionCache, 'missingAssignment:template', () =>
+                        base44.asServiceRole.entities.NotificationTemplate.filter({ type: 'ADMIN_MISSING_ASSIGNMENT', is_active: true }));
+                    const template = templates[0];
+                    const recipients = template?.admin_recipient_ids;
+                    if (!template || targetUser?.role !== 'admin' || (Array.isArray(recipients) && recipients.length && !recipients.includes(targetUser.id))) {
+                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
+                        continue;
+                    }
+                    const readiness = await getCached(conditionCache, `readiness:${pending.related_event_id}`,
+                        () => loadEventReadiness(base44.asServiceRole, pending.related_event_id));
+                    const content = renderMissingAssignmentAlert(template, readiness);
+                    const channels = template.allowed_channels || ['push'];
+                    pending.title = content.title;
+                    pending.message = content.message;
+                    pendingData = { ...pendingData,
+                        send_push: channels.includes('push') && pendingData.send_push !== false,
+                        send_whatsapp: channels.includes('whatsapp') && pendingData.send_whatsapp !== false,
+                        whatsapp_message: content.whatsapp_message, phone: targetUser.phone || ''
+                    };
+                }
 
                 // שבת ושעות שקט - אותה לוגיקה בדיוק כמו ביוצר ההתראות (shared/quietHours.ts),
                 // לפי העדפות המשתמש: quiet_hours_start/end, quiet_hours_enabled, respect_shabbat.
@@ -291,30 +315,10 @@ async function isConditionStillMet(base44, pending, cache) {
                 return (statuses[pending.related_supplier_id] || 'pending') === 'pending';
             }
             case 'event_still_missing_assignments': {
-                // פאזה 5: שלח רק אם עדיין חסרים שיבוצים (אירוע confirmed שעדיין חסר בו מינימום ספקים מאושרים).
                 if (!pending.related_event_id) return false;
-                const event = await getCached(cache, `event:${pending.related_event_id}`, () => base44.asServiceRole.entities.Event.get(pending.related_event_id));
-                if (!event || event.status === 'cancelled') return false;
-                const [eventServices, allServices] = await Promise.all([
-                    getCached(cache, `eventServices:${pending.related_event_id}`, () => base44.asServiceRole.entities.EventService.filter({ event_id: pending.related_event_id })),
-                    getCached(cache, 'services:all', () => base44.asServiceRole.entities.Service.list())
-                ]);
-                const servicesMap = new Map(allServices.map(s => [s.id, s]));
-                for (const es of eventServices) {
-                    const serviceDef = servicesMap.get(es.service_id);
-                    const minRequired = (es.min_suppliers ?? serviceDef?.default_min_suppliers) ?? 0;
-                    if (minRequired === 0) continue;
-                    let approvedCount = 0;
-                    if (es.supplier_ids && es.supplier_statuses) {
-                        try {
-                            const ids = JSON.parse(es.supplier_ids);
-                            const sts = JSON.parse(es.supplier_statuses);
-                            approvedCount = ids.filter(id => sts[id] === 'approved' || sts[id] === 'confirmed').length;
-                        } catch {}
-                    }
-                    if (approvedCount < minRequired) return true; // עדיין חסר שיבוץ
-                }
-                return false; // הכל מאויש
+                const readiness = await getCached(cache, `readiness:${pending.related_event_id}`,
+                    () => loadEventReadiness(base44.asServiceRole, pending.related_event_id));
+                return isMissingAssignmentAlertDue(readiness);
             }
             case 'event_still_has_balance': {
                 // פאזה 6: שלח רק אם עדיין יש יתרת תשלום לאירוע.
@@ -370,6 +374,7 @@ async function isConditionStillMet(base44, pending, cache) {
         }
     } catch (e) {
         console.warn(`[ScheduledPush] Condition check error for ${pending.id}:`, e.message);
+        if (pending.condition_type === 'event_still_missing_assignments') throw e;
         // במקרה ספק - לא שולחים, כדי לא להציף הודעות שגויות
         return false;
     }

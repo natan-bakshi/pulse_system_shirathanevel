@@ -1,3 +1,4 @@
+import { cacheEventStatus } from '@/lib/eventStatus';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -197,10 +198,11 @@ export default function SupplierDashboard() {
       }
       const previousStatus = currentStatuses[supplier.id];
 
-      await base44.functions.invoke('updateSupplierStatus', {
+      const { data: statusResult } = await base44.functions.invoke('updateSupplierStatus', {
         eventServiceId,
         newStatus
       });
+      cacheEventStatus(statusResult.eventId, statusResult.newStatus);
 
       // Sync with Google Calendar - DISABLED
       /* if (eventId) {

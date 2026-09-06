@@ -1,3 +1,4 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -82,6 +83,7 @@ export default function SupplierAssignmentDialog({
         min_suppliers: parseInt(editingService.minSuppliers) || 0
       });
 
+      await refreshEventStatus(eventServiceData.event_id);
       queryClient.invalidateQueries({ queryKey: ['eventServices'] });
       
       if (onSaved) onSaved();
@@ -92,7 +94,7 @@ export default function SupplierAssignmentDialog({
     } finally {
       setIsSaving(false);
     }
-  }, [editingService, queryClient, onSaved, onClose]);
+  }, [editingService, eventServiceData, queryClient, onSaved, onClose]);
 
   // Parse declined suppliers from eventServiceData
   const declinedSuppliers = React.useMemo(() => {

@@ -90,7 +90,7 @@ export default function EventOverviewCard({
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => handleStatusChange('quote')}>הצעת מחיר</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleStatusChange('confirmed')}>אירוע סגור</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange('in_progress')}>אירוע תפור</DropdownMenuItem>
+                    <DropdownMenuItem disabled>אירוע תפור — נקבע לפי השיבוצים והאישורים</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleStatusChange('completed')}>אירוע עבר</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleStatusChange('cancelled')}>אירוע בוטל</DropdownMenuItem>
                   </DropdownMenuContent>

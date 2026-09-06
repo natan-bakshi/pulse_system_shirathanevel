@@ -1,3 +1,4 @@
+import { cacheEventStatus } from '@/lib/eventStatus';
 import React, { useState, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -140,10 +141,11 @@ export default function SupplierCalendarDashboard() {
   const handleStatusChange = useCallback(async (eventServiceId, newStatus) => {
     if (!supplier) return;
     try {
-      await base44.functions.invoke('updateSupplierStatus', {
+      const { data: statusResult } = await base44.functions.invoke('updateSupplierStatus', {
         eventServiceId,
         newStatus
       });
+      cacheEventStatus(statusResult.eventId, statusResult.newStatus);
       queryClient.invalidateQueries({ queryKey: ['eventServices'] });
     } catch (error) {
       console.error("Failed to update service status:", error);

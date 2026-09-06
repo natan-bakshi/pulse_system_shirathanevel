@@ -1041,7 +1041,7 @@ export default function EventServicesManager({
                   </TooltipProvider>
                 </div>
                 <Select
-                  value={String(service.min_suppliers !== undefined ? service.min_suppliers : 1)}
+                  value={String(service.min_suppliers ?? allServices.find(definition => definition.id === service.service_id)?.default_min_suppliers ?? 0)}
                   onValueChange={(value) => handleServiceChange(service.id, 'min_suppliers', value)}
                 >
                   <SelectTrigger className="h-8 text-sm">

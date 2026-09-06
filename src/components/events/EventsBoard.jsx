@@ -1,3 +1,4 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -415,18 +416,8 @@ export default function EventsBoard() {
                 supplier_notes: JSON.stringify(supplierNotes)
             });
 
-            const updatedEventServices = eventServices.map(es => 
-                es.id === editingAssignment.eventServiceId 
-                ? { ...es, supplier_statuses: JSON.stringify(supplierStatuses), supplier_notes: JSON.stringify(supplierNotes) }
-                : es
-            );
-            const currentEvent = events.find(e => e.id === eventService.event_id);
 
-            await base44.functions.invoke('checkEventStatus', { 
-                eventId: eventService.event_id,
-                event: currentEvent,
-                eventServices: updatedEventServices
-            }).catch(console.error);
+            await refreshEventStatus(eventService.event_id);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
             setEditingAssignment(null);
         } catch (error) {
@@ -519,24 +510,8 @@ export default function EventsBoard() {
                 min_suppliers: parseInt(editingService.minSuppliers) || 0
             });
 
-            const updatedEventServices = eventServices.map(es => 
-                es.id === editingService.eventServiceId 
-                ? { 
-                    ...es, 
-                    supplier_ids: JSON.stringify(editingService.supplierIds),
-                    supplier_statuses: JSON.stringify(editingService.supplierStatuses),
-                    supplier_notes: JSON.stringify(editingService.supplierNotes),
-                    min_suppliers: parseInt(editingService.minSuppliers) || 0
-                  }
-                : es
-            );
-            const currentEvent = events.find(e => e.event_name === editingService.eventName);
 
-            await base44.functions.invoke('checkEventStatus', { 
-                eventId: currentEvent?.id,
-                event: currentEvent,
-                eventServices: updatedEventServices
-            }).catch(console.error);
+            await refreshEventStatus(eventServices.find(es => es.id === editingService.eventServiceId)?.event_id);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
             setEditingService(null);
         } catch (error) {
@@ -816,7 +791,7 @@ export default function EventsBoard() {
                                                                                 <div className="space-y-2">
                                                                                     {categoryServices.map(service => {
                                                                                         const required = service.minSuppliers !== undefined ? service.minSuppliers : 0;
-                                                                                        const missingCount = Math.max(0, required - service.suppliers.length);
+                                                                                        const missingCount = Math.max(0, required - new Set(service.suppliers.filter(supplier => !['rejected', 'cancelled'].includes(supplier.status)).map(supplier => supplier.id)).size);
                                                                                         return (
                                                                                             <div key={service.serviceId} className="bg-white rounded-lg border border-gray-200 p-2.5 hover:border-red-300 hover:shadow-md transition-all">
                                                                                                 

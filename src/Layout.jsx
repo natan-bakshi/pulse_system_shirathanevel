@@ -1,3 +1,4 @@
+import { subscribeToEventStatus } from '@/lib/eventStatus';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -104,6 +105,12 @@ const commonNavItems = [];
 export default function Layout({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Read the persisted status when another user confirms/removes an assignment; no polling.
+  useEffect(() => {
+    if (!user?.id) return;
+    return subscribeToEventStatus();
+  }, [user?.id]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [themeMode, setThemeMode] = useState(() => {

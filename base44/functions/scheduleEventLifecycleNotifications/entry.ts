@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
         let previousStatus = null;
 
         if (!eventId && data) {
-            eventId = data.id;
+            eventId = data.id || event?.entity_id;
             currentStatus = data.status;
             previousStatus = oldData ? oldData.status : null;
         }
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
         if (!eventData) {
             return Response.json({ skipped: true, reason: 'Event not found' });
         }
-        if (currentStatus === null) currentStatus = eventData.status;
+        currentStatus = eventData.status; // Read the saved state, not an older automation payload.
 
         // פועלים רק כשהאירוע 'confirmed' או 'in_progress' (סגור/משובץ).
         const activeStatuses = ['confirmed', 'in_progress'];
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
         // מניעת כפילות ביצירה: אם האירוע כבר היה באותו סטטוס פעיל והתאריך לא השתנה -
         // לא יוצרים שוב (התזמונים כבר נוצרו בעת האישור הראשוני).
-        if (previousStatus !== null && activeStatuses.includes(previousStatus) && activeStatuses.includes(currentStatus) && !dateChanged) {
+        if (previousStatus !== null && activeStatuses.includes(previousStatus) && activeStatuses.includes(currentStatus) && !dateChanged && !(previousStatus === 'in_progress' && currentStatus === 'confirmed')) {
             return Response.json({ skipped: true, reason: 'Status unchanged (already active), no date change' });
         }
 
@@ -97,119 +97,43 @@ Deno.serve(async (req) => {
         }
 
         // טוענים תבניות פעילות + ישויות נדרשות
-        const [templates, eventServices, allServices, allPayments, allUsers, appSettings, existingPending] = await Promise.all([
+        const [templates, eventServices, allPayments, allUsers, appSettings, existingPending] = await Promise.all([
             base44.asServiceRole.entities.NotificationTemplate.filter({ is_active: true }),
             base44.asServiceRole.entities.EventService.filter({ event_id: eventId }),
-            base44.asServiceRole.entities.Service.list(),
             base44.asServiceRole.entities.Payment.filter({ event_id: eventId }),
             base44.asServiceRole.entities.User.list(),
             base44.asServiceRole.entities.AppSettings.list(),
             base44.asServiceRole.entities.PendingPushNotification.filter({ related_event_id: eventId, is_sent: false })
         ]);
 
-        const servicesMap = new Map(allServices.map(s => [s.id, s]));
         const adminUsers = allUsers.filter(u => u.role === 'admin');
         const results = { missing_assignment_scheduled: 0, payment_reminder_scheduled: 0, event_reminder_scheduled: 0 };
 
         // ============================================================
         // פאזה 5: שיבוצים חסרים -> תזכורת שבוע לפני האירוע
         // ============================================================
-        // פאזה 5 לא רלוונטית לאירועים in_progress (כבר משובצים ב-100%)
+        // Keep a conditional reminder even while ready: assignments can change before its due date.
+        // The sender builds its content from current data. No snapshot of missing suppliers is saved.
         const missingTemplate = templates.find(t => t.type === 'ADMIN_MISSING_ASSIGNMENT');
-        if (missingTemplate && currentStatus !== 'in_progress') {
-            // בדיקה: האם יש כרגע שיבוצים חסרים?
-            let hasMissing = false;
-            const missingServices = [];
-            for (const es of eventServices) {
-                const serviceDef = servicesMap.get(es.service_id);
-                const minRequired = (es.min_suppliers ?? serviceDef?.default_min_suppliers) ?? 0;
-                if (minRequired === 0) continue;
-                let approvedCount = 0;
-                if (es.supplier_ids && es.supplier_statuses) {
-                    try {
-                        const ids = JSON.parse(es.supplier_ids);
-                        const sts = JSON.parse(es.supplier_statuses);
-                        approvedCount = ids.filter(id => sts[id] === 'approved' || sts[id] === 'confirmed').length;
-                    } catch {}
-                }
-                if (approvedCount < minRequired) {
-                    hasMissing = true;
-                    missingServices.push({ serviceName: serviceDef?.service_name || '', minRequired, approvedCount });
-                }
-            }
-
-            if (hasMissing) {
-                // מועד מתוזמן: timing לפני האירוע (ברירת מחדל 7 ימים)
-                const timingValue = missingTemplate.timing_value || 7;
-                const timingUnit = missingTemplate.timing_unit || 'days';
-                const scheduledFor = computeScheduledBeforeEvent(eventData.event_date, timingValue, timingUnit);
-
-                const allowedChannels = missingTemplate.allowed_channels || ['push'];
-                const targetedAdmins = filterTargetedAdmins(missingTemplate, adminUsers);
-
-                // תוכן ההודעה
-                let contextData;
-                let customMessage = null;
-                if (missingServices.length === 1) {
-                    const ms = missingServices[0];
-                    contextData = {
-                        event_name: eventData.event_name || '',
-                        family_name: eventData.family_name || eventData.event_name || '',
-                        event_date: formatDate(eventData.event_date),
-                        event_contacts: formatEventContacts(eventData),
-                        service_name: ms.serviceName,
-                        min_suppliers: ms.minRequired,
-                        current_suppliers: ms.approvedCount,
-                        missing_count: 1,
-                        event_id: eventData.id
-                    };
-                } else {
-                    const servicesList = missingServices.map(ms => `• ${ms.serviceName} (${ms.approvedCount}/${ms.minRequired})`).join('\n');
-                    contextData = {
-                        event_name: eventData.event_name || '',
-                        family_name: eventData.family_name || eventData.event_name || '',
-                        event_date: formatDate(eventData.event_date),
-                        event_contacts: formatEventContacts(eventData),
-                        service_name: '',
-                        missing_count: missingServices.length,
-                        event_id: eventData.id
-                    };
-                    customMessage = `חסרים שיבוצים באירוע "${eventData.family_name || eventData.event_name}" בתאריך ${formatDate(eventData.event_date)}.\n\nשירותים חסרי שיבוץ (${missingServices.length}):\n${servicesList}`;
-                }
-
-                const title = replacePlaceholders(missingTemplate.title_template, contextData);
-                const message = customMessage || replacePlaceholders(missingTemplate.body_template, contextData);
-                const waMessage = customMessage || replacePlaceholders(missingTemplate.whatsapp_body_template || missingTemplate.body_template, contextData);
-                const link = buildDeepLink(missingTemplate.deep_link_base, missingTemplate.deep_link_params_map, contextData);
-
-                const missingAssignmentRecords = [];
-                for (const admin of targetedAdmins) {
-                    // מניעת כפילות: כבר קיימת תזכורת מסוג זה לאירוע ולמנהל
-                    const exists = existingPending.some(p =>
-                        p.template_type === 'ADMIN_MISSING_ASSIGNMENT' && p.user_id === admin.id
-                    );
-                    if (exists) continue;
-
-                    const waData = (allowedChannels.includes('whatsapp') && admin.phone)
-                        ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone: admin.phone })
-                        : JSON.stringify({});
-
-                    missingAssignmentRecords.push({
-                        user_id: admin.id,
-                        user_email: admin.email,
-                        title, message, link: link || '',
-                        scheduled_for: scheduledFor.toISOString(),
-                        template_type: 'ADMIN_MISSING_ASSIGNMENT',
-                        is_sent: false,
-                        condition_type: 'event_still_missing_assignments',
-                        related_event_id: eventData.id,
-                        data: waData
-                    });
-                }
-                if (missingAssignmentRecords.length > 0) {
-                    await base44.asServiceRole.entities.PendingPushNotification.bulkCreate(missingAssignmentRecords);
-                    results.missing_assignment_scheduled += missingAssignmentRecords.length;
-                }
+        if (missingTemplate && eventData.event_date >= new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date())) {
+            const scheduledFor = computeScheduledBeforeEvent(eventData.event_date,
+                missingTemplate.timing_value ?? 7, missingTemplate.timing_unit || 'days');
+            const channels = missingTemplate.allowed_channels || ['push'];
+            const context = { event_id: eventData.id, event_name: eventData.event_name || '', family_name: eventData.family_name || eventData.event_name || '' };
+            const records = filterTargetedAdmins(missingTemplate, adminUsers)
+                .filter(admin => !existingPending.some(p => p.template_type === 'ADMIN_MISSING_ASSIGNMENT' && p.user_id === admin.id))
+                .map(admin => ({
+                    user_id: admin.id, user_email: admin.email,
+                    title: replacePlaceholders(missingTemplate.title_template, context),
+                    message: 'בדיקת שיבוצים ואישורים לקראת האירוע',
+                    link: buildDeepLink(missingTemplate.deep_link_base, missingTemplate.deep_link_params_map, context),
+                    scheduled_for: scheduledFor.toISOString(), template_type: 'ADMIN_MISSING_ASSIGNMENT',
+                    is_sent: false, condition_type: 'event_still_missing_assignments', related_event_id: eventData.id,
+                    data: JSON.stringify({ send_push: channels.includes('push'), send_whatsapp: channels.includes('whatsapp') })
+                }));
+            if (records.length) {
+                await base44.asServiceRole.entities.PendingPushNotification.bulkCreate(records);
+                results.missing_assignment_scheduled = records.length;
             }
         }
 

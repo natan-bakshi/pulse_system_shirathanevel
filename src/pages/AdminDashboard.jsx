@@ -1,3 +1,4 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -285,6 +286,8 @@ export default function AdminDashboard() {
       await base44.entities.EventService.update(eventServiceId, {
         supplier_statuses: JSON.stringify(supplierStatuses)
       });
+
+      await refreshEventStatus(eventService.event_id);
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['eventServices'] });

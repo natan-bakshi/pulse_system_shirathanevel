@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
+import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
 
 /**
  * recalcEventStatus
@@ -26,7 +27,7 @@ Deno.serve(async (req) => {
         }
 
         if (event?.entity_name === 'EventService' && event?.type === 'update' && data && old_data) {
-            const relevantFields = ['event_id', 'service_id', 'supplier_ids', 'supplier_statuses', 'min_suppliers'];
+            const relevantFields = ['event_id', 'service_id', 'supplier_ids', 'supplier_statuses', 'min_suppliers', 'is_external', 'is_package_main_item'];
             const hasRelevantChange = relevantFields.some(field =>
                 JSON.stringify(data?.[field] ?? null) !== JSON.stringify(old_data?.[field] ?? null)
             );
@@ -40,8 +41,9 @@ Deno.serve(async (req) => {
 
         if (event?.entity_name === 'EventService') {
             // טריגר על EventService (update/delete): מזהה האירוע על הרשומה
-            const evId = data?.event_id || old_data?.event_id;
-            if (evId) eventIds.add(evId);
+            for (const evId of [data?.event_id, old_data?.event_id]) {
+                if (evId) eventIds.add(evId);
+            }
         } else if (event?.entity_name === 'Supplier' && event?.type === 'delete') {
             // מחיקת ספק: מאתרים את כל ה-EventServices שבהם הספק שובץ
             const supplierId = event.entity_id;
@@ -91,65 +93,10 @@ Deno.serve(async (req) => {
             return Response.json({ success: true, updates: [], skipped: true, reason: 'No eligible active events' });
         }
 
-        const allServicesDefinitions = await base44.asServiceRole.entities.Service.list();
-        const servicesMap = new Map(allServicesDefinitions.map(s => [s.id, s]));
-
         const updates = [];
-
         for (const eventData of eligibleEvents) {
-            const eventId = eventData.id;
-            const eventServices = await base44.asServiceRole.entities.EventService.filter({ event_id: eventId });
-
-            let allServicesSatisfied = true;
-
-            for (const es of eventServices) {
-                if (es.is_external) continue;
-                const serviceDef = servicesMap.get(es.service_id);
-                let minRequired = 0;
-                if (es.min_suppliers !== undefined && es.min_suppliers !== null) {
-                    minRequired = es.min_suppliers;
-                } else if (serviceDef && serviceDef.default_min_suppliers !== undefined) {
-                    minRequired = serviceDef.default_min_suppliers;
-                } else {
-                    minRequired = 0;
-                }
-
-                if (minRequired === 0) continue;
-
-                let supplierIds = [];
-                try { supplierIds = JSON.parse(es.supplier_ids || '[]'); } catch { supplierIds = []; }
-
-                let supplierStatuses = {};
-                try { supplierStatuses = JSON.parse(es.supplier_statuses || '{}'); } catch { supplierStatuses = {}; }
-
-                // בדיקה: מספר הספקים המאושרים (confirmed) מול המינימום הנדרש
-                const confirmedCount = supplierIds.filter(id => supplierStatuses[id] === 'confirmed').length;
-
-                if (confirmedCount < minRequired) {
-                    allServicesSatisfied = false;
-                    break;
-                }
-            }
-
-            let newStatus = eventData.status;
-            let statusChanged = false;
-
-            if (allServicesSatisfied) {
-                if (eventData.status === 'confirmed') {
-                    newStatus = 'in_progress';
-                    statusChanged = true;
-                }
-            } else {
-                if (eventData.status === 'in_progress') {
-                    newStatus = 'confirmed';
-                    statusChanged = true;
-                }
-            }
-
-            if (statusChanged) {
-                await base44.asServiceRole.entities.Event.update(eventId, { status: newStatus });
-                updates.push({ eventId, newStatus });
-            }
+            const result = await recalculateEventStatus(base44.asServiceRole, eventData.id);
+            if (result.statusChanged) updates.push({ eventId: eventData.id, newStatus: result.newStatus });
         }
 
         return Response.json({ success: true, updates });

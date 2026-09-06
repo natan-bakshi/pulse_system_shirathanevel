@@ -1,3 +1,4 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
@@ -563,12 +564,8 @@ export default function EventDetails() {
         }
       }
 
-      const createdEventService = await base44.entities.EventService.create(eventServiceData);
-      await base44.functions.invoke('checkEventStatus', {
-        eventId,
-        event,
-        eventServices: [...eventServices, createdEventService]
-      }).catch(console.error);
+      await base44.entities.EventService.create(eventServiceData);
+      await refreshEventStatus(eventId);
 
       queryClient.invalidateQueries({ queryKey: ['services'] });
       await loadEventData();
@@ -612,13 +609,8 @@ export default function EventDetails() {
 
   const handleStatusChange = useCallback(async (newStatus) => {
     try {
-      await base44.entities.Event.update(eventId, { status: newStatus });
       
-      await base44.functions.invoke('checkEventStatus', { 
-          eventId: eventId,
-          event: { ...event, status: newStatus },
-          eventServices: eventServices
-      }).catch(console.error);
+      await refreshEventStatus(eventId, { requestedStatus: newStatus });
       await loadEventData();
     } catch (error) {
       console.error("Failed to update status:", error);
@@ -755,6 +747,7 @@ export default function EventDetails() {
       }
       
       setEditingSection(null);
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to save services:", error);
@@ -820,7 +813,7 @@ export default function EventDetails() {
 
       // Auto-update status if quote and payment added
       if (event.status === 'quote') {
-        await base44.entities.Event.update(eventId, { status: 'confirmed' });
+        await refreshEventStatus(eventId, { requestedStatus: 'confirmed' });
       }
       
       setShowPaymentDialog(false);
@@ -927,15 +920,8 @@ export default function EventDetails() {
       }
       await base44.entities.EventService.update(eventServiceId, updateData);
       
-      const updatedEventServices = eventServices.map(es => 
-          es.id === eventServiceId ? { ...es, ...updateData } : es
-      );
 
-      await base44.functions.invoke('checkEventStatus', { 
-          eventId: eventId,
-          event: event,
-          eventServices: updatedEventServices
-      }).catch(console.error);
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to update supplier status:", error);
@@ -971,19 +957,8 @@ export default function EventDetails() {
         supplier_notes: JSON.stringify(supplierNotes)
       });
       
-      const updatedEventServices = eventServices.map(es => 
-          es.id === eventServiceId ? { 
-              ...es, 
-              supplier_ids: JSON.stringify(supplierIds),
-              supplier_statuses: JSON.stringify(supplierStatuses)
-          } : es
-      );
 
-      await base44.functions.invoke('checkEventStatus', { 
-          eventId: eventId,
-          event: event,
-          eventServices: updatedEventServices
-      }).catch(console.error);
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to remove supplier:", error);
@@ -1053,11 +1028,7 @@ export default function EventDetails() {
       }
 
       await base44.entities.EventService.update(serviceId, updateData);
-      base44.functions.invoke('checkEventStatus', { 
-          eventId: eventId,
-          event: event,
-          eventServices: eventServices.map(es => es.id === serviceId ? { ...es, ...updateData } : es)
-      }).catch(console.error);
+      if (field === 'min_suppliers') await refreshEventStatus(eventId);
       
       // Update local edit state and the visible card/query data immediately.
       setEditableServices(prev => prev.map(s => 
@@ -1214,6 +1185,8 @@ export default function EventDetails() {
         supplier_notes: JSON.stringify(supplierFormData.notes)
       });
 
+      await refreshEventStatus(eventId);
+
       if (supplierFormData.supplierIds.length > 0) {
         try {
           const serviceDetails = allServices.find(s => s.id === selectedServiceForSupplier.service_id);
@@ -1335,6 +1308,7 @@ export default function EventDetails() {
       setTargetPackageForService(null);
       setSelectedServiceToAdd([]);
       setAddToPackageSearchTerm("");
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to add service to package:", error);
@@ -1420,6 +1394,7 @@ export default function EventDetails() {
         selectedServices: []
       });
       setPackageServiceSearchTerm("");
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to create package:", error);
@@ -1444,12 +1419,13 @@ export default function EventDetails() {
         await base44.entities.EventService.delete(service.id);
       }
       
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to delete package:", error);
       alert("שגיאה במחיקת החבילה");
     }
-  }, [eventServices, loadEventData]);
+  }, [eventId, eventServices, loadEventData]);
 
   const handleOpenEditPackage = useCallback((pkg) => {
     setEditingPackage(pkg.package_id);
@@ -1573,24 +1549,26 @@ export default function EventDetails() {
         includes_vat: serviceDetails?.default_includes_vat || false,
         order_index: maxStandaloneOrderIndex + 1
       });
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to remove from package:", error);
       alert("שגיאה בהוצאת השירות מהחבילה");
     }
-  }, [eventServices, allServices, groupedServices, groupedExternalServices, loadEventData]);
+  }, [eventId, eventServices, allServices, groupedServices, groupedExternalServices, loadEventData]);
 
   const handleDeleteService = useCallback(async (serviceId) => {
     if (!window.confirm("האם למחוק שירות זה?")) return;
     
     try {
       await base44.entities.EventService.delete(serviceId);
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to delete service:", error);
       alert("שגיאה במחיקת השירות");
     }
-  }, [loadEventData]);
+  }, [eventId, loadEventData]);
 
   const handleToggleServiceExternal = useCallback(async (serviceId, makeExternal) => {
     try {
@@ -1598,11 +1576,7 @@ export default function EventDetails() {
         ? { is_external: true, supplier_ids: JSON.stringify([]), supplier_statuses: JSON.stringify({}), supplier_notes: JSON.stringify({}) }
         : { is_external: false };
       await base44.entities.EventService.update(serviceId, updateData);
-      await base44.functions.invoke('checkEventStatus', {
-        eventId,
-        event,
-        eventServices: eventServices.map(service => service.id === serviceId ? { ...service, ...updateData } : service)
-      });
+      await refreshEventStatus(eventId);
       // Update local state immediately
       setEditableServices(prev => prev.map(s => 
         s.id === serviceId ? { ...s, is_external: makeExternal } : s
@@ -1651,12 +1625,13 @@ export default function EventDetails() {
         await base44.entities.EventService.delete(serviceId);
       }
       setSelectedServicesForAction([]);
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to delete services:", error);
       alert("שגיאה במחיקת השירותים");
     }
-  }, [selectedServicesForAction, loadEventData]);
+  }, [eventId, selectedServicesForAction, loadEventData]);
 
   const handleAddStandaloneServices = useCallback(async () => {
     if (selectedServicesToAdd.length === 0) {
@@ -1707,6 +1682,7 @@ export default function EventDetails() {
       setSelectedServicesToAdd([]);
       setAddServiceSearchTerm("");
       setAddServiceAsExternal(false);
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to add services:", error);
@@ -1765,6 +1741,7 @@ export default function EventDetails() {
       setShowAddExistingPackageDialog(false);
       setSelectedExistingPackage(null);
       setExistingPackageSearchTerm("");
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to add existing package to event:", error);
@@ -1960,6 +1937,7 @@ export default function EventDetails() {
       setSelectedServicesForAction([]);
       setTargetPackageId('new');
       setNewPackageData({ name: '', description: '', price: '', includes_vat: false });
+      await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
       console.error("Failed to add services to package:", error);

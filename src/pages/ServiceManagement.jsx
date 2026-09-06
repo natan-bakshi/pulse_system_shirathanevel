@@ -1,3 +1,4 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -173,6 +174,9 @@ export default function ServiceManagement() {
       const dataToSave = { ...formData, base_price: parseFloat(formData.base_price) || 0 };
       if (editingService) {
         await base44.entities.Service.update(editingService.id, dataToSave);
+        if (dataToSave.default_min_suppliers !== editingService.default_min_suppliers) {
+          await refreshEventStatus(undefined, { serviceId: editingService.id });
+        }
       } else {
         const maxOrderIndex = services.reduce((max, s) => Math.max(max, s.default_order_index || 0), -1);
         dataToSave.default_order_index = maxOrderIndex + 1;
@@ -192,6 +196,7 @@ export default function ServiceManagement() {
     if (window.confirm("האם אתה בטוח שברצונך למחוק שירות זה?")) {
       try {
         await base44.entities.Service.delete(serviceId);
+        await refreshEventStatus(undefined, { serviceId });
         
         queryClient.invalidateQueries({ queryKey: ['services'] });
       } catch (error) {

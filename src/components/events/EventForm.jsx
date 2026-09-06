@@ -1,6 +1,6 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
-import { base44 } from "@/api/base44Client";
 import { Service } from "@/entities/Service";
 import { Supplier } from "@/entities/Supplier";
 import { Package } from "@/entities/Package";
@@ -647,6 +647,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         eventDataToSave.status = 'confirmed';
       }
 
+      // Preserve the server's derived status when this form did not change the lifecycle.
+      if (event && eventDataToSave.status === event.status) delete eventDataToSave.status;
       let savedEvent;
       if (event) {
         await Event.update(event.id, eventDataToSave);
@@ -821,16 +823,8 @@ for (const serviceItem of servicesForSave) {
         }
       }
 
-      // Check if event status needs update (tied/in_progress)
-      try {
-        await base44.functions.invoke('checkEventStatus', { 
-            eventId: savedEvent.id,
-            event: savedEvent,
-            eventServices: formData.services
-        });
-      } catch (checkError) {
-        console.error("Failed to check event status:", checkError);
-      }
+      const statusResult = await refreshEventStatus(savedEvent.id);
+      savedEvent.status = statusResult.newStatus;
 
       onClose();
       await onSave(savedEvent);
@@ -1273,7 +1267,7 @@ for (const serviceItem of servicesForSave) {
                       <SelectContent>
                           <SelectItem value="quote">הצעת מחיר</SelectItem>
                           <SelectItem value="confirmed">אירוע סגור</SelectItem>
-                          <SelectItem value="in_progress">אירוע תפור</SelectItem>
+                          <SelectItem value="in_progress" disabled>אירוע תפור — נקבע לפי השיבוצים והאישורים</SelectItem>
                           <SelectItem value="completed">אירוע עבר</SelectItem>
                           <SelectItem value="cancelled">אירוע בוטל</SelectItem>
                       </SelectContent>
