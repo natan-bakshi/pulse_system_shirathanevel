@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 
@@ -154,6 +155,8 @@ Deno.serve(async (req) => {
                 supplier_notes: JSON.stringify({})
             });
         }
+
+        await recalculateEventStatus(base44.asServiceRole, event_id);
 
         // 3. Clear the pending flag
         await base44.asServiceRole.entities.Event.update(event_id, {
