@@ -40,12 +40,9 @@ Deno.serve(async (req) => {
                     const statusChanged = newStatus !== oldStatus;
 
                     // cancelled/completed => כל תזמוני מחזור-החיים כבר לא רלוונטיים.
-                    // in_progress עדיין אירוע פעיל, לכן מוחקים רק שיבוץ חסר ולא את תזכורת האירוע ליום שלפני.
+                    // in_progress נשאר פעיל; התראת החוסרים המותנית תיבדק רק כשיגיע מועדה.
                     if (statusChanged && ['cancelled', 'completed'].includes(newStatus)) {
                         deletionFilters.push({ related_event_id: entityId });
-                    }
-                    if (statusChanged && newStatus === 'in_progress') {
-                        deletionFilters.push({ related_event_id: entityId, template_type: 'ADMIN_MISSING_ASSIGNMENT' });
                     }
 
                     // מעבר חזרה ל-'quote' (מ-confirmed וכו') => מחק תזכורות מחזור-חיים
