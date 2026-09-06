@@ -1,0 +1,39 @@
+{
+  "name": "\u05e1\u05e0\u05db\u05e8\u05d5\u05df \u05d9\u05d5\u05de\u05df Google - \u05d0\u05d9\u05e8\u05d5\u05e2\u05d9\u05dd",
+  "description": "\u05db\u05d0\u05e9\u05e8 \u05d0\u05d9\u05e8\u05d5\u05e2 \u05e0\u05d5\u05e6\u05e8, \u05de\u05ea\u05e2\u05d3\u05db\u05df \u05d0\u05d5 \u05e0\u05de\u05d7\u05e7 - \u05de\u05e1\u05e0\u05db\u05e8\u05df \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05dc\u05d9\u05d5\u05de\u05e0\u05d9 Google \u05e9\u05dc \u05d4\u05de\u05e0\u05d4\u05dc \u05d5\u05d4\u05e1\u05e4\u05e7\u05d9\u05dd \u05d4\u05de\u05d0\u05d5\u05e9\u05e8\u05d9\u05dd",
+  "trigger": {
+    "condition": "${ ((.trigger.changed_fields | index(\"event_name\") != null) or (.trigger.changed_fields | index(\"event_type\") != null) or (.trigger.changed_fields | index(\"event_date\") != null) or (.trigger.changed_fields | index(\"event_time\") != null) or (.trigger.changed_fields | index(\"location\") != null) or (.trigger.changed_fields | index(\"concept\") != null) or (.trigger.changed_fields | index(\"family_name\") != null) or (.trigger.changed_fields | index(\"child_name\") != null) or (.trigger.changed_fields | index(\"guest_count\") != null) or (.trigger.changed_fields | index(\"schedule\") != null) or (.trigger.changed_fields | index(\"status\") != null) or (.trigger.changed_fields | index(\"notes\") != null) or (.trigger.changed_fields | index(\"parents\") != null) or (.trigger.changed_fields | index(\"client_google_calendar_id\") != null)) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "entity_name": "Event"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "google",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncEventToGoogleCalendars",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "syncEventToGoogleCalendars"
+  }
+}
