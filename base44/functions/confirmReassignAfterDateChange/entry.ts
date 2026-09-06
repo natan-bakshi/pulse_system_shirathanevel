@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 
@@ -68,6 +69,8 @@ Deno.serve(async (req) => {
             });
             affectedServiceIds.add(service.id);
         }
+
+        await recalculateEventStatus(base44.asServiceRole, event_id);
 
         // 2. Send 'event_critical_update' notification (SUPPLIER_ASSIGNMENT_UPDATE) to each assigned supplier
         // We invoke handleEntityEvents-like logic by directly fetching templates and dispatching
