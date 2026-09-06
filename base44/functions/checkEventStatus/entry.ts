@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
+import { recalculateEventStatus, readAll, parseAssignmentValue } from '../../shared/eventReadiness.ts';
 
 export default Deno.serve(async (req) => {
     try {
@@ -22,98 +23,39 @@ export default Deno.serve(async (req) => {
             return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
         }
         
-        const { eventId, event: providedEvent, eventServices: providedEventServices } = body;
-        if (!eventId) {
-            return Response.json({ error: 'Missing eventId' }, { status: 400 });
-        }
-
+        const { eventId, serviceId, supplierId, requestedStatus } = body;
         const user = await base44.auth.me();
-        if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        if (user?.role !== 'admin') {
+            return Response.json({ error: 'Admin access required' }, { status: 403 });
         }
-
-        // Fetch event services
-        const eventServices = providedEventServices || await base44.entities.EventService.filter({ event_id: eventId });
-        
-        // Fetch event to get current status
-        const event = providedEvent || await base44.entities.Event.get(eventId);
-        if (!event) {
-            return Response.json({ error: 'Event not found' }, { status: 404 });
+        if (!eventId && !serviceId && !supplierId) {
+            return Response.json({ error: 'Missing eventId, serviceId or supplierId' }, { status: 400 });
         }
-
-        // Skip if status is quote or completed or cancelled
-        // Logic: confirmed <-> in_progress
-        if (['quote', 'completed', 'cancelled'].includes(event.status)) {
-             return Response.json({ success: true, statusChanged: false, message: 'Status not eligible for auto-update' });
-        }
-
-        // Fetch all services to get defaults
-        const allServicesDefinitions = await base44.entities.Service.list();
-        const servicesMap = new Map(allServicesDefinitions.map(s => [s.id, s]));
-
-        let allServicesSatisfied = true;
-
-        for (const es of eventServices) {
-            if (es.is_external) continue;
-            const serviceDef = servicesMap.get(es.service_id);
-            // Determine required count
-            let minRequired = 0; // Default to 0
-            if (es.min_suppliers !== undefined && es.min_suppliers !== null) {
-                minRequired = es.min_suppliers;
-            } else if (serviceDef && serviceDef.default_min_suppliers !== undefined) {
-                minRequired = serviceDef.default_min_suppliers;
-            } else {
-                minRequired = 0; // Default to 0 as requested
+        if (requestedStatus !== undefined) {
+            if (!eventId || !['quote', 'confirmed', 'completed', 'cancelled'].includes(requestedStatus)) {
+                return Response.json({ error: 'Ready status is calculated from assignments' }, { status: 400 });
             }
-            
-            if (minRequired === 0) continue; // No suppliers required
-
-            // Check assignments
-            let supplierIds = [];
-            try {
-                supplierIds = JSON.parse(es.supplier_ids || '[]');
-            } catch {
-                supplierIds = [];
-            }
-
-            let supplierStatuses = {};
-            try {
-                supplierStatuses = JSON.parse(es.supplier_statuses || '{}');
-            } catch {
-                supplierStatuses = {};
-            }
-
-            // בודקים רק את מספר הספקים המאושרים מול המינימום הנדרש.
-            // לא חשוב כמה ספקים משובצים בסך הכל - מה שחשוב הוא שלפחות `minRequired` מהם מאושרים.
-            // אם יש יותר משובצים (מאושרים או לא) - זה לא מפריע לסטטוס "תפור".
-            const confirmedCount = supplierIds.filter(id => supplierStatuses[id] === 'confirmed').length;
-            
-            if (confirmedCount < minRequired) {
-                allServicesSatisfied = false;
-                break;
+            const current = await base44.entities.Event.get(eventId);
+            if (current.status !== requestedStatus) {
+                await base44.entities.Event.update(eventId, { status: requestedStatus });
             }
         }
-
-        let newStatus = event.status;
-        let statusChanged = false;
-
-        if (allServicesSatisfied) {
-            if (event.status === 'confirmed') {
-                newStatus = 'in_progress';
-                statusChanged = true;
-            }
-        } else {
-            if (event.status === 'in_progress') {
-                newStatus = 'confirmed';
-                statusChanged = true;
+        const eventIds = new Set(eventId ? [eventId] : []);
+        if (serviceId || supplierId) {
+            const rows = await readAll(base44.entities.EventService, serviceId ? { service_id: serviceId } : {});
+            for (const row of rows) {
+                const ids = parseAssignmentValue(row.supplier_ids, []);
+                if ((serviceId && row.min_suppliers == null) || (supplierId && Array.isArray(ids) && ids.includes(supplierId))) {
+                    if (row.event_id) eventIds.add(row.event_id);
+                }
             }
         }
-
-        if (statusChanged) {
-            await base44.entities.Event.update(eventId, { status: newStatus });
+        const results = [];
+        for (const id of eventIds) {
+            const result = await recalculateEventStatus(base44, id);
+            results.push({ eventId: id, newStatus: result.newStatus, statusChanged: result.statusChanged });
         }
-
-        return Response.json({ success: true, statusChanged, newStatus });
+        return Response.json({ success: true, ...(eventId ? results[0] : {}), results });
 
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
