@@ -2,7 +2,7 @@
   "name": "Event Notification Trigger",
   "description": "Handle Event changes for notifications",
   "trigger": {
-    "condition": "${ ((.trigger.changed_fields | index(\"status\") != null) or (.trigger.changed_fields | index(\"event_date\") != null) or (.trigger.changed_fields | index(\"event_time\") != null) or (.trigger.changed_fields | index(\"location\") != null) or (.trigger.changed_fields | index(\"concept\") != null)) }",
+    "condition": "${ (((.trigger.changed_fields // []) | index(\"field_binding_version\") == null) and (((.trigger.changed_fields | index(\"status\") != null) or (.trigger.changed_fields | index(\"event_date\") != null) or (.trigger.changed_fields | index(\"event_time\") != null) or (.trigger.changed_fields | index(\"location\") != null) or (.trigger.changed_fields | index(\"concept\") != null)))) }",
     "config": {
       "trigger_type": "entity",
       "events": [

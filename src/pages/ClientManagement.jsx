@@ -1,3 +1,4 @@
+import { getEventContacts } from '@/lib/eventFields';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from '@tanstack/react-query';
@@ -57,7 +58,7 @@ export default function ClientManagement() {
       getEventDisplayName(event).toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       (event.family_name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       (event.child_name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      (event.parents || []).some(p => p.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
+      (getEventContacts(event) || []).some(p => String(p.name || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
     );
   }, [events, debouncedSearchTerm]);
 
@@ -70,12 +71,12 @@ export default function ClientManagement() {
     { key: 'event_date', title: 'תאריך אירוע', render: (value) => format(new Date(value), "dd/MM/yyyy", { locale: he }) },
     { key: 'location', title: 'מיקום' },
     { key: 'guest_count', title: 'מספר אורחים' },
-    { key: 'parent1_name', title: 'הורה 1 - שם', render: (value, row) => row.parents?.[0]?.name || '' },
-    { key: 'parent1_phone', title: 'הורה 1 - טלפון', render: (value, row) => row.parents?.[0]?.phone || '' },
-    { key: 'parent1_email', title: 'הורה 1 - אימייל', render: (value, row) => row.parents?.[0]?.email || '' },
-    { key: 'parent2_name', title: 'הורה 2 - שם', render: (value, row) => row.parents?.[1]?.name || '' },
-    { key: 'parent2_phone', title: 'הורה 2 - טלפון', render: (value, row) => row.parents?.[1]?.phone || '' },
-    { key: 'parent2_email', title: 'הורה 2 - אימייל', render: (value, row) => row.parents?.[1]?.email || '' },
+    { key: 'parent1_name', title: 'הורה 1 - שם', render: (value, row) => getEventContacts(row)?.[0]?.name || '' },
+    { key: 'parent1_phone', title: 'הורה 1 - טלפון', render: (value, row) => getEventContacts(row)?.[0]?.phone || '' },
+    { key: 'parent1_email', title: 'הורה 1 - אימייל', render: (value, row) => getEventContacts(row)?.[0]?.email || '' },
+    { key: 'parent2_name', title: 'הורה 2 - שם', render: (value, row) => getEventContacts(row)?.[1]?.name || '' },
+    { key: 'parent2_phone', title: 'הורה 2 - טלפון', render: (value, row) => getEventContacts(row)?.[1]?.phone || '' },
+    { key: 'parent2_email', title: 'הורה 2 - אימייל', render: (value, row) => getEventContacts(row)?.[1]?.email || '' },
     { key: 'notes', title: 'הערות' }
   ], []);
 
@@ -125,7 +126,7 @@ export default function ClientManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClients.map(event => {
-          const parents = event.parents || [];
+          const parents = getEventContacts(event) || [];
           const isExpanded = expandedCards[event.id];
           const parentsToShow = isExpanded ? parents : parents.slice(0, 2);
           const hasMoreParents = parents.length > 2;

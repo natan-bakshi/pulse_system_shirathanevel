@@ -20,10 +20,12 @@ import 'react-quill/dist/quill.snow.css';
 import ContactPicker from '../ui/ContactPicker';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
+import { DEFAULT_EVENT_FIELDS, getField } from '@/lib/eventFields';
 import SectionTitleEditor from '@/components/events/SectionTitleEditor';
 import AddServiceToPackageDraftDialog from '@/components/events/AddServiceToPackageDraftDialog';
 
 export default function EventServicesManager({
+  fieldConfig = DEFAULT_EVENT_FIELDS,
   allServices,
   allSuppliers,
   allPackages = [],
@@ -43,6 +45,7 @@ export default function EventServicesManager({
   externalServicesTitle = '',
   onExternalServicesTitleChange
 }) {
+  const field = key => getField(fieldConfig, key);
   const [expandedServices, setExpandedServices] = useState({});
   const [copiedId, setCopiedId] = useState(null);
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
@@ -1374,9 +1377,9 @@ export default function EventServicesManager({
             onCheckedChange={(checked) => onAllInclusiveChange({ all_inclusive: checked })} 
           />
           <Label>חבילת הכל כלול</Label>
-          {onPrimaryCurrencyChange && (
+          {onPrimaryCurrencyChange && field('primary_currency') && (
             <div className="flex items-center gap-1 mr-auto">
-              <span className="text-xs text-gray-500">מטבע:</span>
+              <span className="text-xs text-gray-500">{field('primary_currency')?.name}:</span>
               <button
                 type="button"
                 onClick={() => {
@@ -1436,7 +1439,8 @@ export default function EventServicesManager({
         value={servicesSectionTitle || ''}
         fallback="חבילת ההפקה כוללת"
         placeholder="ברירת מחדל: חבילת ההפקה כוללת"
-        onChange={onServicesSectionTitleChange}
+        label={field('services_section_title')?.name}
+        onChange={field('services_section_title') ? onServicesSectionTitleChange : undefined}
         color="red"
       />
 
@@ -1667,7 +1671,8 @@ export default function EventServicesManager({
                     value={standaloneServicesTitle || ''}
                     fallback="שירותים בודדים"
                     placeholder="אופציונלי — כותרת לפני שירותים בודדים"
-                    onChange={onStandaloneServicesTitleChange}
+                    label={field('standalone_services_title')?.name}
+        onChange={field('standalone_services_title') ? onStandaloneServicesTitleChange : undefined}
                     color="purple"
                   />
                   {groupedServices.standalone.map((service, index) => (
@@ -1695,11 +1700,12 @@ export default function EventServicesManager({
               <h4 className="text-base font-semibold text-orange-800 shrink-0">
                 {externalServicesTitle || 'שירותים נוספים'}
               </h4>
-              {onExternalServicesTitleChange && (
+              {onExternalServicesTitleChange && field('external_services_title') && (
                 <Input
                   value={externalServicesTitle || ''}
                   onChange={(e) => onExternalServicesTitleChange(e.target.value)}
-                  placeholder="כותרת מקטע (ברירת מחדל: שירותים נוספים)"
+                  aria-label={field('external_services_title')?.name}
+                  placeholder={field('external_services_title')?.name}
                   className="text-sm h-7 max-w-[250px]"
                 />
               )}

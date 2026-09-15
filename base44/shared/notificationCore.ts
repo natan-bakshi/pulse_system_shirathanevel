@@ -1,3 +1,4 @@
+import { getEventContacts } from './eventFields.js';
 // ליבת יצירת ההתראות - מודול backend פנימי בלבד (לא endpoint ציבורי).
 // נקרא ישירות מפונקציות ה-backend, ומ-endpoint ה-HTTP המאומת createNotification.
 import { validateNotificationInput, sanitizeLink, PULSE_ORIGIN } from "./notificationValidation.ts";
@@ -324,19 +325,7 @@ async function resolveWhatsAppPhone(base44, targetUser, input, allowManualPhone)
     return { phone: '', reason: 'No phone number found' };
 }
 
-function collectEventContacts(ev) {
-    const list = [];
-    if (Array.isArray(ev?.parents)) list.push(...ev.parents);
-    if (ev?.organizer_contacts) {
-        try {
-            const parsed = typeof ev.organizer_contacts === 'string'
-                ? JSON.parse(ev.organizer_contacts)
-                : ev.organizer_contacts;
-            if (Array.isArray(parsed)) list.push(...parsed);
-        } catch (e) {}
-    }
-    return list.filter(c => c && typeof c === 'object');
-}
+function collectEventContacts(ev) { return getEventContacts(ev); }
 
 function generateDynamicUrl(type, context) {
     let path = '';

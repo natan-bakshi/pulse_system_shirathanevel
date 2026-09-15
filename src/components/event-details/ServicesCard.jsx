@@ -24,6 +24,8 @@ import 'react-quill/dist/quill.snow.css';
 import { format } from 'date-fns';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '../utils/currencyUtils';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
+import { useOrganizerConfig } from '@/hooks/useOrganizerConfig';
+import { getField } from '@/lib/eventFields';
 import SectionTitleEditor from '@/components/events/SectionTitleEditor';
 
 function SupplierNoteInput({ serviceId, supplierId, initialNote, handleUpdateSupplierNote }) {
@@ -105,6 +107,8 @@ export default function ServicesCard({
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
   const [serviceTabs, setServiceTabs] = useState({}); // לניהול לשוניות עריכה לכל שירות
   const [copiedId, setCopiedId] = useState(null); // לניהול אייקון ה-V
+  const { fields: organizerFields } = useOrganizerConfig(event?.organizer_type);
+  const field = key => getField(organizerFields, key);
   const [servicesTitleInput, setServicesTitleInput] = useState(event?.services_section_title || '');
   const [standaloneTitleInput, setStandaloneTitleInput] = useState(event?.standalone_services_title || '');
   const [externalTitleInput, setExternalTitleInput] = useState(event?.external_services_title || '');
@@ -1187,7 +1191,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 </Tooltip>
               </TooltipProvider>
 
-              {onPrimaryCurrencyChange && (
+              {onPrimaryCurrencyChange && field('primary_currency') && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1231,6 +1235,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                           await onPrimaryCurrencyChange(newCurrency, updateEvent);
                         }}
                         className="text-xs font-medium px-2 py-1.5 rounded border border-gray-300 hover:bg-white transition-colors"
+                        aria-label={field('primary_currency')?.name}
                         title="לחץ להחלפת מטבע (ימיר את כל המחירים)"
                       >
                         {getCurrencySymbol(event?.primary_currency || 'ILS')} {(event?.primary_currency || 'ILS') === 'ILS' ? 'שקל' : 'דולר'}
@@ -1288,7 +1293,8 @@ const handleCopyTransport = (service, serviceDetails) => {
                   value={servicesTitleInput}
                   fallback="חבילת ההפקה כוללת"
                   placeholder="ברירת מחדל: חבילת ההפקה כוללת"
-                  onChange={isAdmin ? setServicesTitleInput : undefined}
+                  label={field('services_section_title')?.name}
+                  onChange={isAdmin && field('services_section_title') ? setServicesTitleInput : undefined}
                   onBlur={isAdmin ? () => handleSaveServicesSectionTitle && handleSaveServicesSectionTitle(servicesTitleInput) : undefined}
                   color="red"
                 />
@@ -1410,7 +1416,8 @@ const handleCopyTransport = (service, serviceDetails) => {
                           value={standaloneTitleInput}
                           fallback="שירותים בודדים"
                           placeholder="אופציונלי — כותרת לפני שירותים בודדים"
-                          onChange={isAdmin ? setStandaloneTitleInput : undefined}
+                          label={field('standalone_services_title')?.name}
+                  onChange={isAdmin && field('standalone_services_title') ? setStandaloneTitleInput : undefined}
                           onBlur={isAdmin ? () => handleSaveStandaloneServicesTitle && handleSaveStandaloneServicesTitle(standaloneTitleInput) : undefined}
                           color="purple"
                         />
@@ -1496,12 +1503,13 @@ const handleCopyTransport = (service, serviceDetails) => {
                 <h4 className="text-base font-semibold text-orange-800 shrink-0">
                   {event.external_services_title || 'שירותים נוספים'}
                 </h4>
-                {handleSaveExternalServicesTitle && (
+                {handleSaveExternalServicesTitle && field('external_services_title') && (
                   <Input 
                     value={externalTitleInput}
                     onChange={(e) => setExternalTitleInput(e.target.value)}
                     onBlur={() => handleSaveExternalServicesTitle(externalTitleInput)}
-                    placeholder="כותרת מקטע (ברירת מחדל: שירותים נוספים)"
+                    aria-label={field('external_services_title')?.name}
+                    placeholder={field('external_services_title')?.name}
                     className="text-sm h-7 max-w-[250px]"
                   />
                 )}

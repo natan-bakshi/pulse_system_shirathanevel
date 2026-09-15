@@ -1,3 +1,4 @@
+import { getClientContacts, getEventContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
@@ -678,8 +679,8 @@ async function sendNotification(base44, template, entityData, event, entityName)
     }
 
     // --- 2. Client Audience ---
-    if (audiences.includes('client') && eventObj && eventObj.parents) {
-        const parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents;
+    if (audiences.includes('client') && eventObj && getClientContacts(eventObj)) {
+        const parents = typeof getClientContacts(eventObj) === 'string' ? JSON.parse(getClientContacts(eventObj)) : getClientContacts(eventObj);
         if (Array.isArray(parents)) {
             for (const p of parents) {
                 if (sendWhatsApp && p.phone) {
@@ -1003,8 +1004,8 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
     };
 
     // Client Name/Phone Logic
-    if (eventObj && eventObj.parents) {
-        const parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents;
+    if (eventObj && getEventContacts(eventObj)) {
+        const parents = typeof getEventContacts(eventObj) === 'string' ? JSON.parse(getEventContacts(eventObj)) : getEventContacts(eventObj);
         if (Array.isArray(parents) && parents.length > 0) {
             vars['client_name'] = parents[0].name;
             vars['clientname'] = parents[0].name;

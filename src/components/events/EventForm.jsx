@@ -20,7 +20,6 @@ import { X, Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, Clipb
 import { format } from "date-fns";
 import EventServicesManager from "./EventServicesManager";
 import PaymentManager from "./PaymentManager";
-import ContactPicker from "../ui/ContactPicker";
 import { calculateEventFinancials } from "@/components/utils/eventFinancials";
 import { getCurrencySymbol } from "@/components/utils/currencyUtils";
 import { createPageUrl } from '@/utils';
@@ -29,16 +28,11 @@ import { QuoteTemplate } from "@/entities/QuoteTemplate";
 import OrganizerTypeSelector from "@/components/quotes/OrganizerTypeSelector";
 import OrganizerContactsSection from "./OrganizerContactsSection";
 import DynamicEventFieldsSection from "./DynamicEventFieldsSection";
-import { QuoteOrganizerType } from "@/entities/QuoteOrganizerType";
 import { Switch } from "@/components/ui/switch";
 import GuestCountChangeDialog from "./GuestCountChangeDialog";
 import { toast } from "sonner";
-import { getCustomEventNameFromFields } from "@/lib/eventDisplayName";
-
-function isSystemEventDateField(field) {
-  const normalizedName = String(field?.name || '').replace(/\s/g, '');
-  return field?.id === 'event_date' || (field?.type === 'date' && (normalizedName === 'תאריך' || normalizedName === 'תאריךהאירוע'));
-}
+import { getField, getEventContacts, prepareContacts, validateEventFields, normalizeEventValues } from "@/lib/eventFields";
+import { useOrganizerConfig } from "@/hooks/useOrganizerConfig";
 
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
   const [allServices, setAllServices] = useState([]);
@@ -48,57 +42,20 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   const [isSaving, setIsSaving] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(3.6);
   const [existingConcepts, setExistingConcepts] = useState([]);
-  const [isManualConcept, setIsManualConcept] = useState(false);
   const [importText, setImportText] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   // For new events: null triggers auto-default in OrganizerTypeSelector.
   // For existing events: use the saved value (or null if not set).
   const [organizerType, setOrganizerType] = useState(event?.organizer_type || null);
-  const [organizerContactsConfig, setOrganizerContactsConfig] = useState(null);
-  const [organizerEventFields, setOrganizerEventFields] = useState(null); // parsed event_fields array or null
+  const { fields: organizerEventFields, contactsConfig: organizerContactsConfig, isLoading: configLoading, isError: configError } = useOrganizerConfig(organizerType);
   const [customFieldValues, setCustomFieldValues] = useState(() => {
     try { return JSON.parse(event?.custom_organizer_fields || '{}'); } catch { return {}; }
   });
-  const [organizerContacts, setOrganizerContacts] = useState(() => {
-    try { return JSON.parse(event?.organizer_contacts || '[]'); } catch { return []; }
-  });
-
-  // Sync organizerType and custom fields when event changes (editing existing event)
   useEffect(() => {
-    if (event?.organizer_type) {
-      setOrganizerType(event.organizer_type);
-    }
-    if (event?.custom_organizer_fields) {
-      try { setCustomFieldValues(JSON.parse(event.custom_organizer_fields)); } catch {}
-    }
-  }, [event?.organizer_type, event?.custom_organizer_fields]);
-
-  // Load contacts config AND event_fields when organizer type changes
-  useEffect(() => {
-    if (!organizerType) {
-      setOrganizerContactsConfig(null);
-      setOrganizerEventFields(null);
-      return;
-    }
-    const loadConfig = async () => {
-      try {
-        const types = await QuoteOrganizerType.filter({ type_name: organizerType });
-        const match = types.find(t => t.is_active !== false);
-        if (match?.contacts_config) {
-          setOrganizerContactsConfig(JSON.parse(match.contacts_config));
-        } else {
-          setOrganizerContactsConfig(null);
-        }
-        if (match?.event_fields) {
-          setOrganizerEventFields(JSON.parse(match.event_fields));
-        } else {
-          setOrganizerEventFields(null);
-        }
-      } catch { setOrganizerContactsConfig(null); setOrganizerEventFields(null); }
-    };
-    loadConfig();
-  }, [organizerType]);
+    setOrganizerType(event ? (event.organizer_type || '') : null);
+    try { setCustomFieldValues(JSON.parse(event?.custom_organizer_fields || '{}')); } catch { setCustomFieldValues({}); }
+  }, [event?.id]);
 
   // פונקציית העתקה ללוח
   const copyToClipboard = () => {
@@ -387,7 +344,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       status: event?.status || "quote",
       primary_currency: event?.primary_currency || "ILS",
       notes: event?.notes || "",
-      parents: event?.parents?.length ? event.parents : [{ name: "", phone: "", email: "" }],
+      parents: getEventContacts(event).length ? getEventContacts(event).map(c => ({ ...c, custom_fields: { ...c.custom_fields } })) : [{ name: "", phone: "", email: "" }],
       schedule: event?.schedule?.length ? event.schedule : [],
       all_inclusive: event?.all_inclusive || false,
       all_inclusive_price: event?.all_inclusive_price || 0,
@@ -430,12 +387,6 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
 
 
     let servicesToSet = initialServicesFromEvent;
-
-    if (event?.concept && !existingConcepts.includes(event.concept)) {
-      setIsManualConcept(true);
-    } else {
-      setIsManualConcept(false);
-    }
 
     setFormData(prev => ({
       ...eventData,
@@ -511,40 +462,6 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
     setGuestChangeDialog(null);
   };
 
-  const handleParentChange = (index, field, value) => {
-    const newParents = [...formData.parents];
-    newParents[index] = { ...newParents[index], [field]: value };
-    setFormData(prev => ({
-      ...prev,
-      parents: newParents
-    }));
-  };
-
-  const handleContactSelect = (index, contactData) => {
-    const newParents = [...formData.parents];
-    newParents[index] = {
-      ...newParents[index],
-      name: contactData.name || newParents[index].name,
-      phone: contactData.phone || newParents[index].phone,
-      email: contactData.email || newParents[index].email,
-    };
-    setFormData(prev => ({ ...prev, parents: newParents }));
-  };
-
-  const addParent = () => {
-    setFormData(prev => ({
-      ...prev,
-      parents: [...prev.parents, { name: "", phone: "", email: "" }]
-    }));
-  };
-
-  const removeParent = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      parents: prev.parents.filter((_, i) => i !== index)
-    }));
-  };
-
   const handleScheduleChange = (index, field, value) => {
     setFormData(prev => {
       const newSchedule = [...prev.schedule];
@@ -594,34 +511,19 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
 
     if (isSaving) return;
 
-    // Validation: when using dynamic fields, skip default field validation
-    if (!organizerEventFields || organizerEventFields.length === 0) {
-      if (!formData.event_name || !formData.event_date) {
-        alert("נא למלא את כל השדות הנדרשים: שם אירוע ותאריך אירוע.");
-        return;
-      }
-    } else {
-      if (!formData.event_date) {
-        alert("נא למלא תאריך אירוע.");
-        return;
-      }
-      // Validate required dynamic fields
-      const missingRequired = organizerEventFields.filter(f => !isSystemEventDateField(f) && f.required && !customFieldValues[f.id]);
-      if (missingRequired.length > 0) {
-        alert(`נא למלא את השדות הנדרשים: ${missingRequired.map(f => f.name).join(', ')}`);
-        return;
-      }
-    }
+    if (configLoading || configError) { alert('הגדרות סוג האירוע טרם נטענו. נסה שוב.'); return; }
+    const validationError = validateEventFields(organizerEventFields, formData, customFieldValues);
+    if (validationError) { alert(validationError); return; }
 
     setIsSaving(true);
     try {
-      const dynamicEventName = organizerEventFields ? getCustomEventNameFromFields(customFieldValues) : '';
-      const normalizedEventName = String(formData.event_name || dynamicEventName || '').trim();
+      const normalizedEventName = String(formData.event_name || '').trim();
       const eventDataToSave = {
-        ...formData,
+        ...normalizeEventValues(formData),
         event_name: normalizedEventName,
         family_name: formData.family_name || normalizedEventName,
-        parents: formData.parents.filter(p => p.name || p.phone || p.email),
+        parents: prepareContacts(formData.parents),
+        contacts_schema_version: 2,
         guest_count: parseInt(formData.guest_count) || 0,
         all_inclusive_price: Number(formData.all_inclusive_price) || 0,
         discount_amount: Number(formData.discount_amount) || 0,
@@ -635,8 +537,8 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         standalone_services_title: formData.standalone_services_title || '',
         external_services_title: formData.external_services_title || '',
         organizer_type: organizerType || null,
-        organizer_contacts: JSON.stringify(organizerContacts.filter(c => c.name || c.phone || c.email)),
-        custom_organizer_fields: organizerEventFields ? JSON.stringify(customFieldValues) : (event?.custom_organizer_fields || null),
+        organizer_contacts: event?.organizer_contacts || null,
+        custom_organizer_fields: JSON.stringify(customFieldValues),
         services: undefined,
         payments: undefined
       };
@@ -869,69 +771,9 @@ for (const serviceItem of servicesForSave) {
             disabled={isSaving}
           />
 
-          {/* Dynamic fields OR default fields based on organizer type */}
-          {organizerEventFields && organizerEventFields.length > 0 ? (
-            <DynamicEventFieldsSection
-              fields={organizerEventFields}
-              values={customFieldValues}
-              onChange={setCustomFieldValues}
-              disabled={isSaving}
-              eventDate={formData.event_date}
-              onEventDateChange={(value) => handleInputChange("event_date", value)}
-            />
-          ) : (
-            <>
-              <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">פרטי אירוע</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input id="event_name" value={formData.event_name} onChange={(e) => handleInputChange("event_name", e.target.value)} placeholder="שם האירוע" required disabled={isSaving} />
-                  <Select value={formData.event_type} onValueChange={(value) => handleInputChange("event_type", value)} disabled={isSaving}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bar_mitzvah">בר מצווה</SelectItem>
-                      <SelectItem value="bat_mitzvah">בת מצווה</SelectItem>
-                      <SelectItem value="wedding">חתונה</SelectItem>
-                      <SelectItem value="other">אחר</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input id="event_date" type="date" value={formData.event_date} onChange={(e) => handleInputChange("event_date", e.target.value)} required disabled={isSaving} />
-                  <Input id="event_time" type="time" value={formData.event_time} onChange={(e) => handleInputChange("event_time", e.target.value)} placeholder="שעת האירוע" disabled={isSaving} />
-                  <Input id="location" value={formData.location} onChange={(e) => handleInputChange("location", e.target.value)} placeholder="מיקום" disabled={isSaving} />
-                  <div />
-                  <div>
-                    <Label htmlFor="concept">קונספט</Label>
-                    <div className="space-y-2">
-                      {!isManualConcept ? (
-                        <Select value={formData.concept && existingConcepts.includes(formData.concept) ? formData.concept : ""} onValueChange={(value) => { if (value === "__manual__") { setIsManualConcept(true); } else { handleInputChange("concept", value); } }} disabled={isSaving}>
-                          <SelectTrigger id="concept"><SelectValue placeholder="בחר קונספט..." /></SelectTrigger>
-                          <SelectContent>
-                            {existingConcepts.map(concept => (<SelectItem key={concept} value={concept}>{concept}</SelectItem>))}
-                            <SelectItem value="__manual__" className="text-blue-600 font-medium">+ הכנס קונספט חדש</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="space-y-2">
-                          <Input value={formData.concept} onChange={(e) => handleInputChange("concept", e.target.value)} placeholder="שם קונספט חדש..." disabled={isSaving} autoFocus />
-                          <Button type="button" variant="ghost" size="sm" onClick={() => { setIsManualConcept(false); handleInputChange("concept", ""); }} disabled={isSaving} className="text-xs">חזור לבחירה מהרשימה</Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <Label htmlFor="notes">הערות כלליות</Label>
-                  <Textarea id="notes" name="notes" value={formData.notes} onChange={(e) => handleInputChange("notes", e.target.value)} placeholder="הערות ותזכורות חשובות..." disabled={isSaving} />
-                </div>
-              </div>
-
-              <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">פרטי משפחה</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                  <Input id="family_name" value={formData.family_name} onChange={(e) => handleInputChange("family_name", e.target.value)} placeholder="שם משפחה" disabled={isSaving} />
-                  <Input id="child_name" value={formData.child_name} onChange={(e) => handleInputChange("child_name", e.target.value)} placeholder="שם הילד/ה" disabled={isSaving} />
-                  <Input id="city" value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} placeholder="עיר מגורים" disabled={isSaving} />
-                  <Input id="guest_count" type="number" value={formData.guest_count} onChange={(e) => handleInputChange("guest_count", e.target.value)} placeholder="מספר אורחים" disabled={isSaving} />
-                </div>
+          <DynamicEventFieldsSection fields={organizerEventFields} values={customFieldValues} onChange={setCustomFieldValues}
+            eventValues={formData} onEventChange={handleInputChange} disabled={isSaving || configLoading} concepts={existingConcepts} />
+          {getField(organizerEventFields, 'guest_count') && <div className="px-3 sm:px-6">
                 {/* Price Per Guest Toggle */}
                 <div className="col-span-1 sm:col-span-2 flex items-center gap-3 pt-2">
                   <Switch
@@ -947,43 +789,20 @@ for (const serviceItem of servicesForSave) {
                     </span>
                   )}
                 </div>
-              </div>
+          </div>}
 
-              <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
-                <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
-                  <h3 className="text-base sm:text-lg font-semibold">פרטי הורים</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addParent} disabled={isSaving}><Plus className="h-4 w-4 ml-1" />הוסף הורה</Button>
-                </div>
-                <div className="space-y-3">
-                  {formData.parents.map((parent, index) => (
-                    <div key={index} className="border p-4 rounded-lg bg-gray-50/70">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex-1 min-w-[150px]"><Input value={parent.name} onChange={(e) => handleParentChange(index, "name", e.target.value)} placeholder="שם מלא" disabled={isSaving} /></div>
-                        <div className="flex-1 min-w-[150px]"><Input value={parent.phone} onChange={(e) => handleParentChange(index, "phone", e.target.value)} placeholder="טלפון" disabled={isSaving} /></div>
-                        <div className="flex-1 min-w-[150px]"><Input type="email" value={parent.email} onChange={(e) => handleParentChange(index, "email", e.target.value)} placeholder="אימייל" disabled={isSaving} /></div>
-                        <ContactPicker onContactSelect={(contactData) => handleContactSelect(index, contactData)} className="shrink-0" />
-                        {formData.parents.length > 1 && (<Button type="button" variant="ghost" size="icon" onClick={() => removeParent(index)} disabled={isSaving}><Trash2 className="h-4 w-4 text-red-500" /></Button>)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+          {getField(organizerEventFields, 'parents') && <OrganizerContactsSection
+            contacts={formData.parents}
+            onChange={contacts => setFormData(prev => ({ ...prev, parents: contacts }))}
+            config={{ ...organizerContactsConfig, label: getField(organizerEventFields, 'parents')?.name || organizerContactsConfig.label }}
+            disabled={isSaving || configLoading}
+          />}
 
-          {/* Organizer Contacts Section */}
-          <OrganizerContactsSection
-            contacts={organizerContacts}
-            onChange={setOrganizerContacts}
-            config={organizerContactsConfig}
-            disabled={isSaving}
-          />
-
-          <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
+          {getField(organizerEventFields, "schedule") && <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
               <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                לוח זמנים
+                {getField(organizerEventFields, "schedule")?.name || "לוח זמנים"}
               </h3>
               {formData.schedule?.length > 0 && (
                 <Button type="button" variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 w-8 p-0">
@@ -1067,7 +886,7 @@ for (const serviceItem of servicesForSave) {
                 )}
               </Droppable>
             </DragDropContext>
-          </div>
+          </div>}
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
@@ -1087,6 +906,7 @@ for (const serviceItem of servicesForSave) {
               )}
             </div>
             <EventServicesManager
+              fieldConfig={organizerEventFields}
               allServices={allServices}
               allSuppliers={allSuppliers}
               allPackages={allPackages}

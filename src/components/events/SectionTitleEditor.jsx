@@ -20,7 +20,7 @@ const colorStyles = {
   }
 };
 
-export default function SectionTitleEditor({ value, fallback, placeholder, onChange, onBlur, color = "red", badge }) {
+export default function SectionTitleEditor({ value, fallback, placeholder, onChange, onBlur, label, color = "red", badge }) {
   const styles = colorStyles[color] || colorStyles.red;
   const title = value?.trim() || fallback;
 
@@ -36,7 +36,8 @@ export default function SectionTitleEditor({ value, fallback, placeholder, onCha
             value={value || ""}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
-            placeholder={placeholder}
+            aria-label={label || placeholder}
+            placeholder={label || placeholder}
             className={`text-sm h-8 sm:max-w-xs ${styles.input}`}
           />
         )}

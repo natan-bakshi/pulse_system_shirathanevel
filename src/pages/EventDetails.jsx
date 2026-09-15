@@ -1,3 +1,4 @@
+import { getEventFields, getEventContacts, prepareContacts, normalizeEventValues, validateEventFields } from '@/lib/eventFields';
 import { refreshEventStatus } from '@/lib/eventStatus';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -26,7 +27,7 @@ const PaymentDocumentDialog = React.lazy(() => import('../components/event-detai
 import { useQuoteShare } from '../components/event-details/useQuoteShare';
 import { useEventExport } from '../components/event-details/useEventExport';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
-import { getEventDisplayName, getCustomEventNameFromFields } from '@/lib/eventDisplayName';
+import { getEventDisplayName } from '@/lib/eventDisplayName';
 import { getEventContactList } from '@/lib/eventContactList';
 
 // Helper: When merging server data with local state, preserve local values
@@ -297,7 +298,7 @@ export default function EventDetails() {
   // Initialize editable parents, family_name, child_name when event loads
   useEffect(() => {
     if (event) {
-      setEditableParents(event.parents || []);
+      setEditableParents(getEventContacts(event));
       setEditableFamilyName(event.family_name || '');
       setEditableChildName(event.child_name || '');
     }
@@ -652,17 +653,14 @@ export default function EventDetails() {
   const handleSaveEventDetails = useCallback(async () => {
     setIsSavingEventDetails(true);
     try {
-      const dataToSave = { ...eventDetailsData };
-      // If dynamic fields were edited, save them as custom_organizer_fields JSON
-      if (dataToSave._customFields) {
-        const dynamicEventName = getCustomEventNameFromFields(dataToSave._customFields);
-        if (dynamicEventName) {
-          dataToSave.event_name = dynamicEventName;
-          dataToSave.family_name = dataToSave.family_name || dynamicEventName;
-        }
-        dataToSave.custom_organizer_fields = JSON.stringify(dataToSave._customFields);
-        delete dataToSave._customFields;
-      }
+      const { _customFields, ...draft } = eventDetailsData;
+      const type = (queryClient.getQueryData(['organizerTypes']) || []).find(t => t.type_name === draft.organizer_type);
+      const validation = validateEventFields(getEventFields(type), { ...event, ...draft }, _customFields || {});
+      if (validation) { alert(validation); return; }
+      const dataToSave = normalizeEventValues(draft);
+      if (_customFields) dataToSave.custom_organizer_fields = JSON.stringify(_customFields);
+      // Preserve the legacy required field only when no organizer name has been entered.
+      if (!dataToSave.family_name) dataToSave.family_name = dataToSave.event_name;
       await base44.entities.Event.update(eventId, dataToSave);
       setEditingSection(null);
       await loadEventData();
@@ -672,19 +670,18 @@ export default function EventDetails() {
     } finally {
       setIsSavingEventDetails(false);
     }
-  }, [eventId, eventDetailsData, loadEventData]);
+  }, [eventId, event, eventDetailsData, loadEventData, queryClient]);
 
   const handleSaveFamilyDetails = useCallback(async (orgContacts) => {
     setIsSavingFamilyDetails(true);
     try {
       const updateData = { 
-        parents: editableParents,
+        parents: prepareContacts(orgContacts === undefined ? editableParents : orgContacts),
+        contacts_schema_version: 2,
         family_name: editableFamilyName,
         child_name: editableChildName
       };
-      if (orgContacts !== undefined) {
-        updateData.organizer_contacts = JSON.stringify(orgContacts.filter(c => c.name || c.phone || c.email));
-      }
+
       await base44.entities.Event.update(eventId, updateData);
       setEditingSection(null);
       await loadEventData();

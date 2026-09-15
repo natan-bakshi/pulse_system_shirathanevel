@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Contact } from "lucide-react";
 
-export default function ContactPicker({ onContactSelect, className = "ml-2" }) {
+export default function ContactPicker({ onContactSelect, className = "ml-2", disabled = false }) {
   const handlePickContact = async () => {
     // Check if the API is supported
     if ('contacts' in navigator && 'select' in navigator.contacts) {
@@ -69,6 +69,7 @@ export default function ContactPicker({ onContactSelect, className = "ml-2" }) {
       variant="ghost" 
       size="sm" 
       onClick={handlePickContact}
+      disabled={disabled}
       title="בחר מאנשי קשר"
       className={className}
     >

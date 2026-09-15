@@ -1,3 +1,4 @@
+import { getEventContacts } from '@/lib/eventFields';
 import { useState, useCallback } from 'react';
 import { getEventDisplayName } from '@/lib/eventDisplayName';
 
@@ -25,6 +26,9 @@ export function useEventExport({ event, eventServices, allServices, allSuppliers
         event_name: event.event_name,
         event_type: event.event_type,
         event_date: event.event_date,
+        event_time: event.event_time,
+        organizer_type: event.organizer_type,
+        custom_organizer_fields: event.custom_organizer_fields,
         location: event.location,
         city: event.city,
         concept: event.concept,
@@ -37,7 +41,8 @@ export function useEventExport({ event, eventServices, allServices, allSuppliers
       exportData.familyDetails = {
         family_name: event.family_name,
         child_name: event.child_name,
-        parents: event.parents || []
+        parents: getEventContacts(event),
+        contacts_schema_version: 2
       };
     }
 

@@ -1,3 +1,4 @@
+import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 
@@ -767,8 +768,8 @@ Deno.serve(async (req) => {
                 
                 // Find client users
                 const clientUsers = [];
-                if (event.parents && Array.isArray(event.parents)) {
-                    for (const parent of event.parents) {
+                if (getClientContacts(event) && Array.isArray(getClientContacts(event))) {
+                    for (const parent of getClientContacts(event)) {
                         if (parent.email) {
                             const clientUser = allUsers.find(u => u.email?.toLowerCase() === parent.email.toLowerCase());
                             if (clientUser) clientUsers.push(clientUser);
@@ -816,8 +817,8 @@ Deno.serve(async (req) => {
                     const link = buildDeepLink(paymentTemplate.deep_link_base, paymentTemplate.deep_link_params_map, contextData);
                     
                     // WhatsApp - check parents for phone
-                    if (allowedChannels.includes('whatsapp') && event.parents) {
-                        const parent = event.parents.find(p => p.email?.toLowerCase() === clientUser.email?.toLowerCase());
+                    if (allowedChannels.includes('whatsapp') && getClientContacts(event)) {
+                        const parent = getClientContacts(event).find(p => p.email?.toLowerCase() === clientUser.email?.toLowerCase());
                         if (parent?.phone) {
                             whatsappQueue.push({ phone: parent.phone, message: waMessage });
                         }
@@ -1348,8 +1349,8 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
     }
     
     // Client audience
-    if (audiences.includes('client') && event.parents) {
-        const parents = typeof event.parents === 'string' ? JSON.parse(event.parents) : event.parents;
+    if (audiences.includes('client') && getClientContacts(event)) {
+        const parents = typeof getClientContacts(event) === 'string' ? JSON.parse(getClientContacts(event)) : getClientContacts(event);
         if (Array.isArray(parents)) {
             for (const p of parents) {
                 const contextData = buildEventContext(event, null, p);

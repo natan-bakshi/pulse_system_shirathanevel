@@ -60,7 +60,7 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
     };
     const updated = [...extraFields];
     if (editingIndex !== null) {
-      updated[editingIndex] = newField;
+      updated[editingIndex] = { ...updated[editingIndex], ...newField };
     } else {
       updated.push(newField);
     }
@@ -76,7 +76,7 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
     <div className="space-y-4">
       <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 flex items-start gap-2">
         <Info className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>אנשי קשר הם שדה קבוע בכל אירוע מסוג הזמנה זה. כאן ניתן להגדיר את שם הקטע, שם כל איש קשר, ושדות נוספים מעבר לשם, טלפון ואימייל.</span>
+        <span>ניתן להוסיף את שדה אנשי הקשר בלשונית שדות האירוע. כאן ניתן להגדיר את שם הקטע, שם כל איש קשר, ושדות נוספים מעבר לשם, טלפון ואימייל.</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

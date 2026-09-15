@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Save, Loader2, Plus, Trash2, GripVertical, Info, Star } from "lucide-react";
 import OrganizerFieldsEditor from "./OrganizerFieldsEditor";
+import { getEventFields, systemKey, SYSTEM_EVENT_FIELDS } from "@/lib/eventFields";
 import OrganizerBlocksEditor from "./OrganizerBlocksEditor";
 import OrganizerContactsConfigEditor from "./OrganizerContactsConfigEditor";
 import RichTextEditor from "../manualQuote/RichTextEditor";
@@ -18,7 +19,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
   const [typeName, setTypeName] = useState(type.type_name || "");
   const [titleTemplate, setTitleTemplate] = useState(type.quote_main_title_template || "");
   const [fields, setFields] = useState(() => {
-    try { return JSON.parse(type.event_fields || '[]'); } catch { return []; }
+    return getEventFields(type);
   });
   const [blocks, setBlocks] = useState(() => {
     try { return JSON.parse(type.quote_blocks || '[]'); } catch { return []; }
@@ -27,25 +28,13 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
     try { return JSON.parse(type.contacts_config || '{}'); } catch { return {}; }
   });
 
-  // Available variables for title template
-  // Available variables for title template and blocks
-  // When custom fields are defined, use ONLY those (they replace the built-in fields)
-  // When no custom fields exist, fall back to built-in defaults
   const availableVars = useMemo(() => {
-    if (fields.length > 0) {
-      return fields.map(f => ({ key: f.id, label: f.name }));
-    }
-    return [
-      { key: 'event_name', label: 'שם אירוע' },
-      { key: 'event_type', label: 'סוג אירוע' },
-      { key: 'event_date', label: 'תאריך אירוע' },
-      { key: 'family_name', label: 'שם משפחה' },
-      { key: 'child_name', label: 'שם ילד/ה' },
-      { key: 'city', label: 'עיר' },
-      { key: 'guest_count', label: 'מספר אורחים' },
-      { key: 'location', label: 'מיקום' },
-      { key: 'concept', label: 'קונספט' },
-    ];
+    const variables = new Map(SYSTEM_EVENT_FIELDS.filter(f => !['contacts', 'schedule'].includes(f.type)).map(f => [f.key, { key: f.key, label: f.name }]));
+    fields.forEach(f => {
+      variables.set(f.id, { key: f.id, label: f.name });
+      if (systemKey(f)) variables.set(systemKey(f), { key: systemKey(f), label: f.name });
+    });
+    return [...variables.values()];
   }, [fields]);
 
   const handleSave = useCallback(() => {
@@ -53,7 +42,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
       ...type,
       type_name: typeName,
       quote_main_title_template: titleTemplate || null,
-      event_fields: fields.length > 0 ? JSON.stringify(fields) : null,
+      event_fields: JSON.stringify(fields),
       quote_blocks: blocks.length > 0 ? JSON.stringify(blocks) : null,
       contacts_config: Object.keys(contactsConfig).length > 0 ? JSON.stringify(contactsConfig) : null,
     });
@@ -93,7 +82,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
 
           {/* Tab 0: Contacts Config */}
           <TabsContent value="contacts">
-            <OrganizerContactsConfigEditor config={contactsConfig} onChange={setContactsConfig} />
+            <OrganizerContactsConfigEditor config={{...contactsConfig,label:fields.find(f => systemKey(f) === 'parents')?.name || contactsConfig.label}} onChange={next => { setContactsConfig(next); setFields(prev => prev.map(f => systemKey(f) === 'parents' ? {...f,name:next.label} : f)); }} />
           </TabsContent>
 
           {/* Tab 1: Fields */}

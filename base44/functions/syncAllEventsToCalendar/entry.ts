@@ -1,3 +1,4 @@
+import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 
@@ -301,7 +302,7 @@ Deno.serve(async (req) => {
 
     if (syncType === 'client') {
       for (const event of syncableEvents) {
-        const clientEmail = event.parents?.[0]?.email;
+        const clientEmail = getClientContacts(event)?.[0]?.email;
         if (!clientEmail) { skipped++; continue; }
 
         // Check client sync approval and get calendar ID from User entity

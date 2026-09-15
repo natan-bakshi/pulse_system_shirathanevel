@@ -1,3 +1,4 @@
+import { getClientContacts, getEventContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
@@ -446,9 +447,9 @@ async function sendNotification(base44, template, entityData, event, entityName,
     }
 
     // --- 2. Client Audience ---
-    if (audiences.includes('client') && eventObj && eventObj.parents) {
+    if (audiences.includes('client') && eventObj && getClientContacts(eventObj)) {
         let parents = [];
-        try { parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents; } catch (e) {}
+        try { parents = typeof getClientContacts(eventObj) === 'string' ? JSON.parse(getClientContacts(eventObj)) : getClientContacts(eventObj); } catch (e) {}
 
         if (Array.isArray(parents)) {
             for (const p of parents) {
@@ -721,9 +722,9 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         'username': getVal(userObj, ['full_name', 'fullname', 'name'])
     };
 
-    if (eventObj && eventObj.parents) {
+    if (eventObj && getEventContacts(eventObj)) {
         try {
-            const parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents;
+            const parents = typeof getEventContacts(eventObj) === 'string' ? JSON.parse(getEventContacts(eventObj)) : getEventContacts(eventObj);
             if (Array.isArray(parents) && parents.length > 0) {
                 vars['client_name'] = parents[0].name;
                 vars['clientname'] = parents[0].name;

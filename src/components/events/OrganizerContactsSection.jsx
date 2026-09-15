@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import ContactPicker from "../ui/ContactPicker";
+import { contactExtraValue } from "@/lib/eventFields";
 
 export default function OrganizerContactsSection({ contacts, onChange, config, disabled }) {
   // Don't render if no contacts_config is defined for this organizer type
@@ -16,7 +17,8 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
 
   const handleChange = (index, field, value) => {
     const updated = [...contacts];
-    updated[index] = { ...updated[index], [field]: value };
+    const extra = extraFields.find(f => f.id === field);
+    updated[index] = extra ? { ...updated[index], custom_fields: { ...updated[index].custom_fields, [field]: value }, custom_field_labels: { ...updated[index].custom_field_labels, [field]: extra.name }, ...(extra.system_key === 'role' ? { role: value } : {}) } : { ...updated[index], [field]: value };
     onChange(updated);
   };
 
@@ -32,8 +34,8 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
   };
 
   const addContact = () => {
-    const emptyContact = { name: "", phone: "", email: "" };
-    extraFields.forEach(f => { emptyContact[f.id] = ""; });
+    const emptyContact = { id: crypto.randomUUID(), name: "", phone: "", email: "", custom_fields: {} };
+    extraFields.forEach(f => { emptyContact.custom_fields[f.id] = ""; });
     onChange([...contacts, emptyContact]);
   };
 
@@ -51,15 +53,16 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
       </div>
       <div className="space-y-3">
         {contacts.map((contact, index) => (
-          <div key={index} className="border p-4 rounded-lg bg-gray-50/70">
+          <div key={contact.id || index} className="border p-4 rounded-lg bg-gray-50/70">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-600">{itemLabel} {index + 1}</span>
               <div className="flex items-center gap-1">
                 <ContactPicker
+                  disabled={disabled}
                   onContactSelect={(c) => handleContactSelect(index, c)}
                   className="shrink-0"
                 />
-                {contacts.length > 1 && (
+                {(
                   <Button type="button" variant="ghost" size="icon" onClick={() => removeContact(index)} disabled={disabled}>
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
@@ -99,7 +102,7 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
                   <div key={field.id} className="flex-1 min-w-[150px]">
                     {field.type === 'select' ? (
                       <Select
-                        value={contact[field.id] || ""}
+                        value={contactExtraValue(contact, field)}
                         onValueChange={(v) => handleChange(index, field.id, v)}
                         disabled={disabled}
                       >
@@ -113,7 +116,7 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
                     ) : (
                       <Input
                         type={field.type === 'phone' ? 'tel' : field.type === 'email' ? 'email' : 'text'}
-                        value={contact[field.id] || ""}
+                        value={contactExtraValue(contact, field)}
                         onChange={(e) => handleChange(index, field.id, e.target.value)}
                         placeholder={field.name}
                         disabled={disabled}

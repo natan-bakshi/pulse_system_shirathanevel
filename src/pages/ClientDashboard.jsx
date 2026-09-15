@@ -1,3 +1,4 @@
+import { getClientContacts } from '@/lib/eventFields';
 import React, { useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -97,8 +98,8 @@ export default function ClientDashboard() {
       }
       
       // Check in parents array
-      if (event.parents && Array.isArray(event.parents)) {
-        const foundParent = event.parents.find(parent => 
+      if (getClientContacts(event) && Array.isArray(getClientContacts(event))) {
+        const foundParent = getClientContacts(event).find(parent =>
           (parent.email && parent.email.toLowerCase() === userEmail) ||
           (userPhone && parent.phone === userPhone)
         );

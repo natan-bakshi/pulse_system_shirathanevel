@@ -1,19 +1,6 @@
+import { getEventContacts } from './eventFields.js';
 export function formatEventContacts(eventObj) {
   if (!eventObj) return '';
-
-  const parseArray = (value) => {
-    if (!value) return [];
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') {
-      try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
 
   const contacts = [];
   const seen = new Set();
@@ -38,11 +25,13 @@ export function formatEventContacts(eventObj) {
     if (phone) details.push(`טלפון: ${phone}`);
     if (email) details.push(`מייל: ${email}`);
 
+    for (const [key, value] of Object.entries(contact.custom_fields || {})) {
+      if (value !== '' && value != null && String(value) !== role) details.push(`${contact.custom_field_labels?.[key] || key}: ${value}`);
+    }
     contacts.push(details.length ? `• ${title}: ${details.join(' | ')}` : `• ${title}`);
   };
 
-  parseArray(eventObj.parents).forEach(contact => addContact(contact, 'איש קשר'));
-  parseArray(eventObj.organizer_contacts || eventObj.organizercontacts).forEach(contact => addContact(contact, 'איש קשר'));
+  getEventContacts(eventObj).forEach(contact => addContact(contact, 'איש קשר'));
 
   return contacts.join('\n');
 }

@@ -1,3 +1,4 @@
+import { getClientContacts } from '@/lib/eventFields';
 import React, { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ export default function ClearingPaymentDialog({ open, onOpenChange, event, balan
 
   useEffect(() => {
     if (!open) return;
-    const contact = event?.parents?.[0] || {};
+    const contact = getClientContacts(event)?.[0] || {};
     setForm({ fullName: contact.name || event?.family_name || "", phone: contact.phone || "", email: contact.email || "", isInterestedInInvoice: true, itemized: false });
     setChargeType("regular");
     setAmount(String(Math.round(balance * 100) / 100));

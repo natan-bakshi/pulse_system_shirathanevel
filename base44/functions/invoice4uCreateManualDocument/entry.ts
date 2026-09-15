@@ -1,3 +1,4 @@
+import { getEventContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { invoice4uErrors, invoice4uFindOrCreateCustomer, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
 import { buildDocumentBody, round2 } from "../../shared/invoice4uDocuments.ts";
@@ -5,7 +6,7 @@ import { buildDocumentBody, round2 } from "../../shared/invoice4uDocuments.ts";
 // איש הקשר הראשון של האירוע (הורה או איש קשר של המזמין) - לפרטי הלקוח במסמך.
 function firstEventContact(event) {
   const parse = (value) => { if (Array.isArray(value)) return value; try { const parsed = JSON.parse(value || "[]"); return Array.isArray(parsed) ? parsed : []; } catch { return []; } };
-  return [...parse(event?.parents), ...parse(event?.organizer_contacts)].find((contact) => contact?.name || contact?.phone || contact?.email) || {};
+  return getEventContacts(event).find((contact) => contact?.name || contact?.phone || contact?.email) || {};
 }
 
 

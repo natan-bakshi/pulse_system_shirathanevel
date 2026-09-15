@@ -1,3 +1,4 @@
+import { getClientContacts } from '@/lib/eventFields';
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -53,8 +54,8 @@ export default function ManualWhatsAppSender() {
             // 2. Try Client (Event Parent)
             // Iterate events to find a parent with matching email
             for (const event of allEvents) {
-              if (event.parents && Array.isArray(event.parents)) {
-                const parent = event.parents.find(p => p.email && p.email.toLowerCase().trim() === userEmail);
+              if (getClientContacts(event) && Array.isArray(getClientContacts(event))) {
+                const parent = getClientContacts(event).find(p => p.email && p.email.toLowerCase().trim() === userEmail);
                 if (parent && parent.phone) {
                   phone = parent.phone;
                   source = 'client';

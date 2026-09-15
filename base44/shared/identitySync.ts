@@ -1,3 +1,4 @@
+import { getEventContacts } from './eventFields.js';
 // מודול סנכרון זהויות משותף - backend פנימי בלבד (לא endpoint ציבורי).
 // מרכז את כללי ההתאמה העסקית (Supplier/Event -> User) ואת allowlist השדות,
 // כדי שלא יהיו שלוש גרסאות שונות של אותם כללים.
@@ -32,19 +33,7 @@ export function pickUnique(values) {
 /**
  * אוסף אנשי קשר מאירוע (parents + organizer_contacts).
  */
-export function collectEventContacts(eventRecord) {
-    const list = [];
-    if (Array.isArray(eventRecord?.parents)) list.push(...eventRecord.parents);
-    if (eventRecord?.organizer_contacts) {
-        try {
-            const parsed = typeof eventRecord.organizer_contacts === 'string'
-                ? JSON.parse(eventRecord.organizer_contacts)
-                : eventRecord.organizer_contacts;
-            if (Array.isArray(parsed)) list.push(...parsed);
-        } catch (e) { /* מבנה לא תקין - מתעלמים */ }
-    }
-    return list.filter(c => c && typeof c === 'object');
-}
+export function collectEventContacts(eventRecord) { return getEventContacts(eventRecord); }
 
 function emptyCandidate(type = '') {
     return { type, phones: [], displayNames: [], fullNames: [] };

@@ -1,3 +1,4 @@
+import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 
@@ -116,8 +117,8 @@ Deno.serve(async (req) => {
             // Find client user(s) associated with this event
             // Clients are identified by having parent email matching a user
             const clientUsers = [];
-            if (event.parents && Array.isArray(event.parents)) {
-                for (const parent of event.parents) {
+            if (getClientContacts(event) && Array.isArray(getClientContacts(event))) {
+                for (const parent of getClientContacts(event)) {
                     if (parent.email) {
                         const clientUser = allUsers.find(u => 
                             u.email?.toLowerCase() === parent.email.toLowerCase()

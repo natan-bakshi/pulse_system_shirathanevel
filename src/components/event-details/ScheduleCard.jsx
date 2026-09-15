@@ -1,3 +1,5 @@
+import { useOrganizerConfig } from '@/hooks/useOrganizerConfig';
+import { getField } from '@/lib/eventFields';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,8 @@ export default function ScheduleCard({
   handleSaveSchedule,
   isSavingSchedule
 }) {
+  const { fields } = useOrganizerConfig(event?.organizer_type);
+  const scheduleField = getField(fields, 'schedule');
   const [importText, setImportText] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -118,12 +122,13 @@ export default function ScheduleCard({
     setEditableSchedule(editableSchedule.filter((_, i) => i !== index));
   };
 
+  if (!scheduleField) return null;
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">לוח זמנים</h3>
+            <h3 className="text-lg font-semibold">{scheduleField.name}</h3>
             {event.schedule?.length > 0 && (
               <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 w-8 p-0">
                 {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}

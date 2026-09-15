@@ -1,3 +1,4 @@
+import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 /**
@@ -130,7 +131,7 @@ Deno.serve(async (req) => {
 
       for (const event of allEvents) {
         // Check if this client is linked to this event
-        const isClientOfEvent = event.parents?.some(p => p.email === userEmail);
+        const isClientOfEvent = getClientContacts(event)?.some(p => p.email === userEmail);
         
         if (isClientOfEvent && event.client_google_calendar_event_id) {
           await deleteEvent(calendarToClean, event.client_google_calendar_event_id);

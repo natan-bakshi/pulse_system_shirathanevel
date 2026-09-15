@@ -1,3 +1,4 @@
+import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 
@@ -177,8 +178,8 @@ Deno.serve(async (req) => {
 
                 // מאתרים לקוחות מתוך parents
                 const clientUsers = [];
-                if (eventData.parents && Array.isArray(eventData.parents)) {
-                    for (const parent of eventData.parents) {
+                if (getClientContacts(eventData) && Array.isArray(getClientContacts(eventData))) {
+                    for (const parent of getClientContacts(eventData)) {
                         if (parent.email) {
                             const clientUser = allUsers.find(u => u.email?.toLowerCase() === parent.email.toLowerCase());
                             if (clientUser) clientUsers.push({ user: clientUser, phone: parent.phone });

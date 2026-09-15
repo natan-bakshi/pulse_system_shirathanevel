@@ -1,3 +1,4 @@
+import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, systemKey } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import puppeteer from 'npm:puppeteer@23.11.1';
 import { getEventDisplayName } from '../../shared/eventName.ts';
@@ -33,7 +34,7 @@ function getEventType(typeKey) {
 }
 
 // Process organizer type title template with variable replacement and conditional blocks
-function processOrganizerTitleTemplate(template, event, customFieldValues) {
+function processOrganizerTitleTemplate(template, event, customFieldValues, organizerType) {
     if (!template) return '';
     
     // Build variable map from event fields + custom fields
@@ -47,7 +48,9 @@ function processOrganizerTitleTemplate(template, event, customFieldValues) {
         guest_count: event.guest_count ? String(event.guest_count) : '',
         location: event.location || '',
         concept: event.concept || '',
-        ...customFieldValues
+        ...buildQuoteFieldValues(event, organizerType),
+        event_date: formatDate(event.event_date),
+        event_type: getEventType(event.event_type)
     };
 
     let result = template;
@@ -523,29 +526,32 @@ async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     // Process organizer type main title template if available
     let mainTitleHtml = familyDetailsLine;
     if (organizerType?.quote_main_title_template) {
-        mainTitleHtml = processOrganizerTitleTemplate(organizerType.quote_main_title_template, event, customOrganizerFieldValues);
+        mainTitleHtml = processOrganizerTitleTemplate(organizerType.quote_main_title_template, event, customOrganizerFieldValues, organizerType);
     }
 
-    // Parse organizer contacts
-    let organizerContacts = [];
-    if (event.organizer_contacts) {
-        try { organizerContacts = JSON.parse(event.organizer_contacts); } catch (e) { organizerContacts = []; }
-    }
     // Get contacts config from organizer type
     let contactsConfig = {};
     if (organizerType?.contacts_config) {
         try { contactsConfig = JSON.parse(organizerType.contacts_config); } catch (e) { contactsConfig = {}; }
     }
-    const contactsLabel = contactsConfig.label || 'אנשי קשר';
+    const configuredFields = getEventFields(organizerType);
+    const contactsLabel = getField(configuredFields, 'parents')?.name || contactsConfig.label || 'אנשי קשר';
+    const familyContacts = !organizerType || organizerType.is_default;
+    const parentContacts = familyContacts ? getEventContacts(event) : [];
+    const otherContacts = familyContacts ? [] : getEventContacts(event);
+    const templateIncludes = (key) => {
+      const template = organizerType?.quote_main_title_template || '';
+      return [key, ...configuredFields.filter(f => systemKey(f) === key).map(f => f.id)].some(id => template.includes('[' + id + ']'));
+    };
 
     const eventDetailsHtml = `
             <div class="event-details-box">
                 <div class="text-center">
                     <span style="font-weight: 700; font-size: calc(${quoteEventDetailsFontSize}px + 1px);">${mainTitleHtml}</span><br>
-                    ${event.location ? `<strong>אירוע ב${event.location}</strong> | ` : ''}${formatDate(event.event_date)}<br>
-                    ${event.parents && event.parents.length > 0 && event.parents.some(p => p.name) ? `<strong>שמות ההורים:</strong> ${event.parents.map(p => p.name).filter(Boolean).join(', ')}<br>` : ''}
-                    ${organizerContacts.length > 0 && organizerContacts.some(c => c.name) ? `<strong>${contactsLabel}:</strong> ${organizerContacts.map(c => c.name).filter(Boolean).join(', ')}<br>` : ''}
-                    ${event.city ? `<strong>עיר מגורים:</strong> ${event.city} |` : ''} ${event.guest_count ? `<strong>כמות מוזמנים:</strong> ${event.guest_count}` : ''}
+                    ${event.location && !templateIncludes('location') ? `<strong>אירוע ב${event.location}</strong> | ` : ''}${formatDate(event.event_date)}<br>
+                    ${parentContacts.some(p => p.name) ? `<strong>שמות ההורים:</strong> ${parentContacts.map(p => p.name).filter(Boolean).join(', ')}<br>` : ''}
+                    ${otherContacts.some(c => c.name) ? `<strong>${contactsLabel}:</strong> ${otherContacts.map(c => c.name).filter(Boolean).join(', ')}<br>` : ''}
+                    ${event.city ? `<strong>עיר מגורים:</strong> ${event.city} |` : ''} ${event.guest_count && !templateIncludes('guest_count') ? `<strong>כמות מוזמנים:</strong> ${event.guest_count}` : ''}
                 </div>
             </div>
     `;

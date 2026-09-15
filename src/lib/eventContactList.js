@@ -1,20 +1,11 @@
+import { getEventContacts } from './eventFields';
 // רשימת אנשי הקשר של האירוע (הורים + אנשי הקשר של המזמין) לשימוש בבחירת נמענים.
-const parseArray = (value) => {
-  if (Array.isArray(value)) return value;
-  try {
-    const parsed = JSON.parse(value || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
 export function getEventContactList(event) {
   if (!event) return [];
   const contacts = [];
   const seen = new Set();
 
-  [...parseArray(event.parents), ...parseArray(event.organizer_contacts)].forEach((contact) => {
+  getEventContacts(event).forEach((contact) => {
     if (!contact || typeof contact !== 'object') return;
     const name = String(contact.name || contact.full_name || '').trim();
     const phone = String(contact.phone || contact.mobile || '').trim();

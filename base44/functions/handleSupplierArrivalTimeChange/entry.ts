@@ -1,3 +1,4 @@
+import { getClientContacts } from '../../shared/eventFields.js';
 import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
@@ -330,9 +331,9 @@ function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, reso
         'user_name': getVal(userObj, ['full_name', 'name'])
     };
 
-    if (eventObj && eventObj.parents) {
+    if (eventObj && getClientContacts(eventObj)) {
         try {
-            const parents = typeof eventObj.parents === 'string' ? JSON.parse(eventObj.parents) : eventObj.parents;
+            const parents = typeof getClientContacts(eventObj) === 'string' ? JSON.parse(getClientContacts(eventObj)) : getClientContacts(eventObj);
             if (Array.isArray(parents) && parents.length > 0) {
                 vars['client_name'] = parents[0].name;
                 vars['client_phone'] = parents[0].phone;

@@ -1,3 +1,4 @@
+import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 
@@ -740,7 +741,7 @@ Deno.serve(async (req) => {
     // ====================================================
     if (clientSyncEnabled && event) {
       // Find client user(s) via event parents
-      const clientEmail = event.parents?.[0]?.email;
+      const clientEmail = getClientContacts(event)?.[0]?.email;
       const existingClientEventId = event.client_google_calendar_event_id || eventForCalendarIds?.client_google_calendar_event_id;
 
       // Check if client approved sync and get their dedicated calendar ID
@@ -775,7 +776,7 @@ Deno.serve(async (req) => {
       }
     } else if (clientSyncEnabled && isDeleteAction && eventForCalendarIds?.client_google_calendar_event_id) {
       // Event deleted - clean up client calendar
-      const clientEmail = eventForCalendarIds.parents?.[0]?.email;
+      const clientEmail = getClientContacts(eventForCalendarIds)?.[0]?.email;
       let delClientCalId = null;
       if (clientEmail) {
         const clientUser = allUsers.find(u => u.email === clientEmail);
