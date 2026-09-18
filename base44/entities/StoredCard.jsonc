@@ -1,0 +1,90 @@
+{
+  "name": "StoredCard",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "qa",
+        "production"
+      ]
+    },
+    "provider_customer_id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "removed",
+        "cancelled"
+      ]
+    },
+    "card_suffix": {
+      "type": "string"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "expires": {
+      "type": "string"
+    },
+    "consent_reference": {
+      "type": "string"
+    },
+    "consent_recorded_by": {
+      "type": "string"
+    },
+    "consent_recorded_at": {
+      "type": "string"
+    },
+    "removed_at": {
+      "type": "string"
+    },
+    "removed_by": {
+      "type": "string"
+    },
+    "removal_reason": {
+      "type": "string"
+    },
+    "cleanup_pending": {
+      "type": "boolean",
+      "default": false
+    },
+    "cleanup_notified": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "customer_id",
+    "environment",
+    "state"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
