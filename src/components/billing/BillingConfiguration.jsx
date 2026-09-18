@@ -8,8 +8,9 @@ import BillingDocumentDefaults from "@/components/billing/BillingDocumentDefault
 import BillingClearingRules from "@/components/billing/BillingClearingRules";
 import BillingPaymentLinkSettings from "@/components/billing/BillingPaymentLinkSettings";
 import BillingLifecycleSettings from "@/components/billing/BillingLifecycleSettings";
+import { StoredCardSettings } from "@/components/billing/StoredCards";
 
-const defaults = { invoice4u_env: "qa", invoice4u_branch_id: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", default_advance_percent: "20", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false", payment_link_message_template: "", payment_link_message_template_en: "", processing_fee_label_en: "Processing fee", default_email_comment_en: "", payment_link_expiry_days: "14", payment_link_reminder_days: "3", client_payment_receipt_enabled: "false", payment_receipt_message_template: "", payment_receipt_message_template_en: "", payment_link_reminder_template: "", payment_link_reminder_template_en: "" };
+const defaults = { stored_cards_enabled: "false", stored_cards_cleanup: "off", invoice4u_env: "qa", invoice4u_branch_id: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", default_advance_percent: "20", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false", payment_link_message_template: "", payment_link_message_template_en: "", processing_fee_label_en: "Processing fee", default_email_comment_en: "", payment_link_expiry_days: "14", payment_link_reminder_days: "3", client_payment_receipt_enabled: "false", payment_receipt_message_template: "", payment_receipt_message_template_en: "", payment_link_reminder_template: "", payment_link_reminder_template_en: "" };
 
 export default function BillingConfiguration() {
   const queryClient = useQueryClient();
@@ -45,6 +46,7 @@ export default function BillingConfiguration() {
         <BillingClearingRules settings={settings} onChange={change} />
         <BillingPaymentLinkSettings settings={settings} onChange={change} />
         <BillingLifecycleSettings settings={settings} onChange={change} />
+        <StoredCardSettings settings={settings} onChange={change} />
         <div className="flex items-center gap-3">
           <Button onClick={save} disabled={saving || !Object.keys(draft).length}>
             {saving ? "שומר..." : <><Save className="ml-2 h-4 w-4" />שמור הגדרות חיוב</>}
