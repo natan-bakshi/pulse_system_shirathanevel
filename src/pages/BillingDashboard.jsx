@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // טעינה עצלה: הדוחות, ההגדרות והדיאלוגים נטענים רק כשנפתחים בפועל,
 // כך שכניסה ללשונית התשלומים נשארת מהירה.
+const StoredCardsManager = lazy(() => import("@/components/billing/StoredCards").then(m => ({ default: m.StoredCardsManager })));
 const BillingReports = lazy(() => import("@/components/billing/BillingReports"));
 const BillingConfiguration = lazy(() => import("@/components/billing/BillingConfiguration"));
 const CancelInvoiceWizard = lazy(() => import("@/components/billing/CancelInvoiceWizard"));
@@ -24,7 +25,7 @@ const cache = { staleTime: 3 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 
 export default function BillingDashboard() {
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState("documents");
+  const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get("tab") === "cards" ? "cards" : "documents");
   const [documentToCredit, setDocumentToCredit] = useState(null);
   const [cancelStep, setCancelStep] = useState("credit");
   const [isCrediting, setIsCrediting] = useState(false);
@@ -123,10 +124,11 @@ export default function BillingDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
+        <TabsList className={"grid w-full max-w-lg " + (settings.stored_cards_enabled === "true" ? "grid-cols-4" : "grid-cols-3")}>
           <TabsTrigger value="documents">מסמכים</TabsTrigger>
           <TabsTrigger value="reports">דוחות</TabsTrigger>
           <TabsTrigger value="settings">הגדרות</TabsTrigger>
+          {settings.stored_cards_enabled === "true" && <TabsTrigger value="cards">כרטיסי לקוחות</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="documents" className="mt-6 space-y-6">
@@ -165,6 +167,7 @@ export default function BillingDashboard() {
           </Suspense>
         </TabsContent>
 
+        {settings.stored_cards_enabled === "true" && <TabsContent value="cards" className="mt-6"><Suspense fallback={<Loading />}><StoredCardsManager /></Suspense></TabsContent>}
         <TabsContent value="settings" className="mt-6">
           <Suspense fallback={<Loading />}><BillingConfiguration /></Suspense>
         </TabsContent>
