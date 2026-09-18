@@ -1,0 +1,70 @@
+{
+  "name": "CardSetupRequest",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "card_id": {
+      "type": "string"
+    },
+    "callback_hash": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "creating",
+        "pending",
+        "verified",
+        "cancelled",
+        "failed"
+      ]
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "redirect_url": {
+      "type": "string"
+    },
+    "provider_customer_id": {
+      "type": "string"
+    },
+    "provider_payment_id": {
+      "type": "string"
+    },
+    "provider_trace_id": {
+      "type": "string"
+    },
+    "created_by_user_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_id",
+    "card_id",
+    "state"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
