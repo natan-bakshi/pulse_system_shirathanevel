@@ -1,3 +1,4 @@
+import { afterCardRelevantChange } from "../../shared/storedCards.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { notifyAdminsClearingResult } from "../../shared/billingNotifications.ts";
 import { renderClientMessage, sendClientMessage } from "../../shared/clientBillingMessages.ts";
@@ -62,6 +63,7 @@ export default async function(req) {
     try {
       if (!payment.event_id) return Response.json({ received: true });
       const event = await base44.asServiceRole.entities.Event.get(payment.event_id);
+      if (successful && event?.billing_customer_id) await afterCardRelevantChange(base44, [event]);
       await notifyAdminsClearingResult(base44, {
         templateType: successful ? "PAYMENT_CLEARED_SUCCESS" : "PAYMENT_CLEARED_FAILED",
         event,
