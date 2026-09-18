@@ -121,7 +121,7 @@ export async function afterCardRelevantChange(base44, eventIds, suppliedConfig =
     const client = base44.asServiceRole || base44;
     const customers = new Set();
     for (const id of new Set(eventIds.filter(Boolean))) {
-      const event = await client.entities.Event.get(id);
+      const event = typeof id === "object" ? id : await client.entities.Event.get(id);
       if (event?.billing_customer_id) customers.add(event.billing_customer_id);
     }
     if (!customers.size) return;
