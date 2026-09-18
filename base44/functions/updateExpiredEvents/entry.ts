@@ -1,3 +1,4 @@
+import { afterCardRelevantChange } from '../../shared/storedCards.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
@@ -77,6 +78,8 @@ Deno.serve(async (req) => {
         
         if (updatePromises.length > 0) {
             await Promise.all(updatePromises);
+            const changedIds = new Set(eventsToUpdate.map(e => e.id));
+            await afterCardRelevantChange(base44, allEvents.filter(e => e.billing_customer_id && changedIds.has(e.id)).map(e => e.id));
         }
         
         return Response.json({
