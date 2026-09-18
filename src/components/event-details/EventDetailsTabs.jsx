@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
+const StoredCardPanel = lazy(() => import('@/components/billing/StoredCards'));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, ListChecks, Wallet, ClipboardList } from 'lucide-react';
 import EventOverviewCard from './EventOverviewCard';
@@ -200,6 +201,7 @@ export default function EventDetailsTabs(props) {
 
       {/* לשונית 3: סיכום כספי - תשלומים + סיכום */}
       <TabsContent value="financial" className="space-y-4 sm:space-y-6 mt-4">
+        {isAdmin && billingEnabled && <Suspense fallback={null}><StoredCardPanel event={event} onChanged={loadEventData} /></Suspense>}
         {(isAdmin || isClient) && (
           <PaymentsCard
             event={event}
