@@ -2,6 +2,7 @@
   "name": "StoredCardOperation",
   "type": "object",
   "properties": {
+    "environment": { "type": "string", "enum": ["qa", "production"] },
     "customer_id": {
       "type": "string"
     },

@@ -1,5 +1,5 @@
 import { getEventFields, getEventContacts, prepareContacts, normalizeEventValues, validateEventFields } from '@/lib/eventFields';
-import { refreshEventStatus } from '@/lib/eventStatus';
+import { refreshEventStatus, refreshStoredCardPolicy } from '@/lib/eventStatus';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
@@ -807,6 +807,7 @@ export default function EventDetails() {
       }
       
       await base44.entities.Payment.create(paymentData);
+      await refreshStoredCardPolicy(event);
 
       // Auto-update status if quote and payment added
       if (event.status === 'quote') {
@@ -869,6 +870,7 @@ export default function EventDetails() {
     if (window.confirm("האם למחוק תשלום זה?")) {
       try {
         await base44.entities.Payment.delete(paymentId);
+        await refreshStoredCardPolicy(event);
         await loadEventData();
       } catch (error) {
           console.error("Failed to delete payment:", error);
@@ -1026,6 +1028,7 @@ export default function EventDetails() {
 
       await base44.entities.EventService.update(serviceId, updateData);
       if (field === 'min_suppliers') await refreshEventStatus(eventId);
+      if (['custom_price', 'quantity', 'includes_vat', 'currency', 'is_external', 'package_price', 'package_includes_vat'].includes(field)) await refreshStoredCardPolicy(event);
       
       // Update local edit state and the visible card/query data immediately.
       setEditableServices(prev => prev.map(s => 

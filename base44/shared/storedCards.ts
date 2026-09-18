@@ -47,7 +47,10 @@ export async function customerEligibility(client, customerId, config) {
   const events = await readAll(client.entities.Event, { billing_customer_id: customerId });
   const rows = [];
   for (const event of events) {
-    if (event.status === "quote") { rows.push({ ...event, balance: 0, pending: false }); continue; }
+    if (event.status === "quote") {
+      const payments = await readAll(client.entities.Payment, { event_id: event.id });
+      rows.push({ ...event, balance: 0, pending: payments.some(p => p.payment_status === "pending") }); continue;
+    }
     if (!["completed", "cancelled"].includes(event.status)) return { eligible: false, reason: "קיים אירוע פעיל או עתידי", events };
     const balance = await eventBalance(client, event, config);
     rows.push({ ...event, balance: balance.balance, pending: balance.payments.some(p => p.payment_status === "pending") });

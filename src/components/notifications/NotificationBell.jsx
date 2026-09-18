@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 import { Bell, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,20 @@ export default function NotificationBell({ user }) {
     refetchInterval: 60000, // Refresh every minute
     staleTime: 30000,
   });
+
+  // Reuse the existing notification query/subscription: no new polling or automation.
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    const storageKey = 'stored-card-notices:' + user.id;
+    let seen = [];
+    try { seen = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { /* unavailable storage */ }
+    if (!Array.isArray(seen)) seen = [];
+    const notice = notifications.find(n => n.template_type === 'STORED_CARD_CLEANUP' && !n.is_read && !n.is_resolved && !seen.includes(n.id));
+    if (!notice) return;
+    toast(notice.title, { id: notice.id, description: notice.message, duration: 10000,
+      action: { label: 'לניהול הכרטיסים', onClick: () => { window.location.href = '/BillingDashboard?tab=cards'; } } });
+    try { localStorage.setItem(storageKey, JSON.stringify([...seen.slice(-99), notice.id])); } catch { /* toast id still deduplicates */ }
+  }, [notifications, user?.id, user?.role]);
 
   // Mark all as read mutation
   const markAsReadMutation = useMutation({

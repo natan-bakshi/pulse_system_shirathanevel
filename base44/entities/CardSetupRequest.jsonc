@@ -2,6 +2,7 @@
   "name": "CardSetupRequest",
   "type": "object",
   "properties": {
+    "environment": { "type": "string", "enum": ["qa", "production"] },
     "customer_id": {
       "type": "string"
     },
@@ -15,6 +16,7 @@
       "type": "string",
       "enum": [
         "creating",
+        "verifying",
         "pending",
         "verified",
         "cancelled",

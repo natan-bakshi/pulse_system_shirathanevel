@@ -17,6 +17,17 @@ export async function refreshEventStatus(eventId, scope = {}) {
   return data;
 }
 
+// Only linked customers need evaluation; a cleanup failure must not undo a saved payment.
+export async function refreshStoredCardPolicy(event) {
+  if (!event?.billing_customer_id) return;
+  const settings = queryClientInstance.getQueryData(['appSettings']);
+  if (settings && !settings.some(s => s.setting_key === 'stored_cards_enabled' && s.setting_value === 'true')) return;
+  try {
+    await base44.functions.invoke('invoice4uStoredCards', { action: 'evaluate', eventId: event.id });
+    queryClientInstance.invalidateQueries({ queryKey: ['storedCard'] });
+  } catch { console.warn('[stored-cards] policy update pending'); }
+}
+
 export function subscribeToEventStatus() {
   const stopEvents = base44.entities.Event.subscribe(change => {
     if (change.type !== 'delete') cacheEventStatus(change.id, change.data?.status);
