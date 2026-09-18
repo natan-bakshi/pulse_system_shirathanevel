@@ -1,0 +1,55 @@
+{
+  "name": "BillingCustomer",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "identifier": {
+      "type": "string"
+    },
+    "active_card_id": {
+      "type": "string",
+      "default": ""
+    },
+    "busy_operation_id": {
+      "type": "string",
+      "default": ""
+    },
+    "revision": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
