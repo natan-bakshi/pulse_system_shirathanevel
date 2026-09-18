@@ -2,6 +2,10 @@
   "name": "Event",
   "type": "object",
   "properties": {
+    "billing_customer_id": {
+      "type": "string",
+      "description": "Explicit billing customer shared by this customer\u2019s events"
+    },
     "event_name": {
       "type": "string",
       "description": "\u05e9\u05dd \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
