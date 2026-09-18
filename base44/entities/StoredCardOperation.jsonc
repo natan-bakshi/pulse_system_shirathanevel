@@ -1,0 +1,109 @@
+{
+  "name": "StoredCardOperation",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "card_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "request_key": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "charge",
+        "remove"
+      ]
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "prepared",
+        "dispatched",
+        "approved",
+        "completed",
+        "failed",
+        "unknown"
+      ]
+    },
+    "amount": {
+      "type": "number"
+    },
+    "fee": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "payment_id": {
+      "type": "string"
+    },
+    "provider_payment_id": {
+      "type": "string"
+    },
+    "provider_trace_id": {
+      "type": "string"
+    },
+    "provider_document_id": {
+      "type": "string"
+    },
+    "provider_document_number": {
+      "type": "string"
+    },
+    "provider_auth_number": {
+      "type": "string"
+    },
+    "provider_cipher": {
+      "type": "string"
+    },
+    "provider_cipher_original": {
+      "type": "string"
+    },
+    "performed_by": {
+      "type": "string"
+    },
+    "failure_code": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_id",
+    "card_id",
+    "kind",
+    "state"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
