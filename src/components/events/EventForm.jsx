@@ -503,7 +503,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   }, []);
 
   const handlePaymentsChange = useCallback((newPayments) => {
-    setFormData(prev => ({ ...prev, payments: newPayments }));
+    setFormData(prev => ({ ...prev, payments: [...prev.payments.filter(p => p.stored_card_operation_id), ...newPayments.filter(p => !p.stored_card_operation_id)] }));
   }, []);
 
   const handleSubmit = async (e) => {
@@ -706,11 +706,13 @@ for (const serviceItem of servicesForSave) {
 
         const existingPayments = await Payment.filter({ event_id: savedEvent.id });
         for (const payment of existingPayments) {
+          if (payment.stored_card_operation_id) continue;
           await Payment.delete(payment.id);
         }
 
         if (formData.payments.length > 0) {
           const validPayments = formData.payments.filter(p => {
+            if (p.stored_card_operation_id) return false;
             const amount = Number(p.amount);
             return amount && !isNaN(amount) && amount > 0;
           });
@@ -1068,8 +1070,9 @@ for (const serviceItem of servicesForSave) {
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">תשלומים</h3>
+            {formData.payments.some(p => p.stored_card_operation_id) && <p className="text-sm mb-2">תשלומים בכרטיס שמור נשמרים בהיסטוריית האירוע ומוצגים בכרטיסיית הכספים.</p>}
             <PaymentManager
-              payments={formData.payments}
+              payments={formData.payments.filter(p => !p.stored_card_operation_id)}
               onPaymentsChange={handlePaymentsChange}
               disabled={isSaving}
               eventPrimaryCurrency={formData.primary_currency}

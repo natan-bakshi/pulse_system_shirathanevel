@@ -720,6 +720,7 @@ export default function EventDetails() {
         is_price_per_guest: financialEditData.is_price_per_guest || false,
         price_per_guest: parseFloat(financialEditData.price_per_guest) || null
       });
+      await refreshStoredCardPolicy(event);
       setEditingSection(null);
       await loadEventData();
     } catch (error) {
@@ -728,7 +729,7 @@ export default function EventDetails() {
     } finally {
       setIsSavingFinancial(false);
     }
-  }, [eventId, financialEditData, loadEventData]);
+  }, [eventId, financialEditData, loadEventData, event]);
 
   const handleSaveServices = useCallback(async () => {
     setIsSavingServices(true);
@@ -830,7 +831,7 @@ export default function EventDetails() {
       console.error("Failed to add payment:", error);
       alert("שגיאה בהוספת התשלום: " + (error.response?.data?.message || error.message || "שגיאת רשת"));
     }
-  }, [eventId, paymentForm, loadEventData]);
+  }, [eventId, paymentForm, loadEventData, event]);
 
   const handleStartClearing = useCallback(async ({ amount, chargeType, mode, via, language, ...payer }) => {
     if (!amount || amount <= 0) { alert("אין יתרה פתוחה לתשלום באירוע זה"); return; }
@@ -867,6 +868,8 @@ export default function EventDetails() {
   }, [eventId, queryClient, loadEventData]);
 
   const handleDeletePayment = useCallback(async (paymentId) => {
+    const payment = payments.find(p => p.id === paymentId);
+    if (payment?.stored_card_operation_id) { alert("תשלום מסליקה נשמר להיסטוריה. החזר כספי מטופל באמצעות מסמכי החיוב."); return; }
     if (window.confirm("האם למחוק תשלום זה?")) {
       try {
         await base44.entities.Payment.delete(paymentId);
@@ -877,7 +880,7 @@ export default function EventDetails() {
           alert("שגיאה במחיקת התשלום");
       }
     }
-  }, [loadEventData]);
+  }, [loadEventData, event, payments]);
 
   const handleDeleteReceipt = useCallback(async (paymentId) => {
     if (!window.confirm("האם למחוק את האסמכתא?")) return;
@@ -2170,7 +2173,7 @@ export default function EventDetails() {
         handleSaveStandaloneServicesTitle={handleSaveStandaloneServicesTitle}
         handleSaveExternalServicesTitle={handleSaveExternalServicesTitle}
         exchangeRate={(() => { const r = appSettings.find(s => s.setting_key === 'usd_ils_exchange_rate'); return r ? parseFloat(r.setting_value) || 3.6 : 3.6; })()}
-        onPrimaryCurrencyChange={isAdmin ? async (c, updateEvent) => { await base44.entities.Event.update(eventId, updateEvent || { primary_currency: c }); await loadEventData(); } : undefined}
+        onPrimaryCurrencyChange={isAdmin ? async (c, updateEvent) => { await base44.entities.Event.update(eventId, updateEvent || { primary_currency: c }); await refreshStoredCardPolicy(event); await loadEventData(); } : undefined}
         payments={payments}
         setShowPaymentDialog={setShowPaymentDialog}
         handleDeletePayment={handleDeletePayment}

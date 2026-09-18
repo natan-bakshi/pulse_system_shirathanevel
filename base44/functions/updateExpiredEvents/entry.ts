@@ -1,5 +1,5 @@
 import { afterCardRelevantChange } from '../../shared/storedCards.ts';
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.48';
 
 Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);

@@ -1,4 +1,5 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
+import { afterCardRelevantChange } from "../../shared/storedCards.ts";
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { renderClientMessage, sendClientMessage } from "../../shared/clientBillingMessages.ts";
 
 // מריצה יומית על דרישות תשלום בקישור שטרם שולמו:
@@ -29,6 +30,7 @@ export default async function(req) {
           payment_status: "cancelled",
           invoice4u_clearing_status: language === "en" ? "Payment link expired" : "קישור התשלום פג תוקף"
         });
+        if (config.stored_cards_enabled === "true" && payment.event_id) await afterCardRelevantChange(base44, [payment.event_id], config);
         result.expired += 1;
         continue;
       }

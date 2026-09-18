@@ -72,7 +72,7 @@ async function callback(req, base44) {
   if (!/^\d{4}$/.test(suffix) || (log.CreditNumber && String(log.CreditNumber).slice(-4) !== suffix)) throw new CardError("Card identity not verified", 409);
   const customer = await client.entities.BillingCustomer.get(setup.customer_id);
   if (customer.active_card_id === card.id && !customer.busy_operation_id) {
-    await client.entities.CardSetupRequest.update(setup.id, { state: "verified", callback_hash: "", redirect_url: "" });
+    await client.entities.CardSetupRequest.update(setup.id, { state: "verified", redirect_url: "" });
     return { received: true };
   }
   if (customer.busy_operation_id !== "setup:" + setup.id) return { received: true };
@@ -87,7 +87,7 @@ async function callback(req, base44) {
       removed_at: new Date().toISOString(), removed_by: "replacement", removal_reason: "replaced"
     });
     await releaseCustomer(client, customer.id, "setup:" + setup.id, { active_card_id: card.id });
-    await client.entities.CardSetupRequest.update(setup.id, { state: "verified", callback_hash: "", redirect_url: "" });
+    await client.entities.CardSetupRequest.update(setup.id, { state: "verified", redirect_url: "" });
   } catch (e) {
     await client.entities.CardSetupRequest.updateMany({ id, state: "verifying" }, { $set: { state: "pending" } });
     throw e;

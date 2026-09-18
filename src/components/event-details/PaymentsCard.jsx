@@ -74,6 +74,7 @@ export default function PaymentsCard({
                   <div className="text-sm text-gray-600">
                     {format(new Date(payment.payment_date), 'dd/MM/yyyy')} - {getPaymentMethodText(payment.payment_method)}
                   </div>
+                  {payment.stored_card_operation_id && <div className="text-sm text-amber-800">{payment.payment_status === 'completed' ? 'חיוב בכרטיס שמור הושלם' : payment.payment_status === 'failed' ? 'החיוב נדחה' : 'חיוב בכרטיס שמור בטיפול — אינו נחשב כתשלום שהושלם'}</div>}
                   {payment.notes && <div className="text-sm text-gray-500">{payment.notes}</div>}
                   {payment.receipt_image_url && payment.receipt_image_url.trim() !== '' && (
                     <Button 
@@ -100,7 +101,7 @@ export default function PaymentsCard({
                     loading={creatingDocumentPaymentId === payment.id}
                   />
                 )}
-                {isAdmin && (
+                {isAdmin && !payment.stored_card_operation_id && (
                   <Button variant="ghost" size="sm" onClick={() => handleDeletePayment(payment.id)}>
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
