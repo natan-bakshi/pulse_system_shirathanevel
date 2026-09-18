@@ -1,3 +1,4 @@
+import { afterCardRelevantChange } from '../../shared/storedCards.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { recalculateEventStatus, readAll, parseAssignmentValue } from '../../shared/eventReadiness.ts';
 
@@ -72,6 +73,7 @@ export default Deno.serve(async (req) => {
         for (const id of eventIds) {
             const result = await recalculateEventStatus(base44, id);
             results.push({ eventId: id, newStatus: result.newStatus, statusChanged: result.statusChanged });
+            if (result.event?.billing_customer_id) await afterCardRelevantChange(base44, [{ ...result.event, status: result.newStatus }]);
         }
         return Response.json({ success: true, ...(eventId ? results[0] : {}), results, ...(mutation ? { record } : {}) });
 
