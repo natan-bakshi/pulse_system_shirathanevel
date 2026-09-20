@@ -114,10 +114,14 @@ function CardPanel({ event, onChanged }) {
             <a href={data.pending.url} target="_blank" rel="noopener noreferrer" className="underline">פתח דף שמירת כרטיס</a>
             <Button variant="outline" disabled={busy} onClick={() => run(async () => { await navigator.clipboard.writeText(data.pending.url); setMessage("הקישור הועתק"); })}>העתק קישור ללקוח</Button>
           </div>}
-          <Button variant="outline" disabled={busy} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>בטל בקשת שמירה</Button>
+          {data.pending.canRecover && <Button variant="outline" disabled={busy} onClick={() => run(async () => {
+            await storedCardAction("recover_setup", { customerId: customer.id }); setMessage("שמירת הכרטיס אומתה והושלמה"); await changed();
+          })}>השלם אימות שמירת כרטיס</Button>}
+          <Button variant="outline" disabled={busy || data.pending.state === "verifying"} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>בטל בקשת שמירה</Button>
         </div>}
         {data?.pending?.kind === "charge" && <div className="rounded bg-amber-50 p-3">
           <p>חיוב בטיפול או בבירור. אין לבצע חיוב נוסף לפני קבלת תוצאה.</p>
+          <p className="text-xs break-all">מזהה פעולה לבירור: {data.pending.id}</p>
           <Button variant="outline" disabled={busy} onClick={() => run(async () => {
             const result = await storedCardAction("reconcile", { customerId: customer.id, operationId: data.pending.id });
             setMessage(result.state === "completed" ? "החיוב אומת ונרשם" : "הפעולה עדיין בבירור"); await changed();

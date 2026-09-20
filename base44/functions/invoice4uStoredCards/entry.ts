@@ -10,7 +10,7 @@ const text = (v, max = 200) => typeof v === "string" ? v.trim().slice(0, max) : 
 async function activeCard(client, customer, config, expectedId) {
   if (!customer.active_card_id || (expectedId && expectedId !== customer.active_card_id)) throw new CardError("אין כרטיס פעיל או שהכרטיס הוחלף", 409);
   const card = await client.entities.StoredCard.get(customer.active_card_id);
-  if (card.state !== "active" || !card.provider_customer_id || card.environment !== (config.invoice4u_env === "production" ? "production" : "qa"))
+  if (card.customer_id !== customer.id || card.state !== "active" || !card.provider_customer_id || card.environment !== (config.invoice4u_env === "production" ? "production" : "qa"))
     throw new CardError("הכרטיס אינו זמין בסביבת הסליקה הנוכחית", 409);
   return card;
 }
@@ -41,6 +41,33 @@ async function finishCharge(client, operation, customer, config) {
   try { await applyCleanup(client, customer.id, config); } catch { console.warn("[stored-cards] cleanup pending"); }
   return safeOperation({ ...operation, state: "completed" });
 }
+// Idempotent local completion: no capture/charge is retried by this routine.
+async function completeSetup(client, setup, card, suffix, brand = "", expires = "") {
+  const customer = await client.entities.BillingCustomer.get(setup.customer_id);
+  const owner = "setup:" + setup.id;
+  if (customer.active_card_id !== card.id) {
+    if (customer.busy_operation_id !== owner) throw new CardError("בקשת השמירה אינה פעילה עוד", 409);
+    await client.entities.StoredCard.update(card.id, { state: "active", card_suffix: suffix, brand, expires });
+    const switched = await client.entities.BillingCustomer.updateMany(
+      { id: customer.id, busy_operation_id: owner, active_card_id: customer.active_card_id || "" },
+      { $set: { active_card_id: card.id, busy_operation_id: "" } }
+    );
+    if (switched.updated !== 1) {
+      const latest = await client.entities.BillingCustomer.get(customer.id);
+      if (latest.active_card_id !== card.id) throw new CardError("מצב הכרטיס השתנה", 409);
+    }
+  }
+  await client.entities.CardSetupRequest.update(setup.id, { state: "verified", redirect_url: "" });
+  // Only scrub the old generation after the authoritative pointer has switched successfully.
+  if (customer.active_card_id && customer.active_card_id !== card.id) {
+    await client.entities.StoredCard.update(customer.active_card_id, {
+      state: "removed", provider_customer_id: "", card_suffix: "", brand: "", expires: "", cleanup_pending: false,
+      removed_at: new Date().toISOString(), removed_by: "replacement", removal_reason: "replaced"
+    });
+  }
+  return { received: true };
+}
+
 async function callback(req, base44) {
   const client = base44.asServiceRole;
   const url = new URL(req.url);
@@ -80,14 +107,7 @@ async function callback(req, base44) {
     provider_payment_id: String(data.PaymentId || ""), provider_trace_id: String(data.ClearingTraceId || "") } });
   if (accepted.updated !== 1) throw new CardError("Setup confirmation in progress", 409);
   try {
-    await client.entities.StoredCard.update(card.id, { state: "active", card_suffix: suffix,
-      brand: text(data.CardBrandName, 30), expires: text(data.CardExpirationDate, 4) });
-    if (customer.active_card_id) await client.entities.StoredCard.update(customer.active_card_id, {
-      state: "removed", provider_customer_id: "", card_suffix: "", brand: "", expires: "", cleanup_pending: false,
-      removed_at: new Date().toISOString(), removed_by: "replacement", removal_reason: "replaced"
-    });
-    await releaseCustomer(client, customer.id, "setup:" + setup.id, { active_card_id: card.id });
-    await client.entities.CardSetupRequest.update(setup.id, { state: "verified", redirect_url: "" });
+    await completeSetup(client, setup, card, suffix, text(data.CardBrandName, 30), text(data.CardExpirationDate, 4));
   } catch (e) {
     await client.entities.CardSetupRequest.updateMany({ id, state: "verifying" }, { $set: { state: "pending" } });
     throw e;
@@ -99,7 +119,8 @@ export default Deno.serve(async req => {
     if (req.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405 });
     const base44 = createClientFromRequest(req);
     if (new URL(req.url).searchParams.has("setup")) return Response.json(await callback(req, base44));
-    const user = await base44.auth.me();
+    let user;
+    try { user = await base44.auth.me(); } catch { return Response.json({ error: "נדרשת התחברות" }, { status: 401 }); }
     if (user?.role !== "admin") return Response.json({ error: "נדרשת הרשאת מנהל" }, { status: 403 });
     const body = await req.json();
     const client = base44.asServiceRole;
@@ -147,9 +168,22 @@ export default Deno.serve(async req => {
     if (action === "bind") {
       if (!event) throw new CardError("חסר אירוע");
       const owner = "bind:" + crypto.randomUUID();
-      await claimCustomer(client, customer, owner);
-      try { await client.entities.Event.update(event.id, { billing_customer_id: customer.id }); }
-      finally { await releaseCustomer(client, customer.id, owner); }
+      // Lock both parties in a fixed order; reassignment cannot race a charge for the old payer.
+      const ids = [...new Set([customer.id, event.billing_customer_id].filter(Boolean))].sort();
+      const locked = [];
+      try {
+        for (const id of ids) {
+          const current = await client.entities.BillingCustomer.get(id);
+          await claimCustomer(client, current, owner); locked.push(id);
+        }
+        const saved = await client.entities.Event.updateMany(
+          { id: event.id, updated_date: event.updated_date },
+          { $set: { billing_customer_id: customer.id } }
+        );
+        if (saved.updated !== 1) throw new CardError("פרטי האירוע השתנו; יש לרענן", 409);
+      } finally {
+        for (const id of locked.reverse()) await releaseCustomer(client, id, owner);
+      }
       if (event.billing_customer_id && event.billing_customer_id !== customer.id) await applyCleanup(client, event.billing_customer_id, config);
       await applyCleanup(client, customer.id, config);
       return Response.json({ success: true });
@@ -159,7 +193,7 @@ export default Deno.serve(async req => {
       let pending = null;
       if (customer.busy_operation_id?.startsWith("setup:")) {
         const s = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
-        pending = { kind: "setup", id: s.id, state: s.state, expiresAt: s.expires_at, url: s.state === "pending" ? s.redirect_url : "" };
+        pending = { kind: "setup", id: s.id, state: s.state, canRecover: !!s.provider_payment_id, expiresAt: s.expires_at, url: s.state === "pending" ? s.redirect_url : "" };
       } else if (customer.busy_operation_id && !customer.busy_operation_id.includes(":")) {
         const operation = await client.entities.StoredCardOperation.get(customer.busy_operation_id);
         pending = { kind: "charge", ...safeOperation(operation) };
@@ -168,11 +202,28 @@ export default Deno.serve(async req => {
     }
     if (action === "evaluate") { await applyCleanup(client, customer.id, config); return Response.json({ success: true }); }
     if (action === "remove") return Response.json(await removeCard(client, customer.id, body.cardId, user.id, config, body.eligibleOnly === true));
+    if (action === "recover_setup") {
+      if (!customer.busy_operation_id?.startsWith("setup:")) throw new CardError("אין בקשת שמירה בטיפול");
+      const setup = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
+      if (!["pending", "verifying"].includes(setup.state) || !setup.provider_payment_id) throw new CardError("טרם התקבל אישור ספק שניתן לאמת", 409);
+      const card = await client.entities.StoredCard.get(setup.card_id);
+      if (card.customer_id !== customer.id) throw new CardError("שיוך כרטיס לא תקין", 409);
+      const log = await verifyLog(providerAccess(config, card.environment), {
+        paymentId: setup.provider_payment_id, traceId: setup.provider_trace_id, type: 1, amount: 0
+      }, setup.created_date);
+      const suffix = String(log.CreditNumber || "").slice(-4);
+      if (!/^\d{4}$/.test(suffix)) throw new CardError("לא ניתן לאמת את הכרטיס מול הספק", 409);
+      const claim = await client.entities.CardSetupRequest.updateMany(
+        { id: setup.id, state: setup.state }, { $set: { state: "verifying" } }
+      );
+      if (claim.updated !== 1) throw new CardError("מצב הבקשה השתנה; יש לרענן", 409);
+      return Response.json(await completeSetup(client, setup, card, suffix, card.brand || "", card.expires || ""));
+    }
     if (action === "cancel_setup") {
       if (!customer.busy_operation_id?.startsWith("setup:")) throw new CardError("אין בקשת שמירה פתוחה");
       const id = customer.busy_operation_id.slice(6);
       const setup = await client.entities.CardSetupRequest.get(id);
-      if (["verified", "verifying"].includes(setup.state)) throw new CardError("השמירה אומתה או בטיפול; יש לרענן", 409);
+      if (customer.active_card_id === setup.card_id || ["verified", "verifying"].includes(setup.state)) throw new CardError("השמירה אומתה או בטיפול; יש לרענן", 409);
       const cancelled = await client.entities.CardSetupRequest.updateMany({ id, state: setup.state }, { $set: { state: "cancelled", callback_hash: "", redirect_url: "" } });
       if (cancelled.updated !== 1) throw new CardError("מצב השמירה השתנה", 409);
       await client.entities.StoredCard.update(setup.card_id, { state: "cancelled", provider_customer_id: "" });
@@ -224,7 +275,7 @@ export default Deno.serve(async req => {
     }
     if (action === "reconcile") {
       const op = await client.entities.StoredCardOperation.get(body.operationId);
-      if (op.customer_id !== customer.id || customer.busy_operation_id !== op.id) throw new CardError("הפעולה אינה שייכת ללקוח", 409);
+      if (!op || op.customer_id !== customer.id || customer.busy_operation_id !== op.id) throw new CardError("הפעולה אינה שייכת ללקוח", 409);
       if (op.state === "completed") {
         await releaseCustomer(client, customer.id, op.id);
         return Response.json(safeOperation(op));
@@ -242,7 +293,13 @@ export default Deno.serve(async req => {
       if (action === "charge" && text(body.requestKey)) {
         const previous = await client.entities.StoredCardOperation.filter({ customer_id: customer.id, request_key: text(body.requestKey, 80) }, "id", 10);
         const existing = previous.find(o => o.failure_code !== "concurrent_operation");
-        if (existing) return Response.json(safeOperation(existing));
+        if (existing) {
+          if (existing.event_id !== body.eventId || existing.card_id !== body.cardId ||
+              existing.amount !== money(body.amount) || existing.total !== money(body.confirmedTotal) ||
+              existing.currency !== body.currency || existing.description !== text(body.description, 300))
+            throw new CardError("מזהה הפעולה כבר שימש לחיוב אחר", 409);
+          return Response.json(safeOperation(existing));
+        }
       }
       if (!event) throw new CardError("חסר אירוע לחיוב");
       const card = await activeCard(client, customer, config, body.cardId);
@@ -257,8 +314,6 @@ export default Deno.serve(async req => {
       if (money(body.confirmedTotal) !== total || body.currency !== financials.currency) throw new CardError("סכום החיוב השתנה; נדרש אישור מחדש", 409);
       const requestKey = text(body.requestKey, 80);
       if (!/^[a-zA-Z0-9-]{20,80}$/.test(requestKey) || !text(body.description, 300)) throw new CardError("חסר מזהה פעולה או תיאור חיוב");
-      const existing = await client.entities.StoredCardOperation.filter({ customer_id: customer.id, request_key: requestKey }, "id", 2);
-      if (existing.length) return Response.json(safeOperation(existing[0]));
       const access = providerAccess(config, card.environment);
       const op = await client.entities.StoredCardOperation.create({ customer_id: customer.id, card_id: card.id,
         event_id: event.id, environment: access.environment, kind: "charge", state: "prepared", request_key: requestKey, amount, fee: fee.amount, total,
