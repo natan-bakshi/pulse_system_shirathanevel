@@ -236,3 +236,66 @@ test("log validation rejects wrong transaction, amount, currency and identity", 
   for (const change of [{ PaymentId: "wrong" }, { Amount: 99 }, { Currency: 2 }, { TransactionType: 1 }, { IsSuccess: false }, { LogType: 1 }])
     assert.equal(provider.matchClearingLog({ ...valid, ...change }, expected), false);
 });
+
+test("reassignment cannot move an event away from a customer with a running charge", async () => {
+  const f = fixture();
+  f.db.BillingCustomer[0].busy_operation_id = "ongoing-charge";
+  f.db.BillingCustomer.push({ id: "other", name: "Other", active_card_id: "", busy_operation_id: "", revision: 0 });
+  const result = await request("bind", { eventId: "event", customerId: "other" });
+  assert.equal(result.status, 409);
+  assert.equal(f.db.Event[0].billing_customer_id, "customer");
+  assert.equal(f.db.BillingCustomer.find(c => c.id === "other").busy_operation_id, "");
+});
+test("a card belonging to a different customer is never charged", async () => {
+  const f = fixture(); f.db.StoredCard[0].customer_id = "different-customer";
+  assert.equal((await request("charge", chargeBody)).status, 409);
+  assert.equal(f.calls.length, 0);
+});
+test("idempotency key reuse with a different amount is rejected", async () => {
+  const f = fixture();
+  assert.equal((await request("charge", chargeBody)).data.state, "completed");
+  const response = await request("charge", { ...chargeBody, amount: 50, confirmedTotal: 50 });
+  assert.equal(response.status, 409);
+  assert.equal(f.calls.filter(c => c.payload.request?.ChargeWithToken).length, 1);
+});
+test("capture interrupted during local writes can be recovered without creating a second setup", async () => {
+  const f = fixture();
+  await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Agreement QA" });
+  const p = f.calls.find(c => c.payload.request?.AddToken).payload.request;
+  f.logs.push({ PaymentId: "capture", ClearingTraceId: "capture-trace", IsSuccess: true, LogType: 2, TransactionType: 1, Amount: 0, CreditNumber: "2222" });
+  const payload = { Success: "True", TokenCaptureOnly: "True", TokenCaptureAndCharge: "False",
+    OrderIdClientUsage: p.OrderIdClientUsage, CustomerId: String(p.CustomerId), PaymentId: "capture",
+    ClearingTraceId: "capture-trace", CardSuffix: "2222" };
+  let once = true;
+  globalThis.__failWrite = (entity, data) => {
+    if (once && entity === "StoredCard" && data.state === "active") { once = false; return true; } return false;
+  };
+  const response = await handler(new Request(p.CallBackUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+  assert.equal(response.status, 500);
+  assert.equal(f.db.StoredCard.find(c => c.id === "card").state, "active");
+  assert.equal(f.db.BillingCustomer[0].active_card_id, "card");
+  const recovered = await request("recover_setup", { customerId: "customer" });
+  assert.equal(recovered.status, 200, JSON.stringify(recovered));
+  assert.notEqual(f.db.BillingCustomer[0].active_card_id, "card");
+  assert.equal(f.calls.filter(c => c.payload.request?.AddToken).length, 1);
+  assert.equal(f.calls.filter(c => c.payload.request?.ChargeWithToken).length, 0);
+});
+test("cleanup considers pending quote payments and pages beyond 500 payment rows", async () => {
+  const f = fixture();
+  f.db.Payment = Array.from({ length: 501 }, (_, i) => ({ id: "p-" + i.toString().padStart(4,"0"), event_id: "event", amount: i === 500 ? 100 : 0, payment_status: "completed" }));
+  assert.equal((await core.customerEligibility(f.client, "customer", f.config)).eligible, true);
+  f.db.Event.push({ id: "quote", billing_customer_id: "customer", status: "quote" });
+  f.db.Payment.push({ id: "quote-payment", event_id: "quote", amount: 50, payment_status: "pending" });
+  assert.equal((await core.customerEligibility(f.client, "customer", f.config)).eligible, false);
+});
+test("missing amount in capture log cannot be mistaken for zero", () => {
+  assert.equal(provider.matchClearingLog({ IsSuccess: true, LogType: 2, PaymentId: "p", TransactionType: 1 },
+    { paymentId: "p", type: 1, amount: 0 }), false);
+});
+test("all new entities restrict direct data access to admins", async () => {
+  const { readFile } = await import("node:fs/promises");
+  for (const name of ["BillingCustomer","StoredCard","CardSetupRequest","StoredCardOperation"]) {
+    const schema = JSON.parse(await readFile("base44/entities/" + name + ".jsonc", "utf8"));
+    for (const op of ["read", "create", "update", "delete"]) assert.deepEqual(schema.rls[op], { user_condition: { role: "admin" } });
+  }
+});
