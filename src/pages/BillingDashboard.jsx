@@ -123,7 +123,7 @@ export default function BillingDashboard() {
         <BillingActionButtons onImmediateClearing={() => setShowGeneralClearing(true)} onPaymentLink={() => setShowPaymentLink(true)} onCreateDocument={setManualDocumentType} />
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab === "cards" && settings.stored_cards_enabled !== "true" ? "documents" : tab} onValueChange={setTab}>
         <TabsList className={"grid w-full max-w-lg " + (settings.stored_cards_enabled === "true" ? "grid-cols-4" : "grid-cols-3")}>
           <TabsTrigger value="documents">מסמכים</TabsTrigger>
           <TabsTrigger value="reports">דוחות</TabsTrigger>

@@ -33,6 +33,7 @@ function fixture() {
       },
       async list() { return structuredClone(db[name]); },
       async create(data) {
+        if (globalThis.__failWrite?.(name, data)) throw new Error("simulated storage failure");
         const row = { id: name + "-" + (++serial), created_date: new Date().toISOString(), updated_date: new Date().toISOString(), ...structuredClone(data) };
         db[name].push(row); return structuredClone(row);
       },
@@ -72,13 +73,13 @@ function fixture() {
     throw new Error("Unexpected external call");
   };
   const config = { billing_enabled: "true", stored_cards_enabled: "true", stored_cards_cleanup: "off",
-    invoice4u_env: "qa", invoice4u_clearing_company_type: "15", vat_rate: "18" };
+    invoice4u_env: "qa", stored_cards_env: "qa", invoice4u_clearing_company_type: "15", vat_rate: "18" };
   db.AppSettings = Object.entries(config).map(([setting_key, setting_value]) => ({ id: setting_key, setting_key, setting_value }));
   db.User = [{ id: "admin", role: "admin", email: "admin@example.test" }];
   db.BillingCustomer = [{ id: "customer", name: "QA Customer", phone: "0500000000", email: "qa@example.test", active_card_id: "card", busy_operation_id: "", revision: 0 }];
   db.StoredCard = [{ id: "card", customer_id: "customer", state: "active", provider_customer_id: "1234", environment: "qa",
     card_suffix: "1111", cleanup_pending: false, cleanup_notified: false }];
-  db.Event = [{ id: "event", event_name: "QA event", billing_customer_id: "customer", status: "completed", primary_currency: "ILS",
+  db.Event = [{ id: "event", stored_card_qa_only: true, event_name: "QA event", billing_customer_id: "customer", status: "completed", primary_currency: "ILS",
     total_override: 100, total_override_includes_vat: true }];
   const setConfig = (key, value) => { config[key] = value; const row = db.AppSettings.find(r => r.setting_key === key); if (row) row.setting_value = value; else db.AppSettings.push({ id: key, setting_key: key, setting_value: value }); };
   return { db, calls, logs, client, config, setConfig };
@@ -107,7 +108,7 @@ test("missing QA key never falls back to production; production requires readine
   const f = fixture(); globalThis.__secrets = { INVOICE4U_API_TOKEN: "fake-production" };
   assert.equal((await request("charge", chargeBody)).status, 503);
   assert.equal(f.calls.length, 0);
-  f.setConfig("invoice4u_env", "production"); f.db.StoredCard[0].environment = "production";
+  f.setConfig("stored_cards_env", "production"); f.db.StoredCard[0].environment = "production";
   assert.equal((await request("charge", chargeBody)).status, 503);
   assert.equal(f.calls.length, 0);
 });

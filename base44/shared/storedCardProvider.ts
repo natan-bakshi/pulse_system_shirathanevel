@@ -2,7 +2,7 @@ import { secrets } from "base44:runtime";
 import { CardError, money } from "./storedCards.ts";
 
 export const cardAppUrl = "https://pulse-system.base44.app";
-export function providerAccess(config, environment = config.invoice4u_env === "production" ? "production" : "qa") {
+export function providerAccess(config, environment = config.stored_cards_env === "production" ? "production" : "qa") {
   if (!["qa", "production"].includes(environment)) throw new CardError("סביבת סליקה לא תקינה");
   if (environment === "production" && secrets.get("INVOICE4U_STORED_CARDS_PRODUCTION_READY") !== "true")
     throw new CardError("סליקה בכרטיס שמור בייצור ממתינה לאימות האינטגרציה", 503);

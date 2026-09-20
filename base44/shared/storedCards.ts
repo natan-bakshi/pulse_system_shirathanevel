@@ -108,14 +108,25 @@ export async function applyCleanup(client, customerId, config) {
     { id: card.id, state: "active", cleanup_notified: false }, { $set: { cleanup_notified: true } }
   );
   if (claimed.updated !== 1) return;
-  const admins = await readAll(client.entities.User, { role: "admin" });
-  for (const admin of admins) {
-    await client.entities.InAppNotification.create({
-      user_id: admin.id, user_email: admin.email, title: "אפשר להסיר כרטיס שמור",
-      message: "האירועים של " + customer.name + " הסתיימו והחובות סולקו. ניתן לאשר הסרת הכרטיס.",
-      template_type: "STORED_CARD_CLEANUP", is_read: false, is_resolved: false,
-      link: "/BillingDashboard?tab=cards", related_event_id: decision.events.find(e => e.status === "completed")?.id || ""
-    });
+  try {
+    const admins = await readAll(client.entities.User, { role: "admin" });
+    const link = "/BillingDashboard?tab=cards&card=" + card.id;
+    for (const admin of admins) {
+      const existing = await client.entities.InAppNotification.filter({
+        user_id: admin.id, template_type: "STORED_CARD_CLEANUP", link
+      }, "id", 1);
+      if (existing.length) continue;
+      await client.entities.InAppNotification.create({
+        user_id: admin.id, user_email: admin.email, title: "אפשר להסיר כרטיס שמור",
+        message: "האירועים של " + customer.name + " הסתיימו והחובות סולקו. ניתן לאשר הסרת הכרטיס.",
+        template_type: "STORED_CARD_CLEANUP", is_read: false, is_resolved: false,
+        link, related_event_id: decision.events.find(e => e.status === "completed")?.id || ""
+      });
+    }
+  } catch (error) {
+    // A later relevant change can retry only the missing notifications.
+    await client.entities.StoredCard.updateMany({ id: card.id, state: "active" }, { $set: { cleanup_notified: false } });
+    throw error;
   }
 }
 // Called within existing mutations. Errors never turn a successful payment/status save into a failure.

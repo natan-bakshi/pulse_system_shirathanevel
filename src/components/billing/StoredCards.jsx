@@ -17,6 +17,11 @@ export function StoredCardSettings({ settings, onChange }) {
   return <fieldset className="space-y-3 rounded-lg border p-4" dir="rtl">
     <legend className="font-semibold px-2">כרטיסים שמורים ללקוחות</legend>
     <label className="flex gap-2 items-center"><input type="checkbox" checked={settings.stored_cards_enabled === "true"} onChange={e => onChange("stored_cards_enabled", String(e.target.checked))} />אפשר ניהול כרטיסים שמורים</label>
+    <label className="block">סביבת כרטיסים שמורים
+      <select className={inputClass} value={settings.stored_cards_env || "qa"} onChange={e => onChange("stored_cards_env", e.target.value)}>
+        <option value="qa">בדיקות QA — נפרד מהסליקה הרגילה</option><option value="production">ייצור</option>
+      </select>
+    </label>
     <label className="block">לאחר שכל אירועי הלקוח הסתיימו והחובות סולקו
       <select className={inputClass} value={settings.stored_cards_cleanup || "off"} onChange={e => onChange("stored_cards_cleanup", e.target.value)}>
         <option value="off">הסרה ידנית בלבד</option><option value="approval">בקש אישור מנהל להסרה</option><option value="automatic">הסר באופן אוטומטי</option>

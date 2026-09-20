@@ -2,6 +2,7 @@
   "name": "Event",
   "type": "object",
   "properties": {
+    "stored_card_qa_only": { "type": "boolean", "default": false, "description": "Dedicated disposable QA event; never enable on a real customer event" },
     "billing_customer_id": {
       "type": "string",
       "description": "Explicit billing customer shared by this customer\u2019s events"

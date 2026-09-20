@@ -10,7 +10,7 @@ const text = (v, max = 200) => typeof v === "string" ? v.trim().slice(0, max) : 
 async function activeCard(client, customer, config, expectedId) {
   if (!customer.active_card_id || (expectedId && expectedId !== customer.active_card_id)) throw new CardError("אין כרטיס פעיל או שהכרטיס הוחלף", 409);
   const card = await client.entities.StoredCard.get(customer.active_card_id);
-  if (card.customer_id !== customer.id || card.state !== "active" || !card.provider_customer_id || card.environment !== (config.invoice4u_env === "production" ? "production" : "qa"))
+  if (card.customer_id !== customer.id || card.state !== "active" || !card.provider_customer_id || card.environment !== (config.stored_cards_env === "production" ? "production" : "qa"))
     throw new CardError("הכרטיס אינו זמין בסביבת הסליקה הנוכחית", 409);
   return card;
 }
@@ -303,6 +303,8 @@ export default Deno.serve(async req => {
       }
       if (!event) throw new CardError("חסר אירוע לחיוב");
       const card = await activeCard(client, customer, config, body.cardId);
+      if (card.environment === "qa" && event.stored_card_qa_only !== true)
+        throw new CardError("חיוב QA מותר רק באירוע בדיקה ייעודי; לא ניתן לרשום תשלום בדיקה באירוע אמיתי", 409);
       const amount = money(body.amount);
       if (!Number.isFinite(amount) || amount <= 0) throw new CardError("סכום לא תקין");
       const financials = await eventBalance(client, event, config);
