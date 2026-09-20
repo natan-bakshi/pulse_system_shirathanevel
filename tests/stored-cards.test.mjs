@@ -300,3 +300,30 @@ test("all new entities restrict direct data access to admins", async () => {
     for (const op of ["read", "create", "update", "delete"]) assert.deepEqual(schema.rls[op], { user_condition: { role: "admin" } });
   }
 });
+
+test("QA and production settings are independent and QA cannot credit a real event", async () => {
+  const f = fixture(); f.setConfig("invoice4u_env", "production");
+  delete f.db.Event[0].stored_card_qa_only;
+  assert.equal((await request("charge", chargeBody)).status, 409);
+  assert.equal(f.calls.length, 0);
+  f.db.Event[0].stored_card_qa_only = true;
+  assert.equal((await request("charge", chargeBody)).data.state, "completed");
+  assert.equal(f.calls.find(c => c.payload.request?.ChargeWithToken).payload.request.Invoice4UUserApiKey, "fake-qa-key");
+});
+test("failed notification creation is retried without duplicating delivered notices", async () => {
+  const f = fixture(); f.setConfig("stored_cards_cleanup", "approval");
+  f.db.Payment = [{ id: "paid", event_id: "event", amount: 100, payment_status: "completed" }];
+  f.db.User.push({ id: "admin2", role: "admin", email: "second@example.test" });
+  let once = true;
+  globalThis.__failWrite = (entity, data) => {
+    if (once && entity === "InAppNotification" && data.user_id === "admin2") { once = false; return true; } return false;
+  };
+  await assert.rejects(core.applyCleanup(f.client, "customer", f.config));
+  assert.equal(f.db.InAppNotification.length, 1);
+  await core.applyCleanup(f.client, "customer", f.config);
+  assert.equal(f.db.InAppNotification.length, 2);
+});
+test("stored-card financial document retains the precise provider customer", async () => {
+  const f = fixture(); await request("charge", chargeBody);
+  assert.equal(f.db.FinancialDocument[0].customer_identifier, "1234");
+});

@@ -23,11 +23,13 @@ async function finishCharge(client, operation, customer, config) {
   if (operation.provider_document_id && !payment.financial_document_id) {
     const found = await client.entities.FinancialDocument.filter({ linked_payment_id: payment.id }, "id", 2);
     if (found.length > 1) throw new CardError("נדרש בירור מסמכים לעסקה", 409);
+    const chargedCard = await client.entities.StoredCard.get(operation.card_id);
     const doc = found[0] || await client.entities.FinancialDocument.create({
       document_type: "invoice_receipt", document_number: operation.provider_document_number || "",
       invoice4u_id: operation.provider_document_id, status: "open", total: operation.total,
       currency: operation.currency, issue_date: new Date().toISOString(), linked_event_id: operation.event_id,
       linked_payment_id: payment.id, customer_name: customer.name,
+      customer_identifier: String(chargedCard.provider_customer_id || ""),
       cipher_text: operation.provider_cipher || "",
       pdf_original_url: operation.provider_cipher_original ? "https://newview.invoice4u.co.il/Views/PDF.aspx?cipher=" + encodeURIComponent(operation.provider_cipher_original) : ""
     });
