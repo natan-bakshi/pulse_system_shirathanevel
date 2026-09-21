@@ -1,27 +1,3 @@
-
-test("hosted reservation and stored charge share the customer lock", async () => {
-  const f = fixture();
-  await core.claimCustomer(f.client, f.db.BillingCustomer[0], "charge-in-progress");
-  await assert.rejects(() => core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", () => f.client.entities.Payment.create({ event_id: "event", payment_status: "pending" })), /בטיפול/);
-  assert.equal(f.db.Payment?.length || 0, 0);
-});
-test("hosted pending reservation blocks stored charge and duplicate hosted requests", async () => {
-  const f = fixture();
-  const create = () => f.client.entities.Payment.create({ event_id: "event", amount: 100, payment_status: "pending" });
-  await core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", create);
-  assert.equal(f.db.BillingCustomer[0].busy_operation_id, "");
-  assert.equal((await request("charge", chargeBody)).status, 409);
-  await assert.rejects(() => core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", create), /ממתין/);
-  assert.equal(f.db.Payment.length, 1); assert.equal(f.calls.length, 0);
-});
-test("hosted reservation releases on write failure and does not affect disabled legacy flow", async () => {
-  const f = fixture();
-  await assert.rejects(() => core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", async () => { throw new Error("write failed"); }), /write failed/);
-  assert.equal(f.db.BillingCustomer[0].busy_operation_id, "");
-  f.config.stored_cards_enabled = "false"; f.db.BillingCustomer[0].busy_operation_id = "other";
-  assert.equal(await core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", async () => "legacy"), "legacy");
-});
-
 // Offline regression tests: all entities and Invoice4U calls are in-memory fakes.
 // Run: node --test tests/stored-cards.test.mjs
 import test from "node:test";
@@ -351,3 +327,27 @@ test("stored-card financial document retains the precise provider customer", asy
   const f = fixture(); await request("charge", chargeBody);
   assert.equal(f.db.FinancialDocument[0].customer_identifier, "1234");
 });
+
+test("hosted reservation and stored charge share the customer lock", async () => {
+  const f = fixture();
+  await core.claimCustomer(f.client, f.db.BillingCustomer[0], "charge-in-progress");
+  await assert.rejects(() => core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", () => f.client.entities.Payment.create({ event_id: "event", payment_status: "pending" })), /בטיפול/);
+  assert.equal(f.db.Payment?.length || 0, 0);
+});
+test("hosted pending reservation blocks stored charge and duplicate hosted requests", async () => {
+  const f = fixture();
+  const create = () => f.client.entities.Payment.create({ event_id: "event", amount: 100, payment_status: "pending" });
+  await core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", create);
+  assert.equal(f.db.BillingCustomer[0].busy_operation_id, "");
+  assert.equal((await request("charge", chargeBody)).status, 409);
+  await assert.rejects(() => core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", create), /ממתין/);
+  assert.equal(f.db.Payment.length, 1); assert.equal(f.calls.length, 0);
+});
+test("hosted reservation releases on write failure and does not affect disabled legacy flow", async () => {
+  const f = fixture();
+  await assert.rejects(() => core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", async () => { throw new Error("write failed"); }), /write failed/);
+  assert.equal(f.db.BillingCustomer[0].busy_operation_id, "");
+  f.config.stored_cards_enabled = "false"; f.db.BillingCustomer[0].busy_operation_id = "other";
+  assert.equal(await core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", async () => "legacy"), "legacy");
+});
+
