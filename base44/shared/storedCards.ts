@@ -34,6 +34,25 @@ export async function eventBalance(client, event, config) {
   return { services, payments, ...calculateEventBalance(event, services, payments,
     (Number(config.vat_rate) || 18) / 100, Number(config.usd_ils_exchange_rate) || 3.6) };
 }
+
+// Serialize hosted-payment reservation with stored-card operations only for opted-in linked customers.
+export async function reserveHostedPayment(client, event, config, amount, currency, createPayment) {
+  if (config.stored_cards_enabled !== "true" || !event?.billing_customer_id) return createPayment();
+  const customer = await client.entities.BillingCustomer.get(event.billing_customer_id);
+  if (!customer) throw new CardError("לקוח החיוב לא נמצא", 409);
+  const owner = "hosted:" + crypto.randomUUID();
+  await claimCustomer(client, customer, owner);
+  try {
+    const current = await client.entities.Event.get(event.id);
+    if (current?.billing_customer_id !== customer.id) throw new CardError("לקוח האירוע השתנה. יש לרענן.", 409);
+    const financials = await eventBalance(client, current, config);
+    if (financials.payments.some(p => p.payment_status === "pending")) throw new CardError("קיים תשלום ממתין באירוע. יש לברר את מצבו לפני חיוב נוסף.", 409);
+    if (financials.currency !== currency || !Number.isFinite(financials.balance) || amount > financials.balance + 0.01)
+      throw new CardError("יתרת האירוע השתנתה. יש לרענן לפני חיוב.", 409);
+    return await createPayment();
+  } finally { await releaseCustomer(client, customer.id, owner); }
+}
+
 // Pure rule; no provider calls, polling, scheduled scan or cross-event offsetting.
 export function cleanupDecision(rows, busy = false) {
   if (busy) return { eligible: false, reason: "פעולה כספית בטיפול" };

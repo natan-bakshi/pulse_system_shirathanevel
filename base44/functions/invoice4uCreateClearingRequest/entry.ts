@@ -1,7 +1,9 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
 import { buildDocumentItems, calculateEventBalance, calculateProcessingFee, itemsToPipedFields } from "../../shared/eventBilling.ts";
 import { sendWhatsAppText } from "../../shared/whatsappSend.ts";
+
+import { reserveHostedPayment } from "../../shared/storedCards.ts";
 
 const appUrl = "https://pulse-system.base44.app";
 const round2 = (value: number) => Math.round(value * 100) / 100;
@@ -89,7 +91,7 @@ export default async function(req) {
     }
 
     const callbackToken = crypto.randomUUID();
-    const payment = await base44.asServiceRole.entities.Payment.create({
+    const payment = await reserveHostedPayment(base44.asServiceRole, event, config, requestedAmount, currency, () => base44.asServiceRole.entities.Payment.create({
       ...(isGeneral ? {} : { event_id: eventId }),
       amount: requestedAmount,
       currency,
@@ -107,7 +109,7 @@ export default async function(req) {
       document_language: docLanguage,
       is_payment_link: isLinkMode,
       notes: [isGeneral ? subject : (isAdvance ? "מקדמה" : ""), isLinkMode ? "דרישת תשלום בקישור" : ""].filter(Boolean).join(" - ")
-    });
+    }));
 
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
     const request = {
@@ -181,5 +183,5 @@ export default async function(req) {
       return Response.json({ error: `הקישור נוצר אך השליחה נכשלה - ${failures.join(", ")}`, paymentId: payment.id, paymentLink: redirectUrl }, { status: 400 });
     }
     return Response.json({ paymentId: payment.id, paymentLink: redirectUrl, chargedTotal: chargeTotal, fee: fee.amount, sentVia: linkChannels.filter((channel) => !failures.some((failure) => failure.startsWith(channel === "whatsapp" ? "וואטסאפ" : "אימייל"))), failures });
-  } catch (error) { return Response.json({ error: error.message }, { status: 500 }); }
+  } catch (error) { return Response.json({ error: error.message }, { status: error.status || 500 }); }
 }
