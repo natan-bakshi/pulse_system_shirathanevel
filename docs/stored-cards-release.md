@@ -90,3 +90,7 @@ Before final validation fixes:
 before-stored-cards-final-validation-2026-09-20
 checkpoint 6aafbe08901d2b55b828bb82
 commit 5120cf88f2e23f1c58105e0b362b69df4433c61b
+
+
+## 2026-09-21 follow-up
+Hosted checkout now reserves its pending payment under the same linked-customer lock as stored-card charging when the feature is enabled. It re-reads customer binding, balance, currency, and pending payments before reservation; the legacy disabled/unlinked path is unchanged. Three additional mocked regression tests pass (32 total). This does not serialize all existing direct manual financial writers. Browser access is now available and reaches the Pulse login page; authenticated UI and live provider QA remain outstanding.
