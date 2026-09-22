@@ -94,3 +94,12 @@ commit 5120cf88f2e23f1c58105e0b362b69df4433c61b
 
 ## 2026-09-21 follow-up
 Hosted checkout now reserves its pending payment under the same linked-customer lock as stored-card charging when the feature is enabled. It re-reads customer binding, balance, currency, and pending payments before reservation; the legacy disabled/unlinked path is unchanged. Three additional mocked regression tests pass (32 total). This does not serialize all existing direct manual financial writers. Browser access is now available and reaches the Pulse login page; authenticated UI and live provider QA remain outstanding.
+
+## 2026-09-22 authenticated UI follow-up
+- Secure email/password sign-in to published Pulse succeeded; the connected user role was independently confirmed as admin.
+- The existing billing dashboard and configuration render through the application menu. Production billing settings were not changed and no charges were sent.
+- The published billing configuration does not show the stored-card settings in the saved source; development-preview validation is still needed before publication.
+- A direct BillingDashboard navigation redirected to the home dashboard while settings were loading. Layout now waits for settings for an authenticated admin before deciding whether billing is disabled. Non-admin denial remains immediate.
+- Build passed after this fix. Layout lint reports the same four unused-import errors as checkpoint commit 9fea329902f1a8e16cda8fb5dd11a664341d697e; no new lint errors. Whitespace validation passed.
+- The separate Base44 editor sign-in was blocked by automatic approval review pending explicit authorization to sign in to the development workspace.
+- Real SDK concurrency tests, provider QA and the new interface remain unverified. The feature remains disabled.
