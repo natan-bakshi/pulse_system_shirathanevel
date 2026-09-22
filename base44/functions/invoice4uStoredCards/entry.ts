@@ -95,7 +95,7 @@ async function callback(req, base44) {
   const config = await cardSettings(client);
   requireCards(config);
   const card = await client.entities.StoredCard.get(setup.card_id);
-  const access = providerAccess(config, card.environment);
+  const access = providerAccess(config, card.environment, "capture");
   const log = await verifyLog(access, { paymentId: data.PaymentId, traceId: data.ClearingTraceId, type: 1, amount: 0 }, setup.created_date);
   const suffix = String(data.CardSuffix || "");
   if (!/^\d{4}$/.test(suffix) || (log.CreditNumber && String(log.CreditNumber).slice(-4) !== suffix)) throw new CardError("Card identity not verified", 409);
@@ -210,7 +210,7 @@ export default Deno.serve(async req => {
       if (!["pending", "verifying"].includes(setup.state) || !setup.provider_payment_id) throw new CardError("טרם התקבל אישור ספק שניתן לאמת", 409);
       const card = await client.entities.StoredCard.get(setup.card_id);
       if (card.customer_id !== customer.id) throw new CardError("שיוך כרטיס לא תקין", 409);
-      const log = await verifyLog(providerAccess(config, card.environment), {
+      const log = await verifyLog(providerAccess(config, card.environment, "capture"), {
         paymentId: setup.provider_payment_id, traceId: setup.provider_trace_id, type: 1, amount: 0
       }, setup.created_date);
       const suffix = String(log.CreditNumber || "").slice(-4);
@@ -234,7 +234,7 @@ export default Deno.serve(async req => {
     }
     if (action === "setup") {
       if (body.consentConfirmed !== true || !text(body.consentReference, 500)) throw new CardError("נדרש תיעוד הסכמת הלקוח לשמירה ולחיוב עתידי");
-      const access = providerAccess(config);
+      const access = providerAccess(config, undefined, "capture");
       if (customer.busy_operation_id) throw new CardError("קיימת פעולה בטיפול", 409);
       if (customer.active_card_id) {
         const previous = await client.entities.StoredCard.get(customer.active_card_id);
