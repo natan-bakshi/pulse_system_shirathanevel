@@ -121,7 +121,7 @@ export default function Layout({ children }) {
 
 
   // React Query for app settings - cached globally
-  const { data: appSettings = [] } = useQuery({
+  const { data: appSettings = [], isLoading: appSettingsLoading } = useQuery({
     queryKey: ['appSettings'],
     queryFn: async () => {
       try {
@@ -361,6 +361,9 @@ export default function Layout({ children }) {
     const isTryingToAccessAdminPage = adminOnlyPages.some((p) => pathname.startsWith(createPageUrl(p.substring(1))));
     const isAccessingBillingPage = pathname.startsWith(createPageUrl("BillingDashboard"));
 
+    // A direct billing link must wait for settings before treating billing as disabled.
+    if (isAccessingBillingPage && isAdmin && appSettingsLoading) return;
+
     if (isAccessingBillingPage && (!billingEnabled || !isAdmin)) {
       navigate(homePage, { replace: true });
       return;
@@ -384,7 +387,7 @@ export default function Layout({ children }) {
     }
 
 
-  }, [user, location, navigate, loading, billingEnabled]);
+  }, [user, location, navigate, loading, billingEnabled, appSettingsLoading]);
 
 
   const handleLogout = useCallback(async () => {
