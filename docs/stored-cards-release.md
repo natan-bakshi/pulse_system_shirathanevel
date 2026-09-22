@@ -98,8 +98,9 @@ Hosted checkout now reserves its pending payment under the same linked-customer 
 ## 2026-09-22 authenticated UI follow-up
 - Secure email/password sign-in to published Pulse succeeded; the connected user role was independently confirmed as admin.
 - The existing billing dashboard and configuration render through the application menu. Production billing settings were not changed and no charges were sent.
-- The published billing configuration does not show the stored-card settings in the saved source; development-preview validation is still needed before publication.
-- A direct BillingDashboard navigation redirected to the home dashboard while settings were loading. Layout now waits for settings for an authenticated admin before deciding whether billing is disabled. Non-admin denial remains immediate.
-- Build passed after this fix. Layout lint reports the same four unused-import errors as checkpoint commit 9fea329902f1a8e16cda8fb5dd11a664341d697e; no new lint errors. Whitespace validation passed.
-- The separate Base44 editor sign-in was blocked by automatic approval review pending explicit authorization to sign in to the development workspace.
-- Real SDK concurrency tests, provider QA and the new interface remain unverified. The feature remains disabled.
+- Authenticated Base44 development preview validation completed. The stored-card configuration renders the enable switch, isolated QA/production environment selector, three cleanup-policy modes and production warning.
+- Draft-state behavior was verified without saving: toggling enablement activated the save button and unsaved warning; refreshing discarded the draft. No charge, customer or card record was created.
+- A direct BillingDashboard navigation redirected to the home dashboard while settings were loading. Layout now waits for settings for an authenticated admin before deciding whether billing is disabled. The direct preview route remained on BillingDashboard after refresh; non-admin denial remains immediate.
+- Final checks: 32/32 stored-card tests passed, production build passed, focused billing lint passed and whitespace validation passed. Layout still has the same four pre-existing unused-import errors as checkpoint commit 9fea329902f1a8e16cda8fb5dd11a664341d697e; no new lint errors.
+- Live settings remain safe: stored_cards_enabled=false and stored_cards_cleanup=off; the absent stored_cards_env uses the QA default. Billing remains enabled and ordinary Invoice4U remains production. StoredCard and BillingCustomer are empty.
+- Real provider QA and live Base44/Invoice4U concurrency remain unverified because no isolated provider QA credentials/test terminal and disposable payment instrument were used. Production activation remains blocked by the server release gate.
