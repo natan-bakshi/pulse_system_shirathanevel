@@ -2,17 +2,28 @@ import { secrets } from "base44:runtime";
 import { CardError, money } from "./storedCards.ts";
 
 export const cardAppUrl = "https://pulse-system.base44.app";
-export function providerAccess(config, environment = config.stored_cards_env === "production" ? "production" : "qa") {
+export function providerAccess(config, environment = config.stored_cards_env === "production" ? "production" : "qa", purpose = "charge") {
   if (!["qa", "production"].includes(environment)) throw new CardError("סביבת סליקה לא תקינה");
-  if (environment === "production" && secrets.get("INVOICE4U_STORED_CARDS_PRODUCTION_READY") !== "true")
+  if (!["charge", "capture"].includes(purpose)) throw new CardError("פעולת סליקה לא תקינה");
+  // Capture-only opt-in does not grant permission to charge a real card.
+  const captureEnabled = purpose === "capture" && config.stored_cards_production_capture_enabled === "true";
+  if (environment === "production" && !captureEnabled && secrets.get("INVOICE4U_STORED_CARDS_PRODUCTION_READY") !== "true")
     throw new CardError("סליקה בכרטיס שמור בייצור ממתינה לאימות האינטגרציה", 503);
   const key = secrets.get(environment === "qa" ? "INVOICE4U_API_TOKEN_QA" : "INVOICE4U_API_TOKEN");
   if (!key) throw new CardError(environment === "qa" ? "חסר מפתח QA נפרד. לא נעשה שימוש במפתח הייצור." : "חסר מפתח סליקה", 503);
   const company = Number(config.invoice4u_clearing_company_type);
   if (![6, 7, 12, 15].includes(company)) throw new CardError("יש להגדיר חברת סליקה נתמכת");
-  return { environment, key, company };
+  return { environment, key, company, purpose };
 }
 export async function providerCall(access, endpoint, body) {
+  if (access.purpose === "capture") {
+    const r = body?.request;
+    const captureRequest = endpoint === "ProcessApiRequestV2" && r?.AddToken === true &&
+      !r.AddTokenAndCharge && !r.ChargeWithToken && !r.IsStandingOrderClearance &&
+      !r.Refund && !r.IsDocCreate && (r.Sum === undefined || Number(r.Sum) === 0);
+    if (!["CreateCustomer", "GetClearingLogByParams"].includes(endpoint) && !captureRequest)
+      throw new CardError("הרשאת שמירת כרטיס אינה מתירה חיוב", 403);
+  }
   const host = access.environment === "qa" ? "apiqa" : "api";
   const response = await fetch("https://" + host + ".invoice4u.co.il/Services/ApiService.svc/" + endpoint, {
     method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
