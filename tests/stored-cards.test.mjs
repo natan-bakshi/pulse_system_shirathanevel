@@ -112,6 +112,59 @@ test("missing QA key never falls back to production; production requires readine
   assert.equal((await request("charge", chargeBody)).status, 503);
   assert.equal(f.calls.length, 0);
 });
+
+test("production capture requires explicit opt-in and never enables charging", async () => {
+  const f = fixture();
+  f.setConfig("stored_cards_env", "production");
+  f.db.StoredCard[0].environment = "production";
+  globalThis.__secrets = { INVOICE4U_API_TOKEN: "fake-production" };
+  const setupBody = { customerId: "customer", consentConfirmed: true, consentReference: "Owner-authorized live capture test" };
+  assert.equal((await request("setup", setupBody)).status, 503);
+  assert.equal(f.calls.length, 0);
+  f.setConfig("stored_cards_production_capture_enabled", "true");
+  assert.equal((await request("setup", setupBody)).status, 200);
+  const p = f.calls.find(c => c.payload.request?.AddToken).payload.request;
+  assert.equal(p.IsQaMode, false);
+  assert.equal(p.IsDocCreate, false);
+  assert.equal(p.Sum, undefined);
+  assert.equal(p.AddTokenAndCharge, undefined);
+  f.logs.push({ PaymentId: "capture-live", ClearingTraceId: "trace-live", IsSuccess: true, LogType: 2,
+    TransactionType: 1, Amount: 0, CreditNumber: "2222" });
+  const payload = { Success: "True", TokenCaptureOnly: "True", TokenCaptureAndCharge: "False",
+    OrderIdClientUsage: p.OrderIdClientUsage, CustomerId: String(p.CustomerId), PaymentId: "capture-live",
+    ClearingTraceId: "trace-live", CardSuffix: "2222" };
+  const r = await handler(new Request(p.CallBackUrl, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload) }));
+  assert.equal(r.status, 200, await r.text());
+  const cardId = f.db.BillingCustomer[0].active_card_id;
+  assert.equal(f.db.StoredCard.find(c => c.id === cardId).state, "active");
+  assert.equal((await request("charge", { ...chargeBody, cardId, purpose: "capture" })).status, 503);
+  assert.equal(f.calls.filter(c => c.payload.request?.ChargeWithToken).length, 0);
+  assert.equal(f.db.Payment?.length || 0, 0);
+  assert.equal(f.db.FinancialDocument?.length || 0, 0);
+});
+test("capture-only provider access refuses monetary requests", async () => {
+  const f = fixture();
+  const access = provider.providerAccess(f.config, "qa", "capture");
+  for (const request of [
+    { AddToken: true, Sum: 1 }, { ChargeWithToken: true },
+    { AddToken: true, AddTokenAndCharge: true }, { AddToken: true, Refund: true },
+    { AddToken: true, IsStandingOrderClearance: true }, { AddToken: true, IsDocCreate: true }
+  ]) await assert.rejects(provider.providerCall(access, "ProcessApiRequestV2", { request }), e => e.status === 403);
+  assert.equal(f.calls.length, 0);
+});
+test("capture opt-in does not replace credentials or admin authorization", async () => {
+  const f = fixture(); f.setConfig("stored_cards_env", "production");
+  f.setConfig("stored_cards_production_capture_enabled", "true");
+  globalThis.__secrets = {};
+  const body = { customerId: "customer", consentConfirmed: true, consentReference: "Test authorization" };
+  assert.equal((await request("setup", body)).status, 503);
+  globalThis.__secrets = { INVOICE4U_API_TOKEN: "fake-production" };
+  f.client.auth.me = async () => ({ role: "user" });
+  assert.equal((await request("setup", body)).status, 403);
+  assert.equal(f.calls.length, 0);
+});
+
 test("status returns masked card metadata without provider identifiers", async () => {
   fixture(); const r = await request("status", { eventId: "event" });
   assert.equal(r.data.card.card_suffix, "1111");
