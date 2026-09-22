@@ -1,6 +1,16 @@
 # Customer stored cards — release and verification notes
 
-Status: code saved, feature disabled by default. Do not treat offline tests as approval to enable production charging.
+Status (2026-09-22 latest): production token capture explicitly enabled at the owner's request; production charging retains its separate readiness gate. Real-card capture remains unverified. Historical verification sections below describe their respective dates.
+
+## Production capture-only activation
+- Owner requested a production capture test instead of provider QA. No real card, provider request, charge, customer message or test-event creation was performed by this code change.
+- Existing live settings were stored_cards_enabled=true, stored_cards_env=production, stored_cards_cleanup=approval. Added stored_cards_production_capture_enabled=true after passing all 35 mocked tests.
+- Setup and setup verification request capture-only provider access. That access accepts customer creation, log retrieval and AddToken without monetary/document flags or a nonzero amount; it refuses charging and refunds.
+- Charge paths still require INVOICE4U_STORED_CARDS_PRODUCTION_READY=true; no secrets were changed. The capture setting does not satisfy the charge gate.
+- Credentials, terminal tokenization support, provider callback shape and a completed hosted capture must still be verified live. Offline tests are not proof of provider compatibility.
+- Rollback capture activation: set stored_cards_production_capture_enabled=false. Checkpoints restore code, not AppSettings data.
+- Pre-change checkpoint: 6ab2a31dea65853c5218b7aa (commit 4714936af2b1f85756289e015dea584674511cec).
+- Signature, closing-policy, WhatsApp receipt tracking and immutable signed-PDF changes remain planning only; existing consent-reference requirement is unchanged.
 
 ## Implemented
 - Explicit BillingCustomer identity; Event.billing_customer_id. No automatic matching by contact name.
@@ -21,8 +31,9 @@ Status: code saved, feature disabled by default. Do not treat offline tests as a
 - stored_cards_cleanup: off | approval | automatic, default off.
 - stored_cards_env: qa | production, default qa; does not change ordinary payment settings.
 - QA requires INVOICE4U_API_TOKEN_QA; never falls back to production.
-- Production additionally requires INVOICE4U_STORED_CARDS_PRODUCTION_READY=true.
-  This is an operational release gate, not evidence that verification happened.
+- Production charging requires INVOICE4U_STORED_CARDS_PRODUCTION_READY=true.
+  Production capture also accepts the explicit stored_cards_production_capture_enabled=true setting.
+  These are operational release gates, not evidence that verification happened.
 - Existing INVOICE4U_API_TOKEN and company setting continue to be used for production.
 - QA charges require an explicitly disposable Event with stored_card_qa_only=true.
   Never set this on a real customer event. Prefer an isolated test app/dataset.
