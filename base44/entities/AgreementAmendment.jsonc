@@ -1,0 +1,50 @@
+{
+  "name": "AgreementAmendment",
+  "type": "object",
+  "properties": {
+    "agreement_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "price_change": {
+      "type": "number"
+    },
+    "channel": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string"
+    },
+    "evidence_uri": {
+      "type": "string"
+    },
+    "created_by_user_id": {
+      "type": "string"
+    },
+    "requires_resign": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "agreement_id",
+    "event_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
