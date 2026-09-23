@@ -1,6 +1,19 @@
 # Customer stored cards — release and verification notes
 
-Status (2026-09-22 latest): production token capture explicitly enabled at the owner's request; production charging retains its separate readiness gate. Real-card capture remains unverified. Historical verification sections below describe their respective dates.
+Status (2026-09-23 latest): the application-side AddToken request was corrected after Invoice4U returned code 309; a live capture retry is still required. Production charging retains its separate readiness gate. Historical verification sections below describe their respective dates.
+
+## 2026-09-23 token and payer-management follow-up
+- The failed live setup returned Invoice4U code 309. The owner confirmed token service activation with the clearing provider.
+- The AddToken-specific Invoice4U example omits CreditCardCompanyType, but Pulse forced the UI's company value (15) into token capture. Token-only setup now lets the terminal bound to the API key select its provider. The ordinary ChargeWithToken request still includes company type 15.
+- This is a concrete client-side correction, not proof that the next live call will succeed. If 309 persists, verify that the exact production API key used by Pulse is bound to the activated terminal and ask Invoice4U to trace the request.
+- New payer creation and setup are one operation. The payer is provisional until callback verification; an immediate setup failure cleans the event link and payer.
+- Existing payer search supports name, phone, email and identifier. Only payers with an active card can be newly attached to an event.
+- The central table now lists and selects payers with or without a card. Managers can remove cards, unlink one event, or soft-delete a payer and unlink all events; payment/document history is preserved.
+- A successful verified token creates a deduplicated in-app notification for the initiating admin.
+- Billing card UI, server function and entity policies remain admin-only.
+- Verification: 39/39 offline regression tests passed; production build passed. No real card was submitted and no charge was sent.
+- Detailed remaining agreement, signature, milestone, advance-notice and manual-charge plan: docs/event-closing-and-token-plan-he.md.
+- Pre-change checkpoint: 6ab361d623db381c53203c7c (commit 46ea66d8509a2691de6af8a6352ad0202a9e1b6a).
 
 ## Production capture-only activation
 - Owner requested a production capture test instead of provider QA. No real card, provider request, charge, customer message or test-event creation was performed by this code change.
