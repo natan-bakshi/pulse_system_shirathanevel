@@ -126,19 +126,23 @@ async function beginSetup(client, user, config, customer, consentReference, even
     const previous = await client.entities.StoredCard.get(customer.active_card_id);
     if (previous.environment !== access.environment) throw new CardError("יש להסיר את הכרטיס מהסביבה הקודמת לפני שמירת כרטיס בסביבה אחרת");
   }
-  const card = await client.entities.StoredCard.create({
-    customer_id: customer.id, environment: access.environment, state: "pending",
-    consent_reference: reference, consent_recorded_by: user.id, consent_recorded_at: new Date().toISOString(),
-    cleanup_pending: false, cleanup_notified: false
-  });
-  const secret = crypto.randomUUID() + crypto.randomUUID();
-  const setup = await client.entities.CardSetupRequest.create({
-    customer_id: customer.id, card_id: card.id, state: "creating", environment: access.environment,
-    callback_hash: await sha256(secret), expires_at: new Date(Date.now() + 86400000).toISOString(),
-    created_by_user_id: user.id, event_id: eventId, provisional_customer: provisionalCustomer
-  });
-  await claimCustomer(client, customer, "setup:" + setup.id);
+  let card: any;
+  let setup: any;
+  let claimed = false;
   try {
+    card = await client.entities.StoredCard.create({
+      customer_id: customer.id, environment: access.environment, state: "pending",
+      consent_reference: reference, consent_recorded_by: user.id, consent_recorded_at: new Date().toISOString(),
+      cleanup_pending: false, cleanup_notified: false
+    });
+    const secret = crypto.randomUUID() + crypto.randomUUID();
+    setup = await client.entities.CardSetupRequest.create({
+      customer_id: customer.id, card_id: card.id, state: "creating", environment: access.environment,
+      callback_hash: await sha256(secret), expires_at: new Date(Date.now() + 86400000).toISOString(),
+      created_by_user_id: user.id, event_id: eventId, provisional_customer: provisionalCustomer
+    });
+    await claimCustomer(client, customer, "setup:" + setup.id);
+    claimed = true;
     const created = await providerCall(access, "CreateCustomer", {
       token: access.key,
       cu: { Name: customer.name, Active: true, Email: customer.email || "", Mobile: customer.phone || "", Identifier: customer.identifier || "" }
@@ -173,10 +177,12 @@ async function beginSetup(client, user, config, customer, consentReference, even
     await client.entities.CardSetupRequest.update(setup.id, { state: "pending", redirect_url: redirect.href });
     return { setupId: setup.id, redirectUrl: redirect.href };
   } catch (e) {
-    await client.entities.CardSetupRequest.update(setup.id, { state: "failed", callback_hash: "", redirect_url: "" });
-    await client.entities.StoredCard.update(card.id, { state: "cancelled", provider_customer_id: "" });
-    await releaseCustomer(client, customer.id, "setup:" + setup.id);
-    if (provisionalCustomer) await discardProvisionalCustomer(client, customer.id);
+    try {
+      if (setup) await client.entities.CardSetupRequest.update(setup.id, { state: "failed", callback_hash: "", redirect_url: "" });
+      if (card) await client.entities.StoredCard.update(card.id, { state: "cancelled", provider_customer_id: "" });
+      if (claimed && setup) await releaseCustomer(client, customer.id, "setup:" + setup.id);
+      if (provisionalCustomer) await discardProvisionalCustomer(client, customer.id);
+    } catch { console.warn("[stored-cards] setup cleanup pending"); }
     throw e;
   }
 }
@@ -274,7 +280,10 @@ export default Deno.serve(async req => {
     if (action === "create_customer")
       throw new CardError("לקוח חדש נוצר יחד עם בקשת שמירת הכרטיס, כדי שלא יישמר לקוח ללא כרטיס.", 409);
     if (action === "create_customer_and_setup") {
-      if (body.consentConfirmed !== true) throw new CardError("נדרשת הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם");
+      if (body.consentConfirmed !== true || !text(body.consentReference, 500))
+        throw new CardError("נדרשת הסכמת הלקוח ותיעוד ההסכמה לשמירת הכרטיס ולחיובים בהתאם להסכם");
+      // Validate capture configuration before creating the provisional customer.
+      providerAccess(config, undefined, "capture");
       const event = body.eventId ? await client.entities.Event.get(body.eventId) : null;
       if (!event) throw new CardError("חסר אירוע");
       if (event.billing_customer_id) throw new CardError("כבר מקושר לקוח משלם לאירוע. יש לנתק או למחוק אותו תחילה.", 409);
