@@ -229,53 +229,105 @@ function CardPanel({ event, onChanged }) {
 }
 export function StoredCardsManager() {
   const [skip, setSkip] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Map());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const { data, isLoading, error, refetch } = useQuery({ queryKey: ["storedCards", skip],
-    queryFn: () => storedCardAction("list", { skip }), staleTime: 30000 });
-  const toggle = row => setSelected(old => { const next = new Map(old); if (next.has(row.customer.id)) next.delete(row.customer.id);
-    else next.set(row.customer.id, { customerId: row.customer.id, cardId: row.card.id }); return next; });
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ["storedCards", skip, search],
+    queryFn: () => storedCardAction("list", { skip, search }), staleTime: 30000 });
+  const selection = row => ({
+    customerId: row.customer.id, cardId: row.card?.id || "", name: row.customer.name,
+    linkedEventCount: Number(row.customer.linked_event_count) || 0, eligible: row.eligible
+  });
+  const toggle = row => setSelected(old => {
+    const next = new Map(old);
+    if (next.has(row.customer.id)) next.delete(row.customer.id); else next.set(row.customer.id, selection(row));
+    return next;
+  });
+  const runSearch = () => {
+    setSkip(0); setSelected(new Map()); setSearch(searchInput.trim());
+  };
   const selectAll = async () => {
     setBusy(true); setMessage("");
     try {
       const next = new Map();
       for (let offset = 0; ; offset += 20) {
-        const page = await storedCardAction("list", { skip: offset });
-        for (const row of page.rows) if (row.eligible) next.set(row.customer.id, { customerId: row.customer.id, cardId: row.card.id });
+        const page = await storedCardAction("list", { skip: offset, search });
+        for (const row of page.rows) next.set(row.customer.id, selection(row));
         if (!page.hasMore) break;
       }
       setSelected(next);
     } catch (e) { setMessage(errorText(e)); } finally { setBusy(false); }
   };
   const removeSelected = async () => {
-    if (!window.confirm("להסיר " + selected.size + " כרטיסים מהלקוחות שנבחרו ומכל אירועיהם? התנאים יאומתו לפני כל הסרה.")) return;
+    const items = [...selected.values()].filter(item => item.cardId);
+    if (!items.length) return;
+    if (!window.confirm("להסיר " + items.length + " כרטיסים מהלקוחות שנבחרו? לפני כל הסרה תיבדק מדיניות הסרת הכרטיס.")) return;
     setBusy(true); setMessage("");
     const results = [];
     try {
-      const items = [...selected.values()];
       for (let i = 0; i < items.length; i += 20) {
         const result = await storedCardAction("bulk_remove", { items: items.slice(i, i + 20) });
         results.push(...result.results);
-        setSelected(old => { const next = new Map(old); for (const r of result.results) if (r.status === "removed") next.delete(r.customerId); return next; });
+        setSelected(old => {
+          const next = new Map(old);
+          for (const r of result.results) if (r.status === "removed") next.delete(r.customerId);
+          return next;
+        });
       }
-      setMessage("הוסרו: " + results.filter(r => r.status === "removed").length +
+      setMessage("כרטיסים שהוסרו: " + results.filter(r => r.status === "removed").length +
         " · דולגו: " + results.filter(r => r.status === "skipped").length + " · נכשלו: " + results.filter(r => r.status === "error").length);
-    } catch (e) { setMessage("הפעולה נעצרה לאחר הסרת " + results.filter(r => r.status === "removed").length + " כרטיסים. " + errorText(e)); }
-    finally { setBusy(false); await refetch(); }
+    } catch (e) {
+      setMessage("הפעולה נעצרה לאחר הסרת " + results.filter(r => r.status === "removed").length + " כרטיסים. " + errorText(e));
+    } finally { setBusy(false); await refetch(); }
   };
-  return <Card dir="rtl"><CardHeader><CardTitle>כרטיסי לקוחות — הסרה מרוכזת</CardTitle></CardHeader><CardContent className="space-y-4">
-    <p>מוצגים לקוחות, לא אירועים. רק לקוחות שכל אירועיהם הסתיימו וחובותיהם סולקו ניתנים לבחירה.</p>
+  const deleteSelected = async () => {
+    const items = [...selected.values()];
+    const linkedCount = items.reduce((sum, item) => sum + item.linkedEventCount, 0);
+    const cardCount = items.filter(item => item.cardId).length;
+    if (!window.confirm("למחוק " + items.length + " לקוחות משלמים? " +
+      (linkedCount ? "הם ינותקו מ-" + linkedCount + " שיוכי אירועים. " : "") +
+      (cardCount ? cardCount + " כרטיסים שמורים יוסרו. " : "") +
+      "היסטוריית תשלומים ומסמכים תישמר.")) return;
+    setBusy(true); setMessage("");
+    const results = [];
+    try {
+      for (let i = 0; i < items.length; i += 20) {
+        const result = await storedCardAction("bulk_delete_customers", { items: items.slice(i, i + 20) });
+        results.push(...result.results);
+        setSelected(old => {
+          const next = new Map(old);
+          for (const r of result.results) if (r.status === "deleted") next.delete(r.customerId);
+          return next;
+        });
+      }
+      setMessage("לקוחות שנמחקו: " + results.filter(r => r.status === "deleted").length +
+        " · דולגו: " + results.filter(r => r.status === "skipped").length + " · נכשלו: " + results.filter(r => r.status === "error").length);
+    } catch (e) {
+      setMessage("הפעולה נעצרה לאחר מחיקת " + results.filter(r => r.status === "deleted").length + " לקוחות. " + errorText(e));
+    } finally { setBusy(false); await refetch(); }
+  };
+  const selectedCardCount = [...selected.values()].filter(item => item.cardId).length;
+  return <Card dir="rtl"><CardHeader><CardTitle>ניהול לקוחות משלמים וכרטיסים</CardTitle></CardHeader><CardContent className="space-y-4">
+    <p>ניתן לבחור כל לקוח, עם כרטיס או בלעדיו. הסרת כרטיס בלבד כפופה למדיניות הסיום והחובות; מחיקת לקוח מנתקת אותו מכל האירועים.</p>
+    <div className="flex gap-2">
+      <Input aria-label="חיפוש ברשימת לקוחות משלמים" value={searchInput} onChange={e => setSearchInput(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") runSearch(); }} placeholder="חיפוש לפי שם, טלפון, אימייל או מזהה" />
+      <Button type="button" variant="outline" disabled={busy} onClick={runSearch}>חפש</Button>
+    </div>
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" disabled={busy} onClick={selectAll}>בחר את כל המתאימים</Button>
-      <Button variant="outline" disabled={busy} onClick={() => setSelected(new Map())}>נקה בחירה</Button>
-      <Button disabled={busy || !selected.size} onClick={removeSelected}>הסר {selected.size} כרטיסים שנבחרו</Button>
+      <Button variant="outline" disabled={busy} onClick={selectAll}>בחר את כל התוצאות</Button>
+      <Button variant="outline" disabled={busy || !selected.size} onClick={() => setSelected(new Map())}>נקה בחירה</Button>
+      <Button disabled={busy || !selectedCardCount} onClick={removeSelected}>הסר {selectedCardCount} כרטיסים</Button>
+      <Button variant="outline" className="text-red-700 border-red-300" disabled={busy || !selected.size} onClick={deleteSelected}>מחק {selected.size} לקוחות</Button>
       <Button variant="ghost" disabled={busy} onClick={() => refetch()}>רענן</Button>
     </div>
     {isLoading && <p>טוען...</p>}{error && <p role="alert">{errorText(error)}</p>}
-    <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th>בחירה</th><th>לקוח</th><th>כרטיס</th><th>מצב</th></tr></thead>
-      <tbody>{data?.rows.map(row => <tr key={row.customer.id} className="border-t"><td className="py-3"><input aria-label={"בחר " + row.customer.name} type="checkbox" disabled={busy || !row.eligible} checked={selected.has(row.customer.id)} onChange={() => toggle(row)} /></td>
-        <td>{row.customer.name}</td><td>{cardLabel(row.card)}{row.card?.environment === "qa" && " (QA)"}</td><td>{row.reason}</td></tr>)}</tbody>
+    <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th>בחירה</th><th>לקוח</th><th>כרטיס</th><th>אירועים</th><th>מצב כרטיס</th></tr></thead>
+      <tbody>{data?.rows.map(row => <tr key={row.customer.id} className="border-t"><td className="py-3"><input aria-label={"בחר " + row.customer.name} type="checkbox" disabled={busy} checked={selected.has(row.customer.id)} onChange={() => toggle(row)} /></td>
+        <td>{row.customer.name}</td><td>{cardLabel(row.card)}{row.card?.environment === "qa" && " (QA)"}</td>
+        <td>{row.customer.linked_event_count || 0}</td><td>{row.reason}</td></tr>)}</tbody>
     </table></div>
     <div className="flex gap-2"><Button variant="outline" disabled={busy || !skip} onClick={() => setSkip(Math.max(0, skip - 20))}>הקודם</Button><Button variant="outline" disabled={busy || !data?.hasMore} onClick={() => setSkip(skip + 20)}>הבא</Button></div>
     {message && <p role="status">{message}</p>}
