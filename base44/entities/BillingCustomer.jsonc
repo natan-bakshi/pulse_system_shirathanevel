@@ -25,6 +25,17 @@
     "revision": {
       "type": "number",
       "default": 0
+    },
+    "provisional": {
+      "type": "boolean",
+      "default": false,
+      "description": "Temporary customer retained only while card capture is pending"
+    },
+    "deleted_at": {
+      "type": "string"
+    },
+    "deleted_by": {
+      "type": "string"
     }
   },
   "required": [
