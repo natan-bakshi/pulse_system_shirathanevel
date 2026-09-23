@@ -1,0 +1,50 @@
+{
+  "name": "ClientMessageDelivery",
+  "type": "object",
+  "properties": {
+    "agreement_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "key": {
+      "type": "string"
+    },
+    "target_masked": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "provider_message_id": {
+      "type": "string"
+    },
+    "attempted_at": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "agreement_id",
+    "event_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
