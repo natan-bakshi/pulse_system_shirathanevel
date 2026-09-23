@@ -1,0 +1,35 @@
+{
+  "name": "ConsentClause",
+  "type": "object",
+  "properties": {
+    "agreement_id": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number"
+    },
+    "accepted_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "agreement_id",
+    "event_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
