@@ -43,6 +43,7 @@ function CardPanel({ event, onChanged }) {
   const [mode, setMode] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [hasMore, setHasMore] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
   const [selected, setSelected] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", email: "", identifier: "" });
   const [consent, setConsent] = useState(false);
@@ -78,10 +79,11 @@ function CardPanel({ event, onChanged }) {
     qc.invalidateQueries({ queryKey: ["eventFinancialDocuments", event.id] });
     if (onChanged) await onChanged();
   };
-  const loadCustomers = async (append = false) => {
-    const result = await storedCardAction("customers", { skip: append ? customers.length : 0 });
+  const loadCustomers = async (append = false, search = customerSearch) => {
+    const result = await storedCardAction("customers", { skip: append ? customers.length : 0, search });
     setCustomers(old => append ? [...old, ...result.customers] : result.customers);
     setHasMore(result.hasMore);
+    if (!append) setSelected("");
   };
   const bind = async id => {
     await storedCardAction("bind", { eventId: event.id, customerId: id });
@@ -92,6 +94,24 @@ function CardPanel({ event, onChanged }) {
     await run(async () => {
       await storedCardAction("remove", { customerId: customer.id, cardId: card.id, eligibleOnly });
       setMessage("הכרטיס הוסר מהמערכת"); await changed();
+    });
+  };
+  const unlinkCustomer = async () => {
+    if (!window.confirm("לנתק את הלקוח המשלם מהאירוע הזה בלבד? הלקוח והכרטיס יישארו זמינים לאירועים אחרים.")) return;
+    await run(async () => {
+      await storedCardAction("unbind", { eventId: event.id, customerId: customer.id });
+      setMessage("הלקוח נותק מהאירוע"); await changed();
+    });
+  };
+  const deleteCustomer = async () => {
+    const count = Number(customer?.linked_event_count) || 0;
+    const linkedWarning = count > 1 ? " הלקוח מקושר ל-" + count + " אירועים וינותק מכולם." : "";
+    const cardWarning = card ? " הכרטיס השמור יוסר גם הוא." : "";
+    if (!window.confirm("למחוק את הלקוח המשלם?" + linkedWarning + cardWarning + " היסטוריית התשלומים והמסמכים תישמר.")) return;
+    await run(async () => {
+      const result = await storedCardAction("delete_customer", { customerId: customer.id });
+      setMessage("הלקוח נמחק ונותק מ-" + result.unlinkedEvents + " אירועים" + (result.removedCard ? "; הכרטיס הוסר" : ""));
+      await changed();
     });
   };
   return <Card dir="rtl" className="bg-white">
@@ -105,11 +125,17 @@ function CardPanel({ event, onChanged }) {
           <Button disabled={busy || customer?.busy} className="mt-2 bg-red-800" onClick={() => remove(true)}>הסר כרטיס</Button>
         </div>}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={busy || customer?.busy} onClick={() => run(async () => { await loadCustomers(); setMode("customer"); })}>{customer ? "שינוי לקוח משלם" : "בחר לקוח משלם"}</Button>
+          <Button variant="outline" disabled={busy || customer?.busy} onClick={() => run(async () => {
+            setCustomerSearch(""); await loadCustomers(false, ""); setMode("customer");
+          })}>{customer ? "שינוי לקוח משלם" : "בחר לקוח משלם"}</Button>
           {customer && <Button variant="outline" disabled={busy || customer.busy} onClick={() => { setConsent(false); setReference(""); setMode("setup"); }}>{card ? "החלף כרטיס" : "הוסף כרטיס"}</Button>}
           {card?.state === "active" && <>
             <Button disabled={busy || customer?.busy} onClick={() => { setQuote(null); setAmount(""); setDescription("תשלום עבור " + event.event_name); setMode("charge"); }}>חיוב מכרטיס שמור</Button>
-            <Button variant="outline" disabled={busy || customer?.busy} onClick={() => remove(false)}>הסר מהמערכת</Button>
+            <Button variant="outline" disabled={busy || customer?.busy} onClick={() => remove(false)}>הסר כרטיס בלבד</Button>
+          </>}
+          {customer && <>
+            <Button variant="outline" disabled={busy || customer.busy} onClick={unlinkCustomer}>נתק מהאירוע בלבד</Button>
+            <Button variant="outline" className="text-red-700 border-red-300" disabled={busy || customer.busy} onClick={deleteCustomer}>מחק לקוח משלם</Button>
           </>}
           <Button variant="ghost" disabled={busy} onClick={() => refetch()}>רענן</Button>
         </div>
@@ -139,24 +165,41 @@ function CardPanel({ event, onChanged }) {
           <DialogHeader><DialogTitle>{mode === "customer" ? "לקוח משלם" : mode === "setup" ? "שמירת כרטיס ללקוח" : "חיוב כרטיס שמור"}</DialogTitle>
             <DialogDescription>הכרטיס משותף לכל האירועים המשויכים ללקוח המשלם.</DialogDescription></DialogHeader>
           {mode === "customer" && <div className="space-y-3">
+            <p className="text-sm text-gray-600">לקוחות קיימים מוצגים כאן רק אם כבר שמור להם כרטיס פעיל.</p>
+            <div className="flex gap-2">
+              <Input aria-label="חיפוש לקוח משלם" value={customerSearch} onChange={e => setCustomerSearch(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") run(() => loadCustomers(false, customerSearch)); }}
+                placeholder="חיפוש לפי שם, טלפון, אימייל או מזהה" />
+              <Button type="button" variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(false, customerSearch))}>חפש</Button>
+            </div>
             <label className="block">לקוח קיים<select className={inputClass} value={selected} onChange={e => setSelected(e.target.value)}>
               <option value="">בחר לקוח</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>)}
             </select></label>
-            {hasMore && <Button variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(true))}>טען לקוחות נוספים</Button>}
+            {hasMore && <Button variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(true, customerSearch))}>טען לקוחות נוספים</Button>}
             <Button disabled={!selected || busy} onClick={() => run(() => bind(selected))}>קשר לאירוע</Button>
-            <p className="font-semibold border-t pt-3">לקוח חדש</p>
+            <p className="font-semibold border-t pt-3">לקוח חדש + כרטיס</p>
+            <p className="text-sm text-gray-600">הלקוח יישמר במערכת רק לאחר שהכרטיס יאומת בהצלחה.</p>
             {[["name", "שם מלא"], ["phone", "טלפון"], ["email", "אימייל"], ["identifier", "תעודת זהות / ח.פ. (רשות)"]].map(([field, label]) =>
               <label key={field} className="block">{label}<Input value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} /></label>)}
-            <Button disabled={busy || !form.name.trim() || !form.phone.trim()} onClick={() => run(async () => {
-              const result = await storedCardAction("create_customer", form); await bind(result.customer.id);
-            })}>צור לקוח וקשר לאירוע</Button>
+            <label className="block">אסמכתא להסכמת הלקוח<Input value={reference} onChange={e => setReference(e.target.value)} placeholder="מספר הסכם או הפניה להסכמה מתועדת" /></label>
+            <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם</label>
+            <Button disabled={busy || !form.name.trim() || !form.phone.trim() || !consent || !reference.trim()} onClick={() => run(async () => {
+              const result = await storedCardAction("create_customer_and_setup", {
+                eventId: event.id, ...form, consentConfirmed: consent, consentReference: reference
+              });
+              setMode(null);
+              setForm({ name: "", phone: "", email: "", identifier: "" }); setConsent(false); setReference("");
+              setMessage("הלקוח נוצר זמנית והקישור המאובטח מוכן. לאחר אימות הכרטיס הלקוח יישמר סופית.");
+              await changed();
+              if (result.redirectUrl) await navigator.clipboard.writeText(result.redirectUrl).catch(() => {});
+            })}>הוסף לקוח וצור קישור לכרטיס</Button>
           </div>}
           {mode === "setup" && <div className="space-y-3">
             <p>פרטי הכרטיס יוזנו בדף המאובטח של Invoice4U. הבקשה מיועדת לשמירה ללא חיוב.</p>
             <label className="block">אסמכתא להסכמת הלקוח<Input value={reference} onChange={e => setReference(e.target.value)} placeholder="מספר הסכם או הפניה להסכמה מתועדת" /></label>
             <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם</label>
             <Button disabled={busy || !consent || !reference.trim()} onClick={() => run(async () => {
-              await storedCardAction("setup", { customerId: customer.id, consentConfirmed: consent, consentReference: reference });
+              await storedCardAction("setup", { eventId: event.id, customerId: customer.id, consentConfirmed: consent, consentReference: reference });
               setMode(null); await changed();
             })}>צור קישור לשמירת כרטיס</Button>
           </div>}
