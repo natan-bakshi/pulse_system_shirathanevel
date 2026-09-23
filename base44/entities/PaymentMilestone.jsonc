@@ -1,0 +1,59 @@
+{
+  "name": "PaymentMilestone",
+  "type": "object",
+  "properties": {
+    "agreement_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "position": {
+      "type": "number"
+    },
+    "label": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "cumulative_amount": {
+      "type": "number"
+    },
+    "due_date": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "message_state": {
+      "type": "string"
+    },
+    "message_id": {
+      "type": "string"
+    },
+    "notify_at": {
+      "type": "string"
+    },
+    "template": {
+      "type": "string"
+    },
+    "notification_enabled": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "agreement_id",
+    "event_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
