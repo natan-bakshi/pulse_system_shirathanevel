@@ -1,0 +1,143 @@
+{
+  "name": "EventAgreement",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number"
+    },
+    "state": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "number"
+    },
+    "created_by_user_id": {
+      "type": "string"
+    },
+    "recipient_name": {
+      "type": "string"
+    },
+    "recipient_phone": {
+      "type": "string"
+    },
+    "recipient_email": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "snapshot": {
+      "type": "object"
+    },
+    "content_hash": {
+      "type": "string"
+    },
+    "link_hash": {
+      "type": "string"
+    },
+    "link_expires_at": {
+      "type": "string"
+    },
+    "otp_hash": {
+      "type": "string"
+    },
+    "otp_expires_at": {
+      "type": "string"
+    },
+    "otp_sent_at": {
+      "type": "string"
+    },
+    "otp_sends": {
+      "type": "number"
+    },
+    "otp_attempts": {
+      "type": "number"
+    },
+    "session_hash": {
+      "type": "string"
+    },
+    "session_expires_at": {
+      "type": "string"
+    },
+    "verified_at": {
+      "type": "string"
+    },
+    "opened_at": {
+      "type": "string"
+    },
+    "signed_at": {
+      "type": "string"
+    },
+    "signature": {
+      "type": "object"
+    },
+    "signature_hash": {
+      "type": "string"
+    },
+    "pdf_uri": {
+      "type": "string"
+    },
+    "pdf_hash": {
+      "type": "string"
+    },
+    "pdf_state": {
+      "type": "string"
+    },
+    "require_token": {
+      "type": "boolean"
+    },
+    "require_deposit": {
+      "type": "boolean"
+    },
+    "send_copy": {
+      "type": "boolean"
+    },
+    "copy_state": {
+      "type": "string"
+    },
+    "token_state": {
+      "type": "string"
+    },
+    "deposit_state": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    },
+    "cancelled_at": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "closing_applied": {
+      "type": "boolean"
+    },
+    "busy_operation": {
+      "type": "string"
+    },
+    "notifications": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "event_id",
+    "version",
+    "state",
+    "snapshot",
+    "content_hash"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
