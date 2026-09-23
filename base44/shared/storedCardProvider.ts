@@ -39,8 +39,16 @@ export function hasErrors(result) {
 }
 export function providerFailure(result) {
   const errors = Array.isArray(result?.Errors) ? result.Errors : [];
-  const code = String(errors[0]?.ErrorCode ?? errors[0]?.Id ?? errors[0]?.ID ?? "provider_declined");
-  return { code, message: code === "309" ? "שירות הטוקנים אינו מופעל במסוף הסליקה" : code === "304" ? "לא נמצא כרטיס תקף אצל ספק הסליקה" : "הפעולה נדחתה על ידי ספק הסליקה" };
+  const first = errors[0] || {};
+  const code = String(first.ErrorCode ?? first.Id ?? first.ID ?? "provider_declined");
+  const providerMessage = String(first.ErrorMessage ?? first.Message ?? first.Description ?? "").slice(0, 300);
+  return {
+    code,
+    providerMessage,
+    message: code === "309"
+      ? "Invoice4U דחתה את בקשת שמירת הכרטיס (קוד 309). יש לוודא שהטוקנים הופעלו במסוף המשויך למפתח ה-API הנוכחי."
+      : code === "304" ? "לא נמצא כרטיס תקף אצל ספק הסליקה" : "הפעולה נדחתה על ידי ספק הסליקה"
+  };
 }
 export async function sha256(value) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
