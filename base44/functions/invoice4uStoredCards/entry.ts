@@ -242,25 +242,65 @@ export default Deno.serve(async req => {
     const action = body.action;
     if (action === "list") {
       const skip = Math.max(0, Math.floor(Number(body.skip) || 0));
-      const customers = await client.entities.BillingCustomer.filter({}, "name", 20, skip);
+      const search = normalized(text(body.search, 120));
+      const all = (await readAll(client.entities.BillingCustomer))
+        .filter(currentCustomer)
+        .filter(c => !search || [c.name, c.phone, c.email, c.identifier].some(value => normalized(value).includes(search)))
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "he"));
+      const customers = all.slice(skip, skip + 20);
       const rows = [];
       for (const c of customers) {
         const card = c.active_card_id ? await client.entities.StoredCard.get(c.active_card_id) : null;
+        const events = await linkedEvents(client, c.id);
         const eligibility = card ? await customerEligibility(client, c.id, config) : { eligible: false, reason: "אין כרטיס שמור" };
-        rows.push({ customer: safeCustomer(c), card: safeCard(card), eligible: !c.busy_operation_id && eligibility.eligible, reason: c.busy_operation_id ? "פעולה בטיפול" : eligibility.reason });
+        rows.push({
+          customer: safeCustomer(c, events.length), card: safeCard(card),
+          eligible: !!card && !c.busy_operation_id && eligibility.eligible,
+          reason: c.busy_operation_id ? "פעולה בטיפול" : eligibility.reason
+        });
       }
-      return Response.json({ rows, hasMore: customers.length === 20 });
+      return Response.json({ rows, hasMore: skip + customers.length < all.length });
     }
     if (action === "customers") {
       const skip = Math.max(0, Math.floor(Number(body.skip) || 0));
-      const rows = await client.entities.BillingCustomer.filter({}, "name", 50, skip);
-      return Response.json({ customers: rows.map(safeCustomer), hasMore: rows.length === 50 });
+      const search = normalized(text(body.search, 120));
+      const all = (await readAll(client.entities.BillingCustomer))
+        .filter(c => currentCustomer(c) && !!c.active_card_id)
+        .filter(c => !search || [c.name, c.phone, c.email, c.identifier].some(value => normalized(value).includes(search)))
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "he"));
+      const rows = all.slice(skip, skip + 50);
+      return Response.json({ customers: rows.map(c => safeCustomer(c)), hasMore: skip + rows.length < all.length });
     }
-    if (action === "create_customer") {
+    if (action === "create_customer")
+      throw new CardError("לקוח חדש נוצר יחד עם בקשת שמירת הכרטיס, כדי שלא יישמר לקוח ללא כרטיס.", 409);
+    if (action === "create_customer_and_setup") {
+      if (body.consentConfirmed !== true) throw new CardError("נדרשת הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם");
+      const event = body.eventId ? await client.entities.Event.get(body.eventId) : null;
+      if (!event) throw new CardError("חסר אירוע");
+      if (event.billing_customer_id) throw new CardError("כבר מקושר לקוח משלם לאירוע. יש לנתק או למחוק אותו תחילה.", 409);
       const name = text(body.name), phone = text(body.phone, 30), email = text(body.email, 254);
-      if (!name || !phone || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw new CardError("נדרשים שם, טלפון ואימייל תקין אם הוזן");
-      const c = await client.entities.BillingCustomer.create({ name, phone, email, identifier: text(body.identifier, 30), revision: 0, busy_operation_id: "", active_card_id: "" });
-      return Response.json({ customer: safeCustomer(c) });
+      if (!name || !phone || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))
+        throw new CardError("נדרשים שם, טלפון ואימייל תקין אם הוזן");
+      const phoneKey = phone.replace(/\D/g, "");
+      const duplicate = (await readAll(client.entities.BillingCustomer))
+        .find(c => !c.deleted_at && c.phone && c.phone.replace(/\D/g, "") === phoneKey);
+      if (duplicate) throw new CardError(duplicate.active_card_id
+        ? "כבר קיים לקוח משלם עם מספר הטלפון הזה. יש לחפש ולבחור אותו."
+        : "כבר קיים לקוח ללא כרטיס עם מספר הטלפון הזה. ניתן למחוק אותו מהרשימה המרוכזת ולנסות שוב.", 409);
+      const customer = await client.entities.BillingCustomer.create({
+        name, phone, email, identifier: text(body.identifier, 30), revision: 0,
+        busy_operation_id: "", active_card_id: "", provisional: true
+      });
+      const linked = await client.entities.Event.updateMany(
+        { id: event.id, updated_date: event.updated_date },
+        { $set: { billing_customer_id: customer.id } }
+      );
+      if (linked.updated !== 1) {
+        await client.entities.BillingCustomer.delete(customer.id);
+        throw new CardError("פרטי האירוע השתנו; יש לרענן", 409);
+      }
+      const result = await beginSetup(client, user, config, customer, body.consentReference, event.id, true);
+      return Response.json({ ...result, customer: safeCustomer(customer, 1) });
     }
     if (action === "bulk_remove") {
       if (!Array.isArray(body.items) || body.items.length > 20) throw new CardError("ניתן להסיר עד 20 כרטיסים בכל מנה");
@@ -271,22 +311,43 @@ export default Deno.serve(async req => {
       }
       return Response.json({ results });
     }
+    if (action === "bulk_delete_customers") {
+      if (!Array.isArray(body.items) || body.items.length > 20) throw new CardError("ניתן למחוק עד 20 לקוחות בכל מנה");
+      const results = [];
+      for (const item of body.items) {
+        try {
+          const customer = await client.entities.BillingCustomer.get(item.customerId);
+          const result = await deleteBillingCustomer(client, customer, user.id, config);
+          results.push({ customerId: item.customerId, status: "deleted", ...result });
+        } catch (e) {
+          results.push({ customerId: item.customerId, status: e.status === 409 ? "skipped" : "error",
+            reason: e instanceof CardError ? e.message : "הפעולה לא הושלמה" });
+        }
+      }
+      return Response.json({ results });
+    }
     const event = body.eventId ? await client.entities.Event.get(body.eventId) : null;
     const customerId = body.customerId || event?.billing_customer_id;
-    if (action === "status" && !customerId) return Response.json({ customer: null, card: null });
+    if (action === "status" && !customerId) return Response.json({ customer: null, card: null, pending: null });
     if (!customerId) throw new CardError("יש לבחור לקוח משלם");
     const customer = await client.entities.BillingCustomer.get(customerId);
-    if (!customer) throw new CardError("הלקוח לא נמצא", 404);
-    if (event && action !== "bind" && event.billing_customer_id !== customer.id) throw new CardError("שיוך הלקוח באירוע השתנה", 409);
+    if (!customer || customer.deleted_at) {
+      if (action === "status") return Response.json({ customer: null, card: null, pending: null });
+      throw new CardError("הלקוח לא נמצא", 404);
+    }
+    if (event && action !== "bind" && event.billing_customer_id !== customer.id)
+      throw new CardError("שיוך הלקוח באירוע השתנה", 409);
     if (action === "bind") {
       if (!event) throw new CardError("חסר אירוע");
+      if (!currentCustomer(customer)) throw new CardError("לא ניתן לקשר לקוח זמני או מחוק", 409);
+      await activeCard(client, customer, config);
       const owner = "bind:" + crypto.randomUUID();
-      // Lock both parties in a fixed order; reassignment cannot race a charge for the old payer.
       const ids = [...new Set([customer.id, event.billing_customer_id].filter(Boolean))].sort();
       const locked = [];
       try {
         for (const id of ids) {
           const current = await client.entities.BillingCustomer.get(id);
+          if (!current || current.deleted_at) continue;
           await claimCustomer(client, current, owner); locked.push(id);
         }
         const saved = await client.entities.Event.updateMany(
@@ -301,18 +362,44 @@ export default Deno.serve(async req => {
       await applyCleanup(client, customer.id, config);
       return Response.json({ success: true });
     }
+    if (action === "unbind") {
+      if (!event || event.billing_customer_id !== customer.id) throw new CardError("הלקוח אינו מקושר לאירוע", 409);
+      if (customer.busy_operation_id) throw new CardError("קיימת פעולה בטיפול. יש להשלים או לבטל אותה לפני הניתוק.", 409);
+      const saved = await client.entities.Event.updateMany(
+        { id: event.id, updated_date: event.updated_date, billing_customer_id: customer.id },
+        { $set: { billing_customer_id: "" } }
+      );
+      if (saved.updated !== 1) throw new CardError("פרטי האירוע השתנו; יש לרענן", 409);
+      await applyCleanup(client, customer.id, config);
+      return Response.json({ success: true });
+    }
     if (action === "status") {
+      if (customer.provisional && customer.busy_operation_id?.startsWith("setup:")) {
+        const id = customer.busy_operation_id.slice(6);
+        const setup = await client.entities.CardSetupRequest.get(id);
+        if (setup && new Date(setup.expires_at).getTime() <= Date.now() && !["verified", "verifying"].includes(setup.state)) {
+          await client.entities.CardSetupRequest.update(setup.id, { state: "cancelled", callback_hash: "", redirect_url: "" });
+          await client.entities.StoredCard.update(setup.card_id, { state: "cancelled", provider_customer_id: "" });
+          await releaseCustomer(client, customer.id, customer.busy_operation_id);
+          await discardProvisionalCustomer(client, customer.id);
+          return Response.json({ customer: null, card: null, pending: null });
+        }
+      }
       const card = customer.active_card_id ? await client.entities.StoredCard.get(customer.active_card_id) : null;
       let pending = null;
       if (customer.busy_operation_id?.startsWith("setup:")) {
         const s = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
-        pending = { kind: "setup", id: s.id, state: s.state, canRecover: !!s.provider_payment_id, expiresAt: s.expires_at, url: s.state === "pending" ? s.redirect_url : "" };
+        if (s) pending = { kind: "setup", id: s.id, state: s.state, canRecover: !!s.provider_payment_id,
+          expiresAt: s.expires_at, url: s.state === "pending" ? s.redirect_url : "" };
       } else if (customer.busy_operation_id && !customer.busy_operation_id.includes(":")) {
         const operation = await client.entities.StoredCardOperation.get(customer.busy_operation_id);
         pending = { kind: "charge", ...safeOperation(operation) };
       }
-      return Response.json({ customer: safeCustomer(customer), card: safeCard(card), pending });
+      const events = await linkedEvents(client, customer.id);
+      return Response.json({ customer: safeCustomer(customer, events.length), card: safeCard(card), pending });
     }
+    if (action === "delete_customer")
+      return Response.json(await deleteBillingCustomer(client, customer, user.id, config));
     if (action === "evaluate") { await applyCleanup(client, customer.id, config); return Response.json({ success: true }); }
     if (action === "remove") return Response.json(await removeCard(client, customer.id, body.cardId, user.id, config, body.eligibleOnly === true));
     if (action === "recover_setup") {
@@ -336,55 +423,20 @@ export default Deno.serve(async req => {
       if (!customer.busy_operation_id?.startsWith("setup:")) throw new CardError("אין בקשת שמירה פתוחה");
       const id = customer.busy_operation_id.slice(6);
       const setup = await client.entities.CardSetupRequest.get(id);
-      if (customer.active_card_id === setup.card_id || ["verified", "verifying"].includes(setup.state)) throw new CardError("השמירה אומתה או בטיפול; יש לרענן", 409);
-      const cancelled = await client.entities.CardSetupRequest.updateMany({ id, state: setup.state }, { $set: { state: "cancelled", callback_hash: "", redirect_url: "" } });
+      if (customer.active_card_id === setup.card_id || ["verified", "verifying"].includes(setup.state))
+        throw new CardError("השמירה אומתה או בטיפול; יש לרענן", 409);
+      const cancelled = await client.entities.CardSetupRequest.updateMany(
+        { id, state: setup.state }, { $set: { state: "cancelled", callback_hash: "", redirect_url: "" } }
+      );
       if (cancelled.updated !== 1) throw new CardError("מצב השמירה השתנה", 409);
       await client.entities.StoredCard.update(setup.card_id, { state: "cancelled", provider_customer_id: "" });
       await releaseCustomer(client, customer.id, customer.busy_operation_id);
+      if (customer.provisional || setup.provisional_customer) await discardProvisionalCustomer(client, customer.id);
       return Response.json({ success: true });
     }
     if (action === "setup") {
-      if (body.consentConfirmed !== true || !text(body.consentReference, 500)) throw new CardError("נדרש תיעוד הסכמת הלקוח לשמירה ולחיוב עתידי");
-      const access = providerAccess(config, undefined, "capture");
-      if (customer.busy_operation_id) throw new CardError("קיימת פעולה בטיפול", 409);
-      if (customer.active_card_id) {
-        const previous = await client.entities.StoredCard.get(customer.active_card_id);
-        if (previous.environment !== access.environment) throw new CardError("יש להסיר את הכרטיס מהסביבה הקודמת לפני שמירת כרטיס בסביבה אחרת");
-      }
-      const card = await client.entities.StoredCard.create({ customer_id: customer.id, environment: access.environment, state: "pending",
-        consent_reference: text(body.consentReference, 500), consent_recorded_by: user.id, consent_recorded_at: new Date().toISOString(), cleanup_pending: false, cleanup_notified: false });
-      const secret = crypto.randomUUID() + crypto.randomUUID();
-      const setup = await client.entities.CardSetupRequest.create({ customer_id: customer.id, card_id: card.id, state: "creating", environment: access.environment,
-        callback_hash: await sha256(secret), expires_at: new Date(Date.now() + 86400000).toISOString(), created_by_user_id: user.id });
-      await claimCustomer(client, customer, "setup:" + setup.id);
-      try {
-        // A fresh provider customer per generation isolates old hosted links from the active card.
-        const created = await providerCall(access, "CreateCustomer", { token: access.key,
-          cu: { Name: customer.name, Active: true, Email: customer.email || "", Mobile: customer.phone || "", Identifier: customer.identifier || "" } });
-        if (hasErrors(created) || !created.ID) throw new CardError("לא ניתן ליצור שיוך כרטיס אצל הספק");
-        const providerId = String(created.ID);
-        const reused = await client.entities.CardSetupRequest.filter({ provider_customer_id: providerId, environment: access.environment }, "id", 1);
-        if (reused.length) throw new CardError("הספק החזיר שיוך קיים; יצירת קישור נעצרה כדי להגן על הכרטיס");
-        await client.entities.StoredCard.update(card.id, { provider_customer_id: providerId });
-        await client.entities.CardSetupRequest.update(setup.id, { provider_customer_id: providerId });
-        const result = await providerCall(access, "ProcessApiRequestV2", { request: {
-          Invoice4UUserApiKey: access.key, CreditCardCompanyType: access.company, AddToken: true,
-          CustomerId: Number(providerId), FullName: customer.name, Phone: customer.phone, Email: customer.email || "",
-          IsDocCreate: false, IsQaMode: access.environment === "qa", Platform: "Pulse",
-          OrderIdClientUsage: setup.id, ReturnUrl: cardAppUrl,
-          CallBackUrl: cardAppUrl + "/functions/invoice4uStoredCards?setup=" + setup.id + "&token=" + secret
-        } });
-        if (hasErrors(result) || !result.ClearingRedirectUrl) throw new CardError(providerFailure(result).message);
-        const redirect = new URL(result.ClearingRedirectUrl);
-        if (redirect.protocol !== "https:") throw new CardError("התקבל קישור סליקה לא תקין");
-        await client.entities.CardSetupRequest.update(setup.id, { state: "pending", redirect_url: redirect.href });
-        return Response.json({ setupId: setup.id, redirectUrl: redirect.href });
-      } catch (e) {
-        await client.entities.CardSetupRequest.update(setup.id, { state: "failed", callback_hash: "", redirect_url: "" });
-        await client.entities.StoredCard.update(card.id, { state: "cancelled", provider_customer_id: "" });
-        await releaseCustomer(client, customer.id, "setup:" + setup.id);
-        throw e;
-      }
+      if (body.consentConfirmed !== true) throw new CardError("נדרשת הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם");
+      return Response.json(await beginSetup(client, user, config, customer, body.consentReference, event?.id || "", false));
     }
     if (action === "reconcile") {
       const op = await client.entities.StoredCardOperation.get(body.operationId);
