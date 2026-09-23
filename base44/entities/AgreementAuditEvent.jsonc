@@ -1,0 +1,38 @@
+{
+  "name": "AgreementAuditEvent",
+  "type": "object",
+  "properties": {
+    "agreement_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "actor": {
+      "type": "string"
+    },
+    "at": {
+      "type": "string"
+    },
+    "details": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "agreement_id",
+    "event_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
