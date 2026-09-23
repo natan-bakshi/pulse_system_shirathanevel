@@ -16,6 +16,9 @@
     },
     "accepted_at": {
       "type": "string"
+    },
+    "event_id": {
+      "type": "string"
     }
   },
   "required": [

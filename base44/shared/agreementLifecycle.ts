@@ -3,7 +3,7 @@ import { calculateEventBalance } from "./eventBilling.ts";
 import { canClose, milestoneState, formatMessage, closingDefaults, roundMoney } from "./agreementRules.ts";
 import { sendWhatsAppText, sendWhatsAppFileByUrl } from "./whatsappSend.ts";
 
-export class AgreementError extends Error { status:number; constructor(message,status=400){super(message);this.status=status;} }
+export class AgreementError extends Error { status:number; constructor(message,status=400){super(message);this.name="AgreementError";this.status=status;} }
 export async function audit(client,a,kind,actor,details={}) {
  return client.entities.AgreementAuditEvent.create({agreement_id:a.id,event_id:a.event_id,kind,actor,at:new Date().toISOString(),details});
 }
@@ -53,7 +53,7 @@ export async function reconcileAgreement(client,eventId,config=null) {
  }
  const customer=a.customer_id?await client.entities.BillingCustomer.get(a.customer_id):null;
  const card=customer?.active_card_id?await client.entities.StoredCard.get(customer.active_card_id):null;
- const token=!!(card?.state==="active"&&card.customer_id===a.customer_id&&card.environment===(config.stored_cards_env==="production"?"production":"qa")&&event.billing_customer_id===a.customer_id);
+ const token=!!(card?.state==="active"&&(card.environment==="production"||event.stored_card_qa_only===true)&&card.customer_id===a.customer_id&&card.environment===(config.stored_cards_env==="production"?"production":"qa")&&event.billing_customer_id===a.customer_id);
  const deposit=f.totalPaid+0.005>=a.snapshot.deposit;
  const changes:any={};
  if(a.token_state!==(token?"verified":"pending")){

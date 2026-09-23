@@ -28,7 +28,7 @@ export async function authorizeCharge(client,event,customer,body,f) {
    const n=ctx.notices.find(n=>n.id===body.noticeId);
    if(!n||n.state!=="accepted"||n.amount!==roundMoney(body.amount)||n.reason!==String(body.description).trim().slice(0,300)||Date.parse(n.available_at)>Date.now())throw new CardError("נדרשת הודעה מקדימה והמתנה לפי המדיניות החתומה",409);
    const used=await client.entities.StoredCardOperation.filter({notice_id:n.id},"id",100);
-   if(used.some(o=>o.state!=="failed"))throw new CardError("הודעה זו כבר שימשה לפעולת גבייה; יש לבדוק את התוצאה",409);
+   if(used.some(o=>o.state!=="failed"&&o.id!==body.currentOperationId))throw new CardError("הודעה זו כבר שימשה לפעולת גבייה; יש לבדוק את התוצאה",409);
   }
  }
  return {...ctx,kind,milestone};

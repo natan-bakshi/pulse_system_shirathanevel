@@ -1,3 +1,4 @@
+import { processAgreementMilestones } from "../../shared/agreementLifecycle.ts";
 import { afterCardRelevantChange } from "../../shared/storedCards.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { renderClientMessage, sendClientMessage } from "../../shared/clientBillingMessages.ts";
@@ -60,7 +61,8 @@ export default async function(req) {
       }
     }
 
-    return Response.json(result);
+    const agreements=await processAgreementMilestones(base44.asServiceRole,config);
+    return Response.json({...result,agreements});
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -1,3 +1,4 @@
+import { chargeContext, authorizeCharge, createChargeNotice } from "../../shared/agreementCharge.ts";
 import { beginSetup } from "../../shared/storedCardSetup.ts";
 import { afterAgreementChange } from "../../shared/agreementLifecycle.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
@@ -82,7 +83,7 @@ async function finishCharge(client, operation, customer, config) {
     });
     payment = await client.entities.Payment.update(payment.id, { financial_document_id: doc.id });
   }
-  await client.entities.Payment.update(payment.id, { payment_status: "completed", invoice4u_clearing_status: "approved",
+  await client.entities.Payment.update(payment.id, { payment_status: "completed", ...(operation.agreement_id ? {agreement_verified:true} : {}), invoice4u_clearing_status: "approved",
     invoice4u_payment_id: operation.provider_payment_id, invoice4u_document_number: operation.provider_document_number || "",
     auth_number: operation.provider_auth_number || "" });
   await client.entities.StoredCardOperation.update(operation.id, { state: "completed" });
@@ -251,7 +252,7 @@ export default Deno.serve(async req => {
       const results = [];
       for (const item of body.items) {
         try { await removeCard(client, item.customerId, item.cardId, user.id, config, true); results.push({ customerId: item.customerId, status: "removed" }); }
-        catch (e) { results.push({ customerId: item.customerId, status: e.status === 409 ? "skipped" : "error", reason: e instanceof CardError ? e.message : "הפעולה לא הושלמה" }); }
+        catch (e) { results.push({ customerId: item.customerId, status: e.status === 409 ? "skipped" : "error", reason: (e instanceof CardError || e?.name === "AgreementError") ? e.message : "הפעולה לא הושלמה" }); }
       }
       return Response.json({ results });
     }
@@ -265,7 +266,7 @@ export default Deno.serve(async req => {
           results.push({ customerId: item.customerId, status: "deleted", ...result });
         } catch (e) {
           results.push({ customerId: item.customerId, status: e.status === 409 ? "skipped" : "error",
-            reason: e instanceof CardError ? e.message : "הפעולה לא הושלמה" });
+            reason: (e instanceof CardError || e?.name === "AgreementError") ? e.message : "הפעולה לא הושלמה" });
         }
       }
       return Response.json({ results });
@@ -398,6 +399,11 @@ export default Deno.serve(async req => {
       try { return Response.json(await finishCharge(client, op, customer, config)); }
       catch (e) { await client.entities.StoredCardOperation.update(op.id, { state: "unknown" }); throw e; }
     }
+    if (action === "charge_context") {
+      const {a,milestones,notices}=await chargeContext(client,event,customer);
+      return Response.json({agreementId:a.id,hash:a.content_hash,version:a.version,signedAt:a.signed_at,name:a.signature.name,snapshot:a.snapshot,milestones,notices});
+    }
+    if (action === "charge_notice") return Response.json(await createChargeNotice(client,event,customer,body,user));
     if (action === "quote" || action === "charge") {
       if (action === "charge" && text(body.requestKey)) {
         const previous = await client.entities.StoredCardOperation.filter({ customer_id: customer.id, request_key: text(body.requestKey, 80) }, "id", 10);
@@ -405,7 +411,7 @@ export default Deno.serve(async req => {
         if (existing) {
           if (existing.event_id !== body.eventId || existing.card_id !== body.cardId ||
               existing.amount !== money(body.amount) || existing.total !== money(body.confirmedTotal) ||
-              existing.currency !== body.currency || existing.description !== text(body.description, 300))
+              existing.currency !== body.currency || existing.description !== text(body.description, 300) || existing.agreement_hash !== body.agreementHash || existing.charge_kind !== (body.chargeKind === "exceptional" ? "exceptional" : "regular") || (existing.milestone_id || "") !== (body.milestoneId || "") || (existing.notice_id || "") !== (body.noticeId || ""))
             throw new CardError("מזהה הפעולה כבר שימש לחיוב אחר", 409);
           return Response.json(safeOperation(existing));
         }
@@ -417,9 +423,10 @@ export default Deno.serve(async req => {
       const amount = money(body.amount);
       if (!Number.isFinite(amount) || amount <= 0) throw new CardError("סכום לא תקין");
       const financials = await eventBalance(client, event, config);
-      if (amount > financials.balance) throw new CardError("הסכום גבוה מהיתרה העדכנית");
+      const authorization = await authorizeCharge(client,event,customer,body,financials);
+      if (authorization.kind === "regular" && amount > financials.balance) throw new CardError("הסכום גבוה מהיתרה העדכנית");
       if (financials.payments.some(p => p.payment_status === "pending")) throw new CardError("קיים תשלום ממתין באירוע. יש לברר אותו לפני חיוב נוסף.", 409);
-      const fee = calculateProcessingFee(config, amount);
+      const fee = calculateProcessingFee(authorization.a.snapshot.fee_config, amount);
       const total = money(amount + fee.amount);
       if (action === "quote") return Response.json({ amount, fee: fee.amount, total, currency: financials.currency, card: safeCard(card) });
       if (money(body.confirmedTotal) !== total || body.currency !== financials.currency) throw new CardError("סכום החיוב השתנה; נדרש אישור מחדש", 409);
@@ -428,6 +435,7 @@ export default Deno.serve(async req => {
       const access = providerAccess(config, card.environment);
       const op = await client.entities.StoredCardOperation.create({ customer_id: customer.id, card_id: card.id,
         event_id: event.id, environment: access.environment, kind: "charge", state: "prepared", request_key: requestKey, amount, fee: fee.amount, total,
+        agreement_id:authorization.a.id, agreement_hash:authorization.a.content_hash, charge_kind:authorization.kind, milestone_id:body.milestoneId||"", notice_id:body.noticeId||"",
         currency: financials.currency, description: text(body.description, 300), performed_by: user.id });
       try { await claimCustomer(client, customer, op.id); }
       catch (e) { await client.entities.StoredCardOperation.update(op.id, { state: "failed", failure_code: "concurrent_operation" }); throw e; }
@@ -439,15 +447,16 @@ export default Deno.serve(async req => {
         const freshCustomer = await client.entities.BillingCustomer.get(customer.id);
         await activeCard(client, freshCustomer, config, card.id);
         const latest = await eventBalance(client, freshEvent, config);
-        if (freshEvent.billing_customer_id !== customer.id || latest.currency !== financials.currency || amount > latest.balance ||
+        await authorizeCharge(client,freshEvent,freshCustomer,{...body,currentOperationId:op.id},latest);
+        if (freshEvent.billing_customer_id !== customer.id || latest.currency !== financials.currency || (authorization.kind === "regular" && amount > latest.balance) ||
           latest.payments.some(p => p.payment_status === "pending")) throw new CardError("היתרה או שיוך האירוע השתנו", 409);
         payment = await client.entities.Payment.create({ event_id: event.id, billing_customer_id: customer.id,
-          stored_card_operation_id: op.id, amount, currency: financials.currency, payment_date: new Date().toISOString().slice(0, 10),
-          payment_method: "credit_card", payment_status: "pending", clearing_method: "stored_card", charge_type: "regular",
+          stored_card_operation_id: op.id, agreement_id:authorization.a.id, agreement_verified:false, agreement_environment:card.environment, agreement_notice_id:body.noticeId||"", amount, currency: financials.currency, payment_date: new Date().toISOString().slice(0, 10),
+          payment_method: "credit_card", payment_status: "pending", clearing_method: "stored_card", charge_type: authorization.kind,
           processing_fee_amount: fee.amount, payer_name: customer.name, card_suffix: card.card_suffix, notes: op.description });
         await client.entities.StoredCardOperation.update(op.id, { payment_id: payment.id, state: "dispatched" });
         dispatched = true;
-        const items = buildDocumentItems({ event: freshEvent, services: latest.services, amount, fee, itemized: false, financials: latest,
+        const items = buildDocumentItems({ event: authorization.kind === "exceptional" ? {...freshEvent,event_name:op.description} : freshEvent, services: latest.services, amount, fee, itemized: false, financials: latest,
           vatRate: (Number(config.vat_rate) || 18) / 100, usdIlsRate: Number(config.usd_ils_exchange_rate) || 3.6 });
         const result = await providerCall(access, "ProcessApiRequestV2", { request: {
           Invoice4UUserApiKey: access.key, CreditCardCompanyType: access.company, ChargeWithToken: true,
@@ -482,7 +491,7 @@ export default Deno.serve(async req => {
     }
     throw new CardError("פעולה לא נתמכת");
   } catch (e) {
-    return Response.json({ error: e instanceof CardError ? e.message : "הפעולה לא הושלמה. יש לרענן ולבדוק את מצבה לפני ניסיון נוסף." },
-      { status: e instanceof CardError ? e.status : 500 });
+    return Response.json({ error: (e instanceof CardError || e?.name === "AgreementError") ? e.message : "הפעולה לא הושלמה. יש לרענן ולבדוק את מצבה לפני ניסיון נוסף." },
+      { status: (e instanceof CardError || e?.name === "AgreementError") ? e.status : 500 });
   }
 });

@@ -19,6 +19,10 @@ export async function refreshEventStatus(eventId, scope = {}) {
 
 // Only linked customers need evaluation; a cleanup failure must not undo a saved payment.
 export async function refreshStoredCardPolicy(event) {
+  if(event?.closing_agreement_id) {
+    try {await base44.functions.invoke("eventAgreement",{action:"reconcile",eventId:event.id});queryClientInstance.invalidateQueries({queryKey:["eventAgreement",event.id]});}
+    catch {console.warn("[agreement] update pending");}
+  }
   if (!event?.billing_customer_id) return;
   const settings = queryClientInstance.getQueryData(['appSettings']);
   if (settings && !settings.some(s => s.setting_key === 'stored_cards_enabled' && s.setting_value === 'true')) return;

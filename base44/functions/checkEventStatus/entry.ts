@@ -1,3 +1,4 @@
+import { afterAgreementChange, audit } from "../../shared/agreementLifecycle.ts";
 import { afterCardRelevantChange } from '../../shared/storedCards.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { recalculateEventStatus, readAll, parseAssignmentValue } from '../../shared/eventReadiness.ts';
@@ -38,7 +39,7 @@ export default Deno.serve(async (req) => {
             }
             const current = await base44.entities.Event.get(eventId);
             if (current.status !== requestedStatus) {
-                await base44.entities.Event.update(eventId, { status: requestedStatus });
+                await base44.entities.Event.update(eventId, { status: requestedStatus, closing_manual_override:true });
             }
         }
         const eventIds = new Set(eventId ? [eventId] : []);
@@ -52,6 +53,7 @@ export default Deno.serve(async (req) => {
             if (entity === 'Event' && data.status === 'in_progress') {
                 return Response.json({ error: 'Ready status is calculated from assignments' }, { status: 400 });
             }
+            if(entity === 'Event' && data.status !== undefined) data.closing_manual_override = true;
             const api = base44.entities[entity];
             const previous = operation === 'create' ? null : await api.get(id);
             if (entity === 'EventService' && previous?.event_id) eventIds.add(previous.event_id);
@@ -71,6 +73,7 @@ export default Deno.serve(async (req) => {
         }
         const results = [];
         for (const id of eventIds) {
+            await afterAgreementChange(base44.asServiceRole,id);
             const result = await recalculateEventStatus(base44, id);
             results.push({ eventId: id, newStatus: result.newStatus, statusChanged: result.statusChanged });
             if (result.event?.billing_customer_id) await afterCardRelevantChange(base44, [{ ...result.event, status: result.newStatus }]);

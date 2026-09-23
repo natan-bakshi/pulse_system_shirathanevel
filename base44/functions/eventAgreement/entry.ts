@@ -4,7 +4,7 @@ import { generateQuoteHtml } from "../../shared/quoteHtml.ts";
 import { getEventContacts } from "../../shared/eventFields.js";
 import { calculateAdvanceAmount, calculateProcessingFee, itemsToPipedFields } from "../../shared/eventBilling.ts";
 import { beginSetup } from "../../shared/storedCardSetup.ts";
-import { requireCards, reserveHostedPayment } from "../../shared/storedCards.ts";
+import { CardError, requireCards, reserveHostedPayment } from "../../shared/storedCards.ts";
 import { providerCall, hasErrors, providerFailure } from "../../shared/storedCardProvider.ts";
 import { secrets } from "base44:runtime";
 import { normalizeIsraeliPhone } from "../../shared/whatsappSend.ts";
@@ -93,17 +93,16 @@ function validateSignature(body){
  return {name,role:cleanText(body.role,120),strokes};
 }
 async function finishDocument(client,a){
- try{
-  a=await persistAgreementPdf(client,a);
-  if(a.send_copy&&a.copy_state==="pending"){
-   await client.entities.EventAgreement.update(a.id,{copy_state:"dispatching"});
+ try{a=await persistAgreementPdf(client,a);}
+ catch{return await client.entities.EventAgreement.update(a.id,{pdf_state:"failed"});}
+ if(a.send_copy&&a.copy_state==="pending"){
+  await client.entities.EventAgreement.update(a.id,{copy_state:"dispatching"});
+  try{
    const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.pdf_uri,expires_in:3600});
-   try{
-    await deliver(client,a,"signed_copy",a.id+":signed_copy","עותק ההסכם החתום עבור "+a.snapshot.event_name,{url:signed_url,name:"agreement-"+a.id+".pdf"});
-    a=await client.entities.EventAgreement.update(a.id,{copy_state:"accepted"});
-   }catch{a=await client.entities.EventAgreement.update(a.id,{copy_state:"unknown"});}
-  }
- }catch{a=await client.entities.EventAgreement.update(a.id,{pdf_state:"failed"});}
+   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy","עותק ההסכם החתום עבור "+a.snapshot.event_name,{url:signed_url,name:"agreement-"+a.id+".pdf"});
+   a=await client.entities.EventAgreement.update(a.id,{copy_state:d.state});
+  }catch{a=await client.entities.EventAgreement.update(a.id,{copy_state:"unknown"});}
+ }
  return a;
 }
 async function createDeposit(client,a,config){
@@ -115,6 +114,8 @@ async function createDeposit(client,a,config){
  if(old){if(old.payment_link_url)return {redirectUrl:old.payment_link_url};throw new AgreementError("בקשת מקדמה בבירור. אין ליצור בקשה נוספת.",409);}
  const environment=config.invoice4u_env==="production"?"production":"qa";
  const key=secrets.get(environment==="qa"?"INVOICE4U_API_TOKEN_QA":"INVOICE4U_API_TOKEN");
+ if(environment==="qa" && event.stored_card_qa_only!==true)throw new AgreementError("תשלום בדיקה מותר רק באירוע טסט",409);
+ if(!Number(config.invoice4u_clearing_company_type))throw new AgreementError("חסר סוג חברת סליקה",503);
  if(!key)throw new AgreementError("לא הוגדר מפתח לסביבת התשלום",503);
  const fee=calculateProcessingFee(a.snapshot.fee_config,amount),total=roundMoney(amount+fee.amount),cb=crypto.randomUUID()+crypto.randomUUID();
  const payment=await reserveHostedPayment(client,event,config,amount,f.currency,()=>client.entities.Payment.create({
@@ -203,7 +204,7 @@ export default Deno.serve(async req=>{
      let customer=a.customer_id?await client.entities.BillingCustomer.get(a.customer_id).catch(()=>null):null;
      if(customer?.deleted_at)customer=null;
      if(customer&&normalizeIsraeliPhone(customer.phone)!==normalizeIsraeliPhone(a.recipient_phone))throw new AgreementError("פרטי הלקוח המשלם אינם תואמים לחותם",409);
-     if(customer?.active_card_id){await reconcileAgreement(client,a.event_id);return Response.json({verified:true});}
+     if(customer?.active_card_id){const verified=await reconcileAgreement(client,a.event_id);if(verified?.token_state==="verified")return Response.json({verified:true});throw new AgreementError("הכרטיס הקיים אינו מאומת בסביבה הנוכחית; יש לפנות למנהל",409);}
      if(customer?.busy_operation_id?.startsWith("setup:")){
       const setup=await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
       if(setup?.state==="pending"&&Date.parse(setup.expires_at)>Date.now())return Response.json({redirectUrl:setup.redirect_url});
@@ -226,6 +227,7 @@ export default Deno.serve(async req=>{
   let user;try{user=await base44.auth.me();}catch{}
   if(user?.role!=="admin")throw new AgreementError("נדרשת הרשאת מנהל",403);
   const config={...closingDefaults,...await settings(client)};
+  if(action==="reconcile"){await reconcileAgreement(client,body.eventId,config);return Response.json({success:true});}
   if(action==="preview"){
    const p=await preview(client,base44,body.eventId,config);
    return Response.json({...p,event:undefined});
@@ -259,7 +261,7 @@ export default Deno.serve(async req=>{
    const clauses=p.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
    const terms=cleanText(body.terms||p.terms,60000);if(!terms)throw new AgreementError("יש להגדיר תנאי התקשרות לפני שליחה");
    const notification=notifications(body.notifications,config);
-   const snapshot={event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,quote_text:p.quote,terms,clauses,milestones,
+   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,quote_text:p.quote,terms,clauses,milestones,
     deposit:milestones[0].amount,regular_cap:regular,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
     exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),
@@ -313,7 +315,7 @@ export default Deno.serve(async req=>{
    }
    if(action==="notifications"){
     const n=notifications(body.notifications,config);
-    await client.entities.EventAgreement.update(a.id,{notifications:n,send_copy:!!body.send_copy});
+    await client.entities.EventAgreement.update(a.id,{notifications:n,send_copy:!!body.send_copy,...(body.send_copy&&a.copy_state==="disabled"?{copy_state:"pending"}:{})});
     for(const m of await readAll(client.entities.PaymentMilestone,{agreement_id:a.id})){
      if(m.message_state==="pending")await client.entities.PaymentMilestone.update(m.id,{notification_enabled:n.enabled,template:n.template,notify_at:reminderTime(m.due_date,n.days,n.time)});
     }
@@ -331,6 +333,6 @@ export default Deno.serve(async req=>{
    throw new AgreementError("פעולה לא נתמכת");
   });
  }catch(e){
-  return Response.json({error:e instanceof AgreementError?e.message:"הפעולה לא הושלמה. יש לרענן ולבדוק את מצבה."},{status:e instanceof AgreementError?e.status:500,headers:{"Cache-Control":"no-store"}});
+  return Response.json({error:(e instanceof AgreementError||e instanceof CardError)?e.message:"הפעולה לא הושלמה. יש לרענן ולבדוק את מצבה."},{status:(e instanceof AgreementError||e instanceof CardError)?e.status:500,headers:{"Cache-Control":"no-store"}});
  }
 });
