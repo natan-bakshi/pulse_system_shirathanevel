@@ -2,7 +2,13 @@
   "name": "CardSetupRequest",
   "type": "object",
   "properties": {
-    "environment": { "type": "string", "enum": ["qa", "production"] },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "qa",
+        "production"
+      ]
+    },
     "customer_id": {
       "type": "string"
     },
@@ -39,6 +45,16 @@
       "type": "string"
     },
     "created_by_user_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "provisional_customer": {
+      "type": "boolean",
+      "default": false
+    },
+    "failure_code": {
       "type": "string"
     }
   },
