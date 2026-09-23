@@ -1,3 +1,5 @@
+import { beginSetup } from "../../shared/storedCardSetup.ts";
+import { afterAgreementChange } from "../../shared/agreementLifecycle.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { readAll } from "../../shared/eventReadiness.ts";
 import { CardError, money, cardSettings, requireCards, claimCustomer, releaseCustomer, safeCard, eventBalance, removeCard, customerEligibility, applyCleanup } from "../../shared/storedCards.ts";
@@ -85,6 +87,7 @@ async function finishCharge(client, operation, customer, config) {
     auth_number: operation.provider_auth_number || "" });
   await client.entities.StoredCardOperation.update(operation.id, { state: "completed" });
   await releaseCustomer(client, customer.id, operation.id);
+  await afterAgreementChange(client, operation.event_id);
   try { await applyCleanup(client, customer.id, config); } catch { console.warn("[stored-cards] cleanup pending"); }
   return safeOperation({ ...operation, state: "completed" });
 }
@@ -114,78 +117,10 @@ async function completeSetup(client, setup, card, suffix, brand = "", expires = 
     });
   }
   await notifyCardSaved(client, setup, customer, suffix);
+  await afterAgreementChange(client, setup.event_id);
   return { received: true };
 }
 
-async function beginSetup(client, user, config, customer, consentReference, eventId = "", provisionalCustomer = false) {
-  const reference = text(consentReference, 500);
-  if (!reference) throw new CardError("נדרש תיעוד הסכמת הלקוח לשמירה ולחיוב עתידי");
-  const access = providerAccess(config, undefined, "capture");
-  if (customer.busy_operation_id) throw new CardError("קיימת פעולה בטיפול", 409);
-  if (customer.active_card_id) {
-    const previous = await client.entities.StoredCard.get(customer.active_card_id);
-    if (previous.environment !== access.environment) throw new CardError("יש להסיר את הכרטיס מהסביבה הקודמת לפני שמירת כרטיס בסביבה אחרת");
-  }
-  let card: any;
-  let setup: any;
-  let claimed = false;
-  try {
-    card = await client.entities.StoredCard.create({
-      customer_id: customer.id, environment: access.environment, state: "pending",
-      consent_reference: reference, consent_recorded_by: user.id, consent_recorded_at: new Date().toISOString(),
-      cleanup_pending: false, cleanup_notified: false
-    });
-    const secret = crypto.randomUUID() + crypto.randomUUID();
-    setup = await client.entities.CardSetupRequest.create({
-      customer_id: customer.id, card_id: card.id, state: "creating", environment: access.environment,
-      callback_hash: await sha256(secret), expires_at: new Date(Date.now() + 86400000).toISOString(),
-      created_by_user_id: user.id, event_id: eventId, provisional_customer: provisionalCustomer
-    });
-    await claimCustomer(client, customer, "setup:" + setup.id);
-    claimed = true;
-    const created = await providerCall(access, "CreateCustomer", {
-      token: access.key,
-      cu: { Name: customer.name, Active: true, Email: customer.email || "", Mobile: customer.phone || "", Identifier: customer.identifier || "" }
-    });
-    if (hasErrors(created) || !created.ID) throw new CardError("לא ניתן ליצור שיוך כרטיס אצל הספק");
-    const providerId = String(created.ID);
-    const reused = await client.entities.CardSetupRequest.filter({ provider_customer_id: providerId, environment: access.environment }, "id", 1);
-    if (reused.length) throw new CardError("הספק החזיר שיוך קיים; יצירת קישור נעצרה כדי להגן על הכרטיס");
-    await client.entities.StoredCard.update(card.id, { provider_customer_id: providerId });
-    await client.entities.CardSetupRequest.update(setup.id, { provider_customer_id: providerId });
-    // In token-only mode Invoice4U resolves the clearing provider from the terminal tied to the API key.
-    // Do not force CreditCardCompanyType here; a stale UI setting can otherwise target the wrong terminal.
-    const result = await providerCall(access, "ProcessApiRequestV2", { request: {
-      Invoice4UUserApiKey: access.key, AddToken: true,
-      CustomerId: Number(providerId), FullName: customer.name, Phone: customer.phone, Email: customer.email || "",
-      IsDocCreate: false, IsQaMode: access.environment === "qa", Platform: "Pulse",
-      OrderIdClientUsage: setup.id,
-      ReturnUrl: eventId ? cardAppUrl + "/EventDetails?id=" + encodeURIComponent(eventId) : cardAppUrl,
-      CallBackUrl: cardAppUrl + "/functions/invoice4uStoredCards?setup=" + setup.id + "&token=" + secret
-    } });
-    if (hasErrors(result) || !result.ClearingRedirectUrl) {
-      const failure = providerFailure(result);
-      console.warn("[stored-cards] setup rejected", JSON.stringify({
-        code: failure.code, providerMessage: failure.providerMessage, environment: access.environment,
-        providerSelectedByTerminal: true
-      }));
-      await client.entities.CardSetupRequest.update(setup.id, { failure_code: failure.code });
-      throw new CardError(failure.message);
-    }
-    const redirect = new URL(result.ClearingRedirectUrl);
-    if (redirect.protocol !== "https:") throw new CardError("התקבל קישור סליקה לא תקין");
-    await client.entities.CardSetupRequest.update(setup.id, { state: "pending", redirect_url: redirect.href });
-    return { setupId: setup.id, redirectUrl: redirect.href };
-  } catch (e) {
-    try {
-      if (setup) await client.entities.CardSetupRequest.update(setup.id, { state: "failed", callback_hash: "", redirect_url: "" });
-      if (card) await client.entities.StoredCard.update(card.id, { state: "cancelled", provider_customer_id: "" });
-      if (claimed && setup) await releaseCustomer(client, customer.id, "setup:" + setup.id);
-      if (provisionalCustomer) await discardProvisionalCustomer(client, customer.id);
-    } catch { console.warn("[stored-cards] setup cleanup pending"); }
-    throw e;
-  }
-}
 
 async function callback(req, base44) {
   const client = base44.asServiceRole;

@@ -66,6 +66,7 @@ export function calculateEventBalance(event, services = [], payments = [], vatRa
 
   // רק תשלומים שהושלמו נחשבים כשולמו - סליקות ממתינות או שנכשלו אינן מקטינות את היתרה.
   const totalPaid = payments.reduce((sum, payment) => {
+    if (payment.charge_type === "exceptional" || (payment.agreement_id && !payment.agreement_verified)) return sum;
     if (payment.payment_status && payment.payment_status !== "completed") return sum;
     return sum + toEventCurrency(num(payment.amount), payment.currency);
   }, 0);
