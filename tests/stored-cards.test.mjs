@@ -126,6 +126,7 @@ test("production capture requires explicit opt-in and never enables charging", a
   const p = f.calls.find(c => c.payload.request?.AddToken).payload.request;
   assert.equal(p.IsQaMode, false);
   assert.equal(p.IsDocCreate, false);
+  assert.equal(p.CreditCardCompanyType, undefined);
   assert.equal(p.Sum, undefined);
   assert.equal(p.AddTokenAndCharge, undefined);
   f.logs.push({ PaymentId: "capture-live", ClearingTraceId: "trace-live", IsSuccess: true, LogType: 2,
@@ -210,6 +211,8 @@ test("approved charge records payment and document exactly once on retry", async
   const f = fixture();
   const first = await request("charge", chargeBody); assert.equal(first.data.state, "completed", JSON.stringify(first));
   const second = await request("charge", chargeBody); assert.equal(second.data.id, first.data.id);
+  const chargeRequest = f.calls.find(c => c.payload.request?.ChargeWithToken).payload.request;
+  assert.equal(chargeRequest.CreditCardCompanyType, 15);
   assert.equal(f.calls.filter(c => c.payload.request?.ChargeWithToken).length, 1);
   assert.equal(f.db.Payment.length, 1); assert.equal(f.db.FinancialDocument.length, 1);
   assert.equal(f.db.Payment[0].payment_status, "completed");
@@ -248,7 +251,56 @@ test("setup creates a dedicated provider customer and no payment/document", asyn
   assert.equal(f.db.Payment?.length || 0, 0); assert.equal(f.db.FinancialDocument?.length || 0, 0);
   const payload = f.calls.find(c => c.payload.request?.AddToken).payload.request;
   assert.equal(payload.AddToken, true); assert.equal(payload.IsDocCreate, false);
+  assert.equal(payload.CreditCardCompanyType, undefined);
   assert.notEqual(String(payload.CustomerId), "1234"); assert.equal(payload.ChargeWithToken, undefined);
+});
+test("provider code 309 is preserved and a failed combined setup leaves no payer or event link", async () => {
+  const f = fixture();
+  f.db.Event[0].billing_customer_id = "";
+  globalThis.fetch = async (url, options) => {
+    const endpoint = String(url).split("/").pop(), payload = JSON.parse(options.body);
+    f.calls.push({ endpoint, payload });
+    if (endpoint === "CreateCustomer") return Response.json({ ID: 9901 });
+    if (endpoint === "ProcessApiRequestV2") return Response.json({ ProcessApiRequestV2Result: {
+      Errors: [{ ErrorCode: 309, ErrorMessage: "Terminal token service unavailable" }]
+    } });
+    throw new Error("Unexpected external call");
+  };
+  const result = await request("create_customer_and_setup", {
+    eventId: "event", name: "Temporary payer", phone: "0520000000", email: "payer@example.test",
+    consentConfirmed: true, consentReference: "Agreement TEST-309"
+  });
+  assert.equal(result.status, 400);
+  assert.match(result.data.error, /309/);
+  assert.equal(f.db.BillingCustomer.some(c => c.phone === "0520000000"), false);
+  assert.equal(f.db.Event[0].billing_customer_id, "");
+  assert.equal(f.db.StoredCard.filter(c => c.customer_id !== "customer").every(c => c.state === "cancelled"), true);
+  assert.equal(f.db.Payment?.length || 0, 0);
+});
+test("combined payer setup becomes permanent only after token verification and notifies the admin", async () => {
+  const f = fixture();
+  f.db.Event[0].billing_customer_id = "";
+  const created = await request("create_customer_and_setup", {
+    eventId: "event", name: "New payer", phone: "0520000001", email: "new@example.test",
+    consentConfirmed: true, consentReference: "Agreement NEW-1"
+  });
+  assert.equal(created.status, 200, JSON.stringify(created));
+  const customer = f.db.BillingCustomer.find(c => c.phone === "0520000001");
+  assert.equal(customer.provisional, true);
+  assert.equal(f.db.Event[0].billing_customer_id, customer.id);
+  const p = f.calls.find(c => c.payload.request?.AddToken).payload.request;
+  f.logs.push({ PaymentId: "new-capture", ClearingTraceId: "new-trace", IsSuccess: true, LogType: 2,
+    TransactionType: 1, Amount: 0, CreditNumber: "3333" });
+  const payload = { Success: "True", TokenCaptureOnly: "True", TokenCaptureAndCharge: "False",
+    OrderIdClientUsage: p.OrderIdClientUsage, CustomerId: String(p.CustomerId), PaymentId: "new-capture",
+    ClearingTraceId: "new-trace", CardSuffix: "3333", CardBrandName: "Visa" };
+  const callbackResponse = await handler(new Request(p.CallBackUrl, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+  }));
+  assert.equal(callbackResponse.status, 200, await callbackResponse.text());
+  assert.equal(f.db.BillingCustomer.find(c => c.id === customer.id).provisional, false);
+  assert.ok(f.db.BillingCustomer.find(c => c.id === customer.id).active_card_id);
+  assert.equal(f.db.InAppNotification.filter(n => n.template_type === "STORED_CARD_SAVED").length, 1);
 });
 test("verified setup callback activates new card and duplicate callback is harmless", async () => {
   const f = fixture();
@@ -274,6 +326,37 @@ test("cancelled setup cannot reactivate a card; new setup remains available", as
   assert.equal((await handler(new Request(url, { method: "POST", body: "{}" }))).status, 403);
   assert.equal(f.db.BillingCustomer[0].active_card_id, "card");
   assert.equal((await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Agreement QA-2" })).status, 200);
+});
+test("payer deletion works with or without a card and unlinks every event", async () => {
+  const f = fixture();
+  f.db.Payment = [{ id: "history", event_id: "event", amount: 10, payment_status: "completed" }];
+  f.db.BillingCustomer.push({ id: "no-card", name: "No Card", phone: "0509999999", active_card_id: "", busy_operation_id: "", revision: 0 });
+  f.db.Event.push({ id: "event-2", event_name: "Second", billing_customer_id: "no-card", status: "quote" });
+  f.db.Event.push({ id: "event-3", event_name: "Third", billing_customer_id: "no-card", status: "confirmed" });
+  let result = await request("delete_customer", { customerId: "no-card" });
+  assert.equal(result.status, 200);
+  assert.equal(result.data.unlinkedEvents, 2);
+  assert.equal(result.data.removedCard, false);
+  assert.ok(f.db.BillingCustomer.find(c => c.id === "no-card").deleted_at);
+  assert.equal(f.db.Event.filter(e => ["event-2", "event-3"].includes(e.id)).every(e => !e.billing_customer_id), true);
+  result = await request("delete_customer", { customerId: "customer" });
+  assert.equal(result.status, 200);
+  assert.equal(result.data.removedCard, true);
+  assert.equal(f.db.StoredCard[0].state, "removed");
+  assert.equal(f.db.Event[0].billing_customer_id, "");
+  assert.equal(f.db.Payment.length, 1);
+  const listed = await request("list");
+  assert.equal(listed.data.rows.some(r => ["customer", "no-card"].includes(r.customer.id)), false);
+});
+test("central list returns payers without cards so their checkboxes can be used", async () => {
+  const f = fixture();
+  f.db.BillingCustomer.push({ id: "no-card", name: "Searchable Orphan", phone: "0509999999", active_card_id: "", busy_operation_id: "", revision: 0 });
+  const result = await request("list", { search: "orphan" });
+  assert.equal(result.status, 200);
+  assert.equal(result.data.rows.length, 1);
+  assert.equal(result.data.rows[0].customer.id, "no-card");
+  assert.equal(result.data.rows[0].card, null);
+  assert.equal(result.data.rows[0].eligible, false);
 });
 test("approval notifications deduplicate, automatic mode removes locally", async () => {
   const f = fixture(); f.db.Payment = [{ id: "paid", event_id: "event", amount: 100, payment_status: "completed" }];
