@@ -2,7 +2,13 @@
   "name": "StoredCardOperation",
   "type": "object",
   "properties": {
-    "environment": { "type": "string", "enum": ["qa", "production"] },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "qa",
+        "production"
+      ]
+    },
     "customer_id": {
       "type": "string"
     },
@@ -76,6 +82,21 @@
       "type": "string"
     },
     "failure_code": {
+      "type": "string"
+    },
+    "agreement_id": {
+      "type": "string"
+    },
+    "agreement_hash": {
+      "type": "string"
+    },
+    "charge_kind": {
+      "type": "string"
+    },
+    "milestone_id": {
+      "type": "string"
+    },
+    "notice_id": {
       "type": "string"
     }
   },

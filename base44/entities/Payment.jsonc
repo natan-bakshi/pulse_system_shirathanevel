@@ -10,11 +10,11 @@
     },
     "event_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2. \u05e8\u05d9\u05e7 = \u05e1\u05dc\u05d9\u05e7\u05d4 \u05db\u05dc\u05dc\u05d9\u05ea \u05e9\u05d0\u05d9\u05e0\u05d4 \u05de\u05e9\u05d5\u05d9\u05db\u05ea \u05dc\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "מזהה האירוע. ריק = סליקה כללית שאינה משויכת לאירוע"
     },
     "amount": {
       "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd"
+      "description": "סכום התשלום"
     },
     "currency": {
       "type": "string",
@@ -22,16 +22,16 @@
         "ILS",
         "USD"
       ],
-      "description": "\u05de\u05d8\u05d1\u05e2 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd"
+      "description": "מטבע התשלום"
     },
     "converted_amount": {
       "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05de\u05d5\u05de\u05e8 \u05dc\u05de\u05d8\u05d1\u05e2 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "סכום מומר למטבע האירוע"
     },
     "payment_date": {
       "type": "string",
       "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd"
+      "description": "תאריך התשלום"
     },
     "payment_method": {
       "type": "string",
@@ -41,7 +41,7 @@
         "check",
         "credit_card"
       ],
-      "description": "\u05d0\u05de\u05e6\u05e2\u05d9 \u05ea\u05e9\u05dc\u05d5\u05dd"
+      "description": "אמצעי תשלום"
     },
     "payment_status": {
       "type": "string",
@@ -52,39 +52,39 @@
         "failed"
       ],
       "default": "completed",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd"
+      "description": "סטטוס התשלום"
     },
     "notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05e2\u05dc \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd"
+      "description": "הערות על התשלום"
     },
     "receipt_number": {
       "type": "string",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05e7\u05d1\u05dc\u05d4"
+      "description": "מספר קבלה"
     },
     "receipt_image_url": {
       "type": "string",
-      "description": "\u05e7\u05d9\u05e9\u05d5\u05e8 \u05dc\u05d0\u05e1\u05de\u05db\u05ea\u05d0"
+      "description": "קישור לאסמכתא"
     },
     "invoice4u_payment_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05dc\u05d9\u05e7\u05d4 \u05d1-Invoice4U"
+      "description": "מזהה סליקה ב-Invoice4U"
     },
     "invoice4u_clearing_status": {
       "type": "string",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05e1\u05dc\u05d9\u05e7\u05d4"
+      "description": "סטטוס סליקה"
     },
     "invoice4u_document_number": {
       "type": "string",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05de\u05e1\u05de\u05da Invoice4U"
+      "description": "מספר מסמך Invoice4U"
     },
     "invoice4u_callback_token": {
       "type": "string",
-      "description": "\u05d0\u05e1\u05d9\u05de\u05d5\u05df \u05d0\u05d9\u05de\u05d5\u05ea \u05dc\u05e7\u05e8\u05d9\u05d0\u05ea \u05d7\u05d6\u05e8\u05d4"
+      "description": "אסימון אימות לקריאת חזרה"
     },
     "financial_document_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05de\u05e1\u05de\u05da \u05e4\u05d9\u05e0\u05e0\u05e1\u05d9"
+      "description": "מזהה מסמך פיננסי"
     },
     "clearing_method": {
       "type": "string",
@@ -92,7 +92,7 @@
         "hosted_page",
         "stored_card"
       ],
-      "description": "\u05e9\u05d9\u05d8\u05ea \u05e1\u05dc\u05d9\u05e7\u05d4"
+      "description": "שיטת סליקה"
     },
     "charge_type": {
       "type": "string",
@@ -100,45 +100,46 @@
         "regular",
         "advance",
         "general",
-        "manual"
+        "manual",
+        "exceptional"
       ],
-      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d7\u05d9\u05d5\u05d1: \u05e8\u05d2\u05d9\u05dc, \u05de\u05e7\u05d3\u05de\u05d4, \u05e1\u05dc\u05d9\u05e7\u05d4 \u05db\u05dc\u05dc\u05d9\u05ea \u05dc\u05dc\u05d0 \u05d0\u05d9\u05e8\u05d5\u05e2, \u05d0\u05d5 \u05ea\u05e9\u05dc\u05d5\u05dd \u05d9\u05d3\u05e0\u05d9"
+      "description": "סוג החיוב: רגיל, מקדמה, סליקה כללית ללא אירוע, או תשלום ידני"
     },
     "auth_number": {
       "type": "string",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05d0\u05e1\u05de\u05db\u05ea\u05d0 \u05de\u05d7\u05d1\u05e8\u05ea \u05d4\u05d0\u05e9\u05e8\u05d0\u05d9"
+      "description": "מספר אסמכתא מחברת האשראי"
     },
     "card_suffix": {
       "type": "string",
-      "description": "\u05d0\u05e8\u05d1\u05e2 \u05e1\u05e4\u05e8\u05d5\u05ea \u05d0\u05d7\u05e8\u05d5\u05e0\u05d5\u05ea \u05e9\u05dc \u05d4\u05db\u05e8\u05d8\u05d9\u05e1"
+      "description": "ארבע ספרות אחרונות של הכרטיס"
     },
     "processing_fee_amount": {
       "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05e2\u05de\u05dc\u05ea \u05d4\u05e1\u05dc\u05d9\u05e7\u05d4 \u05e9\u05e0\u05d5\u05e1\u05e4\u05d4 \u05dc\u05d7\u05d9\u05d5\u05d1"
+      "description": "סכום עמלת הסליקה שנוספה לחיוב"
     },
     "payer_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05de\u05e9\u05dc\u05dd \u05db\u05e4\u05d9 \u05e9\u05d4\u05d5\u05d6\u05df \u05d1\u05d3\u05d9\u05d0\u05dc\u05d5\u05d2 \u05d4\u05e1\u05dc\u05d9\u05e7\u05d4"
+      "description": "שם המשלם כפי שהוזן בדיאלוג הסליקה"
     },
     "payer_phone": {
       "type": "string",
-      "description": "\u05d8\u05dc\u05e4\u05d5\u05df \u05d4\u05de\u05e9\u05dc\u05dd"
+      "description": "טלפון המשלם"
     },
     "payer_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05de\u05e9\u05dc\u05dd"
+      "description": "אימייל המשלם"
     },
     "customer_name_on_card": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d1\u05e2\u05dc \u05d4\u05db\u05e8\u05d8\u05d9\u05e1 \u05db\u05e4\u05d9 \u05e9\u05d7\u05d6\u05e8 \u05de\u05d4\u05e1\u05dc\u05d9\u05e7\u05d4"
+      "description": "שם בעל הכרטיס כפי שחזר מהסליקה"
     },
     "is_interested_in_invoice": {
       "type": "boolean",
-      "description": "\u05d1\u05e7\u05e9\u05d4 \u05dc\u05d7\u05e9\u05d1\u05d5\u05e0\u05d9\u05ea"
+      "description": "בקשה לחשבונית"
     },
     "client_ip": {
       "type": "string",
-      "description": "\u05db\u05ea\u05d5\u05d1\u05ea IP \u05de\u05d4\u05e1\u05dc\u05d9\u05e7\u05d4"
+      "description": "כתובת IP מהסליקה"
     },
     "document_language": {
       "type": "string",
@@ -147,26 +148,38 @@
         "en"
       ],
       "default": "he",
-      "description": "\u05e9\u05e4\u05ea \u05d4\u05de\u05e1\u05de\u05da \u05d5\u05d4\u05d4\u05d5\u05d3\u05e2\u05d5\u05ea \u05dc\u05dc\u05e7\u05d5\u05d7 \u05e2\u05d1\u05d5\u05e8 \u05ea\u05e9\u05dc\u05d5\u05dd \u05d6\u05d4"
+      "description": "שפת המסמך וההודעות ללקוח עבור תשלום זה"
     },
     "is_payment_link": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd \u05e0\u05d5\u05e6\u05e8 \u05db\u05d3\u05e8\u05d9\u05e9\u05ea \u05ea\u05e9\u05dc\u05d5\u05dd \u05d1\u05e7\u05d9\u05e9\u05d5\u05e8 (\u05d5\u05dc\u05d0 \u05e1\u05dc\u05d9\u05e7\u05d4 \u05de\u05d9\u05d9\u05d3\u05d9\u05ea)"
+      "description": "האם התשלום נוצר כדרישת תשלום בקישור (ולא סליקה מיידית)"
     },
     "payment_link_url": {
       "type": "string",
-      "description": "\u05db\u05ea\u05d5\u05d1\u05ea \u05d3\u05e3 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd \u05d4\u05de\u05d0\u05d5\u05d1\u05d8\u05d7 \u05e9\u05e0\u05e9\u05dc\u05d7\u05d4 \u05dc\u05dc\u05e7\u05d5\u05d7 - \u05dc\u05e9\u05dc\u05d9\u05d7\u05d4 \u05d7\u05d5\u05d6\u05e8\u05ea \u05d5\u05dc\u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea"
+      "description": "כתובת דף התשלום המאובטח שנשלחה ללקוח - לשליחה חוזרת ולתזכורות"
     },
     "link_expires_at": {
       "type": "string",
       "format": "date-time",
-      "description": "\u05de\u05d5\u05e2\u05d3 \u05ea\u05e4\u05d5\u05d2\u05ea \u05e7\u05d9\u05e9\u05d5\u05e8 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd. \u05dc\u05d0\u05d7\u05e8 \u05de\u05d5\u05e2\u05d3 \u05d6\u05d4 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd \u05d4\u05de\u05de\u05ea\u05d9\u05df \u05d9\u05d1\u05d5\u05d8\u05dc \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea"
+      "description": "מועד תפוגת קישור התשלום. לאחר מועד זה התשלום הממתין יבוטל אוטומטית"
     },
     "link_reminder_sent": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05e0\u05e9\u05dc\u05d7\u05d4 \u05ea\u05d6\u05db\u05d5\u05e8\u05ea \u05dc\u05dc\u05e7\u05d5\u05d7 \u05dc\u05e4\u05e0\u05d9 \u05ea\u05e4\u05d5\u05d2\u05ea \u05d4\u05e7\u05d9\u05e9\u05d5\u05e8"
+      "description": "האם נשלחה תזכורת ללקוח לפני תפוגת הקישור"
+    },
+    "agreement_id": {
+      "type": "string"
+    },
+    "agreement_environment": {
+      "type": "string"
+    },
+    "agreement_notice_id": {
+      "type": "string"
+    },
+    "agreement_verified": {
+      "type": "boolean"
     }
   },
   "required": [

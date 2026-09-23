@@ -56,6 +56,9 @@
     },
     "failure_code": {
       "type": "string"
+    },
+    "agreement_id": {
+      "type": "string"
     }
   },
   "required": [

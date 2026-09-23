@@ -1,0 +1,1203 @@
+import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, systemKey } from './eventFields.js';
+import { getEventDisplayName } from './eventName.ts';
+
+// Import helper functions
+function formatDate(dateStringOrDate) {
+    if (!dateStringOrDate) return '';
+    let date;
+    if (dateStringOrDate instanceof Date) {
+        date = dateStringOrDate;
+    } else {
+        try {
+            date = new Date(dateStringOrDate);
+        } catch (e) {
+            return '';
+        }
+    }
+    if (isNaN(date.getTime())) return '';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
+}
+
+function getEventType(typeKey) {
+    const types = {
+        bar_mitzvah: "בר מצווה",
+        bat_mitzvah: "בת מצווה",
+        wedding: "חתונה",
+        other: "אירוע"
+    };
+    return types[typeKey] || "אירוע";
+}
+
+// Process organizer type title template with variable replacement and conditional blocks
+function processOrganizerTitleTemplate(template, event, customFieldValues, organizerType) {
+    if (!template) return '';
+    
+    // Build variable map from event fields + custom fields
+    const vars = {
+        event_name: getEventDisplayName(event),
+        event_type: getEventType(event.event_type),
+        event_date: formatDate(event.event_date),
+        family_name: getEventDisplayName(event),
+        child_name: event.child_name || '',
+        city: event.city || '',
+        guest_count: event.guest_count ? String(event.guest_count) : '',
+        location: event.location || '',
+        concept: event.concept || '',
+        ...buildQuoteFieldValues(event, organizerType),
+        event_date: formatDate(event.event_date),
+        event_type: getEventType(event.event_type)
+    };
+
+    let result = template;
+    
+    // First handle conditional blocks ((text with [var]))
+    result = result.replace(/\(\((.*?)\)\)/g, (match, content) => {
+        // Check if any variables in this block have actual values
+        let hasValue = false;
+        const processed = content.replace(/\[(.*?)\]/g, (m, key) => {
+            const val = vars[key] || '';
+            if (val) hasValue = true;
+            return val;
+        });
+        return hasValue ? processed : '';
+    });
+
+    // Then handle remaining simple variables
+    result = result.replace(/\[(.*?)\]/g, (match, key) => vars[key] || '');
+
+    return result.trim();
+}
+
+// Build the quote body HTML, either from organizer blocks or default structure
+function buildQuoteBodyHtml(ctx) {
+    const {
+        organizerBlocks, includeIntro, includePaymentTerms, includeSchedule,
+        eventDetailsHtml, introTemplate, servicesHtml, externalServicesHtml, notesHtml, scheduleHtml,
+        paymentTemplate, agreementTemplate, quoteShowFooter, quoteFooterText,
+        quoteSummaryFontSize, quoteSummaryLineHeight, quoteTitleFontSize,
+        event, baseTotalWithoutDiscount, eventDiscountAmount, vatAmount,
+        totalCostWithVat, finalTotal, totalPaid, vatRateLabel, includeExternalServices
+    } = ctx;
+
+    // Financial summary HTML (reused in both paths)
+    const financialSummaryHtml = `
+        <div class="section summary-section" style="margin-top: 50px; page-break-inside: avoid;">
+            <h2 class="section-title">סיכום כספי</h2>
+            <table class="summary-table">
+                ${event.all_inclusive ? `
+                <tr><td class="label">מחיר חבילה (לפני מע"מ):</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ` : `
+                <tr><td class="label">סה"כ לפני מע"מ:</td><td class="value">₪${baseTotalWithoutDiscount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                `}
+                ${event.discount_before_vat && eventDiscountAmount > 0 ? `
+                <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ` : ''}
+                <tr><td class="label">מע"מ (${vatRateLabel}%):</td><td class="value">₪${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                <tr><td class="label">סה"כ כולל מע"מ:</td><td class="value">₪${totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ${!event.discount_before_vat && eventDiscountAmount > 0 ? `
+                <tr><td class="label" style="color: #ef4444;">הנחה${event.discount_reason ? ' (' + event.discount_reason + ')' : ''}:</td><td class="value" style="color: #ef4444;">- ₪${eventDiscountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>
+                ` : ''}
+                <tr class="total">
+                    <td class="label">סה"כ לתשלום:</td>
+                    <td class="value">₪${finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+                <tr>
+                    <td class="label">שולם:</td>
+                    <td class="value">₪${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+                <tr class="total">
+                    <td class="label">יתרה לתשלום:</td>
+                    <td class="value">₪${(finalTotal - totalPaid).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+            </table>
+        </div>`;
+
+    // If no custom organizer blocks, use the original default structure
+    if (!organizerBlocks || organizerBlocks.length === 0) {
+        return `
+            <div class="date">תאריך הפקה: ${formatDate(new Date())}</div>
+            ${eventDetailsHtml}
+            ${(introTemplate && includeIntro) ? `<div class="section"><div class="intro-content">${introTemplate.content}</div></div>` : ''}
+            ${servicesHtml}
+            ${notesHtml}
+            ${financialSummaryHtml}
+            ${includeExternalServices && externalServicesHtml ? externalServicesHtml : ''}
+            ${scheduleHtml}
+            ${(paymentTemplate && includePaymentTerms) ? `<div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;"><h2 class="section-title">תנאי תשלום</h2><div class="payment-terms">${paymentTemplate.content}</div></div>` : ''}
+            ${agreementTemplate ? `<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>` : ''}
+            ${quoteShowFooter ? `<div class="footer"><div>${quoteFooterText}</div></div>` : ''}
+        `;
+    }
+
+    // Build HTML from organizer blocks
+    let bodyParts = [];
+    for (const block of organizerBlocks) {
+        if (block.enabled === false) continue;
+        const subtitleHtml = block.subtitle_title ? `<h2 class="section-title">${block.subtitle_title}</h2>` : '';
+        
+        switch (block.block_type) {
+            case 'quote_date':
+                bodyParts.push(`<div class="date">תאריך הפקה: ${formatDate(new Date())}</div>`);
+                break;
+            case 'event_header':
+                bodyParts.push(eventDetailsHtml);
+                break;
+            case 'intro':
+                if (introTemplate && includeIntro) {
+                    bodyParts.push(`<div class="section">${subtitleHtml}<div class="intro-content">${introTemplate.content}</div></div>`);
+                }
+                break;
+            case 'services':
+                if (servicesHtml) {
+                    // If block has a custom subtitle, replace the default one in servicesHtml
+                    if (block.subtitle_title) {
+                        const customServicesHtml = servicesHtml.replace(/<h2 class="section-title">[^<]*<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customServicesHtml);
+                    } else {
+                        bodyParts.push(servicesHtml);
+                    }
+                }
+                break;
+            case 'financial_summary':
+                if (block.subtitle_title) {
+                    const customFinancial = financialSummaryHtml.replace(/<h2 class="section-title">סיכום כספי<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                    bodyParts.push(customFinancial);
+                } else {
+                    bodyParts.push(financialSummaryHtml);
+                }
+                break;
+            case 'schedule':
+                if (includeSchedule && scheduleHtml) {
+                    if (block.subtitle_title) {
+                        const customSchedule = scheduleHtml.replace(/<h2 class="section-title">לוח זמנים<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customSchedule);
+                    } else {
+                        bodyParts.push(scheduleHtml);
+                    }
+                }
+                break;
+            case 'payment_terms':
+                if (paymentTemplate && includePaymentTerms) {
+                    bodyParts.push(`<div class="section payment-section" style="margin-top: 50px; page-break-inside: avoid;">${subtitleHtml || '<h2 class="section-title">תנאי תשלום</h2>'}<div class="payment-terms">${paymentTemplate.content}</div></div>`);
+                }
+                break;
+            case 'agreement_disclaimer':
+                if (agreementTemplate) {
+                    bodyParts.push(`<div class="payment-terms" style="font-size: ${agreementTemplate.font_size || quoteSummaryFontSize}px; line-height: ${agreementTemplate.line_height || quoteSummaryLineHeight};">${agreementTemplate.content}</div>`);
+                }
+                break;
+            case 'excluded_services':
+                if (includeExternalServices && externalServicesHtml) {
+                    if (block.subtitle_title) {
+                        const customExternalHtml = externalServicesHtml.replace(/<h2 class="section-title">שירותים נוספים<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customExternalHtml);
+                    } else {
+                        bodyParts.push(externalServicesHtml);
+                    }
+                }
+                break;
+            case 'notes':
+                if (notesHtml) {
+                    if (block.subtitle_title) {
+                        const customNotes = notesHtml.replace(/<h2 class="section-title">הערות<\/h2>/, `<h2 class="section-title">${block.subtitle_title}</h2>`);
+                        bodyParts.push(customNotes);
+                    } else {
+                        bodyParts.push(notesHtml);
+                    }
+                }
+                break;
+            case 'spacer':
+                bodyParts.push(`<div style="height: 30px;"></div>`);
+                break;
+            case 'divider':
+                bodyParts.push(`<hr style="border: none; border-top: 1px solid #DAA520; margin: 20px 0;" />`);
+                break;
+            case 'footer':
+                if (quoteShowFooter) {
+                    bodyParts.push(`<div class="footer"><div>${quoteFooterText}</div></div>`);
+                }
+                break;
+            case 'custom_html':
+                if (block.subtitle_title) {
+                    bodyParts.push(`<div class="section" style="margin-top: 30px;">${subtitleHtml}</div>`);
+                }
+                break;
+            default:
+                // Unknown block type - skip
+                break;
+        }
+    }
+
+    return bodyParts.join('\n');
+}
+
+export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
+    const includeIntro = options.includeIntro !== false;
+    const includePaymentTerms = options.includePaymentTerms !== false;
+    const includeSchedule = options.includeSchedule !== false;
+    const [event, allServices, allEventServices, payments, templates, appSettingsList, allOrganizerTypes] = await Promise.all([
+        options.preloadedEvent ? Promise.resolve(options.preloadedEvent) : base44Instance.asServiceRole.entities.Event.get(eventId),
+        base44Instance.asServiceRole.entities.Service.list(),
+        base44Instance.asServiceRole.entities.EventService.filter({ event_id: eventId }),
+        base44Instance.asServiceRole.entities.Payment.filter({ event_id: eventId }),
+        base44Instance.asServiceRole.entities.QuoteTemplate.list(),
+        base44Instance.asServiceRole.entities.AppSettings.list(),
+        base44Instance.asServiceRole.entities.QuoteOrganizerType.list()
+    ]);
+    
+    if (!event) {
+        throw new Error('Event not found');
+    }
+
+    const appSettings = appSettingsList.reduce((acc, item) => ({ ...acc, [item.setting_key]: item.setting_value }), {});
+    const introTemplate = templates.find(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
+    const paymentTemplate = templates.find(t => t.template_type === 'payment_terms');
+    const agreementTemplate = templates.find(t => t.template_type === 'agreement_disclaimer');
+
+    // Organizer Type support
+    let organizerType = null;
+    if (event.organizer_type) {
+        organizerType = allOrganizerTypes.find(t => t.type_name === event.organizer_type && t.is_active !== false);
+    }
+    let organizerBlocks = null;
+    if (organizerType?.quote_blocks) {
+        try { organizerBlocks = JSON.parse(organizerType.quote_blocks); } catch (e) { organizerBlocks = null; }
+    }
+    // Parse custom organizer fields for title template
+    let customOrganizerFieldValues = {};
+    if (event.custom_organizer_fields) {
+        try { customOrganizerFieldValues = JSON.parse(event.custom_organizer_fields); } catch (e) { customOrganizerFieldValues = {}; }
+    }
+    
+    const quoteBodyFontSize = appSettings.quote_body_font_size || '15';
+    const quoteTitleFontSize = appSettings.quote_title_font_size || '16';
+    const quoteGeneralLineHeight = appSettings.quote_line_height || '1.6';
+    // Intro settings now come from the template itself with defaults
+    const quoteIntroLineHeight = introTemplate?.line_height || quoteGeneralLineHeight;
+    const quoteIntroFontSize = introTemplate?.font_size || quoteBodyFontSize;
+
+    const quoteSummaryLineHeight = paymentTemplate?.line_height || appSettings.quote_summary_line_height || quoteGeneralLineHeight;
+    const backgroundImage = appSettings.quote_background_image || '';
+
+    // New Settings
+    const quoteTextColor = appSettings.quote_text_color || '#333333';
+    
+    const quoteEventDetailsFontSize = appSettings.quote_event_details_font_size || quoteBodyFontSize;
+    const quoteEventDetailsLineHeight = appSettings.quote_event_details_line_height || quoteGeneralLineHeight;
+    
+    const quoteSummaryFontSize = appSettings.quote_summary_font_size || quoteBodyFontSize;
+    
+    // Footer settings
+    const quoteShowFooter = String(appSettings.quote_show_footer) === 'true';
+    const quoteFooterText = appSettings.quote_footer_text || '';
+
+    // Margins from settings (for table spacers and padding)
+    const quoteMarginTop = appSettings.quote_margin_top_mm || '20';
+    const quoteMarginBottom = appSettings.quote_margin_bottom_mm || '35'; // Default to 35mm as requested
+    const quoteMarginLeft = appSettings.quote_margin_left_mm || '20';
+    const quoteMarginRight = appSettings.quote_margin_right_mm || '20';
+
+    // API2PDF options margins - Set to 0 as we handle margins via table
+    const margins = {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0
+    };
+
+    const sortedEventServices = [...allEventServices].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+
+    // Separate included vs external services
+    const includedEventServices = sortedEventServices.filter(es => !es.is_external);
+    const externalEventServices = sortedEventServices.filter(es => es.is_external);
+
+    const populatedServices = includedEventServices.map(es => {
+        const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
+        return {
+            ...serviceDetails,
+            ...es,
+            details: serviceDetails
+        };
+    });
+
+    const vatRate = parseFloat(appSettings.vat_rate) / 100 || 0.18;
+    
+    // Helper to safely parse numbers (aligned with eventFinancials.js)
+    const safeFloat = (val) => {
+        if (val === null || val === undefined || val === '') return 0;
+        const num = parseFloat(val);
+        return isNaN(num) ? 0 : num;
+    };
+    
+    // Logic aligned with eventFinancials.js
+    let totalCostWithoutVat = 0;
+    
+    const isAllInclusive = event.all_inclusive === true || event.all_inclusive === 'true';
+    const allInclusivePrice = safeFloat(event.all_inclusive_price);
+    const totalOverride = safeFloat(event.total_override);
+
+    if (isAllInclusive && allInclusivePrice > 0) {
+        let price = allInclusivePrice;
+        if (event.all_inclusive_includes_vat) {
+            price = price / (1 + vatRate);
+        }
+        totalCostWithoutVat = price;
+    } else if (event.total_override !== null && event.total_override !== undefined && event.total_override !== "" && totalOverride !== 0) {
+        let price = totalOverride;
+        const overrideIncludesVat = event.total_override_includes_vat !== false;
+        
+        if (overrideIncludesVat) {
+            price = price / (1 + vatRate);
+        }
+        totalCostWithoutVat = price;
+    } else {
+        const processedLegacyPackages = new Set();
+
+        totalCostWithoutVat = populatedServices.reduce((sum, s) => {
+            const quantity = safeFloat(s.quantity) || 1;
+            
+            // 1. New Structure: Main Package Item
+            if (s.is_package_main_item) {
+                const price = safeFloat(s.custom_price);
+                let itemTotal = price * quantity;
+                if (s.includes_vat) itemTotal = itemTotal / (1 + vatRate);
+                return sum + itemTotal;
+            }
+
+            // 2. New Structure: Child Item (Skip)
+            if (s.parent_package_event_service_id) {
+                return sum;
+            }
+
+            // 3. Legacy Structure: Item in a package
+            if (s.package_id) {
+                if (processedLegacyPackages.has(s.package_id)) {
+                    return sum;
+                }
+                processedLegacyPackages.add(s.package_id);
+                
+                const price = safeFloat(s.package_price);
+                let pkgTotal = price;
+                if (s.package_includes_vat) {
+                    pkgTotal = pkgTotal / (1 + vatRate);
+                }
+                return sum + pkgTotal;
+            }
+
+            // 4. Standalone Service
+            const price = safeFloat(s.custom_price);
+            let serviceTotal = price * quantity;
+            
+            if (s.includes_vat) {
+                serviceTotal = serviceTotal / (1 + vatRate);
+            }
+            return sum + serviceTotal;
+        }, 0);
+    }
+
+    // Apply Discount BEFORE VAT if applicable (aligned with eventFinancials.js)
+    let eventDiscountAmount = safeFloat(event.discount_amount);
+    let baseForVat = totalCostWithoutVat;
+    
+    if (event.discount_before_vat) {
+        baseForVat = Math.max(0, totalCostWithoutVat - eventDiscountAmount);
+    }
+
+    // Calculate VAT
+    const vatAmount = baseForVat * vatRate;
+    
+    // Calculate Total With VAT
+    let totalCostWithVat = 0;
+    
+    if (event.discount_before_vat) {
+        totalCostWithVat = baseForVat + vatAmount;
+    } else {
+        totalCostWithVat = totalCostWithoutVat + vatAmount;
+    }
+
+    // Apply Discount AFTER VAT if applicable
+    let finalTotal = totalCostWithVat;
+    if (!event.discount_before_vat) {
+        finalTotal = Math.max(0, totalCostWithVat - eventDiscountAmount);
+    }
+    
+    const baseTotalWithoutDiscount = totalCostWithoutVat; // For display compatibility
+    // רק תשלומים שהושלמו נחשבים ככסף ששולם.
+    const totalPaid = payments
+        .filter(p => p.payment_status === 'completed')
+        .reduce((sum, p) => sum + safeFloat(p.amount), 0);
+    // שיעור המע"מ להצגה נגזר מאותו vatRate שבו מתבצע החישוב.
+    const vatRateLabel = String(Math.round(vatRate * 1000) / 10);
+    
+    // Group services by new and legacy structure for HTML generation
+    const structuredServices = [];
+    const processedLegacyPackages = new Set();
+    
+    // Handle new structure: Main Package Items
+    const mainPackageItems = populatedServices.filter(s => s.is_package_main_item).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
+    
+    mainPackageItems.forEach(mainPkg => {
+        const packageChildren = populatedServices.filter(s => s.parent_package_event_service_id === mainPkg.id).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
+        structuredServices.push({
+            type: 'package',
+            main: mainPkg,
+            children: packageChildren
+        });
+    });
+
+    // Handle legacy structure: package_id grouping
+    populatedServices.forEach(service => {
+        // Skip if already processed as new structure
+        if (service.is_package_main_item || service.parent_package_event_service_id) return;
+        
+        // Check if this is a legacy package
+        if (service.package_id && !processedLegacyPackages.has(service.package_id)) {
+            processedLegacyPackages.add(service.package_id);
+            
+            // Get all services in this legacy package
+            const packageServices = populatedServices
+                .filter(s => s.package_id === service.package_id && !s.is_package_main_item && !s.parent_package_event_service_id)
+                .sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
+            
+            // Use first service as package representative
+            const packageRep = packageServices[0];
+            
+            structuredServices.push({
+                type: 'package',
+                main: {
+                    package_name: packageRep.package_name,
+                    package_description: packageRep.package_description,
+                    custom_price: packageRep.package_price,
+                    quantity: 1,
+                    includes_vat: packageRep.package_includes_vat,
+                    order_index: packageRep.order_index
+                },
+                children: packageServices
+            });
+        }
+    });
+
+    // Handle standalone services (not in any package)
+    const standaloneServices = populatedServices.filter(s => 
+        !s.is_package_main_item && 
+        !s.parent_package_event_service_id && 
+        !s.package_id
+    ).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
+
+    // Add standalone services
+    standaloneServices.forEach(s => {
+        structuredServices.push({
+            type: 'standalone',
+            service: s
+        });
+    });
+    
+    // Sort structured services: packages first (by order_index), then standalone services (by order_index)
+    structuredServices.sort((a, b) => {
+        // Packages come before standalone services
+        if (a.type === 'package' && b.type === 'standalone') return -1;
+        if (a.type === 'standalone' && b.type === 'package') return 1;
+        
+        // Within the same type, sort by order_index
+        const orderA = a.type === 'package' ? a.main.order_index : a.service.order_index;
+        const orderB = b.type === 'package' ? b.main.order_index : b.service.order_index;
+        return (orderA || 0) - (orderB || 0);
+    });
+
+    // Check if there are packages and standalone services based on the new structure
+    const hasPackages = structuredServices.some(item => item.type === 'package');
+    const hasStandaloneServices = structuredServices.some(item => item.type === 'standalone');
+    const servicesSectionTitle = event.services_section_title || 'חבילת ההפקה כוללת';
+    const standaloneServicesTitle = event.standalone_services_title || '';
+    
+    // שם תצוגה לאירוע: שם האירוע מחליף את שם המשפחה בכל מקום שמייצג את האירוע
+    const eventIdentityName = getEventDisplayName(event);
+    const familyDetailsLine = event.child_name
+        ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
+        : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
+    
+    const fileAndTitleName = `${familyDetailsLine} ${formatDate(event.event_date)}`.trim();
+
+    // Process organizer type main title template if available
+    let mainTitleHtml = familyDetailsLine;
+    if (organizerType?.quote_main_title_template) {
+        mainTitleHtml = processOrganizerTitleTemplate(organizerType.quote_main_title_template, event, customOrganizerFieldValues, organizerType);
+    }
+
+    // Get contacts config from organizer type
+    let contactsConfig = {};
+    if (organizerType?.contacts_config) {
+        try { contactsConfig = JSON.parse(organizerType.contacts_config); } catch (e) { contactsConfig = {}; }
+    }
+    const configuredFields = getEventFields(organizerType);
+    const contactsLabel = getField(configuredFields, 'parents')?.name || contactsConfig.label || 'אנשי קשר';
+    const familyContacts = !organizerType || organizerType.is_default;
+    const parentContacts = familyContacts ? getEventContacts(event) : [];
+    const otherContacts = familyContacts ? [] : getEventContacts(event);
+    const templateIncludes = (key) => {
+      const template = organizerType?.quote_main_title_template || '';
+      return [key, ...configuredFields.filter(f => systemKey(f) === key).map(f => f.id)].some(id => template.includes('[' + id + ']'));
+    };
+
+    const eventDetailsHtml = `
+            <div class="event-details-box">
+                <div class="text-center">
+                    <span style="font-weight: 700; font-size: calc(${quoteEventDetailsFontSize}px + 1px);">${mainTitleHtml}</span><br>
+                    ${event.location && !templateIncludes('location') ? `<strong>אירוע ב${event.location}</strong> | ` : ''}${formatDate(event.event_date)}<br>
+                    ${parentContacts.some(p => p.name) ? `<strong>שמות ההורים:</strong> ${parentContacts.map(p => p.name).filter(Boolean).join(', ')}<br>` : ''}
+                    ${otherContacts.some(c => c.name) ? `<strong>${contactsLabel}:</strong> ${otherContacts.map(c => c.name).filter(Boolean).join(', ')}<br>` : ''}
+                    ${event.city ? `<strong>עיר מגורים:</strong> ${event.city} |` : ''} ${event.guest_count && !templateIncludes('guest_count') ? `<strong>כמות מוזמנים:</strong> ${event.guest_count}` : ''}
+                </div>
+            </div>
+    `;
+
+    let servicesHtml = '';
+    if (structuredServices.length > 0) {
+        servicesHtml = `<div class="section services-section"><h2 class="section-title">${servicesSectionTitle}</h2>`;
+        let standaloneServicesTitleRendered = false;
+        
+        structuredServices.forEach(item => {
+            if (item.type === 'package') {
+                const mainPkg = item.main;
+                const packageTotal = (mainPkg.custom_price || 0) * (mainPkg.quantity || 1);
+                
+                servicesHtml += `
+                    <div class="package-group">
+                        <div class="package-header">
+                            <h3 class="package-title">${mainPkg.package_name || mainPkg.service_name}</h3>
+                            ${(mainPkg.package_description || mainPkg.service_description) ? `<div class="package-description">${mainPkg.package_description || mainPkg.service_description}</div>` : ''}
+                        </div>
+                        <div class="package-content">
+                `;
+
+                item.children.forEach(service => {
+                    const serviceDescription = service.service_description || '';
+                    const transportDetailsHtml = service.category === 'נסיעות' 
+  ? (() => {
+      let units = [];
+      try {
+         const parsed = JSON.parse(service.pickup_point || '[]');
+         units = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+         // Fallback logic
+         if (service.pickup_point || service.standing_time) {
+            units = [{
+               pickupPoints: [{
+                  time: service.standing_time,
+                  location: service.pickup_point,
+                  contact: service.on_site_contact_details
+               }]
+            }];
+         }
+      }
+
+      if (units.length === 0 && !service.on_site_contact_details?.name) return '';
+
+      // If simple legacy data with just contact and no units/JSON
+      if (units.length === 0 && service.on_site_contact_details?.name) {
+         return `<div style="color: #1e40af; font-size: calc(${quoteBodyFontSize}px * 0.85); margin-top: 5px; background-color: rgba(239, 246, 255, 0.5); padding: 4px 6px; border-radius: 4px;">
+             <div><strong>איש קשר במקום:</strong> ${service.on_site_contact_details.name}${service.on_site_contact_details.phone ? ` (${service.on_site_contact_details.phone})` : ''}</div>
+         </div>`;
+      }
+
+      return `<div style="color: #1e40af; font-size: calc(${quoteBodyFontSize}px * 0.85); margin-top: 5px; background-color: rgba(239, 246, 255, 0.5); padding: 4px 6px; border-radius: 4px;">
+         ${units.map((unit, uIdx) => `
+             <div style="${uIdx > 0 ? 'border-top: 1px solid rgba(30, 64, 175, 0.2); padding-top: 4px; margin-top: 4px;' : ''}">
+                 ${units.length > 1 ? `<div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">נסיעה ${uIdx + 1}</div>` : ''}
+                 ${unit.pickupPoints.map((point, pIdx) => `
+                     <div style="margin-bottom: 2px;">
+                         ${unit.pickupPoints.length > 1 ? `<span style="font-weight: 600;">נקודה ${pIdx + 1}:</span>` : ''}
+                         ${point.time ? `<span style="margin-right: 6px;"><strong>שעה:</strong> ${point.time}</span>` : ''}
+                         ${point.location ? `<span style="margin-right: 6px;"><strong>מיקום:</strong> ${point.location}</span>` : ''}
+                         ${point.contact?.name ? `<div style="margin-top: 1px;"><strong>איש קשר:</strong> ${point.contact.name} ${point.contact.phone ? `(${point.contact.phone})` : ''}</div>` : ''}
+                     </div>
+                 `).join('')}
+             </div>
+         `).join('')}
+      </div>`;
+  })()
+  : '';
+
+                    servicesHtml += `
+                        <div class="package-service-item">
+                            <div class="package-service-bullet">•</div>
+                            <div style="flex: 1;">
+                                <strong style="color: #333; font-size: ${quoteBodyFontSize}px;">${service.service_name || service.details?.service_name || 'שירות'}</strong>
+                                ${serviceDescription ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.95); margin-top: 2px;">${serviceDescription}</div>` : ''}
+                                ${service.client_notes ? `<div style="color: #888; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${service.client_notes}</div>` : ''}
+                                ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity}</div>` : ''}
+                                ${transportDetailsHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                servicesHtml += `</div>`;
+
+                // Footer with price
+                if (!event.all_inclusive) {
+                    servicesHtml += `
+                        <div class="package-footer">
+                            <div class="package-price-label">סה"כ לחבילה:</div>
+                            <div class="package-price-container">
+                                <span class="package-price-value">₪${packageTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                <span class="package-vat-note">${mainPkg.includes_vat ? '(כולל מע"מ)' : '(לא כולל מע"מ)'}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                servicesHtml += `</div>`; // Close group
+
+            } else if (item.type === 'standalone') {
+                if (standaloneServicesTitle && !standaloneServicesTitleRendered) {
+                    servicesHtml += `<h3 class="category-title">${standaloneServicesTitle}</h3>`;
+                    standaloneServicesTitleRendered = true;
+                }
+                const service = item.service;
+                const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
+                const serviceDescription = service.service_description || '';
+                const transportDetailsHtml = service.category === 'נסיעות' 
+  ? (() => {
+      let units = [];
+      try {
+         const parsed = JSON.parse(service.pickup_point || '[]');
+         units = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+         // Fallback logic
+         if (service.pickup_point || service.standing_time) {
+            units = [{
+               pickupPoints: [{
+                  time: service.standing_time,
+                  location: service.pickup_point,
+                  contact: service.on_site_contact_details
+               }]
+            }];
+         }
+      }
+
+      if (units.length === 0 && !service.on_site_contact_details?.name) return '';
+
+      // If simple legacy data with just contact and no units/JSON
+      if (units.length === 0 && service.on_site_contact_details?.name) {
+         return `<div style="color: #1e40af; font-size: calc(${quoteBodyFontSize}px * 0.85); margin-top: 5px; background-color: rgba(239, 246, 255, 0.5); padding: 4px 6px; border-radius: 4px;">
+             <div><strong>איש קשר במקום:</strong> ${service.on_site_contact_details.name}${service.on_site_contact_details.phone ? ` (${service.on_site_contact_details.phone})` : ''}</div>
+         </div>`;
+      }
+
+      return `<div style="color: #1e40af; font-size: calc(${quoteBodyFontSize}px * 0.85); margin-top: 5px; background-color: rgba(239, 246, 255, 0.5); padding: 4px 6px; border-radius: 4px;">
+         ${units.map((unit, uIdx) => `
+             <div style="${uIdx > 0 ? 'border-top: 1px solid rgba(30, 64, 175, 0.2); padding-top: 4px; margin-top: 4px;' : ''}">
+                 ${units.length > 1 ? `<div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">נסיעה ${uIdx + 1}</div>` : ''}
+                 ${unit.pickupPoints.map((point, pIdx) => `
+                     <div style="margin-bottom: 2px;">
+                         ${unit.pickupPoints.length > 1 ? `<span style="font-weight: 600;">נקודה ${pIdx + 1}:</span>` : ''}
+                         ${point.time ? `<span style="margin-right: 6px;"><strong>שעה:</strong> ${point.time}</span>` : ''}
+                         ${point.location ? `<span style="margin-right: 6px;"><strong>מיקום:</strong> ${point.location}</span>` : ''}
+                         ${point.contact?.name ? `<div style="margin-top: 1px;"><strong>איש קשר:</strong> ${point.contact.name} ${point.contact.phone ? `(${point.contact.phone})` : ''}</div>` : ''}
+                     </div>
+                 `).join('')}
+             </div>
+         `).join('')}
+      </div>`;
+  })()
+  : '';
+
+
+                servicesHtml += `
+                    <div style="padding: 15px 0; border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 200px;">
+                                <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name || service.details?.service_name || 'שירות'}</strong>
+                                ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
+                                ${service.client_notes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${service.client_notes}</div>` : ''}
+                                ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}${!event.all_inclusive ? ` × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : ''}</div>` : ''}
+                                ${transportDetailsHtml}
+                            </div>
+                            ${!event.all_inclusive ? `
+                            <div style="text-align: left; margin-top: 10px;">
+                                <strong style="color: #8B0000; font-size: ${quoteBodyFontSize}px;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                                ${service.includes_vat ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(כולל מע"מ)</div>` : `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(לא כולל מע"מ)</div>`}
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        servicesHtml += `</div>`;
+    }
+
+    // Build external services HTML
+    const externalServicesTitle = event.external_services_title || appSettings.default_external_services_title || 'שירותים נוספים';
+    let externalServicesHtml = '';
+    const populatedExternalServices = externalEventServices.map(es => {
+        const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
+        return { ...serviceDetails, ...es, details: serviceDetails };
+    });
+    
+    if (populatedExternalServices.length > 0) {
+        externalServicesHtml = `<div class="section services-section" style="margin-top: 40px;"><h2 class="section-title">${externalServicesTitle}</h2>`;
+        
+        populatedExternalServices.forEach(service => {
+            const serviceDescription = service.service_description || service.details?.service_description || '';
+            const serviceNotes = service.client_notes || service.notes || '';
+            const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
+            
+            // Price display logic
+            const displayMode = service.price_display_mode || 'default';
+            const showPrice = service.show_price_in_quote !== false;
+            let priceLabel = '';
+            if (displayMode === 'direct_payment') priceLabel = 'תשלום ישיר';
+            else if (displayMode === 'estimated_price') priceLabel = 'מחיר מוערך';
+            else if (displayMode === 'custom_text') priceLabel = service.price_display_text || '';
+            
+            const priceHtml = displayMode === 'default' 
+                ? `<strong style="color: #8B0000; font-size: ${quoteBodyFontSize}px;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                   ${service.includes_vat ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(כולל מע"מ)</div>` : `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(לא כולל מע"מ)</div>`}`
+                : `${priceLabel ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #b45309; font-weight: 600;">${priceLabel}</div>` : ''}
+                   ${showPrice && serviceTotal > 0 ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #6b7280;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}`;
+            
+            externalServicesHtml += `
+                <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name || service.details?.service_name || 'שירות'}</strong>
+                            ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
+                            ${serviceNotes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${serviceNotes}</div>` : ''}
+                            ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}</div>` : ''}
+                        </div>
+                        <div style="text-align: left; margin-top: 10px;">
+                            ${priceHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        externalServicesHtml += `</div>`;
+    }
+
+    let notesHtml = '';
+    if (event.notes) {
+        notesHtml = `
+        <div class="section" style="margin-top: 40px; page-break-inside: avoid;">
+            <h2 class="section-title">הערות</h2>
+            <div class="event-notes">${event.notes}</div>
+        </div>`;
+    }
+    
+    let scheduleHtml = '';
+    if (includeSchedule && event.schedule && event.schedule.length > 0) {
+        const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        scheduleHtml = `
+            <div class="section schedule-section" style="margin-top: 50px; page-break-inside: avoid;">
+                <h2 class="section-title">לוח זמנים</h2>
+                <table class="schedule-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <tbody>
+                        ${(event.schedule || []).map(item => `
+                            <tr>
+                                <td style="width: 80px; padding: 10px 0; font-weight: 700; color: #8B0000; font-size: ${quoteBodyFontSize}px; border-bottom: 1px solid #eee;">${esc(item.time)}</td>
+                                <td style="padding: 10px; font-size: ${quoteBodyFontSize}px; color: ${quoteTextColor}; border-bottom: 1px solid #eee;">
+                                    <strong style="display: block; margin-bottom: 4px;">${esc(item.activity)}</strong>
+                                    ${item.notes ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #666; font-style: italic; line-height: 1.4;">${esc(item.notes)}</div>` : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // fileAndTitleName already defined above
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="he">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${fileAndTitleName}</title>
+          <style>
+              @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+
+              * { box-sizing: border-box; }
+
+              @page {
+                  size: A4;
+                  margin: 0;
+              }
+
+              body {
+                  font-family: 'Assistant', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+                  margin: 0;
+                  padding: 0;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                  color: ${quoteTextColor};
+                  font-size: ${quoteBodyFontSize}px;
+                  line-height: ${quoteGeneralLineHeight};
+                  position: relative;
+                  background-color: transparent;
+              }
+
+              ${backgroundImage ? `
+              body::before {
+                  content: "";
+                  position: fixed;
+                  top: 0;
+                  left: 0;
+                  width: 100%;
+                  height: 100%;
+                  background-image: url('${backgroundImage}');
+                  background-size: cover;
+                  background-position: center;
+                  background-repeat: no-repeat;
+                  z-index: -1;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+              }
+              ` : 'body { background-color: #ffffff; }'}
+
+              .page-content {
+                  width: 100%;
+                  background: transparent;
+                  position: relative;
+                  z-index: 1;
+                  /* Padding handled by table spacing */
+                  padding-left: ${quoteMarginLeft}mm;
+                  padding-right: ${quoteMarginRight}mm;
+              }
+              
+              /* Removed .header and logo display */
+              
+              .date { text-align: left; font-size: calc(${quoteBodyFontSize}px * 0.9); color: #666; margin-bottom: 20px; font-weight: 600; }
+              
+              .event-details-box {
+                  /* Removed background, border, shadow */
+                  background-color: transparent;
+                  padding: 15px;
+                  margin-bottom: 30px;
+                  font-size: ${quoteEventDetailsFontSize}px;
+                  line-height: ${quoteEventDetailsLineHeight};
+                  text-align: center;
+                  page-break-inside: avoid;
+              }
+              
+              .event-details-box * {
+                  background-color: transparent !important;
+              }
+              
+              .section { margin-bottom: 40px; }
+              
+              .section-title {
+                  font-size: ${quoteTitleFontSize}px;
+                  font-weight: 700;
+                  color: #8B0000;
+                  border-bottom: 2px solid #DAA520;
+                  padding-bottom: 10px;
+                  margin-top: 0;
+                  margin-bottom: 20px;
+                  page-break-after: avoid;
+              }
+
+              .category-title {
+                  font-size: calc(${quoteTitleFontSize}px * 0.9);
+                  font-weight: 600;
+                  color: #8B0000;
+                  padding-bottom: 8px;
+                  margin: 15px 0 10px 0;
+                  border-bottom: 1px solid #DAA520;
+                  page-break-after: avoid;
+              }
+
+              /* Refined Elegant Package Design */
+                            .package-group {
+                  margin-bottom: 40px;
+                  /* Removed page-break-inside: avoid to allow splitting across pages */
+              }
+
+              .package-header {
+                  padding-bottom: 8px;
+                  border-bottom: 1px solid #DAA520; /* Matching the theme gold line */
+                  margin-bottom: 15px;
+                  page-break-inside: avoid;
+                  page-break-after: avoid; /* Keep header with at least the first item */
+              }
+              
+              .package-title {
+                  color: #8B0000;
+                  font-size: calc(${quoteTitleFontSize}px * 0.95); /* Balanced size */
+                  font-weight: 700;
+                  margin: 0;
+              }
+
+              .package-description {
+                  color: #555;
+                  font-style: italic;
+                  margin-top: 6px;
+                  font-size: calc(${quoteBodyFontSize}px * 0.95);
+                  line-height: 1.4;
+              }
+
+              .package-content {
+                  padding-right: 15px; /* Gentle indent to show hierarchy */
+              }
+
+              .package-service-item {
+                  padding: 8px 0;
+                  border-bottom: 1px solid rgba(220, 220, 220, 0.4); /* Very subtle divider */
+                  display: flex;
+                  align-items: flex-start;
+                  page-break-inside: avoid; /* Prevent individual items from splitting */
+              }
+
+
+              .package-service-item:last-child {
+                  border-bottom: none;
+              }
+
+              .package-service-bullet {
+                  color: #DAA520; /* Elegant gold bullet */
+                  margin-left: 10px;
+                  font-size: 1em;
+                  line-height: 1.6;
+              }
+
+              .package-footer {
+                  margin-top: 15px;
+                  padding-top: 10px;
+                  border-top: 1px solid #DAA520; /* Matching top line */
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+              }
+
+              .package-price-label {
+                  font-size: ${quoteBodyFontSize}px;
+                  font-weight: 600;
+                  color: #444;
+              }
+
+              .package-price-container {
+                  display: flex;
+                  align-items: baseline;
+                  gap: 8px;
+              }
+
+              .package-price-value {
+                  font-size: calc(${quoteBodyFontSize}px * 1.2);
+                  font-weight: 700;
+                  color: #8B0000;
+              }
+              
+              .package-vat-note {
+                  font-size: calc(${quoteBodyFontSize}px * 0.8);
+                  color: #777;
+              }
+              
+              .intro-content { 
+                  text-align: center; 
+                  margin-bottom: 30px;
+                  font-size: ${quoteIntroFontSize}px;
+                  line-height: ${quoteIntroLineHeight};
+                  color: ${quoteTextColor};
+                  padding: 10px 0;
+              }
+              
+              .intro-content *, .intro-content p, .intro-content span, .intro-content div, .intro-content li, .intro-content strong, .intro-content b, .intro-content u, .intro-content em, .intro-content a, .intro-content h1, .intro-content h2, .intro-content h3, .intro-content h4, .intro-content h5, .intro-content h6 {
+                  line-height: ${quoteIntroLineHeight} !important;
+                  color: ${quoteTextColor} !important;
+                  margin-top: 0 !important;
+                  margin-bottom: 0 !important;
+                  background-color: transparent !important;
+              }
+              
+              .payment-terms {
+                  font-size: ${quoteSummaryFontSize}px;
+                  line-height: ${quoteSummaryLineHeight};
+                  color: ${quoteTextColor};
+                  padding: 10px 0;
+              }
+
+              .payment-terms *, .payment-terms p, .payment-terms span, .payment-terms div, .payment-terms li, .payment-terms strong, .payment-terms b, .payment-terms u, .payment-terms em, .payment-terms a, .payment-terms h1, .payment-terms h2, .payment-terms h3, .payment-terms h4, .payment-terms h5, .payment-terms h6 {
+                  line-height: ${quoteSummaryLineHeight} !important;
+                  color: ${quoteTextColor} !important;
+                  margin-top: 0 !important;
+                  margin-bottom: 0 !important;
+              }
+
+              .event-notes {
+                  font-size: ${quoteBodyFontSize}px;
+                  color: ${quoteTextColor};
+                  padding: 10px 0;
+              }
+              
+              table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+              th, td { padding: 8px 10px; text-align: right; vertical-align: top; font-size: ${quoteBodyFontSize}px; }
+              th { background-color: rgba(248,248,248,0.95); font-weight: 600; }
+              
+              .summary-table td { border-bottom: none; padding: 6px 0; font-size: ${quoteSummaryFontSize}px; line-height: ${quoteSummaryLineHeight}; }
+              .summary-table .label { font-weight: 600; text-align: right; }
+              .summary-table .value { text-align: left; white-space: nowrap; }
+              .summary-table .total .label, .summary-table .total .value { 
+                  font-weight: 700; 
+                  font-size: calc(${quoteTitleFontSize}px * 0.9); 
+                  color: #8B0000; 
+                  padding-top: 10px; 
+                  border-top: 2px solid #8B0000; 
+              }
+              
+              .footer { text-align: center; padding: 15px; font-size: calc(${quoteBodyFontSize}px * 0.8); color: #666; border-top: 1px solid #eee; margin-top: 40px; page-break-inside: avoid; }
+
+              /* Refined Elegant Package Design */
+                            .package-group {
+                  margin-bottom: 40px;
+                  /* Removed page-break-inside: avoid to allow splitting across pages */
+              }
+
+              .package-header {
+                  padding-bottom: 8px;
+                  border-bottom: 1px solid #DAA520; /* Matching the theme gold line */
+                  margin-bottom: 15px;
+                  page-break-inside: avoid;
+                  page-break-after: avoid; /* Keep header with at least the first item */
+              }
+              
+              .package-title {
+                  color: #8B0000;
+                  font-size: calc(${quoteTitleFontSize}px * 0.95); /* Balanced size */
+                  font-weight: 700;
+                  margin: 0;
+              }
+
+              .package-description {
+                  color: #555;
+                  font-style: italic;
+                  margin-top: 6px;
+                  font-size: calc(${quoteBodyFontSize}px * 0.95);
+                  line-height: 1.4;
+              }
+
+              .package-content {
+                  padding-right: 15px; /* Gentle indent to show hierarchy */
+              }
+
+              .package-service-item {
+                  padding: 8px 0;
+                  border-bottom: 1px solid rgba(220, 220, 220, 0.4); /* Very subtle divider */
+                  display: flex;
+                  align-items: flex-start;
+                  page-break-inside: avoid; /* Prevent individual items from splitting */
+              }
+
+
+              .package-service-item:last-child {
+                  border-bottom: none;
+              }
+
+              .package-service-bullet {
+                  color: #DAA520; /* Elegant gold bullet */
+                  margin-left: 10px;
+                  font-size: 1em;
+                  line-height: 1.6;
+              }
+
+              .package-footer {
+                  margin-top: 15px;
+                  padding-top: 10px;
+                  border-top: 1px solid #DAA520; /* Matching top line */
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+              }
+
+              .package-price-label {
+                  font-size: ${quoteBodyFontSize}px;
+                  font-weight: 600;
+                  color: #444;
+              }
+
+              .package-price-container {
+                  display: flex;
+                  align-items: baseline;
+                  gap: 8px;
+              }
+
+              .package-price-value {
+                  font-size: calc(${quoteBodyFontSize}px * 1.2);
+                  font-weight: 700;
+                  color: #8B0000;
+              }
+              
+              .package-vat-note {
+                  font-size: calc(${quoteBodyFontSize}px * 0.8);
+                  color: #777;
+              }
+          </style>
+      </head>
+      <body>
+          <!-- Table for repeated header/footer spacing -->
+          <table style="width: 100%; border-collapse: collapse; border: none;">
+            <thead>
+              <tr>
+                <td>
+                  <div style="height: ${quoteMarginTop}mm;">&nbsp;</div>
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="page-content">
+                      ${buildQuoteBodyHtml({
+                          organizerBlocks,
+                          includeIntro,
+                          includePaymentTerms,
+                          includeSchedule,
+                          includeExternalServices: options.includeExternalServices !== false,
+                          eventDetailsHtml,
+                          introTemplate,
+                          servicesHtml,
+                          externalServicesHtml,
+                          notesHtml,
+                          scheduleHtml,
+                          paymentTemplate,
+                          agreementTemplate,
+                          quoteShowFooter,
+                          quoteFooterText,
+                          quoteSummaryFontSize,
+                          quoteSummaryLineHeight,
+                          quoteTitleFontSize,
+                          event,
+                          baseTotalWithoutDiscount,
+                          eventDiscountAmount,
+                          vatAmount,
+                          totalCostWithVat,
+                          finalTotal,
+                          totalPaid,
+                          vatRateLabel
+                      })}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>
+                  <div style="height: ${quoteMarginBottom}mm;">&nbsp;</div>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+      </body>
+      </html>
+    `;
+    
+    return { html, fileAndTitleName, margins };
+}
+

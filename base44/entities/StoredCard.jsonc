@@ -58,6 +58,12 @@
     "cleanup_notified": {
       "type": "boolean",
       "default": false
+    },
+    "agreement_id": {
+      "type": "string"
+    },
+    "consent_image_uri": {
+      "type": "string"
     }
   },
   "required": [

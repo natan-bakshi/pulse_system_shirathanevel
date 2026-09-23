@@ -2,14 +2,18 @@
   "name": "Event",
   "type": "object",
   "properties": {
-    "stored_card_qa_only": { "type": "boolean", "default": false, "description": "Dedicated disposable QA event; never enable on a real customer event" },
+    "stored_card_qa_only": {
+      "type": "boolean",
+      "default": false,
+      "description": "Dedicated disposable QA event; never enable on a real customer event"
+    },
     "billing_customer_id": {
       "type": "string",
-      "description": "Explicit billing customer shared by this customer\u2019s events"
+      "description": "Explicit billing customer shared by this customer’s events"
     },
     "event_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "שם האירוע"
     },
     "event_type": {
       "type": "string",
@@ -19,40 +23,40 @@
         "wedding",
         "other"
       ],
-      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "סוג האירוע"
     },
     "event_date": {
       "type": "string",
       "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "תאריך האירוע"
     },
     "event_time": {
       "type": "string",
-      "description": "\u05e9\u05e2\u05ea \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "שעת האירוע"
     },
     "location": {
       "type": "string",
-      "description": "\u05de\u05d9\u05e7\u05d5\u05dd \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "מיקום האירוע"
     },
     "concept": {
       "type": "string",
-      "description": "\u05e7\u05d5\u05e0\u05e1\u05e4\u05d8 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "קונספט האירוע"
     },
     "family_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05de\u05e9\u05e4\u05d7\u05d4"
+      "description": "שם המשפחה"
     },
     "child_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05d9\u05dc\u05d3/\u05d4"
+      "description": "שם הילד/ה"
     },
     "city": {
       "type": "string",
-      "description": "\u05e2\u05d9\u05e8 \u05de\u05d2\u05d5\u05e8\u05d9\u05dd"
+      "description": "עיר מגורים"
     },
     "guest_count": {
       "type": "number",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05d0\u05d5\u05e8\u05d7\u05d9\u05dd"
+      "description": "מספר אורחים"
     },
     "status": {
       "type": "string",
@@ -64,7 +68,7 @@
         "cancelled"
       ],
       "default": "quote",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "סטטוס האירוע"
     },
     "primary_currency": {
       "type": "string",
@@ -73,57 +77,57 @@
         "USD"
       ],
       "default": "ILS",
-      "description": "\u05de\u05d8\u05d1\u05e2 \u05e8\u05d0\u05e9\u05d9 \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "מטבע ראשי של האירוע"
     },
     "total_price": {
       "type": "number",
-      "description": "\u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc - \u05e9\u05d3\u05d4 \u05d9\u05e9\u05df. \u05e0\u05d0 \u05dc\u05d4\u05e9\u05ea\u05de\u05e9 \u05d1-all_inclusive_price"
+      "description": "מחיר כולל - שדה ישן. נא להשתמש ב-all_inclusive_price"
     },
     "all_inclusive": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 \u05d4\u05d9\u05d0 \u05d4\u05db\u05dc \u05db\u05dc\u05d5\u05dc"
+      "description": "האם החבילה היא הכל כלול"
     },
     "all_inclusive_price": {
       "type": "number",
-      "description": "\u05de\u05d7\u05d9\u05e8 \u05d7\u05d1\u05d9\u05dc\u05ea \u05d4\u05db\u05dc \u05db\u05dc\u05d5\u05dc"
+      "description": "מחיר חבילת הכל כלול"
     },
     "all_inclusive_includes_vat": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05de\u05d7\u05d9\u05e8 \u05d4\u05d7\u05d1\u05d9\u05dc\u05d4 \u05db\u05d5\u05dc\u05dc \u05de\u05e2''\u05de"
+      "description": "האם מחיר החבילה כולל מע''מ"
     },
     "total_override": {
       "type": "number",
-      "description": "\u05d3\u05e8\u05d9\u05e1\u05ea \u05d4\u05de\u05d7\u05d9\u05e8 \u05d4\u05db\u05d5\u05dc\u05dc"
+      "description": "דריסת המחיר הכולל"
     },
     "total_override_includes_vat": {
       "type": "boolean",
       "default": true,
-      "description": "\u05d4\u05d0\u05dd \u05d3\u05e8\u05d9\u05e1\u05ea \u05d4\u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc\u05ea \u05de\u05e2''\u05de"
+      "description": "האם דריסת המחיר כוללת מע''מ"
     },
     "is_price_per_guest": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05d4\u05ea\u05de\u05d7\u05d5\u05e8 \u05d4\u05d5\u05d0 \u05dc\u05e4\u05d9 \u05de\u05d7\u05d9\u05e8 \u05dc\u05de\u05e9\u05ea\u05ea\u05e3"
+      "description": "האם התמחור הוא לפי מחיר למשתתף"
     },
     "price_per_guest": {
       "type": "number",
-      "description": "\u05d4\u05de\u05d7\u05d9\u05e8 \u05dc\u05de\u05e9\u05ea\u05ea\u05e3 \u05d1\u05d5\u05d3\u05d3 (\u05de\u05d7\u05d5\u05e9\u05d1: \u05de\u05d7\u05d9\u05e8 \u05db\u05d5\u05dc\u05dc / \u05de\u05e1\u05e4\u05e8 \u05d0\u05d5\u05e8\u05d7\u05d9\u05dd)"
+      "description": "המחיר למשתתף בודד (מחושב: מחיר כולל / מספר אורחים)"
     },
     "discount_amount": {
       "type": "number",
       "default": 0,
-      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05d4\u05e0\u05d7\u05d4"
+      "description": "סכום ההנחה"
     },
     "discount_before_vat": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05d4\u05d4\u05e0\u05d7\u05d4 \u05de\u05d7\u05d5\u05e9\u05d1\u05ea \u05dc\u05e4\u05e0\u05d9 \u05de\u05e2''\u05de"
+      "description": "האם ההנחה מחושבת לפני מע''מ"
     },
     "discount_reason": {
       "type": "string",
-      "description": "\u05e1\u05d9\u05d1\u05ea \u05d4\u05d4\u05e0\u05d7\u05d4"
+      "description": "סיבת ההנחה"
     },
     "discount_type": {
       "type": "string",
@@ -132,11 +136,11 @@
         "per_guest"
       ],
       "default": "fixed",
-      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d4\u05e0\u05d7\u05d4: fixed = \u05d4\u05e0\u05d7\u05d4 \u05e7\u05d1\u05d5\u05e2\u05d4 \u05e2\u05dc \u05db\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2, per_guest = \u05d4\u05e0\u05d7\u05d4 \u05dc\u05db\u05dc \u05de\u05e9\u05ea\u05ea\u05e3 (\u05de\u05d5\u05db\u05e4\u05dc\u05ea \u05d1\u05de\u05e1\u05e4\u05e8 \u05d0\u05d5\u05e8\u05d7\u05d9\u05dd)"
+      "description": "סוג ההנחה: fixed = הנחה קבועה על כל האירוע, per_guest = הנחה לכל משתתף (מוכפלת במספר אורחים)"
     },
     "notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05db\u05dc\u05dc\u05d9\u05d5\u05ea"
+      "description": "הערות כלליות"
     },
     "schedule": {
       "type": "array",
@@ -154,7 +158,7 @@
           }
         }
       },
-      "description": "\u05dc\u05d5\u05d7 \u05d6\u05de\u05e0\u05d9\u05dd \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
+      "description": "לוח זמנים של האירוע"
     },
     "parents": {
       "type": "array",
@@ -163,61 +167,61 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "\u05e9\u05dd \u05d4\u05d4\u05d5\u05e8\u05d4"
+            "description": "שם ההורה"
           },
           "phone": {
             "type": "string",
-            "description": "\u05d8\u05dc\u05e4\u05d5\u05df"
+            "description": "טלפון"
           },
           "email": {
             "type": "string",
-            "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc"
+            "description": "אימייל"
           },
           "id": {
             "type": "string",
-            "description": "\u05de\u05d6\u05d4\u05d4 \u05e7\u05d1\u05d5\u05e2 \u05dc\u05d0\u05d9\u05e9 \u05e7\u05e9\u05e8"
+            "description": "מזהה קבוע לאיש קשר"
           },
           "role": {
             "type": "string",
-            "description": "\u05ea\u05e4\u05e7\u05d9\u05d3 \u05d0\u05d9\u05e9 \u05d4\u05e7\u05e9\u05e8 \u05d1\u05d0\u05d9\u05e8\u05d5\u05e2"
+            "description": "תפקיד איש הקשר באירוע"
           },
           "custom_fields": {
             "type": "object",
             "additionalProperties": true,
-            "description": "\u05e2\u05e8\u05db\u05d9 \u05e9\u05d3\u05d5\u05ea \u05de\u05d9\u05d3\u05e2 \u05e0\u05d5\u05e1\u05e4\u05d9\u05dd \u05dc\u05e4\u05d9 \u05de\u05d6\u05d4\u05d4 \u05e7\u05d1\u05d5\u05e2"
+            "description": "ערכי שדות מידע נוספים לפי מזהה קבוע"
           },
           "custom_field_labels": {
             "type": "object",
             "additionalProperties": true,
-            "description": "\u05db\u05d5\u05ea\u05e8\u05d5\u05ea \u05dc\u05d4\u05e6\u05d2\u05ea \u05d4\u05de\u05d9\u05d3\u05e2 \u05d4\u05e0\u05d5\u05e1\u05e3"
+            "description": "כותרות להצגת המידע הנוסף"
           },
           "client_access": {
             "type": "boolean",
-            "description": "\u05ea\u05d0\u05d9\u05de\u05d5\u05ea \u05dc\u05e8\u05e9\u05d5\u05de\u05d5\u05ea \u05d9\u05e9\u05e0\u05d5\u05ea: false \u05e9\u05d5\u05de\u05e8 \u05d0\u05d9\u05e9 \u05e7\u05e9\u05e8 \u05de\u05d9\u05d3\u05e2 \u05dc\u05dc\u05d0 \u05e9\u05d9\u05e0\u05d5\u05d9 \u05d1\u05d6\u05db\u05d0\u05d5\u05ea \u05dc\u05e7\u05d5\u05d7 \u05e7\u05d9\u05d9\u05de\u05ea"
+            "description": "תאימות לרשומות ישנות: false שומר איש קשר מידע ללא שינוי בזכאות לקוח קיימת"
           }
         }
       },
-      "description": "\u05e8\u05e9\u05d9\u05de\u05ea \u05d4\u05d5\u05e8\u05d9\u05dd/\u05d0\u05e0\u05e9\u05d9 \u05e7\u05e9\u05e8"
+      "description": "רשימת הורים/אנשי קשר"
     },
     "organizer_contacts": {
       "type": "string",
-      "description": "JSON: \u05de\u05e2\u05e8\u05da \u05d0\u05e0\u05e9\u05d9 \u05e7\u05e9\u05e8 \u05e9\u05dc \u05d4\u05de\u05d6\u05de\u05d9\u05df [{name, phone, email, ...\u05e9\u05d3\u05d5\u05ea_\u05e0\u05d5\u05e1\u05e4\u05d9\u05dd}]"
+      "description": "JSON: מערך אנשי קשר של המזמין [{name, phone, email, ...שדות_נוספים}]"
     },
     "google_calendar_event_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d1\u05d9\u05d5\u05de\u05df Google (\u05dc\u05de\u05e0\u05d4\u05dc)"
+      "description": "מזהה האירוע ביומן Google (למנהל)"
     },
     "client_google_calendar_event_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d1\u05d9\u05d5\u05de\u05df Google \u05e9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7"
+      "description": "מזהה האירוע ביומן Google של הלקוח"
     },
     "client_google_calendar_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d9\u05d5\u05de\u05df Google \u05e9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7 \u05dc\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d6\u05d4"
+      "description": "מזהה יומן Google של הלקוח לאירוע זה"
     },
     "admin_other_google_calendar_ids": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d9 \u05d0\u05d9\u05e8\u05d5\u05e2\u05d9 \u05d9\u05d5\u05de\u05df \u05d2\u05d5\u05d2\u05dc \u05e9\u05dc \u05de\u05e0\u05d4\u05dc\u05d9\u05dd \u05e0\u05d5\u05e1\u05e4\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON - \u05d0\u05d5\u05d1\u05d9\u05d9\u05e7\u05d8 \u05e2\u05dd userId \u05db\u05de\u05e4\u05ea\u05d7 \u05d5\u05de\u05d6\u05d4\u05d4 \u05d0\u05d9\u05e8\u05d5\u05e2 \u05db\u05e2\u05e8\u05da"
+      "description": "מזהי אירועי יומן גוגל של מנהלים נוספים בפורמט JSON - אובייקט עם userId כמפתח ומזהה אירוע כערך"
     },
     "quote_history": {
       "type": "array",
@@ -226,70 +230,76 @@
         "properties": {
           "file_uri": {
             "type": "string",
-            "description": "URI \u05e9\u05dc \u05e7\u05d5\u05d1\u05e5 \u05d4-PDF \u05d1\u05d0\u05d7\u05e1\u05d5\u05df \u05d4\u05e4\u05e8\u05d8\u05d9"
+            "description": "URI של קובץ ה-PDF באחסון הפרטי"
           },
           "file_name": {
             "type": "string",
-            "description": "\u05e9\u05dd \u05d4\u05e7\u05d5\u05d1\u05e5"
+            "description": "שם הקובץ"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d5\u05e9\u05e2\u05ea \u05d9\u05e6\u05d9\u05e8\u05ea \u05d4\u05d4\u05e6\u05e2\u05d4"
+            "description": "תאריך ושעת יצירת ההצעה"
           },
           "created_by_user_name": {
             "type": "string",
-            "description": "\u05e9\u05dd \u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05e9\u05d9\u05e6\u05e8 \u05d0\u05ea \u05d4\u05d4\u05e6\u05e2\u05d4"
+            "description": "שם המשתמש שיצר את ההצעה"
           },
           "event_status": {
             "type": "string",
-            "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 \u05d1\u05d6\u05de\u05df \u05d4\u05e0\u05e4\u05e7\u05ea \u05d4\u05d4\u05e6\u05e2\u05d4"
+            "description": "סטטוס האירוע בזמן הנפקת ההצעה"
           }
         }
       },
-      "description": "\u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d9\u05ea \u05d4\u05e6\u05e2\u05d5\u05ea \u05de\u05d7\u05d9\u05e8 \u05e9\u05d4\u05d5\u05e0\u05e4\u05e7\u05d5 \u05db-PDF"
+      "description": "היסטוריית הצעות מחיר שהונפקו כ-PDF"
     },
     "date_change_pending_action": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d3\u05d2\u05dc \u05d4\u05de\u05e1\u05de\u05df \u05e9\u05e9\u05d9\u05e0\u05d5\u05d9 \u05ea\u05d0\u05e8\u05d9\u05da \u05d0\u05d9\u05e8\u05d5\u05e2 \u05de\u05de\u05ea\u05d9\u05df \u05dc\u05d4\u05d7\u05dc\u05d8\u05ea \u05de\u05e0\u05d4\u05dc \u05dc\u05d2\u05d1\u05d9 \u05d4\u05e1\u05e4\u05e7\u05d9\u05dd \u05d4\u05de\u05e9\u05d5\u05d1\u05e6\u05d9\u05dd"
+      "description": "דגל המסמן ששינוי תאריך אירוע ממתין להחלטת מנהל לגבי הספקים המשובצים"
     },
     "previous_event_date": {
       "type": "string",
       "format": "date",
-      "description": "\u05d4\u05ea\u05d0\u05e8\u05d9\u05da \u05d4\u05e7\u05d5\u05d3\u05dd \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 (\u05dc\u05e4\u05e0\u05d9 \u05e9\u05d9\u05e0\u05d5\u05d9) - \u05dc\u05e6\u05d5\u05e8\u05da \u05e9\u05d0\u05dc\u05ea \u05d4\u05de\u05e0\u05d4\u05dc \u05dc\u05d2\u05d1\u05d9 \u05d4\u05e1\u05e4\u05e7\u05d9\u05dd"
+      "description": "התאריך הקודם של האירוע (לפני שינוי) - לצורך שאלת המנהל לגבי הספקים"
     },
     "previous_event_time": {
       "type": "string",
-      "description": "\u05d4\u05e9\u05e2\u05d4 \u05d4\u05e7\u05d5\u05d3\u05de\u05ea \u05e9\u05dc \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2 (\u05dc\u05e4\u05e0\u05d9 \u05e9\u05d9\u05e0\u05d5\u05d9) - \u05dc\u05e6\u05d5\u05e8\u05da \u05e9\u05d0\u05dc\u05ea \u05d4\u05de\u05e0\u05d4\u05dc \u05dc\u05d2\u05d1\u05d9 \u05d4\u05e1\u05e4\u05e7\u05d9\u05dd"
+      "description": "השעה הקודמת של האירוע (לפני שינוי) - לצורך שאלת המנהל לגבי הספקים"
     },
     "organizer_type": {
       "type": "string",
-      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d4\u05d6\u05de\u05e0\u05d4 (\u05e9\u05dd \u05de\u05ea\u05d5\u05da QuoteOrganizerType). \u05e8\u05d9\u05e7 = \u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc"
+      "description": "סוג ההזמנה (שם מתוך QuoteOrganizerType). ריק = ברירת מחדל"
     },
     "custom_organizer_fields": {
       "type": "string",
-      "description": "\u05e2\u05e8\u05db\u05d9 \u05e9\u05d3\u05d5\u05ea \u05d3\u05d9\u05e0\u05de\u05d9\u05d9\u05dd \u05d1\u05e4\u05d5\u05e8\u05de\u05d8 JSON: {field_id: value}"
+      "description": "ערכי שדות דינמיים בפורמט JSON: {field_id: value}"
     },
     "services_section_title": {
       "type": "string",
-      "description": "\u05db\u05d5\u05ea\u05e8\u05ea \u05de\u05e7\u05d8\u05e2 \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd/\u05d7\u05d1\u05d9\u05dc\u05ea \u05d4\u05d4\u05e4\u05e7\u05d4 \u05d1\u05d4\u05e6\u05e2\u05ea \u05d4\u05de\u05d7\u05d9\u05e8 \u05d5\u05d1\u05db\u05e8\u05d8\u05d9\u05e1\u05d9\u05d9\u05ea \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd. \u05e8\u05d9\u05e7 = \u05d7\u05d1\u05d9\u05dc\u05ea \u05d4\u05d4\u05e4\u05e7\u05d4 \u05db\u05d5\u05dc\u05dc\u05ea"
+      "description": "כותרת מקטע השירותים/חבילת ההפקה בהצעת המחיר ובכרטיסיית השירותים. ריק = חבילת ההפקה כוללת"
     },
     "standalone_services_title": {
       "type": "string",
-      "description": "\u05db\u05d5\u05ea\u05e8\u05ea \u05de\u05e9\u05e0\u05d4 \u05dc\u05e4\u05e0\u05d9 \u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd \u05d1\u05d5\u05d3\u05d3\u05d9\u05dd \u05dc\u05dc\u05d0 \u05d7\u05d1\u05d9\u05dc\u05d4. \u05e8\u05d9\u05e7 = \u05dc\u05dc\u05d0 \u05db\u05d5\u05ea\u05e8\u05ea"
+      "description": "כותרת משנה לפני שירותים בודדים ללא חבילה. ריק = ללא כותרת"
     },
     "external_services_title": {
       "type": "string",
-      "description": "\u05db\u05d5\u05ea\u05e8\u05ea \u05de\u05e7\u05d8\u05e2 \u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd \u05d7\u05d9\u05e6\u05d5\u05e0\u05d9\u05d9\u05dd \u05e9\u05dc\u05d0 \u05db\u05dc\u05d5\u05dc\u05d9\u05dd \u05d1\u05e1\u05d9\u05db\u05d5\u05dd \u05d4\u05db\u05e1\u05e4\u05d9. \u05e8\u05d9\u05e7 = \u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd \u05e0\u05d5\u05e1\u05e4\u05d9\u05dd"
+      "description": "כותרת מקטע שירותים חיצוניים שלא כלולים בסיכום הכספי. ריק = שירותים נוספים"
     },
     "contacts_schema_version": {
       "type": "number",
-      "description": "\u05d2\u05e8\u05e1\u05ea \u05d0\u05e0\u05e9\u05d9 \u05e7\u05e9\u05e8. 2: \u05e8\u05e9\u05d9\u05de\u05ea parents \u05d4\u05d9\u05d0 \u05de\u05e7\u05d5\u05e8 \u05d4\u05d0\u05de\u05ea; organizer_contacts \u05e0\u05e9\u05de\u05e8 \u05dc\u05ea\u05d0\u05d9\u05de\u05d5\u05ea \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05ea \u05d1\u05dc\u05d1\u05d3"
+      "description": "גרסת אנשי קשר. 2: רשימת parents היא מקור האמת; organizer_contacts נשמר לתאימות היסטורית בלבד"
     },
     "field_binding_version": {
       "type": "number",
-      "description": "\u05d2\u05e8\u05e1\u05ea \u05de\u05e2\u05d1\u05e8 \u05e9\u05d3\u05d5\u05ea \u05e7\u05d9\u05d9\u05de\u05d9\u05dd; \u05e9\u05d9\u05e0\u05d5\u05d9 \u05d4\u05e9\u05d3\u05d4 \u05de\u05d9\u05d5\u05e2\u05d3 \u05dc\u05de\u05e2\u05d1\u05e8 \u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05de\u05d1\u05d5\u05e7\u05e8 \u05d1\u05dc\u05d1\u05d3"
+      "description": "גרסת מעבר שדות קיימים; שינוי השדה מיועד למעבר נתונים מבוקר בלבד"
+    },
+    "closing_agreement_id": {
+      "type": "string"
+    },
+    "closing_manual_override": {
+      "type": "boolean"
     }
   },
   "required": [
