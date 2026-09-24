@@ -90,6 +90,7 @@ async function finishCharge(client, operation, customer, config) {
     auth_number: operation.provider_auth_number || "" });
   await client.entities.StoredCardOperation.update(operation.id, { state: "completed" });
   await releaseCustomer(client, customer.id, operation.id);
+  if(operation.agreement_id)await client.entities.EventAgreement.updateMany({id:operation.agreement_id,busy_operation:"charge:"+operation.id},{$set:{busy_operation:""}});
   await afterAgreementChange(client, operation.event_id);
   try { await applyCleanup(client, customer.id, config); } catch { console.warn("[stored-cards] cleanup pending"); }
   return safeOperation({ ...operation, state: "completed" });
