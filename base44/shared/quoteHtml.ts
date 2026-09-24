@@ -34,7 +34,7 @@ function getEventType(typeKey) {
 // Process organizer type title template with variable replacement and conditional blocks
 function processOrganizerTitleTemplate(template, event, customFieldValues, organizerType) {
     if (!template) return '';
-    
+
     // Build variable map from event fields + custom fields
     const vars = {
         event_name: getEventDisplayName(event),
@@ -52,7 +52,7 @@ function processOrganizerTitleTemplate(template, event, customFieldValues, organ
     };
 
     let result = template;
-    
+
     // First handle conditional blocks ((text with [var]))
     result = result.replace(/\(\((.*?)\)\)/g, (match, content) => {
         // Check if any variables in this block have actual values
@@ -137,7 +137,7 @@ function buildQuoteBodyHtml(ctx) {
     for (const block of organizerBlocks) {
         if (block.enabled === false) continue;
         const subtitleHtml = block.subtitle_title ? `<h2 class="section-title">${block.subtitle_title}</h2>` : '';
-        
+
         switch (block.block_type) {
             case 'quote_date':
                 bodyParts.push(`<div class="date">תאריך הפקה: ${formatDate(new Date())}</div>`);
@@ -247,7 +247,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
         base44Instance.asServiceRole.entities.AppSettings.list(),
         base44Instance.asServiceRole.entities.QuoteOrganizerType.list()
     ]);
-    
+
     if (!event) {
         throw new Error('Event not found');
     }
@@ -271,7 +271,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     if (event.custom_organizer_fields) {
         try { customOrganizerFieldValues = JSON.parse(event.custom_organizer_fields); } catch (e) { customOrganizerFieldValues = {}; }
     }
-    
+
     const quoteBodyFontSize = appSettings.quote_body_font_size || '15';
     const quoteTitleFontSize = appSettings.quote_title_font_size || '16';
     const quoteGeneralLineHeight = appSettings.quote_line_height || '1.6';
@@ -284,12 +284,12 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
     // New Settings
     const quoteTextColor = appSettings.quote_text_color || '#333333';
-    
+
     const quoteEventDetailsFontSize = appSettings.quote_event_details_font_size || quoteBodyFontSize;
     const quoteEventDetailsLineHeight = appSettings.quote_event_details_line_height || quoteGeneralLineHeight;
-    
+
     const quoteSummaryFontSize = appSettings.quote_summary_font_size || quoteBodyFontSize;
-    
+
     // Footer settings
     const quoteShowFooter = String(appSettings.quote_show_footer) === 'true';
     const quoteFooterText = appSettings.quote_footer_text || '';
@@ -324,17 +324,17 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     });
 
     const vatRate = parseFloat(appSettings.vat_rate) / 100 || 0.18;
-    
+
     // Helper to safely parse numbers (aligned with eventFinancials.js)
     const safeFloat = (val) => {
         if (val === null || val === undefined || val === '') return 0;
         const num = parseFloat(val);
         return isNaN(num) ? 0 : num;
     };
-    
+
     // Logic aligned with eventFinancials.js
     let totalCostWithoutVat = 0;
-    
+
     const isAllInclusive = event.all_inclusive === true || event.all_inclusive === 'true';
     const allInclusivePrice = safeFloat(event.all_inclusive_price);
     const totalOverride = safeFloat(event.total_override);
@@ -348,7 +348,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     } else if (event.total_override !== null && event.total_override !== undefined && event.total_override !== "" && totalOverride !== 0) {
         let price = totalOverride;
         const overrideIncludesVat = event.total_override_includes_vat !== false;
-        
+
         if (overrideIncludesVat) {
             price = price / (1 + vatRate);
         }
@@ -358,7 +358,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
         totalCostWithoutVat = populatedServices.reduce((sum, s) => {
             const quantity = safeFloat(s.quantity) || 1;
-            
+
             // 1. New Structure: Main Package Item
             if (s.is_package_main_item) {
                 const price = safeFloat(s.custom_price);
@@ -378,7 +378,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                     return sum;
                 }
                 processedLegacyPackages.add(s.package_id);
-                
+
                 const price = safeFloat(s.package_price);
                 let pkgTotal = price;
                 if (s.package_includes_vat) {
@@ -390,7 +390,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
             // 4. Standalone Service
             const price = safeFloat(s.custom_price);
             let serviceTotal = price * quantity;
-            
+
             if (s.includes_vat) {
                 serviceTotal = serviceTotal / (1 + vatRate);
             }
@@ -401,17 +401,17 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     // Apply Discount BEFORE VAT if applicable (aligned with eventFinancials.js)
     let eventDiscountAmount = safeFloat(event.discount_amount);
     let baseForVat = totalCostWithoutVat;
-    
+
     if (event.discount_before_vat) {
         baseForVat = Math.max(0, totalCostWithoutVat - eventDiscountAmount);
     }
 
     // Calculate VAT
     const vatAmount = baseForVat * vatRate;
-    
+
     // Calculate Total With VAT
     let totalCostWithVat = 0;
-    
+
     if (event.discount_before_vat) {
         totalCostWithVat = baseForVat + vatAmount;
     } else {
@@ -423,7 +423,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     if (!event.discount_before_vat) {
         finalTotal = Math.max(0, totalCostWithVat - eventDiscountAmount);
     }
-    
+
     const baseTotalWithoutDiscount = totalCostWithoutVat; // For display compatibility
     // רק תשלומים שהושלמו נחשבים ככסף ששולם.
     const totalPaid = payments
@@ -431,14 +431,14 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
         .reduce((sum, p) => sum + safeFloat(p.amount), 0);
     // שיעור המע"מ להצגה נגזר מאותו vatRate שבו מתבצע החישוב.
     const vatRateLabel = String(Math.round(vatRate * 1000) / 10);
-    
+
     // Group services by new and legacy structure for HTML generation
     const structuredServices = [];
     const processedLegacyPackages = new Set();
-    
+
     // Handle new structure: Main Package Items
     const mainPackageItems = populatedServices.filter(s => s.is_package_main_item).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
-    
+
     mainPackageItems.forEach(mainPkg => {
         const packageChildren = populatedServices.filter(s => s.parent_package_event_service_id === mainPkg.id).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
         structuredServices.push({
@@ -452,19 +452,19 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     populatedServices.forEach(service => {
         // Skip if already processed as new structure
         if (service.is_package_main_item || service.parent_package_event_service_id) return;
-        
+
         // Check if this is a legacy package
         if (service.package_id && !processedLegacyPackages.has(service.package_id)) {
             processedLegacyPackages.add(service.package_id);
-            
+
             // Get all services in this legacy package
             const packageServices = populatedServices
                 .filter(s => s.package_id === service.package_id && !s.is_package_main_item && !s.parent_package_event_service_id)
                 .sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
-            
+
             // Use first service as package representative
             const packageRep = packageServices[0];
-            
+
             structuredServices.push({
                 type: 'package',
                 main: {
@@ -481,9 +481,9 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     });
 
     // Handle standalone services (not in any package)
-    const standaloneServices = populatedServices.filter(s => 
-        !s.is_package_main_item && 
-        !s.parent_package_event_service_id && 
+    const standaloneServices = populatedServices.filter(s =>
+        !s.is_package_main_item &&
+        !s.parent_package_event_service_id &&
         !s.package_id
     ).sort((a,b) => (a.order_index || 0) - (b.order_index || 0));
 
@@ -494,13 +494,13 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
             service: s
         });
     });
-    
+
     // Sort structured services: packages first (by order_index), then standalone services (by order_index)
     structuredServices.sort((a, b) => {
         // Packages come before standalone services
         if (a.type === 'package' && b.type === 'standalone') return -1;
         if (a.type === 'standalone' && b.type === 'package') return 1;
-        
+
         // Within the same type, sort by order_index
         const orderA = a.type === 'package' ? a.main.order_index : a.service.order_index;
         const orderB = b.type === 'package' ? b.main.order_index : b.service.order_index;
@@ -512,13 +512,13 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const hasStandaloneServices = structuredServices.some(item => item.type === 'standalone');
     const servicesSectionTitle = event.services_section_title || 'חבילת ההפקה כוללת';
     const standaloneServicesTitle = event.standalone_services_title || '';
-    
+
     // שם תצוגה לאירוע: שם האירוע מחליף את שם המשפחה בכל מקום שמייצג את האירוע
     const eventIdentityName = getEventDisplayName(event);
     const familyDetailsLine = event.child_name
         ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
         : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
-    
+
     const fileAndTitleName = `${familyDetailsLine} ${formatDate(event.event_date)}`.trim();
 
     // Process organizer type main title template if available
@@ -558,12 +558,12 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     if (structuredServices.length > 0) {
         servicesHtml = `<div class="section services-section"><h2 class="section-title">${servicesSectionTitle}</h2>`;
         let standaloneServicesTitleRendered = false;
-        
+
         structuredServices.forEach(item => {
             if (item.type === 'package') {
                 const mainPkg = item.main;
                 const packageTotal = (mainPkg.custom_price || 0) * (mainPkg.quantity || 1);
-                
+
                 servicesHtml += `
                     <div class="package-group">
                         <div class="package-header">
@@ -575,7 +575,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
                 item.children.forEach(service => {
                     const serviceDescription = service.service_description || '';
-                    const transportDetailsHtml = service.category === 'נסיעות' 
+                    const transportDetailsHtml = service.category === 'נסיעות'
   ? (() => {
       let units = [];
       try {
@@ -659,7 +659,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                 const service = item.service;
                 const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
                 const serviceDescription = service.service_description || '';
-                const transportDetailsHtml = service.category === 'נסיעות' 
+                const transportDetailsHtml = service.category === 'נסיעות'
   ? (() => {
       let units = [];
       try {
@@ -727,7 +727,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                 `;
             }
         });
-        
+
         servicesHtml += `</div>`;
     }
 
@@ -738,15 +738,15 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
         const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
         return { ...serviceDetails, ...es, details: serviceDetails };
     });
-    
+
     if (populatedExternalServices.length > 0) {
         externalServicesHtml = `<div class="section services-section" style="margin-top: 40px;"><h2 class="section-title">${externalServicesTitle}</h2>`;
-        
+
         populatedExternalServices.forEach(service => {
             const serviceDescription = service.service_description || service.details?.service_description || '';
             const serviceNotes = service.client_notes || service.notes || '';
             const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
-            
+
             // Price display logic
             const displayMode = service.price_display_mode || 'default';
             const showPrice = service.show_price_in_quote !== false;
@@ -754,13 +754,13 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
             if (displayMode === 'direct_payment') priceLabel = 'תשלום ישיר';
             else if (displayMode === 'estimated_price') priceLabel = 'מחיר מוערך';
             else if (displayMode === 'custom_text') priceLabel = service.price_display_text || '';
-            
-            const priceHtml = displayMode === 'default' 
+
+            const priceHtml = displayMode === 'default'
                 ? `<strong style="color: #8B0000; font-size: ${quoteBodyFontSize}px;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
                    ${service.includes_vat ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(כולל מע"מ)</div>` : `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(לא כולל מע"מ)</div>`}`
                 : `${priceLabel ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #b45309; font-weight: 600;">${priceLabel}</div>` : ''}
                    ${showPrice && serviceTotal > 0 ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #6b7280;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}`;
-            
+
             externalServicesHtml += `
                 <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
@@ -777,7 +777,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                 </div>
             `;
         });
-        
+
         externalServicesHtml += `</div>`;
     }
 
@@ -789,7 +789,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
             <div class="event-notes">${event.notes}</div>
         </div>`;
     }
-    
+
     let scheduleHtml = '';
     if (includeSchedule && event.schedule && event.schedule.length > 0) {
         const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -872,11 +872,11 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   padding-left: ${quoteMarginLeft}mm;
                   padding-right: ${quoteMarginRight}mm;
               }
-              
+
               /* Removed .header and logo display */
-              
+
               .date { text-align: left; font-size: calc(${quoteBodyFontSize}px * 0.9); color: #666; margin-bottom: 20px; font-weight: 600; }
-              
+
               .event-details-box {
                   /* Removed background, border, shadow */
                   background-color: transparent;
@@ -887,13 +887,13 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   text-align: center;
                   page-break-inside: avoid;
               }
-              
+
               .event-details-box * {
                   background-color: transparent !important;
               }
-              
+
               .section { margin-bottom: 40px; }
-              
+
               .section-title {
                   font-size: ${quoteTitleFontSize}px;
                   font-weight: 700;
@@ -928,7 +928,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   page-break-inside: avoid;
                   page-break-after: avoid; /* Keep header with at least the first item */
               }
-              
+
               .package-title {
                   color: #8B0000;
                   font-size: calc(${quoteTitleFontSize}px * 0.95); /* Balanced size */
@@ -994,21 +994,21 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   font-weight: 700;
                   color: #8B0000;
               }
-              
+
               .package-vat-note {
                   font-size: calc(${quoteBodyFontSize}px * 0.8);
                   color: #777;
               }
-              
-              .intro-content { 
-                  text-align: center; 
+
+              .intro-content {
+                  text-align: center;
                   margin-bottom: 30px;
                   font-size: ${quoteIntroFontSize}px;
                   line-height: ${quoteIntroLineHeight};
                   color: ${quoteTextColor};
                   padding: 10px 0;
               }
-              
+
               .intro-content *, .intro-content p, .intro-content span, .intro-content div, .intro-content li, .intro-content strong, .intro-content b, .intro-content u, .intro-content em, .intro-content a, .intro-content h1, .intro-content h2, .intro-content h3, .intro-content h4, .intro-content h5, .intro-content h6 {
                   line-height: ${quoteIntroLineHeight} !important;
                   color: ${quoteTextColor} !important;
@@ -1016,7 +1016,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   margin-bottom: 0 !important;
                   background-color: transparent !important;
               }
-              
+
               .payment-terms {
                   font-size: ${quoteSummaryFontSize}px;
                   line-height: ${quoteSummaryLineHeight};
@@ -1036,22 +1036,22 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   color: ${quoteTextColor};
                   padding: 10px 0;
               }
-              
+
               table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
               th, td { padding: 8px 10px; text-align: right; vertical-align: top; font-size: ${quoteBodyFontSize}px; }
               th { background-color: rgba(248,248,248,0.95); font-weight: 600; }
-              
+
               .summary-table td { border-bottom: none; padding: 6px 0; font-size: ${quoteSummaryFontSize}px; line-height: ${quoteSummaryLineHeight}; }
               .summary-table .label { font-weight: 600; text-align: right; }
               .summary-table .value { text-align: left; white-space: nowrap; }
-              .summary-table .total .label, .summary-table .total .value { 
-                  font-weight: 700; 
-                  font-size: calc(${quoteTitleFontSize}px * 0.9); 
-                  color: #8B0000; 
-                  padding-top: 10px; 
-                  border-top: 2px solid #8B0000; 
+              .summary-table .total .label, .summary-table .total .value {
+                  font-weight: 700;
+                  font-size: calc(${quoteTitleFontSize}px * 0.9);
+                  color: #8B0000;
+                  padding-top: 10px;
+                  border-top: 2px solid #8B0000;
               }
-              
+
               .footer { text-align: center; padding: 15px; font-size: calc(${quoteBodyFontSize}px * 0.8); color: #666; border-top: 1px solid #eee; margin-top: 40px; page-break-inside: avoid; }
 
               /* Refined Elegant Package Design */
@@ -1067,7 +1067,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   page-break-inside: avoid;
                   page-break-after: avoid; /* Keep header with at least the first item */
               }
-              
+
               .package-title {
                   color: #8B0000;
                   font-size: calc(${quoteTitleFontSize}px * 0.95); /* Balanced size */
@@ -1133,7 +1133,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                   font-weight: 700;
                   color: #8B0000;
               }
-              
+
               .package-vat-note {
                   font-size: calc(${quoteBodyFontSize}px * 0.8);
                   color: #777;
@@ -1197,7 +1197,6 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
       </body>
       </html>
     `;
-    
+
     return { html, fileAndTitleName, margins };
 }
-
