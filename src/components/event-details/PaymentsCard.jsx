@@ -46,6 +46,7 @@ export default function PaymentsCard({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            {isAdmin && billingEnabled && event?.billing_customer_id && <Button size="sm" variant="outline" onClick={()=>window.dispatchEvent(new CustomEvent("open-stored-card-charge",{detail:event.id}))}>חיוב מהכרטיס השמור</Button>}
             {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)}><Plus className="h-4 w-4 ml-2" />הוסף תשלום</Button>}
           </div>
         </div>

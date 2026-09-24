@@ -64,6 +64,9 @@
     },
     "consent_image_uri": {
       "type": "string"
+    },
+    "consent_image_hash": {
+      "type": "string"
     }
   },
   "required": [

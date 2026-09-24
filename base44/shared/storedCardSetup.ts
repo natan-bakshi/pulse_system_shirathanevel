@@ -7,8 +7,8 @@ async function discardProvisionalCustomer(client, customerId) {
   await client.entities.Event.updateMany({ billing_customer_id: customerId }, { $set: { billing_customer_id: "" } });
   await client.entities.BillingCustomer.delete(customerId);
 }
-export async function beginSetup(client, user, config, customer, consentReference, eventId = "", provisionalCustomer = false, agreement = null) {
-  const reference = text(consentReference, 500);
+export async function beginSetup(client, user, config, customer, consentReference, eventId = "", provisionalCustomer = false, agreement = null, evidence = null) {
+  const reference = text(consentReference, 500) || (evidence?.uri ? "צילום הסכמת לקוח" : "");
   if (!reference) throw new CardError("נדרש תיעוד הסכמת הלקוח לשמירה ולחיוב עתידי");
   const access = providerAccess(config, undefined, "capture");
   if (customer.busy_operation_id) throw new CardError("קיימת פעולה בטיפול", 409);
@@ -22,7 +22,7 @@ export async function beginSetup(client, user, config, customer, consentReferenc
   try {
     card = await client.entities.StoredCard.create({
       customer_id: customer.id, environment: access.environment, state: "pending",
-      consent_reference: reference, consent_recorded_by: user.id, consent_recorded_at: new Date().toISOString(),
+      consent_image_uri:evidence?.uri||"", consent_image_hash:evidence?.hash||"", consent_reference: reference, consent_recorded_by: user.id, consent_recorded_at: new Date().toISOString(),
       cleanup_pending: false, cleanup_notified: false, agreement_id: agreement?.id || ""
     });
     const secret = crypto.randomUUID() + crypto.randomUUID();

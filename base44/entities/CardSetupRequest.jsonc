@@ -59,6 +59,12 @@
     },
     "agreement_id": {
       "type": "string"
+    },
+    "link_message_state": {
+      "type": "string"
+    },
+    "link_message_id": {
+      "type": "string"
     }
   },
   "required": [

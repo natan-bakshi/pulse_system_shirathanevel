@@ -1,3 +1,5 @@
+import { storeConsentEvidence } from "../../shared/consentEvidence.ts";
+import { sendWhatsAppText } from "../../shared/whatsappSend.ts";
 import { chargeContext, authorizeCharge, createChargeNotice } from "../../shared/agreementCharge.ts";
 import { beginSetup } from "../../shared/storedCardSetup.ts";
 import { afterAgreementChange } from "../../shared/agreementLifecycle.ts";
@@ -216,7 +218,7 @@ export default Deno.serve(async req => {
     if (action === "create_customer")
       throw new CardError("לקוח חדש נוצר יחד עם בקשת שמירת הכרטיס, כדי שלא יישמר לקוח ללא כרטיס.", 409);
     if (action === "create_customer_and_setup") {
-      if (body.consentConfirmed !== true || !text(body.consentReference, 500))
+      if (body.consentConfirmed !== true || (!text(body.consentReference, 500) && !body.consentImage))
         throw new CardError("נדרשת הסכמת הלקוח ותיעוד ההסכמה לשמירת הכרטיס ולחיובים בהתאם להסכם");
       // Validate capture configuration before creating the provisional customer.
       providerAccess(config, undefined, "capture");
@@ -232,6 +234,7 @@ export default Deno.serve(async req => {
       if (duplicate) throw new CardError(duplicate.active_card_id
         ? "כבר קיים לקוח משלם עם מספר הטלפון הזה. יש לחפש ולבחור אותו."
         : "כבר קיים לקוח ללא כרטיס עם מספר הטלפון הזה. ניתן למחוק אותו מהרשימה המרוכזת ולנסות שוב.", 409);
+      const evidence = body.consentImage ? await storeConsentEvidence(client, body.consentImage) : null;
       const customer = await client.entities.BillingCustomer.create({
         name, phone, email, identifier: text(body.identifier, 30), revision: 0,
         busy_operation_id: "", active_card_id: "", provisional: true
@@ -244,7 +247,7 @@ export default Deno.serve(async req => {
         await client.entities.BillingCustomer.delete(customer.id);
         throw new CardError("פרטי האירוע השתנו; יש לרענן", 409);
       }
-      const result = await beginSetup(client, user, config, customer, body.consentReference, event.id, true);
+      const result = await beginSetup(client, user, config, customer, body.consentReference, event.id, true, null, evidence);
       return Response.json({ ...result, customer: safeCustomer(customer, 1) });
     }
     if (action === "bulk_remove") {
@@ -335,7 +338,7 @@ export default Deno.serve(async req => {
       if (customer.busy_operation_id?.startsWith("setup:")) {
         const s = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
         if (s) pending = { kind: "setup", id: s.id, state: s.state, canRecover: !!s.provider_payment_id,
-          expiresAt: s.expires_at, url: s.state === "pending" ? s.redirect_url : "" };
+          expiresAt: s.expires_at, messageState:s.link_message_state||"", url: s.state === "pending" ? s.redirect_url : "" };
       } else if (customer.busy_operation_id && !customer.busy_operation_id.includes(":")) {
         const operation = await client.entities.StoredCardOperation.get(customer.busy_operation_id);
         pending = { kind: "charge", ...safeOperation(operation) };
@@ -379,9 +382,30 @@ export default Deno.serve(async req => {
       if (customer.provisional || setup.provisional_customer) await discardProvisionalCustomer(client, customer.id);
       return Response.json({ success: true });
     }
+    if (action === "consent_document") {
+      const card=await client.entities.StoredCard.get(customer.active_card_id);
+      if(!card||card.customer_id!==customer.id||!card.consent_image_uri)throw new CardError("אין תמונת אסמכתא");
+      return Response.json(await client.integrations.Core.CreateFileSignedUrl({file_uri:card.consent_image_uri,expires_in:600}));
+    }
+    if (action === "send_setup_link") {
+      if(!customer.busy_operation_id?.startsWith("setup:"))throw new CardError("אין בקשת שמירה פתוחה");
+      const s=await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
+      if(s.state!=="pending"||Date.parse(s.expires_at)<Date.now()||!s.redirect_url)throw new CardError("קישור שמירת הכרטיס אינו זמין");
+      const claim=await client.entities.CardSetupRequest.updateMany({id:s.id,state:"pending",link_message_state:{$nin:["dispatching","accepted","unknown"]}},{$set:{link_message_state:"dispatching"}});
+      if(claim.updated!==1)throw new CardError("הקישור כבר נשלח או שהשליחה בבירור",409);
+      try{
+        const sent=await sendWhatsAppText(customer.phone,"שלום "+customer.name+", לשמירת כרטיס באופן מאובטח אצל Invoice4U, ללא חיוב:\n"+s.redirect_url);
+        await client.entities.CardSetupRequest.update(s.id,{link_message_state:"accepted",link_message_id:sent.messageId||""});
+        return Response.json({sent:true});
+      }catch{
+        await client.entities.CardSetupRequest.update(s.id,{link_message_state:"unknown"});
+        throw new CardError("השליחה בבירור. יש לבדוק בוואטסאפ לפני ניסיון נוסף.",409);
+      }
+    }
     if (action === "setup") {
       if (body.consentConfirmed !== true) throw new CardError("נדרשת הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם");
-      return Response.json(await beginSetup(client, user, config, customer, body.consentReference, event?.id || "", false));
+      const evidence = body.consentImage ? await storeConsentEvidence(client, body.consentImage) : null;
+      return Response.json(await beginSetup(client, user, config, customer, body.consentReference, event?.id || "", false, null, evidence));
     }
     if (action === "reconcile") {
       const op = await client.entities.StoredCardOperation.get(body.operationId);
