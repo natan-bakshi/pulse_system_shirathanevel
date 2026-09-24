@@ -180,3 +180,15 @@ test("deposit callback cannot credit mismatched amount or test environment",asyn
  await assert.rejects(deposit.completeAgreementDeposit(f.client,structuredClone(f.db.Payment[0])),/בדיקה/);
  assert.equal(f.db.Payment[0].agreement_verified,false);
 });
+
+test("agreement creation reuses a unique payer phone and refuses ambiguity",async()=>{
+ const f=fixture();
+ f.db.BillingCustomer=[{id:"payer",phone:"0500000000",name:"Test",busy_operation_id:"",active_card_id:"existing-card"}];
+ const a=await create();
+ assert.equal(f.db.Event[0].billing_customer_id,"payer");assert.equal(f.db.EventAgreement[0].customer_id,"payer");
+ assert.equal(f.db.BillingCustomer.length,1);
+ const g=fixture();g.db.BillingCustomer=[{id:"one",phone:"0500000000"},{id:"two",phone:"0500000000"}];
+ const p=await req("preview",{eventId:"event"});
+ const result=await req("create",{...p.data,eventId:"event",name:"Test",phone:"0500000000",require_token:false,require_deposit:false,send_copy:false});
+ assert.equal(result.status,409);assert.equal(g.db.EventAgreement?.length||0,0);
+});
