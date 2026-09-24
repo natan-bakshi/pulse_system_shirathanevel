@@ -21,6 +21,7 @@ const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 const ContactDirectory = React.lazy(() => import('@/pages/ContactDirectory'));
 const BarMitzvahCalculator = React.lazy(() => import('@/pages/BarMitzvahCalculator'));
+const EventClosing = React.lazy(() => import("@/pages/EventClosing"));
 const BillingDashboard = React.lazy(() => import('@/pages/BillingDashboard'));
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
@@ -101,6 +102,7 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  if(window.location.pathname.replace(/\/$/, '') === '/EventClosing') return <Suspense fallback={<PageLoadingFallback/>}><EventClosing/></Suspense>;
 
   return (
     <AuthProvider>

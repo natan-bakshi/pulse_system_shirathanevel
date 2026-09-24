@@ -1,4 +1,5 @@
 import React, { lazy, Suspense } from 'react';
+const EventClosingPanel = lazy(() => import("@/components/billing/EventClosingPanel"));
 const StoredCardPanel = lazy(() => import('@/components/billing/StoredCards'));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, ListChecks, Wallet, ClipboardList } from 'lucide-react';
@@ -116,6 +117,8 @@ export default function EventDetailsTabs(props) {
           handleStatusChange={handleStatusChange}
           handleDeleteEvent={handleDeleteEvent}
         />
+
+        {isAdmin && <Suspense fallback={null}><EventClosingPanel event={event} onChanged={loadEventData}/></Suspense>}
 
         <FamilyContactCard
           event={event}

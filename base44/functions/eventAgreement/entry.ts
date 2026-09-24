@@ -73,7 +73,7 @@ async function preview(client,base44,eventId,config){
  {code:"exceptional",label:"חיובים חריגים לפי ההסכם",text:config.closing_exceptional_text||closingDefaults.closing_exceptional_text},
  {code:"fee",label:"עמלת סליקה",text:config.processing_fee_enabled==="true"?"בתשלום באשראי תתווסף עלות סליקה לפי הגדרות הסליקה במועד הסכם זה: "+config.processing_fee_value+(config.processing_fee_type==="fixed"?" "+f.currency+" לכל חיוב.":"% מסכום החיוב."):"במועד הסכם זה לא מתווספת עמלת סליקה."},
  {code:"changes",label:"שינויים מוסכמים בהזמנה",text:config.closing_changes_text||closingDefaults.closing_changes_text}
- ], require_token:config.closing_token_required!=="false",require_deposit:config.closing_deposit_required!=="false",
+ ], exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),require_token:config.closing_token_required!=="false",require_deposit:config.closing_deposit_required!=="false",
  send_copy:config.closing_send_copy!=="false",notifications:notifications(null,config)};
 }
 function validateSignature(body){

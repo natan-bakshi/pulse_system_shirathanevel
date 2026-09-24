@@ -1,3 +1,4 @@
+import AgreementChargeForm from "./AgreementChargeForm";
 import React, { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -203,24 +204,10 @@ function CardPanel({ event, onChanged }) {
               setMode(null); await changed();
             })}>צור קישור לשמירת כרטיס</Button>
           </div>}
-          {mode === "charge" && <div className="space-y-3">
-            <p>{customer?.name} — {cardLabel(card)}</p>
-            <label className="block">סכום<Input type="number" min="0.01" step="0.01" value={amount} disabled={!!quote} onChange={e => setAmount(e.target.value)} /></label>
-            <label className="block">סיבת החיוב<Input value={description} disabled={!!quote} onChange={e => setDescription(e.target.value)} /></label>
-            {!quote ? <Button disabled={busy || !Number(amount) || !description.trim()} onClick={() => run(async () => {
-              const result = await storedCardAction("quote", { eventId: event.id, customerId: customer.id, cardId: card.id, amount: Number(amount) });
-              requestKey.current = crypto.randomUUID(); setQuote(result);
-            })}>הצג סכום סופי לאישור</Button> : <>
-              <div className="rounded bg-gray-50 p-3">תשלום: {quote.amount} · עמלה: {quote.fee}<br /><strong>סה״כ לחיוב: {quote.total} {quote.currency}</strong></div>
-              <Button disabled={busy} onClick={() => run(async () => {
-                const result = await storedCardAction("charge", { eventId: event.id, customerId: customer.id, cardId: quote.card.id,
-                  amount: quote.amount, confirmedTotal: quote.total, currency: quote.currency, requestKey: requestKey.current, description });
-                setMessage(result.state === "completed" ? "החיוב הושלם ונרשם" : result.message || "הפעולה נרשמה; יש לבדוק את מצבה");
-                setMode(null); await changed();
-              })}>אשר חיוב {quote.total} {quote.currency}</Button>
-              <Button variant="ghost" disabled={busy} onClick={() => setQuote(null)}>שנה סכום</Button>
-            </>}
-          </div>}
+          {mode === "charge" && customer && card && <AgreementChargeForm event={event} customer={customer} card={card} onFinished={async result=>{
+            setMessage(result.state === "completed" ? "החיוב הושלם ונרשם" : result.message || "הפעולה בבירור; אין לחייב שוב");
+            setMode(null);await changed();
+          }}/>}
           {message && <p role="alert" className="text-red-700">{message}</p>}
         </DialogContent>
       </Dialog>
