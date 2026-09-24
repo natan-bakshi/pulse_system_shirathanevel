@@ -34,7 +34,7 @@ async function requirePublic(client,body,session=false){
 }
 function notifications(body,config){
  return {enabled:bool(body?.enabled,config.closing_reminder_enabled!=="false"),
- days:Math.min(60,Math.max(0,Number(body?.days??config.closing_reminder_days??3))),
+ days:Math.min(60,Math.max(0,Math.floor(Number(body?.days??config.closing_reminder_days??3)||0))),
  time:/^([01]\d|2[0-3]):[0-5]\d$/.test(body?.time||"")?body.time:(config.closing_reminder_time||"09:00"),
  template:cleanText(body?.template||config.closing_message_template||closingDefaults.closing_message_template,4000),
  notify_admin:bool(body?.notify_admin,config.closing_notify_admin!=="false")};
@@ -115,6 +115,7 @@ async function createDeposit(client,a,config){
  if(!amount)return {paid:true};
  const old=f.payments.find(p=>p.agreement_id===a.id&&p.payment_status==="pending");
  if(old){if(old.payment_link_url)return {redirectUrl:old.payment_link_url};throw new AgreementError("בקשת מקדמה בבירור. אין ליצור בקשה נוספת.",409);}
+ if(f.payments.some(p=>p.payment_status==="pending"))throw new AgreementError("קיים תשלום ממתין באירוע. יש לברר אותו לפני יצירת מקדמה נוספת.",409);
  const environment=config.invoice4u_env==="production"?"production":"qa";
  const key=secrets.get(environment==="qa"?"INVOICE4U_API_TOKEN_QA":"INVOICE4U_API_TOKEN");
  if(environment==="qa" && event.stored_card_qa_only!==true)throw new AgreementError("תשלום בדיקה מותר רק באירוע טסט",409);

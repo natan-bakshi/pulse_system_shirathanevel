@@ -90,7 +90,7 @@ export async function processAgreementMilestones(client,config) {
    a=await client.entities.EventAgreement.get(a.id);
    await lockAgreement(client,a,"reminders",async current=>{
     const event=await client.entities.Event.get(a.event_id);
-    if(["cancelled","quote"].includes(event.status)||event.closing_agreement_id!==a.id)return;
+    if(event.status==="cancelled"||(event.status==="quote"&&event.closing_manual_override)||event.closing_agreement_id!==a.id)return;
     const f=await financials(client,event,config);
     const rows=await readAll(client.entities.PaymentMilestone,{agreement_id:a.id});
     for(const m of rows){
