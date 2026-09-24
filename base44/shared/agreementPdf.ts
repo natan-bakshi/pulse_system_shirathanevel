@@ -11,7 +11,7 @@ export async function makeAgreementPdf(a) {
   const parts=doc.splitTextToSize(String(text||""),174);
   for(const part of parts){
    if(y>276){doc.addPage();y=20;}
-   doc.text(part,192,y,{align:"right",isInputRtl:/[\u0590-\u05ff]/.test(part),isOutputRtl:false});y+=size*0.43+1.5;
+   doc.text(part,192,y,{align:"right",isInputVisual:false,isOutputVisual:true,isInputRtl:/[\u0590-\u05ff]/.test(part),isOutputRtl:false});y+=size*0.43+1.5;
   } y+=2;
  }
  line("שירת הנבל — הסכם ואישור אירוע",19);
