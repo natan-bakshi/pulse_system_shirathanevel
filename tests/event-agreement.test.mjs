@@ -22,6 +22,7 @@ const plugin={name:"offline-agreements",setup(b){
 }};
 async function load(path){const result=await build({entryPoints:[path],bundle:true,platform:"node",format:"esm",write:false,plugins:[plugin]});return import("data:text/javascript;base64,"+Buffer.from(result.outputFiles[0].text).toString("base64"));}
 const {default:handler}=await load("base44/functions/eventAgreement/entry.ts");
+const deposit=await load("base44/shared/agreementDeposit.ts");
 const rules=await load("base44/shared/agreementRules.ts");
 const lifecycle=await load("base44/shared/agreementLifecycle.ts");
 function fixture(){
@@ -34,13 +35,13 @@ function fixture(){
  get:async id=>structuredClone(db[name].find(x=>x.id===id)||null),
  filter:async(q={},sort="id",limit=500,skip=0)=>structuredClone(db[name].filter(x=>match(x,q)).slice(skip,skip+limit)),
  list:async()=>structuredClone(db[name]),
- create:async data=>{const r={id:name+"-"+(++serial),created_date:new Date().toISOString(),updated_date:"u"+(++tick),...structuredClone(data)};db[name].push(r);return structuredClone(r);},
+ create:async data=>{if(globalThis.__failEntity===name)throw new Error("simulated storage failure");const r={id:name+"-"+(++serial),created_date:new Date().toISOString(),updated_date:"u"+(++tick),...structuredClone(data)};db[name].push(r);return structuredClone(r);},
  update:async(id,data)=>{const r=db[name].find(x=>x.id===id);assert.ok(r);Object.assign(r,structuredClone(data),{updated_date:"u"+(++tick)});return structuredClone(r);},
  updateMany:async(q,u)=>{let updated=0;for(const r of db[name])if(match(r,q)){Object.assign(r,structuredClone(u.$set),{updated_date:"u"+(++tick)});updated++;}return {updated};},
  delete:async id=>{db[name]=db[name].filter(x=>x.id!==id);}
  };}});
  const client={entities,auth:{me:async()=>({id:"admin",role:"admin"})},integrations:{Core:{CreateFileSignedUrl:async()=>({signed_url:"https://files.example.test/agreement.pdf"})}}};client.asServiceRole=client;
- globalThis.__client=client;globalThis.__secrets={};globalThis.__messages=[];globalThis.__pdfCount=0;
+ globalThis.__client=client;globalThis.__secrets={};globalThis.__messages=[];globalThis.__pdfCount=0;globalThis.__failEntity="";
  globalThis.fetch=async()=>{throw new Error("Live provider calls forbidden in tests");};
  return {client,db};
 }
@@ -138,4 +139,44 @@ test("agreement schemas deny direct writes and non-admin reads",async()=>{
   assert.deepEqual(s.rls.read,{user_condition:{role:"admin"}});
   for(const op of ["create","update","delete"])assert.equal(s.rls[op],false,name+" "+op);
  }
+});
+
+function depositFixture(f,a){
+ globalThis.__secrets={INVOICE4U_API_TOKEN:"test-key"};
+ const p={id:"deposit",event_id:"event",agreement_id:a.id,agreement_verified:false,agreement_environment:"production",amount:200,processing_fee_amount:5,currency:"ILS",payment_status:"pending",created_date:"2026-09-24T00:00:00Z",clearing_method:"hosted_page"};
+ f.db.Payment=[p];
+ const body={Success:true,PaymentId:"provider-deposit",ClearingTraceId:"trace",DocCreated:true,DocumentId:"doc-1",DocumentNumber:"1001",CardSuffix:"1234"};
+ let checks=0;
+ globalThis.fetch=async (url,options)=>{
+  assert.ok(url.endsWith("/GetClearingLogByParams"),"verification never initiates a payment");
+  checks++;
+  return Response.json([{PaymentId:body.PaymentId,ClearingTraceId:body.ClearingTraceId,IsSuccess:true,LogType:2,TransactionType:0,Amount:205,Currency:1}]);
+ };
+ return {p,body,checks:()=>checks};
+}
+test("deposit callback verifies principal plus fee and duplicates never double-credit",async()=>{
+ const f=fixture(),a=await create({deposit:true}),auth=await authenticate(a);await sign(a,auth);
+ const d=depositFixture(f,a);
+ await Promise.all([deposit.completeAgreementDeposit(f.client,structuredClone(d.p),d.body),deposit.completeAgreementDeposit(f.client,structuredClone(d.p),d.body)]);
+ assert.equal(f.db.FinancialDocument.length,1);assert.equal(f.db.Payment.length,1);
+ assert.equal(f.db.Payment[0].agreement_verified,true);assert.equal(f.db.Payment[0].payment_status,"completed");assert.equal(f.db.Event[0].status,"confirmed");
+ const calls=d.checks();await deposit.completeAgreementDeposit(f.client,structuredClone(f.db.Payment[0]),d.body);assert.equal(d.checks(),calls);
+});
+test("deposit local-accounting failure is recoverable without initiating another payment",async()=>{
+ const f=fixture(),a=await create(),d=depositFixture(f,a);
+ globalThis.__failEntity="FinancialDocument";
+ await assert.rejects(deposit.completeAgreementDeposit(f.client,structuredClone(d.p),d.body));
+ assert.equal(f.db.Payment[0].agreement_verified,false);assert.equal(f.db.Payment[0].agreement_callback_busy,false);
+ globalThis.__failEntity="";
+ await deposit.completeAgreementDeposit(f.client,structuredClone(f.db.Payment[0]));
+ assert.equal(f.db.Payment[0].agreement_verified,true);assert.equal(f.db.FinancialDocument.length,1);assert.equal(d.checks(),2);
+});
+test("deposit callback cannot credit mismatched amount or test environment",async()=>{
+ const f=fixture(),a=await create(),d=depositFixture(f,a);
+ globalThis.fetch=async()=>Response.json([{PaymentId:"provider-deposit",ClearingTraceId:"trace",IsSuccess:true,LogType:2,Amount:200,Currency:1}]);
+ await assert.rejects(deposit.completeAgreementDeposit(f.client,structuredClone(d.p),d.body));
+ assert.equal(f.db.Payment[0].agreement_verified,false);
+ f.db.Payment[0].agreement_environment="qa";
+ await assert.rejects(deposit.completeAgreementDeposit(f.client,structuredClone(f.db.Payment[0])),/בדיקה/);
+ assert.equal(f.db.Payment[0].agreement_verified,false);
 });
