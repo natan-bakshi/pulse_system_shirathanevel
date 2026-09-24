@@ -1,4 +1,4 @@
-import { jsPDF } from "npm:jspdf@4.0.0";
+import { jsPDF } from "npm:jspdf@4.2.0";
 import { agreementFont } from "./agreementFont.ts";
 import { canonical, digest } from "./agreementRules.ts";
 export async function makeAgreementPdf(a) {
@@ -29,8 +29,8 @@ export async function makeAgreementPdf(a) {
  line("תקרת חיוב חריג: "+a.snapshot.exceptional_cap+" "+a.snapshot.currency);
  line("דרישות סגירה: חתימה"+(a.require_token?" + כרטיס מאומת":"; ללא חובת כרטיס")+(a.require_deposit?" + מקדמה":"; ללא חובת מקדמה"));
  line(a.snapshot.exceptional_notice?"הודעה לפני חיוב חריג: לפחות "+a.snapshot.exceptional_notice_days+" ימים, עם אפשרות לתשלום חלופי.":"ללא חובת הודעה מקדימה לחיוב חריג במסגרת הרשאה זו.");
+ if(y>220){doc.addPage();y=20;}
  line("חתימה",14);
- if(y>235){doc.addPage();y=20;}
  const sig=a.signature.strokes||[];
  doc.setDrawColor(30,30,30);doc.setLineWidth(0.45);
  for(const stroke of sig)for(let i=1;i<stroke.length;i++)doc.line(25+stroke[i-1][0]*150,y+stroke[i-1][1]*40,25+stroke[i][0]*150,y+stroke[i][1]*40);

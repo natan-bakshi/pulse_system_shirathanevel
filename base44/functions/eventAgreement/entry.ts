@@ -11,6 +11,7 @@ import { normalizeIsraeliPhone } from "../../shared/whatsappSend.ts";
 import { readAll } from "../../shared/eventReadiness.ts";
 import { closingDefaults, canonical, digest, cleanText, defaultMilestones, validateMilestones, roundMoney } from "../../shared/agreementRules.ts";
 import { AgreementError, audit, lockAgreement, settings, financials, deliver, reconcileAgreement } from "../../shared/agreementLifecycle.ts";
+import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 
 const APP="https://pulse-system.base44.app";
@@ -232,6 +233,11 @@ export default Deno.serve(async req=>{
    const p=await preview(client,base44,body.eventId,config);
    return Response.json({...p,event:undefined});
   }
+  if(action==="recover_deposit"){
+   const p=await client.entities.Payment.get(body.paymentId);
+   if(!p?.agreement_id||p.event_id!==body.eventId)throw new AgreementError("תשלום לא מתאים",409);
+   return Response.json(await completeAgreementDeposit(client,p));
+  }
   if(action==="list"){
    await reconcileAgreement(client,body.eventId,config);
    const rows=await readAll(client.entities.EventAgreement,{event_id:body.eventId});
@@ -241,7 +247,8 @@ export default Deno.serve(async req=>{
     audit:current?await readAll(client.entities.AgreementAuditEvent,{agreement_id:current.id}):[],
     milestones:current?await readAll(client.entities.PaymentMilestone,{agreement_id:current.id}):[],
     deliveries:current?await readAll(client.entities.ClientMessageDelivery,{agreement_id:current.id}):[],
-    amendments:current?await readAll(client.entities.AgreementAmendment,{agreement_id:current.id}):[]});
+    amendments:current?await readAll(client.entities.AgreementAmendment,{agreement_id:current.id}):[],
+    deposits:(await readAll(client.entities.Payment,{event_id:body.eventId})).filter(p=>p.agreement_id&&p.clearing_method==="hosted_page").map(p=>({id:p.id,amount:p.amount,status:p.payment_status,verified:p.agreement_verified,canRecover:!!p.agreement_callback,pending:p.payment_status==="pending"}))});
   }
   if(action==="create"){
    const p=await preview(client,base44,body.eventId,config);
@@ -319,7 +326,9 @@ export default Deno.serve(async req=>{
     for(const m of await readAll(client.entities.PaymentMilestone,{agreement_id:a.id})){
      if(m.message_state==="pending")await client.entities.PaymentMilestone.update(m.id,{notification_enabled:n.enabled,template:n.template,notify_at:reminderTime(m.due_date,n.days,n.time)});
     }
-    await audit(client,a,"notification_settings_changed",user.id,{...n,send_copy:!!body.send_copy});return Response.json({success:true});
+    await audit(client,a,"notification_settings_changed",user.id,{...n,send_copy:!!body.send_copy});
+    if(body.send_copy&&a.signed_at)await finishDocument(client,await client.entities.EventAgreement.get(a.id));
+    return Response.json({success:true});
    }
    if(action==="amendment"){
     if(!a.signed_at)throw new AgreementError("נדרש הסכם חתום");

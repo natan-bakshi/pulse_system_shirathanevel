@@ -183,6 +183,15 @@
     },
     "agreement_callback_busy": {
       "type": "boolean"
+    },
+    "agreement_callback": {
+      "type": "object"
+    },
+    "agreement_callback_owner": {
+      "type": "string"
+    },
+    "agreement_callback_started_at": {
+      "type": "string"
     }
   },
   "required": [
