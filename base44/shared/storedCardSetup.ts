@@ -35,9 +35,9 @@ export async function beginSetup(client, user, config, customer, consentReferenc
     claimed = true;
     const created = await providerCall(access, "CreateCustomer", {
       token: access.key,
-      cu: { Name: customer.name, Active: true, Email: customer.email || "", Mobile: customer.phone || "", Identifier: customer.identifier || "" }
+      cu: { Name: customer.name, Email: customer.email || "", Cell: customer.phone || "", Active: true }
     });
-    if (hasErrors(created) || !created.ID) throw new CardError("לא ניתן ליצור שיוך כרטיס אצל הספק");
+    if (hasErrors(created) || !Number.isSafeInteger(Number(created?.ID)) || Number(created.ID) <= 0) throw new CardError("לא ניתן ליצור שיוך כרטיס אצל הספק");
     const providerId = String(created.ID);
     const reused = await client.entities.CardSetupRequest.filter({ provider_customer_id: providerId, environment: access.environment }, "id", 1);
     if (reused.length) throw new CardError("הספק החזיר שיוך קיים; יצירת קישור נעצרה כדי להגן על הכרטיס");

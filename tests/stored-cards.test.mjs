@@ -256,6 +256,9 @@ test("setup creates a dedicated provider customer and no payment/document", asyn
   assert.equal(r.status, 200, JSON.stringify(r));
   assert.equal(f.db.Payment?.length || 0, 0); assert.equal(f.db.FinancialDocument?.length || 0, 0);
   const payload = f.calls.find(c => c.payload.request?.AddToken).payload.request;
+  assert.deepEqual(f.calls.find(c => c.endpoint === "CreateCustomer").payload, {
+    token: "fake-qa-key", cu: { Name: "QA Customer", Email: "qa@example.test", Cell: "0500000000", Active: true }
+  });
   assert.equal(payload.AddToken, true); assert.equal(payload.IsDocCreate, false);
   assert.equal(payload.CreditCardCompanyType, undefined);
   assert.notEqual(String(payload.CustomerId), "1234"); assert.equal(payload.ChargeWithToken, undefined);
@@ -532,4 +535,58 @@ test("notice must match exact amount and reason and waiting period",async()=>{
  assert.equal(f.calls.length,0);
  f.db.AgreementChargeNotice[0].amount=100;
  assert.equal((await request("charge",body)).data.state,"completed");
+});
+
+
+test("invalid customer IDs never reach AddToken and release setup state", async () => {
+  for (const id of [-1, -2, -3, -4, 0, null, "invalid"]) {
+    const f = fixture();
+    globalThis.fetch = async (url, options) => {
+      f.calls.push({ endpoint: String(url).split("/").pop(), payload: JSON.parse(options.body) });
+      return Response.json({ CreateCustomerResult: { ID: id } });
+    };
+    const r = await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Test" });
+    assert.equal(r.status, 400, String(id));
+    assert.deepEqual(f.calls.map(c => c.endpoint), ["CreateCustomer"]);
+    assert.equal(f.db.CardSetupRequest[0].state, "failed");
+    assert.equal(f.db.BillingCustomer[0].busy_operation_id, "");
+  }
+});
+
+const customerClient = await load("base44/shared/invoice4uClient.ts");
+test("document customer creation uses documented fields and unwraps the WCF response", async () => {
+  for (const identifier of ["", "123456789"]) {
+    fixture(); const calls = [];
+    globalThis.fetch = async (url, options) => {
+      const endpoint = String(url).split("/").pop(), payload = JSON.parse(options.body);
+      calls.push({ endpoint, payload });
+      return Response.json({ d: { [endpoint + "Result"]: endpoint === "GetCustomers" ? { Response: [] } : { ID: 42 } } });
+    };
+    const id = await customerClient.invoice4uFindOrCreateCustomer("qa", "fake-key", {
+      name: "Test", email: "test@example.test", phone: "0515518928", identifier
+    });
+    assert.equal(id, 42);
+    assert.deepEqual(calls.find(c => c.endpoint === "CreateCustomer").payload, {
+      token: "fake-key", cu: { Name: "Test", Email: "test@example.test", Cell: "0515518928", Active: true,
+        ...(identifier ? { UniqueID: identifier } : {}) }
+    });
+    if (identifier) assert.deepEqual(calls[0].payload.cust, { UniqueID: identifier, Active: true });
+  }
+});
+test("document customer lookup reuses the matching UniqueID without creating a duplicate", async () => {
+  fixture(); const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, payload: JSON.parse(options.body) });
+    return Response.json({ GetCustomersResult: { Response: [{ ID: 77, UniqueID: "123456789" }] } });
+  };
+  assert.equal(await customerClient.invoice4uFindOrCreateCustomer("qa", "fake-key", { name: "Test", identifier: "123456789" }), 77);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].payload.cust, { UniqueID: "123456789", Active: true });
+});
+test("document customer creation rejects provider conflict IDs", async () => {
+  for (const id of [-1, -2, -3, -4, 0]) {
+    fixture();
+    globalThis.fetch = async url => Response.json(String(url).endsWith("GetCustomers") ? { Response: [] } : { ID: id });
+    await assert.rejects(customerClient.invoice4uFindOrCreateCustomer("qa", "fake-key", { name: "Test" }), /לא ניתן ליצור לקוח/);
+  }
 });

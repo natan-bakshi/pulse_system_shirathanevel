@@ -23,7 +23,8 @@ export async function invoice4uRequest(environment, endpoint, body) {
   const data = await response.json();
   if (!response.ok) throw new Error(data?.Message || "שגיאה בתקשורת עם Invoice4U");
   // ה-REST של Invoice4U עוטף את התוצאה במפתח "d" - מחזירים את התוכן עצמו.
-  return data && typeof data === "object" && "d" in data ? data.d : data;
+  const result = data && typeof data === "object" && "d" in data ? data.d : data;
+  return result?.[endpoint + "Result"] ?? result;
 }
 
 // קבלה ב-Invoice4U חייבת להיות מקושרת ללקוח קיים (לא "לקוח מזדמן").
@@ -40,8 +41,8 @@ export async function invoice4uFindOrCreateCustomer(environment, token, customer
   };
 
   if (identifier) {
-    const byIdentifier = (await search({ Identifier: identifier, Active: true }))
-      .find((item) => String(item?.Identifier || "").trim() === identifier);
+    const byIdentifier = (await search({ UniqueID: identifier, Active: true }))
+      .find((item) => String(item?.UniqueID || "").trim() === identifier);
     if (byIdentifier?.ID) return byIdentifier.ID;
   }
 
@@ -53,16 +54,17 @@ export async function invoice4uFindOrCreateCustomer(environment, token, customer
 
   // התאמה לפי שם מתקבלת רק כשאין ח.פ. סותר על הלקוח הקיים.
   const existing = (await search({ Name: name, Active: true })).find((item) => item?.Name === name
-    && (!identifier || !String(item?.Identifier || "").trim() || String(item.Identifier).trim() === identifier));
+    && (!identifier || !String(item?.UniqueID || "").trim() || String(item.UniqueID).trim() === identifier));
   if (existing?.ID) return existing.ID;
 
   const created = await invoice4uRequest(environment, "CreateCustomer", {
     token,
-    cu: { Name: name, Active: true, Email: customer.email || "", Mobile: customer.phone || "", Identifier: customer.identifier || "" }
+    cu: { Name: name, Email: customer.email || "", Cell: customer.phone || "", Active: true,
+      ...(identifier ? { UniqueID: identifier } : {}) }
   });
   const errorMessage = invoice4uErrors(created);
   if (errorMessage) throw new Error(errorMessage);
-  if (!created?.ID) throw new Error("לא ניתן ליצור לקוח ב-Invoice4U");
+  if (!Number.isSafeInteger(Number(created?.ID)) || Number(created.ID) <= 0) throw new Error("לא ניתן ליצור לקוח ב-Invoice4U");
   return created.ID;
 }
 
