@@ -1,5 +1,5 @@
 import AgreementChargeForm from "./AgreementChargeForm";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -51,10 +51,6 @@ function CardPanel({ event, onChanged }) {
   const [reference, setReference] = useState("");
   const [consentImage,setConsentImage]=useState("");
   const evidenceInput=<label className="block">צילום תכתובת או אישור (במקום מספר או בנוסף לו)<input className={inputClass} type="file" accept="image/png,image/jpeg" onChange={async e=>{const f=e.target.files?.[0];setConsentImage("");if(!f)return;if(f.size>2*1024*1024||!["image/png","image/jpeg"].includes(f.type)){setMessage("יש לבחור PNG או JPEG עד 2MB");e.target.value="";return;}const r=new FileReader();r.onload=()=>setConsentImage(String(r.result));r.readAsDataURL(f);}}/><span className="text-xs text-gray-600">צילום ההסכמה נשמר באופן פרטי. אין לצרף צילום כרטיס אשראי או פרטי אשראי.</span></label>;
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [quote, setQuote] = useState(null);
-  const requestKey = useRef("");
   const key = ["storedCard", event.id];
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: key, queryFn: () => storedCardAction("status", { eventId: event.id }), staleTime: 30000
@@ -135,7 +131,7 @@ function CardPanel({ event, onChanged }) {
           {customer && <Button variant="outline" disabled={busy || customer.busy} onClick={() => { setConsent(false); setReference(""); setConsentImage(""); setMode("setup"); }}>{card ? "החלף כרטיס" : "הוסף כרטיס"}</Button>}
           {card?.has_consent_image && <Button variant="outline" disabled={busy} onClick={()=>run(async()=>{const r=await storedCardAction("consent_document",{customerId:customer.id});window.open(r.signed_url,"_blank","noopener,noreferrer");})}>צפה באסמכתא להסכמה</Button>}
           {card?.state === "active" && <>
-            <Button disabled={busy || customer?.busy} onClick={() => { setQuote(null); setAmount(""); setDescription("תשלום עבור " + event.event_name); setMode("charge"); }}>חיוב מכרטיס שמור</Button>
+            <Button disabled={busy || customer?.busy} onClick={() => setMode("charge")}>חיוב מכרטיס שמור</Button>
             <Button variant="outline" disabled={busy || customer?.busy} onClick={() => remove(false)}>הסר כרטיס בלבד</Button>
           </>}
           {customer && <>

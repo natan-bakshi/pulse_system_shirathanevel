@@ -265,6 +265,12 @@ export default Deno.serve(async req=>{
     if(customer?.busy_operation_id)throw new AgreementError("פעולת כרטיס בטיפול; יש להשלימה לפני יצירת גרסה",409);
     if(customer?.deleted_at||normalizeIsraeliPhone(customer?.phone)!==phone)throw new AgreementError("הטלפון חייב להתאים ללקוח המשלם המקושר. אפשר לנתק או לשנות את הלקוח באירוע.");
    }
+   if(!customer){
+    const matches=(await readAll(client.entities.BillingCustomer)).filter(c=>!c.deleted_at&&normalizeIsraeliPhone(c.phone)===phone);
+    if(matches.length>1)throw new AgreementError("נמצאו מספר לקוחות עם אותו טלפון. יש לבחור לקוח משלם בכרטיסיית האירוע",409);
+    customer=matches[0]||null;
+    if(customer?.busy_operation_id)throw new AgreementError("לקוח עם טלפון זה נמצא בתהליך שמירת כרטיס או גבייה; יש להשלים אותו תחילה",409);
+   }
    const old=await readAll(client.entities.EventAgreement,{event_id:body.eventId});
    if(old.some(a=>a.busy_operation&&a.id!==lockedId))throw new AgreementError("קיימת פעולה בהסכם קודם",409);
    let milestones;try{milestones=validateMilestones(body.milestones,p.total);}catch(e){throw new AgreementError(e.message);}
@@ -287,7 +293,7 @@ export default Deno.serve(async req=>{
    });
    for(const m of milestones)await client.entities.PaymentMilestone.create({...m,agreement_id:a.id,event_id:body.eventId,state:"pending",message_state:"pending",
     notify_at:reminderTime(m.due_date,notification.days,notification.time),notification_enabled:notification.enabled,template:notification.template});
-   const bound=await client.entities.Event.updateMany({id:body.eventId,updated_date:p.event.updated_date},{$set:{closing_agreement_id:a.id,closing_manual_override:false}});
+   const bound=await client.entities.Event.updateMany({id:body.eventId,updated_date:p.event.updated_date},{$set:{closing_agreement_id:a.id,closing_manual_override:false,...(customer?{billing_customer_id:customer.id}:{})}});
    if(bound.updated!==1)throw new AgreementError("האירוע השתנה; הטיוטה לא הופעלה",409);
    for(const previous of old.filter(x=>x.active)){
     await client.entities.EventAgreement.update(previous.id,{active:false,link_hash:"",session_hash:""});

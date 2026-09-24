@@ -1,4 +1,4 @@
-import { afterAgreementChange, audit } from "../../shared/agreementLifecycle.ts";
+import { afterAgreementChange } from "../../shared/agreementLifecycle.ts";
 import { afterCardRelevantChange } from '../../shared/storedCards.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { recalculateEventStatus, readAll, parseAssignmentValue } from '../../shared/eventReadiness.ts';

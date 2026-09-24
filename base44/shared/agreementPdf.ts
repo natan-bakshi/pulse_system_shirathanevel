@@ -1,6 +1,6 @@
 import { jsPDF } from "npm:jspdf@4.2.0";
 import { agreementFont } from "./agreementFont.ts";
-import { canonical, digest } from "./agreementRules.ts";
+import { digest } from "./agreementRules.ts";
 export async function makeAgreementPdf(a) {
  const doc=new jsPDF({unit:"mm",format:"a4",compress:true});
  doc.addFileToVFS("NotoSansHebrew.ttf",agreementFont);doc.addFont("NotoSansHebrew.ttf","Agreement","normal");doc.setFont("Agreement");
