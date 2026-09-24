@@ -35,7 +35,7 @@ export async function makeAgreementPdf(a) {
  doc.setDrawColor(30,30,30);doc.setLineWidth(0.45);
  for(const stroke of sig)for(let i=1;i<stroke.length;i++)doc.line(25+stroke[i-1][0]*150,y+stroke[i-1][1]*40,25+stroke[i][0]*150,y+stroke[i][1]*40);
  y+=47;
- line("תיעוד אימות",14);line("הטלפון אומת באמצעות קוד חד-פעמי בתאריך "+a.verified_at);
+ line("תיעוד אימות",14);line("הטלפון אומת באמצעות קוד חד-פעמי בתאריך "+(a.signature.verified_at||a.verified_at));
  line("טביעת תוכן: "+a.content_hash,8);line("טביעת חתימה: "+a.signature_hash,8);
  const links=[...new Set((a.snapshot.quote_text+"\n"+a.snapshot.terms+"\n"+a.snapshot.clauses.map(c=>c.text).join("\n")).match(/https?:\/\/[^\s<>"\]]+/g)||[])];
  for(const url of links){

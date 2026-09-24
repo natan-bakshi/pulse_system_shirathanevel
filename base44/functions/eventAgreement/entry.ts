@@ -56,8 +56,8 @@ async function preview(client,base44,eventId,config){
  const event=await client.entities.Event.get(eventId);
  if(!event)throw new AgreementError("האירוע לא נמצא",404);
  const f=await financials(client,event,config);
- if(f.finalTotal<=0||!event.event_date)throw new AgreementError("נדרש מחיר ותאריך לאירוע לפני יצירת הסכם");
- const {html}=await generateQuoteHtml(eventId,base44,{preloadedEvent:event,includeIntro:true,includePaymentTerms:false,includeSchedule:true,includeExternalServices:true});
+ if(!Number.isFinite(f.finalTotal)||f.finalTotal<=0||!event.event_date)throw new AgreementError("נדרש מחיר ותאריך לאירוע לפני יצירת הסכם");
+ const {html}=await generateQuoteHtml(eventId,base44,{preloadedEvent:event,includeIntro:true,includePaymentTerms:false,includeAgreement:false,includeSchedule:true,includeExternalServices:true});
  const templates=await readAll(client.entities.QuoteTemplate,{template_type:"agreement_disclaimer"});
  const terms=textFromHtml(templates.find(x=>x.identifier==="default")?.content||templates[0]?.content||"");
  const deposit=calculateAdvanceAmount(config,f.finalTotal);
@@ -94,6 +94,8 @@ function validateSignature(body){
  return {name,role:cleanText(body.role,120),strokes};
 }
 async function finishDocument(client,a){
+ const consent=await readAll(client.entities.ConsentClause,{agreement_id:a.id});
+ for(const c of a.snapshot.clauses)if(!consent.some(x=>x.code===c.code))await client.entities.ConsentClause.create({agreement_id:a.id,event_id:a.event_id,code:c.code,text:c.text,version:a.version,accepted_at:a.signed_at});
  try{a=await persistAgreementPdf(client,a);}
  catch{return await client.entities.EventAgreement.update(a.id,{pdf_state:"failed"});}
  if(a.send_copy&&a.copy_state==="pending"){
@@ -176,15 +178,14 @@ export default Deno.serve(async req=>{
     }
     if(action==="view"){await reconcileAgreement(client,a.event_id);a=await client.entities.EventAgreement.get(a.id);return Response.json(publicAgreement(a));}
     if(action==="sign"){
-     if(a.signed_at)return Response.json(publicAgreement(a));
+     if(a.signed_at){a=await finishDocument(client,a);await reconcileAgreement(client,a.event_id);return Response.json(publicAgreement(await client.entities.EventAgreement.get(a.id)));}
      if(body.contentHash!==a.content_hash)throw new AgreementError("נוסח ההסכם השתנה; יש לרענן",409);
      const sig=validateSignature(body);
      const accepted=Object.fromEntries(a.snapshot.clauses.map(c=>[c.code,body.accepted?.[c.code]===true]));
      if(Object.values(accepted).some(v=>!v))throw new AgreementError("נדרש אישור נפרד לכל סעיף");
-     const signature={...sig,accepted,ip:cleanText(req.headers.get("x-forwarded-for")?.split(",")[0]||req.headers.get("x-real-ip"),100),user_agent:cleanText(req.headers.get("user-agent"),500),session_fingerprint:a.session_hash};
+     const signature={...sig,accepted,verified_at:a.verified_at,ip:cleanText(req.headers.get("x-forwarded-for")?.split(",")[0]||req.headers.get("x-real-ip"),100),user_agent:cleanText(req.headers.get("user-agent"),500),session_fingerprint:a.session_hash};
      const signedAt=new Date().toISOString();
      a=await client.entities.EventAgreement.update(a.id,{signature,signature_hash:await digest(canonical({signature,content_hash:a.content_hash,signed_at:signedAt})),signed_at:signedAt,state:"signed",link_hash:"",otp_hash:"",pdf_state:"pending"});
-     for(const c of a.snapshot.clauses)await client.entities.ConsentClause.create({agreement_id:a.id,event_id:a.event_id,code:c.code,text:c.text,version:a.version,accepted_at:signedAt});
      await audit(client,a,"signed","customer",{content_hash:a.content_hash,signature_hash:a.signature_hash});
      a=await finishDocument(client,a);await reconcileAgreement(client,a.event_id);
      return Response.json(publicAgreement(await client.entities.EventAgreement.get(a.id)));
@@ -243,7 +244,7 @@ export default Deno.serve(async req=>{
    const rows=await readAll(client.entities.EventAgreement,{event_id:body.eventId});
    rows.sort((a,b)=>b.version-a.version);
    const current=rows.find(a=>a.active);
-   return Response.json({agreements:rows.map(publicAgreement),current:current?{...publicAgreement(current),notifications:current.notifications,send_copy:current.send_copy}:null,
+   return Response.json({agreements:rows.map(publicAgreement),current:current?{...publicAgreement(current),notifications:current.notifications,send_copy:current.send_copy,busy_operation:!!current.busy_operation,busy_started_at:current.busy_started_at}:null,
     audit:current?await readAll(client.entities.AgreementAuditEvent,{agreement_id:current.id}):[],
     milestones:current?await readAll(client.entities.PaymentMilestone,{agreement_id:current.id}):[],
     deliveries:current?await readAll(client.entities.ClientMessageDelivery,{agreement_id:current.id}):[],
@@ -255,6 +256,7 @@ export default Deno.serve(async req=>{
    const executeCreate=async lockedId=>{
    if(body.sourceHash!==p.sourceHash)throw new AgreementError("פרטי האירוע השתנו מאז התצוגה; יש לפתוח טיוטה מחדש",409);
    const name=cleanText(body.name,120),phone=normalizeIsraeliPhone(body.phone),email=cleanText(body.email,200);
+   if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new AgreementError("כתובת אימייל לא תקינה");
    if(!name||!phone)throw new AgreementError("נדרשים שם וטלפון תקינים");
    let customer=null;
    if(p.event.billing_customer_id){
@@ -264,7 +266,7 @@ export default Deno.serve(async req=>{
    }
    const old=await readAll(client.entities.EventAgreement,{event_id:body.eventId});
    if(old.some(a=>a.busy_operation&&a.id!==lockedId))throw new AgreementError("קיימת פעולה בהסכם קודם",409);
-   const milestones=validateMilestones(body.milestones,p.total);
+   let milestones;try{milestones=validateMilestones(body.milestones,p.total);}catch(e){throw new AgreementError(e.message);}
    const regular=roundMoney(body.regular_cap),exceptional=roundMoney(body.exceptional_cap);
    if(!Number.isFinite(regular)||!Number.isFinite(exceptional)||regular<0||exceptional<0)throw new AgreementError("תקרות חיוב לא תקינות");
    const clauses=p.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
@@ -299,6 +301,14 @@ export default Deno.serve(async req=>{
   }
   let a=await client.entities.EventAgreement.get(body.agreementId);
   if(!a)throw new AgreementError("ההסכם לא נמצא",404);
+  if(action==="recover_workflow"){
+   if(!a.busy_operation||!a.busy_started_at||Date.parse(a.busy_started_at)>Date.now()-300000)throw new AgreementError("אין פעולה ישנה לשחרור; יש להמתין לפחות חמש דקות",409);
+   if(a.busy_operation.startsWith("charge:"))throw new AgreementError("יש לברר את פעולת הגבייה דרך הכרטיס השמור",409);
+   const cleared=await client.entities.EventAgreement.updateMany({id:a.id,busy_operation:a.busy_operation,busy_started_at:a.busy_started_at},{$set:{busy_operation:""}});
+   if(cleared.updated!==1)throw new AgreementError("מצב הפעולה השתנה",409);
+   await audit(client,a,"workflow_recovered",user.id,{operation:a.busy_operation.split(":")[0]});
+   return Response.json({success:true});
+  }
   return await lockAgreement(client,a,action,async current=>{
    a=current;
    if(action==="issue"){

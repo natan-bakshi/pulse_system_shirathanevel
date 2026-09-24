@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from "@/components/ui/dialog";
 import AgreementView from "./AgreementView";
 const input="block w-full border rounded-md p-2 bg-white mt-1";
-const auditNames={created:"נוצרה גרסת הסכם",link_issued:"הופק קישור",invitation_accepted:"הזמנה התקבלה אצל ספק הוואטסאפ",opened:"הקישור נפתח",verification_sent:"נשלח קוד אימות",verified:"הטלפון אומת",signed:"ההסכם נחתם",token_link_created:"נוצר קישור לכרטיס",token_verified:"הכרטיס אומת",deposit_link_created:"נוצר קישור למקדמה",deposit_paid:"המקדמה שולמה",deposit_verified:"תשלום המקדמה אומת מול הספק",event_closed:"האירוע נסגר לפי הנוהל",superseded:"הוחלף בגרסה חדשה",cancelled:"ההסכם בוטל",notification_settings_changed:"עודכנו הגדרות הודעות",amendment_recorded:"תועד שינוי מוסכם",reminder_accepted:"תזכורת התקבלה אצל הספק",exceptional_notice:"נשלחה הודעה על חיוב חריג"};
+const auditNames={created:"נוצרה גרסת הסכם",link_issued:"הופק קישור",invitation_accepted:"הזמנה התקבלה אצל ספק הוואטסאפ",opened:"הקישור נפתח",verification_sent:"נשלח קוד אימות",verified:"הטלפון אומת",signed:"ההסכם נחתם",token_link_created:"נוצר קישור לכרטיס",token_verified:"הכרטיס אומת",deposit_link_created:"נוצר קישור למקדמה",deposit_paid:"המקדמה שולמה",deposit_verified:"תשלום המקדמה אומת מול הספק",event_closed:"האירוע נסגר לפי הנוהל",superseded:"הוחלף בגרסה חדשה",cancelled:"ההסכם בוטל",notification_settings_changed:"עודכנו הגדרות הודעות",amendment_recorded:"תועד שינוי מוסכם",reminder_accepted:"תזכורת התקבלה אצל הספק",exceptional_notice:"נשלחה הודעה על חיוב חריג",workflow_recovered:"שוחררה פעולה שנקטעה"};
 function Notifications({value:n,onChange}){
  return <fieldset className="space-y-3 border rounded p-3"><legend>שליטה בהודעות מקדימות</legend>
   <label className="flex gap-2"><input type="checkbox" checked={!!n.enabled} onChange={e=>onChange({...n,enabled:e.target.checked})}/>אפשר תזכורות תשלום אוטומטיות</label>
@@ -33,6 +33,7 @@ export default function EventClosingPanel({event,onChanged}){
    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[["הסכם",statusLabel(a.state)],["חתימה",a.signed_at?new Date(a.signed_at).toLocaleString("he-IL"):"ממתינה"],["כרטיס",statusLabel(a.token_state)+(a.require_token?"":" · רשות")],["מקדמה",statusLabel(a.deposit_state)+(a.require_deposit?"":" · רשות")]].map(([k,v])=><div key={k} className="bg-stone-50 rounded p-3"><p className="text-xs text-gray-600">{k}</p><p>{v}</p></div>)}</div>
    <p className="text-sm">גרסה {a.version} · {a.snapshot.recipient_name} · {a.snapshot.recipient_phone} · PDF: {statusLabel(a.pdf_state)} · עותק בוואטסאפ: {statusLabel(a.copy_state)}</p>
    {event.closing_manual_override&&<p className="text-amber-800 text-sm">הסטטוס שונה ידנית. השלמת הנוהל הנוכחי לא תדרוס את בחירת המנהל.</p>}
+   {a.busy_operation&&<p className="text-amber-800">פעולה בהסכם בטיפול. אם חלפו חמש דקות והפעולה נקטעה, ניתן לשחרר את נעילת הטופס. <Button variant="outline" disabled={busy} onClick={()=>run(()=>agreementAction("recover_workflow",{agreementId:a.id}))}>שחרר פעולה שנקטעה</Button></p>}
    <div className="flex flex-wrap gap-2">
     <Button disabled={busy} variant="outline" onClick={()=>issue(true)}>שלח קישור בוואטסאפ</Button>
     <Button disabled={busy} variant="outline" onClick={()=>issue(false)}>הפק קישור להעתקה</Button>

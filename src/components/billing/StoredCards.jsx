@@ -133,6 +133,7 @@ function CardPanel({ event, onChanged }) {
             setConsentImage(""); setConsent(false); setReference(""); setCustomerSearch(""); await loadCustomers(false, ""); setMode("customer");
           })}>{customer ? "שינוי לקוח משלם" : "בחר לקוח משלם"}</Button>
           {customer && <Button variant="outline" disabled={busy || customer.busy} onClick={() => { setConsent(false); setReference(""); setConsentImage(""); setMode("setup"); }}>{card ? "החלף כרטיס" : "הוסף כרטיס"}</Button>}
+          {card?.has_consent_image && <Button variant="outline" disabled={busy} onClick={()=>run(async()=>{const r=await storedCardAction("consent_document",{customerId:customer.id});window.open(r.signed_url,"_blank","noopener,noreferrer");})}>צפה באסמכתא להסכמה</Button>}
           {card?.state === "active" && <>
             <Button disabled={busy || customer?.busy} onClick={() => { setQuote(null); setAmount(""); setDescription("תשלום עבור " + event.event_name); setMode("charge"); }}>חיוב מכרטיס שמור</Button>
             <Button variant="outline" disabled={busy || customer?.busy} onClick={() => remove(false)}>הסר כרטיס בלבד</Button>

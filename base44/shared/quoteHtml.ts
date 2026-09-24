@@ -255,7 +255,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const appSettings = appSettingsList.reduce((acc, item) => ({ ...acc, [item.setting_key]: item.setting_value }), {});
     const introTemplate = templates.find(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
     const paymentTemplate = templates.find(t => t.template_type === 'payment_terms');
-    const agreementTemplate = templates.find(t => t.template_type === 'agreement_disclaimer');
+    const agreementTemplate = options.includeAgreement === false ? null : templates.find(t => t.template_type === 'agreement_disclaimer');
 
     // Organizer Type support
     let organizerType = null;

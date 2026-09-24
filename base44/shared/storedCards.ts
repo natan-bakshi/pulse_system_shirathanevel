@@ -78,7 +78,7 @@ export async function customerEligibility(client, customerId, config) {
 }
 export function safeCard(card) {
   return card ? { id: card.id, state: card.state, environment: card.environment, card_suffix: card.card_suffix || "",
-    brand: card.brand || "", cleanup_pending: !!card.cleanup_pending } : null;
+    brand: card.brand || "", has_consent_image:!!card.consent_image_uri, cleanup_pending: !!card.cleanup_pending } : null;
 }
 export async function removeCard(client, customerId, cardId, actor, config, eligibleOnly = false) {
   const customer = await client.entities.BillingCustomer.get(customerId);

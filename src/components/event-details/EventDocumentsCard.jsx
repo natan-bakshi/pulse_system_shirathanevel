@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import CancelInvoiceWizard from "@/components/billing/CancelInvoiceWizard";
 import ShareDocumentDialog from "@/components/billing/ShareDocumentDialog";
+import { agreementAction } from "@/lib/agreementApi";
 import { getEventContactList } from "@/lib/eventContactList";
 
 const labels = { invoice: "חשבונית מס", receipt: "קבלה", invoice_receipt: "חשבונית מס/קבלה", invoice_credit: "חשבונית זיכוי", proforma: "חשבונית עסקה" };
@@ -28,6 +29,9 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
     enabled: !!eventId
   });
 
+  const {data:agreements=[]}=useQuery({queryKey:["eventSignedDocuments",eventId],enabled:!!eventId&&isAdmin,
+    queryFn:async()=>(await base44.entities.EventAgreement.filter({event_id:eventId})).filter(a=>a.signed_at),staleTime:30000});
+  const openAgreement=async a=>{setBusyId(a.id);try{const r=await agreementAction("pdf",{agreementId:a.id});window.open(r.url,"_blank","noopener,noreferrer");}catch(e){toast.error(e.response?.data?.error||e.message);}finally{setBusyId(null);}};
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["eventFinancialDocuments", eventId] });
     queryClient.invalidateQueries({ queryKey: ["financialDocuments"] });
@@ -86,6 +90,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader><h3 className="text-lg font-semibold">מסמכים פיננסיים</h3></CardHeader>
       <CardContent>
+        {isAdmin&&agreements.map(a=><div key={a.id} className="flex flex-wrap justify-between items-center gap-2 rounded border p-3 mb-3"><span>הסכם אירוע חתום — גרסה {a.version} · {new Date(a.signed_at).toLocaleDateString("he-IL")}</span><Button variant="outline" disabled={busyId===a.id} onClick={()=>openAgreement(a)}>פתח PDF חתום</Button></div>)}
         {visible.length === 0 ? <div className="py-4 text-center text-gray-500">אין מסמכים לאירוע זה</div> : (
           <div className="space-y-3">
             {visible.map((doc) => {

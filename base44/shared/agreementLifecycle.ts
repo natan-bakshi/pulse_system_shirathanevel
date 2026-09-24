@@ -10,7 +10,7 @@ export async function audit(client,a,kind,actor,details={}) {
 export async function lockAgreement(client,a,operation,fn) {
  if(a.busy_operation)throw new AgreementError("פעולה בהסכם בטיפול; יש לרענן",409);
  const owner=operation+":"+crypto.randomUUID();
- const claim=await client.entities.EventAgreement.updateMany({id:a.id,revision:a.revision,busy_operation:""},{$set:{busy_operation:owner,revision:a.revision+1}});
+ const claim=await client.entities.EventAgreement.updateMany({id:a.id,revision:a.revision,busy_operation:""},{$set:{busy_operation:owner,busy_started_at:new Date().toISOString(),revision:a.revision+1}});
  if(claim.updated!==1)throw new AgreementError("ההסכם השתנה; יש לרענן",409);
  try{return await fn(await client.entities.EventAgreement.get(a.id));}
  finally{await client.entities.EventAgreement.updateMany({id:a.id,busy_operation:owner},{$set:{busy_operation:""}});}

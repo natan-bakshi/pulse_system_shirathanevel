@@ -121,6 +121,9 @@
     },
     "notifications": {
       "type": "object"
+    },
+    "busy_started_at": {
+      "type": "string"
     }
   },
   "required": [
