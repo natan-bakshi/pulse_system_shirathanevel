@@ -3,22 +3,23 @@ import { CardError } from "./storedCards.ts";
 import { assertChargePermission, roundMoney } from "./agreementRules.ts";
 import { lockAgreement, deliver, audit } from "./agreementLifecycle.ts";
 
-export async function chargeContext(client,event,customer) {
+export async function chargeContext(client,event,customer,owner=null) {
  if(!event?.closing_agreement_id)throw new CardError("יש להשלים הסכם חתום בנוהל סגירת האירוע לפני גבייה מהכרטיס",409);
  const a=await client.entities.EventAgreement.get(event.closing_agreement_id);
  if(!a?.active||!a.signed_at||a.customer_id!==customer.id||event.billing_customer_id!==customer.id)throw new CardError("אין הסכם חתום פעיל המשויך ללקוח ולאירוע",409);
- if(a.busy_operation)throw new CardError("פעולה בהסכם בטיפול; יש לרענן",409);
+ if(a.busy_operation&&a.busy_operation!==owner)throw new CardError("פעולה בהסכם בטיפול; יש לרענן",409);
  const milestones=await readAll(client.entities.PaymentMilestone,{agreement_id:a.id});
  const notices=await readAll(client.entities.AgreementChargeNotice,{agreement_id:a.id});
  return {a,milestones,notices};
 }
-export async function authorizeCharge(client,event,customer,body,f) {
- const ctx=await chargeContext(client,event,customer),a=ctx.a;
+export async function authorizeCharge(client,event,customer,body,f,operationId=null) {
+ const ctx=await chargeContext(client,event,customer,operationId?"charge:"+operationId:null),a=ctx.a;
  if(body.agreementHash!==a.content_hash)throw new CardError("יש לקרוא ולאשר את ההרשאה החתומה העדכנית",409);
  if(event.status==="cancelled")throw new CardError("לא ניתן לחייב אירוע שבוטל במסלול זה",409);
  if(f.currency!==a.snapshot.currency||Math.abs(f.finalTotal-a.snapshot.total)>0.01||event.event_date!==a.snapshot.event_date)throw new CardError("פרטי האירוע השתנו מאז החתימה; נדרשת גרסה מוסכמת מעודכנת",409);
  const kind=body.chargeKind==="exceptional"?"exceptional":"regular";
  const milestone=ctx.milestones.find(m=>m.id===body.milestoneId);
+ if(f.payments.some(p=>p.charge_type==="exceptional"&&p.currency&&p.currency!==f.currency))throw new CardError("קיימים חיובים חריגים במטבע שונה; נדרש בירור לפני חיוב נוסף",409);
  const exceptionalPaid=roundMoney(f.payments.filter(p=>p.charge_type==="exceptional"&&p.payment_status!=="failed"&&p.payment_status!=="cancelled").reduce((s,p)=>s+Number(p.amount||0),0));
  try {assertChargePermission({snapshot:a.snapshot,accepted:a.signature?.accepted,kind,amount:roundMoney(body.amount),paid:f.totalPaid,exceptionalPaid,milestone});}
  catch(e){throw new CardError(e.message,409);}
@@ -28,7 +29,7 @@ export async function authorizeCharge(client,event,customer,body,f) {
    const n=ctx.notices.find(n=>n.id===body.noticeId);
    if(!n||n.state!=="accepted"||n.amount!==roundMoney(body.amount)||n.reason!==String(body.description).trim().slice(0,300)||Date.parse(n.available_at)>Date.now())throw new CardError("נדרשת הודעה מקדימה והמתנה לפי המדיניות החתומה",409);
    const used=await client.entities.StoredCardOperation.filter({notice_id:n.id},"id",100);
-   if(used.some(o=>o.state!=="failed"&&o.id!==body.currentOperationId))throw new CardError("הודעה זו כבר שימשה לפעולת גבייה; יש לבדוק את התוצאה",409);
+   if(used.some(o=>o.state!=="failed"&&o.id!==operationId))throw new CardError("הודעה זו כבר שימשה לפעולת גבייה; יש לבדוק את התוצאה",409);
   }
  }
  return {...ctx,kind,milestone};

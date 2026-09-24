@@ -252,16 +252,18 @@ export default Deno.serve(async req=>{
   }
   if(action==="create"){
    const p=await preview(client,base44,body.eventId,config);
+   const executeCreate=async lockedId=>{
    if(body.sourceHash!==p.sourceHash)throw new AgreementError("פרטי האירוע השתנו מאז התצוגה; יש לפתוח טיוטה מחדש",409);
    const name=cleanText(body.name,120),phone=normalizeIsraeliPhone(body.phone),email=cleanText(body.email,200);
    if(!name||!phone)throw new AgreementError("נדרשים שם וטלפון תקינים");
    let customer=null;
    if(p.event.billing_customer_id){
     customer=await client.entities.BillingCustomer.get(p.event.billing_customer_id);
+    if(customer?.busy_operation_id)throw new AgreementError("פעולת כרטיס בטיפול; יש להשלימה לפני יצירת גרסה",409);
     if(customer?.deleted_at||normalizeIsraeliPhone(customer?.phone)!==phone)throw new AgreementError("הטלפון חייב להתאים ללקוח המשלם המקושר. אפשר לנתק או לשנות את הלקוח באירוע.");
    }
    const old=await readAll(client.entities.EventAgreement,{event_id:body.eventId});
-   if(old.some(a=>a.busy_operation))throw new AgreementError("קיימת פעולה בהסכם קודם",409);
+   if(old.some(a=>a.busy_operation&&a.id!==lockedId))throw new AgreementError("קיימת פעולה בהסכם קודם",409);
    const milestones=validateMilestones(body.milestones,p.total);
    const regular=roundMoney(body.regular_cap),exceptional=roundMoney(body.exceptional_cap);
    if(!Number.isFinite(regular)||!Number.isFinite(exceptional)||regular<0||exceptional<0)throw new AgreementError("תקרות חיוב לא תקינות");
@@ -291,6 +293,9 @@ export default Deno.serve(async req=>{
    await client.entities.EventAgreement.update(a.id,{active:true});
    await audit(client,a,"created",user.id,{require_token:a.require_token,require_deposit:a.require_deposit});
    return Response.json(publicAgreement({...a,active:true}));
+   };
+   const previous=p.event.closing_agreement_id?await client.entities.EventAgreement.get(p.event.closing_agreement_id):null;
+   return previous?await lockAgreement(client,previous,"new_version",()=>executeCreate(previous.id)):await executeCreate(null);
   }
   let a=await client.entities.EventAgreement.get(body.agreementId);
   if(!a)throw new AgreementError("ההסכם לא נמצא",404);

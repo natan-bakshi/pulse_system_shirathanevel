@@ -463,15 +463,20 @@ export default Deno.serve(async req => {
         currency: financials.currency, description: text(body.description, 300), performed_by: user.id });
       try { await claimCustomer(client, customer, op.id); }
       catch (e) { await client.entities.StoredCardOperation.update(op.id, { state: "failed", failure_code: "concurrent_operation" }); throw e; }
+      let agreementLocked = false;
       let dispatched = false;
       let payment;
       try {
+        const a=authorization.a;
+        const consentLock=await client.entities.EventAgreement.updateMany({id:a.id,revision:a.revision,busy_operation:"",active:true},{$set:{busy_operation:"charge:"+op.id,revision:a.revision+1}});
+        if(consentLock.updated!==1)throw new CardError("ההסכם השתנה או בטיפול; יש לרענן",409);
+        agreementLocked=true;
         // Re-read after acquiring the lock; a stale browser cannot authorize an obsolete balance/card.
         const freshEvent = await client.entities.Event.get(event.id);
         const freshCustomer = await client.entities.BillingCustomer.get(customer.id);
         await activeCard(client, freshCustomer, config, card.id);
         const latest = await eventBalance(client, freshEvent, config);
-        await authorizeCharge(client,freshEvent,freshCustomer,{...body,currentOperationId:op.id},latest);
+        await authorizeCharge(client,freshEvent,freshCustomer,body,latest,op.id);
         if (freshEvent.billing_customer_id !== customer.id || latest.currency !== financials.currency || (authorization.kind === "regular" && amount > latest.balance) ||
           latest.payments.some(p => p.payment_status === "pending")) throw new CardError("היתרה או שיוך האירוע השתנו", 409);
         payment = await client.entities.Payment.create({ event_id: event.id, billing_customer_id: customer.id,
@@ -511,6 +516,8 @@ export default Deno.serve(async req => {
           throw e;
         }
         return Response.json({ ...safeOperation({ ...op, state: "unknown", payment_id: payment?.id }), message: "התוצאה בבירור. אין לבצע חיוב נוסף." });
+      } finally {
+        if(agreementLocked)await client.entities.EventAgreement.updateMany({id:authorization.a.id,busy_operation:"charge:"+op.id},{$set:{busy_operation:""}});
       }
     }
     throw new CardError("פעולה לא נתמכת");

@@ -57,12 +57,12 @@ export async function reconcileAgreement(client,eventId,config=null) {
  const deposit=f.totalPaid+0.005>=a.snapshot.deposit;
  const changes:any={};
  if(a.token_state!==(token?"verified":"pending")){
-  changes.token_state=token?"verified":"pending";
-  if(token)await audit(client,a,"token_verified","provider",{card_suffix:card.card_suffix});
+  const won=await client.entities.EventAgreement.updateMany({id:a.id,token_state:a.token_state},{$set:{token_state:token?"verified":"pending"}});
+  if(token&&won.updated===1)await audit(client,a,"token_verified","provider",{card_suffix:card.card_suffix});
  }
  if(a.deposit_state!==(deposit?"paid":"pending")){
-  changes.deposit_state=deposit?"paid":"pending";
-  if(deposit)await audit(client,a,"deposit_paid","system",{amount:a.snapshot.deposit});
+  const won=await client.entities.EventAgreement.updateMany({id:a.id,deposit_state:a.deposit_state},{$set:{deposit_state:deposit?"paid":"pending"}});
+  if(deposit&&won.updated===1)await audit(client,a,"deposit_paid","system",{amount:a.snapshot.deposit});
  }
  const ready=canClose({signed:!!a.signed_at,requireToken:a.require_token,token,requireDeposit:a.require_deposit,depositPaid:deposit,active:a.active});
  // The signed financial scope must still match. Later edits require a new agreed version.
@@ -74,7 +74,7 @@ export async function reconcileAgreement(client,eventId,config=null) {
   }else if(["confirmed","in_progress"].includes(event.status)){changes.closing_applied=true;changes.state="completed";changes.completed_at=new Date().toISOString();}
  }
  if(Object.keys(changes).length)a=await client.entities.EventAgreement.update(a.id,changes);
- return a;
+ return await client.entities.EventAgreement.get(a.id);
 }
 export async function afterAgreementChange(client,eventId) {
  try {if(eventId)await reconcileAgreement(client,eventId);}
