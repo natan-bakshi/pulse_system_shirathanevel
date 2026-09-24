@@ -35,7 +35,7 @@ export function validateMilestones(rows,total) {
  let cumulative=0,previous="";
  const result=rows.map((m,i)=>{
  const amount=roundMoney(m.amount),date=String(m.due_date||"");
- if(!Number.isFinite(amount)||amount<0||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||date<previous)throw new Error("סכום או סדר תאריכי אבני הדרך אינו תקין");
+ if(!Number.isFinite(amount)||amount<0||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date||date<previous)throw new Error("סכום או סדר תאריכי אבני הדרך אינו תקין");
  previous=date;cumulative=roundMoney(cumulative+amount);
  return {position:i,label:cleanText(m.label,150)||"תשלום "+(i+1),amount,due_date:date,cumulative_amount:cumulative};
  });
