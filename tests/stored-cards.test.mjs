@@ -81,6 +81,12 @@ function fixture() {
     card_suffix: "1111", cleanup_pending: false, cleanup_notified: false }];
   db.Event = [{ id: "event", stored_card_qa_only: true, event_name: "QA event", billing_customer_id: "customer", status: "completed", primary_currency: "ILS",
     total_override: 100, total_override_includes_vat: true }];
+  db.Event[0].closing_agreement_id="agreement";
+  db.Event[0].event_date="2026-09-24";
+  db.EventAgreement=[{id:"agreement",event_id:"event",active:true,customer_id:"customer",signed_at:"2026-01-01T00:00:00Z",revision:0,busy_operation:"",content_hash:"signed-hash",require_token:true,require_deposit:false,
+    snapshot:{total:100,currency:"ILS",event_date:"2026-09-24",deposit:20,regular_cap:100,exceptional_cap:200,fee_config:{processing_fee_enabled:"false"},exceptional_notice:false},
+    signature:{name:"Test",accepted:{token:true,regular:true,exceptional:true}}}];
+  db.PaymentMilestone=[{id:"milestone",agreement_id:"agreement",event_id:"event",due_date:"2020-01-01",cumulative_amount:100}];
   const setConfig = (key, value) => { config[key] = value; const row = db.AppSettings.find(r => r.setting_key === key); if (row) row.setting_value = value; else db.AppSettings.push({ id: key, setting_key: key, setting_value: value }); };
   return { db, calls, logs, client, config, setConfig };
 }
@@ -90,7 +96,7 @@ async function request(action, body = {}) {
   }));
   return { status: response.status, data: await response.json() };
 }
-const chargeBody = { eventId: "event", customerId: "customer", cardId: "card", amount: 100, confirmedTotal: 100, currency: "ILS",
+const chargeBody = { agreementHash:"signed-hash",milestoneId:"milestone",chargeKind:"regular",eventId: "event", customerId: "customer", cardId: "card", amount: 100, confirmedTotal: 100, currency: "ILS",
   requestKey: "12345678-1234-1234-1234-123456789012", description: "QA service" };
 
 test("unauthorized users cannot access customer cards or invoke the provider", async () => {
@@ -487,3 +493,43 @@ test("hosted reservation releases on write failure and does not affect disabled 
   assert.equal(await core.reserveHostedPayment(f.client, f.db.Event[0], f.config, 100, "ILS", async () => "legacy"), "legacy");
 });
 
+
+test("missing or changed signed consent prevents any charge", async()=>{
+ const f=fixture();f.db.EventAgreement[0].signature.accepted.regular=false;
+ assert.equal((await request("charge",chargeBody)).status,409);
+ f.db.EventAgreement[0].signature.accepted.regular=true;
+ assert.equal((await request("charge",{...chargeBody,agreementHash:"stale"})).status,409);
+ f.db.EventAgreement[0].active=false;
+ assert.equal((await request("charge",chargeBody)).status,409);
+ assert.equal(f.calls.length,0);
+});
+test("milestone timing and cumulative amount are enforced",async()=>{
+ const f=fixture();f.db.PaymentMilestone[0].due_date="2099-01-01";
+ assert.equal((await request("charge",chargeBody)).status,409);
+ f.db.PaymentMilestone[0].due_date="2020-01-01";f.db.PaymentMilestone[0].cumulative_amount=50;
+ assert.equal((await request("charge",chargeBody)).status,409);
+ assert.equal(f.calls.length,0);
+});
+test("exceptional charge uses separate cap and does not pay the event balance",async()=>{
+ const f=fixture();
+ const r=await request("charge",{...chargeBody,chargeKind:"exceptional",milestoneId:"",amount:150,confirmedTotal:150});
+ assert.equal(r.data.state,"completed",JSON.stringify(r));
+ assert.equal(f.db.Payment[0].charge_type,"exceptional");
+ assert.equal(f.db.Payment[0].agreement_verified,true);
+ const balance=await core.eventBalance(f.client,f.db.Event[0],f.config);
+ assert.equal(balance.balance,100);
+ const over=await request("charge",{...chargeBody,chargeKind:"exceptional",milestoneId:"",amount:60,confirmedTotal:60,requestKey:"22345678-1234-1234-1234-123456789012"});
+ assert.equal(over.status,409);
+ assert.equal(f.calls.filter(c=>c.payload.request?.ChargeWithToken).length,1);
+});
+test("notice must match exact amount and reason and waiting period",async()=>{
+ const f=fixture();f.db.EventAgreement[0].snapshot.exceptional_notice=true;
+ const body={...chargeBody,chargeKind:"exceptional",milestoneId:"",noticeId:"notice"};
+ f.db.AgreementChargeNotice=[{id:"notice",agreement_id:"agreement",state:"accepted",amount:100,reason:chargeBody.description,available_at:"2099-01-01"}];
+ assert.equal((await request("charge",body)).status,409);
+ f.db.AgreementChargeNotice[0].available_at="2020-01-01";f.db.AgreementChargeNotice[0].amount=99;
+ assert.equal((await request("charge",body)).status,409);
+ assert.equal(f.calls.length,0);
+ f.db.AgreementChargeNotice[0].amount=100;
+ assert.equal((await request("charge",body)).data.state,"completed");
+});
