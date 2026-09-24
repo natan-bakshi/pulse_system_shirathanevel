@@ -180,6 +180,9 @@
     },
     "agreement_verified": {
       "type": "boolean"
+    },
+    "agreement_callback_busy": {
+      "type": "boolean"
     }
   },
   "required": [

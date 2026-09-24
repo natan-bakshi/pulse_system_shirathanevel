@@ -144,6 +144,7 @@ export const calculateEventFinancials = (event, services = [], payments = [], va
 
     // Payments - convert each payment to event currency
     const totalPaid = payments.reduce((sum, p) => {
+        if (p.charge_type === "exceptional" || (p.agreement_id && !p.agreement_verified)) return sum;
         // Legacy payments without a status remain completed for backward compatibility.
         if (p.payment_status && p.payment_status !== "completed") return sum;
         const amount = safeFloat(p.amount);

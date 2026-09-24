@@ -60,7 +60,7 @@ export function matchClearingLog(log, expected) {
   if (!expected.paymentId && !expected.traceId) return false;
   if (expected.paymentId && String(log.PaymentId) !== String(expected.paymentId)) return false;
   if (expected.traceId && String(log.ClearingTraceId) !== String(expected.traceId)) return false;
-  if (Number(log.TransactionType) !== expected.type) return false;
+  if (expected.type !== undefined && Number(log.TransactionType) !== expected.type) return false;
   if (log.Amount === null || log.Amount === undefined || !Number.isFinite(Number(log.Amount))) return false;
   if (money(log.Amount) !== money(expected.amount)) return false;
   if (expected.currency && Number(log.Currency) !== ({ ILS: 1, USD: 2, EUR: 3 }[expected.currency])) return false;

@@ -18,6 +18,7 @@ export async function makeAgreementPdf(a) {
  line(a.snapshot.event_name,15);
  line("מזהה הסכם: "+a.id+" | גרסה: "+a.version,9);
  line("מועד חתימה: "+a.signed_at,10);
+ line("לקוח/ה: "+a.snapshot.recipient_name+" | טלפון: "+a.snapshot.recipient_phone);
  line("חותם/ת: "+a.signature.name+" | תפקיד: "+(a.signature.role||"לקוח/ה"));
  line("הצעת המחיר",15);line(a.snapshot.quote_text);
  line("תנאי ההתקשרות",15);line(a.snapshot.terms);
@@ -27,6 +28,7 @@ export async function makeAgreementPdf(a) {
  line("תקרת חיוב רגיל: "+a.snapshot.regular_cap+" "+a.snapshot.currency);
  line("תקרת חיוב חריג: "+a.snapshot.exceptional_cap+" "+a.snapshot.currency);
  line("דרישות סגירה: חתימה"+(a.require_token?" + כרטיס מאומת":"; ללא חובת כרטיס")+(a.require_deposit?" + מקדמה":"; ללא חובת מקדמה"));
+ line(a.snapshot.exceptional_notice?"הודעה לפני חיוב חריג: לפחות "+a.snapshot.exceptional_notice_days+" ימים, עם אפשרות לתשלום חלופי.":"ללא חובת הודעה מקדימה לחיוב חריג במסגרת הרשאה זו.");
  line("חתימה",14);
  if(y>235){doc.addPage();y=20;}
  const sig=a.signature.strokes||[];
