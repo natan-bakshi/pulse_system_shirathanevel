@@ -21,7 +21,7 @@ const { default: handler } = await load("base44/functions/invoice4uStoredCards/e
 const core = await load("base44/shared/storedCards.ts");
 const provider = await load("base44/shared/storedCardProvider.ts");
 function fixture() {
-  const db = {}, calls = [], logs = [];
+  const db = {}, calls = [], logs = [], providerCustomers = new Map();
   let serial = 0, providerSerial = 9000;
   const entities = new Proxy({}, { get(_, name) {
     db[name] ||= [];
@@ -60,7 +60,12 @@ function fixture() {
   globalThis.fetch = async (url, options) => {
     const endpoint = String(url).split("/").pop(), payload = JSON.parse(options.body);
     calls.push({ endpoint, payload });
-    if (endpoint === "CreateCustomer") return Response.json({ ID: ++providerSerial });
+    if (endpoint === "CreateCustomer") {
+      const customer = { ...payload.cu, ID: ++providerSerial, Errors: [] };
+      providerCustomers.set(customer.ID, customer);
+      return Response.json({ CreateCustomerResult: customer });
+    }
+    if (endpoint === "GetCustomerById") return Response.json({ GetCustomerByIdResult: providerCustomers.get(payload.custId) });
     if (endpoint === "GetClearingLogByParams") return Response.json(logs);
     if (endpoint === "ProcessApiRequestV2") {
       const r = payload.request;
@@ -250,6 +255,63 @@ test("mismatched amount or unresolved hosted payment prevents charging", async (
   f.db.Payment = [{ id: "pending", event_id: "event", amount: 100, payment_status: "pending" }];
   assert.equal((await request("charge", chargeBody)).status, 409); assert.equal(f.calls.length, 0);
 });
+test("setup omits blank optional fields and uses the retrieved provider details", async () => {
+  const f = fixture(); f.db.BillingCustomer[0].email = "  "; f.db.BillingCustomer[0].phone = "  ";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    if (!String(url).endsWith("GetCustomerById")) return originalFetch(url, options);
+    const payload = JSON.parse(options.body); f.calls.push({ endpoint: "GetCustomerById", payload });
+    return Response.json({ d: { GetCustomerByIdResult: { ID: payload.custId, Name: "Provider name", Cell: "0501111111", Email: "  ", Errors: [] } } });
+  };
+  assert.equal((await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Test" })).status, 200);
+  const cu = f.calls.find(c => c.endpoint === "CreateCustomer").payload.cu;
+  assert.equal("Email" in cu, false); assert.equal("Cell" in cu, false);
+  const r = f.calls.find(c => c.payload.request?.AddToken).payload.request;
+  assert.equal(r.FullName, "Provider name"); assert.equal(r.Phone, "0501111111"); assert.equal("Email" in r, false);
+  assert.deepEqual(f.calls.map(c => c.endpoint), ["CreateCustomer", "GetCustomerById", "ProcessApiRequestV2"]);
+  assert.deepEqual(f.calls[1].payload, { token: "fake-qa-key", custId: r.CustomerId });
+});
+test("lookup retries missing customers without repeating creation or capture", async () => {
+  const f = fixture(), originalFetch = globalThis.fetch; let attempts = 0;
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith("GetCustomerById") && ++attempts < 3)
+      return Response.json({ Errors: [{ ID: 136, Error: "CustomerNotFound" }] });
+    return originalFetch(url, options);
+  };
+  assert.equal((await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Test" })).status, 200);
+  assert.equal(attempts, 3);
+  assert.equal(f.calls.filter(c => c.endpoint === "CreateCustomer").length, 1);
+  assert.equal(f.calls.filter(c => c.payload.request?.AddToken).length, 1);
+});
+test("unresolved lookup stops capture and preserves existing card while releasing the lock", async () => {
+  const f = fixture(), originalFetch = globalThis.fetch; let attempts = 0;
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith("GetCustomerById")) { attempts++; return Response.json({ Errors: [{ ID: 37 }] }); }
+    return originalFetch(url, options);
+  };
+  assert.equal((await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Test" })).status, 409);
+  assert.equal(attempts, 3); assert.equal(f.calls.some(c => c.payload.request?.AddToken), false);
+  assert.equal(f.db.CardSetupRequest[0].state, "failed"); assert.equal(f.db.BillingCustomer[0].busy_operation_id, "");
+  assert.equal(f.db.BillingCustomer[0].active_card_id, "card"); assert.equal(f.db.StoredCard[0].state, "active");
+});
+test("lookup never accepts another customer or retries an authorization failure", async () => {
+  for (const result of [{ ID: 123, Name: "Other" }, { Errors: [{ ID: 80 }] }, { ID: 9001, Name: "Inactive", Active: false }]) {
+    const f = fixture(), originalFetch = globalThis.fetch; let attempts = 0;
+    globalThis.fetch = async (url, options) => {
+      if (String(url).endsWith("GetCustomerById")) { attempts++; return Response.json(result); }
+      return originalFetch(url, options);
+    };
+    assert.equal((await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Test" })).status, 400);
+    assert.equal(attempts, 1); assert.equal(f.calls.some(c => c.payload.request?.AddToken), false);
+    assert.equal(f.db.BillingCustomer[0].busy_operation_id, "");
+  }
+});
+const customerResolution = await load("base44/shared/resolveProviderCustomer.ts");
+test("provider contact mapping prefers Cell, falls back to Phone, and omits missing details", () => {
+  assert.deepEqual(customerResolution.providerCustomerFields({ Name: " Saved ", Cell: " 0501 ", Phone: "032", Email: " provider@example.test " }), { FullName: "Saved", Phone: "0501", Email: "provider@example.test" });
+  assert.deepEqual(customerResolution.providerCustomerFields({ Name: "Saved", Cell: " ", Phone: " 032 " }), { FullName: "Saved", Phone: "032" });
+  assert.deepEqual(customerResolution.providerCustomerFields({}), {});
+});
 test("setup creates a dedicated provider customer and no payment/document", async () => {
   const f = fixture();
   const r = await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Agreement QA-1" });
@@ -270,6 +332,7 @@ test("provider code 309 is preserved and a failed combined setup leaves no payer
     const endpoint = String(url).split("/").pop(), payload = JSON.parse(options.body);
     f.calls.push({ endpoint, payload });
     if (endpoint === "CreateCustomer") return Response.json({ ID: 9901 });
+    if (endpoint === "GetCustomerById") return Response.json({ ID: 9901, Name: "Temporary payer", Cell: "0520000000", Errors: [] });
     if (endpoint === "ProcessApiRequestV2") return Response.json({ ProcessApiRequestV2Result: {
       Errors: [{ ErrorCode: 309, ErrorMessage: "Terminal token service unavailable" }]
     } });

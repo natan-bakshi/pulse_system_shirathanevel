@@ -1,4 +1,5 @@
 import { CardError, claimCustomer, releaseCustomer } from "./storedCards.ts";
+import { resolveProviderCustomer, providerCustomerFields } from "./resolveProviderCustomer.ts";
 import { cardAppUrl, providerAccess, providerCall, hasErrors, providerFailure, sha256 } from "./storedCardProvider.ts";
 const text = (v, max = 200) => typeof v === "string" ? v.trim().slice(0, max) : "";
 async function discardProvisionalCustomer(client, customerId) {
@@ -35,7 +36,9 @@ export async function beginSetup(client, user, config, customer, consentReferenc
     claimed = true;
     const created = await providerCall(access, "CreateCustomer", {
       token: access.key,
-      cu: { Name: customer.name, Email: customer.email || "", Cell: customer.phone || "", Active: true }
+      cu: { Name: text(customer.name), Active: true,
+        ...(text(customer.email, 254) ? { Email: text(customer.email, 254) } : {}),
+        ...(text(customer.phone, 30) ? { Cell: text(customer.phone, 30) } : {}) }
     });
     if (hasErrors(created) || !Number.isSafeInteger(Number(created?.ID)) || Number(created.ID) <= 0) throw new CardError("לא ניתן ליצור שיוך כרטיס אצל הספק");
     const providerId = String(created.ID);
@@ -43,11 +46,12 @@ export async function beginSetup(client, user, config, customer, consentReferenc
     if (reused.length) throw new CardError("הספק החזיר שיוך קיים; יצירת קישור נעצרה כדי להגן על הכרטיס");
     await client.entities.StoredCard.update(card.id, { provider_customer_id: providerId });
     await client.entities.CardSetupRequest.update(setup.id, { provider_customer_id: providerId });
+    const providerCustomer = await resolveProviderCustomer(access, providerId);
     // In token-only mode Invoice4U resolves the clearing provider from the terminal tied to the API key.
     // Do not force CreditCardCompanyType here; a stale UI setting can otherwise target the wrong terminal.
     const result = await providerCall(access, "ProcessApiRequestV2", { request: {
       Invoice4UUserApiKey: access.key, AddToken: true,
-      CustomerId: Number(providerId), FullName: customer.name, Phone: customer.phone, Email: customer.email || "",
+      CustomerId: Number(providerId), ...providerCustomerFields(providerCustomer),
       IsDocCreate: false, IsQaMode: access.environment === "qa", Platform: "Pulse",
       OrderIdClientUsage: setup.id,
       ReturnUrl: agreement ? cardAppUrl + "/EventClosing?id=" + agreement.id : eventId ? cardAppUrl + "/EventDetails?id=" + encodeURIComponent(eventId) : cardAppUrl,

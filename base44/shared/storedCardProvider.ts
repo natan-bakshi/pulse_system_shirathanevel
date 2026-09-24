@@ -21,7 +21,7 @@ export async function providerCall(access, endpoint, body) {
     const captureRequest = endpoint === "ProcessApiRequestV2" && r?.AddToken === true &&
       !r.AddTokenAndCharge && !r.ChargeWithToken && !r.IsStandingOrderClearance &&
       !r.Refund && !r.IsDocCreate && (r.Sum === undefined || Number(r.Sum) === 0);
-    if (!["CreateCustomer", "GetClearingLogByParams"].includes(endpoint) && !captureRequest)
+    if (!["CreateCustomer", "GetCustomerById", "GetClearingLogByParams"].includes(endpoint) && !captureRequest)
       throw new CardError("הרשאת שמירת כרטיס אינה מתירה חיוב", 403);
   }
   const host = access.environment === "qa" ? "apiqa" : "api";
