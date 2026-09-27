@@ -192,3 +192,25 @@ test("agreement creation reuses a unique payer phone and refuses ambiguity",asyn
  const result=await req("create",{...p.data,eventId:"event",name:"Test",phone:"0500000000",require_token:false,require_deposit:false,send_copy:false});
  assert.equal(result.status,409);assert.equal(g.db.EventAgreement?.length||0,0);
 });
+
+test("quote PDF is frozen at creation and accessible only to verified session or admin",async()=>{
+ const f=fixture();f.db.Event[0].quote_history=[
+ {file_uri:"private:old.pdf",file_name:"old.pdf",created_at:"2026-09-20"},
+ {file_uri:"private:chosen.pdf",file_name:"chosen.pdf",created_at:"2026-09-27"}];
+ const a=await create();assert.equal(a.snapshot.quote_file.file_uri,"private:chosen.pdf");
+ f.db.Event[0].quote_history.push({file_uri:"private:future.pdf",created_at:"2026-09-28"});
+ const signedRequests=[];f.client.integrations.Core.CreateFileSignedUrl=async p=>{signedRequests.push(p);return {signed_url:"https://files.example.test/quote.pdf"};};
+ const auth=await authenticate(a);f.client.auth.me=async()=>null;
+ assert.equal((await req("document",{agreementId:a.id,kind:"quote"})).status,403);
+ const r=await req("document",{...auth,kind:"quote",file_uri:"private:attacker.pdf"});
+ assert.equal(r.status,200,JSON.stringify(r));assert.equal(signedRequests.at(-1).file_uri,"private:chosen.pdf");
+ assert.equal(signedRequests.at(-1).expires_in,600);
+ assert.equal(f.db.EventAgreement[0].snapshot.quote_file.file_uri,"private:chosen.pdf");
+});
+test("legacy agreement without PDF preserves existing snapshot and gives explicit missing file",async()=>{
+ const f=fixture(),a=await create(),auth=await authenticate(a);
+ const snapshot=structuredClone(f.db.EventAgreement[0].snapshot);
+ assert.equal((await req("document",{...auth,kind:"quote"})).status,404);
+ assert.deepEqual(f.db.EventAgreement[0].snapshot,snapshot);
+});
+
