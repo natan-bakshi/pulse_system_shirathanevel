@@ -153,8 +153,8 @@ export default Deno.serve(async req=>{
   const raw=await req.text();if(raw.length>400000)throw new AgreementError("בקשה גדולה מדי",413);
   const body=JSON.parse(raw),action=body.action;
   const base44=createClientFromRequest(req),client=base44.asServiceRole;
-  if(["open","otp","verify","view","sign","token","deposit","document"].includes(action)){
-   let a=await requirePublic(client,body,!["open","otp","verify"].includes(action));
+  if(["open","otp","verify","admin_verify","view","sign","token","deposit","document"].includes(action)){
+   let a=await requirePublic(client,body,!["open","otp","verify","admin_verify"].includes(action));
    return await lockAgreement(client,a,action,async current=>{
     a=current;
     if(action==="open"){
@@ -168,6 +168,18 @@ export default Deno.serve(async req=>{
      await client.entities.EventAgreement.update(a.id,{otp_hash:await digest(a.id+":"+code),otp_sent_at:new Date().toISOString(),otp_expires_at:new Date(Date.now()+600000).toISOString(),otp_sends:(a.otp_sends||0)+1});
      await deliver(client,a,"verification",a.id+":otp:"+((a.otp_sends||0)+1),"קוד האימות שלך לחתימת הסכם עם שירת הנבל: "+code+". הקוד בתוקף ל-10 דקות. אין להעביר אותו לאחרים.");
      await audit(client,a,"verification_sent","customer");return Response.json({sent:true});
+    }
+    if(action==="admin_verify"){
+     let admin;try{admin=await base44.auth.me();}catch{}
+     if(admin?.role!=="admin")throw new AgreementError("אימות מנהל מחייב התחברות כמנהל",403);
+     if((a.otp_attempts||0)>=5)throw new AgreementError("מכסת ניסיונות האימות מוצתה",429);
+     if(!/^[a-zA-Z0-9-]{40,100}$/.test(body.session||""))throw new AgreementError("מזהה הפעלה לא תקין");
+     const expected=secrets.get("EVENT_CLOSING_ADMIN_PASSWORD");
+     if(!expected)throw new AgreementError("לא הוגדרה סיסמת מנהל",503);
+     await client.entities.EventAgreement.update(a.id,{otp_attempts:(a.otp_attempts||0)+1});
+     if(typeof body.password!=="string"||body.password.length>200||await digest(body.password)!==await digest(expected))throw new AgreementError("סיסמת מנהל שגויה",403);
+     a=await client.entities.EventAgreement.update(a.id,{otp_hash:"",session_hash:await digest(body.session),session_expires_at:new Date(Date.now()+2*86400000).toISOString(),verified_at:new Date().toISOString()});
+     await audit(client,a,"admin_verified",admin.id);return Response.json(publicAgreement(a));
     }
     if(action==="verify"){
      if((a.otp_attempts||0)>=5)throw new AgreementError("מכסת ניסיונות האימות מוצתה",429);
@@ -204,7 +216,10 @@ export default Deno.serve(async req=>{
      return Response.json({url:signed_url});
     }
     const config=await settings(client);
-    if(action==="deposit")return Response.json(await createDeposit(client,a,config));
+    if(action==="deposit"){
+    if(!a.require_deposit)throw new AgreementError("המקדמה בוטלה בהסכם זה",409);
+    return Response.json(await createDeposit(client,a,config));
+   }
     if(action==="token"){
      requireCards(config);
      if(!a.signature.accepted.token)throw new AgreementError("לא קיימת הרשאה לשמירת כרטיס",403);
@@ -240,6 +255,25 @@ export default Deno.serve(async req=>{
   if(action==="preview"){
    const p=await preview(client,base44,body.eventId,config);
    return Response.json({...p,event:undefined});
+  }
+  if(action==="link_existing_card"){
+   const event=await client.entities.Event.get(body.eventId);
+   if(!event?.closing_agreement_id)throw new AgreementError("אין הסכם פעיל לאירוע",409);
+   const a=await client.entities.EventAgreement.get(event.closing_agreement_id);
+   if(!a?.active||!a.signed_at||!a.signature?.accepted?.token)throw new AgreementError("נדרשת הרשאה חתומה לשימוש בכרטיס",409);
+   if(a.customer_id&&a.customer_id!==event.billing_customer_id)throw new AgreementError("ההסכם מקושר ללקוח משלם אחר; נדרשת גרסה מוסכמת חדשה",409);
+   return await lockAgreement(client,a,"link_card",async current=>{
+    const freshEvent=await client.entities.Event.get(event.id);
+    if(freshEvent.closing_agreement_id!==current.id||!freshEvent.billing_customer_id||current.customer_id&&current.customer_id!==freshEvent.billing_customer_id)throw new AgreementError("שיוך הלקוח השתנה; נדרשת גרסה מוסכמת חדשה",409);
+    const customer=await client.entities.BillingCustomer.get(freshEvent.billing_customer_id);
+    if(!customer||customer.deleted_at||customer.provisional||!customer.active_card_id||customer.busy_operation_id)throw new AgreementError("אין ללקוח כרטיס פעיל וזמין",409);
+    if(!normalizeIsraeliPhone(customer.phone)||normalizeIsraeliPhone(customer.phone)!==normalizeIsraeliPhone(current.recipient_phone))throw new AgreementError("טלפון בעל הכרטיס אינו תואם לטלפון החותם",409);
+    const card=await client.entities.StoredCard.get(customer.active_card_id);
+    if(!card||card.customer_id!==customer.id||card.state!=="active"||card.environment!==(config.stored_cards_env==="production"?"production":"qa")||(card.environment==="qa"&&freshEvent.stored_card_qa_only!==true))throw new AgreementError("הכרטיס אינו זמין בסביבת האירוע",409);
+    if(current.customer_id!==customer.id){await client.entities.EventAgreement.update(current.id,{customer_id:customer.id});await audit(client,current,"card_linked",user.id,{customer_id:customer.id,card_id:card.id});}
+    await reconcileAgreement(client,event.id,config);
+    return Response.json({success:true});
+   });
   }
   if(action==="recover_deposit"){
    const p=await client.entities.Payment.get(body.paymentId);
@@ -279,7 +313,13 @@ export default Deno.serve(async req=>{
    }
    const old=await readAll(client.entities.EventAgreement,{event_id:body.eventId});
    if(old.some(a=>a.busy_operation&&a.id!==lockedId))throw new AgreementError("קיימת פעולה בהסכם קודם",409);
-   let milestones;try{milestones=validateMilestones(body.milestones,p.total);}catch(e){throw new AgreementError(e.message);}
+   let milestones;try{
+    const rows=body.require_deposit===false&&Array.isArray(body.milestones)&&body.milestones.length>1&&Number(body.milestones[0].amount)>0
+     ?body.milestones.map((m,i)=>i===0?{...m,amount:0}:i===1?{...m,amount:roundMoney(Number(m.amount)+Number(body.milestones[0].amount))}:m)
+     :body.milestones;
+    milestones=validateMilestones(rows,p.total);
+    if(body.require_deposit===false&&milestones[0].amount>0)throw new Error("יש להגדיר אבן דרך נוספת כשמוותרים על מקדמה");
+   }catch(e){throw new AgreementError(e.message);}
    const regular=roundMoney(body.regular_cap),exceptional=roundMoney(body.exceptional_cap);
    if(!Number.isFinite(regular)||!Number.isFinite(exceptional)||regular<0||exceptional<0)throw new AgreementError("תקרות חיוב לא תקינות");
    const clauses=p.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
@@ -294,7 +334,7 @@ export default Deno.serve(async req=>{
     event_id:body.eventId,version:Math.max(0,...old.map(x=>x.version))+1,state:"draft",active:false,revision:0,busy_operation:"",
     created_by_user_id:user.id,recipient_name:name,recipient_phone:phone,recipient_email:email,customer_id:customer?.id||"",
     snapshot,content_hash:await digest(canonical(snapshot)),require_token:!!body.require_token,require_deposit:!!body.require_deposit,
-    send_copy:!!body.send_copy,copy_state:body.send_copy?"pending":"disabled",token_state:"pending",deposit_state:"pending",pdf_state:"not_signed",
+    send_copy:!!body.send_copy,copy_state:body.send_copy?"pending":"disabled",token_state:"pending",deposit_state:body.require_deposit?"pending":"waived",pdf_state:"not_signed",
     otp_sends:0,otp_attempts:0,closing_applied:false,notifications:notification
    });
    for(const m of milestones)await client.entities.PaymentMilestone.create({...m,agreement_id:a.id,event_id:body.eventId,state:"pending",message_state:"pending",

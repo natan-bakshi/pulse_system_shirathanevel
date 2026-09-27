@@ -3,6 +3,8 @@ import {israelDateTime} from "@/lib/israelDate";
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import { agreementAction,agreementError,statusLabel } from "@/lib/agreementApi";
 import AgreementView from "@/components/billing/AgreementView";
+import { base44 } from "@/api/base44Client";
+import AdminClosingVerification from "@/components/billing/AdminClosingVerification";
 import { Button } from "@/components/ui/button";
 const field="w-full rounded-md border p-3 bg-white";
 function SignaturePad({onChange}) {
@@ -26,6 +28,7 @@ export default function EventClosing(){
   if(token){sessionStorage.setItem(key,JSON.stringify(auth.current));history.replaceState(null,"",location.pathname+location.search);}
  }
  const [agreement,setAgreement]=useState(null),[opened,setOpened]=useState(null),[sent,setSent]=useState(false),[code,setCode]=useState("");
+ const [isAdmin,setIsAdmin]=useState(false),[adminPassword,setAdminPassword]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[info,setInfo]=useState("");
  const [name,setName]=useState(""),[role,setRole]=useState(""),[strokes,setStrokes]=useState([]),[accepted,setAccepted]=useState({});
  const call=useCallback((action,body={})=>agreementAction(action,{agreementId:id,...auth.current,...body}),[id]);
@@ -34,6 +37,7 @@ export default function EventClosing(){
   if(auth.current.verified){try{const a=await call("view");setAgreement(a);return;}catch(e){if(e.response?.status!==403)throw e;auth.current.verified=false;}}
   setOpened(await call("open"));
  },[call]);
+ useEffect(()=>{let active=true;base44.auth.me().then(u=>{if(active)setIsAdmin(u?.role==="admin");}).catch(()=>{});return()=>{active=false;};},[]);
  useEffect(()=>{const previous=document.title;document.title="אישור אירוע וחתימה — שירת הנבל";const meta=document.createElement("meta");meta.name="referrer";meta.content="no-referrer";document.head.appendChild(meta);run(refresh);return()=>{document.title=previous;meta.remove();};},[refresh]);
  useEffect(()=>{const focus=()=>{if(auth.current.verified&&!busy)refresh().catch(()=>{});};window.addEventListener("focus",focus);return()=>window.removeEventListener("focus",focus);},[refresh,busy]);
  const redirect=async action=>{const result=await call(action);if(result.redirectUrl&&/^https:\/\//.test(result.redirectUrl))location.assign(result.redirectUrl);else await refresh();};
@@ -46,6 +50,7 @@ export default function EventClosing(){
    {sent&&<form className="space-y-3" onSubmit={e=>{e.preventDefault();run(async()=>{const a=await call("verify",{code});auth.current.verified=true;sessionStorage.setItem("agreement:"+id,JSON.stringify(auth.current));setAgreement(a);setName(a.snapshot.recipient_name||"");});}}>
     <label className="block">קוד אימות<input className={field} autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,""))} /></label>
     <Button disabled={busy||code.length!==6}>אמת והצג את ההסכם</Button></form>}
+   {isAdmin&&<AdminClosingVerification password={adminPassword} onChange={setAdminPassword} busy={busy} ready={!!opened} onSubmit={()=>run(async()=>{const a=await call("admin_verify",{password:adminPassword});setAdminPassword("");auth.current.verified=true;sessionStorage.setItem("agreement:"+id,JSON.stringify(auth.current));setAgreement(a);setName(a.snapshot.recipient_name||"");})}/>}
    {!opened&&!busy&&<Button variant="outline" onClick={()=>run(refresh)}>נסה שוב</Button>}
   </section>}
   {agreement&&<>
@@ -67,7 +72,7 @@ export default function EventClosing(){
     <p className="text-sm">פרטי האשראי יוזנו רק בדף המאובטח של Invoice4U. שמירת כרטיס אינה חיוב. בסיום יש לחזור לכאן ולרענן את המצב.</p>
     <div className="flex flex-wrap gap-3">
      {agreement.token_state!=="verified"&&<Button disabled={busy} onClick={()=>run(()=>redirect("token"))}>עבור לשמירת כרטיס מאובטחת</Button>}
-     {agreement.deposit_state!=="paid"&&agreement.snapshot.deposit>0&&<Button disabled={busy} onClick={()=>run(()=>redirect("deposit"))}>שלם מקדמה בדף מאובטח</Button>}
+     {agreement.require_deposit&&agreement.deposit_state!=="paid"&&agreement.snapshot.deposit>0&&<Button disabled={busy} onClick={()=>run(()=>redirect("deposit"))}>שלם מקדמה בדף מאובטח</Button>}
      <Button disabled={busy} variant="outline" onClick={()=>run(()=>pdf("signed"))}>פתח עותק PDF חתום</Button>
      <Button disabled={busy} variant="outline" onClick={()=>run(refresh)}>רענן מצב</Button>
     </div>

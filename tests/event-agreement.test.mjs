@@ -128,7 +128,7 @@ test("a consent-free route cannot accidentally trigger a charge; daily job sends
  for(const m of f.db.PaymentMilestone){m.notify_at="2020-01-01";m.notification_enabled=true;}
  const before=globalThis.__messages.length;
  await lifecycle.processAgreementMilestones(f.client,{});const sent=globalThis.__messages.length-before;
- assert.equal(sent,3);
+ assert.equal(sent,2);
  await lifecycle.processAgreementMilestones(f.client,{});assert.equal(globalThis.__messages.length-before,sent);
  assert.equal(f.db.Payment?.length||0,0);
 });
@@ -208,9 +208,46 @@ test("quote PDF is frozen at creation and accessible only to verified session or
  assert.equal(f.db.EventAgreement[0].snapshot.quote_file.file_uri,"private:chosen.pdf");
 });
 test("legacy agreement without PDF preserves existing snapshot and gives explicit missing file",async()=>{
- const f=fixture(),a=await create(),auth=await authenticate(a);
- const snapshot=structuredClone(f.db.EventAgreement[0].snapshot);
- assert.equal((await req("document",{...auth,kind:"quote"})).status,404);
- assert.deepEqual(f.db.EventAgreement[0].snapshot,snapshot);
+  const f=fixture(),a=await create(),auth=await authenticate(a);
+  const snapshot=structuredClone(f.db.EventAgreement[0].snapshot);
+  assert.equal((await req("document",{...auth,kind:"quote"})).status,404);
+  assert.deepEqual(f.db.EventAgreement[0].snapshot,snapshot);
 });
-
+test("waiving the deposit keeps card mandatory and moves its amount to later milestones",async()=>{
+  const f=fixture(),a=await create({token:true,deposit:false});
+  assert.equal(a.require_token,true);assert.equal(a.require_deposit,false);
+  assert.equal(a.snapshot.deposit,0);assert.deepEqual(a.snapshot.milestones.map(m=>m.amount),[0,600,400]);
+  const auth=await authenticate(a);await sign(a,auth);
+  assert.equal(f.db.EventAgreement[0].deposit_state,"waived");
+  assert.equal(f.db.EventAgreement[0].token_state,"pending");
+  assert.equal(f.db.Event[0].status,"quote");
+  assert.equal((await req("deposit",auth)).status,409);
+});
+test("admin password verifies without WhatsApp only for authenticated admin with valid link",async()=>{
+  const f=fixture(),a=await create();globalThis.__secrets.EVENT_CLOSING_ADMIN_PASSWORD="a-very-long-private-password";
+  const issued=await req("issue",{agreementId:a.id});const token=new URLSearchParams(new URL(issued.data.url).hash.slice(1)).get("token");
+  const auth={agreementId:a.id,token,session:crypto.randomUUID()+crypto.randomUUID()};
+  f.client.auth.me=async()=>({id:"client",role:"user"});
+  assert.equal((await req("admin_verify",{...auth,password:"a-very-long-private-password"})).status,403);
+  f.client.auth.me=async()=>({id:"admin",role:"admin"});
+  assert.equal((await req("admin_verify",{...auth,token:"invalid",password:"a-very-long-private-password"})).status,403);
+  assert.equal((await req("admin_verify",{...auth,password:"wrong"})).status,403);
+  const success=await req("admin_verify",{...auth,password:"a-very-long-private-password"});
+  assert.equal(success.status,200,JSON.stringify(success));assert.equal(globalThis.__messages.length,0);
+  assert.equal((await req("view",auth)).status,200);
+  assert.equal(JSON.stringify(success.data).includes("password"),false);
+});
+test("separately captured matching card can be linked only to signed consent",async()=>{
+  const f=fixture(),a=await create({token:true,deposit:false}),auth=await authenticate(a);
+  f.db.BillingCustomer=[{id:"payer",phone:"0500000000",active_card_id:"card",provisional:false,busy_operation_id:""}];
+  f.db.StoredCard=[{id:"card",customer_id:"payer",state:"active",environment:"production"}];
+  f.db.Event[0].billing_customer_id="payer";
+  f.db.AppSettings.push({setting_key:"stored_cards_env",setting_value:"production"});
+  assert.equal((await req("link_existing_card",{eventId:"event"})).status,409);
+  assert.equal((await sign(a,auth)).status,200);
+  const linked=await req("link_existing_card",{eventId:"event"});assert.equal(linked.status,200,JSON.stringify(linked));
+  assert.equal(f.db.EventAgreement[0].customer_id,"payer");assert.equal(f.db.EventAgreement[0].token_state,"verified");
+  assert.equal(f.db.Event[0].status,"confirmed");assert.equal(f.db.EventAgreement[0].snapshot.require_deposit,false);
+  f.db.BillingCustomer[0].phone="0501111111";f.db.EventAgreement[0].customer_id="";
+  assert.equal((await req("link_existing_card",{eventId:"event"})).status,409);
+});

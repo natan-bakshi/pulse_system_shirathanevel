@@ -19,6 +19,7 @@ export async function authorizeCharge(client,event,customer,body,f,operationId=n
  if(f.currency!==a.snapshot.currency||Math.abs(f.finalTotal-a.snapshot.total)>0.01||event.event_date!==a.snapshot.event_date)throw new CardError("פרטי האירוע השתנו מאז החתימה; נדרשת גרסה מוסכמת מעודכנת",409);
  const kind=body.chargeKind==="exceptional"?"exceptional":"regular";
  const milestone=ctx.milestones.find(m=>m.id===body.milestoneId);
+ if(kind==="regular"&&!a.require_deposit&&milestone?.position===0)throw new CardError("אבן דרך זו היא מקדמה שבוטלה בהסכם",409);
  if(f.payments.some(p=>p.charge_type==="exceptional"&&p.currency&&p.currency!==f.currency))throw new CardError("קיימים חיובים חריגים במטבע שונה; נדרש בירור לפני חיוב נוסף",409);
  const exceptionalPaid=roundMoney(f.payments.filter(p=>p.charge_type==="exceptional"&&p.payment_status!=="failed"&&p.payment_status!=="cancelled").reduce((s,p)=>s+Number(p.amount||0),0));
  try {assertChargePermission({snapshot:a.snapshot,accepted:a.signature?.accepted,kind,amount:roundMoney(body.amount),paid:f.totalPaid,exceptionalPaid,milestone});}

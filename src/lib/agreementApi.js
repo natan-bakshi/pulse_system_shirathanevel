@@ -5,5 +5,5 @@ export async function agreementAction(action,body={}) {
  if(data?.error)throw new Error(data.error);
  return data;
 }
-export const agreementLabels={draft:"טיוטה",issued:"קישור הופק",signed:"נחתם",completed:"הנוהל הושלם",cancelled:"בוטל",pending:"ממתין",verified:"אומת",paid:"שולם",ready:"מוכן",failed:"נכשל",unknown:"בבירור",accepted:"התקבל אצל ספק הוואטסאפ",dispatching:"שליחה בבירור",disabled:"כבוי",not_signed:"טרם נחתם",overdue:"באיחור"};
+export const agreementLabels={draft:"טיוטה",issued:"קישור הופק",signed:"נחתם",completed:"הנוהל הושלם",cancelled:"בוטל",pending:"ממתין",verified:"אומת",paid:"שולם",waived:"לא נדרשת",ready:"מוכן",failed:"נכשל",unknown:"בבירור",accepted:"התקבל אצל ספק הוואטסאפ",dispatching:"שליחה בבירור",disabled:"כבוי",not_signed:"טרם נחתם",overdue:"באיחור"};
 export const statusLabel=s=>agreementLabels[s]||s||"—";

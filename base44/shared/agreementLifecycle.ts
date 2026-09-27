@@ -54,14 +54,15 @@ export async function reconcileAgreement(client,eventId,config=null) {
  const customer=a.customer_id?await client.entities.BillingCustomer.get(a.customer_id):null;
  const card=customer?.active_card_id?await client.entities.StoredCard.get(customer.active_card_id):null;
  const token=!!(card?.state==="active"&&(card.environment==="production"||event.stored_card_qa_only===true)&&card.customer_id===a.customer_id&&card.environment===(config.stored_cards_env==="production"?"production":"qa")&&event.billing_customer_id===a.customer_id);
- const deposit=f.totalPaid+0.005>=a.snapshot.deposit;
+ const deposit=a.require_deposit?f.totalPaid+0.005>=a.snapshot.deposit:false;
+ const depositState=a.require_deposit?(deposit?"paid":"pending"):"waived";
  const changes:any={};
  if(a.token_state!==(token?"verified":"pending")){
   const won=await client.entities.EventAgreement.updateMany({id:a.id,token_state:a.token_state},{$set:{token_state:token?"verified":"pending"}});
   if(token&&won.updated===1)await audit(client,a,"token_verified","provider",{card_suffix:card.card_suffix});
  }
- if(a.deposit_state!==(deposit?"paid":"pending")){
-  const won=await client.entities.EventAgreement.updateMany({id:a.id,deposit_state:a.deposit_state},{$set:{deposit_state:deposit?"paid":"pending"}});
+ if(a.deposit_state!==depositState){
+  const won=await client.entities.EventAgreement.updateMany({id:a.id,deposit_state:a.deposit_state},{$set:{deposit_state:depositState}});
   if(deposit&&won.updated===1)await audit(client,a,"deposit_paid","system",{amount:a.snapshot.deposit});
  }
  const ready=canClose({signed:!!a.signed_at,requireToken:a.require_token,token,requireDeposit:a.require_deposit,depositPaid:deposit,active:a.active});
@@ -94,7 +95,7 @@ export async function processAgreementMilestones(client,config) {
     const f=await financials(client,event,config);
     const rows=await readAll(client.entities.PaymentMilestone,{agreement_id:a.id});
     for(const m of rows){
-     if(!m.notification_enabled||m.state==="paid"||m.message_state!=="pending"||Date.parse(m.notify_at)>Date.now())continue;
+     if((!a.require_deposit&&m.position===0)||!m.notification_enabled||m.state==="paid"||m.message_state!=="pending"||Date.parse(m.notify_at)>Date.now())continue;
      const outstanding=roundMoney(Math.max(0,m.cumulative_amount-f.totalPaid)); if(!outstanding)continue;
      await client.entities.PaymentMilestone.update(m.id,{message_state:"dispatching"});
      const body=formatMessage(m.template||closingDefaults.closing_message_template,{customer_name:current.recipient_name,event_name:event.event_name,amount:outstanding,currency:a.snapshot.currency,due_date:m.due_date,business_phone:config.business_phone||""});
