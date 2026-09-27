@@ -6,12 +6,14 @@ const require=createRequire(import.meta.url);
 async function load(path){
  const r=await build({entryPoints:[path],bundle:true,platform:"node",format:"esm",write:false,jsx:"transform",
  alias:{"@":process.cwd()+"/src"},plugins:[{name:"react-test",setup(b){
+ b.onResolve({filter:/^react\/jsx-runtime$/},()=>({path:"jsx",namespace:"jsx-test"}));
+ b.onLoad({filter:/.*/,namespace:"jsx-test"},()=>({contents:"export const {jsx,jsxs,Fragment}=globalThis.__JSX;"}));
  b.onResolve({filter:/^react$/},()=>({path:"react",namespace:"react-test"}));
  b.onLoad({filter:/.*/,namespace:"react-test"},()=>({contents:"const React=globalThis.__React;export default React;"}));
  }}]});
  return import("data:text/javascript;base64,"+Buffer.from(r.outputFiles[0].text).toString("base64"));
 }
-globalThis.__React=require("react");
+globalThis.__React=require("react");globalThis.__JSX=require("react/jsx-runtime");
 const {renderToStaticMarkup}=require("react-dom/server");
 const {agreementQuote}=await load("base44/shared/agreementQuote.ts");
 const {israelDateTime,israelDate}=await load("src/lib/israelDate.js");
