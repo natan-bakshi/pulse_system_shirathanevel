@@ -342,6 +342,11 @@ export default Deno.serve(async req=>{
     await audit(client,a,"cancelled",user.id);return Response.json({success:true});
    }
    if(action==="pdf"){
+    if(body.kind==="quote"){
+     if(!a.snapshot.quote_file?.file_uri)throw new AgreementError("לא צורפה הצעת מחיר",404);
+     const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.snapshot.quote_file.file_uri,expires_in:600});
+     return Response.json({url:signed_url});
+    }
     if(!a.signed_at)throw new AgreementError("ההסכם טרם נחתם");
     a=await finishDocument(client,a);
     if(!a.pdf_uri)throw new AgreementError("הפקת PDF נכשלה; ניתן לנסות שוב",503);
