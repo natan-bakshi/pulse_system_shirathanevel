@@ -1,6 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.50";
 import { convert } from "npm:html-to-text@9.0.5";
-import { generateQuoteHtml } from "../../shared/quoteHtml.ts";
+import { agreementQuote } from "../../shared/agreementQuote.ts";
 import { getEventContacts } from "../../shared/eventFields.js";
 import { calculateAdvanceAmount, calculateProcessingFee, itemsToPipedFields } from "../../shared/eventBilling.ts";
 import { beginSetup } from "../../shared/storedCardSetup.ts";
@@ -57,13 +57,13 @@ async function preview(client,base44,eventId,config){
  if(!event)throw new AgreementError("האירוע לא נמצא",404);
  const f=await financials(client,event,config);
  if(!Number.isFinite(f.finalTotal)||f.finalTotal<=0||!event.event_date)throw new AgreementError("נדרש מחיר ותאריך לאירוע לפני יצירת הסכם");
- const {html}=await generateQuoteHtml(eventId,base44,{preloadedEvent:event,includeIntro:true,includePaymentTerms:false,includeAgreement:false,includeSchedule:true,includeExternalServices:true});
+ const compact=agreementQuote(event,f);
  const templates=await readAll(client.entities.QuoteTemplate,{template_type:"agreement_disclaimer"});
  const terms=textFromHtml(templates.find(x=>x.identifier==="default")?.content||templates[0]?.content||"");
  const deposit=calculateAdvanceAmount(config,f.finalTotal);
- const quote=textFromHtml(html);
- const sourceHash=await digest(canonical({quote,total:f.finalTotal,currency:f.currency,event_date:event.event_date,terms}));
- return {event,sourceHash,quote,terms,total:f.finalTotal,currency:f.currency,deposit,contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
+ const quote=compact.quote;
+ const sourceHash=await digest(canonical({quote,quoteFile:compact.quoteFile,total:f.finalTotal,currency:f.currency,event_date:event.event_date,terms}));
+ return {event,sourceHash,quote,quote_summary:compact.summary,quote_file:compact.quoteFile,terms,total:f.finalTotal,currency:f.currency,deposit,contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
  milestones:defaultMilestones(f.finalTotal,deposit,event.event_date),
  regular_cap:roundMoney(f.finalTotal*Number(config.closing_regular_multiplier||1)),
  exceptional_cap:roundMoney(f.finalTotal*Number(config.closing_exceptional_multiplier||2)),
@@ -279,7 +279,7 @@ export default Deno.serve(async req=>{
    const clauses=p.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
    const terms=cleanText(body.terms||p.terms,60000);if(!terms)throw new AgreementError("יש להגדיר תנאי התקשרות לפני שליחה");
    const notification=notifications(body.notifications,config);
-   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,quote_text:p.quote,terms,clauses,milestones,
+   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,quote_text:p.quote,quote_summary:p.quote_summary,quote_file:p.quote_file,terms,clauses,milestones,
     deposit:milestones[0].amount,regular_cap:regular,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
     exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),
