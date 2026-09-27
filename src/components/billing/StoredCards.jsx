@@ -51,6 +51,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
   const [form, setForm] = useState({ name: "", phone: "", email: "", identifier: "" });
   const [consent, setConsent] = useState(false);
   const [reference, setReference] = useState("");
+  const [providerPaymentId, setProviderPaymentId] = useState("");
   const [consentImage,setConsentImage]=useState("");
   const evidenceInput=<label className="block">צילום תכתובת או אישור (במקום מספר או בנוסף לו)<input className={inputClass} type="file" accept="image/png,image/jpeg" onChange={async e=>{const f=e.target.files?.[0];setConsentImage("");if(!f)return;if(f.size>2*1024*1024||!["image/png","image/jpeg"].includes(f.type)){setMessage("יש לבחור PNG או JPEG עד 2MB");e.target.value="";return;}const r=new FileReader();r.onload=()=>setConsentImage(String(r.result));r.readAsDataURL(f);}}/><span className="text-xs text-gray-600">צילום ההסכמה נשמר באופן פרטי. אין לצרף צילום כרטיס אשראי או פרטי אשראי.</span></label>;
   const key = ["storedCard", event.id];
@@ -165,6 +166,18 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
             const result = await storedCardAction("reconcile", { customerId: customer.id, operationId: data.pending.id });
             setMessage(result.state === "completed" ? "החיוב אומת ונרשם" : "הפעולה עדיין בבירור"); await changed();
           })}>ברר תוצאה מול הספק</Button>
+          {data.pending.state === "unknown" && <div className="space-y-2 pt-2 border-t">
+            <p className="text-sm">אם הספק אישר את החיוב אך מספר העסקה לא התקבל במערכת, הזן את מזהה העסקה המדויק מ-Invoice4U. המערכת תאמת אותו מול הספק ולא תבצע חיוב נוסף.</p>
+            <Input aria-label="מזהה עסקה אצל ספק הסליקה" value={providerPaymentId} onChange={e => setProviderPaymentId(e.target.value)} placeholder="מזהה עסקה אצל הספק" />
+            <Button variant="outline" disabled={busy || !providerPaymentId.trim()} onClick={() => {
+              if (!window.confirm("לאשר שיוך של העסקה הזו לתשלום הממתין? הפעולה אינה מחייבת שוב, אך לאחר האימות התשלום ייחשב כשולם.")) return;
+              run(async () => {
+                const result = await storedCardAction("attach_provider_result", { customerId: customer.id, operationId: data.pending.id, providerPaymentId: providerPaymentId.trim(), confirmed: true });
+                setMessage(result.state === "completed" ? "העסקה אומתה ונרשמה כתשלום שהושלם" : "הפעולה עדיין בבירור");
+                setProviderPaymentId(""); await changed();
+              });
+            }}>אמת עסקה ורשום תשלום</Button>
+          </div>}
         </div>}
       </>}
       {message && <p role="status" className="text-sm whitespace-pre-line">{message}</p>}

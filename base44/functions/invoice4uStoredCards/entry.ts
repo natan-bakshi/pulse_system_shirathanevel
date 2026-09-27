@@ -364,6 +364,38 @@ export default Deno.serve(async req => {
       const evidence = body.consentImage ? await storeConsentEvidence(client, body.consentImage) : null;
       return Response.json(await beginSetup(client, user, config, customer, body.consentReference, event?.id || "", false, null, evidence));
     }
+    if (action === "attach_provider_result") {
+      // Operator-supplied exact provider payment reference; this never dispatches a charge.
+      const op = await client.entities.StoredCardOperation.get(text(body.operationId, 100));
+      const paymentId = text(body.providerPaymentId, 80);
+      if (body.confirmed !== true || !/^[a-zA-Z0-9-]{4,80}$/.test(paymentId)) throw new CardError("יש לאשר את מזהה העסקה המדויק שמופיע אצל הספק");
+      if (!op || op.customer_id !== customer.id || op.kind !== "charge" || op.state !== "unknown" ||
+          op.environment !== "production" || op.provider_payment_id || customer.busy_operation_id !== op.id || !op.payment_id)
+        throw new CardError("הפעולה השתנתה או אינה ממתינה לבירור", 409);
+      const payment = await client.entities.Payment.get(op.payment_id);
+      if (!payment || payment.stored_card_operation_id !== op.id || payment.payment_status !== "pending" ||
+          payment.event_id !== op.event_id || money(payment.amount) !== money(op.amount))
+        throw new CardError("התשלום אינו תואם לפעולה", 409);
+      const already = await client.entities.StoredCardOperation.filter({ provider_payment_id: paymentId }, "id", 2);
+      if (already.some(item => item.id !== op.id)) throw new CardError("העסקה כבר שויכה לפעולה אחרת", 409);
+      const log = await verifyLog(providerAccess(config, op.environment), {
+        paymentId, type: 3, amount: op.total, currency: op.currency
+      }, op.created_date);
+      const providerTime = Number(String(log.Date || "").match(/\/Date\((\d+)/)?.[1]);
+      if (!Number.isFinite(providerTime) || Math.abs(providerTime - Date.parse(op.created_date)) > 600000 ||
+          log.IsToken !== true || log.IsCredit === true || log.CreditedTransaction === true ||
+          (log.OrderIdClientUsage && String(log.OrderIdClientUsage) !== op.id))
+        throw new CardError("לא ניתן לקשור בבטחה את העסקה לפעולה זו", 409);
+      const matched = await client.entities.StoredCardOperation.updateMany(
+        { id: op.id, state: "unknown" },
+        { $set: { state: "approved", provider_payment_id: paymentId, provider_trace_id: String(log.ClearingTraceId || ""),
+          provider_auth_number: String(log.ClearingConfirmationNumber || ""), provider_document_id: String(log.DocId || "") } }
+      );
+      if (matched.updated !== 1) throw new CardError("מצב הפעולה השתנה; יש לרענן", 409);
+      const saved = await client.entities.StoredCardOperation.get(op.id);
+      try { return Response.json(await finishCharge(client, saved, customer, config)); }
+      catch (e) { await client.entities.StoredCardOperation.update(op.id, { state: "unknown" }); throw e; }
+    }
     if (action === "reconcile") {
       const op = await client.entities.StoredCardOperation.get(body.operationId);
       if (!op || op.customer_id !== customer.id || customer.busy_operation_id !== op.id) throw new CardError("הפעולה אינה שייכת ללקוח", 409);

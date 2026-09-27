@@ -1,5 +1,5 @@
 import { CardError } from "./storedCards.ts";
-import { providerAccess, providerCall, verifyLog, matchClearingLog, hasErrors } from "./storedCardProvider.ts";
+import { providerAccess, verifyLog, verifiedLogs, matchClearingLog } from "./storedCardProvider.ts";
 import { afterAgreementChange } from "./agreementLifecycle.ts";
 async function notifyCardSaved(client, setup, customer, suffix) {
   try {
@@ -64,15 +64,10 @@ export async function recoverCardSetup(client, setup, config) {
   log=await verifyLog(access,{paymentId:setup.provider_payment_id,traceId:setup.provider_trace_id,type:1,amount:0},setup.created_date);
  }else{
   // No matching by name, amount or time alone. Exact provider order AND customer are required.
-  const result=await providerCall(access,"GetClearingLogByParams",{token:access.key,searchParams:{
-   FromDate:new Date(new Date(setup.created_date).getTime()-300000).toISOString(),
-   ToDate:new Date().toISOString(),IsSuccess:true
-  }});
-  if(hasErrors(result))throw new CardError("לא ניתן לברר את הכרטיס מול הספק",502);
-  const rows=Array.isArray(result)?result:result?.Response||result?.ClearingLogs||[];
-  const found=Array.isArray(rows)?rows.filter(row=>String(row.OrderIdClientUsage||"")===setup.id&&
+  const rows=await verifiedLogs(access,setup.created_date);
+  const found=rows.filter(row=>String(row.OrderIdClientUsage||"")===setup.id&&
    String(row.CustomerId||"")===String(setup.provider_customer_id)&&
-   matchClearingLog(row,{paymentId:row.PaymentId,traceId:row.ClearingTraceId,type:1,amount:0})):[];
+   matchClearingLog(row,{paymentId:row.PaymentId,traceId:row.ClearingTraceId,type:1,amount:0}));
   if(found.length!==1)throw new CardError("טרם התקבל אישור ספק שניתן לשייך בבטחה לבקשת הכרטיס. אין ליצור בקשה נוספת; נדרש בירור הקולבק מול Invoice4U.",409);
   log=found[0];
  }
