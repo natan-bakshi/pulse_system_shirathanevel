@@ -1,3 +1,4 @@
+import { billingEmail } from "./billingEmail.ts";
 import { CardError, claimCustomer, releaseCustomer } from "./storedCards.ts";
 import { resolveProviderCustomer, providerCustomerFields } from "./resolveProviderCustomer.ts";
 import { cardAppUrl, providerAccess, providerCall, hasErrors, providerFailure, sha256 } from "./storedCardProvider.ts";
@@ -11,6 +12,7 @@ async function discardProvisionalCustomer(client, customerId) {
 export async function beginSetup(client, user, config, customer, consentReference, eventId = "", provisionalCustomer = false, agreement = null, evidence = null) {
   const reference = text(consentReference, 500) || (evidence?.uri ? "צילום הסכמת לקוח" : "");
   if (!reference) throw new CardError("נדרש תיעוד הסכמת הלקוח לשמירה ולחיוב עתידי");
+  const email = billingEmail(customer.email, config);
   const access = providerAccess(config, undefined, "capture");
   if (customer.busy_operation_id) throw new CardError("קיימת פעולה בטיפול", 409);
   if (customer.active_card_id) {
@@ -37,7 +39,7 @@ export async function beginSetup(client, user, config, customer, consentReferenc
     const created = await providerCall(access, "CreateCustomer", {
       token: access.key,
       cu: { Name: text(customer.name), Active: true,
-        ...(text(customer.email, 254) ? { Email: text(customer.email, 254) } : {}),
+        Email: email,
         ...(text(customer.phone, 30) ? { Cell: text(customer.phone, 30) } : {}) }
     });
     if (hasErrors(created) || !Number.isSafeInteger(Number(created?.ID)) || Number(created.ID) <= 0) throw new CardError("לא ניתן ליצור שיוך כרטיס אצל הספק");
@@ -51,7 +53,7 @@ export async function beginSetup(client, user, config, customer, consentReferenc
     // Do not force CreditCardCompanyType here; a stale UI setting can otherwise target the wrong terminal.
     const result = await providerCall(access, "ProcessApiRequestV2", { request: {
       Invoice4UUserApiKey: access.key, AddToken: true,
-      CustomerId: Number(providerId), ...providerCustomerFields(providerCustomer),
+      CustomerId: Number(providerId), ...providerCustomerFields(providerCustomer), Email: email,
       IsDocCreate: false, IsQaMode: access.environment === "qa", Platform: "Pulse",
       OrderIdClientUsage: setup.id,
       ReturnUrl: agreement ? cardAppUrl + "/EventClosing?id=" + agreement.id : eventId ? cardAppUrl + "/EventDetails?id=" + encodeURIComponent(eventId) : cardAppUrl,
@@ -68,7 +70,8 @@ export async function beginSetup(client, user, config, customer, consentReferenc
     }
     const redirect = new URL(result.ClearingRedirectUrl);
     if (redirect.protocol !== "https:") throw new CardError("התקבל קישור סליקה לא תקין");
-    await client.entities.CardSetupRequest.update(setup.id, { state: "pending", redirect_url: redirect.href });
+    await client.entities.CardSetupRequest.update(setup.id, { state: "pending", redirect_url: redirect.href,
+      provider_payment_id: String(result.PaymentId || ""), provider_trace_id: String(result.ClearingTraceId || "") });
     return { setupId: setup.id, redirectUrl: redirect.href };
   } catch (e) {
     try {
