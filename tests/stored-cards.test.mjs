@@ -653,3 +653,47 @@ test("document customer creation rejects provider conflict IDs", async () => {
     await assert.rejects(customerClient.invoice4uFindOrCreateCustomer("qa", "fake-key", { name: "Test" }), /לא ניתן ליצור לקוח/);
   }
 });
+
+test("missing or invalid billing email blocks capture before calling provider", async()=>{
+ for(const [email,fallback] of [["",""],["bad","valid@example.test"],["","invalid"]]){
+  const f=fixture();f.db.BillingCustomer[0].email=email;f.setConfig("billing_fallback_email",fallback);
+  const r=await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
+  assert.equal(r.status,400);assert.equal(f.calls.length,0);
+  assert.equal(f.db.BillingCustomer[0].busy_operation_id,"");
+ }
+});
+test("minimal correlated callback verifies against provider and uses provider suffix",async()=>{
+ const f=fixture();await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
+ const p=f.calls.find(c=>c.payload.request?.AddToken).payload.request;
+ f.logs.push({PaymentId:"minimal",ClearingTraceId:"trace-minimal",IsSuccess:true,LogType:2,TransactionType:1,Amount:0,CreditNumber:"4321"});
+ const r=await handler(new Request(p.CallBackUrl,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({Success:true,OrderIdClientUsage:p.OrderIdClientUsage,PaymentId:"minimal",ClearingTraceId:"trace-minimal"})}));
+ assert.equal(r.status,200,await r.text());assert.equal(f.db.CardSetupRequest[0].state,"verified");
+ assert.equal(f.db.StoredCard.find(c=>c.id===f.db.BillingCustomer[0].active_card_id).card_suffix,"4321");
+});
+test("delayed capture log keeps identifiers and recovers without another capture or charge",async()=>{
+ const f=fixture();await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
+ const p=f.calls.find(c=>c.payload.request?.AddToken).payload.request;
+ const r=await handler(new Request(p.CallBackUrl,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({Success:true,OrderIdClientUsage:p.OrderIdClientUsage,PaymentId:"delayed",ClearingTraceId:"trace-delayed"})}));
+ assert.equal(r.status,409,await r.text());
+ assert.equal(f.db.CardSetupRequest[0].provider_payment_id,"delayed");
+ assert.notEqual(f.db.CardSetupRequest[0].state,"verified");
+ f.logs.push({PaymentId:"delayed",ClearingTraceId:"trace-delayed",IsSuccess:true,LogType:2,TransactionType:1,Amount:0,CreditNumber:"4321"});
+ const recovered=await request("recover_setup",{customerId:"customer"});
+ assert.equal(recovered.status,200,JSON.stringify(recovered));
+ assert.equal(f.db.CardSetupRequest[0].state,"verified");
+ assert.equal(f.calls.filter(c=>c.payload.request?.AddToken).length,1);
+ assert.equal(f.calls.filter(c=>c.payload.request?.ChargeWithToken).length,0);
+});
+test("uncorrelated zero-value provider log cannot activate a card",async()=>{
+ const f=fixture();await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
+ f.logs.push({PaymentId:"unknown",ClearingTraceId:"unknown-trace",IsSuccess:true,LogType:2,TransactionType:1,Amount:0,CreditNumber:"4321"});
+ assert.equal((await request("recover_setup",{customerId:"customer"})).status,409);
+ assert.equal(f.db.BillingCustomer[0].active_card_id,"card");
+});
+test("status preserves expired pending capture for safe reconciliation",async()=>{
+ const f=fixture();await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
+ f.db.CardSetupRequest[0].expires_at="2020-01-01T00:00:00Z";
+ await request("status",{eventId:"event"});
+ assert.equal(f.db.CardSetupRequest[0].state,"pending");
+ assert.equal(f.calls.filter(c=>c.payload.request?.AddToken).length,1);
+});
