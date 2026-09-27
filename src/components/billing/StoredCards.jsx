@@ -1,3 +1,4 @@
+import {israelDateTime} from "@/lib/israelDate";
 import AgreementChargeForm from "./AgreementChargeForm";
 import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,9 +36,10 @@ export function StoredCardSettings({ settings, onChange }) {
 export default function StoredCardPanel({ event, onChanged }) {
   const { data: settings = [] } = useQuery({ queryKey: ["appSettings"], queryFn: () => base44.entities.AppSettings.list(), staleTime: 180000 });
   const enabled = settings.some(r => r.setting_key === "stored_cards_enabled" && r.setting_value === "true");
-  return enabled && event?.id ? <CardPanel event={event} onChanged={onChanged} /> : null;
+  const fallbackEmail=settings.find(r=>r.setting_key==="billing_fallback_email")?.setting_value||"";
+  return enabled && event?.id ? <CardPanel event={event} onChanged={onChanged} fallbackEmail={fallbackEmail} /> : null;
 }
-function CardPanel({ event, onChanged }) {
+function CardPanel({ event, onChanged, fallbackEmail }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -141,7 +143,7 @@ function CardPanel({ event, onChanged }) {
           <Button variant="ghost" disabled={busy} onClick={() => refetch()}>רענן</Button>
         </div>
         {data?.pending?.kind === "setup" && <div className="rounded bg-blue-50 p-3 space-y-2">
-          <p>ממתין לשמירת הכרטיס בדף המאובטח. תוקף הבקשה: {new Date(data.pending.expiresAt).toLocaleString("he-IL")}</p>
+          <p>ממתין לאימות שמירת הכרטיס מול הספק. הקישור בתוקף עד {israelDateTime(data.pending.expiresAt)} (שעון ישראל).</p>
           {data.pending.url && <div className="flex gap-2">
             <a href={data.pending.url} target="_blank" rel="noopener noreferrer" className="underline">פתח דף שמירת כרטיס</a>
             <Button variant="outline" disabled={busy} onClick={() => run(async () => { await navigator.clipboard.writeText(data.pending.url); setMessage("הקישור הועתק"); })}>העתק קישור ללקוח</Button>
@@ -149,7 +151,7 @@ function CardPanel({ event, onChanged }) {
           {data.pending.url && <Button variant="outline" disabled={busy || !!data.pending.messageState} onClick={()=>run(async()=>{await storedCardAction("send_setup_link",{customerId:customer.id,eventId:event.id});setMessage("הקישור התקבל אצל ספק הוואטסאפ");})}>{data.pending.messageState==="accepted"?"הקישור נשלח בוואטסאפ":data.pending.messageState?"שליחה בבירור":"שלח קישור בוואטסאפ"}</Button>}
           {data.pending.canRecover && <Button variant="outline" disabled={busy} onClick={() => run(async () => {
             await storedCardAction("recover_setup", { customerId: customer.id }); setMessage("שמירת הכרטיס אומתה והושלמה"); await changed();
-          })}>השלם אימות שמירת כרטיס</Button>}
+          })}>בדוק ואמת כרטיס מול הספק</Button>}
           <Button variant="outline" disabled={busy || data.pending.state === "verifying"} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>בטל בקשת שמירה</Button>
         </div>}
         {data?.pending?.kind === "charge" && <div className="rounded bg-amber-50 p-3">
@@ -180,13 +182,14 @@ function CardPanel({ event, onChanged }) {
             {hasMore && <Button variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(true, customerSearch))}>טען לקוחות נוספים</Button>}
             <Button disabled={!selected || busy} onClick={() => run(() => bind(selected))}>קשר לאירוע</Button>
             <p className="font-semibold border-t pt-3">לקוח חדש + כרטיס</p>
+            <p className="text-sm text-amber-900">{form.email.trim()?"מייל הלקוח ישמש בסליקה.":fallbackEmail?"בהיעדר מייל ללקוח יישלח לספק מייל החברה: "+fallbackEmail:"נדרש מייל ללקוח או הגדרת מייל חברה חלופי בהגדרות התשלומים."}</p>
             <p className="text-sm text-gray-600">הלקוח יישמר במערכת רק לאחר שהכרטיס יאומת בהצלחה.</p>
             {[["name", "שם מלא"], ["phone", "טלפון"], ["email", "אימייל"], ["identifier", "תעודת זהות / ח.פ. (רשות)"]].map(([field, label]) =>
-              <label key={field} className="block">{label}<Input value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} /></label>)}
+              <label key={field} className="block">{label}<Input type={field === "email" ? "email" : "text"} value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} /></label>)}
             <label className="block">אסמכתא להסכמת הלקוח<Input value={reference} onChange={e => setReference(e.target.value)} placeholder="מספר הסכם או הפניה להסכמה מתועדת" /></label>
             {evidenceInput}
             <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם</label>
-            <Button disabled={busy || !form.name.trim() || !form.phone.trim() || !consent || (!reference.trim() && !consentImage)} onClick={() => run(async () => {
+            <Button disabled={busy || !form.name.trim() || !form.phone.trim() || !(form.email.trim() || fallbackEmail) || !consent || (!reference.trim() && !consentImage)} onClick={() => run(async () => {
               const result = await storedCardAction("create_customer_and_setup", {
                 eventId: event.id, ...form, consentConfirmed: consent, consentReference: reference, consentImage
               });
@@ -199,10 +202,11 @@ function CardPanel({ event, onChanged }) {
           </div>}
           {mode === "setup" && <div className="space-y-3">
             <p>פרטי הכרטיס יוזנו בדף המאובטח של Invoice4U. הבקשה מיועדת לשמירה ללא חיוב.</p>
+            <p className="text-sm text-amber-900">{customer.email?"מייל הלקוח לסליקה: "+customer.email:fallbackEmail?"מייל החברה שישמש בסליקה: "+fallbackEmail:"חסר מייל ללקוח. יש להגדיר מייל חברה חלופי בהגדרות התשלומים לפני יצירת הקישור."}</p>
             <label className="block">אסמכתא להסכמת הלקוח<Input value={reference} onChange={e => setReference(e.target.value)} placeholder="מספר הסכם או הפניה להסכמה מתועדת" /></label>
             {evidenceInput}
             <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם</label>
-            <Button disabled={busy || !consent || (!reference.trim() && !consentImage)} onClick={() => run(async () => {
+            <Button disabled={busy || !(customer?.email || fallbackEmail) || !consent || (!reference.trim() && !consentImage)} onClick={() => run(async () => {
               await storedCardAction("setup", { eventId: event.id, customerId: customer.id, consentConfirmed: consent, consentReference: reference, consentImage });
               setMode(null); await changed();
             })}>צור קישור לשמירת כרטיס</Button>
