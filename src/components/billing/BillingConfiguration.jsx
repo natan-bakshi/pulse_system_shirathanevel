@@ -12,10 +12,11 @@ import { StoredCardSettings } from "@/components/billing/StoredCards";
 
 import ClosingSettings, { closingDefaults } from "./ClosingSettings";
 
-const defaults = { ...closingDefaults, stored_cards_enabled: "false", stored_cards_env: "qa", stored_cards_cleanup: "off", invoice4u_env: "qa", invoice4u_branch_id: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", default_advance_percent: "20", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false", payment_link_message_template: "", payment_link_message_template_en: "", processing_fee_label_en: "Processing fee", default_email_comment_en: "", payment_link_expiry_days: "14", payment_link_reminder_days: "3", client_payment_receipt_enabled: "false", payment_receipt_message_template: "", payment_receipt_message_template_en: "", payment_link_reminder_template: "", payment_link_reminder_template_en: "" };
+const defaults = { billing_fallback_email: "", ...closingDefaults, stored_cards_enabled: "false", stored_cards_env: "qa", stored_cards_cleanup: "off", invoice4u_env: "qa", invoice4u_branch_id: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", default_advance_percent: "20", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false", payment_link_message_template: "", payment_link_message_template_en: "", processing_fee_label_en: "Processing fee", default_email_comment_en: "", payment_link_expiry_days: "14", payment_link_reminder_days: "3", client_payment_receipt_enabled: "false", payment_receipt_message_template: "", payment_receipt_message_template_en: "", payment_link_reminder_template: "", payment_link_reminder_template_en: "" };
 
 export default function BillingConfiguration() {
   const queryClient = useQueryClient();
+  const [saveError,setSaveError]=useState("");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
   // draft מחזיק רק את השינויים שטרם נשמרו, כדי שלא נדרוס רשומות אחרות במטמון.
@@ -26,6 +27,9 @@ export default function BillingConfiguration() {
   const change = (key, value) => { setSavedAt(null); setDraft((current) => ({ ...current, [key]: value })); };
 
   const save = async () => {
+    setSaveError("");
+    const email=String(settings.billing_fallback_email||"").trim();
+    if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setSaveError("כתובת מייל החברה אינה תקינה");return;}
     setSaving(true);
     try {
       const entries = Object.entries(draft).filter(([key]) => key in defaults);
@@ -48,6 +52,8 @@ export default function BillingConfiguration() {
         <BillingClearingRules settings={settings} onChange={change} />
         <BillingPaymentLinkSettings settings={settings} onChange={change} />
         <BillingLifecycleSettings settings={settings} onChange={change} />
+        <label className="block space-y-2"><span className="font-semibold">מייל החברה כברירת מחדל לסליקה</span><input type="email" dir="ltr" className="block w-full rounded-md border p-2" value={settings.billing_fallback_email} onChange={e=>change("billing_fallback_email",e.target.value.trim())}/><span className="block text-sm text-gray-600">ישמש רק כשאין מייל ללקוח. הודעות הספק עשויות להגיע לכתובת זו. אינו משנה את המייל בכרטיס הלקוח.</span></label>
+        {saveError&&<p role="alert" className="text-red-700">{saveError}</p>}
         <StoredCardSettings settings={settings} onChange={change} />
         <ClosingSettings settings={settings} onChange={change} />
         <div className="flex items-center gap-3">
