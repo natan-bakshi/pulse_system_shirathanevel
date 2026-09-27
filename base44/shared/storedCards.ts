@@ -32,8 +32,8 @@ export async function releaseCustomer(client, id, owner, changes = {}) {
    const owner = customer.busy_operation_id;
    if (!owner) return false;
    if (owner.startsWith("setup:")) {
-     const setup = await client.entities.CardSetupRequest.get(owner.slice(6));
-     if (setup) return false;
+     const setup = await client.entities.CardSetupRequest.filter({ id: owner.slice(6) }, "id", 1);
+     if (setup.length) return false;
    } else {
      if (!owner.includes(":") || /^(charge|payment):/.test(owner)) return false;
      const started = Date.parse(customer.updated_date);

@@ -294,7 +294,7 @@ export default Deno.serve(async req => {
       const card = customer.active_card_id ? await client.entities.StoredCard.get(customer.active_card_id) : null;
       let pending = null;
       if (customer.busy_operation_id?.startsWith("setup:")) {
-        const s = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
+        const [s] = await client.entities.CardSetupRequest.filter({ id: customer.busy_operation_id.slice(6) }, "id", 1);
         if (s) pending = { kind: "setup", id: s.id, state: s.state, canRecover: ["pending", "verifying"].includes(s.state),
           canCancel: s.state !== "verifying" || (Number.isFinite(Date.parse(s.updated_date)) && Date.now() - Date.parse(s.updated_date) > 300000),
           expiresAt: s.expires_at, messageState:s.link_message_state||"", url: s.state === "pending" ? s.redirect_url : "" };
@@ -317,7 +317,7 @@ export default Deno.serve(async req => {
     if (action === "recover_setup") {
       if (!customer.busy_operation_id) return Response.json({ received: true, released: true });
       if (!customer.busy_operation_id.startsWith("setup:")) throw new CardError("אין בקשת שמירה בטיפול");
-      const setup = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
+      const [setup] = await client.entities.CardSetupRequest.filter({ id: customer.busy_operation_id.slice(6) }, "id", 1);
       if (!setup) { await releaseCustomer(client, customer.id, customer.busy_operation_id); return Response.json({ received: true, released: true }); }
       return Response.json(await recoverCardSetup(client,setup,config));
     }
@@ -325,7 +325,7 @@ export default Deno.serve(async req => {
       if (!customer.busy_operation_id) return Response.json({ success: true, released: true });
       if (!customer.busy_operation_id.startsWith("setup:")) throw new CardError("אין בקשת שמירה פתוחה");
       const id = customer.busy_operation_id.slice(6);
-      const setup = await client.entities.CardSetupRequest.get(id);
+      const [setup] = await client.entities.CardSetupRequest.filter({ id }, "id", 1);
       if (!setup) { await releaseCustomer(client, customer.id, customer.busy_operation_id); return Response.json({ success: true, released: true }); }
       if (customer.active_card_id === setup.card_id || setup.state === "verified" ||
           (setup.state === "verifying" && (!Number.isFinite(Date.parse(setup.updated_date)) || Date.now() - Date.parse(setup.updated_date) <= 300000)))
