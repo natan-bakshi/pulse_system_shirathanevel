@@ -191,6 +191,12 @@ export default Deno.serve(async req=>{
      a=await finishDocument(client,a);await reconcileAgreement(client,a.event_id);
      return Response.json(publicAgreement(await client.entities.EventAgreement.get(a.id)));
     }
+    // Read-only access to the exact proposal frozen in this agreement; existing verified-session authorization applies.
+    if(action==="document"&&body.kind==="quote"){
+     if(!a.snapshot.quote_file?.file_uri)throw new AgreementError("לא צורפה הצעת מחיר לגרסה זו",404);
+     const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.snapshot.quote_file.file_uri,expires_in:600});
+     return Response.json({url:signed_url});
+    }
     if(!a.signed_at)throw new AgreementError("יש לחתום לפני שמירת כרטיס או תשלום",409);
     if(action==="document"){
      a=await finishDocument(client,a);if(!a.pdf_uri)throw new AgreementError("החתימה נשמרה; הפקת המסמך ממתינה לטיפול",503);
