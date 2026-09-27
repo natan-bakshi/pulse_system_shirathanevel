@@ -20,6 +20,7 @@ import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 import EventChangeDecisionDialogs from '../components/event-details/EventChangeDecisionDialogs';
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
+import EventCloseButton from '@/components/billing/EventCloseButton';
 // דיאלוג הסליקה נטען רק כשנפתח בפועל - כדי לא להעמיס את טעינת דף האירוע.
 const ClearingPaymentDialog = React.lazy(() => import('../components/billing/ClearingPaymentDialog'));
 // דיאלוג הפקת מסמך לתשלום ידני - נטען רק כשנפתח בפועל.
@@ -1992,7 +1993,8 @@ export default function EventDetails() {
   return (
     <div className="p-2 sm:p-4 lg:p-8 w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6">
       {isAdmin && (
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-wrap gap-3 justify-end">
+          <EventCloseButton event={event}/>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
