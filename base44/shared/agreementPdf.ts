@@ -1,10 +1,13 @@
 import { jsPDF } from "npm:jspdf@4.2.0";
 import { agreementFont } from "./agreementFont.ts";
 import { digest } from "./agreementRules.ts";
+import { loadAgreementBackground, agreementPdfMargins } from "./agreementPdfBackground.ts";
 
 // The signed snapshot is immutable. This renderer changes its presentation, not its contents.
-export async function makeAgreementPdf(a) {
+export async function makeAgreementPdf(a, config={}) {
   const doc=new jsPDF({unit:"mm",format:"a4",compress:true});
+  const background=await loadAgreementBackground(config);
+  const margins=agreementPdfMargins(config);
   doc.addFileToVFS("NotoSansHebrew.ttf",agreementFont);
   doc.addFont("NotoSansHebrew.ttf","Agreement","normal");
   doc.setFont("Agreement");
@@ -13,12 +16,19 @@ export async function makeAgreementPdf(a) {
   const t=(he,en)=>english?en:he;
   const money=n=>new Intl.NumberFormat(english?"en-US":"he-IL",{maximumFractionDigits:2}).format(Number(n)||0)+" "+s.currency;
   doc.setProperties({title:t("הסכם חתום — ","Signed agreement — ")+s.event_name,author:"שירת הנבל",subject:a.id});
-  let y=18;
+  let y=margins.top;
   function header(){
-    doc.setFillColor(...red);doc.rect(0,0,210,10,"F");
-    doc.setDrawColor(227,218,207);doc.line(18,281,192,281);
+    if(background){
+      const p=doc.getImageProperties(background.data);
+      const scale=Math.max(210/p.width,297/p.height);
+      const width=p.width*scale,height=p.height*scale;
+      doc.addImage(background.data,background.format,(210-width)/2,(297-height)/2,width,height,undefined,"FAST");
+    }else{
+      doc.setFillColor(...red);doc.rect(0,0,210,10,"F");
+      doc.setDrawColor(227,218,207);doc.line(18,281,192,281);
+    }
   }
-  function pageIf(height=10){if(y+height>274){doc.addPage();header();y=19;}}
+  function pageIf(height=10){if(y+height>297-margins.bottom){doc.addPage();header();y=margins.top;}}
   header();
   function lines(value,size=10,color=ink,pad=2){
     doc.setFontSize(size);doc.setTextColor(...color);
@@ -74,12 +84,13 @@ export async function makeAgreementPdf(a) {
   if(links.length)section(t("קישורים הנזכרים בהסכם","Links referenced in the agreement"));
   for(const url of links){pageIf(16);const top=y;lines(url,8,muted,0);doc.link(18,top-4,174,y-top+4,{url});}
   const pages=doc.getNumberOfPages();
-  for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...muted);doc.text(i+" / "+pages,105,289,{align:"center"});}
+  for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...muted);doc.text(i+" / "+pages,105,297-Math.min(margins.bottom/2,14),{align:"center"});}
   return new Uint8Array(doc.output("arraybuffer"));
 }
 export async function persistAgreementPdf(client,a) {
   if(a.pdf_uri)return a;
-  const bytes=await makeAgreementPdf(a);
+  const config=Object.fromEntries((await client.entities.AppSettings.list()).map(r=>[r.setting_key,r.setting_value]));
+  const bytes=await makeAgreementPdf(a,config);
   const pdfHash=await digest(bytes);
   const upload=await client.integrations.Core.UploadPrivateFile({file:new File([bytes],"agreement-"+a.id+".pdf",{type:"application/pdf"})});
   if(!upload?.file_uri)throw new Error("שמירת PDF נכשלה");
