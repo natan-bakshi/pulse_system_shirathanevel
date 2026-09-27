@@ -1,3 +1,4 @@
+import { completeSetup, recoverCardSetup } from "../../shared/storedCardCompletion.ts";
 import { storeConsentEvidence } from "../../shared/consentEvidence.ts";
 import { sendWhatsAppText } from "../../shared/whatsappSend.ts";
 import { chargeContext, authorizeCharge, createChargeNotice } from "../../shared/agreementCharge.ts";
@@ -39,24 +40,6 @@ async function deleteBillingCustomer(client, customer, actor, config) {
   });
   return { deleted: true, unlinkedEvents: events.length, removedCard };
 }
-async function notifyCardSaved(client, setup, customer, suffix) {
-  try {
-    const admin = await client.entities.User.get(setup.created_by_user_id);
-    if (!admin || admin.role !== "admin") return;
-    const baseLink = setup.event_id ? "/EventDetails?id=" + encodeURIComponent(setup.event_id) : "/BillingDashboard?tab=cards";
-    const link = baseLink + (baseLink.includes("?") ? "&" : "?") + "card=" + encodeURIComponent(setup.card_id);
-    const existing = await client.entities.InAppNotification.filter({
-      user_id: admin.id, template_type: "STORED_CARD_SAVED", link
-    }, "id", 1);
-    if (existing.length) return;
-    await client.entities.InAppNotification.create({
-      user_id: admin.id, user_email: admin.email || "", title: "הכרטיס נשמר בהצלחה",
-      message: "הטוקן של " + customer.name + " אומת ונשמר. כרטיס המסתיים ב-" + suffix + ".",
-      template_type: "STORED_CARD_SAVED", is_read: false, is_resolved: false,
-      link, related_event_id: setup.event_id || ""
-    });
-  } catch { console.warn("[stored-cards] success notification pending"); }
-}
 async function activeCard(client, customer, config, expectedId) {
   if (!customer.active_card_id || (expectedId && expectedId !== customer.active_card_id)) throw new CardError("אין כרטיס פעיל או שהכרטיס הוחלף", 409);
   const card = await client.entities.StoredCard.get(customer.active_card_id);
@@ -95,44 +78,13 @@ async function finishCharge(client, operation, customer, config) {
   try { await applyCleanup(client, customer.id, config); } catch { console.warn("[stored-cards] cleanup pending"); }
   return safeOperation({ ...operation, state: "completed" });
 }
-// Idempotent local completion: no capture/charge is retried by this routine.
-async function completeSetup(client, setup, card, suffix, brand = "", expires = "") {
-  const customer = await client.entities.BillingCustomer.get(setup.customer_id);
-  const owner = "setup:" + setup.id;
-  if (customer.active_card_id !== card.id) {
-    if (customer.busy_operation_id !== owner) throw new CardError("בקשת השמירה אינה פעילה עוד", 409);
-    await client.entities.StoredCard.update(card.id, { state: "active", card_suffix: suffix, brand, expires });
-    const switched = await client.entities.BillingCustomer.updateMany(
-      { id: customer.id, busy_operation_id: owner, active_card_id: customer.active_card_id || "" },
-      { $set: { active_card_id: card.id, busy_operation_id: "" } }
-    );
-    if (switched.updated !== 1) {
-      const latest = await client.entities.BillingCustomer.get(customer.id);
-      if (latest.active_card_id !== card.id) throw new CardError("מצב הכרטיס השתנה", 409);
-    }
-  }
-  await client.entities.CardSetupRequest.update(setup.id, { state: "verified", redirect_url: "", failure_code: "" });
-  if (setup.provisional_customer) await client.entities.BillingCustomer.update(customer.id, { provisional: false });
-  // Only scrub the old generation after the authoritative pointer has switched successfully.
-  if (customer.active_card_id && customer.active_card_id !== card.id) {
-    await client.entities.StoredCard.update(customer.active_card_id, {
-      state: "removed", provider_customer_id: "", card_suffix: "", brand: "", expires: "", cleanup_pending: false,
-      removed_at: new Date().toISOString(), removed_by: "replacement", removal_reason: "replaced"
-    });
-  }
-  await notifyCardSaved(client, setup, customer, suffix);
-  await afterAgreementChange(client, setup.event_id);
-  return { received: true };
-}
-
-
 async function callback(req, base44) {
   const client = base44.asServiceRole;
   const url = new URL(req.url);
   const id = url.searchParams.get("setup");
   const secret = url.searchParams.get("token");
   if (!id || !secret || secret.length > 100) throw new CardError("Invalid callback", 403);
-  const setup = await client.entities.CardSetupRequest.get(id);
+  const setup = await client.entities.CardSetupRequest.get(id).catch(() => null);
   if (!setup || !setup.callback_hash || await sha256(secret) !== setup.callback_hash) throw new CardError("Invalid callback", 403);
   if (setup.state === "verified" || setup.state === "cancelled") return { received: true };
   if (setup.state !== "pending" || new Date(setup.expires_at).getTime() <= Date.now()) throw new CardError("Setup expired", 409);
@@ -145,15 +97,23 @@ async function callback(req, base44) {
     outer = req.headers.get("content-type")?.includes("json") ? JSON.parse(raw) : Object.fromEntries(new URLSearchParams(raw));
   }
   const data = typeof outer.Data === "string" ? JSON.parse(outer.Data) : (outer.Data || outer);
-  if (String(data.OrderIdClientUsage) !== id || String(data.CustomerId) !== setup.provider_customer_id ||
-      !isTrue(data.Success) || !isTrue(data.TokenCaptureOnly) || isTrue(data.TokenCaptureAndCharge))
+  if (String(data.OrderIdClientUsage) !== id || (data.CustomerId !== undefined && String(data.CustomerId) !== setup.provider_customer_id) ||
+      !isTrue(data.Success) || (data.TokenCaptureOnly !== undefined && !isTrue(data.TokenCaptureOnly)) || isTrue(data.TokenCaptureAndCharge))
     throw new CardError("Callback does not match card setup", 409);
+  if (!data.PaymentId && !data.ClearingTraceId) throw new CardError("Callback missing transaction identity",409);
+  if ((setup.provider_payment_id && String(data.PaymentId||"") !== setup.provider_payment_id) ||
+      (setup.provider_trace_id && String(data.ClearingTraceId||"") !== setup.provider_trace_id))
+    throw new CardError("Callback transaction mismatch",409);
+  // Persist correlated identifiers before log lookup, which can lag behind the callback.
+  await client.entities.CardSetupRequest.update(setup.id,{
+    provider_payment_id:String(data.PaymentId||""),provider_trace_id:String(data.ClearingTraceId||"")
+  });
   const config = await cardSettings(client);
   requireCards(config);
   const card = await client.entities.StoredCard.get(setup.card_id);
   const access = providerAccess(config, card.environment, "capture");
   const log = await verifyLog(access, { paymentId: data.PaymentId, traceId: data.ClearingTraceId, type: 1, amount: 0 }, setup.created_date);
-  const suffix = String(data.CardSuffix || "");
+  const suffix = String(data.CardSuffix || log.CreditNumber || "").slice(-4);
   if (!/^\d{4}$/.test(suffix) || (log.CreditNumber && String(log.CreditNumber).slice(-4) !== suffix)) throw new CardError("Card identity not verified", 409);
   const customer = await client.entities.BillingCustomer.get(setup.customer_id);
   if (customer.active_card_id === card.id && !customer.busy_operation_id) {
@@ -323,22 +283,11 @@ export default Deno.serve(async req => {
       return Response.json({ success: true });
     }
     if (action === "status") {
-      if (customer.provisional && customer.busy_operation_id?.startsWith("setup:")) {
-        const id = customer.busy_operation_id.slice(6);
-        const setup = await client.entities.CardSetupRequest.get(id);
-        if (setup && new Date(setup.expires_at).getTime() <= Date.now() && !["verified", "verifying"].includes(setup.state)) {
-          await client.entities.CardSetupRequest.update(setup.id, { state: "cancelled", callback_hash: "", redirect_url: "" });
-          await client.entities.StoredCard.update(setup.card_id, { state: "cancelled", provider_customer_id: "" });
-          await releaseCustomer(client, customer.id, customer.busy_operation_id);
-          await discardProvisionalCustomer(client, customer.id);
-          return Response.json({ customer: null, card: null, pending: null });
-        }
-      }
       const card = customer.active_card_id ? await client.entities.StoredCard.get(customer.active_card_id) : null;
       let pending = null;
       if (customer.busy_operation_id?.startsWith("setup:")) {
         const s = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
-        if (s) pending = { kind: "setup", id: s.id, state: s.state, canRecover: !!s.provider_payment_id,
+        if (s) pending = { kind: "setup", id: s.id, state: s.state, canRecover: ["pending", "verifying"].includes(s.state),
           expiresAt: s.expires_at, messageState:s.link_message_state||"", url: s.state === "pending" ? s.redirect_url : "" };
       } else if (customer.busy_operation_id && !customer.busy_operation_id.includes(":")) {
         const operation = await client.entities.StoredCardOperation.get(customer.busy_operation_id);
@@ -354,19 +303,7 @@ export default Deno.serve(async req => {
     if (action === "recover_setup") {
       if (!customer.busy_operation_id?.startsWith("setup:")) throw new CardError("אין בקשת שמירה בטיפול");
       const setup = await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
-      if (!["pending", "verifying"].includes(setup.state) || !setup.provider_payment_id) throw new CardError("טרם התקבל אישור ספק שניתן לאמת", 409);
-      const card = await client.entities.StoredCard.get(setup.card_id);
-      if (card.customer_id !== customer.id) throw new CardError("שיוך כרטיס לא תקין", 409);
-      const log = await verifyLog(providerAccess(config, card.environment, "capture"), {
-        paymentId: setup.provider_payment_id, traceId: setup.provider_trace_id, type: 1, amount: 0
-      }, setup.created_date);
-      const suffix = String(log.CreditNumber || "").slice(-4);
-      if (!/^\d{4}$/.test(suffix)) throw new CardError("לא ניתן לאמת את הכרטיס מול הספק", 409);
-      const claim = await client.entities.CardSetupRequest.updateMany(
-        { id: setup.id, state: setup.state }, { $set: { state: "verifying" } }
-      );
-      if (claim.updated !== 1) throw new CardError("מצב הבקשה השתנה; יש לרענן", 409);
-      return Response.json(await completeSetup(client, setup, card, suffix, card.brand || "", card.expires || ""));
+      return Response.json(await recoverCardSetup(client,setup,config));
     }
     if (action === "cancel_setup") {
       if (!customer.busy_operation_id?.startsWith("setup:")) throw new CardError("אין בקשת שמירה פתוחה");
