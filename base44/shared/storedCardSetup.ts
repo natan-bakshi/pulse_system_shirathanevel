@@ -12,7 +12,6 @@ async function discardProvisionalCustomer(client, customerId) {
 export async function beginSetup(client, user, config, customer, consentReference, eventId = "", provisionalCustomer = false, agreement = null, evidence = null) {
   const reference = text(consentReference, 500) || (evidence?.uri ? "צילום הסכמת לקוח" : "");
   if (!reference) throw new CardError("נדרש תיעוד הסכמת הלקוח לשמירה ולחיוב עתידי");
-  const email = billingEmail(customer.email, config);
   const access = providerAccess(config, undefined, "capture");
   if (customer.busy_operation_id) throw new CardError("קיימת פעולה בטיפול", 409);
   if (customer.active_card_id) {
@@ -23,6 +22,7 @@ export async function beginSetup(client, user, config, customer, consentReferenc
   let setup: any;
   let claimed = false;
   try {
+    const email = billingEmail(customer.email, config);
     card = await client.entities.StoredCard.create({
       customer_id: customer.id, environment: access.environment, state: "pending",
       consent_image_uri:evidence?.uri||"", consent_image_hash:evidence?.hash||"", consent_reference: reference, consent_recorded_by: user.id, consent_recorded_at: new Date().toISOString(),
