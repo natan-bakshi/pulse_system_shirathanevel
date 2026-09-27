@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 const EventClosingPanel = lazy(() => import("@/components/billing/EventClosingPanel"));
 const StoredCardPanel = lazy(() => import('@/components/billing/StoredCards'));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -74,11 +74,12 @@ export default function EventDetailsTabs(props) {
   } = props;
 
   const showTasksTab = isAdmin && tasksSystemEnabled;
-  const tabsCount = showTasksTab ? 4 : 3;
+  const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("card")?"management":"details");
+  useEffect(()=>{const open=e=>{if(e.detail===event.id)setTab("management");};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
 
   return (
-    <Tabs defaultValue="details" className="w-full">
-      <TabsList className={`grid w-full bg-white/80 backdrop-blur-sm ${tabsCount === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+    <Tabs value={tab} onValueChange={setTab} className="w-full">
+      <TabsList className="flex w-full justify-start overflow-x-auto bg-white/80 backdrop-blur-sm">
         <TabsTrigger value="details" className="text-xs sm:text-sm gap-1">
           <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           <span className="hidden sm:inline">פרטי אירוע ומשפחה</span>
@@ -94,6 +95,7 @@ export default function EventDetailsTabs(props) {
           <span className="hidden sm:inline">סיכום כספי</span>
           <span className="sm:hidden">כספי</span>
         </TabsTrigger>
+        {isAdmin && <TabsTrigger value="management" className="text-xs sm:text-sm gap-1 shrink-0">ניהול אירוע</TabsTrigger>}
         {showTasksTab && (
           <TabsTrigger value="tasks" className="text-xs sm:text-sm gap-1">
             <ListChecks className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -118,7 +120,7 @@ export default function EventDetailsTabs(props) {
           handleDeleteEvent={handleDeleteEvent}
         />
 
-        {isAdmin && <Suspense fallback={null}><EventClosingPanel event={event} onChanged={loadEventData}/></Suspense>}
+
 
         <FamilyContactCard
           event={event}
@@ -204,7 +206,7 @@ export default function EventDetailsTabs(props) {
 
       {/* לשונית 3: סיכום כספי - תשלומים + סיכום */}
       <TabsContent value="financial" className="space-y-4 sm:space-y-6 mt-4">
-        {isAdmin && billingEnabled && <Suspense fallback={null}><StoredCardPanel event={event} onChanged={loadEventData} /></Suspense>}
+
         {(isAdmin || isClient) && (
           <PaymentsCard
             event={event}
@@ -243,6 +245,11 @@ export default function EventDetailsTabs(props) {
           />
         )}
       </TabsContent>
+
+      {isAdmin && <TabsContent value="management" forceMount className="space-y-5 mt-4 data-[state=inactive]:hidden">
+        <Suspense fallback={<p>טוען ניהול אירוע…</p>}><EventClosingPanel event={event} onChanged={loadEventData}/></Suspense>
+        {billingEnabled&&<Suspense fallback={null}><StoredCardPanel event={event} onChanged={loadEventData}/></Suspense>}
+      </TabsContent>}
 
       {/* לשונית 4: משימות לביצוע (מנהלים בלבד + מערכת המשימות פעילה) */}
       {showTasksTab && (
