@@ -4,7 +4,7 @@ import {build} from "esbuild";
 import {createRequire} from "node:module";
 const require=createRequire(import.meta.url);
 async function load(path){
- const r=await build({entryPoints:[path],bundle:true,platform:"node",format:"esm",write:false,
+ const r=await build({entryPoints:[path],bundle:true,platform:"node",format:"esm",write:false,jsx:"transform",
  alias:{"@":process.cwd()+"/src"},plugins:[{name:"react-test",setup(b){
  b.onResolve({filter:/^react$/},()=>({path:"react",namespace:"react-test"}));
  b.onLoad({filter:/.*/,namespace:"react-test"},()=>({contents:"const React=globalThis.__React;export default React;"}));
