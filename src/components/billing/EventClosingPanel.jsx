@@ -23,6 +23,7 @@ export default function EventClosingPanel({event,onChanged}){
  useEffect(()=>{const stop=base44.entities.EventAgreement.subscribe(c=>{if(c.data?.event_id===event.id||c.id===a?.id)qc.invalidateQueries({queryKey:["eventAgreement",event.id]});});return()=>stop();},[event.id,a?.id,qc]);
  const run=async fn=>{setBusy(true);setError("");setMessage("");try{await fn();await refetch();if(onChanged)await onChanged();}catch(e){setError(agreementError(e));}finally{setBusy(false);}};
  const openDraft=()=>run(async()=>{const p=await agreementAction("preview",{eventId:event.id});setDraft({...p,name:"",phone:"",email:""});});
+ useEffect(()=>{const open=e=>{if(e.detail===event.id)openDraft();};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
  const issue=send=>run(async()=>{const r=await agreementAction("issue",{agreementId:a.id,send});setUrl(r.url);setMessage(r.warning|| (send?"הקישור התקבל אצל ספק הוואטסאפ. פתיחה וחתימה יופיעו במעקב.":"הקישור מוכן להעתקה."));});
  const openPdf=id=>run(async()=>{const r=await agreementAction("pdf",{agreementId:id});window.open(r.url,"_blank","noopener,noreferrer");});
  const change=(key,value)=>setDraft(d=>({...d,[key]:value}));
