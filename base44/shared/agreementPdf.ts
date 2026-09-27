@@ -84,7 +84,7 @@ export async function makeAgreementPdf(a, config={}) {
   if(links.length)section(t("קישורים הנזכרים בהסכם","Links referenced in the agreement"));
   for(const url of links){pageIf(16);const top=y;lines(url,8,muted,0);doc.link(18,top-4,174,y-top+4,{url});}
   const pages=doc.getNumberOfPages();
-  for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...muted);doc.text(i+" / "+pages,105,297-Math.min(margins.bottom/2,14),{align:"center"});}
+  if(!background)for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...muted);doc.text(i+" / "+pages,105,297-Math.min(margins.bottom/2,14),{align:"center"});}
   return new Uint8Array(doc.output("arraybuffer"));
 }
 export async function persistAgreementPdf(client,a) {
