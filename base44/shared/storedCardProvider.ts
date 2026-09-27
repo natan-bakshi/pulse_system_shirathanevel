@@ -66,16 +66,25 @@ export function matchClearingLog(log, expected) {
   if (expected.currency && Number(log.Currency) !== ({ ILS: 1, USD: 2, EUR: 3 }[expected.currency])) return false;
   return true;
 }
-export async function verifyLog(access, expected, createdAt) {
+// The live Invoice4U WCF endpoint requires Microsoft JSON dates, despite the ISO examples in its docs.
+export const providerDate = value => "/Date(" + new Date(value).getTime() + ")/";
+export async function verifiedLogs(access, createdAt) {
+  const start = new Date(createdAt).getTime();
+  if (!Number.isFinite(start)) throw new CardError("תאריך הפעולה אינו תקין", 409);
+  // Provider filters calendar days in its local timezone. Include adjacent days, then match IDs exactly.
   const result = await providerCall(access, "GetClearingLogByParams", {
     token: access.key, searchParams: {
-      FromDate: new Date(new Date(createdAt).getTime() - 300000).toISOString(),
-      ToDate: new Date(Date.now() + 300000).toISOString(), IsSuccess: true
+      FromDate: providerDate(start - 86400000),
+      ToDate: providerDate(Math.max(Date.now(), start) + 86400000), IsSuccess: true
     }
   });
-  const logs = Array.isArray(result) ? result : (result?.Response || result?.ClearingLogs || []);
+  if (hasErrors(result)) throw new CardError("לא ניתן לאמת את תוצאת הספק", 503);
+  const logs = Array.isArray(result) ? result : (result?.Response || result?.ClearingLogs);
   if (!Array.isArray(logs)) throw new CardError("לא ניתן לאמת את תוצאת הספק", 503);
-  const found = logs.filter(log => matchClearingLog(log, expected));
+  return logs;
+}
+export async function verifyLog(access, expected, createdAt) {
+  const found = (await verifiedLogs(access, createdAt)).filter(log => matchClearingLog(log, expected));
   if (found.length !== 1) throw new CardError("ממתין לאימות תוצאת הסליקה מול הספק", 409);
   return found[0];
 }
