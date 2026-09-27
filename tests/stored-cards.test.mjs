@@ -255,8 +255,8 @@ test("mismatched amount or unresolved hosted payment prevents charging", async (
   f.db.Payment = [{ id: "pending", event_id: "event", amount: 100, payment_status: "pending" }];
   assert.equal((await request("charge", chargeBody)).status, 409); assert.equal(f.calls.length, 0);
 });
-test("setup omits blank optional fields and uses the retrieved provider details", async () => {
-  const f = fixture(); f.db.BillingCustomer[0].email = "  "; f.db.BillingCustomer[0].phone = "  ";
+test("setup requires company fallback for missing email and uses retrieved provider phone", async () => {
+  const f = fixture(); f.db.BillingCustomer[0].email = "  "; f.db.BillingCustomer[0].phone = "  "; f.setConfig("billing_fallback_email","company@example.test");
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
     if (!String(url).endsWith("GetCustomerById")) return originalFetch(url, options);
@@ -265,9 +265,9 @@ test("setup omits blank optional fields and uses the retrieved provider details"
   };
   assert.equal((await request("setup", { customerId: "customer", consentConfirmed: true, consentReference: "Test" })).status, 200);
   const cu = f.calls.find(c => c.endpoint === "CreateCustomer").payload.cu;
-  assert.equal("Email" in cu, false); assert.equal("Cell" in cu, false);
+  assert.equal(cu.Email, "company@example.test"); assert.equal("Cell" in cu, false);
   const r = f.calls.find(c => c.payload.request?.AddToken).payload.request;
-  assert.equal(r.FullName, "Provider name"); assert.equal(r.Phone, "0501111111"); assert.equal("Email" in r, false);
+  assert.equal(r.FullName, "Provider name"); assert.equal(r.Phone, "0501111111"); assert.equal(r.Email, "company@example.test"); assert.equal(f.db.BillingCustomer[0].email, "  ");
   assert.deepEqual(f.calls.map(c => c.endpoint), ["CreateCustomer", "GetCustomerById", "ProcessApiRequestV2"]);
   assert.deepEqual(f.calls[1].payload, { token: "fake-qa-key", custId: r.CustomerId });
 });
