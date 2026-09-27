@@ -1,10 +1,10 @@
 import LinkedText from "@/components/billing/LinkedText";
-import {israelDateTime} from "@/lib/israelDate";
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import { agreementAction,agreementError,statusLabel } from "@/lib/agreementApi";
 import AgreementView from "@/components/billing/AgreementView";
 import { base44 } from "@/api/base44Client";
 import AdminClosingVerification from "@/components/billing/AdminClosingVerification";
+import ClosingStatus from "@/components/billing/ClosingStatus";
 import { Button } from "@/components/ui/button";
 const field="w-full rounded-md border p-3 bg-white";
 function SignaturePad({onChange}) {
@@ -42,6 +42,8 @@ export default function EventClosing(){
  useEffect(()=>{const focus=()=>{if(auth.current.verified&&!busy)refresh().catch(()=>{});};window.addEventListener("focus",focus);return()=>window.removeEventListener("focus",focus);},[refresh,busy]);
  const redirect=async action=>{const result=await call(action);if(result.redirectUrl&&/^https:\/\//.test(result.redirectUrl))location.assign(result.redirectUrl);else await refresh();};
  const pdf=async(kind)=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await call("document",{kind});if(r.url){if(tab)tab.location.replace(r.url);else location.assign(r.url);}}catch(e){tab?.close();throw e;}};
+ const statusActions={agreement,busy,onToken:()=>run(()=>redirect("token")),onDeposit:()=>run(()=>redirect("deposit")),onPdf:()=>run(()=>pdf("signed")),onRefresh:()=>run(refresh)};
+ if(agreement?.completed_at)return <main dir="rtl" className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white px-3 py-6 sm:px-6 sm:py-10 text-stone-800"><article className="mx-auto max-w-2xl rounded-3xl border border-stone-200 bg-white p-5 sm:p-10 shadow-lg"><ClosingStatus {...statusActions}/>{error&&<p role="alert" className="rounded bg-red-50 text-red-800 p-4 mt-5">{error}</p>}</article></main>;
  return <main dir="rtl" className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white py-5 sm:py-10 px-3 sm:px-6 text-stone-800"><article className="mx-auto max-w-4xl rounded-3xl border border-stone-200 bg-white p-4 sm:p-10 space-y-7 shadow-lg">
   <header className="text-center border-b border-amber-100 pb-6"><p className="text-red-900 font-semibold tracking-wide">שירת הנבל</p><h1 className="text-2xl sm:text-3xl font-bold text-red-950 mt-3">עוד צעד קטן לקראת האירוע שלכם</h1><p className="text-stone-500 mt-3 text-sm">עוברים על הפרטים, מאשרים וחותמים — הכול במקום אחד</p></header>
   <nav aria-label="שלבי סגירת האירוע" className="grid grid-cols-3 gap-2 text-xs sm:text-sm">{["אימות טלפון","פרטי האירוע וחתימה","השלמת הסגירה"].map((label,i)=><div key={label} className={"text-center rounded-lg py-3 "+((!agreement?0:agreement.signed_at?2:1)===i?"bg-red-900 text-white":"bg-stone-100 text-stone-600")}>{i+1}. {label}</div>)}</nav>
@@ -66,17 +68,7 @@ export default function EventClosing(){
     <p className="text-sm">יש לחתום באצבע או בעכבר. עם האישור יישמרו המסמך, החתימה, מועד האימות ותיעוד טכני של הפעולה.</p>
     <SignaturePad onChange={setStrokes}/>
     <Button className="w-full bg-red-900" disabled={busy||name.trim().length<2||!strokes.length||agreement.snapshot.clauses.some(c=>!accepted[c.code])} onClick={()=>run(async()=>{const a=await call("sign",{name,role,strokes,accepted,contentHash:agreement.content_hash});setAgreement(a);setInfo("החתימה נשמרה. אפשר כעת להשלים את דרישות סגירת האירוע.");})}>{busy?"שומר...":"אני מאשר/ת את ההסכם וחותם/ת"}</Button>
-   </section>:<section className="space-y-4 border-t pt-5">
-    <p className="rounded bg-green-50 p-4">ההסכם נחתם ב־{israelDateTime(agreement.signed_at)}. {agreement.completed_at?"נוהל סגירת האירוע הושלם.":"יש להשלים את הדרישות המפורטות להלן."}</p>
-    <p>כרטיס: {statusLabel(agreement.token_state)}{!agreement.require_token?" (רשות)":""} · מקדמה: {statusLabel(agreement.deposit_state)}{!agreement.require_deposit?" (רשות)":""}</p>
-    <p className="text-sm">פרטי האשראי יוזנו רק בדף המאובטח של Invoice4U. שמירת כרטיס אינה חיוב. בסיום יש לחזור לכאן ולרענן את המצב.</p>
-    <div className="flex flex-wrap gap-3">
-     {agreement.token_state!=="verified"&&<Button disabled={busy} onClick={()=>run(()=>redirect("token"))}>עבור לשמירת כרטיס מאובטחת</Button>}
-     {agreement.require_deposit&&agreement.deposit_state!=="paid"&&agreement.snapshot.deposit>0&&<Button disabled={busy} onClick={()=>run(()=>redirect("deposit"))}>שלם מקדמה בדף מאובטח</Button>}
-     <Button disabled={busy} variant="outline" onClick={()=>run(()=>pdf("signed"))}>פתח עותק PDF חתום</Button>
-     <Button disabled={busy} variant="outline" onClick={()=>run(refresh)}>רענן מצב</Button>
-    </div>
-   </section>}
+   </section>:<ClosingStatus {...statusActions}/>}
   </>}
   {busy&&<p role="status">מבצע את הפעולה, נא להמתין…</p>}
   {error&&<p role="alert" className="rounded bg-red-50 text-red-800 p-4 whitespace-pre-wrap">{error}</p>}

@@ -6,10 +6,12 @@ const require=createRequire(import.meta.url);
 async function load(path){
  const r=await build({entryPoints:[path],bundle:true,platform:"node",format:"esm",write:false,jsx:"transform",
  alias:{"@":process.cwd()+"/src"},plugins:[{name:"react-test",setup(b){
+ b.onResolve({filter:/^@\/components\/ui\/button$/},()=>({path:"button",namespace:"button-test"}));
+ b.onLoad({filter:/.*/,namespace:"button-test"},()=>({contents:"export const Button=({children,...props})=>globalThis.__React.createElement('button',props,children);"}));
  b.onResolve({filter:/^react\/jsx-runtime$/},()=>({path:"jsx",namespace:"jsx-test"}));
  b.onLoad({filter:/.*/,namespace:"jsx-test"},()=>({contents:"export const {jsx,jsxs,Fragment}=globalThis.__JSX;"}));
  b.onResolve({filter:/^react$/},()=>({path:"react",namespace:"react-test"}));
- b.onLoad({filter:/.*/,namespace:"react-test"},()=>({contents:"const React=globalThis.__React;export default React;"}));
+ b.onLoad({filter:/.*/,namespace:"react-test"},()=>({contents:"const React=globalThis.__React;export const {forwardRef,createElement,createContext,useContext,useState,useEffect,useRef,useMemo,useCallback}=React;export default React;"}));
  }}]});
  return import("data:text/javascript;base64,"+Buffer.from(r.outputFiles[0].text).toString("base64"));
 }
@@ -19,6 +21,7 @@ const {agreementQuote}=await load("base44/shared/agreementQuote.ts");
 const {israelDateTime,israelDate}=await load("src/lib/israelDate.js");
 const {default:LinkedText}=await load("src/components/billing/LinkedText.jsx");
 const {default:AgreementView}=await load("src/components/billing/AgreementView.jsx");
+const {default:ClosingStatus}=await load("src/components/billing/ClosingStatus.jsx");
 test("compact quote contains packages, quantities and prices but no internal costs",()=>{
  const f={currency:"ILS",finalTotal:900,totalPaid:100,balance:800,discountAmount:10,services:[
  {id:"p",is_package_main_item:true,package_name:"Package",quantity:1,custom_price:500,includes_vat:true},
@@ -60,4 +63,18 @@ test("new and old agreement snapshots render without exposing private file URI",
  assert.match(html,/PDF/);assert.match(html,/href=/);assert.equal(html.includes("private:hidden"),false);
  const old=renderToStaticMarkup(globalThis.__React.createElement(AgreementView,{snapshot:{...base,quote_text:"Legacy quote"}}));
  assert.match(old,/Legacy quote/);
-});
+ });
+ test("closing shows only required steps, verified card counts, and success needs completion",()=>{
+ const render=a=>renderToStaticMarkup(globalThis.__React.createElement(ClosingStatus,{agreement:a,onToken:()=>{},onDeposit:()=>{},onPdf:()=>{},onRefresh:()=>{}}));
+ const waiting=render({signed_at:"2026-09-27",require_token:true,token_state:"pending",require_deposit:false,deposit_state:"waived"});
+ assert.match(waiting,/אימות כרטיס לתשלום/);assert.match(waiting,/שמירת כרטיס בדף מאובטח/);
+ assert.equal(waiting.includes("תשלום מקדמה"),false);
+ const verified=render({signed_at:"2026-09-27",require_token:true,token_state:"verified",require_deposit:false,deposit_state:"waived"});
+ assert.match(verified,/הדרישות בהסכם הושלמו, אך סגירת האירוע טרם אושרה/);
+ assert.equal(verified.includes("שמירת כרטיס בדף מאובטח"),false);
+ const done=render({signed_at:"2026-09-27",require_token:true,token_state:"verified",require_deposit:false,deposit_state:"waived",completed_at:"2026-09-27"});
+ assert.match(done,/הכול מוכן. האירוע אושר/);assert.match(done,/הכרטיס אומת/);
+ assert.equal(done.includes("המקדמה שולמה"),false);
+ const optional=render({signed_at:"2026-09-27",require_token:false,token_state:"pending",require_deposit:true,deposit_state:"pending"});
+ assert.equal(optional.includes("אימות כרטיס לתשלום"),false);assert.match(optional,/תשלום מקדמה בדף מאובטח/);
+ });
