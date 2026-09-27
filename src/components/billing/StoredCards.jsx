@@ -152,7 +152,11 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
           {data.pending.canRecover && <Button variant="outline" disabled={busy} onClick={() => run(async () => {
             await storedCardAction("recover_setup", { customerId: customer.id }); setMessage("שמירת הכרטיס אומתה והושלמה"); await changed();
           })}>בדוק ואמת כרטיס מול הספק</Button>}
-          <Button variant="outline" disabled={busy || data.pending.state === "verifying"} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>בטל בקשת שמירה</Button>
+          <Button variant="outline" disabled={busy || !data.pending.canCancel} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>בטל בקשת שמירה</Button>
+        </div>}
+        {customer?.busy && !data?.pending && <div className="rounded bg-amber-50 p-3 space-y-2">
+          <p>פעולה בטיפול. אם הנעילה נקטעה, ניתן לבדוק אם מותר לשחררה.</p>
+          <Button variant="outline" disabled={busy} onClick={() => run(async () => { await storedCardAction("force_release", { customerId: customer.id }); setMessage("הנעילה שוחררה"); await changed(); })}>בדוק ושחרר נעילה תקועה</Button>
         </div>}
         {data?.pending?.kind === "charge" && <div className="rounded bg-amber-50 p-3">
           <p>חיוב בטיפול או בבירור. אין לבצע חיוב נוסף לפני קבלת תוצאה.</p>

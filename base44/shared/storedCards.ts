@@ -21,11 +21,31 @@ export async function claimCustomer(client, customer, owner) {
   if (result.updated !== 1) throw new CardError("פרטי הלקוח השתנו. יש לרענן ולנסות שוב.", 409);
 }
 export async function releaseCustomer(client, id, owner, changes = {}) {
-  const result = await client.entities.BillingCustomer.updateMany(
-    { id, busy_operation_id: owner }, { $set: { ...changes, busy_operation_id: "" } }
-  );
-  if (result.updated !== 1) throw new CardError("הפעולה נשמרה אך נדרש בירור מצב הלקוח.", 409);
-}
+   const result = await client.entities.BillingCustomer.updateMany(
+     { id, busy_operation_id: owner }, { $set: { ...changes, busy_operation_id: "" } }
+   );
+   if (result.updated !== 1) throw new CardError("הפעולה נשמרה אך נדרש בירור מצב הלקוח.", 409);
+ }
+ // Release only an orphaned setup or a non-financial transient lock older than ten minutes.
+ // Never release an unconfirmed stored-card charge automatically.
+ export async function forceReleaseCustomer(client, customer) {
+   const owner = customer.busy_operation_id;
+   if (!owner) return false;
+   if (owner.startsWith("setup:")) {
+     const setup = await client.entities.CardSetupRequest.get(owner.slice(6));
+     if (setup) return false;
+   } else {
+     if (!owner.includes(":") || /^(charge|payment):/.test(owner)) return false;
+     const started = Date.parse(customer.updated_date);
+     if (!Number.isFinite(started) || Date.now() - started <= 600000) return false;
+   }
+   const result = await client.entities.BillingCustomer.updateMany(
+     { id: customer.id, busy_operation_id: owner, updated_date: customer.updated_date },
+     { $set: { busy_operation_id: "" } }
+   );
+   if (result.updated !== 1) throw new CardError("מצב הפעולה השתנה; יש לרענן", 409);
+   return true;
+ }
 export async function eventBalance(client, event, config) {
   const [services, payments] = await Promise.all([
     readAll(client.entities.EventService, { event_id: event.id }),

@@ -674,7 +674,7 @@ test("delayed capture log keeps identifiers and recovers without another capture
  const f=fixture();await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
  const p=f.calls.find(c=>c.payload.request?.AddToken).payload.request;
  const r=await handler(new Request(p.CallBackUrl,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({Success:true,OrderIdClientUsage:p.OrderIdClientUsage,PaymentId:"delayed",ClearingTraceId:"trace-delayed"})}));
- assert.equal(r.status,409,await r.text());
+ assert.equal(r.status,200,await r.text());
  assert.equal(f.db.CardSetupRequest[0].provider_payment_id,"delayed");
  assert.notEqual(f.db.CardSetupRequest[0].state,"verified");
  f.logs.push({PaymentId:"delayed",ClearingTraceId:"trace-delayed",IsSuccess:true,LogType:2,TransactionType:1,Amount:0,CreditNumber:"4321"});
@@ -683,6 +683,42 @@ test("delayed capture log keeps identifiers and recovers without another capture
  assert.equal(f.db.CardSetupRequest[0].state,"verified");
  assert.equal(f.calls.filter(c=>c.payload.request?.AddToken).length,1);
  assert.equal(f.calls.filter(c=>c.payload.request?.ChargeWithToken).length,0);
+});
+test("authenticated callback suffix activates a card before provider log is searchable",async()=>{
+  const f=fixture();await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
+  const p=f.calls.find(c=>c.payload.request?.AddToken).payload.request;
+  const payload={Success:"True",TokenCaptureOnly:"True",OrderIdClientUsage:p.OrderIdClientUsage,CustomerId:String(p.CustomerId),PaymentId:"late",CardSuffix:"9876"};
+  const response=await handler(new Request(p.CallBackUrl,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)}));
+  assert.equal(response.status,200,await response.text());
+  assert.equal(f.db.CardSetupRequest[0].state,"verified");
+  assert.equal(f.db.StoredCard.find(c=>c.id===f.db.BillingCustomer[0].active_card_id).card_suffix,"9876");
+  assert.equal(f.db.BillingCustomer[0].busy_operation_id,"");
+  assert.equal(f.calls.filter(c=>c.payload.request?.ChargeWithToken).length,0);
+});
+test("missing setup releases orphaned lock and stale verifying can be cancelled",async()=>{
+  const f=fixture();f.db.BillingCustomer[0].busy_operation_id="setup:missing";
+  assert.equal((await request("recover_setup",{customerId:"customer"})).status,200);
+  assert.equal(f.db.BillingCustomer[0].busy_operation_id,"");
+  f.db.BillingCustomer[0].busy_operation_id="setup:missing-again";
+  assert.equal((await request("cancel_setup",{customerId:"customer"})).status,200);
+  assert.equal(f.db.BillingCustomer[0].busy_operation_id,"");
+  await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
+  const setup=f.db.CardSetupRequest[0];setup.state="verifying";
+  assert.equal((await request("cancel_setup",{customerId:"customer"})).status,409);
+  setup.updated_date=new Date(Date.now()-301000).toISOString();
+  assert.equal((await request("cancel_setup",{customerId:"customer"})).status,200);
+  assert.equal(setup.state,"cancelled");assert.equal(f.db.BillingCustomer[0].busy_operation_id,"");
+});
+test("old transient hosted lock releases, fresh lock and financial charge stay locked",async()=>{
+  const f=fixture(), c=f.db.BillingCustomer[0];
+  c.busy_operation_id="hosted:abandoned";c.updated_date=new Date().toISOString();
+  assert.equal((await request("force_release",{customerId:"customer"})).status,409);
+  c.updated_date=new Date(Date.now()-601000).toISOString();
+  assert.equal((await request("force_release",{customerId:"customer"})).status,200);
+  assert.equal(c.busy_operation_id,"");
+  c.busy_operation_id="charge-id";c.updated_date=new Date(Date.now()-601000).toISOString();
+  assert.equal((await request("force_release",{customerId:"customer"})).status,409);
+  assert.equal(c.busy_operation_id,"charge-id");
 });
 test("uncorrelated zero-value provider log cannot activate a card",async()=>{
  const f=fixture();await request("setup",{customerId:"customer",consentConfirmed:true,consentReference:"Test"});
