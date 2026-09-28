@@ -18,6 +18,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
   const contacts = React.useMemo(() => getEventContactList(event), [event]);
   const queryClient = useQueryClient();
   const [busyId, setBusyId] = useState(null);
+  const [showMore, setShowMore] = useState(false);
   const [documentToCredit, setDocumentToCredit] = useState(null);
   const [cancelStep, setCancelStep] = useState("credit");
   const [documentToShare, setDocumentToShare] = useState(null);
@@ -85,34 +86,39 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
   };
 
   const visible = documents.filter((doc) => !doc.is_detached_from_event);
+  const items = [...visible.map(doc => ({ type: 'document', value: doc })), ...(isAdmin ? agreements.map(a => ({ type: 'agreement', value: a })) : [])];
+  const renderItem = (item) => {
+    if (item.type === 'agreement') {
+      const a = item.value;
+      return <div key={a.id} className="flex flex-wrap justify-between items-center gap-2 rounded border p-3"><span>הסכם אירוע חתום — גרסה {a.version} · {new Date(a.signed_at).toLocaleDateString("he-IL")}</span><Button variant="outline" disabled={busyId===a.id} onClick={()=>openAgreement(a)}>פתח PDF חתום</Button></div>;
+    }
+    const doc = item.value;
+    const pdf = doc.pdf_original_url || doc.pdf_certified_url;
+    const canCredit = isAdmin && ["invoice", "invoice_receipt"].includes(doc.document_type) && doc.invoice4u_id && doc.status === "open";
+    return <div key={doc.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-gray-50 p-3">
+      <div><div className="font-medium">{labels[doc.document_type] || doc.document_type} {doc.document_number || ""}</div><div className="text-sm text-gray-600">₪{Number(doc.total || 0).toLocaleString()} · {statuses[doc.status] || doc.status}{doc.issue_date ? ` · ${format(new Date(doc.issue_date), "dd/MM/yyyy")}` : ""}</div></div>
+      <div className="flex gap-1">
+        {pdf && <Button asChild variant="ghost" size="icon" title="צפייה"><a href={pdf} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /></a></Button>}
+        {pdf && <Button asChild variant="ghost" size="icon" title="הורדה"><a href={pdf} download target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a></Button>}
+        {isAdmin && doc.invoice4u_id && <Button variant="ghost" size="icon" title={pdf ? "רענן קישור PDF" : "הפק PDF"} disabled={busyId === doc.id} onClick={() => handleRefreshPdf(doc)}><FileDown className="h-4 w-4" /></Button>}
+        {isAdmin && pdf && <Button variant="ghost" size="icon" title="שיתוף" onClick={() => setDocumentToShare(doc)}><Share2 className="h-4 w-4" /></Button>}
+        {canCredit && <Button variant="ghost" size="icon" title="ביטול מסמך (זיכוי + קבלה שלילית)" onClick={() => { setCancelStep("credit"); setDocumentToCredit(doc); }}><RotateCcw className="h-4 w-4" /></Button>}
+        {isAdmin && <Button variant="ghost" size="icon" title="נתק מאירוע" onClick={() => handleDetach(doc)}><Unlink className="h-4 w-4" /></Button>}
+      </div>
+    </div>;
+  };
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader><h3 className="text-lg font-semibold">מסמכים פיננסיים</h3></CardHeader>
       <CardContent>
-        {isAdmin&&agreements.map(a=><div key={a.id} className="flex flex-wrap justify-between items-center gap-2 rounded border p-3 mb-3"><span>הסכם אירוע חתום — גרסה {a.version} · {new Date(a.signed_at).toLocaleDateString("he-IL")}</span><Button variant="outline" disabled={busyId===a.id} onClick={()=>openAgreement(a)}>פתח PDF חתום</Button></div>)}
-        {visible.length === 0 ? <div className="py-4 text-center text-gray-500">אין מסמכים לאירוע זה</div> : (
+        {items.length === 0 ? <div className="py-4 text-center text-gray-500">אין מסמכים לאירוע זה</div> : (
           <div className="space-y-3">
-            {visible.map((doc) => {
-              const pdf = doc.pdf_original_url || doc.pdf_certified_url;
-              const canCredit = isAdmin && ["invoice", "invoice_receipt"].includes(doc.document_type) && doc.invoice4u_id && doc.status === "open";
-              return (
-                <div key={doc.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-gray-50 p-3">
-                  <div>
-                    <div className="font-medium">{labels[doc.document_type] || doc.document_type} {doc.document_number || ""}</div>
-                    <div className="text-sm text-gray-600">₪{Number(doc.total || 0).toLocaleString()} · {statuses[doc.status] || doc.status}{doc.issue_date ? ` · ${format(new Date(doc.issue_date), "dd/MM/yyyy")}` : ""}</div>
-                  </div>
-                  <div className="flex gap-1">
-                    {pdf && <Button asChild variant="ghost" size="icon" title="צפייה"><a href={pdf} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /></a></Button>}
-                    {pdf && <Button asChild variant="ghost" size="icon" title="הורדה"><a href={pdf} download target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a></Button>}
-                    {isAdmin && doc.invoice4u_id && <Button variant="ghost" size="icon" title={pdf ? "רענן קישור PDF" : "הפק PDF"} disabled={busyId === doc.id} onClick={() => handleRefreshPdf(doc)}><FileDown className="h-4 w-4" /></Button>}
-                    {isAdmin && pdf && <Button variant="ghost" size="icon" title="שיתוף" onClick={() => setDocumentToShare(doc)}><Share2 className="h-4 w-4" /></Button>}
-                    {canCredit && <Button variant="ghost" size="icon" title="ביטול מסמך (זיכוי + קבלה שלילית)" onClick={() => { setCancelStep("credit"); setDocumentToCredit(doc); }}><RotateCcw className="h-4 w-4" /></Button>}
-                    {isAdmin && <Button variant="ghost" size="icon" title="נתק מאירוע" onClick={() => handleDetach(doc)}><Unlink className="h-4 w-4" /></Button>}
-                  </div>
-                </div>
-              );
-            })}
+            {items.slice(0, 2).map(renderItem)}
+            {items.length > 2 && <details open={showMore} onToggle={e => setShowMore(e.currentTarget.open)} className="rounded border p-3">
+              <summary className="cursor-pointer font-medium">מסמכים נוספים ({items.length - 2})</summary>
+              <div className="space-y-3 pt-3">{items.slice(2).map(renderItem)}</div>
+            </details>}
           </div>
         )}
       </CardContent>

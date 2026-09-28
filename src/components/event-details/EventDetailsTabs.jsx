@@ -16,7 +16,7 @@ import EventTasksTab from '../tasks/EventTasksTab';
  * עוטף את כל קלפי הפרטים של האירוע בלשוניות:
  *  1. פרטי אירוע ומשפחה (כולל לוז)
  *  2. שירותים וחבילות
- *  3. סיכום כספי (תשלומים + סיכום)
+ *  3. כספי (תשלומים, סיכום, מסמכים, סגירה וכרטיס שמור)
  *  4. משימות לביצוע (למנהלים בלבד)
  * שמירה מלאה על כל הפונקציונליות הקיימת.
  */
@@ -74,8 +74,8 @@ export default function EventDetailsTabs(props) {
   } = props;
 
   const showTasksTab = isAdmin && tasksSystemEnabled;
-  const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("card")?"management":"details");
-  useEffect(()=>{const open=e=>{if(e.detail===event.id)setTab("management");};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
+  const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("card")?"financial":"details");
+  useEffect(()=>{const open=e=>{if(e.detail===event.id)setTab("financial");};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -95,7 +95,6 @@ export default function EventDetailsTabs(props) {
           <span className="hidden sm:inline">סיכום כספי</span>
           <span className="sm:hidden">כספי</span>
         </TabsTrigger>
-        {isAdmin && <TabsTrigger value="management" className="text-xs sm:text-sm gap-1 shrink-0">ניהול אירוע</TabsTrigger>}
         {showTasksTab && (
           <TabsTrigger value="tasks" className="text-xs sm:text-sm gap-1">
             <ListChecks className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -204,8 +203,8 @@ export default function EventDetailsTabs(props) {
         />
       </TabsContent>
 
-      {/* לשונית 3: סיכום כספי - תשלומים + סיכום */}
-      <TabsContent value="financial" className="space-y-4 sm:space-y-6 mt-4">
+      {/* לשונית 3: כספי - תשלומים, סיכום, מסמכים, סגירה וכרטיס */}
+      <TabsContent value="financial" forceMount className="space-y-4 sm:space-y-6 mt-4 data-[state=inactive]:hidden">
 
         {(isAdmin || isClient) && (
           <PaymentsCard
@@ -227,10 +226,6 @@ export default function EventDetailsTabs(props) {
           />
         )}
 
-        {(isAdmin || isClient) && billingEnabled && (
-          <EventDocumentsCard eventId={event?.id} isAdmin={isAdmin} event={event} />
-        )}
-
         {(isAdmin || isClient) && (
           <FinancialSummaryCard
             event={event}
@@ -244,12 +239,12 @@ export default function EventDetailsTabs(props) {
             isSavingFinancial={isSavingFinancial}
           />
         )}
+        {(isAdmin || isClient) && billingEnabled && (
+          <EventDocumentsCard eventId={event?.id} isAdmin={isAdmin} event={event} />
+        )}
+        {isAdmin && <Suspense fallback={<p>טוען סגירת אירוע…</p>}><EventClosingPanel event={event} onChanged={loadEventData}/></Suspense>}
+        {isAdmin && billingEnabled && <Suspense fallback={null}><StoredCardPanel event={event} onChanged={loadEventData}/></Suspense>}
       </TabsContent>
-
-      {isAdmin && <TabsContent value="management" forceMount className="space-y-5 mt-4 data-[state=inactive]:hidden">
-        <Suspense fallback={<p>טוען ניהול אירוע…</p>}><EventClosingPanel event={event} onChanged={loadEventData}/></Suspense>
-        {billingEnabled&&<Suspense fallback={null}><StoredCardPanel event={event} onChanged={loadEventData}/></Suspense>}
-      </TabsContent>}
 
       {/* לשונית 4: משימות לביצוע (מנהלים בלבד + מערכת המשימות פעילה) */}
       {showTasksTab && (

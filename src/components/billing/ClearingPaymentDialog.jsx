@@ -36,7 +36,7 @@ export default function ClearingPaymentDialog({ open, onOpenChange, event, balan
     setMode(initialMode);
     setVia("whatsapp");
     setCopied(false);
-    setLang("he");
+    setLang(settings.default_language === "en" ? "en" : "he");
     onResetLinkResult?.();
   }, [open, event?.id, balance, initialMode]);
 

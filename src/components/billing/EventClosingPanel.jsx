@@ -1,6 +1,6 @@
 import {israelDateTime} from "@/lib/israelDate";
 import LinkedText from "./LinkedText";
-import React,{useEffect,useState} from "react";
+import React,{useEffect,useRef,useState} from "react";
 import { useQuery,useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { agreementAction,agreementError,statusLabel } from "@/lib/agreementApi";
@@ -19,9 +19,10 @@ function Notifications({value:n,onChange}){
  </fieldset>;
 }
 export default function EventClosingPanel({event,onChanged}){
- const qc=useQueryClient(),[busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[url,setUrl]=useState(""),[draft,setDraft]=useState(null),[notification,setNotification]=useState(null),[amendment,setAmendment]=useState(null);
+ const qc=useQueryClient(),detailsRef=useRef(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[url,setUrl]=useState(""),[draft,setDraft]=useState(null),[notification,setNotification]=useState(null),[amendment,setAmendment]=useState(null);
  const {data,error:loadError,refetch}=useQuery({queryKey:["eventAgreement",event.id],queryFn:()=>agreementAction("list",{eventId:event.id}),staleTime:45000});
  const a=data?.current;
+ useEffect(()=>{if(error||loadError)detailsRef.current?.setAttribute("open","");},[error,loadError]);
  useEffect(()=>{const stop=base44.entities.EventAgreement.subscribe(c=>{if(c.data?.event_id===event.id||c.id===a?.id)qc.invalidateQueries({queryKey:["eventAgreement",event.id]});});return()=>stop();},[event.id,a?.id,qc]);
  const run=async fn=>{setBusy(true);setError("");setMessage("");try{await fn();await refetch();if(onChanged)await onChanged();}catch(e){setError(agreementError(e));}finally{setBusy(false);}};
  const openDraft=()=>run(async()=>{const p=await agreementAction("preview",{eventId:event.id});setDraft({...p,name:"",phone:"",email:""});});
@@ -41,6 +42,7 @@ export default function EventClosingPanel({event,onChanged}){
  return <section dir="rtl" className="rounded-xl border bg-white p-5 space-y-4">
   <div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-semibold">סגירת אירוע לפי הנוהל</h2><div className="flex gap-2"><Button disabled={busy} onClick={openDraft}>{a?"הכן גרסה חדשה":"הכן טופס לסגירת אירוע"}</Button><Button disabled={busy} variant="outline" onClick={()=>run(()=>refetch())}>רענן</Button></div></div>
   <p className="text-sm text-gray-600">חתימה, כרטיס מאומת ומקדמה לפי דרישות המנהל. שינוי סטטוס ידני של האירוע נשאר זמין ללא תנאים.</p>
+  <details ref={detailsRef} className="rounded border p-3"><summary className="cursor-pointer font-medium">פרטי סגירת האירוע</summary><div className="space-y-4 pt-4">
   {a&&<>
    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[["הסכם",statusLabel(a.state)],["חתימה",a.signed_at?israelDateTime(a.signed_at):"ממתינה"],["כרטיס",statusLabel(a.token_state)+(a.require_token?"":" · רשות")],["מקדמה",statusLabel(a.deposit_state)+(a.require_deposit?"":" · רשות")]].map(([k,v])=><div key={k} className="bg-stone-50 rounded p-3"><p className="text-xs text-gray-600">{k}</p><p>{v}</p></div>)}</div>
    <p className="text-sm">גרסה {a.version} · {a.snapshot.recipient_name} · {a.snapshot.recipient_phone} · PDF: {statusLabel(a.pdf_state)} · עותק בוואטסאפ: {statusLabel(a.copy_state)}</p>
@@ -68,6 +70,7 @@ export default function EventClosingPanel({event,onChanged}){
   {!!data?.agreements?.filter(x=>x.signed_at&&x.id!==a?.id).length&&<details><summary>מסמכים חתומים קודמים</summary>{data.agreements.filter(x=>x.signed_at&&x.id!==a?.id).map(x=><Button key={x.id} disabled={busy} variant="link" onClick={()=>openPdf(x.id)}>PDF גרסה {x.version}</Button>)}</details>}
   {(error||loadError)&&<p role="alert" className="text-red-800 whitespace-pre-wrap">{error||agreementError(loadError)}</p>}
   {message&&<p role="status" className="text-sm whitespace-pre-wrap">{message}</p>}
+  </div></details>
   <Dialog open={!!draft} onOpenChange={open=>{if(!open&&!busy)setDraft(null);}}><DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>הכנת טופס סגירת אירוע</DialogTitle><DialogDescription>הנוסח יישמר כגרסה קבועה. ניתן לערוך את הסעיפים לפני יצירת הטופס.</DialogDescription></DialogHeader>
    {draft&&<div className="space-y-4">
     {!!draft.contacts?.length&&<label className="block">מילוי מתוך אנשי הקשר באירוע<select className={input} defaultValue="" onChange={e=>{const c=draft.contacts[Number(e.target.value)];if(c)setDraft({...draft,name:c.name,phone:c.phone,email:c.email});}}><option value="" disabled>בחר איש קשר</option>{draft.contacts.map((c,i)=><option key={i} value={i}>{c.name} — {c.phone}</option>)}</select></label>}
