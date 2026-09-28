@@ -16,7 +16,10 @@ import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
 
 const APP="https://pulse-system.base44.app";
-const textFromHtml=html=>convert(String(html||""),{wordwrap:false,selectors:[{selector:"img",format:"skip"},{selector:"a",options:{hideLinkHrefIfSameAsText:true}}]});
+const textFromHtml=html=>convert(String(html||"").replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi,(full,attrs,label)=>{
+  const href=attrs.match(/\bhref\s*=\s*(["'])(https?:\/\/[^"']+)\1/i)?.[2];
+  return href?`[${label.replace(/<[^>]*>/g,"").trim()}](${href.replace(/&amp;/g,"&")})`:full;
+ }),{wordwrap:false,selectors:[{selector:"img",format:"skip"}]});
 const bool=(v,def)=>v===undefined?def:!!v;
 function publicAgreement(a){return {
  id:a.id,version:a.version,state:a.state,snapshot:a.snapshot,content_hash:a.content_hash,
