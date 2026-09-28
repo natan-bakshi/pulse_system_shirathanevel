@@ -66,7 +66,7 @@ export default function EventClosing(){
    <AgreementView snapshot={agreement.snapshot} language={language} busy={busy} onOpenQuote={()=>run(()=>pdf("quote"))}/>
    <section className="space-y-4"><h2 className="text-xl font-semibold">{t.consents}</h2>{view.clauses.map(c=><label key={c.code} className="block border border-stone-200 rounded-xl p-5 bg-stone-50/50">
     <span className="font-semibold block mb-2">{c.label}</span><LinkedText className="text-sm leading-7">{c.text}</LinkedText>
-    <span className="flex items-start gap-3 mt-3"><input className="mt-1 w-5 h-5" type="checkbox" disabled={!!agreement.signed_at||busy} checked={!!(agreement.signed_at?agreement.signature?.accepted?.[c.code]:accepted[c.code])} onChange={e=>setAccepted({...accepted,[c.code]:e.target.checked})/>{t.accept}</span>
+    <span className="flex items-start gap-3 mt-3"><input className="mt-1 w-5 h-5" type="checkbox" disabled={!!agreement.signed_at||busy} checked={!!(agreement.signed_at?agreement.signature?.accepted?.[c.code]:accepted[c.code])} onChange={e=>setAccepted({...accepted,[c.code]:e.target.checked})}/>{t.accept}</span>
    </label>)}</section>
    {!agreement.signed_at?<section className="space-y-4 border-t pt-5"><h2 className="text-xl font-semibold">{t.signature}</h2>
     <label className="block">{t.name}<input className={field} value={name} onChange={e=>setName(e.target.value)}/></label>
