@@ -5,9 +5,10 @@ import AgreementView from "@/components/billing/AgreementView";
 import { base44 } from "@/api/base44Client";
 import AdminClosingVerification from "@/components/billing/AdminClosingVerification";
 import ClosingStatus from "@/components/billing/ClosingStatus";
+import { closingText,localizedSnapshot } from "@/components/billing/closingI18n";
 import { Button } from "@/components/ui/button";
 const field="w-full rounded-md border p-3 bg-white";
-function SignaturePad({onChange}) {
+function SignaturePad({onChange,clearLabel="נקה חתימה"}) {
  const canvas=useRef(null),lines=useRef([]),drawing=useRef(false);
  const repaint=()=>{const c=canvas.current;if(!c)return;const ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height);ctx.strokeStyle="#172033";ctx.lineWidth=2.5;ctx.lineCap="round";for(const stroke of lines.current){ctx.beginPath();stroke.forEach(([x,y],i)=>i?ctx.lineTo(x*c.width,y*c.height):ctx.moveTo(x*c.width,y*c.height));ctx.stroke();}};
  const point=e=>{const r=canvas.current.getBoundingClientRect();return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))];};
@@ -16,7 +17,7 @@ function SignaturePad({onChange}) {
  onPointerMove={e=>{if(drawing.current){lines.current.at(-1).push(point(e));repaint();}}}
  onPointerUp={e=>{if(!drawing.current)return;lines.current.at(-1).push(point(e));drawing.current=false;onChange(lines.current.map(s=>s.map(p=>[...p])));repaint();}}
  onPointerCancel={()=>{drawing.current=false;lines.current.pop();onChange([...lines.current]);repaint();}} />
- <Button type="button" variant="ghost" onClick={()=>{lines.current=[];repaint();onChange([]);}}>נקה חתימה</Button></div>;
+ <Button type="button" variant="ghost" onClick={()=>{lines.current=[];repaint();onChange([]);}}>{clearLabel}</Button></div>;
 }
 export default function EventClosing(){
  const id=new URLSearchParams(location.search).get("id")||"";
@@ -28,13 +29,14 @@ export default function EventClosing(){
   if(token){sessionStorage.setItem(key,JSON.stringify(auth.current));history.replaceState(null,"",location.pathname+location.search);}
  }
  const [agreement,setAgreement]=useState(null),[opened,setOpened]=useState(null),[sent,setSent]=useState(false),[code,setCode]=useState("");
+ const [language,setLanguage]=useState("he");
  const [isAdmin,setIsAdmin]=useState(false),[adminPassword,setAdminPassword]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[info,setInfo]=useState("");
  const [name,setName]=useState(""),[role,setRole]=useState(""),[strokes,setStrokes]=useState([]),[accepted,setAccepted]=useState({});
  const call=useCallback((action,body={})=>agreementAction(action,{agreementId:id,...auth.current,...body}),[id]);
  const run=async fn=>{setBusy(true);setError("");setInfo("");try{await fn();}catch(e){setError(agreementError(e));}finally{setBusy(false);}};
  const refresh=useCallback(async()=>{
-  if(auth.current.verified){try{const a=await call("view");setAgreement(a);return;}catch(e){if(e.response?.status!==403)throw e;auth.current.verified=false;}}
+  if(auth.current.verified){try{const a=await call("view");setAgreement(a);setLanguage(a.signature?.language||a.snapshot?.form_language||"he");return;}catch(e){if(e.response?.status!==403)throw e;auth.current.verified=false;}}
   setOpened(await call("open"));
  },[call]);
  useEffect(()=>{let active=true;base44.auth.me().then(u=>{if(active)setIsAdmin(u?.role==="admin");}).catch(()=>{});return()=>{active=false;};},[]);
@@ -42,17 +44,19 @@ export default function EventClosing(){
  useEffect(()=>{const focus=()=>{if(auth.current.verified&&!busy)refresh().catch(()=>{});};window.addEventListener("focus",focus);return()=>window.removeEventListener("focus",focus);},[refresh,busy]);
  const redirect=async action=>{const result=await call(action);if(result.redirectUrl&&/^https:\/\//.test(result.redirectUrl))location.assign(result.redirectUrl);else await refresh();};
  const pdf=async(kind)=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await call("document",{kind});if(r.url){if(tab)tab.location.replace(r.url);else location.assign(r.url);}}catch(e){tab?.close();throw e;}};
- const statusActions={agreement,busy,onToken:()=>run(()=>redirect("token")),onDeposit:()=>run(()=>redirect("deposit")),onPdf:()=>run(()=>pdf("signed")),onRefresh:()=>run(refresh)};
+ const t=closingText[language]||closingText.he;
+ const view=agreement?localizedSnapshot(agreement.snapshot,language):null;
+ const statusActions={agreement,language,busy,onToken:()=>run(()=>redirect("token")),onDeposit:()=>run(()=>redirect("deposit")),onPdf:()=>run(()=>pdf("signed")),onRefresh:()=>run(refresh)};
  if(agreement?.completed_at)return <main dir="rtl" className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white px-3 py-6 sm:px-6 sm:py-10 text-stone-800"><article className="mx-auto max-w-2xl rounded-3xl border border-stone-200 bg-white p-5 sm:p-10 shadow-lg"><ClosingStatus {...statusActions}/>{error&&<p role="alert" className="rounded bg-red-50 text-red-800 p-4 mt-5">{error}</p>}</article></main>;
  return <main dir="rtl" className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white py-5 sm:py-10 px-3 sm:px-6 text-stone-800"><article className="mx-auto max-w-4xl rounded-3xl border border-stone-200 bg-white p-4 sm:p-10 space-y-7 shadow-lg">
   <header className="text-center border-b border-amber-100 pb-6"><p className="text-red-900 font-semibold tracking-wide">שירת הנבל</p><h1 className="text-2xl sm:text-3xl font-bold text-red-950 mt-3">עוד צעד קטן לקראת האירוע שלכם</h1><p className="text-stone-500 mt-3 text-sm">עוברים על הפרטים, מאשרים וחותמים — הכול במקום אחד</p></header>
   <nav aria-label="שלבי סגירת האירוע" className="grid grid-cols-3 gap-2 text-xs sm:text-sm">{["אימות טלפון","פרטי האירוע וחתימה","השלמת הסגירה"].map((label,i)=><div key={label} className={"text-center rounded-lg py-3 "+((!agreement?0:agreement.signed_at?2:1)===i?"bg-red-900 text-white":"bg-stone-100 text-stone-600")}>{i+1}. {label}</div>)}</nav>
   {!agreement&&<section className="space-y-4"><p>כדי לצפות בהסכם ולחתום יש לאמת את הטלפון שנקבע עבור ההזמנה. קוד חד־פעמי יישלח בוואטסאפ {opened?.phone||""}.</p>
    <Button disabled={busy||!opened} onClick={()=>run(async()=>{await call("otp");setSent(true);setInfo("קוד נשלח לוואטסאפ שלך, ותוקפו 10 דקות.");})}>{sent?"שלח קוד נוסף":"שלח קוד אימות"}</Button>
-   {sent&&<form className="space-y-3" onSubmit={e=>{e.preventDefault();run(async()=>{const a=await call("verify",{code});auth.current.verified=true;sessionStorage.setItem("agreement:"+id,JSON.stringify(auth.current));setAgreement(a);setName(a.snapshot.recipient_name||"");});}}>
+   {sent&&<form className="space-y-3" onSubmit={e=>{e.preventDefault();run(async()=>{const a=await call("verify",{code});auth.current.verified=true;sessionStorage.setItem("agreement:"+id,JSON.stringify(auth.current));setAgreement(a);setLanguage(a.signature?.language||a.snapshot?.form_language||"he");setName(a.snapshot.recipient_name||"");});}}>
     <label className="block">קוד אימות<input className={field} autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,""))} /></label>
     <Button disabled={busy||code.length!==6}>אמת והצג את ההסכם</Button></form>}
-   {isAdmin&&<AdminClosingVerification password={adminPassword} onChange={setAdminPassword} busy={busy} ready={!!opened} onSubmit={()=>run(async()=>{const a=await call("admin_verify",{password:adminPassword});setAdminPassword("");auth.current.verified=true;sessionStorage.setItem("agreement:"+id,JSON.stringify(auth.current));setAgreement(a);setName(a.snapshot.recipient_name||"");})}/>}
+   {isAdmin&&<AdminClosingVerification password={adminPassword} onChange={setAdminPassword} busy={busy} ready={!!opened} onSubmit={()=>run(async()=>{const a=await call("admin_verify",{password:adminPassword});setAdminPassword("");auth.current.verified=true;sessionStorage.setItem("agreement:"+id,JSON.stringify(auth.current));setAgreement(a);setLanguage(a.signature?.language||a.snapshot?.form_language||"he");setName(a.snapshot.recipient_name||"");})}/>}
    {!opened&&!busy&&<Button variant="outline" onClick={()=>run(refresh)}>נסה שוב</Button>}
   </section>}
   {agreement&&<>
@@ -67,7 +71,7 @@ export default function EventClosing(){
     <label className="block">תפקיד או קשר לאירוע (רשות)<input className={field} value={role} onChange={e=>setRole(e.target.value)}/></label>
     <p className="text-sm">יש לחתום באצבע או בעכבר. עם האישור יישמרו המסמך, החתימה, מועד האימות ותיעוד טכני של הפעולה.</p>
     <SignaturePad onChange={setStrokes}/>
-    <Button className="w-full bg-red-900" disabled={busy||name.trim().length<2||!strokes.length||agreement.snapshot.clauses.some(c=>!accepted[c.code])} onClick={()=>run(async()=>{const a=await call("sign",{name,role,strokes,accepted,contentHash:agreement.content_hash});setAgreement(a);setInfo("החתימה נשמרה. אפשר כעת להשלים את דרישות סגירת האירוע.");})}>{busy?"שומר...":"אני מאשר/ת את ההסכם וחותם/ת"}</Button>
+    <Button className="w-full bg-red-900" disabled={busy||name.trim().length<2||!strokes.length||agreement.snapshot.clauses.some(c=>!accepted[c.code])} onClick={()=>run(async()=>{const a=await call("sign",{name,role,strokes,accepted,language,contentHash:agreement.content_hash});setAgreement(a);setInfo("החתימה נשמרה. אפשר כעת להשלים את דרישות סגירת האירוע.");})}>{busy?"שומר...":"אני מאשר/ת את ההסכם וחותם/ת"}</Button>
    </section>:<ClosingStatus {...statusActions}/>}
   </>}
   {busy&&<p role="status">מבצע את הפעולה, נא להמתין…</p>}

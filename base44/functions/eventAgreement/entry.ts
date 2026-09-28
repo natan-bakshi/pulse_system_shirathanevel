@@ -334,7 +334,14 @@ export default Deno.serve(async req=>{
    const clauses=baseVariant.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
    const terms=cleanText(body.terms||baseVariant.terms,60000);if(!terms)throw new AgreementError("יש להגדיר תנאי התקשרות לפני שליחה");
    const notification=notifications({...body.notifications,language:body.message_language},config);
-   const translations={...p.translations,[formLanguage]:{...baseVariant,terms,clauses,milestones:milestones.map(m=>({...m}))}};
+   const translations=Object.fromEntries(Object.entries(p.translations).map(([lang,base])=>{
+    const supplied=body.translations?.[lang]||{};
+    return [lang,{...base,
+     terms:lang===formLanguage?terms:cleanText(supplied.terms||base.terms,60000),
+     clauses:lang===formLanguage?clauses:base.clauses.map(c=>({...c,text:cleanText(supplied.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)})),
+     milestones:milestones.map((m,i)=>({...m,label:cleanText(lang===formLanguage?m.label:(supplied.milestones?.[i]?.label||base.milestones[i]?.label),150)}))
+    }];
+   }));
    const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:p.quote_summary,quote_file:p.quote_file,terms,clauses,milestones,
     deposit:milestones[0].amount,regular_cap:regular,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
