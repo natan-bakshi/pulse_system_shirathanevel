@@ -32,14 +32,29 @@ export async function makeAgreementPdf(a, config={}) {
   function pageIf(height=10){if(y+height>297-margins.bottom){doc.addPage();header();y=margins.top;}}
   header();
   function lines(value,size=10,color=ink,pad=2){
-    doc.setFontSize(size);doc.setTextColor(...color);
-    for(const part of doc.splitTextToSize(String(value??""),174)){
-      pageIf(size*.46+2);
-      const rtl=/[\u0590-\u05ff]/.test(part);
-      doc.text(part,right?192:18,y,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:rtl,isOutputRtl:false});
-      y+=size*.46+1.8;
-    }
-    y+=pad;
+   doc.setFontSize(size);doc.setTextColor(...color);
+   const parts=String(value??"").split(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g);
+   for(let i=0;i<parts.length;i++){
+     if(i%3===1){
+       const url=parts[i+1];
+       for(const label of doc.splitTextToSize(parts[i],174)){
+         pageIf(size*.46+2);doc.setFontSize(size);doc.setTextColor(...red);
+         doc.text(label,right?192:18,y,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:/[\u0590-\u05ff]/.test(label),isOutputRtl:false});
+         const width=Math.min(174,doc.getTextWidth(label)+2);
+         doc.link(right?192-width:18,y-size*.45,width,size*.65,{url});
+         y+=size*.46+1.8;
+       }
+       i++;continue;
+     }
+     if(!parts[i])continue;
+     for(const part of doc.splitTextToSize(parts[i],174)){
+       pageIf(size*.46+2);doc.setFontSize(size);doc.setTextColor(...color);
+       const rtl=/[\u0590-\u05ff]/.test(part);
+       doc.text(part,right?192:18,y,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:rtl,isOutputRtl:false});
+       y+=size*.46+1.8;
+     }
+   }
+   y+=pad;
   }
   function section(label){
     pageIf(20);y+=5;doc.setFillColor(...paper);doc.roundedRect(18,y-5,174,12,2,2,"F");
@@ -58,6 +73,15 @@ export async function makeAgreementPdf(a, config={}) {
   lines(t("מועד האירוע: ","Event date: ")+(s.event_date||"")+"  ·  "+t("מחיר כולל: ","Total: ")+money(s.total));
   lines(t("חותם/ת: ","Signed by: ")+a.signature.name+(a.signature.role?"  ·  "+a.signature.role:""));
   section(t("פרטי הצעת המחיר","Quote details"));
+  if(s.quote_file?.file_uri&&a.signature_hash){
+    pageIf(14);
+    const label=t("פתיחת הצעת המחיר המלאה (PDF)","Open full quotation (PDF)");
+    const url="https://pulse-system.base44.app/functions/eventAgreement?kind=signed_quote&id="+encodeURIComponent(a.id)+"&proof="+encodeURIComponent(a.signature_hash);
+    doc.setFillColor(...red);doc.roundedRect(right?86:18,y-6,106,12,2,2,"F");
+    doc.setTextColor(255,255,255);doc.setFontSize(10);
+    doc.text(label,right?188:22,y+2,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:right,isOutputRtl:false});
+    doc.link(right?86:18,y-6,106,12,{url});y+=15;
+  }
   lines(s.quote_text||s.quote||"",10,ink,1);
   section(t("תנאי ההתקשרות","Agreement terms"));
   lines(s.terms,10,ink,1);
@@ -81,7 +105,8 @@ export async function makeAgreementPdf(a, config={}) {
   lines(t("הטלפון אומת באמצעות קוד חד־פעמי: ","Phone verified using a one-time code: ")+(a.signature.verified_at||a.verified_at),9,muted);
   lines(t("טביעת תוכן: ","Content hash: ")+a.content_hash,8,muted,0);
   lines(t("טביעת חתימה: ","Signature hash: ")+a.signature_hash,8,muted,0);
-  const links=[...new Set(((s.quote_text||"")+"\n"+(s.terms||"")+"\n"+(s.clauses||[]).map(c=>c.text).join("\n")).match(/https?:\/\/[^\s<>"\]]+/g)||[])];
+  const legacyText=((s.quote_text||"")+"\n"+(s.terms||"")+"\n"+(s.clauses||[]).map(c=>c.text).join("\n")).replace(/\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)/g,"");
+  const links=[...new Set(legacyText.match(/https?:\/\/[^\s<>"\]]+/g)||[])];
   if(links.length)section(t("קישורים הנזכרים בהסכם","Links referenced in the agreement"));
   for(const url of links){pageIf(16);const top=y;lines(url,8,muted,0);doc.link(18,top-4,174,y-top+4,{url});}
   const pages=doc.getNumberOfPages();

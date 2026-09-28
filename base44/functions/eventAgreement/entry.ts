@@ -153,6 +153,17 @@ async function createDeposit(client,a,config){
 }
 export default Deno.serve(async req=>{
  try{
+  if(req.method==="GET"){
+   const params=new URL(req.url).searchParams;
+   if(params.get("kind")!=="signed_quote")return Response.json({error:"Not found"},{status:404});
+   const id=params.get("id")||"",proof=params.get("proof")||"";
+   if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id)||!/^[a-f0-9]{64}$/.test(proof))return Response.json({error:"Not found"},{status:404});
+   const client=createClientFromRequest(req).asServiceRole;
+   const a=await client.entities.EventAgreement.get(id).catch(()=>null);
+   if(!a?.signed_at||a.signature_hash!==proof||!a.snapshot?.quote_file?.file_uri)return Response.json({error:"Not found"},{status:404});
+   const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.snapshot.quote_file.file_uri,expires_in:300});
+   return new Response(null,{status:302,headers:{Location:signed_url,"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
+  }
   if(req.method!=="POST")return Response.json({error:"Method not allowed"},{status:405});
   const raw=await req.text();if(raw.length>400000)throw new AgreementError("בקשה גדולה מדי",413);
   const body=JSON.parse(raw),action=body.action;
