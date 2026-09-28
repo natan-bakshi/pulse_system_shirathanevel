@@ -127,7 +127,7 @@ export default async function(req) {
       IsDocCreate: true,
       IsManualDocCreationsWithParams: true,
       ...itemsToPipedFields(items, Number(config.vat_rate) || 18, chargeTotal),
-      DocHeadline: docLanguage === "en" ? subject : (config.default_subject || subject),
+      DocHeadline: docLanguage === "en" ? (config.default_subject_en || subject) : (config.default_subject || subject),
       DocComments: docLanguage === "en" ? (config.default_email_comment_en || "") : (config.default_email_comment || ""),
       DocBranchId: config.invoice4u_branch_id || undefined,
       // Invoice4U מפיק את המסמך עם פרטי העסק בשפה שנבחרה כאן.

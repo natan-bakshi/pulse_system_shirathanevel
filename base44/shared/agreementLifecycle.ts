@@ -98,7 +98,7 @@ export async function processAgreementMilestones(client,config) {
      if((!a.require_deposit&&m.position===0)||!m.notification_enabled||m.state==="paid"||m.message_state!=="pending"||Date.parse(m.notify_at)>Date.now())continue;
      const outstanding=roundMoney(Math.max(0,m.cumulative_amount-f.totalPaid)); if(!outstanding)continue;
      await client.entities.PaymentMilestone.update(m.id,{message_state:"dispatching"});
-     const body=formatMessage(m.template||closingDefaults.closing_message_template,{customer_name:current.recipient_name,event_name:event.event_name,amount:outstanding,currency:a.snapshot.currency,due_date:m.due_date,business_phone:config.business_phone||""});
+     const body=formatMessage(m.template||closingDefaults[current.notifications?.language==="en"?"closing_message_template_en":"closing_message_template"],{customer_name:current.recipient_name,event_name:event.event_name,amount:outstanding,currency:a.snapshot.currency,due_date:m.due_date,business_phone:config.business_phone||""});
      try{
       const delivery=await deliver(client,current,"milestone",a.id+":milestone:"+m.id,body);
       await client.entities.PaymentMilestone.update(m.id,{message_state:delivery.state,message_id:delivery.id});

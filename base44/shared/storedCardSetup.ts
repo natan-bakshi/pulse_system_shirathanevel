@@ -54,6 +54,7 @@ export async function beginSetup(client, user, config, customer, consentReferenc
     const result = await providerCall(access, "ProcessApiRequestV2", { request: {
       Invoice4UUserApiKey: access.key, AddToken: true,
       CustomerId: Number(providerId), ...providerCustomerFields(providerCustomer), Email: email,
+      ...(agreement?{Language:agreement.signature?.language||agreement.snapshot?.form_language||"he"}:{}),
       IsDocCreate: false, IsQaMode: access.environment === "qa", Platform: "Pulse",
       OrderIdClientUsage: setup.id,
       ReturnUrl: agreement ? cardAppUrl + "/EventClosing?id=" + agreement.id : eventId ? cardAppUrl + "/EventDetails?id=" + encodeURIComponent(eventId) : cardAppUrl,

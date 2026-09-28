@@ -1,5 +1,5 @@
 import React from "react";
-export { closingDefaults } from "../../../base44/shared/agreementRules.ts";
+export { closingDefaults } from "@/lib/closingDefaults";
 const field="block w-full border rounded p-2 bg-white mt-1";
 export default function ClosingSettings({settings:s,onChange}){
  return <fieldset dir="rtl" className="space-y-4 border rounded-lg p-4"><legend className="px-2 font-semibold">ברירות מחדל לנוהל סגירת אירוע</legend>
@@ -10,5 +10,9 @@ export default function ClosingSettings({settings:s,onChange}){
   <p className="text-xs text-gray-600">לחיסכון בקרדיטים, התזכורות נבדקות במשימה היומית הקיימת ונשלחות בהרצה הראשונה לאחר המועד שנבחר. השעה אינה זמן שליחה מדויק.</p>
   {[["closing_regular_text","הרשאה לגבייה רגילה"],["closing_exceptional_text","הרשאה לגבייה חריגה"],["closing_changes_text","שינויים מוסכמים"],["closing_message_template","תוכן התזכורת"]].map(([k,l])=><label key={k} className="block">{l}<textarea rows={4} className={field} value={s[k]||""} onChange={e=>onChange(k,e.target.value)}/></label>)}
   <p className="text-xs break-words">משתנים בתזכורת: {"{{customer_name}}, {{event_name}}, {{amount}}, {{currency}}, {{due_date}}, {{business_phone}}"}</p>
+  <div className="grid gap-3 sm:grid-cols-2">{[["closing_form_language","שפת טופס כברירת מחדל"],["closing_message_language","שפת הודעות ללקוח כברירת מחדל"]].map(([k,l])=><label key={k}>{l}<select className={field} value={s[k]||"he"} onChange={e=>onChange(k,e.target.value)}><option value="he">עברית</option><option value="en">אנגלית</option></select></label>)}</div>
+  <p className="text-sm text-gray-600">כדי לאפשר טופס באנגלית יש להזין נוסח אנגלי מאושר של תנאי ההתקשרות. טקסטים מותאמים בהצעת מחיר ושמות שירותים אינם מתורגמים אוטומטית.</p>
+  {[ ["closing_terms_text","תנאי התקשרות (עברית, ריק = תבנית ההסכם הקיימת)"],["closing_terms_text_en","Terms of engagement (English, required for English form)"],["closing_regular_text_en","Regular card authorization (English)"],["closing_exceptional_text_en","Exceptional charges authorization (English)"],["closing_changes_text_en","Agreed changes (English)"],["closing_message_template_en","Payment reminder (English)"],["closing_invitation_template","הזמנה לחתימה (עברית)"],["closing_invitation_template_en","Invitation to sign (English)"],["closing_otp_template","הודעת קוד אימות (עברית)"],["closing_otp_template_en","Verification code (English)"],["closing_signed_template","כותרת עותק חתום (עברית)"],["closing_signed_template_en","Signed copy title (English)" ] ].map(([k,l])=><label key={k} className="block">{l}<textarea dir={k.endsWith('_en')?'ltr':'rtl'} rows={3} className={field} value={s[k]||''} onChange={e=>onChange(k,e.target.value)}/></label>)}
+  <p className="text-xs break-words">משתני הודעות: {"{{customer_name}}, {{event_name}}, {{link}}, {{code}}"}</p>
  </fieldset>;
 }

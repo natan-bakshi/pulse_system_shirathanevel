@@ -2,6 +2,7 @@ import { jsPDF } from "npm:jspdf@4.2.0";
 import { agreementFont } from "./agreementFont.ts";
 import { digest } from "./agreementRules.ts";
 import { loadAgreementBackground, agreementPdfMargins } from "./agreementPdfBackground.ts";
+import { localizedAgreement } from "./closingLanguage.ts";
 
 // The signed snapshot is immutable. This renderer changes its presentation, not its contents.
 export async function makeAgreementPdf(a, config={}) {
@@ -11,7 +12,7 @@ export async function makeAgreementPdf(a, config={}) {
   doc.addFileToVFS("NotoSansHebrew.ttf",agreementFont);
   doc.addFont("NotoSansHebrew.ttf","Agreement","normal");
   doc.setFont("Agreement");
-  const s=a.snapshot,english=a.signature?.language==="en",right=!english;
+  const s=localizedAgreement(a.snapshot,a.signature?.language),english=a.signature?.language==="en",right=!english;
   const ink=[42,38,37],muted=[104,99,95],red=[127,29,29],paper=[250,247,243];
   const t=(he,en)=>english?en:he;
   const money=n=>new Intl.NumberFormat(english?"en-US":"he-IL",{maximumFractionDigits:2}).format(Number(n)||0)+" "+s.currency;

@@ -13,6 +13,7 @@ import { closingDefaults, canonical, digest, cleanText, defaultMilestones, valid
 import { AgreementError, audit, lockAgreement, settings, financials, deliver, reconcileAgreement } from "../../shared/agreementLifecycle.ts";
 import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
+import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
 
 const APP="https://pulse-system.base44.app";
 const textFromHtml=html=>convert(String(html||""),{wordwrap:false,selectors:[{selector:"img",format:"skip"},{selector:"a",options:{hideLinkHrefIfSameAsText:true}}]});
@@ -36,7 +37,8 @@ function notifications(body,config){
  return {enabled:bool(body?.enabled,config.closing_reminder_enabled!=="false"),
  days:Math.min(60,Math.max(0,Math.floor(Number(body?.days??config.closing_reminder_days??3)||0))),
  time:/^([01]\d|2[0-3]):[0-5]\d$/.test(body?.time||"")?body.time:(config.closing_reminder_time||"09:00"),
- template:cleanText(body?.template||config.closing_message_template||closingDefaults.closing_message_template,4000),
+ language:agreementLanguage(body?.language||config.closing_message_language),
+ template:cleanText(body?.template||config[(body?.language||config.closing_message_language)==="en"?"closing_message_template_en":"closing_message_template"]||closingDefaults[(body?.language||config.closing_message_language)==="en"?"closing_message_template_en":"closing_message_template"],4000),
  notify_admin:bool(body?.notify_admin,config.closing_notify_admin!=="false")};
 }
 // Jerusalem wall time -> UTC, including daylight saving changes.
@@ -57,25 +59,27 @@ async function preview(client,base44,eventId,config){
  if(!event)throw new AgreementError("האירוע לא נמצא",404);
  const f=await financials(client,event,config);
  if(!Number.isFinite(f.finalTotal)||f.finalTotal<=0||!event.event_date)throw new AgreementError("נדרש מחיר ותאריך לאירוע לפני יצירת הסכם");
- const compact=agreementQuote(event,f);
  const templates=await readAll(client.entities.QuoteTemplate,{template_type:"agreement_disclaimer"});
- const terms=textFromHtml(templates.find(x=>x.identifier==="default")?.content||templates[0]?.content||"");
+ const heTerms=String(config.closing_terms_text||"").trim()||textFromHtml(templates.find(x=>x.identifier==="default")?.content||templates[0]?.content||"");
+ const enTerms=String(config.closing_terms_text_en||"").trim();
  const deposit=calculateAdvanceAmount(config,f.finalTotal);
- const quote=compact.quote;
- const sourceHash=await digest(canonical({quote,quoteFile:compact.quoteFile,total:f.finalTotal,currency:f.currency,event_date:event.event_date,terms}));
- return {event,sourceHash,quote,quote_summary:compact.summary,quote_file:compact.quoteFile,terms,total:f.finalTotal,currency:f.currency,deposit,contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
- milestones:defaultMilestones(f.finalTotal,deposit,event.event_date),
- regular_cap:roundMoney(f.finalTotal*Number(config.closing_regular_multiplier||1)),
- exceptional_cap:roundMoney(f.finalTotal*Number(config.closing_exceptional_multiplier||2)),
- clauses:[
- {code:"terms",label:"תנאי ההתקשרות והצעת המחיר",text:"קראתי ואני מאשר/ת את פרטי האירוע, הצעת המחיר ותנאי ההתקשרות המפורטים במסמך זה."},
- {code:"token",label:"שמירת כרטיס ושימוש בטוקן",text:"ככל שאמסור כרטיס, אני בעל/ת הכרטיס או מורשה/ית להשתמש בו, ומאשר/ת שמירת מזהה מאובטח של הכרטיס אצל ספק הסליקה ושימוש בו בהתאם להרשאות המפורטות כאן."},
- {code:"regular",label:"גבייה לפי אבני הדרך",text:config.closing_regular_text||closingDefaults.closing_regular_text},
- {code:"exceptional",label:"חיובים חריגים לפי ההסכם",text:config.closing_exceptional_text||closingDefaults.closing_exceptional_text},
- {code:"fee",label:"עמלת סליקה",text:config.processing_fee_enabled==="true"?"בתשלום באשראי תתווסף עלות סליקה לפי הגדרות הסליקה במועד הסכם זה: "+config.processing_fee_value+(config.processing_fee_type==="fixed"?" "+f.currency+" לכל חיוב.":"% מסכום החיוב."):"במועד הסכם זה לא מתווספת עמלת סליקה."},
- {code:"changes",label:"שינויים מוסכמים בהזמנה",text:config.closing_changes_text||closingDefaults.closing_changes_text}
- ], exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),require_token:config.closing_token_required!=="false",require_deposit:config.closing_deposit_required!=="false",
- send_copy:config.closing_send_copy!=="false",notifications:notifications(null,config)};
+ const codes=["terms","token","regular","exceptional","fee","changes"];
+ const translations=Object.fromEntries(["he","en"].map(lang=>{
+  const en=lang==="en",copy=closingCopy[lang],compact=agreementQuote(event,f,lang);
+  const feeText=config.processing_fee_enabled==="true"
+   ?(en?"Card payments incur a processing fee under the settings at the time of this agreement: ":"בתשלום באשראי תתווסף עלות סליקה לפי הגדרות הסליקה במועד הסכם זה: ")+config.processing_fee_value+(config.processing_fee_type==="fixed"?" "+f.currency+(en?" per charge.":" לכל חיוב."):en?"% of the charged amount.":"% מסכום החיוב.")
+   :copy.fee;
+  const texts=[copy.terms,copy.token,config[en?"closing_regular_text_en":"closing_regular_text"]||closingDefaults[en?"closing_regular_text_en":"closing_regular_text"],config[en?"closing_exceptional_text_en":"closing_exceptional_text"]||closingDefaults[en?"closing_exceptional_text_en":"closing_exceptional_text"],feeText,config[en?"closing_changes_text_en":"closing_changes_text"]||closingDefaults[en?"closing_changes_text_en":"closing_changes_text"]];
+  return [lang,{terms:en?enTerms:heTerms,clauses:codes.map((code,i)=>({code,label:copy.labels[i],text:texts[i]})),quote_text:compact.quote,pricing_note:compact.summary.pricing_note,milestones:defaultMilestones(f.finalTotal,deposit,event.event_date,undefined,lang)}];
+ }));
+ const form_language=enTerms?agreementLanguage(config.closing_form_language):"he";
+ const selected=translations[form_language];
+ const compact=agreementQuote(event,f,form_language);
+ const sourceHash=await digest(canonical({translations,quoteFile:compact.quoteFile,total:f.finalTotal,currency:f.currency,event_date:event.event_date}));
+ return {event,sourceHash,translations,available_languages:enTerms?["he","en"]:["he"],form_language,message_language:agreementLanguage(config.closing_message_language),quote:selected.quote_text,quote_summary:compact.summary,quote_file:compact.quoteFile,terms:selected.terms,total:f.finalTotal,currency:f.currency,deposit,contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
+ milestones:selected.milestones,regular_cap:roundMoney(f.finalTotal*Number(config.closing_regular_multiplier||1)),exceptional_cap:roundMoney(f.finalTotal*Number(config.closing_exceptional_multiplier||2)),
+ clauses:selected.clauses,exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),require_token:config.closing_token_required!=="false",require_deposit:config.closing_deposit_required!=="false",
+ send_copy:config.closing_send_copy!=="false",notifications:notifications({language:agreementLanguage(config.closing_message_language)},config)};
 }
 function validateSignature(body){
  const name=cleanText(body.name,120);if(name.length<2)throw new AgreementError("יש למלא את שם החותם");
@@ -95,14 +99,14 @@ function validateSignature(body){
 }
 async function finishDocument(client,a){
  const consent=await readAll(client.entities.ConsentClause,{agreement_id:a.id});
- for(const c of a.snapshot.clauses)if(!consent.some(x=>x.code===c.code))await client.entities.ConsentClause.create({agreement_id:a.id,event_id:a.event_id,code:c.code,text:c.text,version:a.version,accepted_at:a.signed_at});
+ for(const c of localizedAgreement(a.snapshot,a.signature?.language).clauses)if(!consent.some(x=>x.code===c.code))await client.entities.ConsentClause.create({agreement_id:a.id,event_id:a.event_id,code:c.code,text:c.text,version:a.version,accepted_at:a.signed_at});
  try{a=await persistAgreementPdf(client,a);}
  catch{return await client.entities.EventAgreement.update(a.id,{pdf_state:"failed"});}
  if(a.send_copy&&a.copy_state==="pending"){
   await client.entities.EventAgreement.update(a.id,{copy_state:"dispatching"});
   try{
    const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.pdf_uri,expires_in:3600});
-   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy","עותק ההסכם החתום עבור "+a.snapshot.event_name,{url:signed_url,name:"agreement-"+a.id+".pdf"});
+   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy",renderClosingMessage(await settings(client),"signed",a.notifications?.language||a.snapshot.message_language,{event_name:a.snapshot.event_name,customer_name:a.recipient_name}),{url:signed_url,name:"agreement-"+a.id+".pdf"});
    a=await client.entities.EventAgreement.update(a.id,{copy_state:d.state});
   }catch{a=await client.entities.EventAgreement.update(a.id,{copy_state:"unknown"});}
  }
@@ -125,16 +129,16 @@ async function createDeposit(client,a,config){
  const payment=await reserveHostedPayment(client,event,config,amount,f.currency,()=>client.entities.Payment.create({
   event_id:event.id,agreement_id:a.id,agreement_environment:environment,agreement_verified:false,
   amount,currency:f.currency,payment_date:new Date().toISOString().slice(0,10),payment_method:"credit_card",payment_status:"pending",clearing_method:"hosted_page",charge_type:"advance",
-  processing_fee_amount:fee.amount,payer_name:a.recipient_name,payer_phone:a.recipient_phone,payer_email:a.recipient_email||"",invoice4u_callback_token:cb,document_language:"he",is_payment_link:false,notes:"מקדמה לפי הסכם "+a.id
+  processing_fee_amount:fee.amount,payer_name:a.recipient_name,payer_phone:a.recipient_phone,payer_email:a.recipient_email||"",invoice4u_callback_token:cb,document_language:a.signature?.language||a.snapshot.form_language||"he",is_payment_link:false,notes:"מקדמה לפי הסכם "+a.id
  }));
  const vat=Number(config.vat_rate)||18;
  try{
   const result=await providerCall({environment,key,purpose:"hosted"},"ProcessApiRequestV2",{request:{
    Invoice4UUserApiKey:key,Sum:total,Currency:f.currency==="ILS"?"NIS":f.currency,Type:1,CreditCardCompanyType:Number(config.invoice4u_clearing_company_type),
-   FullName:a.recipient_name,Phone:a.recipient_phone,Email:a.recipient_email||"",Description:"מקדמה עבור "+event.event_name,
+   FullName:a.recipient_name,Phone:a.recipient_phone,Email:a.recipient_email||"",Description:(a.signature?.language==="en"?"Advance payment for ":"מקדמה עבור ")+event.event_name,
    OrderIdClientUsage:payment.id,IsDocCreate:true,IsManualDocCreationsWithParams:true,
-   ...itemsToPipedFields([{name:"מקדמה עבור "+event.event_name,quantity:1,price:total/(1+vat/100)}],vat,total),
-   Language:"he",IsQaMode:environment==="qa",Platform:"Pulse",
+   ...itemsToPipedFields([{name:(a.signature?.language==="en"?"Advance payment for ":"מקדמה עבור ")+event.event_name,quantity:1,price:total/(1+vat/100)}],vat,total),
+   Language:a.signature?.language||a.snapshot.form_language||"he",IsQaMode:environment==="qa",Platform:"Pulse",
    ReturnUrl:APP+"/EventClosing?id="+a.id,CallBackUrl:APP+"/functions/invoice4uClearingCallback?token="+cb
   }});
   if(hasErrors(result)){
@@ -166,7 +170,7 @@ export default Deno.serve(async req=>{
      if(a.otp_sent_at&&Date.now()-Date.parse(a.otp_sent_at)<60000)throw new AgreementError("ניתן לשלוח קוד נוסף לאחר דקה",429);
      const n=crypto.getRandomValues(new Uint32Array(1))[0]%1000000,code=String(n).padStart(6,"0");
      await client.entities.EventAgreement.update(a.id,{otp_hash:await digest(a.id+":"+code),otp_sent_at:new Date().toISOString(),otp_expires_at:new Date(Date.now()+600000).toISOString(),otp_sends:(a.otp_sends||0)+1});
-     await deliver(client,a,"verification",a.id+":otp:"+((a.otp_sends||0)+1),"קוד האימות שלך לחתימת הסכם עם שירת הנבל: "+code+". הקוד בתוקף ל-10 דקות. אין להעביר אותו לאחרים.");
+     await deliver(client,a,"verification",a.id+":otp:"+((a.otp_sends||0)+1),renderClosingMessage(await settings(client),"otp",a.notifications?.language||a.snapshot.message_language,{code,customer_name:a.recipient_name,event_name:a.snapshot.event_name}));
      await audit(client,a,"verification_sent","customer");return Response.json({sent:true});
     }
     if(action==="admin_verify"){
@@ -194,9 +198,11 @@ export default Deno.serve(async req=>{
      if(a.signed_at){a=await finishDocument(client,a);await reconcileAgreement(client,a.event_id);return Response.json(publicAgreement(await client.entities.EventAgreement.get(a.id)));}
      if(body.contentHash!==a.content_hash)throw new AgreementError("נוסח ההסכם השתנה; יש לרענן",409);
      const sig=validateSignature(body);
+     const language=agreementLanguage(body.language||a.snapshot.form_language);
+     if(language==="en"&&!a.snapshot.translations?.en?.terms)throw new AgreementError("English terms have not been configured for this agreement",409);
      const accepted=Object.fromEntries(a.snapshot.clauses.map(c=>[c.code,body.accepted?.[c.code]===true]));
      if(Object.values(accepted).some(v=>!v))throw new AgreementError("נדרש אישור נפרד לכל סעיף");
-     const signature={...sig,accepted,verified_at:a.verified_at,ip:cleanText(req.headers.get("x-forwarded-for")?.split(",")[0]||req.headers.get("x-real-ip"),100),user_agent:cleanText(req.headers.get("user-agent"),500),session_fingerprint:a.session_hash};
+     const signature={...sig,language,accepted,verified_at:a.verified_at,ip:cleanText(req.headers.get("x-forwarded-for")?.split(",")[0]||req.headers.get("x-real-ip"),100),user_agent:cleanText(req.headers.get("user-agent"),500),session_fingerprint:a.session_hash};
      const signedAt=new Date().toISOString();
      a=await client.entities.EventAgreement.update(a.id,{signature,signature_hash:await digest(canonical({signature,content_hash:a.content_hash,signed_at:signedAt})),signed_at:signedAt,state:"signed",link_hash:"",otp_hash:"",pdf_state:"pending"});
      await audit(client,a,"signed","customer",{content_hash:a.content_hash,signature_hash:a.signature_hash});
@@ -296,6 +302,8 @@ export default Deno.serve(async req=>{
    const p=await preview(client,base44,body.eventId,config);
    const executeCreate=async lockedId=>{
    if(body.sourceHash!==p.sourceHash)throw new AgreementError("פרטי האירוע השתנו מאז התצוגה; יש לפתוח טיוטה מחדש",409);
+   const formLanguage=agreementLanguage(body.form_language);
+   if(formLanguage==="en"&&!p.available_languages.includes("en"))throw new AgreementError("יש להגדיר תנאי התקשרות באנגלית לפני בחירה בטופס באנגלית",409);
    const name=cleanText(body.name,120),phone=normalizeIsraeliPhone(body.phone),email=cleanText(body.email,200);
    if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new AgreementError("כתובת אימייל לא תקינה");
    if(!name||!phone)throw new AgreementError("נדרשים שם וטלפון תקינים");
@@ -322,10 +330,12 @@ export default Deno.serve(async req=>{
    }catch(e){throw new AgreementError(e.message);}
    const regular=roundMoney(body.regular_cap),exceptional=roundMoney(body.exceptional_cap);
    if(!Number.isFinite(regular)||!Number.isFinite(exceptional)||regular<0||exceptional<0)throw new AgreementError("תקרות חיוב לא תקינות");
-   const clauses=p.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
-   const terms=cleanText(body.terms||p.terms,60000);if(!terms)throw new AgreementError("יש להגדיר תנאי התקשרות לפני שליחה");
-   const notification=notifications(body.notifications,config);
-   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,quote_text:p.quote,quote_summary:p.quote_summary,quote_file:p.quote_file,terms,clauses,milestones,
+   const baseVariant=p.translations[formLanguage];
+   const clauses=baseVariant.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
+   const terms=cleanText(body.terms||baseVariant.terms,60000);if(!terms)throw new AgreementError("יש להגדיר תנאי התקשרות לפני שליחה");
+   const notification=notifications({...body.notifications,language:body.message_language},config);
+   const translations={...p.translations,[formLanguage]:{...baseVariant,terms,clauses,milestones:milestones.map(m=>({...m}))}};
+   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:p.quote_summary,quote_file:p.quote_file,terms,clauses,milestones,
     deposit:milestones[0].amount,regular_cap:regular,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
     exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),
@@ -372,7 +382,7 @@ export default Deno.serve(async req=>{
     const url=APP+"/EventClosing?id="+a.id+"#token="+token;
     await audit(client,a,"link_issued",user.id,{expires_at:expiry});
     if(body.send===true){
-     try{await deliver(client,a,"invitation",a.id+":invitation:"+a.revision,"שלום "+a.recipient_name+", לאישור פרטי האירוע, חתימה והשלמת נוהל הסגירה עם שירת הנבל:\n"+url);await audit(client,a,"invitation_accepted",user.id);}
+     try{await deliver(client,a,"invitation",a.id+":invitation:"+a.revision,renderClosingMessage(config,"invitation",a.notifications?.language||a.snapshot.message_language,{customer_name:a.recipient_name,event_name:a.snapshot.event_name,link:url}));await audit(client,a,"invitation_accepted",user.id);}
      catch(e){return Response.json({url,warning:e.message});}
     }
     return Response.json({url});
