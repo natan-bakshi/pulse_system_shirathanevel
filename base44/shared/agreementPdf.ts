@@ -47,7 +47,7 @@ export async function makeAgreementPdf(a, config={}) {
     doc.setFontSize(12);doc.setTextColor(...red);
     doc.text(label,right?184:26,y+3,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:!english,isOutputRtl:false});y+=15;
   }
-  lines("שירת הנבל",11,red,1);
+  lines(t("שירת הנבל","Shirat Hanevel"),11,red,1);
   lines(t("הסכם ואישור אירוע","Event agreement & confirmation"),19,red,2);
   lines(s.event_name,15,ink,3);
   doc.setDrawColor(227,218,207);doc.line(18,y,192,y);y+=6;

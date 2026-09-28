@@ -6,4 +6,5 @@ export async function agreementAction(action,body={}) {
  return data;
 }
 export const agreementLabels={draft:"טיוטה",issued:"קישור הופק",signed:"נחתם",completed:"הנוהל הושלם",cancelled:"בוטל",pending:"ממתין",verified:"אומת",paid:"שולם",waived:"לא נדרשת",ready:"מוכן",failed:"נכשל",unknown:"בבירור",accepted:"התקבל אצל ספק הוואטסאפ",dispatching:"שליחה בבירור",disabled:"כבוי",not_signed:"טרם נחתם",overdue:"באיחור"};
-export const statusLabel=s=>agreementLabels[s]||s||"—";
+export const agreementLabelsEn={draft:"Draft",issued:"Link issued",signed:"Signed",completed:"Complete",cancelled:"Cancelled",pending:"Pending",verified:"Verified",paid:"Paid",waived:"Not required",ready:"Ready",failed:"Failed",unknown:"Under review",accepted:"Accepted by WhatsApp provider",dispatching:"Delivery uncertain",disabled:"Disabled",not_signed:"Not signed",overdue:"Overdue"};
+export const statusLabel=(s,lang="he")=>(lang==="en"?agreementLabelsEn:agreementLabels)[s]||s||"—";

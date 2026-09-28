@@ -23,7 +23,7 @@ function publicAgreement(a){return {
  require_token:a.require_token,require_deposit:a.require_deposit,signed_at:a.signed_at,
  token_state:a.token_state,deposit_state:a.deposit_state,pdf_state:a.pdf_state,copy_state:a.copy_state,
  completed_at:a.completed_at,verified_at:a.verified_at,opened_at:a.opened_at,active:a.active,
- signature:a.signature?{name:a.signature.name,role:a.signature.role,strokes:a.signature.strokes,accepted:a.signature.accepted}:null
+ signature:a.signature?{name:a.signature.name,role:a.signature.role,language:a.signature.language,strokes:a.signature.strokes,accepted:a.signature.accepted}:null
 };}
 async function requirePublic(client,body,session=false){
  const a=await client.entities.EventAgreement.get(cleanText(body.agreementId,80)).catch(()=>null);

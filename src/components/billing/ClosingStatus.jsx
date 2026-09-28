@@ -12,7 +12,7 @@ export default function ClosingStatus({agreement:a,busy,onToken,onDeposit,onPdf,
   if(completed)return <section dir={language==="en"?"ltr":"rtl"} className="mx-auto max-w-xl text-center space-y-5 py-10 sm:py-16" aria-label="אישור סגירת האירוע">
     <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-800"><Check aria-hidden="true" className="h-8 w-8"/></span>
     <div className="space-y-2"><h1 className="text-2xl sm:text-3xl font-bold text-red-950">{t.doneTitle}</h1><p className="text-stone-700 leading-7">{t.doneDescription}</p></div>
-    <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 text-right space-y-2"><p className="font-semibold text-stone-900">{t.doneWhat}</p><p>{t.doneSigned}</p>{a.require_token&&<p>{t.doneCard}</p>}{a.require_deposit&&<p>{t.doneDeposit}</p>}</div>
+    <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 text-start space-y-2"><p className="font-semibold text-stone-900">{t.doneWhat}</p><p>{t.doneSigned}</p>{a.require_token&&<p>{t.doneCard}</p>}{a.require_deposit&&<p>{t.doneDeposit}</p>}</div>
     <Button variant="outline" disabled={busy} onClick={onPdf} className="min-h-11"><FileText aria-hidden="true" className="h-4 w-4"/> {t.pdf}</Button>
   </section>;
   return <section dir={language==="en"?"ltr":"rtl"} className="space-y-5 border-t pt-6" aria-label="דרישות סגירת האירוע">
