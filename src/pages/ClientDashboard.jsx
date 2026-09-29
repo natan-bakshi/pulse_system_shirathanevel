@@ -81,8 +81,6 @@ export default function ClientDashboard() {
     if (!user || !user.email) return [];
     
     const userEmail = user.email.toLowerCase();
-    const userPhone = user.phone;
-    
     return allEvents.filter(event => {
       // Check if user created the event
       if (event.created_by === userEmail) {
