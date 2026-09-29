@@ -1,6 +1,6 @@
 import { readAll } from "./eventReadiness.ts";
 import { calculateEventBalance } from "./eventBilling.ts";
-import { canClose, milestoneState, formatMessage, closingDefaults, roundMoney } from "./agreementRules.ts";
+import { canClose, milestoneState, formatMessage, closingDefaults, roundMoney, firstCompletedPayment } from "./agreementRules.ts";
 import { sendWhatsAppText, sendWhatsAppFileByUrl } from "./whatsappSend.ts";
 
 export class AgreementError extends Error { status:number; constructor(message,status=400){super(message);this.name="AgreementError";this.status=status;} }
@@ -54,8 +54,11 @@ export async function reconcileAgreement(client,eventId,config=null) {
  const customer=a.customer_id?await client.entities.BillingCustomer.get(a.customer_id):null;
  const card=customer?.active_card_id?await client.entities.StoredCard.get(customer.active_card_id):null;
  const token=!!(card?.state==="active"&&(card.environment==="production"||event.stored_card_qa_only===true)&&card.customer_id===a.customer_id&&card.environment===(config.stored_cards_env==="production"?"production":"qa")&&event.billing_customer_id===a.customer_id);
- const deposit=a.require_deposit?f.totalPaid+0.005>=a.snapshot.deposit:false;
+ const received=firstCompletedPayment(f.payments,f.currency,Number(config.usd_ils_exchange_rate)||3.6);
+ // A verified first payment satisfies the deposit requirement, without changing signed terms.
+ const deposit=a.require_deposit?received>0:false;
  const depositState=a.require_deposit?(deposit?"paid":"pending"):"waived";
+ if(a.deposit_received!==received)await client.entities.EventAgreement.update(a.id,{deposit_received:received});
  const changes:any={};
  if(a.token_state!==(token?"verified":"pending")){
   const won=await client.entities.EventAgreement.updateMany({id:a.id,token_state:a.token_state},{$set:{token_state:token?"verified":"pending"}});
@@ -63,7 +66,7 @@ export async function reconcileAgreement(client,eventId,config=null) {
  }
  if(a.deposit_state!==depositState){
   const won=await client.entities.EventAgreement.updateMany({id:a.id,deposit_state:a.deposit_state},{$set:{deposit_state:depositState}});
-  if(deposit&&won.updated===1)await audit(client,a,"deposit_paid","system",{amount:a.snapshot.deposit});
+  if(deposit&&won.updated===1)await audit(client,a,"deposit_paid","system",{amount:received});
  }
  const ready=canClose({signed:!!a.signed_at,requireToken:a.require_token,token,requireDeposit:a.require_deposit,depositPaid:deposit,active:a.active});
  // The signed financial scope must still match. Later edits require a new agreed version.

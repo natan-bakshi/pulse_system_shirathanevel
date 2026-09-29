@@ -26,6 +26,13 @@ export async function digest(value) {
  const bytes=typeof value==="string"?new TextEncoder().encode(value):value;
  return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),v=>v.toString(16).padStart(2,"0")).join("");
 }
+export function firstCompletedPayment(payments, currency, rate=3.6) {
+ const rows=payments.filter(p=>p.charge_type!=="exceptional"&&(!p.agreement_id||p.agreement_verified)&&(!p.payment_status||p.payment_status==="completed")&&Number(p.amount)>0)
+  .sort((a,b)=>String(a.payment_date||a.created_date||"").localeCompare(String(b.payment_date||b.created_date||""))||String(a.created_date||"").localeCompare(String(b.created_date||"")));
+ const p=rows[0];if(!p)return 0;
+ const amount=Number(p.converted_amount)>0&&p.currency!==currency?Number(p.converted_amount):p.currency===currency||!p.currency?Number(p.amount):p.currency==="USD"&&currency==="ILS"?Number(p.amount)*rate:p.currency==="ILS"&&currency==="USD"?Number(p.amount)/rate:0;
+ return roundMoney(amount);
+}
 export function defaultMilestones(total,deposit,eventDate,today=new Date().toISOString().slice(0,10),language="he") {
  const date=new Date(eventDate+"T12:00:00Z"); if(!Number.isFinite(date.getTime()))throw new Error("תאריך אירוע לא תקין");
  const before=new Date(date.getTime()-7*86400000).toISOString().slice(0,10);

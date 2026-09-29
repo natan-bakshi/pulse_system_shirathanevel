@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from "@/components/ui/dialog";
 import AgreementView from "./AgreementView";
 import { localizedSnapshot } from "./closingI18n";
+import { rebalanceMilestones } from "./rebalanceMilestones";
 const input="block w-full border rounded-md p-2 bg-white mt-1";
 const auditNames={created:"נוצרה גרסת הסכם",link_issued:"הופק קישור",invitation_accepted:"הזמנה התקבלה אצל ספק הוואטסאפ",opened:"הקישור נפתח",verification_sent:"נשלח קוד אימות",verified:"הטלפון אומת",admin_verified:"המנהל אימת באמצעות סיסמה",card_linked:"כרטיס קיים קושר להסכם",signed:"ההסכם נחתם",token_link_created:"נוצר קישור לכרטיס",token_verified:"הכרטיס אומת",deposit_link_created:"נוצר קישור למקדמה",deposit_paid:"המקדמה שולמה",deposit_verified:"תשלום המקדמה אומת מול הספק",event_closed:"האירוע נסגר לפי הנוהל",superseded:"הוחלף בגרסה חדשה",cancelled:"ההסכם בוטל",notification_settings_changed:"עודכנו הגדרות הודעות",amendment_recorded:"תועד שינוי מוסכם",reminder_accepted:"תזכורת התקבלה אצל הספק",exceptional_notice:"נשלחה הודעה על חיוב חריג",workflow_recovered:"שוחררה פעולה שנקטעה"};
 function Notifications({value:n,onChange}){
@@ -38,12 +39,15 @@ export default function EventClosingPanel({event,onChanged}){
  });
   const toggleDeposit=checked=>setDraft(d=>{
    if(d.milestones.length<2)return {...d,require_deposit:checked};
-   if(checked){
-    const amount=Math.min(Number(d.deposit)||0,Number(d.milestones[1].amount)||0);
-    return {...d,require_deposit:true,milestones:d.milestones.map((m,i)=>i===0?{...m,amount}:i===1?{...m,amount:Math.round((Number(m.amount)-amount)*100)/100}:m)};
-   }
-   const amount=Number(d.milestones[0].amount)||0;
-   return {...d,require_deposit:false,milestones:d.milestones.map((m,i)=>i===0?{...m,amount:0}:i===1?{...m,amount:Math.round((Number(m.amount)+amount)*100)/100}:m)};
+   return {...d,require_deposit:checked,milestones:rebalanceMilestones(d.milestones,0,checked?d.deposit:0)};
+  });
+  const removeMilestone=index=>setDraft(d=>{
+   if(d.milestones.length<=1)return d;
+   const rows=d.milestones.map(m=>({...m}));
+   const [removed]=rows.splice(index,1);
+   const target=Math.min(index,rows.length-1);
+   rows[target].amount=Math.round((Number(rows[target].amount)+Number(removed.amount))*100)/100;
+   return {...d,milestones:rows};
   });
  return <section dir="rtl" className="rounded-xl border bg-white p-5 space-y-4">
   <div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-semibold">סגירת אירוע לפי הנוהל</h2><div className="flex gap-2"><Button disabled={busy} onClick={openDraft}>{a?"הכן גרסה חדשה":"הכן טופס לסגירת אירוע"}</Button><Button disabled={busy} variant="outline" onClick={()=>run(()=>refetch())}>רענן</Button></div></div>
@@ -84,15 +88,18 @@ export default function EventClosingPanel({event,onChanged}){
     {[["name","שם מלא"],["phone","טלפון הלקוח בוואטסאפ"],["email","אימייל (רשות)"]].map(([k,l])=><label key={k} className="block">{l}<input className={input} value={draft[k]} onChange={e=>change(k,e.target.value)}/></label>)}
     <div className="bg-stone-50 p-3 rounded"><p>מחיר האירוע: {draft.total} {draft.currency}</p>{[["require_token","חובת כרטיס מאומת לסגירה"],["require_deposit","חובת מקדמה לסגירה"],["send_copy","שלח ללקוח עותק PDF חתום בוואטסאפ"]].map(([k,l])=><label key={k} className="flex gap-2 mt-2"><input type="checkbox" checked={!!draft[k]} onChange={e=>k==="require_deposit"?toggleDeposit(e.target.checked):change(k,e.target.checked)}/>{l}</label>)}</div>
     <details><summary className="font-semibold cursor-pointer">תצוגת הצעת המחיר שתצורף</summary><p className="whitespace-pre-wrap text-sm leading-7">{draft.quote}</p><p className="text-sm text-amber-900 mt-2">{draft.quote_file?"יצורף PDF מההיסטוריה: "+draft.quote_file.file_name:"אין PDF בהיסטוריית ההצעות. מומלץ להפיק הצעת מחיר לפני הכנת הטופס."}</p></details>
-    <label className="block">תנאי ההתקשרות<textarea rows={8} className={input} value={draft.terms} onChange={e=>change("terms",e.target.value)}/></label>
+    <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">נוסח ההסכם והרשאות — פרטים נוספים</summary><div className="space-y-4 pt-4"><label className="block">תנאי ההתקשרות<textarea rows={8} className={input} value={draft.terms} onChange={e=>change("terms",e.target.value)}/></label>
     {draft.clauses.map((c,i)=><label key={c.code} className="block">{c.label}<textarea className={input} rows={3} value={c.text} onChange={e=>change("clauses",draft.clauses.map((x,j)=>j===i?{...x,text:e.target.value}:x))}/></label>)}
     <div className="grid grid-cols-2 gap-3">{[["regular_cap","תקרת חיוב רגיל"],["exceptional_cap","תקרת חיוב חריג"]].map(([k,l])=><label key={k}>{l}<input type="number" min="0" step="0.01" className={input} value={draft[k]} onChange={e=>change(k,Number(e.target.value))}/></label>)}</div>
     <p className="text-sm">חיוב חריג: {draft.exceptional_notice?"הודעה מקדימה והמתנה של "+draft.exceptional_notice_days+" ימים לפחות":"ללא חובת הודעה מקדימה"}. ברירת המחדל ניתנת לשינוי בהגדרות החיוב לפני יצירת הסכם.</p>
+    </div></details>
     <h3 className="font-semibold">אבני דרך — הראשונה מגדירה את המקדמה</h3>
+    {draft.existing_deposit>0&&<p className="rounded-lg bg-green-50 p-3 text-sm text-green-900">תשלום ראשון בסך {draft.existing_deposit} {draft.currency} כבר נקלט ומוגדר כמקדמה. הסכום הזה אינו מתווסף לאבני הדרך הבאות.</p>}
+    <p className="text-sm text-gray-600">בשינוי סכום, ההפרש יחולק מאבני הדרך הבאות לפי סדרן. אבן הדרך האחרונה משלימה את היתרה.</p>
      {!draft.require_deposit&&<p className="text-sm text-amber-800">המקדמה בוטלה; הסכום שלה הועבר לאבן הדרך הבאה. החתימה והכרטיס עדיין נדרשים אם סומנו.</p>}
-    {draft.milestones.map((m,i)=><div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-2 border rounded p-3">{[["label","תיאור","text"],["amount","סכום","number"],["due_date","מועד אחרון","date"]].map(([k,l,t])=><label key={k} className="text-sm">{l}<input className={input} type={t} disabled={i===0&&k==="amount"&&!draft.require_deposit} min={t==="number"?"0":undefined} step={t==="number"?"0.01":undefined} value={m[k]} onChange={e=>change("milestones",draft.milestones.map((x,j)=>j===i?{...x,[k]:t==="number"?Number(e.target.value):e.target.value}:x))}/></label>)}<Button variant="ghost" disabled={draft.milestones.length<=1} onClick={()=>change("milestones",draft.milestones.filter((_,j)=>j!==i))}>הסר אבן דרך</Button></div>)}
+    {draft.milestones.map((m,i)=><div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-2 border rounded p-3">{[["label","תיאור","text"],["amount","סכום","number"],["due_date","מועד אחרון","date"]].map(([k,l,t])=><label key={k} className="text-sm">{l}<input className={input} type={t} disabled={k==="amount"&&(i===draft.milestones.length-1||i===0&&(!draft.require_deposit||draft.existing_deposit>0))} min={t==="number"?"0":undefined} step={t==="number"?"0.01":undefined} value={m[k]} onChange={e=>change("milestones",k==="amount"?rebalanceMilestones(draft.milestones,i,Number(e.target.value)):draft.milestones.map((x,j)=>j===i?{...x,[k]:e.target.value}:x))}/></label>)}<Button variant="ghost" disabled={draft.milestones.length<=1} onClick={()=>removeMilestone(i)}>הסר אבן דרך</Button></div>)}
     <Button variant="outline" disabled={draft.milestones.length>=12} onClick={()=>change("milestones",[...draft.milestones,{label:draft.form_language==="en"?"Additional payment":"תשלום נוסף",amount:0,due_date:draft.milestones.at(-1)?.due_date||new Date().toISOString().slice(0,10)}])}>הוסף אבן דרך</Button>
-    <Notifications value={draft.notifications} onChange={n=>change("notifications",n)}/>
+    <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">תזכורות והודעות — פרטים נוספים</summary><div className="pt-4"><Notifications value={draft.notifications} onChange={n=>change("notifications",n)}/></div></details>
     {a&&<p className="text-amber-800 text-sm">יצירת גרסה חדשה תבטל קישורים לגרסה הקודמת. המסמך החתום הקודם נשמר.</p>}
     {error&&<p role="alert" className="text-red-800">{error}</p>}
     <Button disabled={busy||!draft.name.trim()||!draft.phone.trim()||!draft.terms.trim()} onClick={()=>run(async()=>{await agreementAction("create",{...draft,eventId:event.id});setDraft(null);setUrl("");setMessage("הגרסה נשמרה. כעת ניתן לשלוח קישור בוואטסאפ או להעתיק אותו.");})}>{busy?"שומר...":"שמור את הטופס והכן לשליחה"}</Button>

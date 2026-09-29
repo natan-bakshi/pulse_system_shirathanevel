@@ -9,7 +9,7 @@ import { providerCall, hasErrors, providerFailure } from "../../shared/storedCar
 import { secrets } from "base44:runtime";
 import { normalizeIsraeliPhone } from "../../shared/whatsappSend.ts";
 import { readAll } from "../../shared/eventReadiness.ts";
-import { closingDefaults, canonical, digest, cleanText, defaultMilestones, validateMilestones, roundMoney } from "../../shared/agreementRules.ts";
+import { closingDefaults, canonical, digest, cleanText, defaultMilestones, validateMilestones, roundMoney, firstCompletedPayment } from "../../shared/agreementRules.ts";
 import { AgreementError, audit, lockAgreement, settings, financials, deliver, reconcileAgreement } from "../../shared/agreementLifecycle.ts";
 import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
@@ -24,7 +24,7 @@ const bool=(v,def)=>v===undefined?def:!!v;
 function publicAgreement(a){return {
  id:a.id,version:a.version,state:a.state,snapshot:a.snapshot,content_hash:a.content_hash,
  require_token:a.require_token,require_deposit:a.require_deposit,signed_at:a.signed_at,
- token_state:a.token_state,deposit_state:a.deposit_state,pdf_state:a.pdf_state,copy_state:a.copy_state,
+ token_state:a.token_state,deposit_state:a.deposit_state,deposit_received:a.deposit_received||0,deposit_method:a.deposit_method||"",pdf_state:a.pdf_state,copy_state:a.copy_state,
  completed_at:a.completed_at,verified_at:a.verified_at,opened_at:a.opened_at,active:a.active,
  signature:a.signature?{name:a.signature.name,role:a.signature.role,language:a.signature.language,strokes:a.signature.strokes,accepted:a.signature.accepted}:null
 };}
@@ -65,7 +65,8 @@ async function preview(client,base44,eventId,config){
  const templates=await readAll(client.entities.QuoteTemplate,{template_type:"agreement_disclaimer"});
  const heTerms=String(config.closing_terms_text||"").trim()||textFromHtml(templates.find(x=>x.identifier==="default")?.content||templates[0]?.content||"");
  const enTerms=String(config.closing_terms_text_en||"").trim();
- const deposit=calculateAdvanceAmount(config,f.finalTotal);
+ const existingDeposit=Math.min(f.finalTotal,firstCompletedPayment(f.payments,f.currency,Number(config.usd_ils_exchange_rate)||3.6));
+ const deposit=existingDeposit||calculateAdvanceAmount(config,f.finalTotal);
  const codes=["terms","token","regular","exceptional","fee","changes"];
  const translations=Object.fromEntries(["he","en"].map(lang=>{
   const en=lang==="en",copy=closingCopy[lang],compact=agreementQuote(event,f,lang);
@@ -78,8 +79,8 @@ async function preview(client,base44,eventId,config){
  const form_language=enTerms?agreementLanguage(config.closing_form_language):"he";
  const selected=translations[form_language];
  const compact=agreementQuote(event,f,form_language);
- const sourceHash=await digest(canonical({translations,quoteFile:compact.quoteFile,total:f.finalTotal,currency:f.currency,event_date:event.event_date}));
- return {event,sourceHash,translations,available_languages:enTerms?["he","en"]:["he"],form_language,message_language:agreementLanguage(config.closing_message_language),quote:selected.quote_text,quote_summary:compact.summary,quote_file:compact.quoteFile,terms:selected.terms,total:f.finalTotal,currency:f.currency,deposit,contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
+ const sourceHash=await digest(canonical({translations,quoteFile:compact.quoteFile,total:f.finalTotal,currency:f.currency,event_date:event.event_date,existingDeposit}));
+ return {event,sourceHash,translations,available_languages:enTerms?["he","en"]:["he"],form_language,message_language:agreementLanguage(config.closing_message_language),quote:selected.quote_text,quote_summary:compact.summary,quote_file:compact.quoteFile,terms:selected.terms,total:f.finalTotal,currency:f.currency,deposit,existing_deposit:existingDeposit,bank_details:cleanText(config.company_bank_details,1000),contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
  milestones:selected.milestones,regular_cap:roundMoney(f.finalTotal*Number(config.closing_regular_multiplier||1)),exceptional_cap:roundMoney(f.finalTotal*Number(config.closing_exceptional_multiplier||2)),
  clauses:selected.clauses,exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),require_token:config.closing_token_required!=="false",require_deposit:config.closing_deposit_required!=="false",
  send_copy:config.closing_send_copy!=="false",notifications:notifications({language:agreementLanguage(config.closing_message_language)},config)};
@@ -171,7 +172,7 @@ export default Deno.serve(async req=>{
   const raw=await req.text();if(raw.length>400000)throw new AgreementError("בקשה גדולה מדי",413);
   const body=JSON.parse(raw),action=body.action;
   const base44=createClientFromRequest(req),client=base44.asServiceRole;
-  if(["open","otp","verify","admin_verify","view","sign","token","deposit","document"].includes(action)){
+  if(["open","otp","verify","admin_verify","view","sign","token","deposit","choose_deposit_method","document"].includes(action)){
    let a=await requirePublic(client,body,!["open","otp","verify","admin_verify"].includes(action));
    return await lockAgreement(client,a,action,async current=>{
     a=current;
@@ -236,6 +237,13 @@ export default Deno.serve(async req=>{
      return Response.json({url:signed_url});
     }
     const config=await settings(client);
+    if(action==="choose_deposit_method"){
+     if(!a.require_deposit||a.deposit_state==="paid")return Response.json(publicAgreement(a));
+     if(body.method!=="bank"||!a.snapshot.bank_details)throw new AgreementError("לא הוגדרו פרטי העברה בנקאית",409);
+     a=await client.entities.EventAgreement.update(a.id,{deposit_method:"bank"});
+     await audit(client,a,"deposit_bank_selected","customer");
+     return Response.json(publicAgreement(a));
+    }
     if(action==="deposit"){
     if(!a.require_deposit)throw new AgreementError("המקדמה בוטלה בהסכם זה",409);
     return Response.json(await createDeposit(client,a,config));
@@ -340,6 +348,7 @@ export default Deno.serve(async req=>{
      ?body.milestones.map((m,i)=>i===0?{...m,amount:0}:i===1?{...m,amount:roundMoney(Number(m.amount)+Number(body.milestones[0].amount))}:m)
      :body.milestones;
     milestones=validateMilestones(rows,p.total);
+    if(body.require_deposit!==false&&p.existing_deposit>0&&Math.abs(milestones[0].amount-p.existing_deposit)>0.01)throw new Error("התשלום הראשון שכבר נקלט הוא סכום המקדמה בהסכם");
     if(body.require_deposit===false&&milestones[0].amount>0)throw new Error("יש להגדיר אבן דרך נוספת כשמוותרים על מקדמה");
    }catch(e){throw new AgreementError(e.message);}
    const regular=roundMoney(body.regular_cap),exceptional=roundMoney(body.exceptional_cap);
@@ -357,7 +366,7 @@ export default Deno.serve(async req=>{
     }];
    }));
    const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:p.quote_summary,quote_file:p.quote_file,terms,clauses,milestones,
-    deposit:milestones[0].amount,regular_cap:regular,exceptional_cap:exceptional,
+    deposit:milestones[0].amount,bank_details:p.bank_details,regular_cap:regular,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
     exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),
     require_token:!!body.require_token,require_deposit:!!body.require_deposit};
@@ -365,7 +374,7 @@ export default Deno.serve(async req=>{
     event_id:body.eventId,version:Math.max(0,...old.map(x=>x.version))+1,state:"draft",active:false,revision:0,busy_operation:"",
     created_by_user_id:user.id,recipient_name:name,recipient_phone:phone,recipient_email:email,customer_id:customer?.id||"",
     snapshot,content_hash:await digest(canonical(snapshot)),require_token:!!body.require_token,require_deposit:!!body.require_deposit,
-    send_copy:!!body.send_copy,copy_state:body.send_copy?"pending":"disabled",token_state:"pending",deposit_state:body.require_deposit?"pending":"waived",pdf_state:"not_signed",
+    send_copy:!!body.send_copy,copy_state:body.send_copy?"pending":"disabled",token_state:"pending",deposit_state:body.require_deposit?(p.existing_deposit?"paid":"pending"):"waived",deposit_received:p.existing_deposit||0,pdf_state:"not_signed",
     otp_sends:0,otp_attempts:0,closing_applied:false,notifications:notification
    });
    for(const m of milestones)await client.entities.PaymentMilestone.create({...m,agreement_id:a.id,event_id:body.eventId,state:"pending",message_state:"pending",

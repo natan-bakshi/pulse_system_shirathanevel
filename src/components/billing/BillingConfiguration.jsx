@@ -12,7 +12,7 @@ import { StoredCardSettings } from "@/components/billing/StoredCards";
 
 import ClosingSettings, { closingDefaults } from "./ClosingSettings";
 
-const defaults = { billing_fallback_email: "", ...closingDefaults, stored_cards_enabled: "false", stored_cards_env: "qa", stored_cards_cleanup: "off", invoice4u_env: "qa", invoice4u_branch_id: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_subject_en: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", default_advance_percent: "20", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false", payment_link_message_template: "", payment_link_message_template_en: "", processing_fee_label_en: "Processing fee", default_email_comment_en: "", payment_link_expiry_days: "14", payment_link_reminder_days: "3", client_payment_receipt_enabled: "false", payment_receipt_message_template: "", payment_receipt_message_template_en: "", payment_link_reminder_template: "", payment_link_reminder_template_en: "" };
+const defaults = { billing_fallback_email: "", company_bank_details: "", ...closingDefaults, stored_cards_enabled: "false", stored_cards_env: "qa", stored_cards_cleanup: "off", invoice4u_env: "qa", invoice4u_branch_id: "", invoice4u_clearing_company_type: "", default_document_type: "invoice_receipt", default_language: "he", default_tax_included: "true", default_subject: "", default_subject_en: "", default_email_comment: "", owner_copy_email: "", processing_fee_enabled: "false", processing_fee_type: "percent", processing_fee_value: "0", processing_fee_label: "עמלת סליקה", default_advance_amount: "2500", default_advance_percent: "20", client_clearing_allowed: "false", manual_payment_invoice_enabled: "false", payment_link_message_template: "", payment_link_message_template_en: "", processing_fee_label_en: "Processing fee", default_email_comment_en: "", payment_link_expiry_days: "14", payment_link_reminder_days: "3", client_payment_receipt_enabled: "false", payment_receipt_message_template: "", payment_receipt_message_template_en: "", payment_link_reminder_template: "", payment_link_reminder_template_en: "" };
 
 export default function BillingConfiguration() {
   const queryClient = useQueryClient();
@@ -48,14 +48,15 @@ export default function BillingConfiguration() {
     <Card className="bg-white/95">
       <CardHeader><CardTitle>הגדרות חיוב וסליקה</CardTitle></CardHeader>
       <CardContent className="space-y-5">
-        <BillingDocumentDefaults settings={settings} onChange={change} />
-        <BillingClearingRules settings={settings} onChange={change} />
-        <BillingPaymentLinkSettings settings={settings} onChange={change} />
-        <BillingLifecycleSettings settings={settings} onChange={change} />
+        <p className="text-sm text-gray-600">כל ההגדרות נשארו כאן. פתחו רק את הנושא שתרצו לערוך, ושמרו בסיום.</p>
+        <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">מסמכים ומיילים</summary><BillingDocumentDefaults settings={settings} onChange={change} /></details>
+        <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">סליקה, עמלות ומקדמות</summary><BillingClearingRules settings={settings} onChange={change} /></details>
+        <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">הודעות וקישורי תשלום</summary><BillingPaymentLinkSettings settings={settings} onChange={change} /><BillingLifecycleSettings settings={settings} onChange={change} /></details>
         <label className="block space-y-2"><span className="font-semibold">מייל החברה כברירת מחדל לסליקה</span><input type="email" dir="ltr" className="block w-full rounded-md border p-2" value={settings.billing_fallback_email} onChange={e=>change("billing_fallback_email",e.target.value.trim())}/><span className="block text-sm text-gray-600">ישמש רק כשאין מייל ללקוח. הודעות הספק עשויות להגיע לכתובת זו. אינו משנה את המייל בכרטיס הלקוח.</span></label>
         {saveError&&<p role="alert" className="text-red-700">{saveError}</p>}
-        <StoredCardSettings settings={settings} onChange={change} />
-        <ClosingSettings settings={settings} onChange={change} />
+        <label className="block space-y-2"><span className="font-semibold">פרטי חשבון הבנק להעברה בנקאית</span><textarea rows={3} className="block w-full rounded-md border p-3" value={settings.company_bank_details} onChange={e=>change("company_bank_details",e.target.value)} placeholder="שם בעל החשבון, בנק, סניף ומספר חשבון"/><span className="block text-sm text-gray-600">יוצגו רק ללקוח שאימת את עצמו בטופס הסגירה. ודאו שהפרטים מדויקים לפני שמירה.</span></label>
+        <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">כרטיסים שמורים</summary><StoredCardSettings settings={settings} onChange={change} /></details>
+        <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">נוהל סגירת האירוע וההסכם</summary><ClosingSettings settings={settings} onChange={change} /></details>
         <div className="flex items-center gap-3">
           <Button onClick={save} disabled={saving || !Object.keys(draft).length}>
             {saving ? "שומר..." : <><Save className="ml-2 h-4 w-4" />שמור הגדרות חיוב</>}
