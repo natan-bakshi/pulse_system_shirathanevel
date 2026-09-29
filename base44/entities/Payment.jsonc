@@ -9,29 +9,24 @@
       "type": "string"
     },
     "event_id": {
-      "type": "string",
-      "description": "מזהה האירוע. ריק = סליקה כללית שאינה משויכת לאירוע"
+      "type": "string"
     },
     "amount": {
-      "type": "number",
-      "description": "סכום התשלום"
+      "type": "number"
     },
     "currency": {
       "type": "string",
       "enum": [
         "ILS",
         "USD"
-      ],
-      "description": "מטבע התשלום"
+      ]
     },
     "converted_amount": {
-      "type": "number",
-      "description": "סכום מומר למטבע האירוע"
+      "type": "number"
     },
     "payment_date": {
       "type": "string",
-      "format": "date",
-      "description": "תאריך התשלום"
+      "format": "date"
     },
     "payment_method": {
       "type": "string",
@@ -40,8 +35,7 @@
         "bank_transfer",
         "check",
         "credit_card"
-      ],
-      "description": "אמצעי תשלום"
+      ]
     },
     "payment_status": {
       "type": "string",
@@ -51,48 +45,38 @@
         "cancelled",
         "failed"
       ],
-      "default": "completed",
-      "description": "סטטוס התשלום"
+      "default": "completed"
     },
     "notes": {
-      "type": "string",
-      "description": "הערות על התשלום"
+      "type": "string"
     },
     "receipt_number": {
-      "type": "string",
-      "description": "מספר קבלה"
+      "type": "string"
     },
     "receipt_image_url": {
-      "type": "string",
-      "description": "קישור לאסמכתא"
+      "type": "string"
     },
     "invoice4u_payment_id": {
-      "type": "string",
-      "description": "מזהה סליקה ב-Invoice4U"
+      "type": "string"
     },
     "invoice4u_clearing_status": {
-      "type": "string",
-      "description": "סטטוס סליקה"
+      "type": "string"
     },
     "invoice4u_document_number": {
-      "type": "string",
-      "description": "מספר מסמך Invoice4U"
+      "type": "string"
     },
     "invoice4u_callback_token": {
-      "type": "string",
-      "description": "אסימון אימות לקריאת חזרה"
+      "type": "string"
     },
     "financial_document_id": {
-      "type": "string",
-      "description": "מזהה מסמך פיננסי"
+      "type": "string"
     },
     "clearing_method": {
       "type": "string",
       "enum": [
         "hosted_page",
         "stored_card"
-      ],
-      "description": "שיטת סליקה"
+      ]
     },
     "charge_type": {
       "type": "string",
@@ -102,44 +86,34 @@
         "general",
         "manual",
         "exceptional"
-      ],
-      "description": "סוג החיוב: רגיל, מקדמה, סליקה כללית ללא אירוע, או תשלום ידני"
+      ]
     },
     "auth_number": {
-      "type": "string",
-      "description": "מספר אסמכתא מחברת האשראי"
+      "type": "string"
     },
     "card_suffix": {
-      "type": "string",
-      "description": "ארבע ספרות אחרונות של הכרטיס"
+      "type": "string"
     },
     "processing_fee_amount": {
-      "type": "number",
-      "description": "סכום עמלת הסליקה שנוספה לחיוב"
+      "type": "number"
     },
     "payer_name": {
-      "type": "string",
-      "description": "שם המשלם כפי שהוזן בדיאלוג הסליקה"
+      "type": "string"
     },
     "payer_phone": {
-      "type": "string",
-      "description": "טלפון המשלם"
+      "type": "string"
     },
     "payer_email": {
-      "type": "string",
-      "description": "אימייל המשלם"
+      "type": "string"
     },
     "customer_name_on_card": {
-      "type": "string",
-      "description": "שם בעל הכרטיס כפי שחזר מהסליקה"
+      "type": "string"
     },
     "is_interested_in_invoice": {
-      "type": "boolean",
-      "description": "בקשה לחשבונית"
+      "type": "boolean"
     },
     "client_ip": {
-      "type": "string",
-      "description": "כתובת IP מהסליקה"
+      "type": "string"
     },
     "document_language": {
       "type": "string",
@@ -147,27 +121,22 @@
         "he",
         "en"
       ],
-      "default": "he",
-      "description": "שפת המסמך וההודעות ללקוח עבור תשלום זה"
+      "default": "he"
     },
     "is_payment_link": {
       "type": "boolean",
-      "default": false,
-      "description": "האם התשלום נוצר כדרישת תשלום בקישור (ולא סליקה מיידית)"
+      "default": false
     },
     "payment_link_url": {
-      "type": "string",
-      "description": "כתובת דף התשלום המאובטח שנשלחה ללקוח - לשליחה חוזרת ולתזכורות"
+      "type": "string"
     },
     "link_expires_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "מועד תפוגת קישור התשלום. לאחר מועד זה התשלום הממתין יבוטל אוטומטית"
+      "format": "date-time"
     },
     "link_reminder_sent": {
       "type": "boolean",
-      "default": false,
-      "description": "האם נשלחה תזכורת ללקוח לפני תפוגת הקישור"
+      "default": false
     },
     "agreement_id": {
       "type": "string"
@@ -199,7 +168,11 @@
     "payment_date"
   ],
   "rls": {
-    "read": {},
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "create": {
       "user_condition": {
         "role": "admin"
