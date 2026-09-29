@@ -13,7 +13,7 @@ export async function makeAgreementPdf(a, config={}) {
   doc.addFont("NotoSansHebrew.ttf","Agreement","normal");
   doc.setFont("Agreement");
   const s=localizedAgreement(a.snapshot,a.signature?.language),english=a.signature?.language==="en",right=!english;
-  const ink=[42,38,37],muted=[104,99,95],red=[127,29,29],paper=[250,247,243];
+  const ink=[42,38,37],muted=[104,99,95],red=[127,29,29];
   const t=(he,en)=>english?en:he;
   const money=n=>new Intl.NumberFormat(english?"en-US":"he-IL",{maximumFractionDigits:2}).format(Number(n)||0)+" "+s.currency;
   doc.setProperties({title:t("הסכם חתום — ","Signed agreement — ")+s.event_name,author:"שירת הנבל",subject:a.id});
@@ -57,14 +57,13 @@ export async function makeAgreementPdf(a, config={}) {
    y+=pad;
   }
   function section(label){
-    pageIf(20);y+=5;doc.setFillColor(...paper);doc.roundedRect(18,y-5,174,12,2,2,"F");
-    doc.setFillColor(...red);doc.rect(right?189:18,y-5,3,12,"F");
-    doc.setFontSize(12);doc.setTextColor(...red);
-    doc.text(label,right?184:26,y+3,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:!english,isOutputRtl:false});y+=15;
+    pageIf(20);y+=5;doc.setFontSize(12);doc.setTextColor(...red);
+    doc.text(label,right?192:18,y+3,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:!english,isOutputRtl:false});
+    doc.setDrawColor(227,218,207);doc.line(18,y+6,192,y+6);y+=12;
   }
-  lines(t("שירת הנבל","Shirat Hanevel"),11,red,1);
-  lines(t("הסכם ואישור אירוע","Event agreement & confirmation"),19,red,2);
-  lines(s.event_name,15,ink,3);
+  doc.setFontSize(11);doc.setTextColor(...red);doc.text(t("שירת הנבל","Shirat Hanevel"),105,y,{align:"center",isInputVisual:false,isOutputVisual:true,isInputRtl:!english,isOutputRtl:false});y+=8;
+  doc.setFontSize(19);doc.text(t("הסכם ואישור אירוע","Event agreement & confirmation"),105,y,{align:"center",isInputVisual:false,isOutputVisual:true,isInputRtl:!english,isOutputRtl:false});y+=10;
+  doc.setFontSize(15);doc.setTextColor(...ink);doc.text(s.event_name,105,y,{align:"center",isInputVisual:false,isOutputVisual:true,isInputRtl:/[\u0590-\u05ff]/.test(s.event_name),isOutputRtl:false});y+=9;
   doc.setDrawColor(227,218,207);doc.line(18,y,192,y);y+=6;
   lines(t("מזהה הסכם: ","Agreement ID: ")+a.id+"  ·  "+t("גרסה: ","Version: ")+a.version,9,muted);
   lines(t("נחתם: ","Signed: ")+a.signed_at,9,muted);
@@ -77,10 +76,9 @@ export async function makeAgreementPdf(a, config={}) {
     pageIf(14);
     const label=t("פתיחת הצעת המחיר המלאה (PDF)","Open full quotation (PDF)");
     const url="https://pulse-system.base44.app/functions/eventAgreement?kind=signed_quote&id="+encodeURIComponent(a.id)+"&proof="+encodeURIComponent(a.signature_hash);
-    doc.setFillColor(...red);doc.roundedRect(right?86:18,y-6,106,12,2,2,"F");
-    doc.setTextColor(255,255,255);doc.setFontSize(10);
-    doc.text(label,right?188:22,y+2,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:right,isOutputRtl:false});
-    doc.link(right?86:18,y-6,106,12,{url});y+=15;
+    doc.setTextColor(...red);doc.setFontSize(10);
+    doc.text(label,right?192:18,y+2,{align:right?"right":"left",isInputVisual:false,isOutputVisual:true,isInputRtl:right,isOutputRtl:false});
+    doc.link(18,y-6,174,12,{url});y+=12;
   }
   lines(s.quote_text||s.quote||"",10,ink,1);
   section(t("תנאי ההתקשרות","Agreement terms"));

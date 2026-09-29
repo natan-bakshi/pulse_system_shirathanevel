@@ -3,7 +3,7 @@ import { Check, Circle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { closingText } from "./closingI18n";
 
-export default function ClosingStatus({agreement:a,busy,onToken,onDeposit,onPdf,onQuote,onRefresh,language="he"}) {
+export default function ClosingStatus({agreement:a,busy,onToken,onDeposit,onBank,onPdf,onQuote,onRefresh,language="he"}) {
   const t=closingText[language]||closingText.he;
   const completed=!!a.completed_at;
   const tokenDone=a.token_state==="verified";
@@ -23,7 +23,7 @@ export default function ClosingStatus({agreement:a,busy,onToken,onDeposit,onPdf,
       {label:t.stepSigned,done:true},
       ...(a.require_token?[{label:t.stepCard,done:tokenDone,action:onToken,button:t.cardButton}]:[]),
       ...(a.require_deposit?[{label:t.stepDeposit,done:depositDone,action:onDeposit,button:t.depositButton}]:[])
-    ].map(step=><div key={step.label} className="rounded-xl border border-stone-200 bg-stone-50 p-4 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3 min-w-0">{step.done?<Check aria-hidden="true" className="h-5 w-5 text-green-700 shrink-0"/>:<Circle aria-hidden="true" className="h-5 w-5 text-amber-700 shrink-0"/>}<div><p className="font-medium">{step.label}</p><p className="text-sm text-stone-600">{step.done?t.done:t.pending}</p></div></div>{!step.done&&<Button disabled={busy} onClick={step.action} className="min-h-11 bg-red-900 text-white hover:bg-red-800">{step.button}</Button>}</div>)}</div>
+    ].map(step=><div key={step.label} className="rounded-xl border border-stone-200 bg-stone-50 p-4 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3 min-w-0">{step.done?<Check aria-hidden="true" className="h-5 w-5 text-green-700 shrink-0"/>:<Circle aria-hidden="true" className="h-5 w-5 text-amber-700 shrink-0"/>}<div><p className="font-medium">{step.label}</p><p className="text-sm text-stone-600">{step.done?(step.label===t.stepDeposit&&a.deposit_received?`${t.done} · ${a.deposit_received} ${a.snapshot?.currency||""}`:t.done):t.pending}</p></div></div>{!step.done&&<Button disabled={busy} onClick={step.action} className="min-h-11 bg-red-900 text-white hover:bg-red-800">{step.button}</Button>}</div>)}</div>
     {requirementsMet&&<p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950 leading-7">{t.notClosed}</p>}
     <div className="flex flex-wrap gap-3"><Button disabled={busy} variant="outline" onClick={onPdf} className="min-h-11">{t.pdf}</Button><Button disabled={busy} variant="outline" onClick={onRefresh} className="min-h-11">{t.refresh}</Button></div>
   </section>;
