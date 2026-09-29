@@ -71,6 +71,7 @@ export function assertChargePermission({snapshot,accepted,kind,amount,paid,excep
    if(amount+exceptionalPaid>snapshot.exceptional_cap+0.005)throw new Error("הסכום חורג מתקרת החיוב החריג החתומה");
  } else {
    if(!milestone||milestone.due_date>now)throw new Error("טרם הגיע מועד אבן הדרך שנבחרה");
-   if(amount+paid>Math.min(snapshot.total,snapshot.regular_cap,milestone.cumulative_amount)+0.005)throw new Error("הסכום חורג מהיתרה המותרת לפי אבן הדרך והתקרה החתומה");
+   const paidSinceAgreement=Math.max(0,paid-Number(snapshot.regular_cap_paid_offset||0));
+   if(amount+paid>Math.min(snapshot.total,milestone.cumulative_amount)+0.005||amount+paidSinceAgreement>snapshot.regular_cap+0.005)throw new Error("הסכום חורג מהיתרה המותרת לפי אבן הדרך והתקרה החתומה");
  }
 }

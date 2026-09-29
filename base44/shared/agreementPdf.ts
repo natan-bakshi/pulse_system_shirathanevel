@@ -88,7 +88,7 @@ export async function makeAgreementPdf(a, config={}) {
     lines(t("אושר במפורש: ","Explicitly accepted: ")+(a.signature.accepted?.[c.code]?t("כן","Yes"):t("לא","No")),9,muted,4);
   }
   section(t("אבני הדרך לתשלום","Payment milestones"));
-  for(const m of s.milestones||[])lines(m.label+"  ·  "+money(m.amount)+"  ·  "+t("עד ","Due ")+m.due_date,10,ink,1);
+  for(const [i,m] of (s.milestones||[]).entries())lines(m.label+"  ·  "+money(m.amount)+"  ·  "+(i===0&&m.amount>0&&s.deposit_paid_at_creation?t("שולם — הושלם","Paid — completed"):t("עד ","Due ")+m.due_date),10,ink,1);
   lines(t("תקרת חיוב רגיל: ","Regular charge limit: ")+money(s.regular_cap));
   lines(t("תקרת חיוב חריג: ","Exceptional charge limit: ")+money(s.exceptional_cap));
   lines(t("דרישות סגירה: חתימה","Closing requirements: signature")+(a.require_token?t(" וכרטיס מאומת"," and verified card"):t("; ללא חובת כרטיס","; card not required"))+(a.require_deposit?t(" ומקדמה"," and deposit"):t("; ללא חובת מקדמה","; deposit not required")));

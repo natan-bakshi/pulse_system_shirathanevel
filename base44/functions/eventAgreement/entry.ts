@@ -81,7 +81,7 @@ async function preview(client,base44,eventId,config){
  const compact=agreementQuote(event,f,form_language);
  const sourceHash=await digest(canonical({translations,quoteFile:compact.quoteFile,total:f.finalTotal,currency:f.currency,event_date:event.event_date,existingDeposit}));
  return {event,sourceHash,translations,available_languages:enTerms?["he","en"]:["he"],form_language,message_language:agreementLanguage(config.closing_message_language),quote:selected.quote_text,quote_summary:compact.summary,quote_file:compact.quoteFile,terms:selected.terms,total:f.finalTotal,currency:f.currency,deposit,existing_deposit:existingDeposit,bank_details:cleanText(config.company_bank_details,1000),contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
- milestones:selected.milestones,regular_cap:roundMoney(f.finalTotal*Number(config.closing_regular_multiplier||1)),exceptional_cap:roundMoney(f.finalTotal*Number(config.closing_exceptional_multiplier||2)),
+ milestones:selected.milestones,regular_cap:existingDeposit>0?roundMoney(Math.max(0,f.balance)):roundMoney(f.finalTotal*Number(config.closing_regular_multiplier||1)),exceptional_cap:roundMoney(f.finalTotal*Number(config.closing_exceptional_multiplier||2)),
  clauses:selected.clauses,exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),require_token:config.closing_token_required!=="false",require_deposit:config.closing_deposit_required!=="false",
  send_copy:config.closing_send_copy!=="false",notifications:notifications({language:agreementLanguage(config.closing_message_language)},config)};
 }
@@ -366,7 +366,7 @@ export default Deno.serve(async req=>{
     }];
    }));
    const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:p.quote_summary,quote_file:p.quote_file,terms,clauses,milestones,
-    deposit:milestones[0].amount,bank_details:p.bank_details,regular_cap:regular,exceptional_cap:exceptional,
+    deposit:milestones[0].amount,deposit_paid_at_creation:!!body.require_deposit&&p.existing_deposit>0,bank_details:p.bank_details,regular_cap:regular,regular_cap_paid_offset:p.existing_deposit>0?roundMoney(p.quote_summary.paid):0,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
     exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),
     require_token:!!body.require_token,require_deposit:!!body.require_deposit};
