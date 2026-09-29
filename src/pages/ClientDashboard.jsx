@@ -92,8 +92,7 @@ export default function ClientDashboard() {
       // Check in parents array
       if (getClientContacts(event) && Array.isArray(getClientContacts(event))) {
         const foundParent = getClientContacts(event).find(parent =>
-          (parent.email && parent.email.toLowerCase() === userEmail) ||
-          (userPhone && parent.phone === userPhone)
+          (parent.client_access !== false && parent.email && parent.email.toLowerCase() === userEmail)
         );
         if (foundParent) {
           return true;
