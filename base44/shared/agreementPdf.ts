@@ -25,7 +25,6 @@ export async function makeAgreementPdf(a, config={}) {
       const width=p.width*scale,height=p.height*scale;
       doc.addImage(background.data,background.format,(210-width)/2,(297-height)/2,width,height,undefined,"FAST");
     }else{
-      doc.setFillColor(...red);doc.rect(0,0,210,10,"F");
       doc.setDrawColor(227,218,207);doc.line(18,281,192,281);
     }
   }

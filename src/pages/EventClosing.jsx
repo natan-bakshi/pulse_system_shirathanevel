@@ -35,7 +35,7 @@ export default function EventClosing(){
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[info,setInfo]=useState("");
  const [name,setName]=useState(""),[role,setRole]=useState(""),[strokes,setStrokes]=useState([]),[accepted,setAccepted]=useState({});
  const call=useCallback((action,body={})=>agreementAction(action,{agreementId:id,...auth.current,...body}),[id]);
- const run=async fn=>{setBusy(true);setError("");setInfo("");try{await fn();}catch(e){setError(agreementError(e));}finally{setBusy(false);}};
+ const run=async fn=>{setBusy(true);setError("");setInfo("");try{return await fn();}catch(e){setError(agreementError(e));return false;}finally{setBusy(false);}};
  const refresh=useCallback(async()=>{
   if(auth.current.verified){try{const a=await call("view");setAgreement(a);if(!userSelectedLanguage.current)setLanguage(a.signature?.language||a.snapshot?.form_language||"he");return;}catch(e){if(e.response?.status!==403)throw e;auth.current.verified=false;}}
   setOpened(await call("open"));
@@ -47,7 +47,7 @@ export default function EventClosing(){
  const pdf=async(kind)=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await call("document",{kind});if(r.url){if(tab)tab.location.replace(r.url);else location.assign(r.url);}}catch(e){tab?.close();throw e;}};
  const t=closingText[language]||closingText.he;
  const view=agreement?localizedSnapshot(agreement.snapshot,language):null;
- const statusActions={agreement,language,busy,onToken:()=>run(()=>redirect("token")),onDeposit:()=>run(()=>redirect("deposit")),onBank:()=>run(async()=>{const a=await call("choose_deposit_method",{method:"bank"});setAgreement(a);}),onPdf:()=>run(()=>pdf("signed")),onQuote:()=>run(()=>pdf("quote")),onRefresh:()=>run(refresh)};
+ const statusActions={agreement,language,busy,onToken:()=>run(()=>redirect("token")),onDeposit:()=>run(()=>redirect("deposit")),onBank:()=>run(async()=>{const a=await call("choose_deposit_method",{method:"bank"});setAgreement(a);return true;}),onPdf:()=>run(()=>pdf("signed")),onQuote:()=>run(()=>pdf("quote")),onRefresh:()=>run(refresh)};
  if(agreement?.completed_at)return <main dir={language==="en"?"ltr":"rtl"} className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white px-3 py-6 sm:px-6 sm:py-10 text-stone-800"><article className="mx-auto max-w-2xl rounded-3xl border border-stone-200 bg-white p-5 sm:p-10 shadow-lg"><ClosingStatus {...statusActions}/>{error&&<p role="alert" className="rounded bg-red-50 text-red-800 p-4 mt-5">{error}</p>}</article></main>;
  return <main dir={language==="en"?"ltr":"rtl"} className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white py-5 sm:py-10 px-3 sm:px-6 text-stone-800"><article className="mx-auto max-w-4xl rounded-3xl border border-stone-200 bg-white p-4 sm:p-10 space-y-7 shadow-lg">
   <header className="text-center border-b border-amber-100 pb-6"><p className="text-red-900 font-semibold tracking-wide">{t.brand}</p><h1 className="text-2xl sm:text-3xl font-bold text-red-950 mt-3">{t.title}</h1><p className="text-stone-500 mt-3 text-sm">{t.subtitle}</p></header>

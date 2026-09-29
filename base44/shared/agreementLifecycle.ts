@@ -56,7 +56,7 @@ export async function reconcileAgreement(client,eventId,config=null) {
  const token=!!(card?.state==="active"&&(card.environment==="production"||event.stored_card_qa_only===true)&&card.customer_id===a.customer_id&&card.environment===(config.stored_cards_env==="production"?"production":"qa")&&event.billing_customer_id===a.customer_id);
  const received=firstCompletedPayment(f.payments,f.currency,Number(config.usd_ils_exchange_rate)||3.6);
  // A verified first payment satisfies the deposit requirement, without changing signed terms.
- const deposit=a.require_deposit?received>0:false;
+ const deposit=a.require_deposit?f.totalPaid+0.005>=a.snapshot.deposit:false;
  const depositState=a.require_deposit?(deposit?"paid":"pending"):"waived";
  if(a.deposit_received!==received)await client.entities.EventAgreement.update(a.id,{deposit_received:received});
  const changes:any={};
