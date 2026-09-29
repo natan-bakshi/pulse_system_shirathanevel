@@ -245,7 +245,7 @@ export default function EventDetails() {
   
   const { data: payments = [] } = useQuery({
     queryKey: ['payments', eventId],
-    queryFn: () => base44.entities.Payment.filter({ event_id: eventId }),
+    queryFn: async () => user?.role === 'admin' ? base44.entities.Payment.filter({ event_id: eventId }) : (await base44.functions.invoke('clientEventFinance', { eventIds: [eventId] })).data.payments,
     enabled: !!eventId && shouldLoadPayments
   });
 

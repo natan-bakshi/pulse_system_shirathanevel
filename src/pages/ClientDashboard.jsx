@@ -58,14 +58,6 @@ export default function ClientDashboard() {
     select: (data) => Array.isArray(data) ? data : []
   });
 
-  // React Query for payments
-  const { data: allPayments = [] } = useQuery({
-    queryKey: ['payments'],
-    queryFn: () => base44.entities.Payment.list(),
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
-  });
 
   // הגדרות מערכת - שיעור המע"מ נלקח מ-AppSettings ולא מקובע בקוד
   const { data: appSettings = [] } = useQuery({
@@ -111,6 +103,12 @@ export default function ClientDashboard() {
       return false;
     });
   }, [allEvents, user]);
+
+  const {data: allPayments=[]}=useQuery({
+    queryKey:['clientPayments',clientEvents.map(e=>e.id).join(',')],
+    queryFn:async()=>clientEvents.length?(await base44.functions.invoke('clientEventFinance',{eventIds:clientEvents.map(e=>e.id)})).data.payments:[],
+    enabled:!!user,staleTime:2*60*1000
+  });
 
   // Pre-group services & payments by event_id ONCE — avoids O(n²) filter per event card.
   const servicesByEvent = useMemo(() => {

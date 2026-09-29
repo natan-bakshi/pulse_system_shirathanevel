@@ -62,7 +62,7 @@ export async function makeAgreementPdf(a, config={}) {
   }
   doc.setFontSize(11);doc.setTextColor(...red);doc.text(t("שירת הנבל","Shirat Hanevel"),105,y,{align:"center",isInputVisual:false,isOutputVisual:true,isInputRtl:!english,isOutputRtl:false});y+=8;
   doc.setFontSize(19);doc.text(t("הסכם ואישור אירוע","Event agreement & confirmation"),105,y,{align:"center",isInputVisual:false,isOutputVisual:true,isInputRtl:!english,isOutputRtl:false});y+=10;
-  doc.setFontSize(15);doc.setTextColor(...ink);doc.text(s.event_name,105,y,{align:"center",isInputVisual:false,isOutputVisual:true,isInputRtl:/[\u0590-\u05ff]/.test(s.event_name),isOutputRtl:false});y+=9;
+  doc.setFontSize(15);doc.setTextColor(...ink);for(const titleLine of doc.splitTextToSize(String(s.event_name||""),170)){pageIf(9);doc.text(titleLine,105,y,{align:"center",isInputVisual:false,isOutputVisual:true,isInputRtl:/[\u0590-\u05ff]/.test(titleLine),isOutputRtl:false});y+=8;}y+=1;
   doc.setDrawColor(227,218,207);doc.line(18,y,192,y);y+=6;
   lines(t("מזהה הסכם: ","Agreement ID: ")+a.id+"  ·  "+t("גרסה: ","Version: ")+a.version,9,muted);
   lines(t("נחתם: ","Signed: ")+a.signed_at,9,muted);

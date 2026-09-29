@@ -26,7 +26,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
 
   const { data: documents = [] } = useQuery({
     queryKey: ["eventFinancialDocuments", eventId],
-    queryFn: () => base44.entities.FinancialDocument.filter({ linked_event_id: eventId }),
+    queryFn: async () => isAdmin ? base44.entities.FinancialDocument.filter({ linked_event_id: eventId }) : (await base44.functions.invoke('clientEventFinance',{eventIds:[eventId],includeDocuments:true})).data.documents,
     enabled: !!eventId
   });
 
