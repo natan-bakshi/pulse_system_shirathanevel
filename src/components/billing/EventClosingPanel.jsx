@@ -9,6 +9,7 @@ import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from 
 import AgreementView from "./AgreementView";
 import { localizedSnapshot } from "./closingI18n";
 import { rebalanceMilestones } from "./rebalanceMilestones";
+import { toast } from "sonner";
 const input="block w-full min-w-0 rounded-lg border border-input bg-background p-2.5 mt-1.5 text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-red-800/30 focus-visible:border-red-800 disabled:opacity-60";
 const auditNames={created:"נוצרה גרסת הסכם",link_issued:"הופק קישור",invitation_accepted:"הזמנה התקבלה אצל ספק הוואטסאפ",opened:"הקישור נפתח",verification_sent:"נשלח קוד אימות",verified:"הטלפון אומת",admin_verified:"המנהל אימת באמצעות סיסמה",card_linked:"כרטיס קיים קושר להסכם",signed:"ההסכם נחתם",token_link_created:"נוצר קישור לכרטיס",token_verified:"הכרטיס אומת",deposit_link_created:"נוצר קישור למקדמה",deposit_paid:"המקדמה שולמה",deposit_verified:"תשלום המקדמה אומת מול הספק",event_closed:"האירוע נסגר לפי הנוהל",superseded:"הוחלף בגרסה חדשה",cancelled:"ההסכם בוטל",notification_settings_changed:"עודכנו הגדרות הודעות",amendment_recorded:"תועד שינוי מוסכם",reminder_accepted:"תזכורת התקבלה אצל הספק",exceptional_notice:"נשלחה הודעה על חיוב חריג",workflow_recovered:"שוחררה פעולה שנקטעה"};
 function Notifications({value:n,onChange}){
@@ -27,9 +28,23 @@ export default function EventClosingPanel({event,onChanged}){
  useEffect(()=>{if(error||loadError)detailsRef.current?.setAttribute("open","");},[error,loadError]);
  useEffect(()=>{const stop=base44.entities.EventAgreement.subscribe(c=>{if(c.data?.event_id===event.id||c.id===a?.id)qc.invalidateQueries({queryKey:["eventAgreement",event.id]});});return()=>stop();},[event.id,a?.id,qc]);
  const run=async fn=>{setBusy(true);setError("");setMessage("");try{await fn();await refetch();if(onChanged)await onChanged();}catch(e){setError(agreementError(e));}finally{setBusy(false);}};
- const openDraft=()=>run(async()=>{const p=await agreementAction("preview",{eventId:event.id});setDraft({...p,name:"",phone:"",email:""});});
+ const openDraft=()=>run(async()=>{const p=await agreementAction("preview",{eventId:event.id});setDraft({...p,name:"",phone:"",email:"",send_whatsapp:true});});
  useEffect(()=>{const open=e=>{if(e.detail===event.id)openDraft();};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
- const issue=send=>run(async()=>{const r=await agreementAction("issue",{agreementId:a.id,send});setUrl(r.url);setMessage(r.warning|| (send?"הקישור התקבל אצל ספק הוואטסאפ. פתיחה וחתימה יופיעו במעקב.":"הקישור מוכן להעתקה."));});
+ const sentNotice="טופס סגירת האירוע נשלח ללקוח לחתימה";
+ const issue=send=>run(async()=>{const r=await agreementAction("issue",{agreementId:a.id,send});setUrl(r.url);setMessage(r.warning|| (send?"הקישור התקבל אצל ספק הוואטסאפ. פתיחה וחתימה יופיעו במעקב.":"הקישור מוכן להעתקה."));if(send&&!r.warning)toast.success(sentNotice,{description:"ההודעה התקבלה אצל ספק הוואטסאפ; פתיחה וחתימה יופיעו במעקב."});});
+ const saveDraft=()=>run(async()=>{
+  const {send_whatsapp,...payload}=draft;
+  const created=await agreementAction("create",{...payload,eventId:event.id});
+  setDraft(null);setUrl("");
+  if(!send_whatsapp){setMessage("הגרסה נשמרה. ניתן לשלוח קישור בוואטסאפ או להעתיק אותו.");return;}
+  try{
+   const r=await agreementAction("issue",{agreementId:created.id,send:true});
+   setUrl(r.url);
+   if(r.warning){setMessage("הטופס נשמר, אך שליחת הקישור לא אושרה: "+r.warning);return;}
+   setMessage("הקישור התקבל אצל ספק הוואטסאפ. פתיחה וחתימה יופיעו במעקב.");
+   toast.success(sentNotice,{description:"ההודעה התקבלה אצל ספק הוואטסאפ; פתיחה וחתימה יופיעו במעקב."});
+  }catch(e){throw new Error("הטופס נשמר, אך מצב שליחת הקישור לא אומת. יש לבדוק את המעקב לפני שליחה חוזרת. "+agreementError(e));}
+ });
  const openPdf=(id,kind="signed")=>run(async()=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await agreementAction("pdf",{agreementId:id,kind});if(tab)tab.location.replace(r.url);else window.location.assign(r.url);}catch(e){tab?.close();throw e;}});
  const change=(key,value)=>setDraft(d=>({...d,[key]:value}));
  const changeFormLanguage=language=>setDraft(d=>{
@@ -85,7 +100,9 @@ export default function EventClosingPanel({event,onChanged}){
    {draft&&<div className="space-y-5 px-5 py-6 sm:px-8 sm:py-7 text-foreground">
      <div className="grid gap-4 sm:grid-cols-2 rounded-xl border border-border bg-muted/30 p-4"><label className="text-sm font-medium">שפת הטופס וההסכם<select className={input} value={draft.form_language} onChange={e=>changeFormLanguage(e.target.value)}>{draft.available_languages?.map(lang=><option key={lang} value={lang}>{lang==="en"?"English":"עברית"}</option>)}</select></label><label className="text-sm font-medium">שפת ההודעות ללקוח<select className={input} value={draft.message_language} onChange={e=>setDraft(d=>({...d,message_language:e.target.value,notifications:{...d.notifications,language:e.target.value,template:""}}))}><option value="he">עברית</option><option value="en">English</option></select></label></div>
     {!!draft.contacts?.length&&<label className="block">מילוי מתוך אנשי הקשר באירוע<select className={input} defaultValue="" onChange={e=>{const c=draft.contacts[Number(e.target.value)];if(c)setDraft({...draft,name:c.name,phone:c.phone,email:c.email});}}><option value="" disabled>בחר איש קשר</option>{draft.contacts.map((c,i)=><option key={i} value={i}>{c.name} — {c.phone}</option>)}</select></label>}
-    {[["name","שם מלא"],["phone","טלפון הלקוח בוואטסאפ"],["email","אימייל (רשות)"]].map(([k,l])=><label key={k} className="block">{l}<input className={input} value={draft[k]} onChange={e=>change(k,e.target.value)}/></label>)}
+    <label className="block">שם מלא<input className={input} value={draft.name} onChange={e=>change("name",e.target.value)}/></label>
+    <div className="rounded-xl border border-border p-4"><label className="block">טלפון הלקוח בוואטסאפ<input type="tel" className={input} value={draft.phone} onChange={e=>change("phone",e.target.value)}/></label><label className="mt-3 flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="h-4 w-4 accent-red-900" checked={draft.send_whatsapp} onChange={e=>change("send_whatsapp",e.target.checked)}/>שלח קישור לחתימה בוואטסאפ עם יצירת הטופס</label></div>
+    <label className="block">אימייל (רשות)<input className={input} value={draft.email} onChange={e=>change("email",e.target.value)}/></label>
     <div className="rounded-xl border border-border bg-muted/30 p-4 sm:p-5 space-y-2"><p className="text-sm text-muted-foreground">סיכום האירוע</p><p className="text-xl font-bold text-foreground">{new Intl.NumberFormat('he-IL',{style:'currency',currency:draft.currency}).format(draft.total)}</p>{[["require_token","חובת כרטיס מאומת לסגירה"],["require_deposit","חובת מקדמה לסגירה"],["send_copy","שלח ללקוח עותק PDF חתום בוואטסאפ"]].map(([k,l])=><label key={k} className="flex gap-2 mt-2"><input type="checkbox" checked={!!draft[k]} onChange={e=>k==="require_deposit"?toggleDeposit(e.target.checked):change(k,e.target.checked)}/>{l}</label>)}</div>
     <details className="rounded-xl border border-border p-4 sm:p-5"><summary className="font-semibold cursor-pointer text-foreground">תצוגת הצעת המחיר שתצורף</summary><p className="whitespace-pre-wrap text-sm leading-7 mt-4 rounded-lg bg-muted/30 p-3">{draft.quote}</p><p className="text-sm text-amber-900 mt-2">{draft.quote_file?"יצורף PDF מההיסטוריה: "+draft.quote_file.file_name:"אין PDF בהיסטוריית ההצעות. מומלץ להפיק הצעת מחיר לפני הכנת הטופס."}</p></details>
     <details className="rounded-xl border border-border p-4 sm:p-5"><summary className="cursor-pointer font-semibold text-foreground">נוסח ההסכם והרשאות — פרטים נוספים</summary><div className="space-y-4 pt-4"><label className="block">תנאי ההתקשרות<textarea rows={8} className={input} value={draft.terms} onChange={e=>change("terms",e.target.value)}/></label>
@@ -102,7 +119,7 @@ export default function EventClosingPanel({event,onChanged}){
     <details className="rounded-xl border border-border p-4 sm:p-5"><summary className="cursor-pointer font-semibold text-foreground">תזכורות והודעות — פרטים נוספים</summary><div className="pt-4"><Notifications value={draft.notifications} onChange={n=>change("notifications",n)}/></div></details>
     {a&&<p className="text-amber-800 text-sm">יצירת גרסה חדשה תבטל קישורים לגרסה הקודמת. המסמך החתום הקודם נשמר.</p>}
     {error&&<p role="alert" className="text-red-800">{error}</p>}
-    <div className="border-t border-border pt-5"><Button className="w-full sm:w-auto bg-red-900 text-white hover:bg-red-800" disabled={busy||!draft.name.trim()||!draft.phone.trim()||!draft.terms.trim()} onClick={()=>run(async()=>{await agreementAction("create",{...draft,eventId:event.id});setDraft(null);setUrl("");setMessage("הגרסה נשמרה. כעת ניתן לשלוח קישור בוואטסאפ או להעתיק אותו.");})}>{busy?"שומר...":"שמור את הטופס והכן לשליחה"}</Button></div>
+    <div className="border-t border-border pt-5"><Button className="w-full sm:w-auto bg-red-900 text-white hover:bg-red-800" disabled={busy||!draft.name.trim()||!draft.phone.trim()||!draft.terms.trim()} onClick={saveDraft}>{busy?"מטפל בטופס...":draft.send_whatsapp?"שמור ושלח קישור לחתימה":"שמור את הטופס והכן לשליחה"}</Button></div>
    </div>}
   </DialogContent></Dialog>
   <Dialog open={!!notification} onOpenChange={open=>{if(!open&&!busy)setNotification(null);}}><DialogContent dir="rtl" className="max-h-[90vh] overflow-auto"><DialogHeader><DialogTitle>הודעות ללקוח</DialogTitle><DialogDescription>העדכון חל על הודעות עתידיות. הרשאות הגבייה החתומות אינן משתנות.</DialogDescription></DialogHeader>{notification&&<><label className="block">שפת הודעות עתידיות<select className={input} value={notification.notifications?.language||a.snapshot.message_language||"he"} onChange={e=>setNotification({...notification,notifications:{...notification.notifications,language:e.target.value,template:""}})}><option value="he">עברית</option><option value="en">English</option></select></label><Notifications value={notification.notifications} onChange={n=>setNotification({...notification,notifications:n})}/><label className="flex gap-2"><input type="checkbox" checked={notification.send_copy} onChange={e=>setNotification({...notification,send_copy:e.target.checked})}/>שלח עותק חתום בוואטסאפ</label>{error&&<p className="text-red-800">{error}</p>}<Button disabled={busy} onClick={()=>run(async()=>{await agreementAction("notifications",{agreementId:a.id,...notification});setNotification(null);})}>שמור הגדרות הודעות</Button></>}</DialogContent></Dialog>
