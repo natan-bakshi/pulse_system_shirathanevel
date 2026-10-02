@@ -1,4 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
+const BACKUP_FORMAT_VERSION = 2;
 
 const MAX_BACKUPS = 30; // מדיניות FIFO - שומר עד 30 גיבויים
 
@@ -23,7 +25,35 @@ Deno.serve(async (req) => {
         // שלב 1: אחזור כל הנתונים מכל הישויות
         console.log('[Backup] Fetching all entities data...');
         
-        const [events, eventServices, services, suppliers, payments, packages, appSettings, quoteTemplates, signedAgreements, priceHistory, users] = await Promise.all([
+        const [
+            events,
+            eventServices,
+            services,
+            suppliers,
+            payments,
+            packages,
+            appSettings,
+            quoteTemplates,
+            signedAgreements,
+            priceHistory,
+            users,
+            manualQuotes,
+            quoteOrganizerTypes,
+            notificationTemplates,
+            tasks,
+            eventAgreements,
+            consentClauses,
+            agreementAmendments,
+            agreementAuditEvents,
+            agreementChargeNotices,
+            billingCustomers,
+            financialDocuments,
+            paymentMilestones,
+            storedCards,
+            storedCardOperations,
+            cardSetupRequests,
+            clientMessageDeliveries
+        ] = await Promise.all([
             base44.asServiceRole.entities.Event.list(),
             base44.asServiceRole.entities.EventService.list(),
             base44.asServiceRole.entities.Service.list(),
@@ -34,7 +64,23 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.QuoteTemplate.list(),
             base44.asServiceRole.entities.SignedAgreement.list(),
             base44.asServiceRole.entities.PriceHistory.list(),
-            base44.asServiceRole.entities.User.list()
+            base44.asServiceRole.entities.User.list(),
+            base44.asServiceRole.entities.ManualQuote.list(),
+            base44.asServiceRole.entities.QuoteOrganizerType.list(),
+            base44.asServiceRole.entities.NotificationTemplate.list(),
+            base44.asServiceRole.entities.Task.list(),
+            base44.asServiceRole.entities.EventAgreement.list(),
+            base44.asServiceRole.entities.ConsentClause.list(),
+            base44.asServiceRole.entities.AgreementAmendment.list(),
+            base44.asServiceRole.entities.AgreementAuditEvent.list(),
+            base44.asServiceRole.entities.AgreementChargeNotice.list(),
+            base44.asServiceRole.entities.BillingCustomer.list(),
+            base44.asServiceRole.entities.FinancialDocument.list(),
+            base44.asServiceRole.entities.PaymentMilestone.list(),
+            base44.asServiceRole.entities.StoredCard.list(),
+            base44.asServiceRole.entities.StoredCardOperation.list(),
+            base44.asServiceRole.entities.CardSetupRequest.list(),
+            base44.asServiceRole.entities.ClientMessageDelivery.list()
         ]);
 
         console.log(`[Backup] Fetched ${events.length} events, ${eventServices.length} event services`);
@@ -51,7 +97,23 @@ Deno.serve(async (req) => {
             QuoteTemplate: quoteTemplates,
             SignedAgreement: signedAgreements,
             PriceHistory: priceHistory,
-            User: users
+            User: users,
+            ManualQuote: manualQuotes,
+            QuoteOrganizerType: quoteOrganizerTypes,
+            NotificationTemplate: notificationTemplates,
+            Task: tasks,
+            EventAgreement: eventAgreements,
+            ConsentClause: consentClauses,
+            AgreementAmendment: agreementAmendments,
+            AgreementAuditEvent: agreementAuditEvents,
+            AgreementChargeNotice: agreementChargeNotices,
+            BillingCustomer: billingCustomers,
+            FinancialDocument: financialDocuments,
+            PaymentMilestone: paymentMilestones,
+            StoredCard: storedCards,
+            StoredCardOperation: storedCardOperations,
+            CardSetupRequest: cardSetupRequests,
+            ClientMessageDelivery: clientMessageDeliveries
         };
 
         // שלב 3: בניית גיבויים ספציפיים לכל אירוע (enriched)
