@@ -213,11 +213,38 @@ Deno.serve(async (req) => {
         const now = new Date();
         const backupTimestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
+        const entityCounts = Object.fromEntries(
+            Object.entries(masterEntities).map(([name, rows]) => [
+                name,
+                Array.isArray(rows) ? rows.length : 0
+            ])
+        );
+
         const consolidatedBackup = {
+            format_version: BACKUP_FORMAT_VERSION,
+            source_app: 'shirat_hanevel',
+            scope: 'single_company_migration',
             backup_date: now.toISOString(),
             backup_by: user.email,
             backup_name: backupTimestamp,
-            // Master entities (לשחזור)
+            manifest: {
+                format_version: BACKUP_FORMAT_VERSION,
+                source_app: 'shirat_hanevel',
+                scope: 'single_company_migration',
+                entities: entityCounts,
+                omitted_by_design: [
+                    'InAppNotification',
+                    'PendingPushNotification',
+                    'TourStep'
+                ],
+                portability: {
+                    identity_records: 'snapshot_only',
+                    provider_runtime_state: 'snapshot_only_requires_sanitized_import',
+                    agreement_sessions_and_otp: 'snapshot_only_requires_invalidation',
+                    stored_card_provider_references: 'snapshot_only_requires_provider_migration'
+                }
+            },
+            // Master entities (לשחזור/מיגרציה)
             entities: masterEntities,
             // גיבויים מועשרים לפי אירוע
             event_backups: enrichedEventBackups,
@@ -287,6 +314,7 @@ Deno.serve(async (req) => {
 
         return Response.json({
             success: true,
+            format_version: BACKUP_FORMAT_VERSION,
             backup_name: backupTimestamp,
             backup_file_name: backupFileName,
             backup_file_id: uploadResult.id,
