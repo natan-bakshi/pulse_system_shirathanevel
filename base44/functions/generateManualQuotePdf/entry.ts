@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { getEventDisplayName } from '../../shared/eventName.ts';
+import { composeModularQuoteHtml } from '../../shared/modularQuote.ts';
 
 // =====================================================================
 // Helpers
@@ -590,7 +591,7 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
 // Main handler
 // =====================================================================
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -599,17 +600,19 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { manualQuoteId } = body;
-    if (!manualQuoteId) {
+    const { manualQuoteId, modularQuoteId } = body;
+    if (!manualQuoteId && !modularQuoteId) {
       return Response.json({ error: 'manualQuoteId is required' }, { status: 400 });
     }
 
-    const manualQuote = await base44.asServiceRole.entities.ManualQuote.get(manualQuoteId);
+    const quoteEntity = modularQuoteId ? base44.asServiceRole.entities.ModularQuote : base44.asServiceRole.entities.ManualQuote;
+    const savedQuoteId = modularQuoteId || manualQuoteId;
+    const manualQuote = await quoteEntity.get(savedQuoteId);
     if (!manualQuote) {
       return Response.json({ error: 'Manual quote not found' }, { status: 404 });
     }
 
-    const { html, fileBaseName, event } = await composeManualQuoteHtml(manualQuote, base44);
+    const { html, fileBaseName, event } = await (modularQuoteId ? composeModularQuoteHtml(manualQuote, base44) : composeManualQuoteHtml(manualQuote, base44));
 
     const apiKey = Deno.env.get('API2PDF_API_KEY');
     if (!apiKey) throw new Error('API2PDF_API_KEY is not set');
@@ -653,10 +656,10 @@ Deno.serve(async (req) => {
       savedFileUri = fileUri;
 
       // Update manual quote record
-      await base44.asServiceRole.entities.ManualQuote.update(manualQuoteId, {
+      await quoteEntity.update(savedQuoteId, {
         last_pdf_uri: fileUri,
         last_pdf_name: fileName,
-        status: 'finalized'
+        ...(modularQuoteId ? {} : { status: 'finalized' })
       });
 
       // Append to event quote_history if linked
@@ -675,6 +678,7 @@ Deno.serve(async (req) => {
         });
       }
     } catch (historyError) {
+      if (modularQuoteId) throw historyError;
       console.error('Non-blocking: failed to save PDF to storage/history:', historyError);
     }
 
@@ -683,4 +687,4 @@ Deno.serve(async (req) => {
     console.error('Error in generateManualQuotePdf:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

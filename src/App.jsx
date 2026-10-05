@@ -23,6 +23,7 @@ const ContactDirectory = React.lazy(() => import('@/pages/ContactDirectory'));
 const BarMitzvahCalculator = React.lazy(() => import('@/pages/BarMitzvahCalculator'));
 const EventClosing = React.lazy(() => import("@/pages/EventClosing"));
 const BillingDashboard = React.lazy(() => import('@/pages/BillingDashboard'));
+const ModularQuoteView = React.lazy(() => import('@/pages/ModularQuoteView'));
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -95,6 +96,7 @@ const AuthenticatedApp = () => {
           </Suspense>
         </LayoutWrapper>
       } />
+      <Route path="/ModularQuoteView" element={<Suspense fallback={<PageLoadingFallback />}><ModularQuoteView /></Suspense>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
@@ -102,6 +104,7 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  if(window.location.pathname.replace(/\/$/, '') === '/ModularQuoteView') return <Suspense fallback={<PageLoadingFallback/>}><ModularQuoteView/></Suspense>;
   if(window.location.pathname.replace(/\/$/, '') === '/EventClosing') return <Suspense fallback={<PageLoadingFallback/>}><EventClosing/></Suspense>;
 
   return (

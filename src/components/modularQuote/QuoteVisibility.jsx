@@ -1,0 +1,5 @@
+import React from 'react';
+import { visibilityFields } from '@/components/modularQuote/quoteDefaults';
+export default function QuoteVisibility({content,onChange}) {
+  return <fieldset className="rounded-xl border p-4 space-y-3"><legend className="px-2 font-semibold">מה יופיע בהצעה?</legend><div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{visibilityFields.map(([key,label])=><label key={key} className="flex items-center gap-2 text-sm min-h-9"><input type="checkbox" aria-label={`הצג ${label}`} checked={content[key]!==false} disabled={key==='show_summary'&&content.show_prices===false} onChange={e=>onChange({...content,[key]:e.target.checked})}/>{label}</label>)}</div><p className="text-xs text-muted-foreground">הסתרת מחירים מסירה את כל מחירי החבילות והשירותים ואת הסיכום הכספי. הערכים נשמרים לעריכה בלבד.</p></fieldset>;
+}

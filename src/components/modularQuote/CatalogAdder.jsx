@@ -1,0 +1,8 @@
+import React, {useState} from 'react';
+import {Button} from '@/components/ui/button';
+import {makeItem} from '@/components/modularQuote/quoteDefaults';
+export default function CatalogAdder({services,packages=[],onAdd,childrenOnly=false}) {
+  const [selection,setSelection]=useState('');
+  function add(){const [kind,id]=selection.split(':');const source=(kind==='package'?packages:services).find(s=>s.id===id);if(source){onAdd(makeItem(source,kind,services));setSelection('');}}
+  return <div className="space-y-2"><div className="flex flex-wrap gap-2"><select aria-label={childrenOnly?'בחירת שירות לחבילה':'בחירת חבילה או שירות'} className="bg-background border rounded-md p-2 min-w-0 flex-1 w-full sm:w-auto text-sm" value={selection} onChange={e=>setSelection(e.target.value)}><option value="">בחר מהקטלוג</option>{!childrenOnly&&<optgroup label="חבילות">{packages.filter(p=>p.is_active!==false).map(p=><option key={p.id} value={`package:${p.id}`}>{p.package_name}</option>)}</optgroup>}<optgroup label="שירותים">{services.filter(s=>s.is_active!==false).map(s=><option key={s.id} value={`service:${s.id}`}>{s.service_name}</option>)}</optgroup></select><Button variant="outline" disabled={!selection} onClick={add}>הוסף מהקטלוג</Button></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>onAdd(makeItem())}>שירות חופשי</Button>{!childrenOnly&&<Button variant="outline" onClick={()=>onAdd(makeItem({},'package'))}>חבילה חופשית</Button>}</div></div>;
+}

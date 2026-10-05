@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, Plus, Trash2, Loader2, Edit, UploadCloud, FileText } from "lucide-react";
-import ManualQuotesList from "@/components/manualQuote/ManualQuotesList";
+import ManualQuoteTabs from "@/components/manualQuote/ManualQuoteTabs";
 import OrganizerTypesTab from "@/components/quotes/OrganizerTypesTab";
 
 const quillModules = {
@@ -734,7 +734,7 @@ export default function QuoteTemplateManagement() {
 
                 {manualQuoteEnabled && (
                     <TabsContent value="manual" className="space-y-6">
-                        <ManualQuotesList />
+                        <ManualQuoteTabs />
                     </TabsContent>
                 )}
             </Tabs>

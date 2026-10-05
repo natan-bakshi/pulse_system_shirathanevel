@@ -1,0 +1,48 @@
+{
+  "name": "ModularQuote",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "share_token": {
+      "type": "string"
+    },
+    "last_pdf_uri": {
+      "type": "string"
+    },
+    "last_pdf_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "content"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
