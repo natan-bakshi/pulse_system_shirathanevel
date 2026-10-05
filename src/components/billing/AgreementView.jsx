@@ -36,9 +36,9 @@ export default function AgreementView({snapshot,onOpenQuote,busy=false,language=
    <div className="space-y-3">{s.milestones?.map((m,i)=>{const paid=i===0&&Number(m.amount)>0&&(s.deposit_paid_at_creation||Number(paidAmount)>=Number(m.amount));return <div key={i} className="flex items-start gap-3 rounded-xl bg-stone-50 p-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-900 text-white text-xs">{i+1}</span><div className="flex-1"><p className="font-medium">{m.label}</p><p className="text-sm text-stone-600 mt-1">{paid?t.paidMilestone:t.due+" "+israelDate(m.due_date)}</p></div><strong className="text-sm whitespace-nowrap">{fmt(m.amount)}</strong></div>})}</div>
   </section>
   <div className="rounded-2xl bg-amber-50/60 border border-amber-100 p-5 space-y-3 text-sm leading-7">
-   <h3 className="font-semibold text-red-950">{t.conditions}</h3><p>{t.regularCap}: <strong>{fmt(s.regular_cap)}</strong> · {t.exceptionalCap}: <strong>{fmt(s.exceptional_cap)}</strong>. {t.feeNote}</p>
-   <p>{s.exceptional_notice?t.notice+' '+s.exceptional_notice_days+' '+t.days:t.noNotice}</p>
-   <p>{t.closingNeeds}{s.require_token?t.cardNeeded:t.cardWaived}{s.require_deposit?t.depositNeeded+fmt(s.deposit):t.depositWaived}. {t.manualOnly}</p>
+   <h3 className="font-semibold text-red-950">{t.conditions}</h3>{s.require_token&&<><p>{t.regularCap}: <strong>{fmt(s.regular_cap)}</strong> · {t.exceptionalCap}: <strong>{fmt(s.exceptional_cap)}</strong>. {t.feeNote}</p>
+   <p>{s.exceptional_notice?t.notice+' '+s.exceptional_notice_days+' '+t.days:t.noNotice}</p></>}
+   <p>{t.closingNeeds}{s.require_token?t.cardNeeded:""}{s.require_deposit?t.depositNeeded+fmt(s.deposit):t.depositWaived}. {s.require_token&&t.manualOnly}</p>
   </div>
  </div>;
 }
