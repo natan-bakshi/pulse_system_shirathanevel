@@ -67,14 +67,32 @@ test("new and old agreement snapshots render without exposing private file URI",
  test("closing shows only required steps, verified card counts, and success needs completion",()=>{
  const render=a=>renderToStaticMarkup(globalThis.__React.createElement(ClosingStatus,{agreement:a,onToken:()=>{},onDeposit:()=>{},onPdf:()=>{},onRefresh:()=>{}}));
  const waiting=render({signed_at:"2026-09-27",require_token:true,token_state:"pending",require_deposit:false,deposit_state:"waived"});
- assert.match(waiting,/אימות כרטיס לתשלום/);assert.match(waiting,/שמירת כרטיס בדף מאובטח/);
- assert.equal(waiting.includes("תשלום מקדמה"),false);
+ assert.match(waiting,/מסירת כרטיס לביטחון בלבד/);assert.match(waiting,/מסירת כרטיס לביטחון בדף מאובטח/);
+ assert.equal(waiting.includes("תשלום מקדמה בדף מאובטח"),false);
  const verified=render({signed_at:"2026-09-27",require_token:true,token_state:"verified",require_deposit:false,deposit_state:"waived"});
  assert.match(verified,/הדרישות בהסכם הושלמו, אך סגירת האירוע טרם אושרה/);
- assert.equal(verified.includes("שמירת כרטיס בדף מאובטח"),false);
+ assert.equal(verified.includes("מסירת כרטיס לביטחון בדף מאובטח"),false);
  const done=render({signed_at:"2026-09-27",require_token:true,token_state:"verified",require_deposit:false,deposit_state:"waived",completed_at:"2026-09-27"});
  assert.match(done,/הכול מוכן. האירוע אושר/);assert.match(done,/הכרטיס אומת/);
  assert.equal(done.includes("המקדמה שולמה"),false);
  const optional=render({signed_at:"2026-09-27",require_token:false,token_state:"pending",require_deposit:true,deposit_state:"pending"});
- assert.equal(optional.includes("אימות כרטיס לתשלום"),false);assert.match(optional,/תשלום מקדמה בדף מאובטח/);
+ assert.equal(optional.includes("מסירת כרטיס לביטחון בלבד"),false);assert.match(optional,/תשלום מקדמה בדף מאובטח/);
  });
+const guidance=await load("src/components/billing/closingGuidance.js");
+test("unfinished requirements reflect signature, security card and bank transfer correctly",()=>{
+ const a={require_token:true,require_deposit:true,token_state:"pending",deposit_state:"pending"};
+ assert.equal(guidance.outstandingClosingSteps(a).length,3);
+ assert.equal(guidance.outstandingClosingSteps({...a,signed_at:"now",token_state:"verified"}).length,1);
+ assert.equal(guidance.outstandingClosingSteps({...a,completed_at:"now"}).length,0);
+ assert.equal(guidance.outstandingClosingSteps({signed_at:"now",require_token:false,require_deposit:false}).length,0);
+ assert.match(guidance.outstandingClosingSteps({...a,signed_at:"now",deposit_method:"bank"}).join(" "),/ממתינה לקבלה ולרישום/);
+});
+test("card-free summary hides card caps and exceptional charge notices",()=>{
+ const html=renderToStaticMarkup(globalThis.__React.createElement(AgreementView,{snapshot:{event_name:"Test",currency:"ILS",total:500,terms:"Terms",milestones:[],require_token:false,require_deposit:false,regular_cap:500,exceptional_cap:1000}}));
+ for(const text of ["תקרת חיוב","חיוב חריג","כרטיס","עמלת הסליקה"])assert.equal(html.includes(text),false,text);
+});
+test("deposit explanation uses actual configured fee and distinguishes bank transfer",()=>{
+ const a={snapshot:{currency:"ILS",fee_config:{processing_fee_enabled:"true",processing_fee_value:"2.5",processing_fee_type:"percent"}}};
+ assert.match(guidance.depositExplanation(a),/2.5%/);assert.match(guidance.depositExplanation(a),/ללא עמלת סליקה מטעמנו/);
+ a.snapshot.fee_config.processing_fee_enabled="false";assert.match(guidance.depositExplanation(a),/ללא עמלת סליקה לפי הסכם זה/);
+});
