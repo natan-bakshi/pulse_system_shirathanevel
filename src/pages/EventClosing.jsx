@@ -35,8 +35,8 @@ export default function EventClosing(){
  const [introSeen,setIntroSeen]=useState(false);
  const intentionalDeparture=useRef(false);
  const outstanding=outstandingClosingSteps(agreement,language);
- const incomplete=!!agreement&&!agreement.completed_at&&outstanding.length>0;
- const exitText=(language==="en"?"The process is not complete. Remaining: ":"התהליך עדיין לא הושלם. נותרו: ")+outstanding.join(" · ")+(language==="en"?" . Leave anyway?":" . לצאת בכל זאת?");
+ const incomplete=agreement?!agreement.completed_at&&outstanding.length>0:!!opened;
+ const exitText=(language==="en"?"The process is not complete. Remaining: ":"התהליך עדיין לא הושלם. נותרו: ")+(agreement?outstanding.join(" · "):(language==="en"?"Phone verification and the event form":"אימות הטלפון והשלמת טופס האירוע"))+(language==="en"?" . Leave anyway?":" . לצאת בכל זאת?");
  useEffect(()=>{
   if(!incomplete)return;
   const unload=e=>{if(intentionalDeparture.current)return;e.preventDefault();e.returnValue="";};
