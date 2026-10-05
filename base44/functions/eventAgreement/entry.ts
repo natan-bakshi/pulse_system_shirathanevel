@@ -280,6 +280,18 @@ export default Deno.serve(async req=>{
   if(user?.role!=="admin")throw new AgreementError("נדרשת הרשאת מנהל",403);
   const config={...closingDefaults,...await settings(client)};
   if(action==="reconcile"){await reconcileAgreement(client,body.eventId,config);return Response.json({success:true});}
+  if(action==="payment_only_policy"){
+   if(typeof body.approved!=="boolean")throw new AgreementError("יש לבחור אם לפטור מחתימה ומכרטיס");
+   const event=await client.entities.Event.get(body.eventId);
+   if(!event)throw new AgreementError("האירוע לא נמצא",404);
+   const saved=await client.entities.Event.updateMany({id:event.id,updated_date:event.updated_date},{$set:{
+    closing_payment_only_approved:body.approved,closing_payment_only_approved_by:user.id,
+    closing_payment_only_approved_at:new Date().toISOString()
+   }});
+   if(saved.updated!==1)throw new AgreementError("האירוע השתנה; יש לרענן",409);
+   await reconcileAgreement(client,event.id,config);
+   return Response.json({success:true});
+  }
   if(action==="preview"){
    const p=await preview(client,base44,body.eventId,config);
    return Response.json({...p,event:undefined});
@@ -379,7 +391,7 @@ export default Deno.serve(async req=>{
    });
    for(const m of milestones)await client.entities.PaymentMilestone.create({...m,agreement_id:a.id,event_id:body.eventId,state:"pending",message_state:"pending",
     notify_at:reminderTime(m.due_date,notification.days,notification.time),notification_enabled:notification.enabled,template:notification.template});
-   const bound=await client.entities.Event.updateMany({id:body.eventId,updated_date:p.event.updated_date},{$set:{closing_agreement_id:a.id,closing_manual_override:false,...(customer?{billing_customer_id:customer.id}:{})}});
+   const bound=await client.entities.Event.updateMany({id:body.eventId,updated_date:p.event.updated_date},{$set:{closing_agreement_id:a.id,closing_manual_override:false,closing_payment_only_approved:false,...(customer?{billing_customer_id:customer.id}:{})}});
    if(bound.updated!==1)throw new AgreementError("האירוע השתנה; הטיוטה לא הופעלה",409);
    for(const previous of old.filter(x=>x.active)){
     await client.entities.EventAgreement.update(previous.id,{active:false,link_hash:"",session_hash:""});
