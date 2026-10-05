@@ -811,10 +811,8 @@ export default function EventDetails() {
       await base44.entities.Payment.create(paymentData);
       await refreshStoredCardPolicy(event);
 
-      // Auto-update status if quote and payment added
-      if (event.status === 'quote') {
-        await refreshEventStatus(eventId, { requestedStatus: 'confirmed' });
-      }
+      // Payment is not a manual decision to close. The server checks the closing requirements.
+      await refreshEventStatus(eventId);
       
       setShowPaymentDialog(false);
       setPaymentForm({
