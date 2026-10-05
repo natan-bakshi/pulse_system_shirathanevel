@@ -1,4 +1,6 @@
 import LinkedText from "@/components/billing/LinkedText";
+import ClosingIntroduction from "@/components/billing/ClosingIntroduction";
+import {securityExplanation,outstandingClosingSteps} from "@/components/billing/closingGuidance";
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import { agreementAction,agreementError,statusLabel } from "@/lib/agreementApi";
 import AgreementView from "@/components/billing/AgreementView";
@@ -30,6 +32,23 @@ export default function EventClosing(){
  }
  const [agreement,setAgreement]=useState(null),[opened,setOpened]=useState(null),[sent,setSent]=useState(false),[code,setCode]=useState("");
  const [language,setLanguage]=useState("he");
+ const [introSeen,setIntroSeen]=useState(false);
+ const intentionalDeparture=useRef(false);
+ const outstanding=outstandingClosingSteps(agreement,language);
+ const incomplete=!!agreement&&!agreement.completed_at&&outstanding.length>0;
+ const exitText=(language==="en"?"The process is not complete. Remaining: ":"התהליך עדיין לא הושלם. נותרו: ")+outstanding.join(" · ")+(language==="en"?" . Leave anyway?":" . לצאת בכל זאת?");
+ useEffect(()=>{
+  if(!incomplete)return;
+  const unload=e=>{if(intentionalDeparture.current)return;e.preventDefault();e.returnValue="";};
+  const link=e=>{
+   const a=e.target.closest?.("a[href]");if(!a||a.target==="_blank"||a.hasAttribute("download")||e.ctrlKey||e.metaKey||e.shiftKey||e.button!==0)return;
+   if(a.getAttribute("href")?.startsWith("#"))return;
+   if(!window.confirm(exitText)){e.preventDefault();e.stopPropagation();}else intentionalDeparture.current=true;
+  };
+  const reset=()=>{intentionalDeparture.current=false;};
+  window.addEventListener("beforeunload",unload);document.addEventListener("click",link,true);window.addEventListener("pageshow",reset);
+  return()=>{window.removeEventListener("beforeunload",unload);document.removeEventListener("click",link,true);window.removeEventListener("pageshow",reset);};
+ },[incomplete,exitText]);
  const userSelectedLanguage=useRef(false);
  const [isAdmin,setIsAdmin]=useState(false),[adminPassword,setAdminPassword]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[info,setInfo]=useState("");
@@ -43,7 +62,7 @@ export default function EventClosing(){
  useEffect(()=>{let active=true;base44.auth.me().then(u=>{if(active)setIsAdmin(u?.role==="admin");}).catch(()=>{});return()=>{active=false;};},[]);
  useEffect(()=>{const previous=document.title;document.title="אישור אירוע וחתימה — שירת הנבל";const meta=document.createElement("meta");meta.name="referrer";meta.content="no-referrer";document.head.appendChild(meta);run(refresh);return()=>{document.title=previous;meta.remove();};},[refresh]);
  useEffect(()=>{const focus=()=>{if(auth.current.verified&&!busy)refresh().catch(()=>{});};window.addEventListener("focus",focus);return()=>window.removeEventListener("focus",focus);},[refresh,busy]);
- const redirect=async action=>{const result=await call(action);if(result.redirectUrl&&/^https:\/\//.test(result.redirectUrl))location.assign(result.redirectUrl);else await refresh();};
+ const redirect=async action=>{const result=await call(action);if(result.redirectUrl&&/^https:\/\//.test(result.redirectUrl)){intentionalDeparture.current=true;location.assign(result.redirectUrl);}else await refresh();};
  const pdf=async(kind)=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await call("document",{kind});if(r.url){if(tab)tab.location.replace(r.url);else location.assign(r.url);}}catch(e){tab?.close();throw e;}};
  const t=closingText[language]||closingText.he;
  const view=agreement?localizedSnapshot(agreement.snapshot,language):null;
@@ -61,6 +80,10 @@ export default function EventClosing(){
    {!opened&&!busy&&<Button variant="outline" onClick={()=>run(refresh)}>{t.retry}</Button>}
   </section>}
   {agreement&&<>
+   <ClosingIntroduction agreement={agreement} language={language} open={!introSeen} onClose={()=>setIntroSeen(true)}/>
+   <div className="flex flex-wrap justify-between gap-2"><Button variant="link" onClick={()=>setIntroSeen(false)}>{language==="en"?"What does this process include?":"מה כולל התהליך?"}</Button></div>
+   {incomplete&&<aside role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7"><strong>{language==="en"?"Still needed to complete the process:":"להשלמת התהליך עדיין נדרשים:"}</strong><ul className="list-disc list-inside">{outstanding.map(step=><li key={step}>{step}</li>)}</ul>{agreement.deposit_method==="bank"&&<p>{language==="en"?"You may return after the transfer is recorded; your saved signature is retained.":"אפשר לחזור לאחר רישום ההעברה; החתימה שנשמרה נשארת בתוקף."}</p>}</aside>}
+   {agreement.require_token&&<aside className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 text-sm leading-7"><h2 className="font-bold text-red-950 mb-2">{language==="en"?"The card is security for the agreement":"הכרטיס הוא ביטחון לקיום ההסכם"}</h2>{securityExplanation[language]||securityExplanation.he}</aside>}
    <div className="flex justify-end"><label className="text-sm">{language==="en"?"Form language":"שפת הטופס"}<select aria-label={language==="en"?"Form language":"שפת הטופס"} className="ms-2 rounded border p-2" value={language} disabled={!!agreement.signed_at} onChange={e=>{userSelectedLanguage.current=true;setLanguage(e.target.value);setAccepted({});}}><option value="he">עברית</option>{agreement.snapshot.translations?.en?.terms&&<option value="en">English</option>}</select></label></div>
    <p className="text-sm text-slate-600">{t.version} {agreement.version} · {t.state}: {statusLabel(agreement.state,language)}</p>
    <AgreementView snapshot={agreement.snapshot} language={language} paidAmount={agreement.deposit_received} busy={busy} onOpenQuote={()=>run(()=>pdf("quote"))}/>
