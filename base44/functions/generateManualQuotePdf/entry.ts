@@ -682,7 +682,10 @@ export default async function(req) {
       console.error('Non-blocking: failed to save PDF to storage/history:', historyError);
     }
 
-    return Response.json({ pdf_url: pdfUrl, fileName, file_uri: savedFileUri });
+    const downloadUrl = modularQuoteId && savedFileUri
+      ? (await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({ file_uri: savedFileUri, expires_in: 300 })).signed_url
+      : pdfUrl;
+    return Response.json({ pdf_url: downloadUrl, fileName, file_uri: savedFileUri });
   } catch (error) {
     console.error('Error in generateManualQuotePdf:', error);
     return Response.json({ error: error.message }, { status: 500 });
