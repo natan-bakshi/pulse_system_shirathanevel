@@ -41,7 +41,16 @@ export async function deliver(client,a,kind,key,message,file=null) {
 }
 export async function reconcileAgreement(client,eventId,config=null) {
  const event=await client.entities.Event.get(eventId);
- if(!event?.closing_agreement_id)return null;
+ if(!event)return null;
+ // Only an explicit administrator waiver permits payment-only closing.
+ if(event.status==="quote"&&!event.closing_manual_override&&event.closing_payment_only_approved===true&&event.closing_payment_only_approved_by){
+  const cfg=config||await settings(client),f=await financials(client,event,cfg);
+  if(f.totalPaid>0){
+   await client.entities.Event.updateMany({id:event.id,status:"quote",updated_date:event.updated_date,closing_payment_only_approved:true},{$set:{status:"confirmed"}});
+  }
+  return null;
+ }
+ if(!event.closing_agreement_id)return null;
  let a=await client.entities.EventAgreement.get(event.closing_agreement_id);
  if(!a?.active||!a.signed_at)return a;
  config ||= await settings(client);
