@@ -15,6 +15,7 @@ import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
 
+import { closingClauses, withoutCardClauses } from "../../shared/closingClauses.ts";
 const APP="https://pulse-system.base44.app";
 const textFromHtml=html=>convert(String(html||"").replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi,(full,attrs,label)=>{
   const href=attrs.match(/\bhref\s*=\s*(["'])(https?:\/\/[^"']+)\1/i)?.[2];
@@ -176,6 +177,11 @@ export default Deno.serve(async req=>{
    let a=await requirePublic(client,body,!["open","otp","verify","admin_verify"].includes(action));
    return await lockAgreement(client,a,action,async current=>{
     a=current;
+    // Remove waived card consents only before signature; signed versions remain immutable.
+    if(!a.signed_at&&!a.require_token){
+     const snapshot=withoutCardClauses(a.snapshot),contentHash=await digest(canonical(snapshot));
+     if(contentHash!==a.content_hash)a=await client.entities.EventAgreement.update(a.id,{snapshot,content_hash:contentHash});
+    }
     if(action==="open"){
      if(!a.opened_at){await client.entities.EventAgreement.update(a.id,{opened_at:new Date().toISOString()});await audit(client,a,"opened","link");}
      return Response.json({id:a.id,phone:"••••"+a.recipient_phone.slice(-4),signed:!!a.signed_at});
@@ -250,7 +256,7 @@ export default Deno.serve(async req=>{
    }
     if(action==="token"){
      requireCards(config);
-     if(!a.signature.accepted.token)throw new AgreementError("לא קיימת הרשאה לשמירת כרטיס",403);
+     if(!a.require_token||!a.signature.accepted.token)throw new AgreementError("לא קיימת הרשאה לשמירת כרטיס",403);
      const event=await client.entities.Event.get(a.event_id);
      if(event.closing_agreement_id!==a.id)throw new AgreementError("נוצר הסכם חדש; יש להשתמש בו",409);
      let customer=a.customer_id?await client.entities.BillingCustomer.get(a.customer_id).catch(()=>null):null;
@@ -366,14 +372,14 @@ export default Deno.serve(async req=>{
    const regular=roundMoney(body.regular_cap),exceptional=roundMoney(body.exceptional_cap);
    if(!Number.isFinite(regular)||!Number.isFinite(exceptional)||regular<0||exceptional<0)throw new AgreementError("תקרות חיוב לא תקינות");
    const baseVariant=p.translations[formLanguage];
-   const clauses=baseVariant.clauses.map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
+   const clauses=closingClauses(baseVariant.clauses,!!body.require_token,!!body.require_deposit).map(c=>({...c,text:cleanText(body.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)}));
    const terms=cleanText(body.terms||baseVariant.terms,60000);if(!terms)throw new AgreementError("יש להגדיר תנאי התקשרות לפני שליחה");
    const notification=notifications({...body.notifications,language:body.message_language},config);
    const translations=Object.fromEntries(Object.entries(p.translations).map(([lang,base])=>{
     const supplied=body.translations?.[lang]||{};
     return [lang,{...base,
      terms:lang===formLanguage?terms:cleanText(supplied.terms||base.terms,60000),
-     clauses:lang===formLanguage?clauses:base.clauses.map(c=>({...c,text:cleanText(supplied.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)})),
+     clauses:lang===formLanguage?clauses:closingClauses(base.clauses,!!body.require_token,!!body.require_deposit).map(c=>({...c,text:cleanText(supplied.clauses?.find(x=>x.code===c.code)?.text||c.text,12000)})),
      milestones:milestones.map((m,i)=>({...m,label:cleanText(lang===formLanguage?m.label:(supplied.milestones?.[i]?.label||base.milestones[i]?.label),150)}))
     }];
    }));
