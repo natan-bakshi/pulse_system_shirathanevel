@@ -89,10 +89,12 @@ export async function makeAgreementPdf(a, config={}) {
   }
   section(t("אבני הדרך לתשלום","Payment milestones"));
   for(const [i,m] of (s.milestones||[]).entries())lines(m.label+"  ·  "+money(m.amount)+"  ·  "+(i===0&&m.amount>0&&s.deposit_paid_at_creation?t("שולם — הושלם","Paid — completed"):t("עד ","Due ")+m.due_date),10,ink,1);
+  if((s.clauses||[]).some(c=>c.code==="token")){
   lines(t("תקרת חיוב רגיל: ","Regular charge limit: ")+money(s.regular_cap));
   lines(t("תקרת חיוב חריג: ","Exceptional charge limit: ")+money(s.exceptional_cap));
+  }
   lines(t("דרישות סגירה: חתימה","Closing requirements: signature")+(a.require_token?t(" וכרטיס מאומת"," and verified card"):t("; ללא חובת כרטיס","; card not required"))+(a.require_deposit?t(" ומקדמה"," and deposit"):t("; ללא חובת מקדמה","; deposit not required")));
-  lines(s.exceptional_notice?t("הודעה לפני חיוב חריג: לפחות ","Exceptional charge notice: at least ")+s.exceptional_notice_days+t(" ימים, עם אפשרות לתשלום חלופי."," days, with an alternative payment option."):t("ללא חובת הודעה מקדימה לחיוב חריג במסגרת הרשאה זו.","No advance notice is required for an exceptional charge under this authorization."));
+  if((s.clauses||[]).some(c=>c.code==="token"))lines(s.exceptional_notice?t("הודעה לפני חיוב חריג: לפחות ","Exceptional charge notice: at least ")+s.exceptional_notice_days+t(" ימים, עם אפשרות לתשלום חלופי."," days, with an alternative payment option."):t("ללא חובת הודעה מקדימה לחיוב חריג במסגרת הרשאה זו.","No advance notice is required for an exceptional charge under this authorization."));
   pageIf(73);section(t("חתימה ואימות","Signature & verification"));
   const sigY=y;
   doc.setDrawColor(222,211,200);doc.roundedRect(18,sigY-4,174,45,2,2,"S");
