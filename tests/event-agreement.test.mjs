@@ -81,10 +81,10 @@ test("signing is immutable, idempotent, private, and closes waived route",async(
  f.client.auth.me=async()=>null;
  const r=await sign(a,auth);assert.equal(r.status,200,JSON.stringify(r));assert.ok(r.data.signed_at);
  assert.equal(f.db.Event[0].status,"confirmed");
- assert.equal(f.db.ConsentClause.length,6);assert.equal(globalThis.__pdfCount,1);
+ assert.equal(f.db.ConsentClause.length,2);assert.equal(globalThis.__pdfCount,1);
  const hash=f.db.EventAgreement[0].signature_hash;
  assert.equal((await sign(a,auth)).status,200);
- assert.equal(f.db.EventAgreement[0].signature_hash,hash);assert.equal(globalThis.__pdfCount,1);assert.equal(f.db.ConsentClause.length,6);
+ assert.equal(f.db.EventAgreement[0].signature_hash,hash);assert.equal(globalThis.__pdfCount,1);assert.equal(f.db.ConsentClause.length,2);
  assert.equal(JSON.stringify(r.data).includes("session_hash"),false);
  assert.equal((await req("open",{agreementId:a.id,token:auth.token})).status,403);
 });
@@ -250,4 +250,47 @@ test("separately captured matching card can be linked only to signed consent",as
   assert.equal(f.db.Event[0].status,"confirmed");assert.equal(f.db.EventAgreement[0].snapshot.require_deposit,false);
   f.db.BillingCustomer[0].phone="0501111111";f.db.EventAgreement[0].customer_id="";
   assert.equal((await req("link_existing_card",{eventId:"event"})).status,409);
+});
+test("a completed bank payment never closes an event without explicit waivers",async()=>{
+ const f=fixture();f.db.Payment=[{id:"p",event_id:"event",amount:200,currency:"ILS",payment_method:"bank_transfer",payment_status:"completed"}];
+ await lifecycle.reconcileAgreement(f.client,"event");assert.equal(f.db.Event[0].status,"quote");
+ const a=await create({token:true,deposit:true});
+ await lifecycle.reconcileAgreement(f.client,"event");assert.equal(f.db.Event[0].status,"quote","unsigned agreement");
+ const auth=await authenticate(a);await sign(a,auth);
+ await lifecycle.reconcileAgreement(f.client,"event");assert.equal(f.db.Event[0].status,"quote","missing security card");
+});
+test("only admin can approve payment-only closing, approval is recorded and pending money is insufficient",async()=>{
+ const f=fixture();f.db.Payment=[{id:"p",event_id:"event",amount:200,currency:"ILS",payment_status:"pending"}];
+ f.client.auth.me=async()=>({id:"customer",role:"user"});
+ assert.equal((await req("payment_only_policy",{eventId:"event",approved:true})).status,403);
+ assert.equal(f.db.Event[0].closing_payment_only_approved,undefined);
+ f.client.auth.me=async()=>({id:"admin",role:"admin"});
+ assert.equal((await req("payment_only_policy",{eventId:"event",approved:true})).status,200);
+ assert.equal(f.db.Event[0].closing_payment_only_approved_by,"admin");assert.ok(f.db.Event[0].closing_payment_only_approved_at);
+ assert.equal(f.db.Event[0].status,"quote");
+ f.db.Payment[0].payment_status="completed";await lifecycle.reconcileAgreement(f.client,"event");
+ assert.equal(f.db.Event[0].status,"confirmed");
+});
+test("payment-only waiver respects manual status and new agreement resets waiver",async()=>{
+ const f=fixture();f.db.Payment=[{id:"p",event_id:"event",amount:200,currency:"ILS",payment_status:"completed"}];
+ f.db.Event[0].closing_manual_override=true;
+ await req("payment_only_policy",{eventId:"event",approved:true});assert.equal(f.db.Event[0].status,"quote");
+ await create({token:true,deposit:true});assert.equal(f.db.Event[0].closing_payment_only_approved,false);
+ await lifecycle.reconcileAgreement(f.client,"event");assert.equal(f.db.Event[0].status,"quote");
+});
+test("no-card route omits card authorities in both languages and cannot request a token",async()=>{
+ fixture();const a=await create({token:false,deposit:true});
+ assert.deepEqual(a.snapshot.clauses.map(c=>c.code),["terms","fee","changes"]);
+ for(const lang of ["he","en"])assert.deepEqual(a.snapshot.translations[lang].clauses.map(c=>c.code),["terms","fee","changes"]);
+ const auth=await authenticate(a);assert.equal((await sign(a,auth)).status,200);
+ assert.equal((await req("token",auth)).status,403);
+});
+test("legacy unsigned no-card snapshot is cleaned before signing while signed data stays immutable",async()=>{
+ const f=fixture(),a=await create({token:true,deposit:false});
+ const row=f.db.EventAgreement[0];row.require_token=false;row.snapshot.require_token=false;
+ const auth=await authenticate(a);const current=(await req("view",auth)).data;
+ assert.deepEqual(current.snapshot.clauses.map(c=>c.code),["terms","changes"]);
+ assert.equal((await sign(current,auth)).status,200);
+ const before=JSON.stringify(row.snapshot),hash=row.content_hash;
+ await req("view",auth);assert.equal(JSON.stringify(row.snapshot),before);assert.equal(row.content_hash,hash);
 });
