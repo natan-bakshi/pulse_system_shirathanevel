@@ -543,11 +543,9 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
         payments: undefined
       };
 
-      // Update status to confirmed only if there are valid payments with actual amounts
-      const hasValidPayments = formData.payments.some(p => Number(p.amount) > 0);
-      if (eventDataToSave.status === 'quote' && hasValidPayments) {
-        eventDataToSave.status = 'confirmed';
-      }
+      // A recorded payment does not waive signature/card requirements.
+      // Explicit lifecycle selection remains an administrator decision.
+      if (event && eventDataToSave.status !== event.status) eventDataToSave.closing_manual_override = true;
 
       // Preserve the server's derived status when this form did not change the lifecycle.
       if (event && eventDataToSave.status === event.status) delete eventDataToSave.status;
