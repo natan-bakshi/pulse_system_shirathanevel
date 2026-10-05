@@ -96,7 +96,6 @@ const AuthenticatedApp = () => {
           </Suspense>
         </LayoutWrapper>
       } />
-      <Route path="/ModularQuoteView" element={<Suspense fallback={<PageLoadingFallback />}><ModularQuoteView /></Suspense>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
@@ -104,19 +103,23 @@ const AuthenticatedApp = () => {
 
 
 function App() {
-  if(window.location.pathname.replace(/\/$/, '') === '/ModularQuoteView') return <Suspense fallback={<PageLoadingFallback/>}><ModularQuoteView/></Suspense>;
   if(window.location.pathname.replace(/\/$/, '') === '/EventClosing') return <Suspense fallback={<PageLoadingFallback/>}><EventClosing/></Suspense>;
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <NavigationTracker />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <Router>
+      <Routes>
+        <Route path="/ModularQuoteView" element={<Suspense fallback={<PageLoadingFallback />}><ModularQuoteView /></Suspense>} />
+        <Route path="*" element={
+          <AuthProvider>
+            <QueryClientProvider client={queryClientInstance}>
+              <NavigationTracker />
+              <AuthenticatedApp />
+              <Toaster />
+            </QueryClientProvider>
+          </AuthProvider>
+        } />
+      </Routes>
+    </Router>
   )
 }
 
