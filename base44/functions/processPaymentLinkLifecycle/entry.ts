@@ -1,4 +1,6 @@
 import { processAgreementMilestones } from "../../shared/agreementLifecycle.ts";
+import { loadMilestonePaymentBalance } from "../../shared/milestonePaymentBalance.ts";
+import { readAll } from "../../shared/eventReadiness.ts";
 import { afterCardRelevantChange } from "../../shared/storedCards.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { renderClientMessage, sendClientMessage } from "../../shared/clientBillingMessages.ts";
@@ -9,8 +11,22 @@ import { renderClientMessage, sendClientMessage } from "../../shared/clientBilli
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (user?.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
+    const input = await req.json().catch(() => ({}));
     const settings = await base44.asServiceRole.entities.AppSettings.list();
     const config = Object.fromEntries(settings.map((item) => [item.setting_key, item.setting_value]));
+    // Read-only verification: no reminders, no charges, no record updates.
+    if (input.dryRun === true) {
+      if (!input.eventId) return Response.json({ error: "חסר מזהה אירוע לבדיקה" }, { status: 400 });
+      const rows = await readAll(base44.asServiceRole.entities.PaymentMilestone, { event_id: input.eventId });
+      const milestones = [];
+      for (const row of rows) {
+        const balance = await loadMilestonePaymentBalance(base44.asServiceRole, input.eventId, row.id, config);
+        milestones.push({ id: row.id, position: row.position, cumulativeAmount: balance.cumulativeAmount, totalPaid: balance.totalPaid, outstanding: balance.outstanding, paid: balance.paid, shouldSend: balance.shouldSend && row.notification_enabled === true && row.message_state === "pending" && Number.isFinite(Date.parse(row.notify_at)) && Date.parse(row.notify_at) <= Date.now() });
+      }
+      return Response.json({ dryRun: true, milestones, sent: 0 });
+    }
     if (config.billing_enabled !== "true") return Response.json({ skipped: "billing disabled" });
 
     const pending = await base44.asServiceRole.entities.Payment.filter({ payment_status: "pending", is_payment_link: true });
