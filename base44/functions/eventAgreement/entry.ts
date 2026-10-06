@@ -403,6 +403,7 @@ export default Deno.serve(async req=>{
   }
   let a=await client.entities.EventAgreement.get(body.agreementId);
   if(!a)throw new AgreementError("ההסכם לא נמצא",404);
+  if(action==="milestones_preview")return Response.json(await milestoneEditPreview(client,a,config));
   if(action==="recover_workflow"){
    if(!a.busy_operation||!a.busy_started_at||Date.parse(a.busy_started_at)>Date.now()-300000)throw new AgreementError("אין פעולה ישנה לשחרור; יש להמתין לפחות חמש דקות",409);
    if(a.busy_operation.startsWith("charge:"))throw new AgreementError("יש לברר את פעולת הגבייה דרך הכרטיס השמור",409);
@@ -413,7 +414,6 @@ export default Deno.serve(async req=>{
   }
   return await lockAgreement(client,a,action,async current=>{
    a=current;
-   if(action==="milestones_preview")return Response.json(await milestoneEditPreview(client,a,config));
    if(action==="milestones")return Response.json(await updateAgreementMilestones(client,a,body,user,config));
    if(action==="issue"){
     if(!a.active)throw new AgreementError("הסכם לא פעיל");

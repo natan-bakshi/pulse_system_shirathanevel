@@ -109,6 +109,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/ModularQuoteView" element={<Suspense fallback={<PageLoadingFallback />}><ModularQuoteView /></Suspense>} />
+        <Route path="/EventClosing" element={<Suspense fallback={<PageLoadingFallback />}><EventClosing /></Suspense>} />
         <Route path="*" element={
           <AuthProvider>
             <QueryClientProvider client={queryClientInstance}>

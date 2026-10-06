@@ -18,6 +18,7 @@ export function validateBeneficialMilestones(previous,input,total,paid){
  if(paid>total+0.005)throw new AgreementError('סך אבני הדרך לא יכול להיות נמוך מהסכום שכבר התקבל באירוע');
  let validated;
  try{validated=validateMilestones(input.map((m,i)=>({label:previous[i].label,amount:m.amount,due_date:m.due_date})),total);}catch(e){throw new AgreementError(e.message);}
+ if(Math.round(validated.at(-1).cumulative_amount*100)!==Math.round(total*100))throw new AgreementError('סך אבני הדרך חייב להישאר שווה בדיוק למחיר ההסכם');
  for(let i=0;i<validated.length;i++){
   const m=validated[i],old=previous[i];
   if(m.cumulative_amount>Number(old.cumulative_amount)+0.005)throw new AgreementError('לא ניתן להגדיל את הסכום המצטבר של תשלום מוקדם; מותר רק לגלגל סכומים קדימה');

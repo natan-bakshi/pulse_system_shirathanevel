@@ -1,3 +1,4 @@
+import { reminderTime } from './agreementReminderTime.ts';
 // Pure, shared business rules. Never performs a charge.
 export const closingDefaults = {
  closing_regular_multiplier:"1", closing_exceptional_multiplier:"2",
@@ -18,7 +19,11 @@ export const closingDefaults = {
 export const roundMoney = n => Math.round(Number(n)*100)/100;
 export function effectiveMilestones(a,rows){
  const edits=new Map((a.payment_schedule?.rows||[]).map(m=>[m.id,m]));
- return rows.map(m=>({...m,...(edits.get(m.id)||{})})).sort((x,y)=>x.position-y.position);
+ return rows.map(m=>{
+  const edit=edits.get(m.id);if(!edit)return m;
+  const {notify_at,...values}=edit;
+  return {...m,...values,notify_at:reminderTime(values.due_date,Number(a.notifications?.days)||0,a.notifications?.time||'09:00')};
+ }).sort((x,y)=>x.position-y.position);
 }
 export const effectiveDeposit=a=>Number(a.payment_schedule?.rows?.[0]?.amount??a.snapshot.deposit);
 export const milestoneDeliveryKey=(a,m)=>a.id+":milestone:"+m.id+(a.payment_schedule?.revision?":schedule:"+a.payment_schedule.revision:"");

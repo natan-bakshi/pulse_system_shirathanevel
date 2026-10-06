@@ -23,7 +23,7 @@ export default async function(req) {
       const milestones = [];
       for (const row of rows) {
         const balance = await loadMilestonePaymentBalance(base44.asServiceRole, input.eventId, row.id, config);
-        milestones.push({ id: row.id, position: row.position, cumulativeAmount: balance.cumulativeAmount, totalPaid: balance.totalPaid, outstanding: balance.outstanding, paid: balance.paid, shouldSend: balance.shouldSend && row.notification_enabled === true && row.message_state === "pending" && Number.isFinite(Date.parse(row.notify_at)) && Date.parse(row.notify_at) <= Date.now() });
+        milestones.push({ id: row.id, position: row.position, cumulativeAmount: balance.cumulativeAmount, totalPaid: balance.totalPaid, outstanding: balance.outstanding, paid: balance.paid, shouldSend: balance.shouldSend && row.notification_enabled === true && row.message_state === "pending" && Number.isFinite(Date.parse(balance.milestone.notify_at)) && Date.parse(balance.milestone.notify_at) <= Date.now() });
       }
       return Response.json({ dryRun: true, milestones, sent: 0 });
     }
