@@ -1,7 +1,7 @@
 import { readAll } from "./eventReadiness.ts";
 import { loadMilestonePaymentBalance } from "./milestonePaymentBalance.ts";
 import { calculateEventBalance } from "./eventBilling.ts";
-import { canClose, milestoneState, formatMessage, closingDefaults, roundMoney, firstCompletedPayment } from "./agreementRules.ts";
+import { canClose, milestoneState, formatMessage, closingDefaults, roundMoney, firstCompletedPayment, effectiveDeposit, effectiveMilestones, milestoneDeliveryKey } from "./agreementRules.ts";
 import { sendWhatsAppText, sendWhatsAppFileByUrl } from "./whatsappSend.ts";
 
 export class AgreementError extends Error { status:number; constructor(message,status=400){super(message);this.name="AgreementError";this.status=status;} }
@@ -31,7 +31,8 @@ export async function deliver(client,a,kind,key,message,file=null,config={}) {
  if(kind==="milestone"){
   const prefix=a.id+":milestone:";
   if(!key.startsWith(prefix))throw new AgreementError("מזהה תזכורת תשלום לא תקין");
-  const balance=await loadMilestonePaymentBalance(client,a.event_id,key.slice(prefix.length),config);
+  const balance=await loadMilestonePaymentBalance(client,a.event_id,key.slice(prefix.length).split(":schedule:")[0],config);
+  if(!Number.isFinite(Date.parse(balance.milestone.notify_at))||Date.parse(balance.milestone.notify_at)>Date.now())return {id:"",state:"deferred"};
   if(balance.milestone.agreement_id!==a.id)throw new AgreementError("אבן הדרך אינה שייכת להסכם");
   if(!balance.shouldSend)return {id:"",state:balance.paid?"skipped_paid":"skipped_inactive",balance};
   // Render using the fresh outstanding balance, not the earlier loop's snapshot.
@@ -65,7 +66,7 @@ export async function reconcileAgreement(client,eventId,config=null) {
  if(!a?.active||!a.signed_at)return a;
  config ||= await settings(client);
  const f=await financials(client,event,config);
- const milestones=await readAll(client.entities.PaymentMilestone,{agreement_id:a.id});
+ const milestones=effectiveMilestones(a,await readAll(client.entities.PaymentMilestone,{agreement_id:a.id}));
  for(const m of milestones){
   const state=milestoneState(m,f.totalPaid);
   if(m.state!==state)await client.entities.PaymentMilestone.update(m.id,{state});
@@ -75,7 +76,7 @@ export async function reconcileAgreement(client,eventId,config=null) {
  const token=!!(card?.state==="active"&&(card.environment==="production"||event.stored_card_qa_only===true)&&card.customer_id===a.customer_id&&card.environment===(config.stored_cards_env==="production"?"production":"qa")&&event.billing_customer_id===a.customer_id);
  const received=firstCompletedPayment(f.payments,f.currency,Number(config.usd_ils_exchange_rate)||3.6);
  // A verified first payment satisfies the deposit requirement, without changing signed terms.
- const deposit=a.require_deposit?f.totalPaid+0.005>=a.snapshot.deposit:false;
+ const deposit=a.require_deposit?f.totalPaid+0.005>=effectiveDeposit(a):false;
  const depositState=a.require_deposit?(deposit?"paid":"pending"):"waived";
  if(a.deposit_received!==received)await client.entities.EventAgreement.update(a.id,{deposit_received:received});
  const changes:any={};
@@ -114,7 +115,7 @@ export async function processAgreementMilestones(client,config) {
    await lockAgreement(client,a,"reminders",async current=>{
     const event=await client.entities.Event.get(a.event_id);
     if(event.status==="cancelled"||(event.status==="quote"&&event.closing_manual_override)||event.closing_agreement_id!==a.id)return;
-    const rows=await readAll(client.entities.PaymentMilestone,{agreement_id:a.id});
+    const rows=effectiveMilestones(current,await readAll(client.entities.PaymentMilestone,{agreement_id:a.id}));
     for(const m of rows){
      if((!a.require_deposit&&m.position===0)||!m.notification_enabled||m.state==="paid"||m.message_state!=="pending"||Date.parse(m.notify_at)>Date.now())continue;
      const balance=await loadMilestonePaymentBalance(client,event.id,m.id,config);
@@ -123,7 +124,8 @@ export async function processAgreementMilestones(client,config) {
      await client.entities.PaymentMilestone.update(m.id,{message_state:"dispatching"});
      const body=formatMessage(m.template||closingDefaults[current.notifications?.language==="en"?"closing_message_template_en":"closing_message_template"],{customer_name:current.recipient_name,event_name:event.event_name,amount:outstanding,currency:a.snapshot.currency,due_date:m.due_date,business_phone:config.business_phone||""});
      try{
-      const delivery=await deliver(client,current,"milestone",a.id+":milestone:"+m.id,body,null,config);
+      const delivery=await deliver(client,current,"milestone",milestoneDeliveryKey(current,m),body,null,config);
+      if(delivery.state==="deferred"){await client.entities.PaymentMilestone.update(m.id,{message_state:"pending"});continue;}
       if(delivery.state==="skipped_paid"||delivery.state==="skipped_inactive"){
        await client.entities.PaymentMilestone.update(m.id,{message_state:delivery.state,...(delivery.state==="skipped_paid"?{state:"paid"}:{})});continue;
       }

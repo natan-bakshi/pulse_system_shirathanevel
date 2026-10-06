@@ -130,6 +130,11 @@
     },
     "busy_started_at": {
       "type": "string"
+    },
+    "payment_schedule": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Current customer-favorable payment schedule; original signed snapshot, signature and PDF remain immutable"
     }
   },
   "required": [

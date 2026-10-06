@@ -1,0 +1,6 @@
+import React from 'react';
+import {israelDate} from '@/lib/israelDate';
+export default function CurrentPaymentSchedule({rows=[],currency='ILS',language='he'}){
+ const en=language==='en',money=n=>new Intl.NumberFormat(en?'en-US':'he-IL',{style:'currency',currency}).format(Number(n)||0);
+ return <section dir={en?'ltr':'rtl'} className="rounded-xl border border-border bg-card p-4 text-card-foreground space-y-3"><h3 className="font-semibold">{en?'Current payment schedule':'אבני הדרך הנוכחיות'}</h3><p className="text-sm text-muted-foreground">{en?'Reminders apply only to the unpaid cumulative amount. The original signed document is retained.':'התזכורות מחושבות לפי היתרה מהסכום המצטבר. המסמך החתום המקורי נשמר.'}</p>{rows.map(m=><div key={m.id||m.position} className="rounded-lg border border-border p-3 space-y-1"><p className="font-medium">{m.label}</p><div className="flex flex-wrap justify-between gap-2 text-sm"><span>{israelDate(m.due_date)}</span><strong>{money(m.amount)}</strong></div><p className="text-xs text-muted-foreground">{en?'Cumulative by this milestone: ':'מצטבר עד אבן דרך זו: '}{money(m.cumulative_amount)}</p></div>)}</section>;
+}

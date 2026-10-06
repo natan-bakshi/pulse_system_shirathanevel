@@ -16,6 +16,9 @@ import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
 
 import { closingClauses, withoutCardClauses } from "../../shared/closingClauses.ts";
+import { reminderTime } from "../../shared/agreementReminderTime.ts";
+import { milestoneEditPreview, updateAgreementMilestones } from "../../shared/agreementMilestoneChanges.ts";
+import { effectiveDeposit, effectiveMilestones } from "../../shared/agreementRules.ts";
 const APP="https://pulse-system.base44.app";
 const textFromHtml=html=>convert(String(html||"").replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi,(full,attrs,label)=>{
   const href=attrs.match(/\bhref\s*=\s*(["'])(https?:\/\/[^"']+)\1/i)?.[2];
@@ -24,6 +27,7 @@ const textFromHtml=html=>convert(String(html||"").replace(/<a\b([^>]*)>([\s\S]*?
 const bool=(v,def)=>v===undefined?def:!!v;
 function publicAgreement(a){return {
  id:a.id,version:a.version,state:a.state,snapshot:a.snapshot,content_hash:a.content_hash,
+ effective_deposit:effectiveDeposit(a),payment_schedule:a.payment_schedule?{revision:a.payment_schedule.revision,updated_at:a.payment_schedule.updated_at,milestones:a.payment_schedule.rows.map(({id,position,label,amount,cumulative_amount,due_date})=>({id,position,label,amount,cumulative_amount,due_date}))}:null,
  require_token:a.require_token,require_deposit:a.require_deposit,signed_at:a.signed_at,
  token_state:a.token_state,deposit_state:a.deposit_state,deposit_received:a.deposit_received||0,deposit_method:a.deposit_method||"",pdf_state:a.pdf_state,copy_state:a.copy_state,
  completed_at:a.completed_at,verified_at:a.verified_at,opened_at:a.opened_at,active:a.active,
@@ -44,19 +48,6 @@ function notifications(body,config){
  language:agreementLanguage(body?.language||config.closing_message_language),
  template:cleanText(body?.template||config[(body?.language||config.closing_message_language)==="en"?"closing_message_template_en":"closing_message_template"]||closingDefaults[(body?.language||config.closing_message_language)==="en"?"closing_message_template_en":"closing_message_template"],4000),
  notify_admin:bool(body?.notify_admin,config.closing_notify_admin!=="false")};
-}
-// Jerusalem wall time -> UTC, including daylight saving changes.
-function reminderTime(date,days,time){
- const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-days);
- const local=d.toISOString().slice(0,10)+"T"+time+":00";
- let instant=Date.parse(local+"Z");
- for(let i=0;i<2;i++){
-  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(new Date(instant));
-  const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));
-  const actual=Date.parse(p.year+"-"+p.month+"-"+p.day+"T"+p.hour+":"+p.minute+":"+p.second+"Z");
-  instant+=Date.parse(local+"Z")-actual;
- }
- return new Date(instant).toISOString();
 }
 async function preview(client,base44,eventId,config){
  const event=await client.entities.Event.get(eventId);
@@ -120,7 +111,7 @@ async function finishDocument(client,a){
 async function createDeposit(client,a,config){
  const event=await client.entities.Event.get(a.event_id),f=await financials(client,event,config);
  if(event.closing_agreement_id!==a.id||f.currency!==a.snapshot.currency||Math.abs(f.finalTotal-a.snapshot.total)>0.01)throw new AgreementError("פרטי ההזמנה השתנו; נדרשת גרסה מעודכנת");
- const amount=roundMoney(Math.max(0,a.snapshot.deposit-f.totalPaid));
+ const amount=roundMoney(Math.max(0,effectiveDeposit(a)-f.totalPaid));
  if(!amount)return {paid:true};
  const old=f.payments.find(p=>p.agreement_id===a.id&&p.payment_status==="pending");
  if(old){if(old.payment_link_url)return {redirectUrl:old.payment_link_url};throw new AgreementError("בקשת מקדמה בבירור. אין ליצור בקשה נוספת.",409);}
@@ -333,7 +324,7 @@ export default Deno.serve(async req=>{
    const current=rows.find(a=>a.active);
    return Response.json({agreements:rows.map(publicAgreement),current:current?{...publicAgreement(current),notifications:current.notifications,send_copy:current.send_copy,busy_operation:!!current.busy_operation,busy_started_at:current.busy_started_at}:null,
     audit:current?await readAll(client.entities.AgreementAuditEvent,{agreement_id:current.id}):[],
-    milestones:current?await readAll(client.entities.PaymentMilestone,{agreement_id:current.id}):[],
+    milestones:current?effectiveMilestones(current,await readAll(client.entities.PaymentMilestone,{agreement_id:current.id})):[],
     deliveries:current?await readAll(client.entities.ClientMessageDelivery,{agreement_id:current.id}):[],
     amendments:current?await readAll(client.entities.AgreementAmendment,{agreement_id:current.id}):[],
     deposits:(await readAll(client.entities.Payment,{event_id:body.eventId})).filter(p=>p.agreement_id&&p.clearing_method==="hosted_page").map(p=>({id:p.id,amount:p.amount,status:p.payment_status,verified:p.agreement_verified,canRecover:!!p.agreement_callback,pending:p.payment_status==="pending"}))});
@@ -422,6 +413,8 @@ export default Deno.serve(async req=>{
   }
   return await lockAgreement(client,a,action,async current=>{
    a=current;
+   if(action==="milestones_preview")return Response.json(await milestoneEditPreview(client,a,config));
+   if(action==="milestones")return Response.json(await updateAgreementMilestones(client,a,body,user,config));
    if(action==="issue"){
     if(!a.active)throw new AgreementError("הסכם לא פעיל");
     const token=crypto.randomUUID()+crypto.randomUUID();

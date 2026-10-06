@@ -1,6 +1,6 @@
 import { readAll } from "./eventReadiness.ts";
 import { CardError } from "./storedCards.ts";
-import { assertChargePermission, roundMoney } from "./agreementRules.ts";
+import { assertChargePermission, roundMoney, effectiveMilestones } from "./agreementRules.ts";
 import { lockAgreement, deliver, audit } from "./agreementLifecycle.ts";
 
 export async function chargeContext(client,event,customer,owner=null) {
@@ -8,7 +8,7 @@ export async function chargeContext(client,event,customer,owner=null) {
  const a=await client.entities.EventAgreement.get(event.closing_agreement_id);
  if(!a?.active||!a.signed_at||a.customer_id!==customer.id||event.billing_customer_id!==customer.id)throw new CardError("אין הסכם חתום פעיל המשויך ללקוח ולאירוע",409);
  if(a.busy_operation&&a.busy_operation!==owner)throw new CardError("פעולה בהסכם בטיפול; יש לרענן",409);
- const milestones=await readAll(client.entities.PaymentMilestone,{agreement_id:a.id});
+ const milestones=effectiveMilestones(a,await readAll(client.entities.PaymentMilestone,{agreement_id:a.id}));
  const notices=await readAll(client.entities.AgreementChargeNotice,{agreement_id:a.id});
  return {a,milestones,notices};
 }

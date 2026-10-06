@@ -16,6 +16,12 @@ export const closingDefaults = {
  closing_invitation_template:"", closing_invitation_template_en:"", closing_otp_template:"", closing_otp_template_en:"", closing_signed_template:"", closing_signed_template_en:""
  };
 export const roundMoney = n => Math.round(Number(n)*100)/100;
+export function effectiveMilestones(a,rows){
+ const edits=new Map((a.payment_schedule?.rows||[]).map(m=>[m.id,m]));
+ return rows.map(m=>({...m,...(edits.get(m.id)||{})})).sort((x,y)=>x.position-y.position);
+}
+export const effectiveDeposit=a=>Number(a.payment_schedule?.rows?.[0]?.amount??a.snapshot.deposit);
+export const milestoneDeliveryKey=(a,m)=>a.id+":milestone:"+m.id+(a.payment_schedule?.revision?":schedule:"+a.payment_schedule.revision:"");
 export const cleanText=(s,n=10000)=>String(s??"").trim().slice(0,n);
 export function canonical(value) {
  if(Array.isArray(value))return "["+value.map(canonical).join(",")+"]";
