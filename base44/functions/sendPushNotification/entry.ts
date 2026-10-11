@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.7.0';
 import { getApps, initializeApp, cert, getApp } from 'npm:firebase-admin@12.0.0/app';
 import { getMessaging } from 'npm:firebase-admin@12.0.0/messaging';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
+import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 
 // Helper to safely initialize Firebase Admin.
 // It will only initialize if it hasn't been already.
@@ -59,14 +59,14 @@ Deno.serve(async (req) => {
 
     // --- WhatsApp Logic Start ---
     const whatsappResults = [];
-    if (hasWhatsAppProviderCredentials()) {
+    if (await hasSelectedWhatsAppProviderCredentials(base44)) {
         const whatsappUsers = targetedUsers.filter(u => u.phone && u.whatsapp_enabled !== false);
         
         for (const u of whatsappUsers) {
             try {
                 const link = data.link || data.click_action || '';
                 const whatsappMessage = `*${title}*\n\n${body}${link ? `\n\n${link}` : ''}`;
-                await sendWhatsAppText(u.phone, whatsappMessage);
+                await sendWhatsAppText(u.phone, whatsappMessage, base44);
                 whatsappResults.push({ userId: u.id, success: true });
             } catch (waError) {
                 console.error('[sendPushNotification] WhatsApp send error:', waError?.message || 'unknown');
