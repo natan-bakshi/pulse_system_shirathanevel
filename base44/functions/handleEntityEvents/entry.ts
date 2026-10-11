@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
-import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
+import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -838,8 +838,8 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
 
     // Send immediately
     try {
-        if (hasWhatsAppProviderCredentials()) {
-            await sendWhatsAppToChat(whatsappTarget.chatId, message);
+        if (await hasSelectedWhatsAppProviderCredentials(base44)) {
+            await sendWhatsAppToChat(whatsappTarget.chatId, message, base44);
             console.log('[HandleEntityEvents] WhatsApp accepted by provider');
         } else {
             console.error('[HandleEntityEvents] WhatsApp provider not configured');
