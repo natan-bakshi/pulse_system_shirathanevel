@@ -20,7 +20,7 @@ export function hasWhatsAppProviderCredentials() {
     : !!(Deno.env.get('GREEN_API_INSTANCE_ID') && Deno.env.get('GREEN_API_TOKEN'));
 }
 
-function toWasenderRecipient(chatId) {
+function toWasenderRecipient(chatId: string) {
   const input = String(chatId || '').trim();
   if (/^[0-9A-Za-z_-]+@g\.us$/.test(input)) return input;
   const digits = input.replace(/@c\.us$/, '').replace(/\D/g, '');
@@ -28,14 +28,14 @@ function toWasenderRecipient(chatId) {
   return '+' + digits;
 }
 
-function wasenderError(status, uncertain) {
-  const error = new Error('WhatsApp provider request failed');
+function wasenderError(status: number, uncertain: boolean) {
+  const error = new Error('WhatsApp provider request failed') as Error & { errorCode: number; deliveryUncertain: boolean };
   error.errorCode = status || 502;
   error.deliveryUncertain = !!uncertain;
   return error;
 }
 
-async function requestWasender(path, { method = 'GET', payload } = {}) {
+async function requestWasender(path: string, { method = 'GET', payload }: { method?: string; payload?: Record<string, unknown> } = {}) {
   const token = Deno.env.get('WASENDER_API_KEY');
   if (!token) throw new Error('WasenderAPI session key not configured');
   let response;
@@ -47,10 +47,10 @@ async function requestWasender(path, { method = 'GET', payload } = {}) {
       signal: AbortSignal.timeout(TIMEOUT_MS)
     });
   } catch (e) {
-    console.error('[WasenderAPI] transport error:', e?.name || 'error');
+    console.error('[WasenderAPI] transport error:', e instanceof Error ? e.name : 'error');
     throw wasenderError(502, true); // Unknown whether the provider accepted the request.
   }
-  let data = null;
+  let data: any = null;
   try { data = await response.json(); } catch (_) {}
   if (!response.ok || data?.success === false) {
     console.error('[WasenderAPI] request rejected; httpStatus=' + response.status);
@@ -60,7 +60,7 @@ async function requestWasender(path, { method = 'GET', payload } = {}) {
   return data;
 }
 
-export async function sendWasenderTextToChat(chatId, message) {
+export async function sendWasenderTextToChat(chatId: string, message: string) {
   const data = await requestWasender('/api/send-message', {
     method: 'POST',
     payload: { to: toWasenderRecipient(chatId), text: message }
@@ -70,7 +70,7 @@ export async function sendWasenderTextToChat(chatId, message) {
   return { success: true, provider: 'wasender', messageId, idMessage: messageId, deliveryStatus: 'accepted' };
 }
 
-export async function sendWasenderDocumentToChat(chatId, documentUrl, fileName, caption) {
+export async function sendWasenderDocumentToChat(chatId: string, documentUrl: string, fileName: string, caption: string) {
   const data = await requestWasender('/api/send-message', {
     method: 'POST',
     payload: { to: toWasenderRecipient(chatId), documentUrl, fileName, text: caption || '' }
@@ -88,6 +88,6 @@ export async function checkWasenderSessionStatus() {
     const status = String(data?.status || data?.data?.status || 'unknown').toLowerCase();
     return { configured: true, status, connected: status === 'connected' };
   } catch (error) {
-    return { configured: true, status: 'error', connected: false, errorCode: error.errorCode || 502 };
+    return { configured: true, status: 'error', connected: false, errorCode: error && typeof error === 'object' && 'errorCode' in error ? Number(error.errorCode) : 502 };
   }
 }
