@@ -86,6 +86,13 @@ test('live selected provider applies to text and PDF, without any Green request'
   assert.equal(client.reads, 1);
 });
 
+test('service-role entity client also respects the selected provider', async () => {
+  vars.WASENDER_API_KEY = 'fake-wasender-token';
+  const client = appClient('wasender').asServiceRole;
+  assert.equal(await resolveWhatsAppProvider(client), 'wasender');
+  assert.equal(await hasSelectedWhatsAppProviderCredentials(client), true);
+});
+
 test('missing Wasender key cannot silently use Green', async () => {
   const client = appClient('wasender');
   delete vars.WASENDER_API_KEY;
