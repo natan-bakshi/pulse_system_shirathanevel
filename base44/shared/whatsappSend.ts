@@ -1,6 +1,7 @@
 // שליחת הודעות וואטסאפ דרך Green API - מודול משותף יחיד לכל פונקציות ה-backend.
 // אין להחזיר לקוח את תשובת Green API המלאה, ואין לרשום ללוג טוקן/מספר/תוכן/קישור חתום.
 import { sanitizeText, LIMITS } from "./notificationValidation.ts";
+import { getWhatsAppActiveProvider, sendWasenderTextToChat, sendWasenderDocumentToChat } from "./wasenderSend.ts";
 
 const GREEN_API_BASE = "https://api.green-api.com";
 const REQUEST_TIMEOUT_MS = 15000;
@@ -103,7 +104,9 @@ export async function sendWhatsAppText(phone, message) {
   if (!chatId) throw invalidInput("Invalid WhatsApp phone number");
   const safeMessage = sanitizeMessage(message);
   if (!safeMessage) throw invalidInput("Empty WhatsApp message");
-  return await callGreenApi("sendMessage", { chatId, message: safeMessage });
+  return getWhatsAppActiveProvider() === "wasender"
+    ? await sendWasenderTextToChat(chatId, safeMessage)
+    : await callGreenApi("sendMessage", { chatId, message: safeMessage });
 }
 
 /**
@@ -114,7 +117,9 @@ export async function sendWhatsAppToChat(chatId, message) {
   if (!/^[0-9A-Za-z_-]+@(c|g)\.us$/.test(safeChatId)) throw invalidInput("Invalid WhatsApp target");
   const safeMessage = sanitizeMessage(message);
   if (!safeMessage) throw invalidInput("Empty WhatsApp message");
-  return await callGreenApi("sendMessage", { chatId: safeChatId, message: safeMessage });
+  return getWhatsAppActiveProvider() === "wasender"
+    ? await sendWasenderTextToChat(safeChatId, safeMessage)
+    : await callGreenApi("sendMessage", { chatId: safeChatId, message: safeMessage });
 }
 
 /**
@@ -133,10 +138,14 @@ export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption) {
   if (parsed.protocol !== 'https:') throw invalidInput("Invalid file url");
   if (parsed.username || parsed.password) throw invalidInput("Invalid file url");
 
-  return await callGreenApi("sendFileByUrl", {
-    chatId,
-    urlFile: parsed.href,
-    fileName: sanitizeFileName(fileName),
-    caption: sanitizeCaption(caption)
-  });
+  const cleanName = sanitizeFileName(fileName);
+  const cleanCaption = sanitizeCaption(caption);
+  return getWhatsAppActiveProvider() === "wasender"
+    ? await sendWasenderDocumentToChat(chatId, parsed.href, cleanName, cleanCaption)
+    : await callGreenApi("sendFileByUrl", {
+        chatId,
+        urlFile: parsed.href,
+        fileName: cleanName,
+        caption: cleanCaption
+      });
 }
