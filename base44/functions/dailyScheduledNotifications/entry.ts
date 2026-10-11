@@ -2,7 +2,7 @@ import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
+import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -1070,10 +1070,10 @@ Deno.serve(async (req) => {
         console.log(`[DailyNotifications] Phase 5: Sending ${whatsappQueue.length} WhatsApp + ${pushQueue.length} Push messages...`);
         
         // 5a. Send sequentially through the selected provider. No automatic retry of uncertain sends.
-        if (hasWhatsAppProviderCredentials()) {
+        if (await hasSelectedWhatsAppProviderCredentials(base44)) {
             for (const wa of whatsappQueue) {
                 try {
-                    await sendWhatsAppText(wa.phone, wa.message);
+                    await sendWhatsAppText(wa.phone, wa.message, base44);
                     results.pending_whatsapp_sent++; // Provider accepted; not proof of delivery.
                 } catch (e) {
                     console.error('[DailyNotifications] WhatsApp send failed:', e?.message || 'unknown');
