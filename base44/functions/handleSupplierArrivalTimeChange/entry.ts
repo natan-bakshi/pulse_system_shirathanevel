@@ -4,6 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
+import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
 
 /**
  * Handles a change to supplier_arrival_time on a specific EventService.
@@ -263,22 +264,10 @@ Deno.serve(async (req) => {
 
 async function sendWhatsAppGreenAPI(phone, message) {
     try {
-        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-        if (!GREEN_API_INSTANCE_ID || !GREEN_API_TOKEN) return;
-
-        let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-        if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-        else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-        const chatId = `${cleanPhone}@c.us`;
-        await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatId, message })
-        });
+        // Preserves the existing notification flow; transport is selected centrally.
+        await sendWhatsAppText(phone, message);
     } catch (e) {
-        console.error('WhatsApp send failed:', e);
+        console.error('WhatsApp notification failed:', e?.message || 'unknown');
     }
 }
 
