@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
                 let remainingPush = pendingData.send_push !== false;
                 let remainingWhatsApp = pendingData.send_whatsapp === true;
 
-                // מסמן ניסיון חוזר: ערוץ שנכשל בשגיאת רשת/ספק נשאר לריצה הבאה.
+                // Retry only when the provider definitely rejected the request. An uncertain outcome must not auto-retry.
                 const finalize = async () => {
                     if (remainingPush || remainingWhatsApp) {
                         await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
@@ -146,7 +146,10 @@ Deno.serve(async (req) => {
                         });
                         errorCount++;
                     } else {
-                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
+                        const finalPatch = pendingData.whatsapp_delivery_state === 'unknown'
+                            ? { is_sent: true, data: JSON.stringify({ ...pendingData, send_push: false, send_whatsapp: false }) }
+                            : { is_sent: true };
+                        await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, finalPatch);
                     }
                 };
 
@@ -168,7 +171,18 @@ Deno.serve(async (req) => {
                                 });
                             }
                         } catch (waErr) {
-                            console.error(`[ScheduledPush] WhatsApp failed for ${pending.id} (will retry)`);
+                            if (waErr?.deliveryUncertain) {
+                                remainingWhatsApp = false;
+                                pendingData.whatsapp_delivery_state = 'unknown';
+                                pendingData.whatsapp_last_attempt_at = new Date().toISOString();
+                                // Persist immediately, even if the subsequent Push phase fails.
+                                await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, {
+                                    data: JSON.stringify({ ...pendingData, send_whatsapp: false })
+                                });
+                                console.warn('[ScheduledPush] WhatsApp outcome unknown; automated resend suppressed');
+                            } else {
+                                console.error('[ScheduledPush] WhatsApp rejected; eligible for existing retry flow');
+                            }
                         }
                     }
                 }
