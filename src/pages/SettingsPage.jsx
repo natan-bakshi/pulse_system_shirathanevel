@@ -18,6 +18,7 @@ import CalendarTemplateSettings from "@/components/calendar/CalendarTemplateSett
 import ContactSettingsEditor from "@/components/contact/ContactSettingsEditor";
 import BillingSettings from "@/components/billing/BillingSettings";
 import BusinessDetailsFields from "@/components/settings/BusinessDetailsFields";
+import WhatsAppProviderStatus from "@/components/admin/notifications/WhatsAppProviderStatus";
 
 const settingKeys = [
     'background_image_url', 
@@ -303,6 +304,11 @@ export default function SettingsPage() {
                                 onChange={(value) => handleSettingChange('contact_entries', value)}
                             />
                         </CardContent>
+                    </Card>
+
+                    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+                        <CardHeader><CardTitle className="flex items-center gap-2"><PhoneCall className="h-5 w-5" />הגדרות ספק WhatsApp</CardTitle></CardHeader>
+                        <CardContent><WhatsAppProviderStatus /></CardContent>
                     </Card>
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
