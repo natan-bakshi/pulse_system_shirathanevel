@@ -258,7 +258,7 @@ export async function createNotificationCore(base44, payload, options = {}) {
             body.whatsapp = { sent: false, scheduled: false, reason: whatsappBlockedReason || 'No WhatsApp target' };
         } else {
             try {
-                const waResult = await sendWhatsAppText(whatsappTargetPhone, `*${input.title}*\n\n${input.message}`);
+                const waResult = await sendWhatsAppText(whatsappTargetPhone, `*${input.title}*\n\n${input.message}`, base44);
                 body.whatsapp = { sent: true, scheduled: false, messageId: waResult.messageId || '' };
                 if (notificationRecordId) {
                     await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
