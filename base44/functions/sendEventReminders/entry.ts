@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
+import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 
 /**
  * Sends event reminders to suppliers and admins before events
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
                             let whatsappSent = false;
                             let whatsappQueued = false;
                             
-                            if (supplier.phone && hasWhatsAppProviderCredentials()) {
+                            if (supplier.phone && await hasSelectedWhatsAppProviderCredentials(base44)) {
                                 if (currentlyInQuietHours) {
                                     // Queue for later
                                     try {
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
                                 } else {
                                     // Send immediately
                                     try {
-                                        await sendWhatsAppText(supplier.phone, whatsappMessage);
+                                        await sendWhatsAppText(supplier.phone, whatsappMessage, base44);
                                         whatsappSent = true;
                                     } catch (waError) {
                                         console.error('[EventReminders] WhatsApp send failed:', waError?.message || 'unknown');
@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
                         // WHATSAPP SEND with quiet hours check (Admin)
                         let whatsappSent = false;
                         
-                        if (admin.phone && hasWhatsAppProviderCredentials()) {
+                        if (admin.phone && await hasSelectedWhatsAppProviderCredentials(base44)) {
                             if (currentlyInQuietHours) {
                                 // Queue for later
                                 try {
@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
                                 }
                             } else {
                                 try {
-                                    await sendWhatsAppText(admin.phone, whatsappMessage);
+                                    await sendWhatsAppText(admin.phone, whatsappMessage, base44);
                                     whatsappSent = true;
                                 } catch (waError) {
                                     console.error('[EventReminders] WhatsApp admin send failed:', waError?.message || 'unknown');
