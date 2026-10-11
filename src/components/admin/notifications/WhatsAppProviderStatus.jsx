@@ -40,6 +40,7 @@ export default function WhatsAppProviderStatus() {
           </div>
         )}
         <p className="text-gray-600">לחיבור גיבוי: הוסף את מפתח הסשן ב־Base44 Secrets תחת WASENDER_API_KEY. אין להזין מפתחות בתבניות, ב־GitHub או בצ'אט. המעבר לספק החלופי נעשה במשתנה המאובטח WHATSAPP_ACTIVE_PROVIDER=wasender לאחר בדיקת החיבור.</p>
+        <p className="text-amber-700">שים לב: בתקופת ניסיון WasenderAPI מגבילה שליחה להודעה אחת בדקה ועד 50 הודעות ביום. אל תעביר את כל התראות Pulse לספק החלופי לפני בדיקת עומס או שדרוג מסלול.</p>
       </div>
     </details>
   );
