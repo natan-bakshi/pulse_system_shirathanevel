@@ -172,7 +172,7 @@ export default async function(req) {
     const failures: string[] = [];
     for (const channel of linkChannels) {
       try {
-        if (channel === "whatsapp") await sendWhatsAppText(linkPhone, messageBody);
+        if (channel === "whatsapp") await sendWhatsAppText(linkPhone, messageBody, base44);
         else await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === "en" ? `Payment request - ${subject}` : `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
       } catch (sendError) {
         failures.push(`${channel === "whatsapp" ? "וואטסאפ" : "אימייל"}: ${sendError.message}`);
