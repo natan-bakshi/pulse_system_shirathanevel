@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
             return Response.json({ success: false, error: 'Failed to prepare file link' }, { status: 400 });
         }
 
-        const result = await sendWhatsAppFileByUrl(Phone, signed.signed_url, FileName, Caption);
+        const result = await sendWhatsAppFileByUrl(Phone, signed.signed_url, FileName, Caption, base44);
         return Response.json({ success: true, messageId: result.messageId || '' });
 
     } catch (error) {
