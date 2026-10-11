@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
                         console.log(`[ScheduledPush] No phone for pending ${pending.id} - WhatsApp skipped`);
                     } else {
                         try {
-                            await sendWhatsAppText(phoneToUse, pendingData.whatsapp_message || pending.message);
+                            await sendWhatsAppText(phoneToUse, pendingData.whatsapp_message || pending.message, base44);
                             remainingWhatsApp = false;
                             successCount++;
                             if (pending.in_app_notification_id) {
@@ -485,7 +485,7 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
         try {
             const chatId = wa.chatId || toChatId(wa.phone);
             if (!chatId) continue;
-            await sendWhatsAppToChat(chatId, wa.message);
+            await sendWhatsAppToChat(chatId, wa.message, base44);
             result.sent++;
         } catch (e) {
             console.warn('[ScheduledPush] Fan-out WhatsApp failed for one recipient');
