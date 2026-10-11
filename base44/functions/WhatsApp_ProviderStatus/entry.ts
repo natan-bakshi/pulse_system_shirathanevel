@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.11';
-import { checkWasenderSessionStatus, getWhatsAppActiveProvider, isWasenderConfigured } from '../../shared/wasenderSend.ts';
+import { checkWasenderSessionStatus, isWasenderConfigured } from '../../shared/wasenderSend.ts';
+import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 
 // Read-only, admin-only connectivity check. Never exposes session credentials.
 Deno.serve(async (req) => {
@@ -10,7 +11,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ success: false, error: 'Forbidden' }, { status: 403 });
 
-    const selectedProvider = getWhatsAppActiveProvider();
+    const selectedProvider = await resolveWhatsAppProvider(base44);
     const greenConfigured = !!(Deno.env.get('GREEN_API_INSTANCE_ID') && Deno.env.get('GREEN_API_TOKEN'));
     const wasender = isWasenderConfigured()
       ? await checkWasenderSessionStatus()
