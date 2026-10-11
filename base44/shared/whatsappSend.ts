@@ -1,7 +1,8 @@
 // שליחת הודעות וואטסאפ דרך Green API - מודול משותף יחיד לכל פונקציות ה-backend.
 // אין להחזיר לקוח את תשובת Green API המלאה, ואין לרשום ללוג טוקן/מספר/תוכן/קישור חתום.
 import { sanitizeText, LIMITS } from "./notificationValidation.ts";
-import { getWhatsAppActiveProvider, sendWasenderTextToChat, sendWasenderDocumentToChat } from "./wasenderSend.ts";
+import { sendWasenderTextToChat, sendWasenderDocumentToChat } from "./wasenderSend.ts";
+import { resolveWhatsAppProvider } from "./whatsappProviderConfig.ts";
 
 const GREEN_API_BASE = "https://api.green-api.com";
 const REQUEST_TIMEOUT_MS = 15000;
@@ -99,12 +100,12 @@ async function callGreenApi(method, body) {
 /**
  * שליחת הודעת טקסט לפי מספר טלפון (נרמול בצד השרת).
  */
-export async function sendWhatsAppText(phone, message) {
+export async function sendWhatsAppText(phone, message, client = null) {
   const chatId = toChatId(phone);
   if (!chatId) throw invalidInput("Invalid WhatsApp phone number");
   const safeMessage = sanitizeMessage(message);
   if (!safeMessage) throw invalidInput("Empty WhatsApp message");
-  return getWhatsAppActiveProvider() === "wasender"
+  return (await resolveWhatsAppProvider(client)) === "wasender"
     ? await sendWasenderTextToChat(chatId, safeMessage)
     : await callGreenApi("sendMessage", { chatId, message: safeMessage });
 }
@@ -112,12 +113,12 @@ export async function sendWhatsAppText(phone, message) {
 /**
  * שליחת הודעה ל-chatId שנבנה בצד השרת (כולל קבוצות שנבנו מהמערכת, לא מהלקוח).
  */
-export async function sendWhatsAppToChat(chatId, message) {
+export async function sendWhatsAppToChat(chatId, message, client = null) {
   const safeChatId = sanitizeText(chatId, 80);
   if (!/^[0-9A-Za-z_-]+@(c|g)\.us$/.test(safeChatId)) throw invalidInput("Invalid WhatsApp target");
   const safeMessage = sanitizeMessage(message);
   if (!safeMessage) throw invalidInput("Empty WhatsApp message");
-  return getWhatsAppActiveProvider() === "wasender"
+  return (await resolveWhatsAppProvider(client)) === "wasender"
     ? await sendWasenderTextToChat(safeChatId, safeMessage)
     : await callGreenApi("sendMessage", { chatId: safeChatId, message: safeMessage });
 }
@@ -125,7 +126,7 @@ export async function sendWhatsAppToChat(chatId, message) {
 /**
  * שליחת קובץ. ה-URL נוצר בצד השרת בלבד (קישור חתום), ונבדק שוב כאן.
  */
-export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption) {
+export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption, client = null) {
   const chatId = toChatId(phone);
   if (!chatId) throw invalidInput("Invalid WhatsApp phone number");
 
@@ -140,7 +141,7 @@ export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption) {
 
   const cleanName = sanitizeFileName(fileName);
   const cleanCaption = sanitizeCaption(caption);
-  return getWhatsAppActiveProvider() === "wasender"
+  return (await resolveWhatsAppProvider(client)) === "wasender"
     ? await sendWasenderDocumentToChat(chatId, parsed.href, cleanName, cleanCaption)
     : await callGreenApi("sendFileByUrl", {
         chatId,
