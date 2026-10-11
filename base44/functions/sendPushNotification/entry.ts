@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.7.0';
 import { getApps, initializeApp, cert, getApp } from 'npm:firebase-admin@12.0.0/app';
 import { getMessaging } from 'npm:firebase-admin@12.0.0/messaging';
+import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
 
 // Helper to safely initialize Firebase Admin.
 // It will only initialize if it hasn't been already.
@@ -57,47 +59,17 @@ Deno.serve(async (req) => {
 
     // --- WhatsApp Logic Start ---
     const whatsappResults = [];
-    const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-    const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-
-    if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+    if (hasWhatsAppProviderCredentials()) {
         const whatsappUsers = targetedUsers.filter(u => u.phone && u.whatsapp_enabled !== false);
         
         for (const u of whatsappUsers) {
             try {
-                // Clean phone number
-                let cleanPhone = u.phone.replace(/[^0-9]/g, '');
-                if (cleanPhone.startsWith('05')) {
-                    cleanPhone = '972' + cleanPhone.substring(1);
-                } else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) {
-                    cleanPhone = '972' + cleanPhone;
-                }
-
-                const chatId = `${cleanPhone}@c.us`;
-                // If there's a link in data (e.g. click_action or link), append it
                 const link = data.link || data.click_action || '';
                 const whatsappMessage = `*${title}*\n\n${body}${link ? `\n\n${link}` : ''}`;
-
-                console.log(`[sendPushNotification] Sending WhatsApp to ${u.full_name} (${chatId})`);
-
-                const waResponse = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chatId: chatId,
-                        message: whatsappMessage
-                    })
-                });
-                
-                if (waResponse.ok) {
-                    whatsappResults.push({ userId: u.id, success: true });
-                } else {
-                    const errData = await waResponse.json();
-                    console.warn(`[sendPushNotification] WhatsApp failed for ${u.id}:`, errData);
-                    whatsappResults.push({ userId: u.id, success: false, error: errData });
-                }
+                await sendWhatsAppText(u.phone, whatsappMessage);
+                whatsappResults.push({ userId: u.id, success: true });
             } catch (waError) {
-                console.error(`[sendPushNotification] WhatsApp error for ${u.id}:`, waError);
+                console.error('[sendPushNotification] WhatsApp send error:', waError?.message || 'unknown');
                 whatsappResults.push({ userId: u.id, success: false, error: waError.message });
             }
         }
