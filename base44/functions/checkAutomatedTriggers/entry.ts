@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
+import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 
 /**
  * Checks for automated notification triggers (Business Logic)
@@ -383,8 +383,8 @@ async function triggerNotification(base44, template, event, user, supplier, even
             }
         } else {
             try {
-                if (hasWhatsAppProviderCredentials()) {
-                    await sendWhatsAppText(phoneToUse, whatsapp_message);
+                if (await hasSelectedWhatsAppProviderCredentials(base44)) {
+                    await sendWhatsAppText(phoneToUse, whatsapp_message, base44);
                     whatsappSent = true; // Accepted by provider, not confirmed delivered.
                 } else {
                     console.error('[AutomatedTriggers] WhatsApp provider not configured');
