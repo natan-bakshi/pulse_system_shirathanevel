@@ -845,7 +845,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
             console.error('[HandleEntityEvents] WhatsApp provider not configured');
         }
     } catch (e) {
-        console.error(`[HandleEntityEvents] WhatsApp failed to ${phone}`, e);
+        console.error('[HandleEntityEvents] WhatsApp send failed:', e?.message || 'unknown');
     }
 }
 
