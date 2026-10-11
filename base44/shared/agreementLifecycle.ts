@@ -42,7 +42,7 @@ export async function deliver(client,a,kind,key,message,file=null,config={}) {
  if(prior.length)return prior[0];
  const row=await client.entities.ClientMessageDelivery.create({agreement_id:a.id,event_id:a.event_id,kind,key,target_masked:"••••"+a.recipient_phone.slice(-4),state:"dispatching",attempted_at:new Date().toISOString()});
  try{
-  const result=file?await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message):await sendWhatsAppText(a.recipient_phone,message);
+  const result=file?await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,client):await sendWhatsAppText(a.recipient_phone,message,client);
   return await client.entities.ClientMessageDelivery.update(row.id,{state:"accepted",provider_message_id:result.messageId||"",sent_at:new Date().toISOString()});
  }catch{
   await client.entities.ClientMessageDelivery.update(row.id,{state:"unknown",error:"לא התקבל אישור מהספק. לבדוק לפני שליחה ידנית נוספת."});
