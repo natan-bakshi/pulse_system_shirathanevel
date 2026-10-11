@@ -73,7 +73,7 @@ async function callGreenApi(method, body) {
     });
   } catch (e) {
     console.error(`[WhatsApp] transport failure on ${method}: ${e?.name || 'error'}`);
-    throw new Error("WhatsApp request failed");
+    throw Object.assign(new Error("WhatsApp request failed"), { deliveryUncertain: true });
   }
 
   // תגובה שאינה JSON מטופלת בבטחה ואינה נחשפת ללקוח.
@@ -87,8 +87,10 @@ async function callGreenApi(method, body) {
 
   if (!response.ok) {
     console.error(`[WhatsApp] ${method} rejected with status ${response.status}`);
-    const error = new Error("WhatsApp send failed");
-    error.errorCode = response.status;
+    const error = Object.assign(new Error("WhatsApp send failed"), {
+      errorCode: response.status,
+      deliveryUncertain: response.status === 408 || response.status >= 500
+    });
     throw error;
   }
 
