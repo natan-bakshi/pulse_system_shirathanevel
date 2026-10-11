@@ -40,7 +40,7 @@ export default async function(req) {
         if (channel === "email") {
           await base44.asServiceRole.integrations.Core.SendEmail({ to: target, subject: title, body, from_name: fromName });
         } else {
-          await sendWhatsAppText(target, body);
+          await sendWhatsAppText(target, body, base44);
         }
       } catch (sendError) {
         failures.push(`${target}: ${sendError.message}`);
