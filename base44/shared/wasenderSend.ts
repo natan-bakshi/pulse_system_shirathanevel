@@ -14,6 +14,12 @@ export function getWhatsAppActiveProvider() {
     : 'green';
 }
 
+export function hasWhatsAppProviderCredentials() {
+  return getWhatsAppActiveProvider() === 'wasender'
+    ? isWasenderConfigured()
+    : !!(Deno.env.get('GREEN_API_INSTANCE_ID') && Deno.env.get('GREEN_API_TOKEN'));
+}
+
 function toWasenderRecipient(chatId) {
   const input = String(chatId || '').trim();
   if (/^[0-9A-Za-z_-]+@g\.us$/.test(input)) return input;
