@@ -351,7 +351,7 @@ export default Deno.serve(async req => {
       const claim=await client.entities.CardSetupRequest.updateMany({id:s.id,state:"pending",link_message_state:{$nin:["dispatching","accepted","unknown"]}},{$set:{link_message_state:"dispatching"}});
       if(claim.updated!==1)throw new CardError("הקישור כבר נשלח או שהשליחה בבירור",409);
       try{
-        const sent=await sendWhatsAppText(customer.phone,"שלום "+customer.name+", לשמירת כרטיס באופן מאובטח אצל Invoice4U, ללא חיוב:\n"+s.redirect_url);
+        const sent=await sendWhatsAppText(customer.phone,"שלום "+customer.name+", לשמירת כרטיס באופן מאובטח אצל Invoice4U, ללא חיוב:\n"+s.redirect_url,client);
         await client.entities.CardSetupRequest.update(s.id,{link_message_state:"accepted",link_message_id:sent.messageId||""});
         return Response.json({sent:true});
       }catch{
