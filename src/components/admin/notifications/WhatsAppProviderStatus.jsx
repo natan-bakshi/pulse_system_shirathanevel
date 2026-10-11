@@ -68,7 +68,16 @@ export default function WhatsAppProviderStatus() {
       setStatus(prev => ({ ...prev, ...data, wasender: prev?.wasender }));
       setNotice(`נשמר: ${titleFor(choice)} הוא כעת ספק WhatsApp ברירת המחדל לכל השליחות החדשות.`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'שמירת בחירת הספק נכשלה.');
+      const details = e?.response?.data || e?.data || {};
+      const code = String(details.error || '');
+      const message = code.includes('WASENDER_API_KEY')
+        ? 'מפתח WASENDER_API_KEY חסר ב־Base44 Secrets. הזן את מפתח הסשן שם ואז נסה שוב.'
+        : details.connectionStatus
+          ? `לא בוצע מעבר: הסשן הוא ${names[details.connectionStatus] || details.connectionStatus}. חבר אותו וסרוק QR לפני שמירה.`
+          : code.includes('Duplicate')
+            ? 'נמצאו הגדרות ספק כפולות. לא בוצע שינוי, נדרש בירור מנהל מערכת.'
+            : 'לא ניתן לשמור את הספק. בדוק את מפתח הסשן והחיבור, ונסה שוב.';
+      setError(message);
     } finally { setBusy(false); }
   }
 
