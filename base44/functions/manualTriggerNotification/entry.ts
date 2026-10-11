@@ -2,6 +2,8 @@ import { getClientContacts, getEventContacts } from '../../shared/eventFields.js
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
+import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
 
 /**
  * Manual Trigger for Notification Templates
@@ -565,25 +567,9 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     }
 
     try {
-        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-
-        if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-            let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-            if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-            else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-            const chatId = `${cleanPhone}@c.us`;
-            const body = { chatId, message };
-
-            await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-        }
+        if (hasWhatsAppProviderCredentials()) await sendWhatsAppText(phone, message);
     } catch (e) {
-        console.error('[ManualTrigger] WhatsApp send failed', e);
+        console.error('[ManualTrigger] WhatsApp send failed:', e?.message || 'unknown');
     }
 }
 
