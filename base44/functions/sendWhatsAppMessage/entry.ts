@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
             return Response.json({ success: false, error: 'Missing target or message' }, { status: 400 });
         }
 
-        const result = await sendWhatsAppText(phone, message);
+        const result = await sendWhatsAppText(phone, message, base44);
         return Response.json({ success: true, messageId: result.messageId || '' });
 
     } catch (error) {
