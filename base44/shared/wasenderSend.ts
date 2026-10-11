@@ -55,7 +55,7 @@ async function requestWasender(path, { method = 'GET', payload } = {}) {
   if (!response.ok || data?.success === false) {
     console.error('[WasenderAPI] request rejected; httpStatus=' + response.status);
     // 5xx may have accepted the message before returning an error.
-    throw wasenderError(response.status, response.status >= 500);
+    throw wasenderError(response.ok ? 422 : response.status, response.status >= 500);
   }
   return data;
 }
