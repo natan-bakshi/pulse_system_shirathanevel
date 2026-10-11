@@ -43,6 +43,14 @@ test('switch sends documentUrl, fileName and caption, never the file contents', 
   };
   assert.equal((await sendWhatsAppFileByUrl('0501234567', 'https://example.com/file.pdf', 'file.pdf', 'document')).messageId, '99');
 });
+test('Green API network failures are flagged as uncertain, not safe for automatic replay', async () => {
+  env.WHATSAPP_ACTIVE_PROVIDER = 'green';
+  globalThis.fetch = async () => { throw new Error('synthetic timeout'); };
+  await assert.rejects(sendWhatsAppText('0501234567', 'test message'), err => err.deliveryUncertain === true);
+  globalThis.fetch = async () => ({ ok: false, status: 503, text: async () => 'unavailable' });
+  await assert.rejects(sendWhatsAppText('0501234567', 'test message'), err => err.deliveryUncertain === true && err.errorCode === 503);
+});
+
 test('without backup key selected provider fails closed; it never falls back to Green', async () => {
   env.WHATSAPP_ACTIVE_PROVIDER = 'wasender';
   delete env.WASENDER_API_KEY;
