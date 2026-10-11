@@ -13,6 +13,7 @@ import NotificationTemplatesOverview from "./notifications/NotificationTemplates
 import NotificationTemplateForm from "./notifications/NotificationTemplateForm";
 import ManualTriggerDialog from "./notifications/ManualTriggerDialog";
 import ManualSendersSection from "./notifications/ManualSendersSection";
+import WhatsAppProviderStatus from "./notifications/WhatsAppProviderStatus";
 
 /**
  * רכיב ניהול התראות מרכזי - מתאם בין כל תת-הקומפוננטות:
@@ -141,6 +142,9 @@ export default function NotificationManagementTab() {
           </ul>
         </AlertDescription>
       </Alert>
+
+      {/* ספק WhatsApp — סטטוס בדיקה לפי דרישה, ללא תזמון */}
+      <WhatsAppProviderStatus />
 
       {/* שולחים ידניים */}
       <ManualSendersSection />
