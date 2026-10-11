@@ -1,6 +1,8 @@
 import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -1067,30 +1069,14 @@ Deno.serve(async (req) => {
         // ============================================================
         console.log(`[DailyNotifications] Phase 5: Sending ${whatsappQueue.length} WhatsApp + ${pushQueue.length} Push messages...`);
         
-        // 5a. Send WhatsApp messages sequentially (Green API doesn't support batch)
-        if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+        // 5a. Send sequentially through the selected provider. No automatic retry of uncertain sends.
+        if (hasWhatsAppProviderCredentials()) {
             for (const wa of whatsappQueue) {
                 try {
-                    let cleanPhone = wa.phone.toString().replace(/[^0-9]/g, '');
-                    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-                    
-                    const chatId = `${cleanPhone}@c.us`;
-                    
-                    const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chatId, message: wa.message })
-                    });
-                    
-                    if (response.ok) {
-                        results.pending_whatsapp_sent++;
-                    } else {
-                        const err = await response.text();
-                        console.error(`[DailyNotifications] WA Error for ${wa.phone}: ${err}`);
-                    }
+                    await sendWhatsAppText(wa.phone, wa.message);
+                    results.pending_whatsapp_sent++; // Provider accepted; not proof of delivery.
                 } catch (e) {
-                    console.error(`[DailyNotifications] WA failed for ${wa.phone}:`, e);
+                    console.error('[DailyNotifications] WhatsApp send failed:', e?.message || 'unknown');
                     results.errors++;
                 }
             }
