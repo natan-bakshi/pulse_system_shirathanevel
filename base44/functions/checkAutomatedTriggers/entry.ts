@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
 
 /**
  * Checks for automated notification triggers (Business Logic)
@@ -381,35 +383,14 @@ async function triggerNotification(base44, template, event, user, supplier, even
             }
         } else {
             try {
-                const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-                const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-                
-                if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-                    let cleanPhone = phoneToUse.toString().replace(/[^0-9]/g, '');
-                    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-                    const chatId = `${cleanPhone}@c.us`;
-                    const body = { chatId, message: whatsapp_message };
-
-                    const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
-                    
-                    if (response.ok) {
-                        whatsappSent = true;
-                        console.log(`[AutomatedTriggers] DIRECT WhatsApp sent to ${phoneToUse}`);
-                    } else {
-                        const err = await response.text();
-                        console.error(`[AutomatedTriggers] Green API Error: ${err}`);
-                    }
+                if (hasWhatsAppProviderCredentials()) {
+                    await sendWhatsAppText(phoneToUse, whatsapp_message);
+                    whatsappSent = true; // Accepted by provider, not confirmed delivered.
                 } else {
-                     console.error('[AutomatedTriggers] Missing Green API Secrets');
+                    console.error('[AutomatedTriggers] WhatsApp provider not configured');
                 }
             } catch (e) {
-                console.error(`[AutomatedTriggers] Failed DIRECT WhatsApp to ${phoneToUse}`, e);
+                console.error('[AutomatedTriggers] WhatsApp send failed:', e?.message || 'unknown');
             }
         }
     }
