@@ -2,6 +2,8 @@ import { getClientContacts, getEventContacts } from '../../shared/eventFields.js
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
+import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
+import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -836,27 +838,11 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
 
     // Send immediately
     try {
-        const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
-        const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
-        
-        if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-            const chatId = whatsappTarget.chatId;
-            const body = { chatId, message };
-
-            const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            
-            if (response.ok) {
-                console.log(`[HandleEntityEvents] WhatsApp sent to ${targetLabel}`);
-            } else {
-                const err = await response.text();
-                console.error(`[HandleEntityEvents] Green API Error: ${err}`);
-            }
+        if (hasWhatsAppProviderCredentials()) {
+            await sendWhatsAppToChat(whatsappTarget.chatId, message);
+            console.log('[HandleEntityEvents] WhatsApp accepted by provider');
         } else {
-             console.error('[HandleEntityEvents] Missing Green API Secrets');
+            console.error('[HandleEntityEvents] WhatsApp provider not configured');
         }
     } catch (e) {
         console.error(`[HandleEntityEvents] WhatsApp failed to ${phone}`, e);
