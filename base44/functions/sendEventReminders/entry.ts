@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { hasWhatsAppProviderCredentials } from '../../shared/wasenderSend.ts';
 
 /**
  * Sends event reminders to suppliers and admins before events
@@ -153,7 +155,7 @@ Deno.serve(async (req) => {
                             let whatsappSent = false;
                             let whatsappQueued = false;
                             
-                            if (supplier.phone && GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                            if (supplier.phone && hasWhatsAppProviderCredentials()) {
                                 if (currentlyInQuietHours) {
                                     // Queue for later
                                     try {
@@ -177,28 +179,10 @@ Deno.serve(async (req) => {
                                 } else {
                                     // Send immediately
                                     try {
-                                        let cleanPhone = supplier.phone.toString().replace(/[^0-9]/g, '');
-                                        if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                                        else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-                                        const chatId = `${cleanPhone}@c.us`;
-                                        const body = { chatId, message: whatsappMessage };
-
-                                        const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify(body)
-                                        });
-                                        
-                                        if (response.ok) {
-                                            whatsappSent = true;
-                                            console.log(`[EventReminders] DIRECT WhatsApp sent to ${supplier.supplier_name} (${supplier.phone})`);
-                                        } else {
-                                            const err = await response.text();
-                                            console.error(`[EventReminders] Green API Error: ${err}`);
-                                        }
+                                        await sendWhatsAppText(supplier.phone, whatsappMessage);
+                                        whatsappSent = true;
                                     } catch (waError) {
-                                        console.error(`[EventReminders] DIRECT WhatsApp failed for ${supplier.supplier_name}:`, waError);
+                                        console.error('[EventReminders] WhatsApp send failed:', waError?.message || 'unknown');
                                     }
                                 }
                             }
@@ -278,7 +262,7 @@ Deno.serve(async (req) => {
                         // WHATSAPP SEND with quiet hours check (Admin)
                         let whatsappSent = false;
                         
-                        if (admin.phone && GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+                        if (admin.phone && hasWhatsAppProviderCredentials()) {
                             if (currentlyInQuietHours) {
                                 // Queue for later
                                 try {
@@ -300,28 +284,10 @@ Deno.serve(async (req) => {
                                 }
                             } else {
                                 try {
-                                    let cleanPhone = admin.phone.toString().replace(/[^0-9]/g, '');
-                                    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-                                    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-
-                                    const chatId = `${cleanPhone}@c.us`;
-                                    const body = { chatId, message: whatsappMessage };
-
-                                    const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(body)
-                                    });
-                                    
-                                    if (response.ok) {
-                                        whatsappSent = true;
-                                        console.log(`[EventReminders] DIRECT WhatsApp sent to admin ${admin.full_name}`);
-                                    } else {
-                                        const err = await response.text();
-                                        console.error(`[EventReminders] Green API Error (Admin): ${err}`);
-                                    }
+                                    await sendWhatsAppText(admin.phone, whatsappMessage);
+                                    whatsappSent = true;
                                 } catch (waError) {
-                                    console.error(`[EventReminders] DIRECT WhatsApp failed for admin ${admin.full_name}:`, waError);
+                                    console.error('[EventReminders] WhatsApp admin send failed:', waError?.message || 'unknown');
                                 }
                             }
                         }
