@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
                     waMessage = waMessage.replace(/~\s*~/g, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
 
                     if (sendWhatsApp && supplier.whatsapp_enabled !== false && supplier.phone) {
-                        await sendWhatsAppGreenAPI(supplier.phone, waMessage);
+                        await sendWhatsAppNotification(base44, supplier.phone, waMessage);
                     }
 
                     if (sendPush) {
@@ -175,10 +175,10 @@ Deno.serve(async (req) => {
     }
 });
 
-async function sendWhatsAppGreenAPI(phone, message) {
+async function sendWhatsAppNotification(base44, phone, message) {
     try {
         // Preserves the existing notification flow; transport is selected centrally.
-        await sendWhatsAppText(phone, message);
+        await sendWhatsAppText(phone, message, base44);
     } catch (e) {
         console.error('WhatsApp notification failed:', e?.message || 'unknown');
     }
