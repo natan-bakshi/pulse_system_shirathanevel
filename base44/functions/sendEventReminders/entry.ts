@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
  * Sends event reminders to suppliers and admins before events
@@ -153,12 +154,14 @@ Deno.serve(async (req) => {
                             // WHATSAPP SEND with quiet hours check
                             let whatsappSent = false;
                             let whatsappQueued = false;
+                            let whatsAppResult = null;
+                            let pendingQueueRow = null;
                             
                             if (supplier.phone) {
                                 if (currentlyInQuietHours) {
                                     // Queue for later
                                     try {
-                                        await base44.asServiceRole.entities.PendingPushNotification.create({
+                                        pendingQueueRow = await base44.asServiceRole.entities.PendingPushNotification.create({
                                             user_id: targetUserId,
                                             user_email: targetUserEmail,
                                             title,
@@ -178,8 +181,8 @@ Deno.serve(async (req) => {
                                 } else {
                                     // Send immediately
                                     try {
-                                        await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
-                                        whatsappSent = true;
+                                        whatsAppResult = await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
+                                        whatsappSent = whatsAppResult.queued !== true;
                                     } catch (waError) {
                                         console.error('[EventReminders] WhatsApp send failed:', waError?.message || 'unknown');
                                     }
@@ -188,7 +191,7 @@ Deno.serve(async (req) => {
 
                             // THEN CREATE LOG (InAppNotification)
                             try {
-                                await base44.asServiceRole.entities.InAppNotification.create({
+                                const reminderLog = await base44.asServiceRole.entities.InAppNotification.create({
                                     user_id: targetUserId,
                                     user_email: targetUserEmail,
                                     title,
@@ -204,6 +207,8 @@ Deno.serve(async (req) => {
                                     reminder_count: 0,
                                     is_resolved: false
                                 });
+                                if(whatsAppResult?.queued) await attachOutboxInAppReceipt(base44,whatsAppResult,reminderLog.id);
+                                if(pendingQueueRow?.id) await base44.asServiceRole.entities.PendingPushNotification.update(pendingQueueRow.id,{in_app_notification_id:reminderLog.id});
                                 sentCount++;
                             } catch (error) {
                                 console.error(`[EventReminders] Error creating log for supplier ${supplier.supplier_name}:`, error);
@@ -260,12 +265,14 @@ Deno.serve(async (req) => {
                         
                         // WHATSAPP SEND with quiet hours check (Admin)
                         let whatsappSent = false;
+                        let whatsAppResult = null;
+                        let pendingQueueRow = null;
                         
                         if (admin.phone) {
                             if (currentlyInQuietHours) {
                                 // Queue for later
                                 try {
-                                    await base44.asServiceRole.entities.PendingPushNotification.create({
+                                    pendingQueueRow = await base44.asServiceRole.entities.PendingPushNotification.create({
                                         user_id: admin.id,
                                         user_email: admin.email,
                                         title,
@@ -283,8 +290,8 @@ Deno.serve(async (req) => {
                                 }
                             } else {
                                 try {
-                                    await sendWhatsAppText(admin.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
-                                    whatsappSent = true;
+                                    whatsAppResult = await sendWhatsAppText(admin.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
+                                    whatsappSent = whatsAppResult.queued !== true;
                                 } catch (waError) {
                                     console.error('[EventReminders] WhatsApp admin send failed:', waError?.message || 'unknown');
                                 }
@@ -293,7 +300,7 @@ Deno.serve(async (req) => {
 
                         try {
                             // Create in-app notification directly using service role
-                            await base44.asServiceRole.entities.InAppNotification.create({
+                            const reminderLog = await base44.asServiceRole.entities.InAppNotification.create({
                                 user_id: admin.id,
                                 user_email: admin.email,
                                 title,
@@ -307,6 +314,8 @@ Deno.serve(async (req) => {
                                 reminder_count: 0,
                                 is_resolved: false
                             });
+                            if(whatsAppResult?.queued) await attachOutboxInAppReceipt(base44,whatsAppResult,reminderLog.id);
+                            if(pendingQueueRow?.id) await base44.asServiceRole.entities.PendingPushNotification.update(pendingQueueRow.id,{in_app_notification_id:reminderLog.id});
                             sentCount++;
                         } catch (error) {
                             console.error(`[EventReminders] Error sending to admin:`, error);
