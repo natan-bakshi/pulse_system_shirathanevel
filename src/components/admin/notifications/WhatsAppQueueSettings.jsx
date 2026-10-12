@@ -45,6 +45,7 @@ export default function WhatsAppQueueSettings(){
     <summary className="cursor-pointer font-semibold text-base">תור WhatsApp מרכזי — קצב, המתנה ומעקב</summary>
     <div className="mt-4 space-y-4">
       <p className="text-sm text-gray-600">הגדרה אחת לכל השיבוצים, התזכורות, החשבוניות, הקישורים והודעות הידניות. ההודעה הראשונה נשלחת מיד כשהתור פנוי; המרווח חל רק בין ניסיונות שליחה לספק, ולא לפני כל הודעה.</p>
+      {!form.enabled&&<p role="alert" className="rounded border p-2 text-sm text-amber-800">התור המרכזי עדיין כבוי. עד הפעלתו המערכת שומרת על שיטת השליחה הישירה הקודמת, ללא ויסות קצב מרכזי. לאחר בדיקת השליחה במערכת הפעילה, יש להפעיל את התור כאן.</p>}
       {view && <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm rounded border p-3 bg-gray-50">
         <span>ספק פעיל: <strong>{view.activeProvider==='wasender'?'WasenderAPI':'Green API'}</strong></span>
         <span>בהמתנה: <strong>{(stats.queued||0)+(stats.retry_wait||0)}</strong></span>
