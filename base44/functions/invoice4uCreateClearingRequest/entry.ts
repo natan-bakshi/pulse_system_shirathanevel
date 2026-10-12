@@ -174,7 +174,7 @@ export default async function(req) {
     for (const channel of linkChannels) {
       try {
         if (channel === "whatsapp") {
-          const receipt=await sendWhatsAppText(linkPhone,messageBody,base44,{sourceType:'payment_link',sourceId:payment.id||'',idempotencyKey:'payment-link:'+payment.id});
+          const receipt=await sendWhatsAppText(linkPhone,messageBody,base44,{sourceType:'payment_link',sourceId:payment.id||'',idempotencyKey:'payment-link:'+payment.id,expiresAt:expiresAt||''});
           if(receipt.queued)queuedVia.push('whatsapp');
         }
         else await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === "en" ? `Payment request - ${subject}` : `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
