@@ -170,9 +170,13 @@ export default async function(req) {
     }, docLanguage);
 
     const failures: string[] = [];
+    const queuedVia: string[] = [];
     for (const channel of linkChannels) {
       try {
-        if (channel === "whatsapp") await sendWhatsAppText(linkPhone, messageBody, base44, {sourceType:'payment_link',sourceId:payment.id||'',idempotencyKey:'payment-link:'+payment.id});
+        if (channel === "whatsapp") {
+          const receipt=await sendWhatsAppText(linkPhone,messageBody,base44,{sourceType:'payment_link',sourceId:payment.id||'',idempotencyKey:'payment-link:'+payment.id});
+          if(receipt.queued)queuedVia.push('whatsapp');
+        }
         else await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === "en" ? `Payment request - ${subject}` : `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
       } catch (sendError) {
         failures.push(`${channel === "whatsapp" ? "וואטסאפ" : "אימייל"}: ${sendError.message}`);
@@ -182,6 +186,6 @@ export default async function(req) {
       await base44.asServiceRole.entities.Payment.update(payment.id, { notes: `${payment.notes || ""} (שליחת קישור נכשלה)`.trim() });
       return Response.json({ error: `הקישור נוצר אך השליחה נכשלה - ${failures.join(", ")}`, paymentId: payment.id, paymentLink: redirectUrl }, { status: 400 });
     }
-    return Response.json({ paymentId: payment.id, paymentLink: redirectUrl, chargedTotal: chargeTotal, fee: fee.amount, sentVia: linkChannels.filter((channel) => !failures.some((failure) => failure.startsWith(channel === "whatsapp" ? "וואטסאפ" : "אימייל"))), failures });
+    return Response.json({ paymentId: payment.id, paymentLink: redirectUrl, chargedTotal: chargeTotal, fee: fee.amount, sentVia: linkChannels.filter((channel) => !queuedVia.includes(channel) && !failures.some((failure) => failure.startsWith(channel === "whatsapp" ? "וואטסאפ" : "אימייל"))), queuedVia, failures });
   } catch (error) { return Response.json({ error: error.message }, { status: error.status || 500 }); }
 }
