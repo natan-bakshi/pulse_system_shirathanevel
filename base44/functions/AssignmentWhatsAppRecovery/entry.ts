@@ -188,6 +188,15 @@ Deno.serve(async (req) => {
         state:'dispatching',attempted_at:now,attempt_count:Number(row.attempt_count||0)+1,provider
       }});
       if(claim?.updated!==1) return reply({success:true,waitingSeconds:2,...await queueStatus(base44)});
+      // Two browser tabs must not send separate recipients simultaneously.
+      const activeClaims = await entities.filter({state:'dispatching'},'attempted_at',20);
+      if(activeClaims.length>1){
+        const winner=[...activeClaims].sort((a:any,b:any)=>String(a.attempted_at||'').localeCompare(String(b.attempted_at||''))||String(a.id).localeCompare(String(b.id)))[0];
+        if(winner.id!==row.id){
+          await entities.updateMany({id:row.id,state:'dispatching'},{$set:{state:'queued',attempted_at:''}});
+          return reply({success:true,waitingSeconds:70,blocked:'Another recovery dispatch has the send slot',...await queueStatus(base44)});
+        }
+      }
       try{
         const result=await sendWhatsAppToChat(candidate.destination,row.message_snapshot,base44);
         await entities.update(row.id,{state:'accepted',provider_message_id:result.messageId||'',completed_at:new Date().toISOString(),last_error:''});
