@@ -34,28 +34,32 @@ function randomToken() {
 }
 async function safeCompletionLinks(client:any,job:any,status:string,messageId:string) {
   const db=client.asServiceRole.entities;
-  try {
-    if(job.in_app_notification_id && status==='accepted') await db.InAppNotification.update(job.in_app_notification_id,{whatsapp_sent:true,whatsapp_message_id:messageId||''});
-    if(job.client_message_delivery_id) {
+  // Each downstream mirror is independently best-effort. One broken entity
+  // must not suppress receipt propagation to unrelated agreements/cards.
+  if(job.in_app_notification_id && status==='accepted') {
+    try {await db.InAppNotification.update(job.in_app_notification_id,{
+      whatsapp_sent:true,whatsapp_message_id:messageId||''
+    });}catch(error){console.error('[WhatsAppOutbox] InApp status sync failed');}
+  }
+  if(job.client_message_delivery_id) {
+    try {
       await db.ClientMessageDelivery.update(job.client_message_delivery_id,{
         state:status,provider_message_id:status==='accepted' ? messageId||'' : '',
         ...(status==='accepted'?{sent_at:new Date().toISOString()}:{})
       });
-      // The agreement's signed-copy status used to be set synchronously.
-      // Keep it in sync with the async provider receipt after queue migration.
       const delivery=await db.ClientMessageDelivery.get?.(job.client_message_delivery_id);
       if(delivery?.kind==='signed_copy' && delivery.agreement_id) {
         await db.EventAgreement.updateMany({id:delivery.agreement_id},{$set:{
           copy_state:status
         }});
       }
-    }
-    if(job.card_setup_request_id) await db.CardSetupRequest.update(job.card_setup_request_id,{
+    }catch(error){console.error('[WhatsAppOutbox] agreement status sync failed');}
+  }
+  if(job.card_setup_request_id) {
+    try {await db.CardSetupRequest.update(job.card_setup_request_id,{
       link_message_state:status==='accepted'?'accepted':status==='unknown'?'unknown':status==='failed'?'rejected':'queued',
       ...(status==='accepted'?{link_message_id:messageId||''}:{})
-    });
-  }catch(error){
-    console.error('[WhatsAppOutbox] linked status update failed:',error instanceof Error?error.name:'unknown');
+    });}catch(error){console.error('[WhatsAppOutbox] card setup status sync failed');}
   }
 }
 async function staleSendingToUnknown(client:any, now:number) {
