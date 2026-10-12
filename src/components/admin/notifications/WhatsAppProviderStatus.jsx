@@ -113,7 +113,7 @@ export default function WhatsAppProviderStatus() {
           {!status.wasenderConfigured && <p className="text-amber-700">יש להדביק את מפתח הסשן ב־Base44 Secrets בשם WASENDER_API_KEY. אין להכניס מפתחות ל־GitHub או לצ'אט.</p>}
         </div>
       )}
-      <p className="text-xs text-amber-700">בתקופת הניסיון של WasenderAPI עשויה להיות מגבלת שליחה של הודעה אחת לדקה ועד 50 הודעות ליום. אין לבצע שליחה המונית ללא בדיקת המכסה.</p>
+      <p className="text-xs text-gray-600">ויסות הקצב מנוהל במנגנון תור WhatsApp המרכזי שמתחת. בחירת ספק משנה את יעד השליחה בלבד, לא את הגדרות ההמתנה.</p>
       <p className="text-xs text-gray-500">בחירת הספק נשמרת כאן מיד בלחיצה על ״שמור ספק ברירת מחדל״ — אין צורך בלחצן השמירה הכללי. שינוי הספק אינו שולח מחדש הודעות שכבר נכשלו ואינו מנתק מכשירים.</p>
     </section>
   );
