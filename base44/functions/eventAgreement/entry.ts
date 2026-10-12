@@ -101,8 +101,9 @@ async function finishDocument(client,a){
  if(a.send_copy&&a.copy_state==="pending"){
   await client.entities.EventAgreement.update(a.id,{copy_state:"dispatching"});
   try{
-   const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.pdf_uri,expires_in:3600});
-   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy",renderClosingMessage(await settings(client),"signed",a.notifications?.language||a.snapshot.message_language,{event_name:a.snapshot.event_name,customer_name:a.recipient_name}),{url:signed_url,name:"agreement-"+a.id+".pdf"});
+   // Store the private file URI in the outbox. The worker creates a fresh signed
+   // URL at dispatch, so a long queue cannot expire an agreement attachment.
+   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy",renderClosingMessage(await settings(client),"signed",a.notifications?.language||a.snapshot.message_language,{event_name:a.snapshot.event_name,customer_name:a.recipient_name}),{uri:a.pdf_uri,name:"agreement-"+a.id+".pdf"});
    a=await client.entities.EventAgreement.update(a.id,{copy_state:d.state});
   }catch{a=await client.entities.EventAgreement.update(a.id,{copy_state:"unknown"});}
  }
