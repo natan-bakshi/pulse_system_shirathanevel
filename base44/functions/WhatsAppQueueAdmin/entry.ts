@@ -24,10 +24,22 @@ Deno.serve(async(req)=>{
          ||typeof body.enabled!=='boolean'||typeof body.paused!=='boolean'){
         return response({success:false,error:'Queue settings invalid'},400);
       }
-      // Administrator can pause without deleting pending jobs.
+      // Never switch back to legacy direct dispatch while an active outbox
+      // backlog exists: it could overlap messages still held by this queue.
+      if(current.enabled === true && body.enabled === false) {
+        const backlog=await client.asServiceRole.entities.WhatsAppOutbox.filter({
+          status:{$in:['queued','retry_wait','sending']}
+        },'created_date',1);
+        if(backlog.length) return response({
+          success:false,error:'יש הודעות פעילות בתור. אפשר להשהות את התור, אך לא לכבות אותו לפני טיפול בהן.'
+        },409);
+      }
+      const shouldWake=body.enabled && !body.paused &&
+        (!current.enabled || current.paused);
       await entity.update(current.id,{
         min_interval_seconds:seconds,max_messages_per_run:batch,
-        enabled:body.enabled,paused:body.paused
+        enabled:body.enabled,paused:body.paused,
+        ...(shouldWake?{wake_requested_at:new Date().toISOString()}:{})
       });
       console.log('[WhatsAppQueue] central settings changed by system owner');
     } else if(action==='kick') {
