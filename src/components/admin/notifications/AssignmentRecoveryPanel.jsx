@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, RefreshCcw, Pause, Play, Send, ListChecks } from 'lucide-react';
+import { AlertTriangle, RefreshCcw, Pause, Play, ListChecks } from 'lucide-react';
 
 const labels = {
   not_prepared: 'טרם הוכן', queued: 'ממתין לשליחה', dispatching: 'בתהליך שליחה',
