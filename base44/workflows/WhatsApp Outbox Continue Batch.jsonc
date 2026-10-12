@@ -1,0 +1,34 @@
+{
+  "name": "WhatsApp Outbox \u2014 continue batch",
+  "description": "Continue queued dispatch after a worker completes a bounded batch",
+  "trigger": {
+    "condition": "${ (.trigger.changed_fields | index(\"wake_requested_at\") != null) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "WhatsAppQueueControl"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pulse_whatsapp_outbox_worker",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processWhatsAppOutbox",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
