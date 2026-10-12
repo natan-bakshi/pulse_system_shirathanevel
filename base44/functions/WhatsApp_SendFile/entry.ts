@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.11';
-import { sendWhatsAppFileByUrl } from '../../shared/whatsappSend.ts';
+import { sendWhatsAppFileUri } from '../../shared/whatsappSend.ts';
 
 /**
  * שליחת קובץ בוואטסאפ. מנהלים בלבד.
@@ -37,17 +37,9 @@ Deno.serve(async (req) => {
             return Response.json({ success: false, error: 'Missing required parameters (Phone, FileUri)' }, { status: 400 });
         }
 
-        const signed = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({
-            file_uri: FileUri,
-            expires_in: 300
-        });
-
-        if (!signed?.signed_url) {
-            return Response.json({ success: false, error: 'Failed to prepare file link' }, { status: 400 });
-        }
-
-        const result = await sendWhatsAppFileByUrl(Phone, signed.signed_url, FileName, Caption, base44);
-        return Response.json({ success: true, messageId: result.messageId || '' });
+        // Sign only when the central worker actually dispatches the queued document.
+        const result = await sendWhatsAppFileUri(Phone, FileUri, FileName, Caption, base44, { sourceType: 'manual_file' });
+        return Response.json({ success: true, queued: true, jobId: result.jobId, messageId: '' });
 
     } catch (error) {
         const errorCode = error?.errorCode;
