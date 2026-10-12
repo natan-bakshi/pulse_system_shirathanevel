@@ -12,6 +12,19 @@ const GREEN_API_TOKEN = Deno.env.get("GREEN_API_TOKEN");
 // Helper functions (defined before Deno.serve for Deno compatibility)
 // ============================================================
 
+// Link only the newest queued matching WhatsApp to the in-app receipt.
+// The queue worker marks whatsapp_sent=true only after the provider accepts it.
+function linkWhatsAppNotification(queue,phone,message,notificationId){
+    if(!notificationId||!phone||!message)return;
+    for(let i=queue.length-1;i>=0;i--){
+        const candidate=queue[i];
+        if(candidate.phone===phone&&candidate.message===message&&!candidate.inAppNotificationId){
+            candidate.inAppNotificationId=notificationId;
+            return;
+        }
+    }
+}
+
 function getIsraelDayOfWeek(timezone = 'Asia/Jerusalem') {
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone });
@@ -238,17 +251,11 @@ Deno.serve(async (req) => {
                     if (phoneToUse) {
                         whatsappQueue.push({
                             phone: phoneToUse,
-                            message: whatsappData.whatsapp_message || pending.message
+                            message: whatsappData.whatsapp_message || pending.message,
+                            inAppNotificationId: pending.in_app_notification_id || '',
+                            sourceType:'scheduled_notification', sourceId:pending.id,
+                            idempotencyKey:'daily-pending:'+pending.id
                         });
-                        
-                        // Update in-app notification whatsapp status
-                        if (pending.in_app_notification_id) {
-                            try {
-                                await base44.asServiceRole.entities.InAppNotification.update(pending.in_app_notification_id, {
-                                    whatsapp_sent: true
-                                });
-                            } catch(e) {}
-                        }
                     }
                 }
 
@@ -373,7 +380,7 @@ Deno.serve(async (req) => {
                                         related_event_service_id: es.id,
                                         related_supplier_id: supplierId,
                                         push_sent: false,
-                                        whatsapp_sent: !!supplier.phone,
+                                        whatsapp_sent: false,
                                         reminder_count: 0,
                                         is_resolved: false
                                     });
@@ -439,7 +446,7 @@ Deno.serve(async (req) => {
                                 template_type: 'ADMIN_EVENT_REMINDER',
                                 related_event_id: event.id,
                                 push_sent: false,
-                                whatsapp_sent: !!admin.phone,
+                                whatsapp_sent: false,
                                 reminder_count: 0,
                                 is_resolved: false
                             });
@@ -543,7 +550,7 @@ Deno.serve(async (req) => {
                                 related_event_service_id: es.id,
                                 related_supplier_id: supplierId,
                                 push_sent: false,
-                                whatsapp_sent: !!supplier.phone,
+                                whatsapp_sent: false,
                                 reminder_count: existingNotification ? (existingNotification.reminder_count || 0) + 1 : 0,
                                 is_resolved: false
                             });
@@ -694,7 +701,7 @@ Deno.serve(async (req) => {
                                 template_type: 'ADMIN_MISSING_ASSIGNMENT',
                                 related_event_id: event.id,
                                 push_sent: false,
-                                whatsapp_sent: allowedChannels.includes('whatsapp') && !!admin.phone,
+                                whatsapp_sent: false,
                                 reminder_count: 0,
                                 is_resolved: false
                             });
@@ -1022,7 +1029,7 @@ Deno.serve(async (req) => {
                                     template_type: 'TASK_DUE_REMINDER',
                                     related_event_id: tasks.length === 1 ? (tasks[0].event_id || null) : null,
                                     push_sent: false,
-                                    whatsapp_sent: sendWA && !!admin.phone,
+                                    whatsapp_sent: false,
                                     reminder_count: 0,
                                     is_resolved: false
                                 });
@@ -1072,7 +1079,7 @@ Deno.serve(async (req) => {
         {
             for (const wa of whatsappQueue) {
                 try {
-                    await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:'daily_notification'});
+                    await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
                     results.pending_whatsapp_sent++; // Queued; provider acceptance is tracked by the worker.
                 } catch (e) {
                     console.error('[DailyNotifications] WhatsApp send failed:', e?.message || 'unknown');
@@ -1316,7 +1323,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
                                     related_event_id: event.id,
                                     related_supplier_id: supId,
                                     related_event_service_id: es.id,
-                                    whatsapp_sent: sendWA && !!supplier.phone,
+                                    whatsapp_sent: false,
                                     push_sent: false, is_read: false,
                                     reminder_count: 0, is_resolved: false
                                 });
@@ -1354,7 +1361,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
                                 user_id: user.id, user_email: user.email,
                                 title, message, link: '',
                                 template_type: template.type, related_event_id: event.id,
-                                whatsapp_sent: sendWA && !!p.phone,
+                                whatsapp_sent: false,
                                 push_sent: false, is_read: false,
                                 reminder_count: 0, is_resolved: false
                             });
@@ -1391,7 +1398,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
                     user_id: admin.id, user_email: admin.email,
                     title, message, link: '',
                     template_type: template.type, related_event_id: event.id,
-                    whatsapp_sent: sendWA && !!admin.phone,
+                    whatsapp_sent: false,
                     push_sent: false, is_read: false,
                     reminder_count: 0, is_resolved: false
                 });
