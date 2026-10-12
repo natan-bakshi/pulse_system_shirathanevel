@@ -133,8 +133,11 @@ Deno.serve(async (req) => {
         const key=view.incidentDate+'|'+candidate.eventServiceId+'|'+candidate.supplierId;
         const oldRow:any=byKey.get(key);
         if(oldRow){
-          if(oldRow.state==='queued' && oldRow.approved_for_replay !== true){
-            await base44.asServiceRole.entities.AssignmentMessageRecovery.update(oldRow.id,{approved_for_replay:true,created_by_admin_id:user.id});
+          if((oldRow.state==='queued' && oldRow.approved_for_replay !== true) || ['rejected','skipped'].includes(oldRow.state)){
+            await base44.asServiceRole.entities.AssignmentMessageRecovery.update(oldRow.id,{
+              state:'queued',approved_for_replay:true,message_snapshot:candidate.message,
+              created_by_admin_id:user.id,attempt_count:0,attempted_at:'',completed_at:'',error_code:0,last_error:''
+            });
             prepared++;
           } else excluded++;
           continue;
