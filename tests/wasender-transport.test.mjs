@@ -83,6 +83,14 @@ test('429 is surfaced to the central outbox for paced retry (no local retry)', a
   assert.equal(calls,1);
 });
 
+test('429 response includes provider Retry-After seconds for centralized pacing',async()=>{
+  mockResponse({success:false,message:'Slow down'},429);
+  globalThis.fetch=async()=>({
+    ok:false,status:429,headers:{get:()=> '22'},json:async()=>({success:false})
+  });
+  await assert.rejects(sendWasenderTextToChat('972501234567@c.us','message'),
+    err=>err.errorCode===429&&err.retryAfterSeconds===22);
+});
 test('5xx or network failure has unknown delivery, never auto-retries', async () => {
   mockResponse({ success: false }, 503);
   await assert.rejects(sendWasenderTextToChat('972501234567@c.us', 'message'), err => err.deliveryUncertain === true);
