@@ -351,12 +351,12 @@ export default Deno.serve(async req => {
       const claim=await client.entities.CardSetupRequest.updateMany({id:s.id,state:"pending",link_message_state:{$nin:["dispatching","accepted","unknown"]}},{$set:{link_message_state:"dispatching"}});
       if(claim.updated!==1)throw new CardError("הקישור כבר נשלח או שהשליחה בבירור",409);
       try{
-        const sent=await sendWhatsAppText(customer.phone,"שלום "+customer.name+", לשמירת כרטיס באופן מאובטח אצל Invoice4U, ללא חיוב:\n"+s.redirect_url,client);
-        await client.entities.CardSetupRequest.update(s.id,{link_message_state:"accepted",link_message_id:sent.messageId||""});
-        return Response.json({sent:true});
+        const sent=await sendWhatsAppText(customer.phone,"שלום "+customer.name+", לשמירת כרטיס באופן מאובטח אצל Invoice4U, ללא חיוב:\n"+s.redirect_url,client,{sourceType:'card_setup',sourceId:s.id,cardSetupRequestId:s.id,idempotencyKey:'card-setup:'+s.id});
+        await client.entities.CardSetupRequest.update(s.id,{link_message_state:"queued",link_message_id:sent.jobId||""});
+        return Response.json({sent:false,queued:true,jobId:sent.jobId});
       }catch{
-        await client.entities.CardSetupRequest.update(s.id,{link_message_state:"unknown"});
-        throw new CardError("השליחה בבירור. יש לבדוק בוואטסאפ לפני ניסיון נוסף.",409);
+        await client.entities.CardSetupRequest.update(s.id,{link_message_state:"failed"});
+        throw new CardError("ההודעה לא נכנסה לתור WhatsApp. לא בוצעה שליחה.",409);
       }
     }
     if (action === "setup") {
