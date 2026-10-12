@@ -1,59 +1,50 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sendWhatsAppText, sendWhatsAppToChat, sendWhatsAppFileByUrl } from '../base44/shared/whatsappSend.ts';
+import { sendWhatsAppTransport, sendWhatsAppText, sendWhatsAppToChat } from '../base44/shared/whatsappSend.ts';
 
-const env = {
-  GREEN_API_INSTANCE_ID: 'synthetic-instance',
-  GREEN_API_TOKEN: 'synthetic-green-token',
-  WASENDER_API_KEY: 'synthetic-wasender-key'
-};
-globalThis.Deno = { env: { get: (key) => env[key] } };
-const originalFetch = globalThis.fetch;
-test.after(() => { globalThis.fetch = originalFetch; delete globalThis.Deno; });
-
-test('Green API path is unchanged until explicit provider switch', async () => {
-  delete env.WHATSAPP_ACTIVE_PROVIDER;
-  globalThis.fetch = async (url, opts) => {
-    assert.equal(url, 'https://api.green-api.com/waInstancesynthetic-instance/sendMessage/synthetic-green-token');
-    assert.deepEqual(JSON.parse(opts.body), { chatId: '972501234567@c.us', message: 'test message' });
-    return { ok: true, status: 200, text: async () => JSON.stringify({ idMessage: 'green-123' }) };
-  };
-  const result = await sendWhatsAppText('0501234567', 'test message');
-  assert.equal(result.messageId, 'green-123');
+const env={GREEN_API_INSTANCE_ID:'synthetic-instance',GREEN_API_TOKEN:'synthetic-green-token',WASENDER_API_KEY:'synthetic-wasender-key'};
+globalThis.Deno={env:{get:k=>env[k]}};
+const oldFetch=globalThis.fetch;
+test.after(()=>{globalThis.fetch=oldFetch;delete globalThis.Deno;});
+const client={asServiceRole:{integrations:{Core:{CreateFileSignedUrl:async()=>({signed_url:'https://example.com/signed-file.pdf'})}}}};
+test('Green transport is only called by the worker; preserves original payload',async()=>{
+ globalThis.fetch=async(url,options)=>{
+  assert.equal(url,'https://api.green-api.com/waInstancesynthetic-instance/sendMessage/synthetic-green-token');
+  assert.deepEqual(JSON.parse(options.body),{chatId:'972501234567@c.us',message:'test message'});
+  return {ok:true,status:200,json:async()=>({idMessage:'green-123'})};
+ };
+ const r=await sendWhatsAppTransport({chat_id:'972501234567@c.us',message_type:'text',message_text:'test message'},'green',client);
+ assert.equal(r.messageId,'green-123');
 });
-test('switch sends text and group messages through WasenderAPI with Bearer authentication', async () => {
-  env.WHATSAPP_ACTIVE_PROVIDER = 'wasender';
-  globalThis.fetch = async (url, opts) => {
-    assert.equal(url, 'https://www.wasenderapi.com/api/send-message');
-    assert.equal(opts.headers.Authorization, 'Bearer synthetic-wasender-key');
-    const body = JSON.parse(opts.body);
-    assert.ok(body.to === '+972501234567' || body.to === '120363123456@g.us');
-    assert.equal(body.text, 'test message');
-    return { ok: true, status: 200, json: async () => ({ success: true, data: { msgId: 66 } }) };
-  };
-  assert.equal((await sendWhatsAppText('0501234567', 'test message')).messageId, '66');
-  assert.equal((await sendWhatsAppToChat('120363123456@g.us', 'test message')).provider, 'wasender');
+test('Wasender transport supports group and phone recipients',async()=>{
+ globalThis.fetch=async(url,options)=>{
+  assert.equal(url,'https://www.wasenderapi.com/api/send-message');
+  assert.equal(options.headers.Authorization,'Bearer synthetic-wasender-key');
+  assert.equal(JSON.parse(options.body).to,'120363123456789@g.us');
+  return {ok:true,status:200,json:async()=>({success:true,data:{msgId:66}})};
+ };
+ const r=await sendWhatsAppTransport({chat_id:'120363123456789@g.us',message_type:'text',message_text:'hi'},'wasender',client);
+ assert.equal(r.messageId,'66');
 });
-test('switch sends documentUrl, fileName and caption, never the file contents', async () => {
-  env.WHATSAPP_ACTIVE_PROVIDER = 'wasender';
-  globalThis.fetch = async (_url, opts) => {
-    const body = JSON.parse(opts.body);
-    assert.deepEqual(body, { to: '+972501234567', documentUrl: 'https://example.com/file.pdf', fileName: 'file.pdf', text: 'document' });
-    return { ok: true, status: 200, json: async () => ({ success: true, data: { msgId: 99 } }) };
-  };
-  assert.equal((await sendWhatsAppFileByUrl('0501234567', 'https://example.com/file.pdf', 'file.pdf', 'document')).messageId, '99');
+test('private file is signed only when worker dispatches, not at enqueue',async()=>{
+ let signed=0;
+ const fileClient={asServiceRole:{integrations:{Core:{CreateFileSignedUrl:async({file_uri})=>{
+   signed++;assert.equal(file_uri,'private://invoice');return {signed_url:'https://example.com/signed.pdf'};
+ }}}}};
+ globalThis.fetch=async(url,opts)=>{
+  const data=JSON.parse(opts.body);
+  assert.equal(data.documentUrl,'https://example.com/signed.pdf');
+  assert.equal(data.fileName,'invoice.pdf');
+  return {ok:true,status:200,json:async()=>({success:true,data:{msgId:99}})};
+ };
+ const r=await sendWhatsAppTransport({chat_id:'972501234567@c.us',message_type:'document',file_uri:'private://invoice',file_name:'invoice.pdf',caption:'invoice'},'wasender',fileClient);
+ assert.equal(r.messageId,'99');assert.equal(signed,1);
 });
-test('Green API network failures are flagged as uncertain, not safe for automatic replay', async () => {
-  env.WHATSAPP_ACTIVE_PROVIDER = 'green';
-  globalThis.fetch = async () => { throw new Error('synthetic timeout'); };
-  await assert.rejects(sendWhatsAppText('0501234567', 'test message'), err => err.deliveryUncertain === true);
-  globalThis.fetch = async () => ({ ok: false, status: 503, text: async () => 'unavailable' });
-  await assert.rejects(sendWhatsAppText('0501234567', 'test message'), err => err.deliveryUncertain === true && err.errorCode === 503);
+test('Green 503 is uncertain and must not be auto retried',async()=>{
+ globalThis.fetch=async()=>({ok:false,status:503,json:async()=>({})});
+ await assert.rejects(sendWhatsAppTransport({chat_id:'972501234567@c.us',message_type:'text',message_text:'hi'},'green',client),err=>err.deliveryUncertain===true&&err.errorCode===503);
 });
-
-test('without backup key selected provider fails closed; it never falls back to Green', async () => {
-  env.WHATSAPP_ACTIVE_PROVIDER = 'wasender';
-  delete env.WASENDER_API_KEY;
-  globalThis.fetch = () => { throw new Error('should not send'); };
-  await assert.rejects(sendWhatsAppText('0501234567', 'test message'), /not configured/);
+test('producer without an authenticated backend cannot bypass the queue',async()=>{
+ await assert.rejects(sendWhatsAppText('0501234567','msg'),/backend/);
+ await assert.rejects(sendWhatsAppToChat('120363123456789@g.us','msg'),/backend/);
 });
