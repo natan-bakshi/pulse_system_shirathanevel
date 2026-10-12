@@ -106,6 +106,25 @@ Deno.serve(async (req) => {
     try {body=await req.json();}catch{return reply({success:false,error:'Invalid payload'},400)}
     const action=body?.action;
     if(action==='status') return reply({success:true,...await queueStatus(base44)});
+    if(action==='diagnose'){
+      // Read-only inspection: never dispatch a message.
+      const entity=base44.asServiceRole.entities.AssignmentMessageRecovery;
+      const rows=await entity.list('-created_date',500,0,['id','attempted_at']);
+      const wait=recoveryCooldownSeconds(rows,Date.now(),RECOVERY_SEND_INTERVAL_MS);
+      const provider=await resolveWhatsAppProvider(base44);
+      const configured=await hasSelectedWhatsAppProviderCredentials(base44);
+      const connection=provider==='wasender'&&configured ? await checkWasenderSessionStatus() : null;
+      const current=await queueStatus(base44);
+      const ready=Number(current.summary.ready_to_send||0);
+      const reason=!ready?'no_approved_messages'
+        : !configured?'missing_credentials'
+        : connection&&!connection.connected?'session_disconnected'
+        : wait>0?'rate_limit_cooldown'
+        : rows.length>=500?'ledger_scan_limit':'ready';
+      return reply({success:true,provider,configured,sessionStatus:connection?.status||null,
+        ready,waitingReview:Number(current.summary.waiting_review||0),
+        cooldownSeconds:wait,blockedReason:reason});
+    }
     if(action==='preview'){
       const hours=Number(body.hours || 8);
       if(!ALLOWED_HOURS.has(hours))return reply({success:false,error:'Invalid time window'},400);
