@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
             return Response.json({ success: false, error: 'Missing required parameters' }, { status: 400 });
         }
 
-        const result = await sendWhatsAppText(Phone, Message, base44);
+        const result = await sendWhatsAppText(Phone, Message, base44, {sourceType:'manual_text'});
         return Response.json({ success: true, queued: result.queued === true, jobId: result.jobId || '', messageId: result.messageId || '' });
 
     } catch (error) {
