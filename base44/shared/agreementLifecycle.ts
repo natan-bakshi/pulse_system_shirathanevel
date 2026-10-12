@@ -26,7 +26,7 @@ export async function notifyAgreementAdmin(client,a,title,message) {
  if(admin?.role!=="admin")return;
  await client.entities.InAppNotification.create({user_id:admin.id,user_email:admin.email||"",title,message,template_type:"EVENT_AGREEMENT",is_read:false,is_resolved:false,link:"/EventDetails?id="+a.event_id,related_event_id:a.event_id});
 }
-// Caller holds the agreement lock. Persist dispatch BEFORE sending; transport uncertainty never auto-retries.
+// Caller holds the agreement lock. Enqueue once; the worker records provider acceptance asynchronously.
 export async function deliver(client,a,kind,key,message,file=null,config={}) {
  if(kind==="milestone"){
   const prefix=a.id+":milestone:";
@@ -42,12 +42,13 @@ export async function deliver(client,a,kind,key,message,file=null,config={}) {
  if(prior.length)return prior[0];
  const row=await client.entities.ClientMessageDelivery.create({agreement_id:a.id,event_id:a.event_id,kind,key,target_masked:"••••"+a.recipient_phone.slice(-4),state:"dispatching",attempted_at:new Date().toISOString()});
  try{
-  const result=file?await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,client):await sendWhatsAppText(a.recipient_phone,message,client);
-  return await client.entities.ClientMessageDelivery.update(row.id,{state:"accepted",provider_message_id:result.messageId||"",sent_at:new Date().toISOString()});
+  const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id};
+  const result=file?await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,client,context):await sendWhatsAppText(a.recipient_phone,message,client,context);
+  return await client.entities.ClientMessageDelivery.update(row.id,{state:"queued",provider_message_id:"",error:"",queued_at:new Date().toISOString(),queue_job_id:result.jobId||""});
  }catch{
-  await client.entities.ClientMessageDelivery.update(row.id,{state:"unknown",error:"לא התקבל אישור מהספק. לבדוק לפני שליחה ידנית נוספת."});
-  await notifyAgreementAdmin(client,a,"נדרשת בדיקת הודעת לקוח","השליחה לא אושרה. ניתן לראות את מצב ההודעה בכרטיסיית האירוע.");
-  throw new AgreementError("לא התקבל אישור שליחה. בדקו את הוואטסאפ לפני שליחה חוזרת.",502);
+  await client.entities.ClientMessageDelivery.update(row.id,{state:"failed",error:"ההודעה לא נכנסה לתור WhatsApp. יש לבדוק את ההגדרות."});
+  await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח","ההודעה לא נשמרה לתור WhatsApp. ניתן לראות פרטים בכרטיסיית האירוע.");
+  throw new AgreementError("שמירת הודעת הוואטסאפ בתור נכשלה. לא בוצעה שליחה לספק.",502);
  }
 }
 export async function reconcileAgreement(client,eventId,config=null) {
