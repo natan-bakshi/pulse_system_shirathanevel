@@ -10,7 +10,7 @@ const labels = {
   accepted: 'התקבל אצל ספק ה־API', rejected: 'הספק דחה', unknown: 'לא ידוע — לא לשלוח שוב ללא בדיקה',
   skipped: 'דולג — השיבוץ השתנה'
 };
-const isEligible = x => x.recoveryState === 'not_prepared';
+const isEligible = x => x.recoveryState === 'not_prepared' || (x.recoveryState === 'queued' && !x.approvedForReplay);
 const itemKey = x => x.eventServiceId + '|' + x.supplierId;
 
 export default function AssignmentRecoveryPanel() {
@@ -40,7 +40,8 @@ export default function AssignmentRecoveryPanel() {
   const eligible = useMemo(()=>preview.filter(isEligible),[preview]);
   const selectionCount = eligible.filter(x=>selected.has(itemKey(x))).length;
   const totals = queue?.summary || {};
-  const pendingCount = totals.queued || 0;
+  const pendingCount = totals.ready_to_send || 0;
+  const waitingReview = totals.waiting_review || 0;
 
   async function scan() {
     if(running.current)return;
@@ -152,7 +153,8 @@ export default function AssignmentRecoveryPanel() {
         </div>}
         {queue&&<div className="rounded border bg-gray-50 p-3 space-y-3">
           <div className="text-sm flex flex-wrap gap-3">
-            <span>ממתינות: <strong>{pendingCount}</strong></span>
+            <span>אושרו וממתינות לשליחה: <strong>{pendingCount}</strong></span>
+            <span>ממתינות לאישורך: <strong>{waitingReview}</strong></span>
             <span>התקבלו אצל הספק: <strong>{totals.accepted||0}</strong></span>
             <span>נדחו: <strong>{totals.rejected||0}</strong></span>
             <span>תוצאה לא ידועה: <strong>{totals.unknown||0}</strong></span>
@@ -163,7 +165,7 @@ export default function AssignmentRecoveryPanel() {
             :<Button variant="destructive" onClick={pause}><Pause className="h-4 w-4 ml-2"/>עצור שליחה</Button>}
             <Button variant="outline" disabled={busy||sending} onClick={async()=>{try{const r=await base44.functions.invoke('AssignmentWhatsAppRecovery',{action:'status'});if(r.data?.success)setQueue(r.data);}catch{setError('לא ניתן לרענן את התור');}}}>רענן מצב</Button>
           </div>
-          <p className="text-xs text-gray-600">״התקבלה אצל הספק״ אינה הוכחת מסירה לנמען. הודעות במצב לא ידוע לא יישלחו שוב אוטומטית. התור נשמר גם לאחר סגירת הדף.</p>
+          <p className="text-xs text-gray-600">הודעות שסומנו אוטומטית ככושלות אינן נשלחות עד שתסרוק, תבחר ותאשר אותן. ״התקבלה אצל הספק״ אינה הוכחת מסירה לנמען. הודעות במצב לא ידוע לא יישלחו שוב אוטומטית. התור נשמר גם לאחר סגירת הדף.</p>
         </div>}
       </CardContent>
     </Card>
