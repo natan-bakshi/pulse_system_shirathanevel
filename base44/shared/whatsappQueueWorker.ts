@@ -63,6 +63,24 @@ async function staleSendingToUnknown(client:any, now:number) {
   }
   return count;
 }
+async function isStillRelevant(client:any,job:any):Promise<boolean> {
+  if(job.source_type!=='assignment_new'||!job.event_service_id||!job.supplier_id)return true;
+  try{
+    const svc=await client.asServiceRole.entities.EventService.get(job.event_service_id);
+    if(!svc||svc.is_external)return false;
+    const ids=typeof svc.supplier_ids==='string' ? JSON.parse(svc.supplier_ids||'[]') : svc.supplier_ids||[];
+    const statuses=typeof svc.supplier_statuses==='string' ? JSON.parse(svc.supplier_statuses||'{}') : svc.supplier_statuses||{};
+    if(!Array.isArray(ids)||!ids.includes(job.supplier_id))return false;
+    if(statuses[job.supplier_id] && statuses[job.supplier_id]!=='pending')return false;
+    const event=svc.event_id?await client.asServiceRole.entities.Event.get(svc.event_id):null;
+    if(!event || ['cancelled','completed'].includes(event.status))return false;
+    return true;
+  }catch(error){
+    // We cannot safely dispatch a potentially cancelled assignment without
+    // a current status. Keep the job queued for a later check.
+    throw new Error('Could not validate current assignment before WhatsApp dispatch');
+  }
+}
 async function chooseDueJob(db:any,now:number) {
   // Stable FIFO. One queue for assignments, invoices, documents and reminders.
   const pool=await db.filter({status:{$in:['queued','retry_wait']}},'created_date',MAX_PAGE);
@@ -115,6 +133,16 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         if(delay>0 && delay<=60000 && Date.now()+delay<deadline-5000){await sleep(delay);continue;}
         break;
       }
+      const currentJob=options.job;
+      try {
+        if(!(await isStillRelevant(client,currentJob))) {
+          await db.WhatsAppOutbox.updateMany({id:currentJob.id,status:currentJob.status},{$set:{
+            status:'cancelled',completed_at:new Date().toISOString(),
+            last_error:'Assignment no longer requires supplier approval'
+          }});
+          continue;
+        }
+      }catch(error){lastError='Assignment status validation unavailable';break;}
       const interval=Math.max(0,Math.min(60,Number(control.min_interval_seconds)||0));
       const wait=delayUntilNextSend(control.last_dispatched_at,Date.now(),interval);
       // Delay is BETWEEN provider calls, not before the first call of an idle queue.
