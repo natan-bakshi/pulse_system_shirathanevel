@@ -65,8 +65,8 @@ Deno.serve(async (req) => {
             try {
                 const link = data.link || data.click_action || '';
                 const whatsappMessage = `*${title}*\n\n${body}${link ? `\n\n${link}` : ''}`;
-                await sendWhatsAppText(u.phone, whatsappMessage, base44, {sourceType:'push_mirror'});
-                whatsappResults.push({ userId: u.id, success: true, queued: true });
+                const receipt=await sendWhatsAppText(u.phone, whatsappMessage, base44, {sourceType:'push_mirror'});
+                whatsappResults.push({ userId: u.id, success: true, queued:receipt.queued===true, messageId:receipt.messageId||'' });
             } catch (waError) {
                 console.error('[sendPushNotification] WhatsApp send error:', waError?.message || 'unknown');
                 whatsappResults.push({ userId: u.id, success: false, error: waError.message });
