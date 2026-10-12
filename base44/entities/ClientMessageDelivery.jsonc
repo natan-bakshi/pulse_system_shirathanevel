@@ -31,6 +31,12 @@
     },
     "sent_at": {
       "type": "string"
+    },
+    "queued_at": {
+      "type": "string"
+    },
+    "queue_job_id": {
+      "type": "string"
     }
   },
   "required": [
