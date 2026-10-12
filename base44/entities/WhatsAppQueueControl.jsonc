@@ -1,0 +1,80 @@
+{
+  "name": "WhatsAppQueueControl",
+  "type": "object",
+  "properties": {
+    "control_key": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "paused": {
+      "type": "boolean",
+      "default": false
+    },
+    "min_interval_seconds": {
+      "type": "number",
+      "default": 7
+    },
+    "max_messages_per_run": {
+      "type": "number",
+      "default": 16
+    },
+    "lease_owner": {
+      "type": "string"
+    },
+    "lease_until": {
+      "type": "string"
+    },
+    "last_dispatched_at": {
+      "type": "string"
+    },
+    "next_allowed_at": {
+      "type": "string"
+    },
+    "last_worker_at": {
+      "type": "string"
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "wake_requested_at": {
+      "type": "string"
+    },
+    "generation": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "control_key",
+    "enabled",
+    "paused",
+    "min_interval_seconds",
+    "lease_owner",
+    "lease_until"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
