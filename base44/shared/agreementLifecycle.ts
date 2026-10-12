@@ -42,7 +42,8 @@ export async function deliver(client,a,kind,key,message,file=null,config={}) {
  if(prior.length)return prior[0];
  const row=await client.entities.ClientMessageDelivery.create({agreement_id:a.id,event_id:a.event_id,kind,key,target_masked:"••••"+a.recipient_phone.slice(-4),state:"dispatching",attempted_at:new Date().toISOString()});
  try{
-  const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id};
+  const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id,
+   expiresAt:kind==='verification'?new Date(Date.now()+600000).toISOString():kind==='invitation'?(a.link_expires_at||''):''};
   const result=file?(file.uri?await sendWhatsAppFileUri(a.recipient_phone,file.uri,file.name,message,client,context):await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,client,context)):await sendWhatsAppText(a.recipient_phone,message,client,context);
   return await client.entities.ClientMessageDelivery.update(row.id,{state:result.queued?"queued":"accepted",provider_message_id:result.queued?"":(result.messageId||""),error:"",queued_at:new Date().toISOString(),queue_job_id:result.jobId||"",...(result.queued?{}:{sent_at:new Date().toISOString()})});
  }catch{
