@@ -28,10 +28,11 @@ function toWasenderRecipient(chatId: string) {
   return '+' + digits;
 }
 
-function wasenderError(status: number, uncertain: boolean) {
-  const error = new Error('WhatsApp provider request failed') as Error & { errorCode: number; deliveryUncertain: boolean };
+function wasenderError(status: number, uncertain: boolean, retryAfterSeconds = 0) {
+  const error = new Error('WhatsApp provider request failed') as Error & { errorCode: number; deliveryUncertain: boolean; retryAfterSeconds: number };
   error.errorCode = status || 502;
   error.deliveryUncertain = !!uncertain;
+  error.retryAfterSeconds = retryAfterSeconds;
   return error;
 }
 
@@ -56,7 +57,11 @@ async function requestWasender(path: string, { method = 'GET', payload }: { meth
   if (!response.ok || data?.success === false) {
     console.error('[WasenderAPI] request rejected; httpStatus=' + response.status);
     // 5xx may have accepted the message before returning an error.
-    throw wasenderError(response.ok ? 422 : response.status, response.status === 408 || response.status >= 500);
+    const header=response.headers?.get?.('Retry-After') || '';
+    const retryAfter= /^\d+$/.test(header) ? Number(header)
+      : header ? Math.max(0,Math.ceil((Date.parse(header)-Date.now())/1000)) : 0;
+    throw wasenderError(response.ok ? 422 : response.status, response.status === 408 || response.status >= 500,
+      response.status===429?Math.min(3600,Number.isFinite(retryAfter)?retryAfter:0):0);
   }
   return data;
 }
