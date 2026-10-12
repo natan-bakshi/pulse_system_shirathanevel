@@ -10,7 +10,7 @@ test.after(()=>delete globalThis.Deno);
 function fixture(overrides={}) {
  const now=new Date().toISOString();
  const control={id:'control-global',control_key:'global',enabled:true,paused:false,min_interval_seconds:0,max_messages_per_run:30,
-   lease_owner:'',lease_until:'',next_allowed_at:'',last_dispatched_at:'',...overrides};
+   lease_owner:'',lease_until:'',enqueue_owner:'',enqueue_until:'',next_allowed_at:'',last_dispatched_at:'',...overrides};
  const jobs=[],notifications=[],agreements=[],cards=[];
  let index=0;
  const matches=(row,query={})=>Object.entries(query).every(([key,value])=>{
@@ -115,6 +115,14 @@ test('idempotency key is preserved across duplicate triggers',async()=>{
  const second=await sendWhatsAppText('0501234567','assigned',x.client,{idempotencyKey:'assignment:event:a:rev1'});
  assert.equal(first.jobId,second.jobId);assert.equal(x.jobs.length,1);
 });
+test('parallel idempotent enqueues are serialized and produce only one job',async()=>{
+ const x=fixture();
+ const results=await Promise.all(Array.from({length:12},()=>sendWhatsAppText('0501234567','same assignment',x.client,{idempotencyKey:'assignment:one:revision1'})));
+ assert.equal(x.jobs.length,1);
+ assert.equal(new Set(results.map(r=>r.jobId)).size,1);
+ assert.equal(x.control.enqueue_owner,'');
+});
+
 test('worker updates linked record only after provider acceptance',async()=>{
  const x=fixture();
  await sendWhatsAppText('0501234567','confirmation',x.client,{inAppNotificationId:'notice-1',clientMessageDeliveryId:'agreement-1',cardSetupRequestId:'card-1'});
