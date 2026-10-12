@@ -384,6 +384,7 @@ Deno.serve(async (req) => {
                                         reminder_count: 0,
                                         is_resolved: false
                                     });
+                                    linkWhatsAppNotification(whatsappQueue,supplier.phone,waMessage,notifRecord.id);
                                     
                                     // Queue push
                                     if (supplierUser.push_enabled && supplierUser.onesignal_subscription_id) {
@@ -450,6 +451,7 @@ Deno.serve(async (req) => {
                                 reminder_count: 0,
                                 is_resolved: false
                             });
+                            linkWhatsAppNotification(whatsappQueue,admin.phone,waMessage,notifRecord.id);
                             
                             if (admin.push_enabled && admin.onesignal_subscription_id) {
                                 pushQueue.push({
@@ -554,6 +556,7 @@ Deno.serve(async (req) => {
                                 reminder_count: existingNotification ? (existingNotification.reminder_count || 0) + 1 : 0,
                                 is_resolved: false
                             });
+                            linkWhatsAppNotification(whatsappQueue,supplier.phone,waMessage,notifRecord.id);
                             
                             if (supplierUser.push_enabled && supplierUser.onesignal_subscription_id) {
                                 pushQueue.push({
@@ -705,6 +708,7 @@ Deno.serve(async (req) => {
                                 reminder_count: 0,
                                 is_resolved: false
                             });
+                            linkWhatsAppNotification(whatsappQueue,admin.phone,waMessage,notifRecord.id);
                             
                             if (admin.push_enabled && admin.onesignal_subscription_id) {
                                 pushQueue.push({
@@ -1033,6 +1037,7 @@ Deno.serve(async (req) => {
                                     reminder_count: 0,
                                     is_resolved: false
                                 });
+                                linkWhatsAppNotification(whatsappQueue,admin.phone,waMessage,notif.id);
                                 if (admin.push_enabled && admin.onesignal_subscription_id) {
                                     pushQueue.push({
                                         subscriptionId: admin.onesignal_subscription_id,
@@ -1327,6 +1332,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
                                     push_sent: false, is_read: false,
                                     reminder_count: 0, is_resolved: false
                                 });
+                                linkWhatsAppNotification(whatsappQueue,supplier.phone,waMessage,notif.id);
                                 if (user.push_enabled && user.onesignal_subscription_id) {
                                     pushQueue.push({ subscriptionId: user.onesignal_subscription_id, title, message, link: '', notificationRecordId: notif.id });
                                 }
@@ -1365,6 +1371,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
                                 push_sent: false, is_read: false,
                                 reminder_count: 0, is_resolved: false
                             });
+                            linkWhatsAppNotification(whatsappQueue,p.phone,waMessage,notif.id);
                             if (user.push_enabled && user.onesignal_subscription_id) {
                                 pushQueue.push({ subscriptionId: user.onesignal_subscription_id, title, message, link: '', notificationRecordId: notif.id });
                             }
@@ -1402,6 +1409,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
                     push_sent: false, is_read: false,
                     reminder_count: 0, is_resolved: false
                 });
+                linkWhatsAppNotification(whatsappQueue,admin.phone,waMessage,notif.id);
                 if (admin.push_enabled && admin.onesignal_subscription_id) {
                     pushQueue.push({ subscriptionId: admin.onesignal_subscription_id, title, message, link: '', notificationRecordId: notif.id });
                 }
