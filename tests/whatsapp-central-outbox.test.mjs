@@ -31,7 +31,9 @@ function fixture(overrides={}) {
     AppSettings:{filter:async()=>[{setting_key:'whatsapp_default_provider',setting_value:'wasender'}]},
     InAppNotification:{update:async(id,value)=>{notifications.push({id,value});return value}},
     ClientMessageDelivery:{update:async(id,value)=>{agreements.push({id,value});return value}},
-    CardSetupRequest:{update:async(id,value)=>{cards.push({id,value});return value}}
+    CardSetupRequest:{update:async(id,value)=>{cards.push({id,value});return value}},
+    EventService:{get:async(id)=>({id,event_id:'event-a',is_external:false,supplier_ids:'[\"supplier-a\"]',supplier_statuses:'{\"supplier-a\":\"confirmed\"}'})},
+    Event:{get:async(id)=>({id,status:'confirmed'})}
    },integrations:{Core:{CreateFileSignedUrl:async({file_uri})=>({signed_url:'https://example.com/signed/'+encodeURIComponent(file_uri)})}}}
  };
  return {jobs,control,client,notifications,agreements,cards};
@@ -81,6 +83,15 @@ test('competing workflows share one lease; no duplicate provider calls',async()=
  assert.equal(x.jobs.filter(j=>j.status==='accepted').length,20);
  assert.equal([a.reason,b.reason].includes('busy'),true);
 });
+test('cancelled or confirmed assignments are not sent from a delayed queue',async()=>{
+ const x=fixture();
+ await sendWhatsAppText('0501234567','new assignment',x.client,{sourceType:'assignment_new',eventServiceId:'service-a',supplierId:'supplier-a'});
+ let actualCalls=0;
+ const result=await drainWhatsAppOutbox(x.client,{transport:async()=>{actualCalls++;return {messageId:'unwanted'}}});
+ assert.equal(actualCalls,0);
+ assert.equal(x.jobs[0].status,'cancelled');
+});
+
 test('provider timeout remains unknown and is never retried',async()=>{
  const x=fixture();await sendWhatsAppText('0501234567','message',x.client);
  let calls=0;const transport=async()=>{calls++;throw {deliveryUncertain:true,errorCode:503}};
