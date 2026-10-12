@@ -45,6 +45,12 @@
     "generation": {
       "type": "number",
       "default": 0
+    },
+    "enqueue_owner": {
+      "type": "string"
+    },
+    "enqueue_until": {
+      "type": "string"
     }
   },
   "required": [
