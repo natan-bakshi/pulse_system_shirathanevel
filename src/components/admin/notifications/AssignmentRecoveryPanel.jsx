@@ -80,7 +80,7 @@ export default function AssignmentRecoveryPanel() {
       const data=r.data;
       if(!data?.success)throw new Error(data?.error||'השליחה נכשלה');
       setQueue(data);
-      if(data.finished||!(data.summary?.queued||0)){
+      if(data.finished||!(data.summary?.ready_to_send||0)){
         running.current=false;setSending(false);
         setNotice('התור הסתיים. בדוק הודעות שסומנו כ״לא ידוע״ או ״נדחתה״ לפני ניסיון נוסף.');
         return;
