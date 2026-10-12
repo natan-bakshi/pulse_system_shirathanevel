@@ -16,7 +16,7 @@ const plugin={name:"offline-agreements",setup(b){
  secrets:"export const secrets={get:k=>globalThis.__secrets[k]};",
  quote:'export const generateQuoteHtml=async()=>({html:"הצעת מחיר לבדיקת הסכם"});',
  pdf:'export async function persistAgreementPdf(c,a){if(a.pdf_uri)return a;globalThis.__pdfCount++;return c.entities.EventAgreement.update(a.id,{pdf_uri:"private:test.pdf",pdf_state:"ready"});}',
- whatsapp:'export const normalizeIsraeliPhone=s=>s&&/^0?5\\d{8}$/.test(s)?s:"";export const sendWhatsAppText=async(phone,message)=>{globalThis.__messages.push({phone,message});return {messageId:"m"+globalThis.__messages.length};};export const sendWhatsAppFileByUrl=async(phone,url,name,message)=>{globalThis.__messages.push({phone,url,name,message});return {messageId:"m"+globalThis.__messages.length};};',
+ whatsapp:'export const normalizeIsraeliPhone=s=>s&&/^0?5\\d{8}$/.test(s)?s:"";export const sendWhatsAppText=async(phone,message)=>{globalThis.__messages.push({phone,message});return {messageId:"m"+globalThis.__messages.length};};export const sendWhatsAppFileByUrl=async(phone,url,name,message)=>{globalThis.__messages.push({phone,url,name,message});return {messageId:"m"+globalThis.__messages.length};};export const sendWhatsAppFileUri=async(phone,uri,name,message)=>{globalThis.__messages.push({phone,uri,name,message});return {messageId:"m"+globalThis.__messages.length};};',
  html:"export const convert=s=>s;"
  }[path]}));
 }};
