@@ -14,12 +14,20 @@ function fixture(overrides={}) {
  const jobs=[],notifications=[],agreements=[],cards=[];
  let index=0;
  const matches=(row,query={})=>Object.entries(query).every(([key,value])=>{
-   if(value&&typeof value==='object'&&('$in' in value))return value.$in.includes(row[key]);
+   if(value&&typeof value==='object'){
+     if('$in' in value)return value.$in.includes(row[key]);
+     if('$lte' in value)return String(row[key]||'')<=String(value.$lte);
+     if('$gte' in value)return String(row[key]||'')>=String(value.$gte);
+   }
    return row[key]===value;
  });
  const buildApi=(rows,entityName)=>({
    list:async(sort,limit)=>[...rows].sort((a,b)=>String(a.created_date).localeCompare(String(b.created_date))).slice(0,limit||500),
-   filter:async(query,sort,limit)=>rows.filter(x=>matches(x,query)).sort((a,b)=>String(a.created_date).localeCompare(String(b.created_date))).slice(0,limit||500),
+   filter:async(query,sort,limit)=>rows.filter(x=>matches(x,query)).sort((a,b)=>{
+     const field=sort?.replace(/^-/, '')||'created_date';
+     const mul=String(sort||'').startsWith('-')?-1:1;
+     return mul*String(a[field]||'').localeCompare(String(b[field]||''));
+   }).slice(0,limit||500),
    get:async(id)=>rows.find(x=>x.id===id)||null,
    create:async(data)=>{const r={...data,id:entityName+'-'+(++index),created_date:new Date(Date.now()+index).toISOString()};rows.push(r);return r;},
    update:async(id,change)=>{const r=rows.find(x=>x.id===id);if(!r)throw new Error('record not found');Object.assign(r,change);return r;},
@@ -107,6 +115,22 @@ test('explicit 429 is centralized backoff, not an immediate local retry',async()
  assert.equal(x.jobs[0].status,'retry_wait');
  assert.ok(Date.parse(x.jobs[0].available_at)>Date.now());
 });
+test('100 future retries cannot starve a newer due message',async()=>{
+ const x=fixture({min_interval_seconds:0});
+ const future=new Date(Date.now()+120_000).toISOString();
+ for(let i=0;i<110;i++)x.jobs.push({
+  id:'future-'+i,created_date:new Date(Date.now()-100_000+i).toISOString(),
+  status:'retry_wait',available_at:future,attempt_count:1
+ });
+ await sendWhatsAppText('0501234567','recent ready',x.client,{sourceType:'assignment'});
+ let calls=0;
+ const r=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:7000,transport:async(job)=>{
+  calls++;assert.equal(job.message_text,'recent ready');return {messageId:'ok'};
+ }});
+ assert.equal(calls,1);assert.equal(r.accepted,1);
+ assert.equal(x.jobs.filter(j=>j.status==='retry_wait').length,110);
+});
+
 test('expired in-flight claim is marked unknown by watchdog without replay',async()=>{
  const x=fixture();
  x.jobs.push({id:'orphan',created_date:'2026-10-11T00:00:00Z',status:'sending',attempt_count:1,send_started_at:'2026-10-11T01:00:00Z'});
