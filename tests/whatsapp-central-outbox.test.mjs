@@ -11,7 +11,7 @@ function fixture(overrides={}) {
  const now=new Date().toISOString();
  const control={id:'control-global',control_key:'global',enabled:true,paused:false,min_interval_seconds:0,max_messages_per_run:30,
    lease_owner:'',lease_until:'',enqueue_owner:'',enqueue_until:'',next_allowed_at:'',last_dispatched_at:'',...overrides};
- const jobs=[],notifications=[],agreements=[],cards=[];
+ const jobs=[],notifications=[],agreements=[],cards=[],copies=[];
  let index=0;
  const matches=(row,query={})=>Object.entries(query).every(([key,value])=>{
    if(value&&typeof value==='object'){
@@ -38,13 +38,14 @@ function fixture(overrides={}) {
     WhatsAppQueueControl:controlApi,WhatsAppOutbox:outboxApi,
     AppSettings:{filter:async()=>[{setting_key:'whatsapp_default_provider',setting_value:'wasender'}]},
     InAppNotification:{update:async(id,value)=>{notifications.push({id,value});return value}},
-    ClientMessageDelivery:{update:async(id,value)=>{agreements.push({id,value});return value}},
+    ClientMessageDelivery:{update:async(id,value)=>{agreements.push({id,value});return value},get:async()=>({kind:'signed_copy',agreement_id:'agreement-main'})},
+    EventAgreement:{updateMany:async(query,patch)=>{copies.push({query,patch});return {updated:1}}},
     CardSetupRequest:{update:async(id,value)=>{cards.push({id,value});return value}},
     EventService:{get:async(id)=>({id,event_id:'event-a',is_external:false,supplier_ids:'[\"supplier-a\"]',supplier_statuses:'{\"supplier-a\":\"confirmed\"}'})},
     Event:{get:async(id)=>({id,status:'confirmed'})}
    },integrations:{Core:{CreateFileSignedUrl:async({file_uri})=>({signed_url:'https://example.com/signed/'+encodeURIComponent(file_uri)})}}}
  };
- return {jobs,control,client,notifications,agreements,cards};
+ return {jobs,control,client,notifications,agreements,cards,copies};
 }
 test('first dispatch is immediate; delay applies only BETWEEN sends',()=>{
   const now=Date.parse('2026-10-12T12:00:00Z');
@@ -180,6 +181,7 @@ test('worker updates linked record only after provider acceptance',async()=>{
  assert.equal(x.notifications[0].value.whatsapp_sent,true);
  assert.equal(x.agreements[0].value.state,'accepted');
  assert.equal(x.cards[0].value.link_message_state,'accepted');
+ assert.equal(x.copies[0].patch.$set.copy_state,'accepted');
 });
 test('retry-after header extends central 429 cooldown',()=>{
  const now=Date.parse('2026-10-12T10:00:00Z');
