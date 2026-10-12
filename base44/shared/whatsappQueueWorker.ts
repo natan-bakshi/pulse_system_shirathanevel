@@ -6,7 +6,6 @@ import { sendWhatsAppTransport } from './whatsappSend.ts';
 
 const MAX_RUNTIME_MS = 100_000;      // Below Base44 function execution limits.
 const LEASE_MS = 210_000;            // Safely longer than a single worker lifetime.
-const MAX_PAGE = 100;
 const sleep = (ms: number) => new Promise(resolve=>setTimeout(resolve, ms));
 function asEpoch(value: any): number {
   const parsed = Date.parse(String(value || ''));
@@ -82,16 +81,16 @@ async function isStillRelevant(client:any,job:any):Promise<boolean> {
   }
 }
 async function chooseDueJob(db:any,now:number) {
-  // Stable FIFO. One queue for assignments, invoices, documents and reminders.
-  const pool=await db.filter({status:{$in:['queued','retry_wait']}},'created_date',MAX_PAGE);
-  let due:any=null;
-  let nextAt=Infinity;
-  for(const record of pool) {
-    const ready=asEpoch(record.available_at);
-    if(!ready||ready<=now) {due=record;break;}
-    nextAt=Math.min(nextAt,ready);
-  }
-  return {job:due,nextAt,pending:pool.length};
+  // MongoDB filters due time before applying a limit, so >100 delayed retries
+  // cannot starve a newer immediately due message. All new timestamps are UTC.
+  const statuses={ $in:['queued','retry_wait'] };
+  const due=await db.filter({
+    status:statuses,available_at:{$lte:new Date(now).toISOString()}
+  },'created_date',1);
+  if(due.length) return {job:due[0],nextAt:now,pending:true};
+  const earliest=await db.filter({status:statuses},'available_at',1);
+  return {job:null,nextAt:earliest.length?asEpoch(earliest[0].available_at):Infinity,
+    pending:earliest.length>0};
 }
 export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   const db=client?.asServiceRole?.entities;
