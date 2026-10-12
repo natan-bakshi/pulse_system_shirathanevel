@@ -5,7 +5,7 @@ import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
 import { checkWasenderSessionStatus } from '../../shared/wasenderSend.ts';
 
 const MAX_BATCH = 80;
-const RECOVERY_SEND_INTERVAL_MS = 70_000; // Trial allows only one message per minute.
+const RECOVERY_SEND_INTERVAL_MS = 7_000; // Paid-plan safety: >5 seconds if Wasender Account Protection is enabled.
 const ALLOWED_HOURS = new Set([8,24,48,72]);
 const OWNER_EMAIL = 'natib8000@gmail.com';
 const reply = (body: unknown, status = 200) => Response.json(body, {status});
@@ -44,14 +44,15 @@ async function inventory(base44: any, hours: number) {
     try { ids = typeof service.supplier_ids === 'string' ? JSON.parse(service.supplier_ids || '[]') : service.supplier_ids || []; } catch {}
     if (!Array.isArray(ids)) continue;
     for(const supplierId of ids){
-      const candidate=candidateFromLive(service, supplierById.get(String(supplierId)), eventById.get(service.event_id), serviceById.get(service.service_id), template, incidentDate);
+      const assignmentDay = service.updated_date ? israelDay(new Date(service.updated_date)) : incidentDate;
+      const candidate=candidateFromLive(service, supplierById.get(String(supplierId)), eventById.get(service.event_id), serviceById.get(service.service_id), template, assignmentDay);
       if(!candidate)continue;
       const prior=priorByKey.get(candidate.recoveryKey);
       items.push({
         eventServiceId: candidate.eventServiceId, eventId:candidate.eventId, supplierId:candidate.supplierId,
         eventName:candidate.eventName, supplierName:candidate.supplierName, serviceName:candidate.serviceName,
         eventDate:candidate.eventDate, eventTime:candidate.eventTime, updatedAt:candidate.updatedAt,
-        channel:candidate.channel, message:candidate.message,
+        channel:candidate.channel, message:candidate.message, recoveryKey:candidate.recoveryKey,
         recoveryState:prior?.state||'not_prepared',
         approvedForReplay:prior?.approved_for_replay === true,
         recoveryId:prior?.id||''
@@ -130,7 +131,7 @@ Deno.serve(async (req) => {
       for(const tuple of desired){
         const candidate:any=candidates.get(tuple);
         if(!candidate){excluded++;continue;}
-        const key=view.incidentDate+'|'+candidate.eventServiceId+'|'+candidate.supplierId;
+        const key=candidate.recoveryKey;
         const oldRow:any=byKey.get(key);
         if(oldRow){
           if((oldRow.state==='queued' && oldRow.approved_for_replay !== true) || ['rejected','skipped'].includes(oldRow.state)){
@@ -143,7 +144,7 @@ Deno.serve(async (req) => {
           continue;
         }
         await base44.asServiceRole.entities.AssignmentMessageRecovery.create({
-          recovery_key:key,incident_date:view.incidentDate,event_id:candidate.eventId,
+          recovery_key:key,incident_date:key.slice(0,10),event_id:candidate.eventId,
           event_service_id:candidate.eventServiceId,supplier_id:candidate.supplierId,
           state:'queued',approved_for_replay:true,message_snapshot:candidate.message,attempt_count:0,
           created_by_admin_id:user.id
@@ -165,7 +166,7 @@ Deno.serve(async (req) => {
         const oldest=stale.filter((r:any)=>Date.now()-Date.parse(r.attempted_at||'')>300_000);
         for(const row of oldest) await entities.updateMany({id:row.id,state:'dispatching'},{$set:{state:'unknown',last_error:'Recovery attempt interrupted; delivery requires manual review',completed_at:new Date().toISOString()}});
         const active=stale.length-oldest.length;
-        if(active>0)return reply({success:true,waitingSeconds:70,blocked:'Another recovery send is in progress',...await queueStatus(base44)});
+        if(active>0)return reply({success:true,waitingSeconds:7,blocked:'Another recovery send is in progress',...await queueStatus(base44)});
       }
       const queue=await entities.filter({state:'queued',approved_for_replay:true},'created_date',100);
       if(!queue.length)return reply({success:true,finished:true,...await queueStatus(base44)});
@@ -197,13 +198,13 @@ Deno.serve(async (req) => {
         const winner=[...activeClaims].sort((a:any,b:any)=>String(a.attempted_at||'').localeCompare(String(b.attempted_at||''))||String(a.id).localeCompare(String(b.id)))[0];
         if(winner.id!==row.id){
           await entities.updateMany({id:row.id,state:'dispatching'},{$set:{state:'queued',attempted_at:''}});
-          return reply({success:true,waitingSeconds:70,blocked:'Another recovery dispatch has the send slot',...await queueStatus(base44)});
+          return reply({success:true,waitingSeconds:7,blocked:'Another recovery dispatch has the send slot',...await queueStatus(base44)});
         }
       }
       try{
         const result=await sendWhatsAppToChat(candidate.destination,row.message_snapshot,base44);
         await entities.update(row.id,{state:'accepted',provider_message_id:result.messageId||'',completed_at:new Date().toISOString(),last_error:''});
-        return reply({success:true,sent:true,deliveryStatus:'accepted_not_delivered',waitingSeconds:70,...await queueStatus(base44)});
+        return reply({success:true,sent:true,deliveryStatus:'accepted_not_delivered',waitingSeconds:7,...await queueStatus(base44)});
       } catch(error){
         const code=Number((error as any)?.errorCode||0);
         const uncertain=(error as any)?.deliveryUncertain===true;
@@ -214,7 +215,7 @@ Deno.serve(async (req) => {
           last_error:uncertain?'Provider response inconclusive; do not resend automatically':code===429?'Provider rate limit (429)':'Provider rejected recovery message',
           completed_at:new Date().toISOString()
         });
-        return reply({success:true,sent:false,errorCode:code||502,recoveryState:state,waitingSeconds:70,...await queueStatus(base44)});
+        return reply({success:true,sent:false,errorCode:code||502,recoveryState:state,waitingSeconds:code===429?15:7,...await queueStatus(base44)});
       }
     }
     return reply({success:false,error:'Unsupported action'},400);
