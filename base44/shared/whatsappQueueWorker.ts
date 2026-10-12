@@ -99,7 +99,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
     last_worker_at:new Date(nowMs).toISOString()
   }});
   if(claim?.updated!==1) return {success:true,reason:'busy',sent:0};
-  const deadline=Date.now()+MAX_RUNTIME_MS;
+  const deadline=Date.now()+(Number(opts.maxRuntimeMs)||MAX_RUNTIME_MS);
   let accepted=0,failed=0,unknown=0,retried=0,processed=0,requestWake=false;
   let lastError='';
   try {
