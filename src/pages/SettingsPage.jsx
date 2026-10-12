@@ -17,7 +17,7 @@ import ContactSettingsEditor from "@/components/contact/ContactSettingsEditor";
 import BillingSettings from "@/components/billing/BillingSettings";
 import BusinessDetailsFields from "@/components/settings/BusinessDetailsFields";
 import WhatsAppProviderStatus from "@/components/admin/notifications/WhatsAppProviderStatus";
-import AssignmentRecoveryPanel from "@/components/admin/notifications/AssignmentRecoveryPanel";
+import WhatsAppQueueSettings from "@/components/admin/notifications/WhatsAppQueueSettings";
 
 const settingKeys = [
     'background_image_url', 
@@ -307,7 +307,7 @@ export default function SettingsPage() {
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
                         <CardHeader><CardTitle className="flex items-center gap-2"><PhoneCall className="h-5 w-5" />הגדרות ספק WhatsApp</CardTitle></CardHeader>
-                        <CardContent><WhatsAppProviderStatus /></CardContent>
+                        <CardContent className="space-y-4"><WhatsAppProviderStatus /><WhatsAppQueueSettings /></CardContent>
                     </Card>
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
@@ -646,7 +646,6 @@ export default function SettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="notifications" className="mt-6 space-y-6">
-                    <AssignmentRecoveryPanel />
                     <NotificationManagementTab />
                 </TabsContent>
 
