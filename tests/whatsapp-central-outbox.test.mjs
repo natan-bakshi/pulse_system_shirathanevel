@@ -91,7 +91,7 @@ test('provider timeout remains unknown and is never retried',async()=>{
 });
 test('explicit 429 is centralized backoff, not an immediate local retry',async()=>{
  const x=fixture();await sendWhatsAppText('0501234567','message',x.client);
- let calls=0;await drainWhatsAppOutbox(x.client,{transport:async()=>{calls++;throw {deliveryUncertain:false,errorCode:429}}});
+ let calls=0;await drainWhatsAppOutbox(x.client,{maxRuntimeMs:9000,transport:async()=>{calls++;throw {deliveryUncertain:false,errorCode:429}}});
  assert.equal(calls,1);
  assert.equal(x.jobs[0].status,'retry_wait');
  assert.ok(Date.parse(x.jobs[0].available_at)>Date.now());
