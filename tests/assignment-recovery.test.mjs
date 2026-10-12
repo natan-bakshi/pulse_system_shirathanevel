@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRecoveryReminder, candidateFromLive, effectiveDestination, israelDay } from '../base44/shared/assignmentRecovery.ts';
+import { buildRecoveryReminder, candidateFromLive, effectiveDestination, israelDay, recoveryCooldownSeconds } from '../base44/shared/assignmentRecovery.ts';
 
 const event={id:'event123456',event_name:'אירוע לדוגמה',family_name:'משפחת בדיקה',event_date:'2099-02-03',event_time:'10:30',location:'ירושלים',status:'confirmed'};
 const supplier={id:'supplier123456',supplier_name:'ספק לדוגמה',phone:'0501234567',preferred_channel:'phone',whatsapp_enabled:true};
@@ -35,6 +35,19 @@ test('confirmed, rejected, removed, cancelled and WhatsApp-disabled suppliers ar
  assert.equal(candidateFromLive(svc,{...supplier,whatsapp_enabled:false},event,type,tmpl,'2026-10-12'),null);
  assert.equal(candidateFromLive({...svc,is_external:true},supplier,event,type,tmpl,'2026-10-12'),null);
 });
+test('recovery cooldown compares actual instants across UTC and Israeli offsets',()=>{
+ const now=Date.parse('2026-10-12T14:42:00Z'); // 17:42 Israel
+ const historical=[{attempted_at:'2026-10-12T15:40:40+03:00'},
+                   {attempted_at:'2026-10-12T15:39:55+03:00'}];
+ assert.equal(recoveryCooldownSeconds(historical,now,7000),0);
+ // This was the production failure: string comparisons reported historical
+ // '+03:00' entries as newer than a UTC cutoff.
+ assert.equal(historical[0].attempted_at > new Date(now-7000).toISOString(),true);
+ assert.equal(recoveryCooldownSeconds([{attempted_at:'2026-10-12T17:41:57+03:00'}],now,7000),4);
+ assert.equal(recoveryCooldownSeconds([{attempted_at:'2026-10-12T14:41:57Z'}],now,7000),4);
+ assert.equal(recoveryCooldownSeconds([{attempted_at:'nonsense'},{attempted_at:''}],now,7000),0);
+});
+
 test('Israel timezone day detection does not use raw UTC date',()=>{
  assert.equal(israelDay(new Date('2026-10-11T22:01:00Z')),'2026-10-12');
 });
