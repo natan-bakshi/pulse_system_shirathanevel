@@ -3,7 +3,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 
 /**
  * Manual Trigger for Notification Templates
@@ -567,7 +566,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     }
 
     try {
-        if (await hasSelectedWhatsAppProviderCredentials(base44)) await sendWhatsAppText(phone, message, base44);
+        await sendWhatsAppText(phone, message, base44);
     } catch (e) {
         console.error('[ManualTrigger] WhatsApp send failed:', e?.message || 'unknown');
     }
