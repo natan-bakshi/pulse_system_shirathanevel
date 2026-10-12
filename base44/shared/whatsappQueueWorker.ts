@@ -57,7 +57,10 @@ async function staleSendingToUnknown(client:any, now:number) {
         status:'unknown',completed_at:new Date().toISOString(),
         last_error:'Worker stopped during an uncertain provider send; check provider history before retry',last_status_at:new Date().toISOString()
       }});
-      if(updated?.updated===1) count++;
+      if(updated?.updated===1) {
+        count++;
+        await safeCompletionLinks(client,row,'unknown','');
+      }
     }
   }
   return count;
@@ -183,7 +186,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           last_error:'',error_code:0,last_status_at:new Date().toISOString()
         });
         accepted++;
-        await safeCompletionLinks(client,job,'accepted',receipt.messageId||'');
+        await safeCompletionLinks(client,await db.WhatsAppOutbox.get(job.id),'accepted',receipt.messageId||'');
       }catch(error){
         const outcome=classifyWhatsAppError(error,attempt,Number(job.max_attempts||3));
         await db.WhatsAppOutbox.update(job.id,{
@@ -194,7 +197,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         if(outcome.status==='unknown') unknown++;
         if(outcome.status==='failed') failed++;
         if(outcome.status==='retry_wait') retried++;
-        if(outcome.status!=='retry_wait') await safeCompletionLinks(client,job,outcome.status,'');
+        if(outcome.status!=='retry_wait') await safeCompletionLinks(client,await db.WhatsAppOutbox.get(job.id),outcome.status,'');
         if(outcome.code===401||outcome.code===403) {lastError='WhatsApp provider authorization rejected';break;}
       }
     }
