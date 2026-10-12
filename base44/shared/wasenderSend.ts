@@ -35,7 +35,7 @@ function wasenderError(status: number, uncertain: boolean) {
   return error;
 }
 
-async function requestWasender(path: string, { method = 'GET', payload }: { method?: string; payload?: Record<string, unknown> } = {}, alreadyRetriedRateLimit = false) {
+async function requestWasender(path: string, { method = 'GET', payload }: { method?: string; payload?: Record<string, unknown> } = {}) {
   const token = Deno.env.get('WASENDER_API_KEY');
   if (!token) throw new Error('WasenderAPI session key not configured');
   let response;
@@ -52,15 +52,7 @@ async function requestWasender(path: string, { method = 'GET', payload }: { meth
   }
   let data: any = null;
   try { data = await response.json(); } catch (_) {}
-  // 429 is an explicit rejection: this one retry cannot create a duplicate accepted send.
-  // Paid Account Protection permits one send each five seconds; stagger bursts from separate invocations.
-  if (response.status === 429 && method === 'POST' && path === '/api/send-message' && !alreadyRetriedRateLimit) {
-    const jitterMs = 1200 + Math.floor(Math.random() * 1800);
-    const delayMs = 5800 + jitterMs;
-    console.warn('[WasenderAPI] Rate-limited; one bounded retry after backoff');
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-    return await requestWasender(path, { method, payload }, true);
-  }
+  // Rate-limit/backoff policy belongs to the single WhatsApp queue worker.
   if (!response.ok || data?.success === false) {
     console.error('[WasenderAPI] request rejected; httpStatus=' + response.status);
     // 5xx may have accepted the message before returning an error.
