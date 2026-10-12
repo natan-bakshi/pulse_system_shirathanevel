@@ -52,7 +52,7 @@ export default function AssignmentRecoveryPanel() {
       setPreview(r.data.items||[]);
       setQueue(r.data);
       setSelected(new Set());
-      setNotice(`נמצאו ${r.data.items?.length||0} שיבוצים ממתינים ברשומות שעודכנו בחלון הזמן שנבחר. אלו מועמדים לבדיקה — לא רשימה מאומתת של הודעות שלא הגיעו.`);
+      setNotice(`נמצאו ${r.data.items?.length||0} שיבוצים ממתינים ברשומות שעודכנו בחלון הזמן שנבחר. שיבוצים שסומנו כ-Sent בהצלבת הלוג אינם נכללים במועמדים החדשים. בדוק את פרטי כל הודעה לפני אישור.`);
     }catch(e){setError(e?.response?.data?.error||e?.message||'סריקת השיבוצים נכשלה');}
     finally{setBusy(false);}
   }
@@ -88,7 +88,7 @@ export default function AssignmentRecoveryPanel() {
       if(data.sent)setNotice('הודעה אחת התקבלה לעיבוד אצל ספק ה־API. אין עדיין אישור מסירה לנמען.');
       if(data.recoveryState==='unknown')setNotice('התקבלה תוצאה לא ידועה. ההודעה המסוימת לא תישלח שוב אוטומטית.');
       if(data.recoveryState==='rejected')setNotice('הספק דחה הודעה. היא סומנה כנדחתה ולא תישלח שוב אוטומטית.');
-      const pauseSeconds=Math.max(2,Number(data.waitingSeconds|| (data.skipped?2:70)));
+      const pauseSeconds=Math.max(2,Number(data.waitingSeconds|| (data.skipped?2:7)));
       timer.current=setTimeout(()=>{void tick();},pauseSeconds*1000);
     }catch(e){
       running.current=false;setSending(false);
@@ -98,7 +98,7 @@ export default function AssignmentRecoveryPanel() {
 
   function start() {
     if(!pendingCount||busy||running.current)return;
-    if(!window.confirm(`לשלוח בהדרגה את ${pendingCount} ההודעות הממתינות?\n\nהשליחה תתבצע אחת לכ־70 שניות כל עוד מסך זה פתוח. פעולה זו שולחת הודעות אמיתיות לספקים. עצור אם קיימות כפילויות לא רצויות.`))return;
+    if(!window.confirm(`לשלוח בהדרגה את ${pendingCount} ההודעות הממתינות?\n\nהשליחה תתבצע לכל הפחות אחת לכ־7 שניות, כל עוד מסך זה פתוח. בקשות מקבילות מחלקים אחרים במערכת עלולות להפעיל מגבלת ספק. פעולה זו שולחת הודעות אמיתיות לספקים. עצור אם קיימות כפילויות לא רצויות.`))return;
     setError('');setNotice('השליחה החלה. השאר את הדף פתוח או לחץ עצור. ניתן להמשיך גם לאחר רענון.');
     running.current=true;setSending(true);void tick();
   }
@@ -115,7 +115,7 @@ export default function AssignmentRecoveryPanel() {
         <p className="text-sm text-gray-700">רשימת מועמדים מתוך השיבוצים הקיימים, בלי לשנות שיבוץ אחד. מכיוון שבעבר לא נשמר אישור מסירה לכל הודעה, אין דרך לקבוע בוודאות מי לא קיבל. ההודעות מחודשות בנוסח של תזכורת, לא הודעת שיבוץ חדשה.</p>
         <div className="flex items-start gap-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-          <span>בתקופת הניסיון של WasenderAPI מותרת הודעה אחת בדקה ועד 50 ביום. השליחה פה מוגבלת לכ־70 שניות בין הודעות, ורק כשהדף פתוח. שליחות אוטומטיות אחרות עשויות לנצל גם הן את המכסה.</span>
+          <span>חשבון WasenderAPI בתשלום: לפי תיעוד הספק, במצב Account Protection מופעל מותרת שליחה אחת כל 5 שניות, ויש גם מגבלת בקשות במקביל. תור ההתאוששות ממתין לפחות 7 שניות בין הודעות. שליחות אחרות במערכת אינן כלולות כרגע בוויסות התור הזה.</span>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm space-y-1"><span className="block font-medium">שיבוצים שעודכנו ב־</span>
