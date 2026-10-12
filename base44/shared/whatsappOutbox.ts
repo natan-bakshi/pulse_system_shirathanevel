@@ -86,6 +86,7 @@ export async function enqueueWhatsApp(client: any, data: {
     card_setup_request_id: String(context.cardSetupRequestId || ''),
     event_service_id: String(context.eventServiceId || ''),
     supplier_id: String(context.supplierId || ''),
+    expires_at:String(context.expiresAt || ''),
     status: 'queued', available_at: new Date().toISOString(), attempt_count: 0, max_attempts: 3
   });
     // The WhatsAppOutbox CREATE workflow wakes a worker. Watchdog covers interruptions.
