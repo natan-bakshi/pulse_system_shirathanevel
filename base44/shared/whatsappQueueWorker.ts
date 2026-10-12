@@ -22,7 +22,9 @@ export function classifyWhatsAppError(error: any, attempt: number, maxAttempts =
     return {status:'unknown',code:code||502,retryAt:'',reason:'Provider outcome unknown: manual verification required'};
   }
   if(code===429&&attempt<maxAttempts) {
-    const pause=Math.min(180,15*Math.pow(2,Math.max(0,attempt-1)));
+    const computed=Math.min(180,15*Math.pow(2,Math.max(0,attempt-1)));
+    const providerSeconds=Math.max(0,Math.min(3600,Number(error?.retryAfterSeconds)||0));
+    const pause=Math.max(computed,providerSeconds);
     return {status:'retry_wait',code,retryAt:new Date(now+pause*1000).toISOString(),reason:'Rate limit 429 - scheduled for central retry'};
   }
   return {status:'failed',code:code||400,retryAt:'',reason:code===429?'Rate limit exhausted retries':'Provider rejected the message'};
