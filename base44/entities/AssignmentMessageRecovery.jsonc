@@ -43,6 +43,10 @@
     "provider": {
       "type": "string"
     },
+    "verification_source": {
+      "type": "string",
+      "description": "How this message state was established: API receipt, dashboard export, or incident comparison"
+    },
     "provider_message_id": {
       "type": "string"
     },
