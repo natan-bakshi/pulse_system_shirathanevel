@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
  * Checks for automated notification triggers (Business Logic)
@@ -345,6 +346,8 @@ async function triggerNotification(base44, template, event, user, supplier, even
     
     // 1. WhatsApp Send with quiet hours check
     let whatsappSent = false;
+    let whatsAppResult = null;
+    let pendingQueueRow = null;
     let phoneToUse = null;
 
     if (supplier && supplier.phone && supplier.whatsapp_enabled !== false) {
@@ -365,7 +368,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
                 const targetUserId = user ? user.id : (supplier ? `virtual_supplier_${supplier.id}` : `virtual_event_${event.id}`);
                 const targetUserEmail = user ? user.email : (supplier ? supplier.contact_emails?.[0] : '');
                 
-                await base44.asServiceRole.entities.PendingPushNotification.create({
+                pendingQueueRow = await base44.asServiceRole.entities.PendingPushNotification.create({
                     user_id: targetUserId,
                     user_email: targetUserEmail,
                     title: title,
@@ -382,8 +385,8 @@ async function triggerNotification(base44, template, event, user, supplier, even
             }
         } else {
             try {
-                await sendWhatsAppText(phoneToUse, whatsapp_message, base44, {sourceType:'automated_trigger',sourceId:template.id||''});
-                whatsappSent = true; // Enqueued in the global outbox, not delivered.
+                whatsAppResult = await sendWhatsAppText(phoneToUse, whatsapp_message, base44, {sourceType:'automated_trigger',sourceId:template.id||''});
+                whatsappSent = whatsAppResult.queued !== true; // Provider-accepted only in legacy compatibility mode.
             } catch (e) {
                 console.error('[AutomatedTriggers] WhatsApp send failed:', e?.message || 'unknown');
             }
@@ -395,7 +398,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
         const targetUserId = user ? user.id : (supplier ? `virtual_supplier_${supplier.id}` : `virtual_event_${event.id}`);
         const targetUserEmail = user ? user.email : (supplier ? supplier.contact_emails?.[0] : '');
 
-        await base44.asServiceRole.entities.InAppNotification.create({
+        const notificationRow = await base44.asServiceRole.entities.InAppNotification.create({
             user_id: targetUserId,
             user_email: targetUserEmail,
             title: title,
@@ -411,6 +414,8 @@ async function triggerNotification(base44, template, event, user, supplier, even
             reminder_count: 0,
             is_resolved: false
         });
+        if(whatsAppResult?.queued) await attachOutboxInAppReceipt(base44,whatsAppResult,notificationRow.id);
+        if(pendingQueueRow?.id) await base44.asServiceRole.entities.PendingPushNotification.update(pendingQueueRow.id,{in_app_notification_id:notificationRow.id});
         results.notifications_created++;
         console.log(`[AutomatedTriggers] Log created for ${targetUserId}`);
     } catch (e) {
