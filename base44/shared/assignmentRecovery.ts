@@ -20,6 +20,29 @@ function parseJson(value: unknown, fallback: any) {
   if (Array.isArray(value) || (value && typeof value === 'object')) return value;
   try { return JSON.parse(String(value || '')); } catch { return fallback; }
 }
+/**
+ * Compare timestamp instants, never raw ISO strings. Imported Wasender logs may
+ * be stored with +03:00 while worker timestamps use Z. Lexical DB comparisons
+ * would incorrectly block newer messages for hours.
+ * Returns cooldown seconds (0 means ready).
+ */
+export function recoveryCooldownSeconds(records: any[], nowMs = Date.now(), intervalMs = 7000): number {
+  if (!Array.isArray(records)) return 0;
+  let remaining = 0;
+  for (const record of records) {
+    const attemptedAt = String(record?.attempted_at || '').trim();
+    if (!attemptedAt) continue;
+    const ts = Date.parse(attemptedAt);
+    if (!Number.isFinite(ts)) continue;
+    const age = nowMs - ts;
+    // Ignore bad far-future legacy timestamps. Tolerate small server clock skew.
+    if (age < -5000) continue;
+    const waitMs = intervalMs - age;
+    if (waitMs > remaining) remaining = waitMs;
+  }
+  return remaining > 0 ? Math.max(1, Math.ceil(remaining / 1000)) : 0;
+}
+
 export function israelDay(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit'
