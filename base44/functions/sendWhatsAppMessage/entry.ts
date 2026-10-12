@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
         }
 
         const result = await sendWhatsAppText(phone, message, base44);
-        return Response.json({ success: true, queued: true, jobId: result.jobId, messageId: '' });
+        return Response.json({ success: true, queued: result.queued === true, jobId: result.jobId || '', messageId: result.messageId || '' });
 
     } catch (error) {
         const errorCode = error?.errorCode;
