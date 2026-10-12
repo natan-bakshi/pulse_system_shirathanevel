@@ -115,6 +115,16 @@ test('cancelled or confirmed assignments are not sent from a delayed queue',asyn
  assert.equal(x.jobs[0].status,'cancelled');
 });
 
+test('expired payment links and OTP messages are not sent after queue delay',async()=>{
+  const x=fixture();
+  const expiry=new Date(Date.now()-60000).toISOString();
+  await sendWhatsAppText('0501234567','sensitive link',x.client,{sourceType:'payment_link',expiresAt:expiry});
+  let calls=0;
+  await drainWhatsAppOutbox(x.client,{transport:async()=>{calls++;return {messageId:'unexpected'}}});
+  assert.equal(calls,0);
+  assert.equal(x.jobs[0].status,'expired');
+});
+
 test('provider timeout remains unknown and is never retried',async()=>{
  const x=fixture();await sendWhatsAppText('0501234567','message',x.client);
  let calls=0;const transport=async()=>{calls++;throw {deliveryUncertain:true,errorCode:503}};
