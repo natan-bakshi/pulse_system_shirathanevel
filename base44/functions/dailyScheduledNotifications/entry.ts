@@ -1072,7 +1072,7 @@ Deno.serve(async (req) => {
         {
             for (const wa of whatsappQueue) {
                 try {
-                    await sendWhatsAppText(wa.phone, wa.message, base44);
+                    await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:'daily_notification'});
                     results.pending_whatsapp_sent++; // Queued; provider acceptance is tracked by the worker.
                 } catch (e) {
                     console.error('[DailyNotifications] WhatsApp send failed:', e?.message || 'unknown');
