@@ -68,6 +68,20 @@ test('every business entry creates a durable job, no provider call while enqueue
   assert.equal(x.jobs[2].document_url,'');
  }finally{globalThis.fetch=oldFetch}
 });
+test('migration safety: disabled queue preserves legacy delivery instead of losing messages',async()=>{
+ const x=fixture({enabled:false});
+ const previousFetch=globalThis.fetch;
+ globalThis.fetch=async(_url,options)=>({
+  ok:true,status:200,json:async()=>({success:true,data:{msgId:'legacy-ok'}})
+ });
+ try{
+  const receipt=await sendWhatsAppText('0501234567','legacy mode',x.client);
+  assert.equal(receipt.queued,false);
+  assert.equal(receipt.messageId,'legacy-ok');
+  assert.equal(x.jobs.length,0);
+ }finally{globalThis.fetch=previousFetch;}
+});
+
 test('one worker dispatches multiple sources FIFO without delay before first',async()=>{
  const x=fixture();
  for(const type of ['assignment','reminder','invoice','payment_link','manual']){
@@ -167,6 +181,13 @@ test('worker updates linked record only after provider acceptance',async()=>{
  assert.equal(x.agreements[0].value.state,'accepted');
  assert.equal(x.cards[0].value.link_message_state,'accepted');
 });
+test('retry-after header extends central 429 cooldown',()=>{
+ const now=Date.parse('2026-10-12T10:00:00Z');
+ const outcome=classifyWhatsAppError({errorCode:429,retryAfterSeconds:80},1,3,now);
+ assert.equal(outcome.status,'retry_wait');
+ assert.equal(Date.parse(outcome.retryAt)-now,80000);
+});
+
 test('worker classifies safe rejections and uncertainty without automatic duplicates',()=>{
  assert.equal(classifyWhatsAppError({errorCode:429},1).status,'retry_wait');
  assert.equal(classifyWhatsAppError({errorCode:429},3).status,'failed');
