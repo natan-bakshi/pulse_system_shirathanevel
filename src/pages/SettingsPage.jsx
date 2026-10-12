@@ -17,6 +17,7 @@ import ContactSettingsEditor from "@/components/contact/ContactSettingsEditor";
 import BillingSettings from "@/components/billing/BillingSettings";
 import BusinessDetailsFields from "@/components/settings/BusinessDetailsFields";
 import WhatsAppProviderStatus from "@/components/admin/notifications/WhatsAppProviderStatus";
+import AssignmentRecoveryPanel from "@/components/admin/notifications/AssignmentRecoveryPanel";
 
 const settingKeys = [
     'background_image_url', 
@@ -644,7 +645,8 @@ export default function SettingsPage() {
                     <CalendarTemplateSettings />
                 </TabsContent>
 
-                <TabsContent value="notifications" className="mt-6">
+                <TabsContent value="notifications" className="mt-6 space-y-6">
+                    <AssignmentRecoveryPanel />
                     <NotificationManagementTab />
                 </TabsContent>
 
