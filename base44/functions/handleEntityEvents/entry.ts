@@ -826,7 +826,13 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
                 scheduled_for: quietEnd.toISOString(),
                 template_type: template.type,
                 is_sent: false,
-                data: JSON.stringify({ send_whatsapp: true, whatsapp_message: message, phone: phone || '', chat_id: whatsappTarget.chatId })
+                condition_type:template.type === 'SUPPLIER_NEW_ASSIGNMENT' ? 'supplier_still_pending' : 'none',
+                related_event_id:eventObj?.id||'',related_event_service_id:serviceObj?.id||'',
+                related_supplier_id:supplierObj?.id||'',
+                data: JSON.stringify({
+                  send_whatsapp: true,whatsapp_message:message,phone:phone||'',chat_id:whatsappTarget.chatId,
+                  source_type:template.type==='SUPPLIER_NEW_ASSIGNMENT'?'assignment_new':'notification'
+                })
             });
             console.log(`[HandleEntityEvents] WhatsApp QUEUED for ${targetLabel} until ${quietEnd.toISOString()}`);
         } catch (qErr) {
