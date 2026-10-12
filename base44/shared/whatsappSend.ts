@@ -117,8 +117,12 @@ async function callGreenApi(method, body) {
   let data = null;
   try { data = await response.json(); } catch {}
   if (!response.ok) {
+    const header=response.headers?.get?.('Retry-After') || '';
+    const seconds=/^\d+$/.test(header) ? Number(header)
+      : header?Math.max(0,Math.ceil((Date.parse(header)-Date.now())/1000)):0;
     throw Object.assign(new Error('WhatsApp provider rejected message'), {
-      errorCode:response.status,deliveryUncertain:response.status === 408 || response.status >= 500
+      errorCode:response.status,deliveryUncertain:response.status === 408 || response.status >= 500,
+      retryAfterSeconds:response.status===429?Math.min(3600,Number.isFinite(seconds)?seconds:0):0
     });
   }
   const messageId = data && typeof data==='object' ? (data.idMessage || '') : '';
