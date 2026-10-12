@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
 async function sendWhatsAppNotification(base44, phone, message) {
     try {
         // Preserves the existing notification flow; transport is selected centrally.
-        await sendWhatsAppText(phone, message, base44);
+        await sendWhatsAppText(phone, message, base44, {sourceType:'assignment_cancel'});
     } catch (e) {
         console.error('WhatsApp notification failed:', e?.message || 'unknown');
     }
