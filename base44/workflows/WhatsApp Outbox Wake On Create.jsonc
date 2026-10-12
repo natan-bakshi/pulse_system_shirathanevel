@@ -1,0 +1,34 @@
+{
+  "name": "WhatsApp Outbox \u2014 enqueue wake",
+  "description": "Wake global WhatsApp queue when a job is created",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "WhatsAppOutbox"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pulse_whatsapp_outbox_worker",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processWhatsAppOutbox",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
