@@ -6,7 +6,7 @@ import esbuild from 'esbuild';
 import * as recovery from '../base44/shared/assignmentRecovery.ts';
 
 const code=esbuild.transformSync(fs.readFileSync('base44/functions/AssignmentWhatsAppRecovery/entry.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
-function fixture({actor={role:'admin',email:'natib8000@gmail.com'},failure=null}={}) {
+function fixture({actor={role:'admin',email:'natib8000@gmail.com'},failure=null,connected=true}={}) {
   const now=new Date().toISOString(); let calls=0;
   const supplier={id:'supplier123456',supplier_name:'ספק בדיקה',phone:'0501234567',whatsapp_enabled:true};
   const event={id:'event123456',event_name:'אירוע בדיקה',family_name:'בדיקה',event_date:'2099-11-05',event_time:'10:00',location:'ירושלים',status:'confirmed'};
@@ -48,7 +48,7 @@ function fixture({actor={role:'admin',email:'natib8000@gmail.com'},failure=null}
     if(name.endsWith('whatsappSend.ts'))return {
       sendWhatsAppToChat:async()=>{calls++;if(failure)throw failure;return {messageId:'provider-message-123'};}
     };
-    if(name.endsWith('wasenderSend.ts'))return {checkWasenderSessionStatus:async()=>({connected:true,status:'connected'})};
+    if(name.endsWith('wasenderSend.ts'))return {checkWasenderSessionStatus:async()=>({connected,status:connected?'connected':'disconnected'})};
     throw new Error('Unexpected module: '+name);
   };
   vm.runInNewContext(code,{
@@ -132,6 +132,25 @@ test('reconciled dashboard history excludes already-sent recipients and safely f
   const b=await x.invoke('prepare',{hours:8,selection:[{eventServiceId:item.eventServiceId,supplierId:item.supplierId}]});
   assert.equal(b.body.prepared,0);
   assert.equal(x.rows[0].state,'accepted');
+  assert.equal(x.calls,0);
+});
+
+test('read-only diagnostics show readiness, never send WhatsApp',async()=>{
+  const x=fixture();
+  let result=await x.invoke('diagnose');
+  assert.equal(result.body.blockedReason,'no_approved_messages');
+  await x.invoke('prepare',{selection:[{eventServiceId:x.eventService.id,supplierId:x.supplier.id}],hours:8});
+  result=await x.invoke('diagnose');
+  assert.equal(result.body.blockedReason,'ready');
+  assert.equal(result.body.ready,1);
+  assert.equal(result.body.cooldownSeconds,0);
+  assert.equal(x.calls,0);
+});
+test('read-only diagnostics identify a disconnected Wasender session',async()=>{
+  const x=fixture({connected:false});
+  await x.invoke('prepare',{selection:[{eventServiceId:x.eventService.id,supplierId:x.supplier.id}],hours:8});
+  const result=await x.invoke('diagnose');
+  assert.equal(result.body.blockedReason,'session_disconnected');
   assert.equal(x.calls,0);
 });
 
