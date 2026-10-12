@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
         // Sign only when the central worker actually dispatches the queued document.
         const result = await sendWhatsAppFileUri(Phone, FileUri, FileName, Caption, base44, { sourceType: 'manual_file' });
-        return Response.json({ success: true, queued: true, jobId: result.jobId, messageId: '' });
+        return Response.json({ success: true, queued: result.queued === true, jobId: result.jobId || '', messageId: result.messageId || '' });
 
     } catch (error) {
         const errorCode = error?.errorCode;
