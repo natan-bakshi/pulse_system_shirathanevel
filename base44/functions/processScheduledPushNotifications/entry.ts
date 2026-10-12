@@ -499,7 +499,7 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
         try {
             const chatId = wa.chatId || toChatId(wa.phone);
             if (!chatId) continue;
-            await sendWhatsAppToChat(chatId, wa.message, base44);
+            await sendWhatsAppToChat(chatId, wa.message, base44, {sourceType:'scheduled_fanout',sourceId:pending.id||'',idempotencyKey:'fanout:'+pending.id+':'+chatId});
             result.sent++;
         } catch (e) {
             console.warn('[ScheduledPush] Fan-out WhatsApp failed for one recipient');
