@@ -1,154 +1,137 @@
-// שליחת הודעות וואטסאפ דרך Green API - מודול משותף יחיד לכל פונקציות ה-backend.
-// אין להחזיר לקוח את תשובת Green API המלאה, ואין לרשום ללוג טוקן/מספר/תוכן/קישור חתום.
-import { sanitizeText, LIMITS } from "./notificationValidation.ts";
-import { sendWasenderTextToChat, sendWasenderDocumentToChat } from "./wasenderSend.ts";
-import { resolveWhatsAppProvider } from "./whatsappProviderConfig.ts";
+// Common WhatsApp entry point. All business callers enqueue; only the outbox worker
+// may invoke sendWhatsAppTransport. No message-type-specific delay/retry here.
+import { sanitizeText, LIMITS } from './notificationValidation.ts';
+import { sendWasenderTextToChat, sendWasenderDocumentToChat } from './wasenderSend.ts';
+import { enqueueWhatsApp } from './whatsappOutbox.ts';
 
-const GREEN_API_BASE = "https://api.green-api.com";
+const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
 
-/**
- * נרמול מספר טלפון בצד השרת: מספר ישראלי מקומי או E.164.
- * מחזיר ספרות בלבד, או '' אם המספר אינו תקין (8-15 ספרות).
- */
 export function normalizeIsraeliPhone(phone) {
-  let clean = String(phone || "").replace(/[^0-9]/g, "");
-  if (clean.startsWith("00")) clean = clean.substring(2);
-  if (clean.startsWith("05")) clean = "972" + clean.substring(1);
-  else if (clean.length === 9 && clean.startsWith("5")) clean = "972" + clean;
-  if (clean.length < 8 || clean.length > 15) return "";
-  return clean;
+  let clean = String(phone || '').replace(/[^0-9]/g, '');
+  if (clean.startsWith('00')) clean = clean.slice(2);
+  if (clean.startsWith('05')) clean = '972' + clean.slice(1);
+  else if (clean.length === 9 && clean.startsWith('5')) clean = '972' + clean;
+  return clean.length >= 8 && clean.length <= 15 ? clean : '';
 }
 
-/**
- * בונה chatId בצד השרת מהמספר המאומת. הלקוח לא מעביר chatId.
- */
 export function toChatId(phone) {
   const normalized = normalizeIsraeliPhone(phone);
-  return normalized ? `${normalized}@c.us` : "";
+  return normalized ? normalized + '@c.us' : '';
 }
 
-export function sanitizeMessage(message) {
-  return sanitizeText(message, LIMITS.message);
-}
-
-export function sanitizeCaption(caption) {
-  return sanitizeText(caption, LIMITS.caption);
-}
-
-/**
- * שם קובץ נקי מתווי path ובקרה.
- */
+export function sanitizeMessage(message) { return sanitizeText(message, LIMITS.message); }
+export function sanitizeCaption(caption) { return sanitizeText(caption, LIMITS.caption); }
 export function sanitizeFileName(name) {
-  const cleaned = sanitizeText(name, LIMITS.fileName)
-    .replace(/[\\/]/g, "")
-    .replace(/\.{2,}/g, ".")
-    .replace(/[<>:"|?*]/g, "");
-  return cleaned || "file";
+  return sanitizeText(name, LIMITS.fileName).replace(/[\\/]/g, '').replace(/\.{2,}/g, '.')
+    .replace(/[<>:"|?*]/g, '') || 'file';
 }
-
-// שגיאת ולידציית קלט - מתורגמת ל-400 בשכבת ה-endpoint.
 function invalidInput(message) {
-  const error = new Error(message);
-  error.errorCode = 400;
-  return error;
+  return Object.assign(new Error(message), { errorCode: 400, deliveryUncertain: false });
+}
+function validatedChatId(chatId) {
+  const cleaned = sanitizeText(chatId, 80);
+  if (!/^[0-9A-Za-z_-]+@(c|g)\.us$/.test(cleaned)) throw invalidInput('Invalid WhatsApp target');
+  return cleaned;
+}
+function validatedUrl(url) {
+  let parsed;
+  try { parsed = new URL(String(url || '')); } catch { throw invalidInput('Invalid file url'); }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw invalidInput('Invalid file url');
+  return parsed.href;
+}
+function requireBackend(client) {
+  if (!client?.asServiceRole?.entities) throw new Error('WhatsApp sends must originate from a backend client');
 }
 
-function getCredentials() {
-  const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
-  const token = Deno.env.get("GREEN_API_TOKEN");
-  if (!instanceId || !token) throw new Error("WhatsApp configuration error");
-  return { instanceId, token };
+export async function sendWhatsAppText(phone, message, client = null, context = null) {
+  requireBackend(client);
+  const chatId = toChatId(phone);
+  if (!chatId) throw invalidInput('Invalid WhatsApp phone number');
+  const text = sanitizeMessage(message);
+  if (!text) throw invalidInput('Empty WhatsApp message');
+  return enqueueWhatsApp(client, { chatId, messageType: 'text', messageText: text, context });
+}
+
+export async function sendWhatsAppToChat(chatId, message, client = null, context = null) {
+  requireBackend(client);
+  const text = sanitizeMessage(message);
+  if (!text) throw invalidInput('Empty WhatsApp message');
+  return enqueueWhatsApp(client, {
+    chatId: validatedChatId(chatId), messageType: 'text', messageText: text, context
+  });
+}
+
+export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption, client = null, context = null) {
+  requireBackend(client);
+  const chatId = toChatId(phone);
+  if (!chatId) throw invalidInput('Invalid WhatsApp phone number');
+  return enqueueWhatsApp(client, {
+    chatId, messageType: 'document', documentUrl: validatedUrl(fileUrl),
+    fileName: sanitizeFileName(fileName), caption: sanitizeCaption(caption), context
+  });
+}
+
+// Storage URI is signed just-in-time by the queue worker, not before queueing.
+export async function sendWhatsAppFileUri(phone, fileUri, fileName, caption, client = null, context = null) {
+  requireBackend(client);
+  const chatId = toChatId(phone);
+  if (!chatId) throw invalidInput('Invalid WhatsApp phone number');
+  if (!fileUri || String(fileUri).length > 1800) throw invalidInput('Invalid Base44 file URI');
+  return enqueueWhatsApp(client, {
+    chatId, messageType: 'document', fileUri: String(fileUri),
+    fileName: sanitizeFileName(fileName), caption: sanitizeCaption(caption), context
+  });
 }
 
 async function callGreenApi(method, body) {
-  const { instanceId, token } = getCredentials();
+  const instanceId = Deno.env.get('GREEN_API_INSTANCE_ID');
+  const token = Deno.env.get('GREEN_API_TOKEN');
+  if (!instanceId || !token) throw new Error('Green API credentials not configured');
   let response;
   try {
-    response = await fetch(`${GREEN_API_BASE}/waInstance${instanceId}/${method}/${token}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    response = await fetch(GREEN_API_BASE+'/waInstance'+instanceId+'/'+method+'/'+token, {
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),
+      signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     });
   } catch (e) {
-    console.error(`[WhatsApp] transport failure on ${method}: ${e?.name || 'error'}`);
-    throw Object.assign(new Error("WhatsApp request failed"), { deliveryUncertain: true });
+    console.error('[WhatsAppQueue] Green API transport uncertainty:', e instanceof Error ? e.name : 'unknown');
+    throw Object.assign(new Error('WhatsApp transport response unknown'), {deliveryUncertain:true,errorCode:502});
   }
-
-  // תגובה שאינה JSON מטופלת בבטחה ואינה נחשפת ללקוח.
   let data = null;
-  try {
-    const raw = await response.text();
-    data = raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    data = null;
-  }
-
+  try { data = await response.json(); } catch {}
   if (!response.ok) {
-    console.error(`[WhatsApp] ${method} rejected with status ${response.status}`);
-    const error = Object.assign(new Error("WhatsApp send failed"), {
-      errorCode: response.status,
-      deliveryUncertain: response.status === 408 || response.status >= 500
+    throw Object.assign(new Error('WhatsApp provider rejected message'), {
+      errorCode:response.status,deliveryUncertain:response.status === 408 || response.status >= 500
     });
-    throw error;
   }
-
-  const messageId = data && typeof data === 'object' ? (data.idMessage || '') : '';
-  console.log(`[WhatsApp] ${method} accepted (messageId present: ${messageId ? 'yes' : 'no'})`);
-  return { success: true, messageId, idMessage: messageId };
+  const messageId = data && typeof data==='object' ? (data.idMessage || '') : '';
+  return { success:true,provider:'green',messageId,idMessage:messageId,deliveryStatus:'accepted' };
 }
 
-/**
- * שליחת הודעת טקסט לפי מספר טלפון (נרמול בצד השרת).
- */
-export async function sendWhatsAppText(phone, message, client = null) {
-  const chatId = toChatId(phone);
-  if (!chatId) throw invalidInput("Invalid WhatsApp phone number");
-  const safeMessage = sanitizeMessage(message);
-  if (!safeMessage) throw invalidInput("Empty WhatsApp message");
-  return (await resolveWhatsAppProvider(client)) === "wasender"
-    ? await sendWasenderTextToChat(chatId, safeMessage)
-    : await callGreenApi("sendMessage", { chatId, message: safeMessage });
-}
-
-/**
- * שליחת הודעה ל-chatId שנבנה בצד השרת (כולל קבוצות שנבנו מהמערכת, לא מהלקוח).
- */
-export async function sendWhatsAppToChat(chatId, message, client = null) {
-  const safeChatId = sanitizeText(chatId, 80);
-  if (!/^[0-9A-Za-z_-]+@(c|g)\.us$/.test(safeChatId)) throw invalidInput("Invalid WhatsApp target");
-  const safeMessage = sanitizeMessage(message);
-  if (!safeMessage) throw invalidInput("Empty WhatsApp message");
-  return (await resolveWhatsAppProvider(client)) === "wasender"
-    ? await sendWasenderTextToChat(safeChatId, safeMessage)
-    : await callGreenApi("sendMessage", { chatId: safeChatId, message: safeMessage });
-}
-
-/**
- * שליחת קובץ. ה-URL נוצר בצד השרת בלבד (קישור חתום), ונבדק שוב כאן.
- */
-export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption, client = null) {
-  const chatId = toChatId(phone);
-  if (!chatId) throw invalidInput("Invalid WhatsApp phone number");
-
-  let parsed;
-  try {
-    parsed = new URL(String(fileUrl || ''));
-  } catch (e) {
-    throw invalidInput("Invalid file url");
-  }
-  if (parsed.protocol !== 'https:') throw invalidInput("Invalid file url");
-  if (parsed.username || parsed.password) throw invalidInput("Invalid file url");
-
-  const cleanName = sanitizeFileName(fileName);
-  const cleanCaption = sanitizeCaption(caption);
-  return (await resolveWhatsAppProvider(client)) === "wasender"
-    ? await sendWasenderDocumentToChat(chatId, parsed.href, cleanName, cleanCaption)
-    : await callGreenApi("sendFileByUrl", {
-        chatId,
-        urlFile: parsed.href,
-        fileName: cleanName,
-        caption: cleanCaption
+// Queue-worker-only transport. Never call from business functions/endpoints.
+export async function sendWhatsAppTransport(job, provider, client) {
+  const chatId = validatedChatId(job.chat_id);
+  if (provider !== 'green' && provider !== 'wasender') throw new Error('Unsupported WhatsApp provider');
+  let fileUrl = '';
+  if (job.message_type === 'document') {
+    if (job.file_uri) {
+      const signed = await client.asServiceRole.integrations.Core.CreateFileSignedUrl({
+        file_uri:job.file_uri,expires_in:300
       });
+      if (!signed?.signed_url) throw invalidInput('Could not prepare document link');
+      fileUrl = validatedUrl(signed.signed_url);
+    } else fileUrl = validatedUrl(job.document_url);
+    if (provider === 'wasender') {
+      return sendWasenderDocumentToChat(chatId,fileUrl,job.file_name||'file',job.caption||'');
+    }
+    return callGreenApi('sendFileByUrl',{
+      chatId,urlFile:fileUrl,fileName:job.file_name||'file',caption:job.caption||''
+    });
+  }
+  const text = sanitizeMessage(job.message_text);
+  if (!text) throw invalidInput('Empty WhatsApp message');
+  return provider === 'wasender'
+    ? sendWasenderTextToChat(chatId,text)
+    : callGreenApi('sendMessage',{chatId,message:text});
 }
