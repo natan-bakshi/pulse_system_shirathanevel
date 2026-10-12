@@ -53,6 +53,7 @@ async function inventory(base44: any, hours: number) {
         eventDate:candidate.eventDate, eventTime:candidate.eventTime, updatedAt:candidate.updatedAt,
         channel:candidate.channel, message:candidate.message,
         recoveryState:prior?.state||'not_prepared',
+        approvedForReplay:prior?.approved_for_replay === true,
         recoveryId:prior?.id||''
       });
     }
@@ -63,12 +64,18 @@ async function inventory(base44: any, hours: number) {
 async function queueStatus(base44: any) {
   const records = await base44.asServiceRole.entities.AssignmentMessageRecovery.list('-created_date', 500);
   const byState:Record<string,number>={};
-  for (const item of records) byState[item.state]=(byState[item.state]||0)+1;
+  for (const item of records) {
+    byState[item.state]=(byState[item.state]||0)+1;
+    if(item.state==='queued') {
+      const key=item.approved_for_replay === true ? 'ready_to_send' : 'waiting_review';
+      byState[key]=(byState[key]||0)+1;
+    }
+  }
   return {
     summary: byState,
     rows: records.map((x:any)=>({
       id:x.id, eventServiceId:x.event_service_id, supplierId:x.supplier_id, incidentDate:x.incident_date,
-      state:x.state, provider:x.provider||'', attemptedAt:x.attempted_at||'',
+      state:x.state, approvedForReplay:x.approved_for_replay===true, provider:x.provider||'', attemptedAt:x.attempted_at||'',
       completedAt:x.completed_at||'', errorCode:x.error_code||null, attemptCount:x.attempt_count||0,
       messageId:!!x.provider_message_id
     }))
@@ -118,20 +125,27 @@ Deno.serve(async (req) => {
       const view=await inventory(base44,hours);
       const candidates=new Map(view.items.map((x:any)=>[x.eventServiceId+'|'+x.supplierId,x]));
       const prior=await base44.asServiceRole.entities.AssignmentMessageRecovery.list('-created_date',500);
-      const keys=new Set(prior.map((r:any)=>r.recovery_key));
+      const byKey=new Map(prior.map((r:any)=>[r.recovery_key,r]));
       let prepared=0,excluded=0;
       for(const tuple of desired){
         const candidate:any=candidates.get(tuple);
         if(!candidate){excluded++;continue;}
         const key=view.incidentDate+'|'+candidate.eventServiceId+'|'+candidate.supplierId;
-        if(keys.has(key)){excluded++;continue;}
+        const oldRow:any=byKey.get(key);
+        if(oldRow){
+          if(oldRow.state==='queued' && oldRow.approved_for_replay !== true){
+            await base44.asServiceRole.entities.AssignmentMessageRecovery.update(oldRow.id,{approved_for_replay:true,created_by_admin_id:user.id});
+            prepared++;
+          } else excluded++;
+          continue;
+        }
         await base44.asServiceRole.entities.AssignmentMessageRecovery.create({
           recovery_key:key,incident_date:view.incidentDate,event_id:candidate.eventId,
           event_service_id:candidate.eventServiceId,supplier_id:candidate.supplierId,
-          state:'queued',message_snapshot:candidate.message,attempt_count:0,
+          state:'queued',approved_for_replay:true,message_snapshot:candidate.message,attempt_count:0,
           created_by_admin_id:user.id
         });
-        keys.add(key);prepared++;
+        byKey.set(key,{recovery_key:key,state:'queued',approved_for_replay:true});prepared++;
       }
       return reply({success:true,prepared,excluded,...await queueStatus(base44)});
     }
@@ -150,7 +164,7 @@ Deno.serve(async (req) => {
         const active=stale.length-oldest.length;
         if(active>0)return reply({success:true,waitingSeconds:70,blocked:'Another recovery send is in progress',...await queueStatus(base44)});
       }
-      const queue=await entities.filter({state:'queued'},'created_date',100);
+      const queue=await entities.filter({state:'queued',approved_for_replay:true},'created_date',100);
       if(!queue.length)return reply({success:true,finished:true,...await queueStatus(base44)});
       const provider=await resolveWhatsAppProvider(base44);
       if(!(await hasSelectedWhatsAppProviderCredentials(base44))) return reply({success:false,error:'Active WhatsApp provider credentials are missing'},409);
