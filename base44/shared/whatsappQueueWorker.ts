@@ -155,9 +155,11 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       const currentJob=options.job;
       try {
         if(!(await isStillRelevant(client,currentJob))) {
+          const expired=!!currentJob.expires_at && Number.isFinite(Date.parse(currentJob.expires_at))
+            && Date.now()>=Date.parse(currentJob.expires_at);
           await db.WhatsAppOutbox.updateMany({id:currentJob.id,status:currentJob.status},{$set:{
-            status:'cancelled',completed_at:new Date().toISOString(),
-            last_error:'Assignment no longer requires supplier approval'
+            status:expired?'expired':'cancelled',completed_at:new Date().toISOString(),
+            last_error:expired?'Message expired before dispatch':'Assignment no longer requires supplier approval'
           }});
           continue;
         }
