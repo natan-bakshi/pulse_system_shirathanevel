@@ -3,7 +3,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
-import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
+import { hasSelectedWhatsAppProviderCredentials, resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
+import { candidateFromLive, israelDay } from '../../shared/assignmentRecovery.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -771,6 +772,40 @@ function getSupplierWhatsAppTarget(supplierObj, fallbackPhone = null) {
     return getPhoneWhatsAppTarget(fallbackPhone || supplierObj?.phone);
 }
 
+async function recordAssignmentDelivery(base44, template, eventObj, serviceObj, supplierObj, state, resultOrError) {
+    if (template?.type !== 'SUPPLIER_NEW_ASSIGNMENT' || !serviceObj?.id || !supplierObj?.id || !eventObj?.id) return;
+    try {
+        const candidate = candidateFromLive(serviceObj, supplierObj, eventObj, null, template, israelDay());
+        if (!candidate) return;
+        const collection = base44.asServiceRole.entities.AssignmentMessageRecovery;
+        const existing = await collection.filter({ recovery_key: candidate.recoveryKey }, '-created_date', 2);
+        const code = Number(resultOrError?.errorCode || 0);
+        const provider = await resolveWhatsAppProvider(base44).catch(() => '');
+        const update = {
+            state, provider, provider_message_id: state === 'accepted' ? String(resultOrError?.messageId || '') : '',
+            error_code: code, completed_at: new Date().toISOString(),
+            last_error: state === 'unknown' ? 'Provider outcome unknown; review before replay'
+                : code === 429 ? 'Rate limited; queued for manually reviewed recovery'
+                : state === 'rejected' ? 'Provider rejected assignment notification' : ''
+        };
+        if (existing.length) {
+            const previous = existing[0];
+            if (previous.state === 'accepted' || previous.state === 'unknown') return;
+            await collection.update(previous.id, update);
+        } else {
+            await collection.create({
+                recovery_key: candidate.recoveryKey, incident_date: israelDay(),
+                event_id: candidate.eventId, event_service_id: candidate.eventServiceId,
+                supplier_id: candidate.supplierId, message_snapshot: candidate.message,
+                attempt_count: 1, attempted_at: new Date().toISOString(),
+                ...update
+            });
+        }
+    } catch (error) {
+        console.error('[HandleEntityEvents] Assignment WhatsApp audit failed:', error?.name || 'error');
+    }
+}
+
 async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj, useSupplierTarget = false) {
     const whatsappTarget = useSupplierTarget && supplierObj ? getSupplierWhatsAppTarget(supplierObj, phone) : getPhoneWhatsAppTarget(phone);
     if (!whatsappTarget.chatId) return;
@@ -836,16 +871,20 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
         return;
     }
 
-    // Send immediately
+    // Send immediately; persist the result for new assignment notifications.
     try {
         if (await hasSelectedWhatsAppProviderCredentials(base44)) {
-            await sendWhatsAppToChat(whatsappTarget.chatId, message, base44);
+            const result = await sendWhatsAppToChat(whatsappTarget.chatId, message, base44);
+            await recordAssignmentDelivery(base44, template, eventObj, serviceObj, supplierObj, 'accepted', result);
             console.log('[HandleEntityEvents] WhatsApp accepted by provider');
         } else {
+            await recordAssignmentDelivery(base44, template, eventObj, serviceObj, supplierObj, 'rejected', { errorCode: 409 });
             console.error('[HandleEntityEvents] WhatsApp provider not configured');
         }
     } catch (e) {
-        console.error('[HandleEntityEvents] WhatsApp send failed:', e?.message || 'unknown');
+        const state = e?.deliveryUncertain ? 'unknown' : Number(e?.errorCode) === 429 ? 'queued' : 'rejected';
+        await recordAssignmentDelivery(base44, template, eventObj, serviceObj, supplierObj, state, e);
+        console.error('[HandleEntityEvents] WhatsApp send failed:', state, e?.errorCode || 'unknown');
     }
 }
 
