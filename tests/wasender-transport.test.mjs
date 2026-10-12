@@ -70,6 +70,20 @@ test('2xx with success=false is rejected', async () => {
   mockResponse({ success: false, message: 'Invalid payload' });
   await assert.rejects(sendWasenderTextToChat('972501234567@c.us', 'message'), err => err.errorCode === 422);
 });
+test('paid-plan 429 causes one bounded safe retry, never a burst of duplicate sends', async () => {
+  env.WASENDER_API_KEY = 'synthetic-test-key';
+  let calls = 0;
+  globalThis.fetch = async (_url, init) => {
+    calls++;
+    assert.equal(init.headers.Authorization, 'Bearer synthetic-test-key');
+    if(calls===1) return { ok:false,status:429,json:async()=>({success:false,message:'Rate limited'}) };
+    return { ok:true,status:200,json:async()=>({success:true,data:{msgId:'retry-ok'}}) };
+  };
+  const result = await sendWasenderTextToChat('972501234567@c.us', 'message');
+  assert.equal(result.messageId,'retry-ok');
+  assert.equal(calls,2);
+});
+
 test('5xx or network failure has unknown delivery, never auto-retries', async () => {
   mockResponse({ success: false }, 503);
   await assert.rejects(sendWasenderTextToChat('972501234567@c.us', 'message'), err => err.deliveryUncertain === true);
