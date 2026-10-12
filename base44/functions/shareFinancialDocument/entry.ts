@@ -35,19 +35,21 @@ export default async function(req) {
     }
 
     const failures: string[] = [];
+    let queued = 0;
     for (const target of targets) {
       try {
         if (channel === "email") {
           await base44.asServiceRole.integrations.Core.SendEmail({ to: target, subject: title, body, from_name: fromName });
         } else {
-          await sendWhatsAppText(target, body, base44, {sourceType:'financial_document'});
+          const receipt=await sendWhatsAppText(target, body, base44, {sourceType:'financial_document'});
+          if(receipt.queued)queued++;
         }
       } catch (sendError) {
         failures.push(`${target}: ${sendError.message}`);
       }
     }
     if (failures.length === targets.length) return Response.json({ error: `השליחה נכשלה - ${failures.join(", ")}` }, { status: 400 });
-    return Response.json({ shared: true, channel, sent: targets.length - failures.length, failures });
+    return Response.json({ shared: true, channel, sent: targets.length - failures.length - queued, queued, failures });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
