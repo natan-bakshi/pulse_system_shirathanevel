@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import { hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 
 /**
  * Sends event reminders to suppliers and admins before events
@@ -155,7 +154,7 @@ Deno.serve(async (req) => {
                             let whatsappSent = false;
                             let whatsappQueued = false;
                             
-                            if (supplier.phone && await hasSelectedWhatsAppProviderCredentials(base44)) {
+                            if (supplier.phone) {
                                 if (currentlyInQuietHours) {
                                     // Queue for later
                                     try {
@@ -262,7 +261,7 @@ Deno.serve(async (req) => {
                         // WHATSAPP SEND with quiet hours check (Admin)
                         let whatsappSent = false;
                         
-                        if (admin.phone && await hasSelectedWhatsAppProviderCredentials(base44)) {
+                        if (admin.phone) {
                             if (currentlyInQuietHours) {
                                 // Queue for later
                                 try {
