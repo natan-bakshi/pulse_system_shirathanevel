@@ -162,14 +162,9 @@ Deno.serve(async (req) => {
                         console.log(`[ScheduledPush] No phone for pending ${pending.id} - WhatsApp skipped`);
                     } else {
                         try {
-                            await sendWhatsAppText(phoneToUse, pendingData.whatsapp_message || pending.message, base44);
+                            await sendWhatsAppText(phoneToUse, pendingData.whatsapp_message || pending.message, base44, {sourceType:'scheduled_notification',sourceId:pending.id,idempotencyKey:'scheduled-wa:'+pending.id,inAppNotificationId:pending.in_app_notification_id||''});
                             remainingWhatsApp = false;
-                            successCount++;
-                            if (pending.in_app_notification_id) {
-                                await base44.asServiceRole.entities.InAppNotification.update(pending.in_app_notification_id, {
-                                    whatsapp_sent: true
-                                });
-                            }
+                            successCount++; // Queued, not provider-accepted yet.
                         } catch (waErr) {
                             if (waErr?.deliveryUncertain) {
                                 remainingWhatsApp = false;
