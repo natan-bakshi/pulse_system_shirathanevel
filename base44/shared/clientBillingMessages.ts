@@ -30,7 +30,7 @@ export async function sendClientMessage(base44, { phone, email, subject, body, b
   const channels: string[] = [];
   if (phone) {
     try {
-      await sendWhatsAppText(phone, body, base44);
+      await sendWhatsAppText(phone, body, base44, {sourceType:'client_billing'});
       channels.push("whatsapp");
     } catch (error) {
       console.warn(`[clientBillingMessages] whatsapp failed: ${error.message}`);
