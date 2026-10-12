@@ -797,7 +797,7 @@ async function recordAssignmentDelivery(base44, template, eventObj, serviceObj, 
                 recovery_key: candidate.recoveryKey, incident_date: israelDay(),
                 event_id: candidate.eventId, event_service_id: candidate.eventServiceId,
                 supplier_id: candidate.supplierId, message_snapshot: candidate.message,
-                attempt_count: 1, attempted_at: new Date().toISOString(),
+                approved_for_replay: false, attempt_count: 1, attempted_at: new Date().toISOString(),
                 ...update
             });
         }
