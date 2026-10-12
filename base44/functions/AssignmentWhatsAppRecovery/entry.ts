@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.11';
-import { candidateFromLive, israelDay } from '../../shared/assignmentRecovery.ts';
+import { candidateFromLive, israelDay, recoveryCooldownSeconds } from '../../shared/assignmentRecovery.ts';
 import { resolveWhatsAppProvider, hasSelectedWhatsAppProviderCredentials } from '../../shared/whatsappProviderConfig.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
 import { checkWasenderSessionStatus } from '../../shared/wasenderSend.ts';
@@ -155,10 +155,15 @@ Deno.serve(async (req) => {
     }
     if(action==='sendNext'){
       const entities=base44.asServiceRole.entities.AssignmentMessageRecovery;
-      const recent=await entities.filter({attempted_at:{$gte:new Date(Date.now()-RECOVERY_SEND_INTERVAL_MS).toISOString()}},'-attempted_at',3);
-      if(recent.length>0){
-        const last=Date.parse(recent[0].attempted_at);
-        return reply({success:true,waitingSeconds:Math.max(1,Math.ceil((RECOVERY_SEND_INTERVAL_MS-(Date.now()-last))/1000)),...await queueStatus(base44)});
+      // Do not compare mixed +03:00 and Z ISO strings inside a DB lexical filter.
+      // Parse all recent ledger timestamps into absolute instants before cooldown.
+      const cooldownRecords=await entities.list('-created_date',500,0,['id','attempted_at']);
+      if(cooldownRecords.length>=500) {
+        return reply({success:false,error:'Recovery ledger is too large for safe cooldown calculation; please contact the administrator'},409);
+      }
+      const waitingSeconds=recoveryCooldownSeconds(cooldownRecords,Date.now(),RECOVERY_SEND_INTERVAL_MS);
+      if(waitingSeconds>0){
+        return reply({success:true,waitingSeconds,blocked:'Rate-limit cooldown for the recovery queue',...await queueStatus(base44)});
       }
       const stale=await entities.filter({state:'dispatching'},'-attempted_at',50);
       if(stale.length>0){
