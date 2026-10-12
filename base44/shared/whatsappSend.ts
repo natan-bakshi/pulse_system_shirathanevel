@@ -2,7 +2,8 @@
 // may invoke sendWhatsAppTransport. No message-type-specific delay/retry here.
 import { sanitizeText, LIMITS } from './notificationValidation.ts';
 import { sendWasenderTextToChat, sendWasenderDocumentToChat } from './wasenderSend.ts';
-import { enqueueWhatsApp } from './whatsappOutbox.ts';
+import { enqueueWhatsApp, readWhatsAppQueueControl } from './whatsappOutbox.ts';
+import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -43,6 +44,21 @@ function validatedUrl(url) {
 function requireBackend(client) {
   if (!client?.asServiceRole?.entities) throw new Error('WhatsApp sends must originate from a backend client');
 }
+// Migration guard: while the queue flag is disabled in production, keep the
+// previously working direct transport available. Once enabled, NO producer
+// calls a provider, and all messages enter the durable global queue.
+async function routeWhatsApp(client, entry) {
+  const control=await readWhatsAppQueueControl(client);
+  if(control.enabled) return enqueueWhatsApp(client, entry);
+  if(control.paused) throw new Error('WhatsApp is paused by the administrator');
+  const provider=await resolveWhatsAppProvider(client);
+  const receipt=await sendWhatsAppTransport({
+    chat_id:entry.chatId,message_type:entry.messageType,
+    message_text:entry.messageText||'',document_url:entry.documentUrl||'',
+    file_uri:entry.fileUri||'',file_name:entry.fileName||'',caption:entry.caption||''
+  },provider,client);
+  return {...receipt,queued:false,status:'accepted',legacyDirect:true};
+}
 
 export async function sendWhatsAppText(phone, message, client = null, context = null) {
   requireBackend(client);
@@ -50,14 +66,14 @@ export async function sendWhatsAppText(phone, message, client = null, context = 
   if (!chatId) throw invalidInput('Invalid WhatsApp phone number');
   const text = sanitizeMessage(message);
   if (!text) throw invalidInput('Empty WhatsApp message');
-  return enqueueWhatsApp(client, { chatId, messageType: 'text', messageText: text, context });
+  return routeWhatsApp(client, { chatId, messageType: 'text', messageText: text, context });
 }
 
 export async function sendWhatsAppToChat(chatId, message, client = null, context = null) {
   requireBackend(client);
   const text = sanitizeMessage(message);
   if (!text) throw invalidInput('Empty WhatsApp message');
-  return enqueueWhatsApp(client, {
+  return routeWhatsApp(client, {
     chatId: validatedChatId(chatId), messageType: 'text', messageText: text, context
   });
 }
@@ -66,7 +82,7 @@ export async function sendWhatsAppFileByUrl(phone, fileUrl, fileName, caption, c
   requireBackend(client);
   const chatId = toChatId(phone);
   if (!chatId) throw invalidInput('Invalid WhatsApp phone number');
-  return enqueueWhatsApp(client, {
+  return routeWhatsApp(client, {
     chatId, messageType: 'document', documentUrl: validatedUrl(fileUrl),
     fileName: sanitizeFileName(fileName), caption: sanitizeCaption(caption), context
   });
@@ -78,7 +94,7 @@ export async function sendWhatsAppFileUri(phone, fileUri, fileName, caption, cli
   const chatId = toChatId(phone);
   if (!chatId) throw invalidInput('Invalid WhatsApp phone number');
   if (!fileUri || String(fileUri).length > 1800) throw invalidInput('Invalid Base44 file URI');
-  return enqueueWhatsApp(client, {
+  return routeWhatsApp(client, {
     chatId, messageType: 'document', fileUri: String(fileUri),
     fileName: sanitizeFileName(fileName), caption: sanitizeCaption(caption), context
   });
