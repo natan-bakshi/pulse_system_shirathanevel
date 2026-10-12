@@ -1,0 +1,97 @@
+{
+  "name": "AssignmentMessageRecovery",
+  "type": "object",
+  "properties": {
+    "recovery_key": {
+      "type": "string",
+      "description": "Incident-date + service + supplier, logical idempotency key"
+    },
+    "incident_date": {
+      "type": "string",
+      "description": "Calendar date in Israel (YYYY-MM-DD)"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "event_service_id": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "dispatching",
+        "accepted",
+        "rejected",
+        "unknown",
+        "skipped"
+      ],
+      "default": "queued"
+    },
+    "message_snapshot": {
+      "type": "string",
+      "description": "Explicitly reviewed recovery reminder body"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "provider_message_id": {
+      "type": "string"
+    },
+    "attempted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "attempt_count": {
+      "type": "number",
+      "default": 0
+    },
+    "error_code": {
+      "type": "number"
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "created_by_admin_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "recovery_key",
+    "incident_date",
+    "event_id",
+    "event_service_id",
+    "supplier_id",
+    "state",
+    "message_snapshot"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
