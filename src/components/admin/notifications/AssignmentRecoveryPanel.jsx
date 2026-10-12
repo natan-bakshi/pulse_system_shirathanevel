@@ -10,7 +10,7 @@ const labels = {
   accepted: 'התקבל אצל ספק ה־API', rejected: 'הספק דחה', unknown: 'לא ידוע — לא לשלוח שוב ללא בדיקה',
   skipped: 'דולג — השיבוץ השתנה'
 };
-const isEligible = x => x.recoveryState === 'not_prepared' || (x.recoveryState === 'queued' && !x.approvedForReplay);
+const isEligible = x => x.recoveryState === 'not_prepared' || (x.recoveryState === 'queued' && !x.approvedForReplay) || x.recoveryState === 'rejected' || x.recoveryState === 'skipped';
 const itemKey = x => x.eventServiceId + '|' + x.supplierId;
 
 export default function AssignmentRecoveryPanel() {
