@@ -116,11 +116,11 @@ Deno.serve(async (req) => {
       const connection=provider==='wasender'&&configured ? await checkWasenderSessionStatus() : null;
       const current=await queueStatus(base44);
       const ready=Number(current.summary.ready_to_send||0);
-      const reason=!ready?'no_approved_messages'
+      const reason=rows.length>=500?'ledger_scan_limit'
+        : !ready?'no_approved_messages'
         : !configured?'missing_credentials'
         : connection&&!connection.connected?'session_disconnected'
-        : wait>0?'rate_limit_cooldown'
-        : rows.length>=500?'ledger_scan_limit':'ready';
+        : wait>0?'rate_limit_cooldown':'ready';
       return reply({success:true,provider,configured,sessionStatus:connection?.status||null,
         ready,waitingReview:Number(current.summary.waiting_review||0),
         cooldownSeconds:wait,blockedReason:reason});
