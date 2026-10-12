@@ -382,7 +382,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
             }
         } else {
             try {
-                await sendWhatsAppText(phoneToUse, whatsapp_message, base44);
+                await sendWhatsAppText(phoneToUse, whatsapp_message, base44, {sourceType:'automated_trigger',sourceId:template.id||''});
                 whatsappSent = true; // Enqueued in the global outbox, not delivered.
             } catch (e) {
                 console.error('[AutomatedTriggers] WhatsApp send failed:', e?.message || 'unknown');
