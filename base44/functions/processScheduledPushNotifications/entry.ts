@@ -156,13 +156,18 @@ Deno.serve(async (req) => {
                 // --- WhatsApp ---
                 if (remainingWhatsApp) {
                     const phoneToUse = pendingData.phone || targetUser?.phone || '';
-                    if (!phoneToUse) {
+                    if (!phoneToUse && !pendingData.chat_id) {
                         // אין יעד - כשל סופי, לא מנסים שוב.
                         remainingWhatsApp = false;
                         console.log(`[ScheduledPush] No phone for pending ${pending.id} - WhatsApp skipped`);
                     } else {
                         try {
-                            await sendWhatsAppText(phoneToUse, pendingData.whatsapp_message || pending.message, base44, {sourceType:'scheduled_notification',sourceId:pending.id,idempotencyKey:'scheduled-wa:'+pending.id,inAppNotificationId:pending.in_app_notification_id||''});
+                            const context={sourceType:'scheduled_notification',sourceId:pending.id,idempotencyKey:'scheduled-wa:'+pending.id,inAppNotificationId:pending.in_app_notification_id||''};
+                            if(pendingData.chat_id && String(pendingData.chat_id).endsWith('@g.us')) {
+                                await sendWhatsAppToChat(pendingData.chat_id,pendingData.whatsapp_message || pending.message,base44,context);
+                            } else {
+                                await sendWhatsAppText(phoneToUse,pendingData.whatsapp_message || pending.message,base44,context);
+                            }
                             remainingWhatsApp = false;
                             successCount++; // Queued, not provider-accepted yet.
                         } catch (waErr) {
