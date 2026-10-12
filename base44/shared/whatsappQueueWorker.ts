@@ -82,6 +82,7 @@ async function staleSendingToUnknown(client:any, now:number) {
   return count;
 }
 async function isStillRelevant(client:any,job:any):Promise<boolean> {
+  if(job.expires_at && Number.isFinite(Date.parse(job.expires_at)) && Date.now()>=Date.parse(job.expires_at))return false;
   if(job.source_type!=='assignment_new'||!job.event_service_id||!job.supplier_id)return true;
   try{
     const svc=await client.asServiceRole.entities.EventService.get(job.event_service_id);
