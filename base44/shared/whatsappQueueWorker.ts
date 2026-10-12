@@ -83,7 +83,10 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   if(!control.enabled) return {success:true,reason:'disabled',sent:0};
   if(control.paused) return {success:true,reason:'paused',sent:0};
   const first=await chooseDueJob(db.WhatsAppOutbox,Date.now());
-  if(!first.pending) return {success:true,reason:'empty',sent:0};
+  const inFlight=await db.WhatsAppOutbox.filter({status:'sending'},'send_started_at',1);
+  // A crashed worker can leave only a 'sending' record. The watchdog must
+  // inspect it and mark unknown rather than treating the queue as empty.
+  if(!first.pending && !inFlight.length) return {success:true,reason:'empty',sent:0};
 
   // Atomic compare-and-swap on one persistent singleton, not browser-local state.
   const nowMs=Date.now();
