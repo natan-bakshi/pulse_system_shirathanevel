@@ -112,6 +112,29 @@ test('automatic rate-limit queue cannot send before explicit approval',async()=>
   assert.equal(x.calls,1);
 });
 
+test('reconciled dashboard history excludes already-sent recipients and safely fills an unapproved snapshot',async()=>{
+  const x=fixture();
+  const preview=await x.invoke('preview',{hours:8});
+  const item=preview.body.items[0];
+  const key=recovery.israelDay()+'|'+item.eventServiceId+'|'+item.supplierId;
+  x.rows.push({
+    id:'existing-reconciled',created_date:new Date().toISOString(),recovery_key:key,
+    incident_date:recovery.israelDay(),event_id:item.eventId,
+    event_service_id:item.eventServiceId,supplier_id:item.supplierId,
+    message_snapshot:'Pending review placeholder',state:'queued',approved_for_replay:false,attempt_count:0
+  });
+  const a=await x.invoke('prepare',{hours:8,selection:[{eventServiceId:item.eventServiceId,supplierId:item.supplierId}]});
+  assert.equal(a.body.prepared,1);
+  assert.equal(x.rows.length,1);
+  assert.equal(x.rows[0].message_snapshot,item.message);
+  assert.equal(x.rows[0].approved_for_replay,true);
+  x.rows[0].state='accepted';
+  const b=await x.invoke('prepare',{hours:8,selection:[{eventServiceId:item.eventServiceId,supplierId:item.supplierId}]});
+  assert.equal(b.body.prepared,0);
+  assert.equal(x.rows[0].state,'accepted');
+  assert.equal(x.calls,0);
+});
+
 test('uncertain send never retries even if admin resumes',async()=>{
   const x=fixture({failure:{deliveryUncertain:true,errorCode:503}});
   await x.invoke('prepare',{hours:8,selection:[{eventServiceId:x.eventService.id,supplierId:x.supplier.id}]});
