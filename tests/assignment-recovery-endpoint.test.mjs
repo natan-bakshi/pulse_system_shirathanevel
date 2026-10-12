@@ -135,6 +135,24 @@ test('reconciled dashboard history excludes already-sent recipients and safely f
   assert.equal(x.calls,0);
 });
 
+test('legacy Sent log timestamps in +03:00 do not block the 18 recovery messages',async()=>{
+  const x=fixture();
+  const choice=[{eventServiceId:x.eventService.id,supplierId:x.supplier.id}];
+  const prepared=await x.invoke('prepare',{selection:choice,hours:8});
+  assert.equal(prepared.body.prepared,1);
+  const then=new Date(Date.now()-60*60*1000);
+  const offsetTime=new Date(then.getTime()+3*60*60*1000).toISOString().replace('Z','+03:00');
+  for(let i=0;i<15;i++)x.rows.push({
+    id:'historical-'+i,created_date:then.toISOString(),recovery_key:'historical-'+i,
+    state:'accepted',attempted_at:offsetTime,approved_for_replay:false,attempt_count:1
+  });
+  const attempt=await x.invoke('sendNext');
+  assert.equal(attempt.status,200);
+  assert.equal(attempt.body.sent,true);
+  assert.equal(x.calls,1);
+  assert.equal(x.rows[0].state,'accepted');
+});
+
 test('uncertain send never retries even if admin resumes',async()=>{
   const x=fixture({failure:{deliveryUncertain:true,errorCode:503}});
   await x.invoke('prepare',{hours:8,selection:[{eventServiceId:x.eventService.id,supplierId:x.supplier.id}]});
