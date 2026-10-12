@@ -88,6 +88,30 @@ test('prepare is dry and idempotent, then sendNext sends exactly one',async()=>{
   assert.equal(x.calls,1);
   assert.equal(again.body.waitingSeconds>0,true);
 });
+test('automatic rate-limit queue cannot send before explicit approval',async()=>{
+  const x=fixture();
+  const preview=await x.invoke('preview',{hours:8});
+  const item=preview.body.items[0];
+  x.rows.push({
+    id:'recovery-unapproved',created_date:new Date().toISOString(),
+    recovery_key:item.recoveryKey || `unused|${x.eventService.id}|${x.supplier.id}`,
+    incident_date:recovery.israelDay(),
+    event_id:item.eventId,event_service_id:item.eventServiceId,supplier_id:item.supplierId,
+    message_snapshot:item.message,state:'queued',approved_for_replay:false,attempt_count:0
+  });
+  // Use the actual logical key so prepare reconciles instead of duplicating.
+  x.rows[0].recovery_key=recovery.israelDay()+'|'+x.eventService.id+'|'+x.supplier.id;
+  const initial=await x.invoke('sendNext');
+  assert.equal(initial.body.finished,true);
+  assert.equal(x.calls,0);
+  const result=await x.invoke('prepare',{hours:8,selection:[{eventServiceId:x.eventService.id,supplierId:x.supplier.id}]});
+  assert.equal(result.body.prepared,1);
+  assert.equal(x.rows.length,1);
+  assert.equal(x.rows[0].approved_for_replay,true);
+  await x.invoke('sendNext');
+  assert.equal(x.calls,1);
+});
+
 test('uncertain send never retries even if admin resumes',async()=>{
   const x=fixture({failure:{deliveryUncertain:true,errorCode:503}});
   await x.invoke('prepare',{hours:8,selection:[{eventServiceId:x.eventService.id,supplierId:x.supplier.id}]});
