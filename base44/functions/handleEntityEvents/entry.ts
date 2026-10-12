@@ -840,7 +840,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
        ? ['assignment',serviceObj.id,supplierObj.id,serviceObj.updated_date||'',template.type].join(':')
        : '';
     const result=await sendWhatsAppToChat(whatsappTarget.chatId,message,base44,{
-      sourceType:template?.category||'notification',sourceId:serviceObj?.id||eventObj?.id||'',
+      sourceType:template?.type==='SUPPLIER_NEW_ASSIGNMENT'?'assignment_new':(template?.category||'notification'),sourceId:serviceObj?.id||eventObj?.id||'',
       eventServiceId:serviceObj?.id||'',supplierId:supplierObj?.id||'',
       idempotencyKey:assignmentKey
     });
