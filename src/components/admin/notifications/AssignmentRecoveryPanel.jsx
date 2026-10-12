@@ -22,6 +22,7 @@ export default function AssignmentRecoveryPanel() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [diagnostic, setDiagnostic] = useState(null);
   const timer = useRef(null);
   const running = useRef(false);
   const mounted = useRef(true);
@@ -42,6 +43,17 @@ export default function AssignmentRecoveryPanel() {
   const totals = queue?.summary || {};
   const pendingCount = totals.ready_to_send || 0;
   const waitingReview = totals.waiting_review || 0;
+
+  async function diagnose() {
+    if(running.current)return;
+    setBusy(true);setError('');
+    try {
+      const r=await base44.functions.invoke('AssignmentWhatsAppRecovery',{action:'diagnose'});
+      if(!r.data?.success)throw new Error(r.data?.error||'בדיקת התור נכשלה');
+      setDiagnostic(r.data);
+    }catch(e){setError(e?.response?.data?.error||e?.message||'לא ניתן לאבחן את התור');}
+    finally{setBusy(false);}
+  }
 
   async function scan() {
     if(running.current)return;
@@ -85,6 +97,7 @@ export default function AssignmentRecoveryPanel() {
         setNotice('התור הסתיים. בדוק הודעות שסומנו כ״לא ידוע״ או ״נדחתה״ לפני ניסיון נוסף.');
         return;
       }
+      if(data.blocked&&data.waitingSeconds)setNotice(`השליחה ממתינה לבקרת קצב עוד ${data.waitingSeconds} שניות; לא נרשם ניסיון חדש.`);
       if(data.sent)setNotice('הודעה אחת התקבלה לעיבוד אצל ספק ה־API. אין עדיין אישור מסירה לנמען.');
       if(data.recoveryState==='unknown')setNotice('התקבלה תוצאה לא ידועה. ההודעה המסוימת לא תישלח שוב אוטומטית.');
       if(data.recoveryState==='rejected')setNotice('הספק דחה הודעה. היא סומנה כנדחתה ולא תישלח שוב אוטומטית.');
@@ -164,7 +177,17 @@ export default function AssignmentRecoveryPanel() {
             {!sending?<Button disabled={!pendingCount||busy} onClick={start}><Play className="h-4 w-4 ml-2"/>התחל / המשך שליחה מרוכזת</Button>
             :<Button variant="destructive" onClick={pause}><Pause className="h-4 w-4 ml-2"/>עצור שליחה</Button>}
             <Button variant="outline" disabled={busy||sending} onClick={async()=>{try{const r=await base44.functions.invoke('AssignmentWhatsAppRecovery',{action:'status'});if(r.data?.success)setQueue(r.data);}catch{setError('לא ניתן לרענן את התור');}}}>רענן מצב</Button>
+            <Button variant="outline" disabled={busy||sending} onClick={diagnose}>בדוק למה התור ממתין</Button>
           </div>
+          {diagnostic && <div className="rounded border bg-white p-3 text-sm space-y-1" role="status">
+            <p>ספק פעיל: {diagnostic.provider === 'wasender' ? 'WasenderAPI' : 'Green API'}. הודעות מאושרות: {diagnostic.ready}.</p>
+            {diagnostic.blockedReason === 'ready' && <p className="text-green-700">התור מוכן לשליחה. לחץ "התחל / המשך שליחה מרוכזת".</p>}
+            {diagnostic.blockedReason === 'rate_limit_cooldown' && <p>ממתין לבקרת קצב: {diagnostic.cooldownSeconds} שניות.</p>}
+            {diagnostic.blockedReason === 'no_approved_messages' && <p>אין הודעות שאושרו לשליחה בתור. יש לסמן שיבוצים וללחוץ "הכן מסומנים לתור".</p>}
+            {diagnostic.blockedReason === 'missing_credentials' && <p className="text-red-700">מפתח השליחה של הספק הנבחר חסר.</p>}
+            {diagnostic.blockedReason === 'session_disconnected' && <p className="text-red-700">סשן WasenderAPI אינו מחובר ({diagnostic.sessionStatus || 'לא ידוע'}).</p>}
+            {diagnostic.blockedReason === 'ledger_scan_limit' && <p className="text-red-700">מספר הרשומות מחייב שדרוג בדיקת התור. השליחה נעצרה כדי לא ליצור כפילויות.</p>}
+          </div>}
           <p className="text-xs text-gray-600">הודעות שסומנו אוטומטית ככושלות אינן נשלחות עד שתסרוק, תבחר ותאשר אותן. ״התקבלה אצל הספק״ אינה הוכחת מסירה לנמען. הודעות במצב לא ידוע לא יישלחו שוב אוטומטית. התור נשמר גם לאחר סגירת הדף.</p>
         </div>}
       </CardContent>
