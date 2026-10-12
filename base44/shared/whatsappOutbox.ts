@@ -1,6 +1,32 @@
 // Durable centralized WhatsApp outbox. Producers never call WhatsApp providers directly.
 // Security: only backend clients with service-role entity access may enqueue.
 const CONTROL_KEY = 'global';
+const lockPause = (ms: number) => new Promise(resolve=>setTimeout(resolve,ms));
+
+// A separate short lease for duplicate-key creation. This does not block the
+// transport worker: sending and enqueueing use different control fields.
+async function withEnqueueLock(client:any,run:()=>Promise<any>) {
+  const entity=client.asServiceRole.entities.WhatsAppQueueControl;
+  const token=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : 'enqueue-'+Date.now()+'-'+Math.random();
+  const deadline=Date.now()+20000;
+  let control:any=null;
+  while(Date.now()<deadline) {
+    control=await readWhatsAppQueueControl(client);
+    const occupied=!!control.enqueue_owner && Date.parse(control.enqueue_until||'')>Date.now();
+    if(!occupied) {
+      const won=await entity.updateMany({
+        id:control.id,enqueue_owner:control.enqueue_owner||'',enqueue_until:control.enqueue_until||''
+      },{$set:{enqueue_owner:token,enqueue_until:new Date(Date.now()+30000).toISOString()}});
+      if(won?.updated===1)break;
+    }
+    await lockPause(40+Math.floor(Math.random()*65));
+  }
+  if(!control || (await entity.get(control.id)).enqueue_owner!==token) {
+    throw new Error('WhatsApp outbox enqueue lock unavailable; message not queued');
+  }
+  try{return await run();}
+  finally{await entity.updateMany({id:control.id,enqueue_owner:token},{$set:{enqueue_owner:'',enqueue_until:''}});}
+}
 
 export async function readWhatsAppQueueControl(client: any) {
   if (!client?.asServiceRole?.entities?.WhatsAppQueueControl) {
@@ -24,16 +50,17 @@ export async function enqueueWhatsApp(client: any, data: {
   const context = data.context || {};
   const key = String(context.idempotencyKey || '').trim();
   const entity = client.asServiceRole.entities.WhatsAppOutbox;
-  if (key) {
-    if (key.length > 240) throw new Error('Invalid WhatsApp idempotency key');
-    const previous = await entity.filter({ idempotency_key: key }, '-created_date', 3);
-    if (previous.length) {
-      return { success: true, queued: !['accepted', 'cancelled', 'expired'].includes(previous[0].status),
-        status: previous[0].status, jobId: previous[0].id, messageId: previous[0].provider_message_id || '',
-        deduplicated: true };
+  if (key.length > 240) throw new Error('Invalid WhatsApp idempotency key');
+  const createOrReturnExisting=async()=>{
+    if(key){
+      const previous=await entity.filter({idempotency_key:key},'-created_date',3);
+      if(previous.length){
+        const item=previous[0];
+        return {success:true,queued:['queued','retry_wait','sending'].includes(item.status),
+          status:item.status,jobId:item.id,messageId:item.provider_message_id||'',deduplicated:true};
+      }
     }
-  }
-  const record = await entity.create({
+    const record = await entity.create({
     chat_id: data.chatId, message_type: data.messageType,
     message_text: data.messageText || '', document_url: data.documentUrl || '',
     file_uri: data.fileUri || '', file_name: data.fileName || '', caption: data.caption || '',
@@ -47,6 +74,8 @@ export async function enqueueWhatsApp(client: any, data: {
     supplier_id: String(context.supplierId || ''),
     status: 'queued', available_at: new Date().toISOString(), attempt_count: 0, max_attempts: 3
   });
-  // The WhatsAppOutbox CREATE workflow wakes a worker. Scheduled watchdog covers interruptions.
-  return { success: true, queued: true, status: 'queued', jobId: record.id, messageId: '' };
+    // The WhatsAppOutbox CREATE workflow wakes a worker. Watchdog covers interruptions.
+    return {success:true,queued:true,status:'queued',jobId:record.id,messageId:''};
+  };
+  return key ? withEnqueueLock(client,createOrReturnExisting) : createOrReturnExisting();
 }
