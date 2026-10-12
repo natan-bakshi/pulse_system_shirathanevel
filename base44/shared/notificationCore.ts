@@ -259,7 +259,10 @@ export async function createNotificationCore(base44, payload, options = {}) {
         } else {
             try {
                 const waResult = await sendWhatsAppText(whatsappTargetPhone, `*${input.title}*\n\n${input.message}`, base44, {sourceType:'notification',sourceId:notificationRecordId||'',inAppNotificationId:notificationRecordId||'',idempotencyKey:notificationRecordId&&notificationRecordId!=='virtual'?'inapp-whatsapp:'+notificationRecordId:''});
-                body.whatsapp = { sent: false, queued: true, scheduled: false, jobId: waResult.jobId };
+                body.whatsapp = { sent: waResult.queued !== true, queued: waResult.queued === true, scheduled: false, jobId: waResult.jobId || '', messageId: waResult.messageId || '' };
+                if (notificationRecordId && waResult.queued !== true) {
+                    await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, { whatsapp_sent: true, whatsapp_message_id: waResult.messageId || '' });
+                }
             } catch (waError) {
                 console.error('[Notification] WhatsApp send failed');
                 body.whatsapp = { sent: false, scheduled: false, reason: 'WhatsApp send failed' };
