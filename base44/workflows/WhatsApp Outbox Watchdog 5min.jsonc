@@ -1,0 +1,41 @@
+{
+  "name": "WhatsApp Outbox \u2014 crash watchdog (5 min)",
+  "description": "One low-frequency watchdog for incomplete queued messages when an entity trigger fails",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 5,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-10-12T00:00:00Z",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pulse_whatsapp_outbox_worker",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processWhatsAppOutbox",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
