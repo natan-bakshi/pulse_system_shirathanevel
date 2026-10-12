@@ -39,6 +39,20 @@ export async function readWhatsAppQueueControl(client: any) {
   return items[0];
 }
 
+// Used when a business workflow creates its InAppNotification after enqueueing.
+// Handles either ordering of worker acceptance and notification persistence.
+export async function attachOutboxInAppReceipt(client:any,sendResult:any,notificationId:string) {
+  if(!sendResult?.queued||!sendResult.jobId||!notificationId)return;
+  const db=client.asServiceRole.entities;
+  await db.WhatsAppOutbox.updateMany({id:sendResult.jobId},{$set:{in_app_notification_id:notificationId}});
+  const latest=await db.WhatsAppOutbox.get(sendResult.jobId);
+  if(latest?.status==='accepted') {
+    await db.InAppNotification.update(notificationId,{
+      whatsapp_sent:true,whatsapp_message_id:latest.provider_message_id||''
+    });
+  }
+}
+
 export async function enqueueWhatsApp(client: any, data: {
   chatId: string; messageType: 'text' | 'document'; messageText?: string;
   documentUrl?: string; fileUri?: string; fileName?: string; caption?: string;
