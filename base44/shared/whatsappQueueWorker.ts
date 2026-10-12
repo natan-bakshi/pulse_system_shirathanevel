@@ -112,7 +112,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       if(!options.pending) break;
       if(!options.job) {
         const delay=options.nextAt-Date.now();
-        if(delay>0 && delay<=12000 && Date.now()+delay<deadline-5000){await sleep(delay);continue;}
+        if(delay>0 && delay<=60000 && Date.now()+delay<deadline-5000){await sleep(delay);continue;}
         break;
       }
       const interval=Math.max(0,Math.min(60,Number(control.min_interval_seconds)||0));
@@ -175,9 +175,11 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
     const existing=await controls.get(control.id);
     if(existing?.lease_owner===token){
       const remainder=await chooseDueJob(db.WhatsAppOutbox,Date.now());
-      // Kick once per bounded batch when immediate work remains. A separate
-      // workflow wakes the next worker after release; 5-minute watchdog recovers crashes.
-      requestWake=!!remainder.job && !existing.paused && existing.enabled && !lastError;
+      // Kick a successor after any completed batch, even when empty. This also
+      // closes the race where a new job arrives between the last queue read
+      // and lease release; an empty successor exits without another wake.
+      // The 5-minute watchdog remains a crash-recovery fallback only.
+      requestWake=(processed>0 || !!remainder.job) && !existing.paused && existing.enabled && !lastError;
       await controls.updateMany({id:control.id,lease_owner:token},{$set:{
         lease_owner:'',lease_until:'',
         last_worker_at:new Date().toISOString(),last_error:lastError,
