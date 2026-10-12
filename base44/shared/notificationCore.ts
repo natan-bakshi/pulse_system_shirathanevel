@@ -258,14 +258,8 @@ export async function createNotificationCore(base44, payload, options = {}) {
             body.whatsapp = { sent: false, scheduled: false, reason: whatsappBlockedReason || 'No WhatsApp target' };
         } else {
             try {
-                const waResult = await sendWhatsAppText(whatsappTargetPhone, `*${input.title}*\n\n${input.message}`, base44);
-                body.whatsapp = { sent: true, scheduled: false, messageId: waResult.messageId || '' };
-                if (notificationRecordId) {
-                    await base44.asServiceRole.entities.InAppNotification.update(notificationRecordId, {
-                        whatsapp_sent: true,
-                        whatsapp_message_id: waResult.messageId || ''
-                    });
-                }
+                const waResult = await sendWhatsAppText(whatsappTargetPhone, `*${input.title}*\n\n${input.message}`, base44, {sourceType:'notification',sourceId:notificationRecordId||'',inAppNotificationId:notificationRecordId||'',idempotencyKey:notificationRecordId&&notificationRecordId!=='virtual'?'inapp-whatsapp:'+notificationRecordId:''});
+                body.whatsapp = { sent: false, queued: true, scheduled: false, jobId: waResult.jobId };
             } catch (waError) {
                 console.error('[Notification] WhatsApp send failed');
                 body.whatsapp = { sent: false, scheduled: false, reason: 'WhatsApp send failed' };
