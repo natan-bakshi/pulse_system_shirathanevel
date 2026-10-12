@@ -1,0 +1,135 @@
+{
+  "name": "WhatsAppOutbox",
+  "type": "object",
+  "properties": {
+    "chat_id": {
+      "type": "string"
+    },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "document"
+      ]
+    },
+    "message_text": {
+      "type": "string"
+    },
+    "document_url": {
+      "type": "string"
+    },
+    "file_uri": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "caption": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "in_app_notification_id": {
+      "type": "string"
+    },
+    "client_message_delivery_id": {
+      "type": "string"
+    },
+    "card_setup_request_id": {
+      "type": "string"
+    },
+    "event_service_id": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "sending",
+        "accepted",
+        "retry_wait",
+        "unknown",
+        "failed",
+        "cancelled",
+        "expired"
+      ],
+      "default": "queued"
+    },
+    "available_at": {
+      "type": "string"
+    },
+    "send_started_at": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "provider_message_id": {
+      "type": "string"
+    },
+    "attempt_count": {
+      "type": "number",
+      "default": 0
+    },
+    "lease_token": {
+      "type": "string"
+    },
+    "error_code": {
+      "type": "number"
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "max_attempts": {
+      "type": "number",
+      "default": 3
+    },
+    "last_status_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "chat_id",
+    "message_type",
+    "status",
+    "available_at"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
