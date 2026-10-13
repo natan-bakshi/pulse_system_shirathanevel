@@ -53,6 +53,13 @@ export default function WhatsAppQueueSettings(){
     setBusy(true);setError('');setNotice('');
     try{
       const res=await base44.functions.invoke('WhatsAppQueueAdmin',{action,...params});
+      if(action==='diagnose'){
+        const data=res.data||{};
+        const checks=(data.checks||[]).map(x=>x.step+': '+(x.ok?'תקין':'שגיאה ('+(x.kind||'unknown')+')')).join(' | ');
+        const msg='אבחון ללא שליחה: '+checks+(data.failedStep?' | שלב שנכשל: '+data.failedStep:'');
+        if(!data.success)setError(msg||'אבחון התור נכשל');else setNotice(msg||'בדיקת התור עברה בהצלחה');
+        return;
+      }
       if(!res.data?.success)throw Error(res.data?.error||'הפעולה לא הצליחה');
       if(action==='kick'){
         const job=res.data.dispatch||{};
@@ -103,6 +110,7 @@ export default function WhatsAppQueueSettings(){
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={busy||!view} onClick={()=>run('configure',form)}><Save className="h-4 w-4 ml-2"/>שמור הגדרות</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}><RefreshCw className="h-4 w-4 ml-2"/>רענן</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>אבחון ללא שליחה</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
