@@ -144,6 +144,42 @@ async function mutateOne(client:any,jobId:string,action:string,body:any,actor:an
   }
   return {success:true,updated:1,status:patch.status||prior};
 }
+// Safe no-send diagnostics. Do not take a worker lease or call a provider.
+async function diagnoseQueue(client:any){
+  const db=client.asServiceRole.entities,checks:any[]=[];
+  const step=async(name:string,fn:()=>Promise<any>)=>{
+    try{
+      const result=await fn();
+      checks.push({step:name,ok:true});
+      return result;
+    }catch(error){
+      checks.push({step:name,ok:false,kind:error instanceof Error?error.name:'unknown'});
+      throw Object.assign(new Error('Diagnostic failed at '+name),{queuePhase:name,checks});
+    }
+  };
+  try{
+    const control=await step('control_read',()=>readWhatsAppQueueControl(client));
+    const due=await step('due_query',()=>db.WhatsAppOutbox.filter({
+      status:{$in:['queued','retry_wait']},available_at:{$lte:new Date().toISOString()}
+    },'created_date',3));
+    await step('inflight_query',()=>db.WhatsAppOutbox.filter({status:'sending'},'send_started_at',1));
+    const provider=await step('provider_selection',()=>resolveWhatsAppProvider(client));
+    if(due[0]?.event_service_id){
+      const svc=await step('assignment_read',()=>db.EventService.get(due[0].event_service_id));
+      if(svc?.event_id)await step('event_read',()=>db.Event.get(svc.event_id));
+    }
+    const supported=typeof db.WhatsAppQueueControl.updateMany==='function' &&
+      typeof db.WhatsAppOutbox.updateMany==='function';
+    checks.push({step:'atomic_updateMany_available',ok:supported});
+    return {success:supported,checks,provider,queueEnabled:control.enabled===true,
+      paused:control.paused===true,dueCountSample:due.length,
+      leaseBusy:!!control.lease_owner && Date.parse(control.lease_until||'')>Date.now(),
+      noMessagesSent:true};
+  }catch(error){
+    return {success:false,checks,failedStep:(error as any)?.queuePhase||'unknown',
+      noMessagesSent:true};
+  }
+}
 async function bulkAction(client:any,body:any,actor:any){
   const ids=body.ids;
   if(!Array.isArray(ids)||ids.length===0||ids.length>MAX_ACTION_BATCH||new Set(ids).size!==ids.length||
@@ -196,6 +232,7 @@ Deno.serve(async(req)=>{
       return RESPONSE(await queueStatus(client));
     }
     if(action==='status')return RESPONSE(await queueStatus(client));
+    if(action==='diagnose')return RESPONSE(await diagnoseQueue(client));
     if(action==='list')return await listJobs(client,body);
     if(action==='get'){
       if(!isJobId(body.id))return RESPONSE({success:false,error:'Invalid message ID'},400);
@@ -204,8 +241,22 @@ Deno.serve(async(req)=>{
         :RESPONSE({success:false,error:'Message not found'},404);
     }
     if(action==='kick'){
-      // Explicit administrator click only: may contact WhatsApp provider.
-      return RESPONSE({success:true,dispatch:await drainWhatsAppOutbox(client)});
+      // Explicit system-owner action. A failure can occur after one or more
+      // provider calls, so never claim that nothing was sent.
+      try {
+        const dispatch=await drainWhatsAppOutbox(client);
+        return RESPONSE({success:true,dispatch});
+      }catch(error){
+        const phase=clean((error as any)?.queuePhase||'unclassified',64);
+        const kind=clean((error as any)?.originalName||((error as any)?.name)||'unknown',64);
+        console.error('[WhatsAppQueueAdmin] worker kick failed phase='+phase+' kind='+kind);
+        try{
+          const c=await readWhatsAppQueueControl(client);
+          await entity.update(c.id,{last_error:'worker_'+phase+'_'+kind,last_invocation_result:'error'});
+        }catch{console.error('[WhatsAppQueueAdmin] diagnostic status could not be stored');}
+        return RESPONSE({success:false,phase,kind,
+          error:'עובד WhatsApp נכשל בשלב '+phase+' ('+kind+'). יש לבדוק את התור והספק לפני ניסיון חוזר; ייתכן שהשליחה כבר החלה.'},500);
+      }
     }
     if(['cancel','retry','resolve','archive','unarchive'].includes(action)){
       const result=await mutateOne(client,body.id,action,body,actor);
@@ -217,7 +268,9 @@ Deno.serve(async(req)=>{
   }catch(error){
     const status=Number((error as any)?.status)||500;
     console.error('[WhatsAppQueueAdmin] failed:',error instanceof Error?error.name:'unknown');
-    return RESPONSE({success:false,error:status===400?String((error as any)?.message||'Invalid settings'):
-      'WhatsApp queue request failed; no bulk send was started automatically'},status);
+    const phase=clean((error as any)?.queuePhase||'server_request',64);
+    return RESPONSE({success:false,phase,
+      error:status===400?String((error as any)?.message||'Invalid settings'):
+      'תקלה במנגנון התור ('+phase+'). יש לבדוק את מצב ההודעות לפני ניסיון חוזר.'},status);
   }
 });
