@@ -1,6 +1,31 @@
 # Pulse — תכנון תור WhatsApp מרכזי אחיד (Outbox v1)
 תאריך: 12.10.2026, עודכן 13.10.2026 | סטטוס: **מומש בקוד ונבדק מדומה; מעבר פרודקשן טרם הופעל** | תחולה: שירת הנבל / Pulse
 
+## אירוע חמור נוסף — שיבוץ ללא הודעה בתור (13.10.2026, 18:28 ישראל)
+מצב אמת שנבדק מול Base44:
+- `WhatsAppQueueControl.enabled=true`, `paused=false`, `last_dispatched_at=""`, `last_worker_at=null`.
+- `WhatsAppOutbox`: **0** רשומות, גם אחרי שיבוצים שנערכו סמוך ל־18:25. `enqueue_owner` נותר ריק ו־`WhatsAppQueueControl.updated_date` לא זז אחרי ההפעלה 18:22 — ראיה שהבעיה במקור/טריגר לפני התור ולא בקצב עובד השליחה.
+- ספק WhatsApp הפעיל בפועל: **Green API** (`AppSettings.whatsapp_default_provider=green`), למרות שחלופת WasenderAPI קיימת. המצאות מפתחות אינה הוכחה שסשן פעיל. שינוי ספק בממשק `WhatsApp_ProviderConfig` בודק את תקינות החיבור; יש להעדיף אותו ולא לבצע עדכון DB שעוקף אימות.
+- תבנית `SUPPLIER_NEW_ASSIGNMENT` פעילה, `allowed_channels=["whatsapp"]`; הספקים שנבדקו לא חסמו WhatsApp. נוצרו `PendingPushNotification` מסוג `SUPPLIER_PENDING_REMINDER` עבור שיבוצים מאותו יום, כך שחלק מהטריגר אכן פעל. עם זאת לא הוכחה הרצה מלאה של מסלול ההודעה המיידית.
+- **ליקוי מוכח בקוד הקודם**: מסכי השיבוץ שמרו `EventService` והסתמכו על אוטומציית הישות ליצירת WhatsApp; לא וידאו שרשומת Outbox נוצרה. `handleEntityEvents` בלע שגיאות לכל תבנית ועדיין יכול היה להחזיר הצלחה. `notifySupplierAssignment` שימשה Push בלבד, וה־Push המקביל אף היה עלול לשכפל הודעת WhatsApp נפרדת.
+
+מה תוקן בקוד (לא נשלחו הודעות אמת):
+1. פונקציית שרת מוגנת `ensureAssignmentWhatsApp` קוראת את שיבוץ השירות החי ומנסה לרשום הודעת Outbox עבור ספקים *חדשים בלבד* או ספק שהוחזר מפורשות למצב pending. משתמשת בתבנית `SUPPLIER_NEW_ASSIGNMENT` הפעילה, יעד טלפון/קבוצה נכון, שם שירות, שעת הגעה, הערת ספק ושעות שקט/שבת. מחזירה דיווח מפורש על הצלחה/אי־יכולת ליצור הודעה.
+2. קריאת `ensureAssignmentWhatsApp` נוספה לאחר שמירת השיבוצים ב־`ServicesCard`, `SupplierAssignmentDialog`, `EventDetails` ו־`EventsBoard`; כאשר השיבוץ נשמר אך יצירת ההודעה נכשלת מופיע למנהל `alert` המבדיל בין שמירת שיבוץ לבין שליחת WhatsApp.
+3. מפתח idempotency יחיד `assignmentWhatsAppKey` משותף לטריגר ולעיבוד המפורש; נעילת התור המקורית ממשיכה למנוע יצירה כפולה במרוץ בין נתיבים.
+4. התווסף זיהוי מעבר `confirmed/rejected → pending` גם ללא שינוי מזהה ספק, כאשר קיים snapshot קודם; כשחסר snapshot לא ממציאים מעבר.
+5. במקרה כשל בתבנית שיבוץ, `handleEntityEvents` אינו מחזיר `success=true` באופן מטעה, ומנסה לרשום למנהל התראה פנימית. תהליך Push דרך `notifySupplierAssignment` עודכן להעביר `sendWhatsApp:false`, כדי למנוע כפילות WhatsApp דרך הודעת Push.
+6. שמירת הודעת Outbox יכולה כעת לקבל `availableAt` בזמן UTC לשם שמירת שעות שקט או שבת.
+
+QA מסיום סשן חירום: **161/162 בדיקות עברו**, כולל 8 בדיקות ייעודיות לאימות הודעת שיבוץ, קבוצות, משתמש ספק ללא login, תבנית, מסלול כישלון והרשאות. `npm run build` עבר, ותחביר backend עבר. הכישלון היחיד הוא בדיקת RLS ישנה של `EventAgreement` שכבר כשלה לפני שינויים אלה. Lint בקובץ ה־frontend helper החדש עבר; בקבצי UI הישנים קיימות אזהרות import שלא השתנו בפיתוח הזה.
+
+**כדי להשלים אימות פרודקשן נדרש:**
+- לפרסם את הקוד; לא הוכח שהקוד החדש פרוס בפרודקשן.
+- בדף הגדרות WhatsApp לבחור WasenderAPI אם רוצים ספק חלופי, לבצע ״שמור ספק ברירת מחדל״ ו״בדוק חיבור״ עד סשן מחובר. לא לשנות DB ישירות תוך עקיפת בדיקת הסשן.
+- לשבץ ספק חדש אחד למספר בדיקה שהמנהל שולט בו; לוודא שעולה רשומת Outbox. `queued` פירושו נכנס לתור, `accepted` רק התקבל אצל הספק, ומסירה לנמען דורשת בדיקה נפרדת.
+- לא לבצע replay אוטומטי לשיבוצים הישנים שהמשתמש כבר טיפל בהם ידנית; אין כרגע רצון לכך.
+- אם גם הניסוי ייכשל, להשתמש בדיווח החדש של `ensureAssignmentWhatsApp` וב־InAppNotification של מנהל כדי לאבחן את קריאת ה־SDK החיה.
+
 ## סיכום ביצוע 13.10.2026
 - נקודת שחזור לפני העבודה: `6ace3f7b7cf321137d0dea60`; נקודת שחזור לאחר מימוש הגדרות וניהול תור: `6ace46411bee3056ba221970`.
 - `WhatsAppOutbox`, `WhatsAppQueueControl`, `whatsappOutbox.ts`, `whatsappQueueWorker.ts`, `processWhatsAppOutbox`, `WhatsAppQueueAdmin` וממשקי ניהול הוקמו. עבודה דרך ישות Outbox מרכזית במקום השהיות בכל מקור.
