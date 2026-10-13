@@ -11,7 +11,14 @@ Deno.serve(async (req) => {
     if(!actor || actor.role!=='admin'){
       return Response.json({success:false,error:'Unauthorized queue worker'},{status:403});
     }
+    // Record a harmless invocation heartbeat even while the queue is disabled.
+    // This allows us to verify that entity/scheduled workflows actually reach
+    // an authenticated worker, without sending a test WhatsApp message.
+    const controlRows=await client.asServiceRole.entities.WhatsAppQueueControl.filter({control_key:'global'},'-created_date',2);
+    if(controlRows.length!==1)return Response.json({success:false,error:'Queue control missing or duplicated'},{status:409});
+    await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invoked_at:new Date().toISOString()});
     const result=await drainWhatsAppOutbox(client);
+    await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invocation_result:result.reason||''});
     return Response.json(result);
   }catch(error){
     console.error('[WhatsAppOutbox] worker failed:',error instanceof Error?error.name:'unknown');
