@@ -80,6 +80,7 @@ Deno.serve(async (req) => {
       userIds: targetUserIds,
       title,
       body,
+      sendWhatsApp: false, // The assignment outbox is the single WhatsApp producer.
       data: {
         click_action: `/EventDetails?id=${eventId}`,
         type: 'supplier_assignment'
