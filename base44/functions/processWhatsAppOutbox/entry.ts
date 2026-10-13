@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.11';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { drainWhatsAppOutbox } from '../../shared/whatsappQueueWorker.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
