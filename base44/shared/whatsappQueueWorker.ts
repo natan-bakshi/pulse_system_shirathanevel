@@ -7,6 +7,13 @@ import { sendWhatsAppTransport } from './whatsappSend.ts';
 const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
 const LEASE_MS = 120_000;           // Longer than one worker, recovered by watchdog.
 const sleep = (ms: number) => new Promise(resolve=>setTimeout(resolve, ms));
+async function queueStage<T>(name:string,operation:()=>Promise<T>):Promise<T>{
+  try{return await operation();}
+  catch(error){
+    console.error('[WhatsAppOutbox] stage='+name,'cause=',error instanceof Error?error.name:'unknown');
+    throw Object.assign(new Error('Central WhatsApp queue failed at '+name),{queuePhase:name,originalName:error instanceof Error?error.name:'unknown'});
+  }
+}
 function asEpoch(value: any): number {
   const parsed = Date.parse(String(value || ''));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -130,11 +137,11 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   const db=client?.asServiceRole?.entities;
   if(!db) throw new Error('A backend service client is required');
   const controls=db.WhatsAppQueueControl;
-  let control=await readWhatsAppQueueControl(client);
+  let control=await queueStage('control_read',()=>readWhatsAppQueueControl(client));
   if(!control.enabled) return {success:true,reason:'disabled',sent:0};
   if(control.paused) return {success:true,reason:'paused',sent:0};
-  const first=await chooseDueJob(db.WhatsAppOutbox,Date.now());
-  const inFlight=await db.WhatsAppOutbox.filter({status:'sending'},'send_started_at',1);
+  const first=await queueStage('due_job_query',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
+  const inFlight=await queueStage('inflight_query',()=>db.WhatsAppOutbox.filter({status:'sending'},'send_started_at',1));
   // A crashed worker can leave only a 'sending' record. The watchdog must
   // inspect it and mark unknown rather than treating the queue as empty.
   if(!first.pending && !inFlight.length) return {success:true,reason:'empty',sent:0};
@@ -143,12 +150,12 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   const nowMs=Date.now();
   if(control.lease_owner && asEpoch(control.lease_until)>nowMs) return {success:true,reason:'busy',sent:0};
   const token=randomToken();
-  const claim=await controls.updateMany({
+  const claim=await queueStage('lease_acquire',()=>controls.updateMany({
     id:control.id,lease_owner:control.lease_owner||'',lease_until:control.lease_until||''
   },{$set:{
     lease_owner:token,lease_until:new Date(nowMs+LEASE_MS).toISOString(),
     last_worker_at:new Date(nowMs).toISOString()
-  }});
+  }}));
   if(claim?.updated!==1) return {success:true,reason:'busy',sent:0};
   const deadline=Date.now()+(Number(opts.maxRuntimeMs)||MAX_RUNTIME_MS);
   let accepted=0,failed=0,unknown=0,retried=0,processed=0,requestWake=false;
@@ -157,9 +164,9 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
     await staleSendingToUnknown(client,Date.now());
     const maxPerRun=Math.max(1,Math.min(30,Number(control.max_messages_per_run)||16));
     while(processed<maxPerRun && Date.now()<deadline-5000) {
-      control=await controls.get(control.id);
+      control=await queueStage('control_reload',()=>controls.get(control.id));
       if(control.lease_owner!==token||!control.enabled||control.paused) break;
-      const options=await chooseDueJob(db.WhatsAppOutbox,Date.now());
+      const options=await queueStage('job_selection',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
       if(!options.pending) break;
       if(!options.job) {
         const delay=options.nextAt-Date.now();
@@ -197,14 +204,14 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
 
       const job=options.job,attempt=Number(job.attempt_count||0)+1;
       const startedAt=new Date().toISOString();
-      const jobClaim=await db.WhatsAppOutbox.updateMany({id:job.id,status:job.status},{$set:{
+      const jobClaim=await queueStage('job_claim',()=>db.WhatsAppOutbox.updateMany({id:job.id,status:job.status},{$set:{
         status:'sending',send_started_at:startedAt,attempt_count:attempt,lease_token:token,provider,last_status_at:startedAt
-      }});
+      }}));
       if(jobClaim?.updated!==1)continue;  // Another worker already processed it.
-      const timeSlot=await controls.updateMany({id:control.id,lease_owner:token},{$set:{
+      const timeSlot=await queueStage('rate_slot_claim',()=>controls.updateMany({id:control.id,lease_owner:token},{$set:{
         last_dispatched_at:startedAt,last_provider:provider,
         next_allowed_at:new Date(Date.now()+intervalMs).toISOString(),last_worker_at:startedAt
-      }});
+      }}));
       if(timeSlot?.updated!==1) {
         await db.WhatsAppOutbox.updateMany({id:job.id,status:'sending',lease_token:token},{$set:{status:'queued',send_started_at:''}});
         lastError='Lost WhatsApp worker lease before dispatch';
@@ -235,19 +242,19 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       }
     }
   } finally {
-    const existing=await controls.get(control.id);
+    const existing=await queueStage('lease_final_read',()=>controls.get(control.id));
     if(existing?.lease_owner===token){
-      const remainder=await chooseDueJob(db.WhatsAppOutbox,Date.now());
+      const remainder=await queueStage('remaining_query',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
       // Kick a successor after any completed batch, even when empty. This also
       // closes the race where a new job arrives between the last queue read
       // and lease release; an empty successor exits without another wake.
       // The 5-minute watchdog remains a crash-recovery fallback only.
       requestWake=(processed>0 || !!remainder.job) && !existing.paused && existing.enabled && !lastError;
-      await controls.updateMany({id:control.id,lease_owner:token},{$set:{
+      await queueStage('lease_release',()=>controls.updateMany({id:control.id,lease_owner:token},{$set:{
         lease_owner:'',lease_until:'',
         last_worker_at:new Date().toISOString(),last_error:lastError,
         ...(requestWake?{wake_requested_at:new Date().toISOString()}: {})
-      }});
+      }}));
     }
   }
   return {success:true,reason:lastError?'blocked':'processed',accepted,failed,unknown,retried,processed,
