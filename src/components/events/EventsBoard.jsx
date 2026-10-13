@@ -1,4 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
+import { newAssignmentRecipients, verifyAssignmentWhatsApp, showAssignmentWhatsAppWarning } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -499,6 +500,8 @@ export default function EventsBoard() {
                 return;
             }
 
+            const added=newAssignmentRecipients(currentEventService.supplier_ids,editingService.supplierIds,
+                currentEventService.supplier_statuses,editingService.supplierStatuses);
             await base44.entities.EventService.update(editingService.eventServiceId, {
                 supplier_ids: JSON.stringify(editingService.supplierIds),
                 supplier_statuses: JSON.stringify(editingService.supplierStatuses),
@@ -509,7 +512,8 @@ export default function EventsBoard() {
                 on_site_contact_details: editingService.units[0]?.pickupPoints[0]?.contact || { name: '', phone: '' }, 
                 min_suppliers: parseInt(editingService.minSuppliers) || 0
             });
-
+            const notification=await verifyAssignmentWhatsApp(editingService.eventServiceId,added);
+            showAssignmentWhatsAppWarning(notification);
 
             await refreshEventStatus(eventServices.find(es => es.id === editingService.eventServiceId)?.event_id);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
