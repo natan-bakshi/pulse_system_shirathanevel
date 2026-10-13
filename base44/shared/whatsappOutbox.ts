@@ -1,4 +1,5 @@
 // Durable centralized WhatsApp outbox. Producers never call WhatsApp providers directly.
+import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 // Security: only backend clients with service-role entity access may enqueue.
 const CONTROL_KEY = 'global';
 const lockPause = (ms: number) => new Promise(resolve=>setTimeout(resolve,ms));
@@ -64,6 +65,7 @@ export async function enqueueWhatsApp(client: any, data: {
   const context = data.context || {};
   const key = String(context.idempotencyKey || '').trim();
   const entity = client.asServiceRole.entities.WhatsAppOutbox;
+  const requestedProvider=await resolveWhatsAppProvider(client);
   if (key.length > 240) throw new Error('Invalid WhatsApp idempotency key');
   const createOrReturnExisting=async()=>{
     if(key){
@@ -86,6 +88,7 @@ export async function enqueueWhatsApp(client: any, data: {
     card_setup_request_id: String(context.cardSetupRequestId || ''),
     event_service_id: String(context.eventServiceId || ''),
     supplier_id: String(context.supplierId || ''),
+    requested_provider: requestedProvider,
     expires_at:String(context.expiresAt || ''),
     status: 'queued', available_at: context.availableAt && Number.isFinite(Date.parse(context.availableAt))
       ? new Date(context.availableAt).toISOString() : new Date().toISOString(), attempt_count: 0, max_attempts: 3
