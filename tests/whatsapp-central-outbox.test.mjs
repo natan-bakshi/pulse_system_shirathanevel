@@ -110,6 +110,24 @@ test('migration safety: disabled queue preserves legacy delivery instead of losi
  }finally{globalThis.fetch=previousFetch;}
 });
 
+test('provider is pinned when enqueued and is never silently changed when default provider changes',async()=>{
+  const x=fixture({selectedProvider:'green',green_interval_ms:0,wasender_interval_ms:0});
+  await sendWhatsAppText('0501234567','green-created',x.client,{sourceType:'assignment_new'});
+  x.control.selectedProvider='wasender';
+  const nextRequestClient={...x.client,asServiceRole:x.client.asServiceRole};
+  await sendWhatsAppText('0501234567','wasender-created',nextRequestClient,{sourceType:'assignment_new'});
+  assert.equal(x.jobs[0].requested_provider,'green');
+  assert.equal(x.jobs[1].requested_provider,'wasender');
+  x.control.selectedProvider='green';
+  const workerClient={...x.client,asServiceRole:x.client.asServiceRole};
+  const routes=[];
+  const result=await drainWhatsAppOutbox(workerClient,{transport:async(job,provider)=>{
+    routes.push({message:job.message_text,provider});return {messageId:'route-'+routes.length};
+  }});
+  assert.equal(result.accepted,2);
+  assert.deepEqual(routes.map(x=>x.provider),['green','wasender']);
+});
+
 test('one worker dispatches multiple sources FIFO without delay before first',async()=>{
  const x=fixture();
  for(const type of ['assignment','reminder','invoice','payment_link','manual']){
