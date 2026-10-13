@@ -16,6 +16,14 @@ Deno.serve(async (req) => {
     // an authenticated worker, without sending a test WhatsApp message.
     const controlRows=await client.asServiceRole.entities.WhatsAppQueueControl.filter({control_key:'global'},'-created_date',2);
     if(controlRows.length!==1)return Response.json({success:false,error:'Queue control missing or duplicated'},{status:409});
+    // Idle watchdog runs should not write entities or trigger any other workflow.
+    if(!controlRows[0].enabled || controlRows[0].paused){
+      return Response.json({success:true,reason:controlRows[0].paused?'paused':'disabled',sent:0});
+    }
+    const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
+      status:{$in:['queued','retry_wait','sending']}
+    },'created_date',1);
+    if(!work.length)return Response.json({success:true,reason:'empty',sent:0});
     await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invoked_at:new Date().toISOString()});
     const result=await drainWhatsAppOutbox(client);
     await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invocation_result:result.reason||''});
