@@ -14,7 +14,7 @@
   "definition": {
     "document": {
       "dsl": "1.0.0",
-      "name": "pulse_whatsapp_outbox_worker",
+      "name": "pulse_whatsapp_outbox_continue_wake",
       "version": "1.0",
       "namespace": "base44"
     },
