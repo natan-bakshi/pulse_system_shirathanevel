@@ -17,6 +17,17 @@
       "type": "number",
       "default": 7
     },
+    "wasender_interval_ms": {
+      "type": "number",
+      "default": 7000
+    },
+    "green_interval_ms": {
+      "type": "number",
+      "default": 7000
+    },
+    "last_provider": {
+      "type": "string"
+    },
     "max_messages_per_run": {
       "type": "number",
       "default": 16
