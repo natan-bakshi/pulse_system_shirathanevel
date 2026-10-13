@@ -47,6 +47,12 @@
     "last_worker_at": {
       "type": "string"
     },
+    "last_invoked_at": {
+      "type": "string"
+    },
+    "last_invocation_result": {
+      "type": "string"
+    },
     "last_error": {
       "type": "string"
     },
