@@ -74,7 +74,8 @@ async function queueStatus(client:any){
     totals,historyTruncated:jobs.length>=500,workerBusy:busy,
     nextAllowedInSeconds:Math.ceil(waitMs/1000),nextAllowedInMs:waitMs,
     nextQueued:(totals.queued||0)+(totals.retry_wait||0),
-    lastWorkerAt:control.last_worker_at||null,lastDispatchedAt:control.last_dispatched_at||null,
+    lastWorkerAt:control.last_worker_at||null,lastInvokedAt:control.last_invoked_at||null,
+    lastInvocationResult:control.last_invocation_result||'',lastDispatchedAt:control.last_dispatched_at||null,
     lastError:control.last_error||'',activeProvider:provider,
     currentIntervalMs:ms,
     latest:jobs.filter((x:any)=>x.archived!==true).slice(0,20).map((x:any)=>renderJob(x))
