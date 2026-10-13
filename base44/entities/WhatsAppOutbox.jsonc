@@ -61,7 +61,8 @@
         "unknown",
         "failed",
         "cancelled",
-        "expired"
+        "expired",
+        "resolved"
       ],
       "default": "queued"
     },
@@ -101,6 +102,32 @@
       "default": 3
     },
     "last_status_at": {
+      "type": "string"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived_at": {
+      "type": "string"
+    },
+    "manual_action": {
+      "type": "string"
+    },
+    "manual_action_by": {
+      "type": "string"
+    },
+    "manual_action_at": {
+      "type": "string"
+    },
+    "manual_review_note": {
+      "type": "string"
+    },
+    "manual_retry_count": {
+      "type": "number",
+      "default": 0
+    },
+    "resolution": {
       "type": "string"
     }
   },
