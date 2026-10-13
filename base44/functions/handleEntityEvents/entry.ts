@@ -3,6 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
+import { assignmentWhatsAppKey } from '../../shared/assignmentWhatsApp.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -102,6 +103,16 @@ Deno.serve(async (req) => {
                     if (oldStatus !== newStatus) {
                         triggerTypesToFetch.push('assignment_status_change');
                         event.changed_status_supplier_ids.push({ id: supId, status: newStatus, old_status: oldStatus });
+                        // Reassigning a previously rejected/confirmed supplier to
+                        // pending requires a NEW assignment request even if the
+                        // supplier ID was already in supplier_ids.
+                        const hadPreviousStatusData = oldData && (oldData.supplier_statuses !== undefined ||
+                          oldData.supplierstatuses !== undefined);
+                        if (hadPreviousStatusData && oldStatus && oldStatus !== 'pending' &&
+                          newStatus === 'pending' && !event.added_supplier_ids?.includes(supId)) {
+                            event.added_supplier_ids = [...(event.added_supplier_ids || []), supId];
+                            triggerTypesToFetch.push('supplier_assignment_create');
+                        }
                         console.log(`[HandleEntityEvents] Detected status change for supplier ${supId}: ${oldStatus} -> ${newStatus}`);
                     }
                 }
@@ -275,6 +286,7 @@ Deno.serve(async (req) => {
         console.log(`[HandleEntityEvents] Found ${templates.length} templates for ${entityName}`);
 
         let notificationsSent = 0;
+        const notificationErrors = [];
 
         for (const template of templates) {
             try {
@@ -354,10 +366,27 @@ Deno.serve(async (req) => {
                 }
             } catch (e) {
                 console.error(`[HandleEntityEvents] Error processing template ${template.name}`, e);
+                notificationErrors.push(String(template.type || 'unknown'));
+                if (template.type === 'SUPPLIER_NEW_ASSIGNMENT') {
+                    try {
+                        const owners=await base44.asServiceRole.entities.User.filter({email:'natib8000@gmail.com'},'-created_date',1);
+                        if(owners[0]?.id) {
+                            await base44.asServiceRole.entities.InAppNotification.create({
+                                user_id:owners[0].id,user_email:owners[0].email,
+                                title:'תקלה ביצירת הודעת שיבוץ WhatsApp',
+                                message:'שיבוץ עודכן, אך יצירת ההודעה נכשלה. בדוק את האירוע ואת תור WhatsApp לפני שליחה חוזרת.',
+                                related_event_id:enrichedData?.event_id||'',
+                                related_event_service_id:enrichedData?.id||'',
+                                template_type:'WHATSAPP_QUEUE_ERROR',is_read:false,whatsapp_sent:false
+                            });
+                        }
+                    }catch(logError){console.error('[HandleEntityEvents] Could not persist queue error audit');}
+                }
             }
         }
 
-        return Response.json({ success: true, notifications_sent: notificationsSent });
+        return Response.json({ success: notificationErrors.length===0,
+          notifications_sent: notificationsSent,failed_templates:notificationErrors });
 
     } catch (error) {
         console.error('[HandleEntityEvents] Fatal Error:', error);
@@ -843,7 +872,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
 
     // Every source now enqueues. Do not perform provider calls inside the assignment trigger.
     const assignmentKey=template?.type==='SUPPLIER_NEW_ASSIGNMENT'&&serviceObj?.id&&supplierObj?.id
-       ? ['assignment',serviceObj.id,supplierObj.id,serviceObj.updated_date||'',template.type].join(':')
+       ? assignmentWhatsAppKey(serviceObj,supplierObj.id,template.type)
        : '';
     const result=await sendWhatsAppToChat(whatsappTarget.chatId,message,base44,{
       sourceType:template?.type==='SUPPLIER_NEW_ASSIGNMENT'?'assignment_new':(template?.category||'notification'),sourceId:serviceObj?.id||eventObj?.id||'',
