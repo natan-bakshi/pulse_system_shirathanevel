@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sendWhatsAppText, sendWhatsAppToChat, sendWhatsAppFileUri, sendWhatsAppTransport } from '../base44/shared/whatsappSend.ts';
-import { drainWhatsAppOutbox, delayUntilNextSend, classifyWhatsAppError } from '../base44/shared/whatsappQueueWorker.ts';
+import { drainWhatsAppOutbox, delayUntilNextSend, delayUntilNextSendMs, providerIntervalMs, classifyWhatsAppError } from '../base44/shared/whatsappQueueWorker.ts';
 import { readWhatsAppQueueControl } from '../base44/shared/whatsappOutbox.ts';
 
 globalThis.Deno={env:{get:key=>({WASENDER_API_KEY:'synthetic-wasender',GREEN_API_INSTANCE_ID:'synthetic-green',GREEN_API_TOKEN:'synthetic-token'})[key]}};
@@ -36,7 +36,7 @@ function fixture(overrides={}) {
  const controlApi=buildApi([control],'control'),outboxApi=buildApi(jobs,'job');
  const client={asServiceRole:{entities:{
     WhatsAppQueueControl:controlApi,WhatsAppOutbox:outboxApi,
-    AppSettings:{filter:async()=>[{setting_key:'whatsapp_default_provider',setting_value:'wasender'}]},
+    AppSettings:{filter:async()=>[{setting_key:'whatsapp_default_provider',setting_value:control.selectedProvider||'wasender'}]},
     InAppNotification:{update:async(id,value)=>{notifications.push({id,value});return value}},
     ClientMessageDelivery:{update:async(id,value)=>{agreements.push({id,value});return value},get:async()=>({kind:'signed_copy',agreement_id:'agreement-main'})},
     EventAgreement:{updateMany:async(query,patch)=>{copies.push({query,patch});return {updated:1}}},
@@ -55,6 +55,33 @@ test('first dispatch is immediate; delay applies only BETWEEN sends',()=>{
   assert.equal(delayUntilNextSend('2026-10-12T11:59:58Z',now,7),5_000);
   assert.equal(delayUntilNextSend('2026-10-12T12:00:00Z',now,0),0);
 });
+test('provider-specific millisecond intervals and idle first message',()=>{
+ const now=Date.parse('2026-10-13T14:00:00Z');
+ const cfg={wasender_interval_ms:6250,green_interval_ms:125,min_interval_seconds:7};
+ assert.equal(providerIntervalMs(cfg,'wasender'),6250);
+ assert.equal(providerIntervalMs(cfg,'green'),125);
+ assert.equal(delayUntilNextSendMs('',now,6250),0);
+ assert.equal(delayUntilNextSendMs('2026-10-13T13:59:59.950Z',now,125),75);
+ assert.equal(delayUntilNextSendMs('2026-10-13T13:59:59.950Z',now,6250),6200);
+ assert.equal(delayUntilNextSendMs('2026-10-13T13:59:00Z',now,6250),0);
+ assert.equal(providerIntervalMs({min_interval_seconds:3},'green'),3000);
+});
+
+test('the active provider controls real worker pacing in milliseconds',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:110,wasender_interval_ms:7000,
+   min_interval_seconds:7});
+ for(let i=0;i<3;i++)await sendWhatsAppText('0501234567','entry '+i,x.client);
+ const times=[];const started=Date.now();
+ const result=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:4000,transport:async(_job,provider)=>{
+   assert.equal(provider,'green');times.push(Date.now());return {messageId:'ms-test'};
+ }});
+ assert.equal(result.accepted,3);
+ assert.equal(times.length,3);
+ assert.ok(times[0]-started<250,'First message must not wait for configured interval');
+ assert.ok(times[1]-times[0]>=100,'Second message must respect Green API millisecond interval');
+ assert.ok(times[2]-times[1]>=100,'Third message must respect Green API millisecond interval');
+});
+
 test('every business entry creates a durable job, no provider call while enqueueing',async()=>{
  const x=fixture();
  const oldFetch=globalThis.fetch;
