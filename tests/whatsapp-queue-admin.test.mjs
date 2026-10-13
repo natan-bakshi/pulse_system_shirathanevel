@@ -3,86 +3,162 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
+import {delayUntilNextSendMs,providerIntervalMs} from '../base44/shared/whatsappQueueWorker.ts';
 
-function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[]}={}) {
+function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
-  min_interval_seconds:7,max_messages_per_run:16,lease_owner:'',lease_until:'',
-  last_dispatched_at:'',next_allowed_at:'',...state};
- const client={
-  auth:{me:async()=>actor},
-  asServiceRole:{entities:{
-   WhatsAppQueueControl:{update:async(id,patch)=>{Object.assign(record,patch);return record;}},
-   WhatsAppOutbox:{
-    filter:async(query)=>jobs.filter(j=>query.status.$in.includes(j.status)),
-    list:async()=>jobs
-   }
-  }}
- };
- let called=0,handler=null;
- const transpiled=esbuild.transformSync(fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8'),{
-  loader:'ts',format:'cjs',target:'es2022'
- }).code;
- vm.runInNewContext(transpiled,{
-  exports:{},module:{exports:{}},console:{error:()=>{},log:()=>{}},
-  Deno:{serve:fn=>{handler=fn}},
-  Response:{json:(body,{status=200}={})=>({body,status})},
-  require:(path)=>{
-   if(path.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
-   if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>record};
-   if(path.endsWith('whatsappQueueWorker.ts'))return {drainWhatsAppOutbox:async()=>{called++;return {accepted:0,reason:'empty'}}};
-   if(path.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
-   throw Error('Unknown import '+path);
-  }
+   green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
+   lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
+ const syncs=[],calls=[];
+ const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
+   if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
+   return record[key]===val;
  });
- return {record,client,get called(){return called;},run:async(action,params={})=>
-  handler({method:'POST',json:async()=>({action,...params})})};
-}
-const desired={minIntervalSeconds:7,maxMessagesPerRun:16,enabled:true,paused:false};
-test('non-owner cannot inspect, activate, or drain WhatsApp outbox',async()=>{
- for(const actor of [null,{role:'supplier',email:'natib8000@gmail.com'},
-   {role:'admin',email:'someone@example.com'}]){
-   const c=context({actor});
-   for(const action of ['status','configure','kick']){
-    assert.equal((await c.run(action,desired)).status,403);
+ const jobEntity={
+   list:async(_sort,limit=500,offset=0)=>jobs.slice(offset,offset+limit),
+   filter:async(query,_sort,limit=500,offset=0)=>jobs.filter(x=>matches(x,query)).slice(offset,offset+limit),
+   get:async(id)=>jobs.find(x=>x.id===id)||null,
+   updateMany:async(query,{ $set })=>{
+     const found=jobs.filter(x=>matches(x,query));
+     for(const job of found)Object.assign(job,$set);
+     return {updated:found.length};
    }
-   assert.equal(c.called,0);
+ };
+ const client={auth:{me:async()=>actor},asServiceRole:{entities:{
+   WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch)},
+   WhatsAppOutbox:jobEntity
+ }}};
+ let handler=null;
+ const js=esbuild.transformSync(fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8'),{
+   loader:'ts',format:'cjs',target:'es2022'
+ }).code;
+ vm.runInNewContext(js,{
+   exports:{},module:{exports:{}},console:{error:()=>{},log:()=>{}},
+   Deno:{serve:fn=>handler=fn},
+   Response:{json:(body,{status=200}={})=>({body,status})},
+   require:name=>{
+     if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
+     if(name.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>record};
+     if(name.endsWith('whatsappQueueWorker.ts'))return {
+       drainWhatsAppOutbox:async()=>{calls.push('dispatch');return {accepted:0,reason:'empty'}},
+       providerIntervalMs,delayUntilNextSendMs,
+       syncWhatsAppStatus:async(_client,job,status)=>syncs.push({id:job.id,status})
+     };
+     if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
+     throw Error('Unexpected import: '+name);
+   }
+ });
+ return {record,jobs,syncs,calls,invoke:async(action,params={})=>await handler({
+   method:'POST',json:async()=>({action,...params})
+ })};
+}
+const config={enabled:true,paused:false,wasenderIntervalMs:2500,greenIntervalMs:180,maxMessagesPerRun:16};
+const makeJob=(id,status='queued')=>({id,status,chat_id:'972501234567@c.us',message_type:'text',message_text:'Hello',source_type:'assignment_new',available_at:new Date().toISOString(),created_date:new Date().toISOString(),attempt_count:0,archived:false});
+
+test('non-system owner cannot read or modify queue operations',async()=>{
+ for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
+   const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick']){
+     const res=await ctx.invoke(action,{...config,id:'job-123'});
+     assert.equal(res.status,403);
+   }
+   assert.equal(ctx.calls.length,0);
  }
 });
-test('status is read-only and does not dispatch even when pending',async()=>{
- const c=context({jobs:[{id:'1',status:'queued',created_date:new Date().toISOString()}]});
- const answer=await c.run('status');
- assert.equal(answer.status,200);
- assert.equal(answer.body.totals.queued,1);
- assert.equal(answer.body.activeProvider,'wasender');
- assert.equal(c.called,0);
+test('status/list/get are read only and mask recipient until owner requests detail',async()=>{
+ const ctx=context({jobs:[makeJob('job-123')]});
+ const status=await ctx.invoke('status');
+ assert.equal(status.status,200);
+ assert.equal(status.body.config.wasenderIntervalMs,7000);
+ assert.equal(status.body.config.greenIntervalMs,7000);
+ assert.equal(status.body.activeProvider,'wasender');
+ const list=await ctx.invoke('list');
+ assert.equal(list.status,200);assert.equal(list.body.rows.length,1);
+ assert.equal(list.body.rows[0].chatId,undefined);
+ assert.equal(list.body.rows[0].text,undefined);
+ const detail=await ctx.invoke('get',{id:'job-123'});
+ assert.equal(detail.body.message.chatId,'972501234567@c.us');
+ assert.equal(detail.body.message.text,'Hello');
+ assert.equal(ctx.calls.length,0);
 });
-test('activation sets wake marker and global 7-second interval',async()=>{
- const c=context();
- const r=await c.run('configure',desired);
+test('configure persists each provider in milliseconds and enables wake once',async()=>{
+ const ctx=context();
+ let r=await ctx.invoke('configure',config);
  assert.equal(r.status,200);
- assert.equal(c.record.enabled,true);
- assert.equal(c.record.min_interval_seconds,7);
- assert.ok(Date.parse(c.record.wake_requested_at)>0);
- assert.equal(c.called,0);
+ assert.equal(ctx.record.wasender_interval_ms,2500);
+ assert.equal(ctx.record.green_interval_ms,180);
+ assert.ok(ctx.record.wake_requested_at);
+ assert.equal(ctx.calls.length,0);
+ r=await ctx.invoke('configure',{...config,wasenderIntervalMs:0,greenIntervalMs:250});
+ assert.equal(r.status,200);
+ assert.equal(ctx.record.wasender_interval_ms,0);
 });
-test('disabling with pending messages is rejected and backlog preserved',async()=>{
- const c=context({state:{enabled:true},jobs:[{id:'a',status:'retry_wait',created_date:'2026-10-12T00:00:00Z'}]});
- const r=await c.run('configure',{...desired,enabled:false});
+test('invalid provider intervals reject negative, fractional milliseconds and excessive values',async()=>{
+ for(const bad of [-1,0.5,300001,null,'7000']){
+   const ctx=context();
+   const r=await ctx.invoke('configure',{...config,wasenderIntervalMs:bad});
+   assert.equal(r.status,400);
+   assert.equal(ctx.record.enabled,false);
+ }
+});
+test('disable refuses to bypass active queued or retry-wait jobs, pause is reversible',async()=>{
+ const ctx=context({state:{enabled:true},jobs:[makeJob('job-a','retry_wait')]});
+ let r=await ctx.invoke('configure',{...config,enabled:false});
  assert.equal(r.status,409);
- assert.equal(c.record.enabled,true);
- assert.equal(c.called,0);
+ assert.equal(ctx.record.enabled,true);
+ r=await ctx.invoke('configure',{...config,paused:true});
+ assert.equal(r.status,200);assert.equal(ctx.record.paused,true);
+ r=await ctx.invoke('configure',{...config,paused:false});
+ assert.equal(r.status,200);assert.equal(ctx.record.paused,false);
+ assert.ok(ctx.record.wake_requested_at);
 });
-test('pause does not remove backlog and can be resumed with a wake trigger',async()=>{
- const c=context({state:{enabled:true}});
- await c.run('configure',{...desired,paused:true});
- assert.equal(c.record.paused,true);
- await c.run('configure',{...desired,paused:false});
- assert.equal(c.record.paused,false);
- assert.ok(c.record.wake_requested_at);
+test('cancel only pending/retry and CAS never cancels in-flight',async()=>{
+ const ctx=context({jobs:[makeJob('job-a','queued'),makeJob('job-b','sending')]});
+ let r=await ctx.invoke('cancel',{id:'job-a'});
+ assert.equal(r.status,200);assert.equal(ctx.jobs[0].status,'cancelled');
+ assert.deepEqual(ctx.syncs[0],{id:'job-a',status:'cancelled'});
+ r=await ctx.invoke('cancel',{id:'job-b'});
+ assert.equal(r.status,409);assert.equal(ctx.jobs[1].status,'sending');
 });
-test('invalid queue settings never dispatch or change configuration',async()=>{
- const c=context();
- const r=await c.run('configure',{...desired,minIntervalSeconds:0});
- assert.equal(r.status,400);
- assert.equal(c.record.enabled,false);
+test('bulk cancel and archive cannot mutate active/in-flight jobs',async()=>{
+ const ctx=context({jobs:[makeJob('job-a','queued'),makeJob('job-b','retry_wait'),makeJob('job-c','sending')]});
+ let r=await ctx.invoke('bulkCancel',{ids:['job-a','job-b','job-c'],confirm:true});
+ assert.equal(r.status,200);assert.equal(r.body.updated,2);assert.equal(r.body.skipped.length,1);
+ assert.equal(ctx.jobs[2].status,'sending');
+ r=await ctx.invoke('bulkArchive',{ids:['job-a','job-b','job-c'],confirm:true});
+ assert.equal(r.body.updated,2);
+ assert.equal(ctx.jobs[0].archived,true);
+ assert.equal(ctx.jobs[1].archived,true);
+});
+test('definitely failed messages can be retried with reason, no silent duplicates',async()=>{
+ const ctx=context({jobs:[makeJob('job-a','failed'),makeJob('job-b','accepted')]});
+ let r=await ctx.invoke('retry',{id:'job-a',note:'Verified invalid number corrected'});
+ assert.equal(r.status,200);assert.equal(ctx.jobs[0].status,'queued');assert.equal(ctx.jobs[0].manual_retry_count,1);
+ r=await ctx.invoke('retry',{id:'job-b',note:'do not repeat'});
+ assert.equal(r.status,409);assert.equal(ctx.jobs[1].status,'accepted');
+});
+test('unknown requires explicit verification of non-delivery and detailed note',async()=>{
+ const ctx=context({jobs:[makeJob('job-u','unknown')]});
+ let r=await ctx.invoke('retry',{id:'job-u',note:'No provider entry'});
+ assert.equal(r.status,409);assert.equal(ctx.jobs[0].status,'unknown');
+ r=await ctx.invoke('retry',{id:'job-u',verifiedNotSent:true,note:'Checked provider sent history: message absent'});
+ assert.equal(r.status,200);assert.equal(ctx.jobs[0].status,'queued');
+ assert.equal(ctx.jobs[0].resolution,'verified_not_sent_then_requeued');
+});
+test('resolve unknown without resending; archive only terminal statuses',async()=>{
+ const ctx=context({jobs:[makeJob('job-u','unknown'),makeJob('job-q','queued')]});
+ let r=await ctx.invoke('archive',{id:'job-u'});assert.equal(r.status,409);
+ r=await ctx.invoke('resolve',{id:'job-u',note:'Confirmed handled by phone',resolution:'handled_outside'});
+ assert.equal(r.status,200);assert.equal(ctx.jobs[0].status,'resolved');
+ r=await ctx.invoke('archive',{id:'job-u'});
+ assert.equal(r.status,200);assert.equal(ctx.jobs[0].archived,true);
+ r=await ctx.invoke('archive',{id:'job-q'});
+ assert.equal(r.status,409);
+});
+test('admin explicit worker kick is only action that dispatches',async()=>{
+ const ctx=context();
+ await ctx.invoke('status');
+ assert.equal(ctx.calls.length,0);
+ await ctx.invoke('kick');
+ assert.equal(ctx.calls.length,1);
 });
