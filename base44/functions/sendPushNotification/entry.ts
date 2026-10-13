@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { "Content-Type": "application/json" } });
     }
 
-    const { userIds, title, body, data = {} } = await req.json();
+    const { userIds, title, body, data = {}, sendWhatsApp = true } = await req.json();
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0 || !title || !body) {
       return new Response(JSON.stringify({ error: 'Missing required parameters: userIds, title, body' }), { status: 400, headers: { "Content-Type": "application/json" } });
@@ -57,8 +57,10 @@ Deno.serve(async (req) => {
     const targetedUsers = allTargetUsers.filter(u => userIds.includes(u.id));
 
     // --- WhatsApp Logic Start ---
+    // Supplier assignment WhatsApp is now owned by the durable assignment
+    // outbox producer. Do not duplicate it via the Push mirror.
     const whatsappResults = [];
-    {
+    if (sendWhatsApp !== false) {
         const whatsappUsers = targetedUsers.filter(u => u.phone && u.whatsapp_enabled !== false);
         
         for (const u of whatsappUsers) {
