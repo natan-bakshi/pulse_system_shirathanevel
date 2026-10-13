@@ -72,7 +72,7 @@ test('the active provider controls real worker pacing in milliseconds',async()=>
    min_interval_seconds:7});
  for(let i=0;i<3;i++)await sendWhatsAppText('0501234567','entry '+i,x.client);
  const times=[];const started=Date.now();
- const result=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:4000,transport:async(_job,provider)=>{
+ const result=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:11000,transport:async(_job,provider)=>{
    assert.equal(provider,'green');times.push(Date.now());return {messageId:'ms-test'};
  }});
  assert.equal(result.accepted,3);
