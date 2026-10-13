@@ -1,0 +1,66 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import esbuild from 'esbuild';
+const code=esbuild.transformSync(fs.readFileSync('base44/functions/processWhatsAppOutbox/entry.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
+function fixture({role='admin',enabled=true,paused=false,hasWork=true}={}){
+ let handler;const control={id:'global',control_key:'global',enabled,paused};const updates=[];let dispatched=0;
+ const client={
+   auth:{me:async()=>role?{role}:null},
+   asServiceRole:{entities:{
+     WhatsAppQueueControl:{
+       filter:async()=>[control],
+       update:async(_id,patch)=>{updates.push(patch);Object.assign(control,patch);}
+     },
+     WhatsAppOutbox:{
+       filter:async()=>hasWork?[{id:'job',status:'queued'}]:[]
+     }
+   }}
+ };
+ vm.runInNewContext(code,{
+   exports:{},module:{exports:{}},console:{error:()=>{},warn:()=>{}},
+   Deno:{serve:fn=>handler=fn},Response:{json:(body,{status=200}={})=>({status,body})},
+   require:name=>{
+     if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
+     if(name.endsWith('/whatsappQueueWorker.ts'))return {
+       drainWhatsAppOutbox:async()=>{dispatched++;return {success:true,reason:'processed',accepted:1}}
+     };
+     throw Error('Unexpected worker import: '+name);
+   }
+ });
+ return {call:()=>handler({method:'POST'}),updates,get dispatched(){return dispatched;}};
+}
+test('background function rejects anonymous or non-admin calls before touching data',async()=>{
+ for(const role of [null,'supplier','customer']){
+   const f=fixture({role});
+   const result=await f.call();
+   assert.equal(result.status,403);
+   assert.equal(f.updates.length,0);
+   assert.equal(f.dispatched,0);
+ }
+});
+test('disabled and paused background runs do zero entity writes and never send',async()=>{
+ for(const options of [{enabled:false},{paused:true}]){
+   const f=fixture(options);
+   const result=await f.call();
+   assert.equal(result.status,200);
+   assert.equal(f.updates.length,0);
+   assert.equal(f.dispatched,0);
+ }
+});
+test('idle active watchdog does not write entities or dispatch',async()=>{
+ const f=fixture({hasWork:false});
+ const r=await f.call();
+ assert.equal(r.body.reason,'empty');
+ assert.equal(f.updates.length,0);
+ assert.equal(f.dispatched,0);
+});
+test('authenticated background worker records heartbeat only when there is queued work',async()=>{
+ const f=fixture();
+ const r=await f.call();
+ assert.equal(r.status,200);
+ assert.equal(f.dispatched,1);
+ assert.ok(f.updates[0].last_invoked_at);
+ assert.equal(f.updates[1].last_invocation_result,'processed');
+});
