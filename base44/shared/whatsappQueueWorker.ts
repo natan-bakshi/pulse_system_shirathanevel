@@ -4,17 +4,31 @@ import { readWhatsAppQueueControl } from './whatsappOutbox.ts';
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { sendWhatsAppTransport } from './whatsappSend.ts';
 
-const MAX_RUNTIME_MS = 100_000;      // Below Base44 function execution limits.
-const LEASE_MS = 210_000;            // Safely longer than a single worker lifetime.
+const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
+const LEASE_MS = 120_000;           // Longer than one worker, recovered by watchdog.
 const sleep = (ms: number) => new Promise(resolve=>setTimeout(resolve, ms));
 function asEpoch(value: any): number {
   const parsed = Date.parse(String(value || ''));
   return Number.isFinite(parsed) ? parsed : 0;
 }
-export function delayUntilNextSend(lastDispatchedAt: string, now = Date.now(), intervalSeconds = 7) {
+export function delayUntilNextSendMs(lastDispatchedAt: string, now = Date.now(), intervalMs = 7000) {
   const previous=asEpoch(lastDispatchedAt);
-  // No previous message => send immediately, never sleep before an idle first message.
-  return previous ? Math.max(0, previous + Math.max(0, intervalSeconds)*1000 - now) : 0;
+  // No history => the first message is immediately eligible. The interval
+  // constrains successive provider dispatches, including across worker runs.
+  return previous ? Math.max(0, previous + Math.max(0, intervalMs) - now) : 0;
+}
+// Retain the original seconds API for callers/tests that already use it.
+export function delayUntilNextSend(lastDispatchedAt: string, now = Date.now(), intervalSeconds = 7) {
+  return delayUntilNextSendMs(lastDispatchedAt, now, intervalSeconds * 1000);
+}
+export function providerIntervalMs(control: any, provider: string): number {
+  if(provider !== 'green' && provider !== 'wasender')throw new Error('Unsupported WhatsApp provider');
+  const field=provider === 'green' ? 'green_interval_ms' : 'wasender_interval_ms';
+  const value=control?.[field];
+  if(Number.isInteger(value) && value>=0 && value<=300000) return value;
+  // Existing configurations before the per-provider migration used seconds.
+  const fallback=Number(control?.min_interval_seconds);
+  return Number.isFinite(fallback) ? Math.max(0,Math.min(300000,Math.round(fallback*1000))) : 7000;
 }
 export function classifyWhatsAppError(error: any, attempt: number, maxAttempts = 3, now = Date.now()) {
   const code=Number(error?.errorCode || 0);
@@ -164,13 +178,6 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           continue;
         }
       }catch(error){lastError='Assignment status validation unavailable';break;}
-      const interval=Math.max(0,Math.min(60,Number(control.min_interval_seconds)||0));
-      const wait=delayUntilNextSend(control.last_dispatched_at,Date.now(),interval);
-      // Delay is BETWEEN provider calls, not before the first call of an idle queue.
-      if(wait>0) {
-        if(Date.now()+wait>=deadline-5000) break;
-        await sleep(wait);continue;
-      }
       let provider;
       try {
         provider=await resolveWhatsAppProvider(client);
@@ -180,6 +187,13 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         lastError='WhatsApp provider not configured';
         break;  // Keep queued jobs intact; settings page shows this error.
       }
+      const intervalMs=providerIntervalMs(control,provider);
+      const wait=delayUntilNextSendMs(control.last_dispatched_at,Date.now(),intervalMs);
+      // This is the only pacing decision. Idle first message is immediate.
+      if(wait>0){
+        if(Date.now()+wait>=deadline-5000) break;
+        await sleep(wait);continue;
+      }
 
       const job=options.job,attempt=Number(job.attempt_count||0)+1;
       const startedAt=new Date().toISOString();
@@ -188,8 +202,8 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       }});
       if(jobClaim?.updated!==1)continue;  // Another worker already processed it.
       const timeSlot=await controls.updateMany({id:control.id,lease_owner:token},{$set:{
-        last_dispatched_at:startedAt,
-        next_allowed_at:new Date(Date.now()+interval*1000).toISOString(),last_worker_at:startedAt
+        last_dispatched_at:startedAt,last_provider:provider,
+        next_allowed_at:new Date(Date.now()+intervalMs).toISOString(),last_worker_at:startedAt
       }});
       if(timeSlot?.updated!==1) {
         await db.WhatsAppOutbox.updateMany({id:job.id,status:'sending',lease_token:token},{$set:{status:'queued',send_started_at:''}});
