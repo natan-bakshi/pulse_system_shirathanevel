@@ -119,6 +119,7 @@ async function mutateOne(client:any,jobId:string,action:string,body:any,actor:an
     }
     if(prior==='failed'&&note.length<5)return {success:false,error:'Add a reason for retry',statusCode:400};
     patch.status='queued';patch.available_at=stamp;patch.error_code=0;patch.last_error='';
+    patch.archived=false;patch.archived_at='';
     patch.send_started_at='';patch.completed_at='';patch.lease_token='';
     patch.attempt_count=0;patch.manual_retry_count=(Number(row.manual_retry_count)||0)+1;
     patch.resolution=prior==='unknown'?'verified_not_sent_then_requeued':'definite_failure_requeued';
