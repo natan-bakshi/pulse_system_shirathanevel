@@ -28,6 +28,7 @@ function renderJob(job:any,includeBody=false){
   const result:any={
     id:job.id,source:job.source_type||'system',sourceId:job.source_id||'',
     status:job.status,kind:job.message_type,recipient:mask,
+    requestedProvider:job.requested_provider||job.provider||'',
     createdAt:job.created_date,availableAt:job.available_at,attemptCount:job.attempt_count||0,
     provider:job.provider||'',errorCode:job.error_code||null,error:job.last_error||'',
     messageIdPresent:!!job.provider_message_id,manualReview:job.manual_review_note||'',
