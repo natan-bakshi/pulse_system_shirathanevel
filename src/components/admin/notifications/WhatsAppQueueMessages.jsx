@@ -159,7 +159,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
       <table className="w-full text-sm text-right min-w-[740px]">
         <thead className="bg-gray-50"><tr>
           <th className="p-2">בחר</th><th className="p-2">מקור</th><th className="p-2">מועד יצירה</th>
-          <th className="p-2">נמען</th><th className="p-2">מצב</th><th className="p-2">ניסיונות</th>
+          <th className="p-2">נמען</th><th className="p-2">ספק שליחה</th><th className="p-2">מצב</th><th className="p-2">ניסיונות</th>
           <th className="p-2">פעולות</th>
         </tr></thead>
         <tbody>
@@ -171,6 +171,8 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
             <td className="p-2"><span className="font-medium">{row.source}</span></td>
             <td className="p-2 whitespace-nowrap">{toLocale(row.createdAt)}</td>
             <td className="p-2">{row.recipient}</td>
+            <td className="p-2">{row.requestedProvider==='wasender'?'WasenderAPI':
+              row.requestedProvider==='green'?'Green API':'לפי ברירת המחדל'}</td>
             <td className="p-2">
               {statusNames[row.status]||row.status}
               {row.errorCode&&<p className="text-xs text-amber-700">HTTP {row.errorCode}</p>}
@@ -185,7 +187,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
               {row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'unarchive')} disabled={busy}>שחזר</Button>}
             </div></td>
           </tr>)}
-          {!rows.length&&<tr><td className="p-5 text-center text-gray-500" colSpan={7}>אין הודעות התואמות לסינון. ייתכן שהתור עדיין כבוי או שטרם נוצרו הודעות.</td></tr>}
+          {!rows.length&&<tr><td className="p-5 text-center text-gray-500" colSpan={8}>אין הודעות התואמות לסינון. ייתכן שהתור עדיין כבוי או שטרם נוצרו הודעות.</td></tr>}
         </tbody>
       </table>
     </div>
@@ -200,7 +202,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
       <DialogContent dir="rtl" className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{dialog?.action==='inspect'?'פרטי הודעת WhatsApp':(actions[dialog?.action]?.title||'ניהול הודעה')}</DialogTitle></DialogHeader>
         {dialog&&<div className="space-y-3 text-sm">
-          <p><strong>מקור:</strong> {dialog.row.source} · <strong>מצב:</strong> {statusNames[dialog.row.status]||dialog.row.status}</p>
+          <p><strong>מקור:</strong> {dialog.row.source} · <strong>מצב:</strong> {statusNames[dialog.row.status]||dialog.row.status} · <strong>ספק:</strong> {dialog.row.requestedProvider==='wasender'?'WasenderAPI':dialog.row.requestedProvider==='green'?'Green API':'לפי ברירת המחדל'}</p>
           {full&&<>
             <p><strong>נמען:</strong> <span dir="ltr">{full.chatId}</span></p>
             {full.fileName&&<p><strong>שם מסמך:</strong> {full.fileName}</p>}
