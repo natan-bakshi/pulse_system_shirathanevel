@@ -1,4 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
+import { newAssignmentRecipients, verifyAssignmentWhatsApp, showAssignmentWhatsAppWarning } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -222,6 +223,8 @@ export default function ServicesCard({
                 supplier_ids: JSON.stringify(updatedSupplierIds),
                 supplier_statuses: JSON.stringify(currentSupplierStatuses)
             });
+            const delivery=await verifyAssignmentWhatsApp(eventServiceId,[newSupplierRecord.id]);
+            showAssignmentWhatsAppWarning(delivery);
         }
       }
 
@@ -273,12 +276,15 @@ export default function ServicesCard({
         if (!localSupplierFormData.supplierIds.includes(id)) delete nextStatuses[id];
       });
 
+      const added=newAssignmentRecipients(localSelectedService.supplier_ids,localSupplierFormData.supplierIds,
+        localSelectedService.supplier_statuses,nextStatuses);
       await base44.entities.EventService.update(localSelectedService.id, {
         supplier_ids: JSON.stringify(localSupplierFormData.supplierIds),
         supplier_statuses: JSON.stringify(nextStatuses),
         supplier_notes: JSON.stringify(localSupplierFormData.notes)
       });
-
+      const notification=await verifyAssignmentWhatsApp(localSelectedService.id,added);
+      showAssignmentWhatsAppWarning(notification);
 
       setShowLocalSupplierDialog(false);
       setLocalSelectedService(null);
