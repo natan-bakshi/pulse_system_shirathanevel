@@ -46,7 +46,7 @@ export function classifyWhatsAppError(error: any, attempt: number, maxAttempts =
 function randomToken() {
   return typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : 'worker-'+Date.now()+'-'+Math.random();
 }
-async function safeCompletionLinks(client:any,job:any,status:string,messageId:string) {
+export async function syncWhatsAppStatus(client:any,job:any,status:string,messageId:string) {
   const db=client.asServiceRole.entities;
   // Each downstream mirror is independently best-effort. One broken entity
   // must not suppress receipt propagation to unrelated agreements/cards.
@@ -71,7 +71,7 @@ async function safeCompletionLinks(client:any,job:any,status:string,messageId:st
   }
   if(job.card_setup_request_id) {
     try {await db.CardSetupRequest.update(job.card_setup_request_id,{
-      link_message_state:status==='accepted'?'accepted':status==='unknown'?'unknown':status==='failed'?'rejected':'queued',
+      link_message_state:status==='accepted'?'accepted':status==='unknown'?'unknown':status==='failed'?'rejected':status==='cancelled'||status==='resolved'||status==='expired'?'cancelled':'queued',
       ...(status==='accepted'?{link_message_id:messageId||''}:{})
     });}catch(error){console.error('[WhatsAppOutbox] card setup status sync failed');}
   }
@@ -89,7 +89,7 @@ async function staleSendingToUnknown(client:any, now:number) {
       }});
       if(updated?.updated===1) {
         count++;
-        await safeCompletionLinks(client,row,'unknown','');
+        await syncWhatsAppStatus(client,row,'unknown','');
       }
     }
   }
@@ -219,7 +219,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           last_error:'',error_code:0,last_status_at:new Date().toISOString()
         });
         accepted++;
-        await safeCompletionLinks(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),'accepted',receipt.messageId||'');
+        await syncWhatsAppStatus(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),'accepted',receipt.messageId||'');
       }catch(error){
         const outcome=classifyWhatsAppError(error,attempt,Number(job.max_attempts||3));
         await db.WhatsAppOutbox.update(job.id,{
@@ -230,7 +230,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         if(outcome.status==='unknown') unknown++;
         if(outcome.status==='failed') failed++;
         if(outcome.status==='retry_wait') retried++;
-        if(outcome.status!=='retry_wait') await safeCompletionLinks(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),outcome.status,'');
+        if(outcome.status!=='retry_wait') await syncWhatsAppStatus(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),outcome.status,'');
         if(outcome.code===401||outcome.code===403) {lastError='WhatsApp provider authorization rejected';break;}
       }
     }
