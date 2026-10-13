@@ -1,0 +1,85 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
+import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
+import { resolveNotificationDelay } from '../../shared/quietHours.ts';
+import { assignmentWhatsAppKey, renderAssignmentWhatsApp, supplierTargetChatId } from '../../shared/assignmentWhatsApp.ts';
+
+// Reliable, explicit supplier-notification safeguard called *after* successful
+// EventService saves. It does not change assignments. Entity triggers may run
+// concurrently; both paths use the same idempotency key.
+Deno.serve(async(req)=>{
+  if(req.method!=='POST')return Response.json({success:false,error:'Method not allowed'},{status:405});
+  try{
+    const client=createClientFromRequest(req);
+    const actor=await client.auth.me().catch(()=>null);
+    if(actor?.role!=='admin')return Response.json({success:false,error:'Administrator required'},{status:403});
+    const body=await req.json().catch(()=>({}));
+    const eventServiceId=String(body.eventServiceId||'');
+    const requested=body.newSupplierIds;
+    if(!/^[a-zA-Z0-9_-]{8,100}$/.test(eventServiceId)||
+      !Array.isArray(requested)||requested.length>40||requested.some(x=>typeof x!=='string'||!/^[a-zA-Z0-9_-]{8,100}$/.test(x))){
+      return Response.json({success:false,error:'Invalid assignment notification request'},{status:400});
+    }
+    const ids=[...new Set(requested)];
+    if(ids.length===0)return Response.json({success:true,requested:0,queued:0,accepted:0,skipped:0});
+    const db=client.asServiceRole.entities;
+    const svc=await db.EventService.get(eventServiceId);
+    if(!svc||svc.is_external)return Response.json({success:false,error:'Event service is unavailable or external'},{status:409});
+    const assigned=typeof svc.supplier_ids==='string'?JSON.parse(svc.supplier_ids||'[]'):svc.supplier_ids||[];
+    const statuses=typeof svc.supplier_statuses==='string'?JSON.parse(svc.supplier_statuses||'{}'):svc.supplier_statuses||{};
+    if(!Array.isArray(assigned))throw new Error('Malformed supplier assignments');
+    const event=await db.Event.get(svc.event_id);
+    if(!event||['cancelled','completed'].includes(event.status)){
+      return Response.json({success:false,error:'Event is no longer eligible for supplier notifications'},{status:409});
+    }
+    const templates=await db.NotificationTemplate.filter({type:'SUPPLIER_NEW_ASSIGNMENT',is_active:true},'-created_date',2);
+    const template=templates[0];
+    if(!template || !(template.allowed_channels||[]).includes('whatsapp')){
+      return Response.json({success:true,requested:ids.length,queued:0,accepted:0,skipped:ids.length,
+        reason:'WhatsApp assignment template is intentionally disabled'});
+    }
+    const control=await readWhatsAppQueueControl(client);
+    const service=svc.service_id?await db.Service.get(svc.service_id).catch(()=>null):null;
+    const textTemplate=template.whatsapp_body_template||template.body_template||'';
+    const result={success:true,requested:ids.length,queued:0,accepted:0,skipped:0,errors:[] as string[],jobIds:[] as string[]};
+    for(const supplierId of ids){
+      try{
+        if(!assigned.includes(supplierId)||(statuses?.[supplierId]&&statuses[supplierId]!=='pending')){
+          result.skipped++;continue;
+        }
+        const supplier=await db.Supplier.get(supplierId);
+        if(!supplier||supplier.whatsapp_enabled===false){result.skipped++;continue;}
+        const chatId=supplierTargetChatId(supplier,toChatId);
+        if(!chatId){result.errors.push('Supplier '+supplierId+': WhatsApp destination missing');continue;}
+        const text=renderAssignmentWhatsApp(textTemplate,event,svc,supplier,service?.service_name||'');
+        if(!text){result.errors.push('Supplier '+supplierId+': WhatsApp content missing');continue;}
+        const delay=resolveNotificationDelay(supplier);
+        if(delay.shouldDelay && control.enabled!==true){
+          result.errors.push('Supplier '+supplierId+': quiet hours require central queue to be active');
+          continue;
+        }
+        const response=await sendWhatsAppToChat(chatId,text,client,{
+          sourceType:'assignment_new',sourceId:svc.id,
+          eventServiceId:svc.id,supplierId,
+          idempotencyKey:assignmentWhatsAppKey(svc,supplierId,template.type),
+          ...(delay.shouldDelay?{availableAt:delay.scheduledFor.toISOString()}:{})
+        });
+        if(response.queued)result.queued++;
+        else if(response.status==='accepted'||response.legacyDirect)result.accepted++;
+        else if(response.deduplicated && response.status==='accepted')result.accepted++;
+        else result.skipped++;
+        if(response.jobId)result.jobIds.push(response.jobId);
+      }catch(error){
+        const code=Number((error as any)?.errorCode)||0;
+        result.errors.push('Supplier '+supplierId+': queue insertion failed'+(code?' ('+code+')':''));
+        console.error('[EnsureAssignmentWhatsApp] Could not queue supplier assignment:',supplierId,
+          error instanceof Error?error.name:'unknown');
+      }
+    }
+    result.success=result.errors.length===0;
+    return Response.json(result,{status:result.success?200:207});
+  }catch(error){
+    console.error('[EnsureAssignmentWhatsApp] request failure:',error instanceof Error?error.name:'unknown');
+    return Response.json({success:false,error:'Assignment WhatsApp queue verification failed'},{status:500});
+  }
+});
