@@ -78,6 +78,13 @@
     "provider": {
       "type": "string"
     },
+    "requested_provider": {
+      "type": "string",
+      "enum": [
+        "green",
+        "wasender"
+      ]
+    },
     "provider_message_id": {
       "type": "string"
     },
