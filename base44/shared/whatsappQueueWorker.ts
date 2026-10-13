@@ -50,6 +50,10 @@ export function classifyWhatsAppError(error: any, attempt: number, maxAttempts =
   }
   return {status:'failed',code:code||400,retryAt:'',reason:code===429?'Rate limit exhausted retries':'Provider rejected the message'};
 }
+function jobCandidateProvider(job:any):string {
+  const selected=String(job?.requested_provider||'').trim();
+  return selected==='green'||selected==='wasender'?selected:'';
+}
 function randomToken() {
   return typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : 'worker-'+Date.now()+'-'+Math.random();
 }
@@ -187,7 +191,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       }catch(error){lastError='Assignment status validation unavailable';break;}
       let provider;
       try {
-        provider=await resolveWhatsAppProvider(client);
+        provider=jobCandidateProvider(options.job) || await resolveWhatsAppProvider(client);
         if(provider==='wasender'&&!Deno.env.get('WASENDER_API_KEY'))throw new Error('Wasender session key unavailable');
         if(provider==='green'&&(!Deno.env.get('GREEN_API_INSTANCE_ID')||!Deno.env.get('GREEN_API_TOKEN')))throw new Error('Green API credentials unavailable');
       }catch(error) {
