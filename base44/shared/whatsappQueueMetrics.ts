@@ -16,26 +16,50 @@ export function readOutboxTiming(job:any){
   const available=safeTime(job.available_at);
   const attempt=safeTime(job.send_started_at);
   const completed=safeTime(job.completed_at);
+  const claimed=safeTime(job.job_claimed_at);
+  const rateReady=safeTime(job.rate_ready_at);
+  const previousDispatch=safeTime(job.prior_dispatch_at);
+  const transportStart=safeTime(job.transport_started_at);
+  const transportEnd=safeTime(job.transport_finished_at);
+  const interval=Number.isInteger(job.configured_interval_ms)&&job.configured_interval_ms>=0
+    ? job.configured_interval_ms : null;
   // Invalid / missing dates must not become negative or fabricated durations.
   const dueStart=created===null?null:Math.max(created,available===null?created:available);
   const delta=(to:number|null,from:number|null)=>
     to===null||from===null||to<from?null:to-from;
   return {
     queueWaitMs:delta(attempt,dueStart),
-    providerWaitMs:delta(completed,attempt),
+    providerWaitMs:delta(completed,attempt), // Legacy: includes transport and persistence.
+    // Backlog in front of this job, then the remaining configured interval.
+    backlogWaitMs:dueStart===null||claimed===null||interval===null?null:
+      previousDispatch===null?0:Math.max(0,previousDispatch-dueStart),
+    spacingWaitMs:dueStart===null||claimed===null||interval===null?null:
+      previousDispatch===null?0:Math.max(0,previousDispatch+interval-Math.max(dueStart,previousDispatch)),
+    workerLagMs:delta(claimed,rateReady),
+    claimToTransportMs:delta(transportStart,claimed),
+    transportDurationMs:delta(transportEnd,transportStart),
+    persistenceMs:delta(completed,transportEnd),
     totalMs:delta(completed,created),
     // This is intentional scheduling, not an "unexplained delay".
     deferredMs:delta(dueStart,created),
     afterDueMs:delta(completed,dueStart),
     hasAttempt:attempt!==null,
-    hasCompletion:completed!==null
+    hasCompletion:completed!==null,
+    hasDetailedTiming:claimed!==null && rateReady!==null && interval!==null &&
+      transportStart!==null && transportEnd!==null
   };
 }
 export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
   const now=safeTime(nowIsoValue);
   const counters:Record<string,number>={};
-  const metrics:Record<string,number[]>={queueWaitMs:[],providerWaitMs:[],afterDueMs:[],totalMs:[]};
-  const providers:Record<string,{count:number,queueWaitMs:number[],providerWaitMs:number[]}>= {};
+  const fields=['queueWaitMs','providerWaitMs','afterDueMs','totalMs',
+    'backlogWaitMs','spacingWaitMs','workerLagMs','claimToTransportMs',
+    'transportDurationMs','persistenceMs'];
+  const metrics:Record<string,number[]>={};
+  for(const field of fields)metrics[field]=[];
+  const providers:Record<string,{count:number,queueWaitMs:number[],providerWaitMs:number[],transportDurationMs:number[]}>= {};
+  const byWakeReason:Record<string,number>={};
+  let detailedTimingCount=0;
   let dueStillQueued=0;
   let scheduledForFuture=0;
   let missingAttemptTimestamp=0;
@@ -59,29 +83,44 @@ export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
     // performance. Cancelled/expired are not HTTP requests.
     const sentAttempt=['accepted','unknown','failed'].includes(state)&&Number(j.attempt_count)>0;
     if(!sentAttempt)continue;
-    for(const field of Object.keys(metrics)){
+    if(sample.hasDetailedTiming)detailedTimingCount++;
+    if(job.worker_wake_reason){
+      const reason=['outbox_create','continue','watchdog','manual'].includes(job.worker_wake_reason)
+        ? job.worker_wake_reason : 'unattributed';
+      byWakeReason[reason]=(byWakeReason[reason]||0)+1;
+    }
+    for(const field of fields){
       const value=(sample as any)[field];
       if(value!==null)metrics[field].push(value);
     }
     const name=String(j.provider||j.requested_provider||'unattributed');
-    const group=providers[name]||(providers[name]={count:0,queueWaitMs:[],providerWaitMs:[]});
+    const group=providers[name]||(providers[name]={count:0,queueWaitMs:[],providerWaitMs:[],transportDurationMs:[]});
     group.count++;
     if(sample.queueWaitMs!==null)group.queueWaitMs.push(sample.queueWaitMs);
     if(sample.providerWaitMs!==null)group.providerWaitMs.push(sample.providerWaitMs);
+    if(sample.transportDurationMs!==null)group.transportDurationMs.push(sample.transportDurationMs);
   }
   const byProvider:Record<string,any>={};
   for(const [name,group] of Object.entries(providers)){
     byProvider[name]={count:group.count,queueWait:summarizeMillis(group.queueWaitMs),
-      providerProcessing:summarizeMillis(group.providerWaitMs)};
+      providerProcessing:summarizeMillis(group.providerWaitMs),
+      transportDuration:summarizeMillis(group.transportDurationMs)};
   }
   return {
     sampled:jobs.length,measuredAt:nowIsoValue,statuses:counters,
     dueStillQueued,scheduledForFuture,unknownCount,missingAttemptTimestamp,
+    detailedTimingCount,byWakeReason,
     timings:{
       queueWait:summarizeMillis(metrics.queueWaitMs),
       providerProcessing:summarizeMillis(metrics.providerWaitMs),
       afterDue:summarizeMillis(metrics.afterDueMs),
-      total:summarizeMillis(metrics.totalMs)
+      total:summarizeMillis(metrics.totalMs),
+      backlogWait:summarizeMillis(metrics.backlogWaitMs),
+      pacingWait:summarizeMillis(metrics.spacingWaitMs),
+      workerLag:summarizeMillis(metrics.workerLagMs),
+      claimToTransport:summarizeMillis(metrics.claimToTransportMs),
+      transportDuration:summarizeMillis(metrics.transportDurationMs),
+      persistence:summarizeMillis(metrics.persistenceMs)
     },
     byProvider,
     // Only a sample, not all historical records. Never claim delivery.
