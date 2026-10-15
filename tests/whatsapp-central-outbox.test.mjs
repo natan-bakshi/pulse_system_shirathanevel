@@ -143,6 +143,48 @@ test('provider is pinned when enqueued and is never silently changed when defaul
   assert.deepEqual(routes.map(x=>x.provider),['green','wasender']);
 });
 
+test('worker saves causal timing metadata and wake source without extra provider calls',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0,wasender_interval_ms:0});
+ await sendWhatsAppText('0501234567','diagnostic job',x.client);
+ let transports=0;
+ const r=await drainWhatsAppOutbox(x.client,{
+   wakeReason:'continue',
+   transport:async()=>{transports++;await new Promise(resolve=>setTimeout(resolve,3));return {messageId:'diagnostic-accepted'}}
+ });
+ assert.equal(r.accepted,1);
+ assert.equal(transports,1);
+ const j=x.jobs[0];
+ assert.equal(j.status,'accepted');
+ assert.equal(j.worker_wake_reason,'continue');
+ assert.ok(j.worker_run_id);
+ assert.equal(j.worker_run_id,x.control.last_worker_run_id);
+ assert.equal(x.control.last_worker_wake_reason,'continue');
+ assert.equal(x.control.last_batch_count,1);
+ assert.ok(x.control.last_batch_elapsed_ms>=0);
+ assert.ok(Date.parse(j.job_claimed_at)>=Date.parse(j.rate_ready_at));
+ assert.ok(Date.parse(j.transport_finished_at)>=Date.parse(j.transport_started_at));
+ assert.ok(Date.parse(j.completed_at)>=Date.parse(j.transport_finished_at));
+ assert.equal(j.configured_interval_ms,0);
+ assert.equal(j.prior_dispatch_at,'');
+ assert.equal(x.jobs.length,1);
+});
+test('provider timeout retains transport timing but stays UNKNOWN with zero automatic replay',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0});
+ await sendWhatsAppText('0501234567','uncertain transport',x.client);
+ let attempts=0;
+ const transport=async()=>{
+   attempts++;
+   throw Object.assign(new Error('Simulated timeout'),{errorCode:502,deliveryUncertain:true});
+ };
+ const r=await drainWhatsAppOutbox(x.client,{wakeReason:'watchdog',transport});
+ assert.equal(r.unknown,1);
+ assert.equal(x.jobs[0].status,'unknown');
+ assert.equal(x.jobs[0].worker_wake_reason,'watchdog');
+ assert.ok(Date.parse(x.jobs[0].transport_finished_at)>=Date.parse(x.jobs[0].transport_started_at));
+ await drainWhatsAppOutbox(x.client,{wakeReason:'watchdog',transport});
+ assert.equal(attempts,1,'Uncertain provider outcome must not be retried');
+});
+
 test('bounded batches wake the entity workflow with update after releasing the lease',async()=>{
  const x=fixture({selectedProvider:'green',green_interval_ms:0,max_messages_per_run:1});
  const controls=x.client.asServiceRole.entities.WhatsAppQueueControl;
