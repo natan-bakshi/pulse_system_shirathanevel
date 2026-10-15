@@ -219,7 +219,9 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       const startedAt=new Date().toISOString();
       // Split due→rate-limited eligibility from eligibility→worker claim.
       // Rate barrier is captured from BEFORE this message takes its slot.
-      const dueAt=Math.max(asEpoch(job.created_date),asEpoch(job.available_at));
+      // Base44 timestamps and worker clocks may differ by a few milliseconds.
+      // A job already selected as due must not be attributed a future due-time.
+      const dueAt=Math.min(Date.parse(startedAt),Math.max(asEpoch(job.created_date),asEpoch(job.available_at)));
       const prevDispatch=asEpoch(control.last_dispatched_at);
       const rateReadyAt=Math.max(dueAt,prevDispatch?prevDispatch+intervalMs:0);
       const jobClaim=await queueStage('job_claim',()=>db.WhatsAppOutbox.updateMany({id:job.id,status:job.status},{$set:{
