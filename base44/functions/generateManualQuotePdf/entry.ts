@@ -205,7 +205,7 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
                 <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || child.details?.service_name || 'שירות')}</strong>
                 ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
                 ${showClientNotes ? quoteServiceNotesHtml(child, settings.quoteBodyFontSize) : ''}
-                ${quoteServicePriceHtml(child, safeFloat(child.custom_price) * (child.quantity || 1), settings.quoteBodyFontSize, showPrices)}
+                ${quoteServicePriceHtml(child, safeFloat(child.custom_price) * (child.quantity || 1), settings.quoteBodyFontSize, false)}
                 ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
                 ${showTransportDetails ? renderTransportDetails(child, settings) : ''}
               </div>
@@ -245,14 +245,14 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
                   <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || child.details?.service_name || 'שירות')}</strong>
                   ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
                   ${showClientNotes ? quoteServiceNotesHtml(child, settings.quoteBodyFontSize) : ''}
-                ${quoteServicePriceHtml(child, safeFloat(child.custom_price) * (child.quantity || 1), settings.quoteBodyFontSize, showPrices)}
+                ${quoteServicePriceHtml(child, safeFloat(child.custom_price) * (child.quantity || 1), settings.quoteBodyFontSize, false)}
                   ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
                   ${showTransportDetails ? renderTransportDetails(child, settings) : ''}
                 </div>
               </div>
             `).join('')}
           </div>
-          ${quotePriceVisible(rep, showPrices) ? `
+          ${showPrices ? `
           <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #DAA520; display: flex; justify-content: space-between;">
             <div style="font-size: ${settings.quoteBodyFontSize}px; font-weight: 600; color: #444;">סה"כ לחבילה:</div>
             <div>

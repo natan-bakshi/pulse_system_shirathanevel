@@ -632,7 +632,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                                 <strong style="color: #333; font-size: ${quoteBodyFontSize}px;">${service.service_name || service.details?.service_name || 'שירות'}</strong>
                                 ${serviceDescription ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.95); margin-top: 2px;">${serviceDescription}</div>` : ''}
                                 ${quoteServiceNotesHtml(service, quoteBodyFontSize)}
-                                ${quoteServicePriceHtml(service, (service.custom_price || 0) * (service.quantity || 1), quoteBodyFontSize, !event.all_inclusive)}
+                                ${quoteServicePriceHtml(service, (service.custom_price || 0) * (service.quantity || 1), quoteBodyFontSize, false)}
                                 ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
