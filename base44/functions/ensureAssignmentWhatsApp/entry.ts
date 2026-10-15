@@ -76,10 +76,19 @@ Deno.serve(async(req)=>{
           idempotencyKey:assignmentWhatsAppKey(svc,supplierId,template.type),
           ...(delay.shouldDelay?{availableAt:delay.scheduledFor.toISOString()}:{})
         });
-        if(response.queued)result.queued++;
-        else if(response.status==='accepted'||response.legacyDirect)result.accepted++;
-        else if(response.deduplicated && response.status==='accepted')result.accepted++;
-        else result.skipped++;
+        // A duplicate key may refer to an old FAILED/UNKNOWN/EXPIRED job.
+        // It is NOT success and must never silently become "skipped":
+        // this is precisely how managers lose confidence that notifications
+        // were sent. We report the existing state but do not re-enqueue it.
+        if(response.queued===true && ['queued','retry_wait','sending'].includes(response.status)) {
+          result.queued++;
+        } else if(response.status==='accepted' || response.legacyDirect===true) {
+          result.accepted++;
+        } else if(response.deduplicated && ['unknown','failed','cancelled','expired','resolved'].includes(response.status)) {
+          result.errors.push('Supplier '+supplierId+': previous WhatsApp message is '+response.status+'; manual review required, not automatically resent');
+        } else {
+          result.errors.push('Supplier '+supplierId+': WhatsApp was not confirmed as queued or accepted');
+        }
         if(response.jobId)result.jobIds.push(response.jobId);
       }catch(error){
         const code=Number((error as any)?.errorCode)||0;
