@@ -37,7 +37,8 @@ function env(overrides={}){
       if(path.endsWith('whatsappSend.ts'))return {toChatId:phone=>'972'+String(phone).slice(1)+'@c.us',
         sendWhatsAppToChat:async(chatId,text,_client,ctx)=>{
           if(overrides.sendFailure)throw Error('Simulated backend refusal');
-          sent.push({chatId,text,ctx});return {queued:true,jobId:'outbox-'+sent.length};
+          sent.push({chatId,text,ctx});
+          return overrides.sendResponse||{queued:true,status:'queued',jobId:'outbox-'+sent.length};
         }};
       if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true})};
       if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false})};
@@ -84,6 +85,42 @@ test('existing confirmed supplier is never sent a new approval request',async()=
  const r=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[x.supplier.id]});
  assert.equal(r.data.skipped,1);assert.equal(x.sent.length,0);
 });
+test('a deduplicated FAILED outbox entry is surfaced to manager and never counted as success',async()=>{
+ const x=env({sendResponse:{success:true,queued:false,deduplicated:true,status:'failed',jobId:'old-job'}});
+ const r=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[x.supplier.id]});
+ assert.equal(r.status,207);
+ assert.equal(r.data.success,false);
+ assert.equal(r.data.queued,0);
+ assert.equal(r.data.accepted,0);
+ assert.equal(r.data.skipped,0);
+ assert.equal(r.data.jobIds[0],'old-job');
+ assert.match(r.data.errors[0],/failed.*manual review required/);
+});
+
+test('a deduplicated UNKNOWN message is not silently marked as delivered or retried',async()=>{
+ const x=env({sendResponse:{success:true,queued:false,deduplicated:true,status:'unknown',jobId:'uncertain-job'}});
+ const r=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[x.supplier.id]});
+ assert.equal(r.data.success,false);
+ assert.equal(r.status,207);
+ assert.equal(r.data.accepted,0);
+ assert.match(r.data.errors[0],/unknown.*manual review required/);
+});
+
+test('a deduplicated ACCEPTED message is recognized without a new outbox entry',async()=>{
+ const x=env({sendResponse:{success:true,queued:false,deduplicated:true,status:'accepted',jobId:'done-job'}});
+ const r=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[x.supplier.id]});
+ assert.equal(r.status,200);
+ assert.equal(r.data.success,true);
+ assert.equal(r.data.accepted,1);
+});
+
+test('an unrecognized provider response is an error, not successful skipped',async()=>{
+ const x=env({sendResponse:{success:true,queued:false,status:'pending'}});
+ const r=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[x.supplier.id]});
+ assert.equal(r.data.success,false);
+ assert.match(r.data.errors[0],/not confirmed as queued or accepted/);
+});
+
 test('failed producer cannot claim success; manager receives error summary',async()=>{
  const x=env({sendFailure:true});
  const r=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[x.supplier.id]});
