@@ -20,6 +20,32 @@ export function assignmentReplyDeadline(event:any,eventService:any):Date|null {
   const [h,m]=first;
   return fromJerusalemWallClock(year,month,day,h,m);
 }
+
+// A supplier can appear both as newly added AND as status-changing to pending
+// in one EventService update. These are one business intent, one reminder.
+export function pendingApprovalReminderSupplierIds(
+  assignedIds:any,addedIds:any,statusChanges:any,currentStatuses:any
+):string[] {
+  const decodeIds=(raw:any):string[]=>{
+    if(Array.isArray(raw))return raw.map(String);
+    try{const value=JSON.parse(String(raw||'[]'));return Array.isArray(value)?value.map(String):[];}
+    catch{return [];}
+  };
+  const decodeStatuses=(raw:any):Record<string,string>=>{
+    if(raw&&typeof raw==='object'&&!Array.isArray(raw))return raw;
+    try{const value=JSON.parse(String(raw||'{}'));return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}
+    catch{return {};}
+  };
+  const assigned=new Set(decodeIds(assignedIds));
+  const statuses=decodeStatuses(currentStatuses);
+  const added=decodeIds(addedIds);
+  const restored=(Array.isArray(statusChanges)?statusChanges:[])
+    .filter(x=>x?.status==='pending'&&x?.id)
+    .map(x=>String(x.id));
+  return [...new Set([...added,...restored])]
+    .filter(id=>assigned.has(id) && (statuses[id]===undefined||statuses[id]==='pending'));
+}
+
 export function shouldScheduleAssignmentReplyReminder(event:any,service:any,scheduledAt:Date):boolean {
   const deadline=assignmentReplyDeadline(event,service);
   return !!deadline && Number.isFinite(scheduledAt?.getTime()) && scheduledAt.getTime()<deadline.getTime();
