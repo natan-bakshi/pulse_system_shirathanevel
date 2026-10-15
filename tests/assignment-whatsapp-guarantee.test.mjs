@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
-import {assignmentWhatsAppKey,renderAssignmentWhatsApp,cleanMissingAssignmentTime,supplierTargetChatId,addedSupplierIds} from '../base44/shared/assignmentWhatsApp.ts';
+import {assignmentWhatsAppKey,assignmentWhatsAppContext,renderAssignmentWhatsApp,cleanMissingAssignmentTime,supplierTargetChatId,addedSupplierIds} from '../base44/shared/assignmentWhatsApp.ts';
 
 const tpl="שלום {{supplier_name}}, שובצת לשירות '{{service_name}}' באירוע של משפחת {{family_name}} בתאריך {{event_date}} בשעה {{event_time}}.\n📍 מיקום: {{event_location}}\n\n{{supplier_note}}\n\nנא אשר את השתתפותך במערכת Pulse.\n\nhttps://pulse-system.base44.app/SupplierCalendarDashboard";
 function env(overrides={}){
@@ -43,7 +43,7 @@ function env(overrides={}){
       if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true})};
       if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false})};
       if(path.endsWith('assignmentWhatsApp.ts'))return {
-        assignmentWhatsAppKey,renderAssignmentWhatsApp,supplierTargetChatId
+        assignmentWhatsAppKey,assignmentWhatsAppContext,renderAssignmentWhatsApp,supplierTargetChatId
       };
       throw Error('Unexpected import '+path);
     }
@@ -69,6 +69,17 @@ test('assignment message without a known time omits dangling בשעה . without 
  assert.match(actual,/נא אשר/);
  assert.equal(cleanMissingAssignmentTime('הגעה בשעה .',false),'הגעה.');
  assert.equal(cleanMissingAssignmentTime('הגעה בשעה 09:40.',true),'הגעה בשעה 09:40.');
+});
+test('both producers compute the same business key and a single quiet-hour Outbox due date',()=>{
+ const x=env();
+ const deadline=new Date('2026-11-16T05:00:00.000Z');
+ const regular=assignmentWhatsAppContext(x.svc,x.supplier.id,'SUPPLIER_NEW_ASSIGNMENT');
+ const delayed=assignmentWhatsAppContext(x.svc,x.supplier.id,'SUPPLIER_NEW_ASSIGNMENT',
+   {shouldDelay:true,scheduledFor:deadline});
+ assert.equal(delayed.idempotencyKey,regular.idempotencyKey);
+ assert.equal(delayed.availableAt,deadline.toISOString());
+ assert.equal(regular.availableAt,undefined);
+ assert.equal(delayed.sourceType,'assignment_new');
 });
 test('newly added suppliers are identified while existing unchanged IDs are skipped',()=>{
  assert.deepEqual(addedSupplierIds('[\"a\"]','[\"a\",\"b\",\"c\"]'),['b','c']);
