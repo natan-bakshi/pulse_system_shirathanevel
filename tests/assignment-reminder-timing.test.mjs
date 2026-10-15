@@ -1,6 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assignmentReplyDeadline,shouldScheduleAssignmentReplyReminder} from '../base44/shared/assignmentReminderTiming.ts';
+import {assignmentReplyDeadline,shouldScheduleAssignmentReplyReminder,pendingApprovalReminderSupplierIds} from '../base44/shared/assignmentReminderTiming.ts';
+
+test('a newly added supplier with pending status is considered only once',()=>{
+ const candidates=pendingApprovalReminderSupplierIds(
+   JSON.stringify(['supplier-one','supplier-two']),
+   ['supplier-one','supplier-two','supplier-one'],
+   [{id:'supplier-one',old_status:'confirmed',status:'pending'},
+    {id:'supplier-two',old_status:'pending',status:'confirmed'}],
+   JSON.stringify({'supplier-one':'pending','supplier-two':'confirmed'})
+ );
+ assert.deepEqual(candidates,['supplier-one']);
+});
+test('removed suppliers and malformed status maps never receive pending reminders',()=>{
+ assert.deepEqual(pendingApprovalReminderSupplierIds(
+   '["active"]',['removed','active'],
+   [{id:'removed',status:'pending'},{id:'active',status:'pending'}],
+   '{"active":"pending"}'
+ ),['active']);
+ assert.deepEqual(pendingApprovalReminderSupplierIds('{bad', ['active'],[], '{}'),[]);
+ assert.deepEqual(pendingApprovalReminderSupplierIds(['active'],[],[{id:'active',status:'pending'}],{}),['active']);
+});
 
 test('do not schedule 24-hour approval reminder after event beginning',()=>{
   const event={event_date:'2026-10-15',event_time:'10:00'};
