@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
+import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
 const MAX_PAGE = 60;
@@ -233,6 +234,12 @@ Deno.serve(async(req)=>{
       return RESPONSE(await queueStatus(client));
     }
     if(action==='status')return RESPONSE(await queueStatus(client));
+    if(action==='metrics'){
+      // Explicit read-only request; no provider calls and no message contents.
+      // Avoid querying another 200 records every time settings are opened.
+      const rows=await client.asServiceRole.entities.WhatsAppOutbox.list('-created_date',200);
+      return RESPONSE({success:true,metrics:summarizeWhatsAppOutbox(rows,nowIso())});
+    }
     if(action==='diagnose')return RESPONSE(await diagnoseQueue(client));
     if(action==='list')return await listJobs(client,body);
     if(action==='get'){
