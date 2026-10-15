@@ -29,9 +29,12 @@
 - [x] **WA-P00** נקודת שחזור לתחילת ההפרדה: `6ad0e7210802938b27437a28`, commit `6e5f43d9bd014a26802286071dbd2d741e25cac3`.
 - [x] **WA-P01** מקור אמת טכנולוגי נפרד ל־WhatsApp נוצר במסמך זה, שומר היסטוריית C הקודמת בפרק 9 ומצוין ממסמך Pulse הכללי.
 - [x] **WA-P02a | CODE+TEST 15.10** נבנה מודול read-only `base44/shared/whatsappQueueMetrics.ts` לחישוב זמני המתנה **מרגע זמינות ההודעה** (לא כולל שעות שקט), זמן מניסיון עד רישום תוצאה, וזמן כולל. p50/p95 מחושבים רק מחותמות זמן אמיתיות; חסרים נספרים ולא מומצאים. נוסף endpoint מוגן `WhatsAppQueueAdmin(action=metrics)` וטבלת מדדים בהגדרות; הבדיקה מופעלת בלחיצת מנהל בלבד ומחזירה לכל היותר 200 רשומות, ללא תוכן או מספרים. בדיקות קצה/הרשאות ב־`tests/whatsapp-queue-metrics.test.mjs` עברו.
-- [ ] **WA-P02b | CODE** לפצל את הזמן הכללי גם ל־`wake_requested→worker_start`, `rate_wait` ו־`HTTP_start→provider_response` באמצעות חותמות זמן נפרדות, `runId` וניקוי נתונים. המדד הנוכחי “זמן טיפול לאחר תחילת ניסיון” עדיין כולל עבודה פנימית לאחר HTTP, ואינו מדידת רשת מדויקת של ספק.
+- [x] **WA-P02b.1 | CODE+TEST 15.10** נבנתה טלמטריה מפורקת לכל ניסיון: `job_claimed_at`, `rate_ready_at`, `prior_dispatch_at`, `configured_interval_ms`, `transport_started_at`, `transport_finished_at`, `worker_run_id`, `worker_wake_reason`. פירוק: המתנה להודעות קודמות, ויסות קצב, איחור Worker אחרי מועד זכאות, תקורה מ־claim עד התחלת פונקציית transport, משך transport ושמירת תוצאה במסד. שדות חדשים מתווספים לאותם עדכוני DB קיימים **ללא עדכוני DB נוספים לכל הודעה**. נבדקו UTC, שעות שקט, דיוק בחותמות זמן ומידע ישן שאינו מכיל שדות חדשים.
+- [ ] **WA-P02b.2 | CODE** להפריד זמן HTTP עצמו מזמן הכנת קובץ/יצירת URL חתום בתוך `sendWhatsAppTransport`. כיום `transport_started_at→transport_finished_at` כולל גם הכנת קבצים, ולכן אינו זמן HTTP טהור. למדוד רק לאחר בדיקת שתי אינטגרציות ובחירת צורת hook שאינה משפיעה על שליחות.
+- [ ] **WA-P02b.3 | PROD** למדוד קריאה חיה של CREATE→worker, UPDATE→worker, watchdog→worker לאחר פרסום; הקוד מתעד מקור אבל **אין עדיין הוכחת זמני trigger בפרודקשן**.
 - [ ] **WA-P02c | PROD** לאמת את כפתור המדדים בפרודקשן אחרי פרסום ואת המגבלות של המדגם; לבדוק השוואה בשני ספקים, כשקיימות מספיק הודעות מכל אחד.
-- [ ] **WA-P03** להוסיף `worker_run_id`, `wake_reason`, `leased_at`, `batch_count` וכשל שלב מדויק לנתוני control/worker מבלי לרשום מספר טלפון, תוכן הודעה או מפתח.
+- [x] **WA-P03.1 | CODE+TEST** נוסף `worker_run_id`, סיבת wake מתוך שלוש אוטומציות CREATE/UPDATE/Watchdog או פעולה ידנית, וכן `last_worker_finished_at`, `last_batch_count`, `last_batch_elapsed_ms` ל־QueueControl. ה־API דורש role=admin, ורק ערכי reason ברשימה מותרת נרשמים; לא נשמרים טלפונים או תוכן בהיסטוריית המדדים. הנתונים נכתבים בפעולות CAS קיימות, לא בהפעלת idle cron.
+- [ ] **WA-P03.2 | CODE** סיווג `errorPhase` מפורט גם כאשר wrapper backend נפסק לפני claim, ו־run history להבדיל בין התעוררות שלא נקלטה לבין Worker ללא הודעות. אין להוסיף כתיבות רק בגלל idle watchdog.
 - [ ] **WA-P04** למדוד בנפרד p50/p95/p99 של wake כשהתור פנוי, לאורך 10/20/100 הודעות, Green API מול WasenderAPI.
 
 ### WP1 — רציפות עובדי התור ללא דיליי שרירותי
@@ -66,6 +69,7 @@
 - [ ] **WA-P27** לשמור rollback ממוקד של שכבת התור בלי למחוק DB, בתנאי שה־`sending/unknown` נבדקו ואין סיכון להודעות כפולות.
 - [ ] **WA-P28** Go/No-Go לאחר SLA מוכח, כיסוי כל המסלולים, ושני ימי תפעול ללא הודעות שאבדו/נשלחו פעמיים.
 - [x] **WA-P29 | CODE+TEST 15.10** הוסר בירור ספק מיותר בתהליך enqueue כאשר מתקבלת בקשה כפולה עם אותו `idempotency_key`. `resolveWhatsAppProvider()` מופעל עכשיו **רק אם נוצרת רשומת Outbox חדשה**, תחת נעילת ה־dedupe; מפתח קיים מחזיר רשומה קיימת בלי קריאת הגדרות נוספת. כוסה בבדיקה ב־`tests/whatsapp-central-outbox.test.mjs`. אינו משנה נתונים, קצב, או ספק שמקובע ברשומה.
+- [x] **WA-P30 | CODE+TEST 15.10 21:56** צומצם מסלול enqueue עם מפתח idempotency ל־**שתי** קריאות של QueueControl.filter במקום שלוש וללא קריאת `get` עודפת לאימות CAS שכבר החזיר `updated=1`. ה־Backend מעביר לספרייה את Control שנקרא, ונעילת CAS קוראת גרסה עדכנית ומוודאת ש־enabled לא בוטל בינתיים. בדיקות: מניעת כפל במקביל, החלפת ספק, כיבוי בעת יצירה והעדר שליחה בלתי־מורשית. אינו מפעיל אף HTTP ספק בעצמו.
 
 ## 4. נתיבים ואחריות
 - **WhatsApp infrastructure:** `base44/shared/whatsappOutbox.ts`, `whatsappQueueWorker.ts`, `whatsappSend.ts`, `whatsappProviderConfig.ts`, `base44/functions/processWhatsAppOutbox/entry.ts`, `WhatsAppQueueAdmin/entry.ts`, שלושת workflows, מסכי `WhatsAppQueueSettings` ו־`WhatsAppQueueMessages`. שינוי ביצועים באחד מאלה מתועד **כאן בלבד**.
@@ -120,6 +124,14 @@
 - **סטטוס פרסום:** לא אומת שהקוד החדש פורסם בפרודקשן; נדרשת בדיקת משתמש/פיילוט מבוקר. לא שונו שיבוצים, לא עודכנו הודעות קיימות ולא נשלח שום מסר בבדיקות.
 - **Checkpoint אחרי שינויי הקוד והמדדים:** `6ad0ecd534451b2c13104dc7`, commit `3642bb99a16247cec0546082b173fe9266bc682f`. הוא אינו מהווה פרסום לגרסת Live.
 - **משימה הבאה:** WA-P02b / WA-P03 (חותמות זמן מפורטות) בתכנון מבוקר, אחריה WA-P06/07 לאימות wake אמיתי לאחר פרסום; אם מתברר שמדד `p95` נותר דקות, לנתח התעוררות Worker לפני העלאת קצב או תדירות Cron.
+
+### 15.10.2026, 21:56 — מדידה מפורקת לפי מקור התעוררות וייעול נעילת תור
+- **בסיס:** app `687d1de6659eff83e9c034f7`, repo `pulse_system_shirathanevel`; checkpoint לפני עריכה `6ad1226967b086b876d05b26` (commit `bcfa78f7...`). התור החי בזמן הבדיקה: enabled, unpaused, 23 הודעות היסטוריות, מהן 21 `accepted` ושתי `unknown`. **לא נעשה replay לשתי unknown**.
+- **בוצע קוד:** שדות מדידה ב־`WhatsAppOutbox` וב־`WhatsAppQueueControl`; שמירת טיימסטמפים ורווחי קצב בעדכוני Worker הקיימים; סיבת התעוררות בתצורת שלושת Workflows; קריאת reason ב־`processWhatsAppOutbox`, reason ידני ב־`WhatsAppQueueAdmin`; חישובי מדדים חדשים ב־`whatsappQueueMetrics`, וממשק פירוט טכני מתקפל ב־`WhatsAppQueueSettings`.
+- **ייעול WA-P30:** הוסר read מיותר מ־enqueue וכן אימות CAS redundant באמצעות `get`; נשארה נעילה אטומית וקריאת enabled עדכנית תחת הנעילה. אופטימיזציה זו מקצרת טיפול בהודעות שיבוץ מרובות **ברמת מספר קריאות מסד**, לא מובטחת עדיין האצה במספר שניות בפרודקשן.
+- **בדיקות:** 50/50 בדיקות WhatsApp/queue ממוקדות עברו; **196/197** בדיקות רוחב עברו, כשל RLS ישן בתחום EventAgreement (אינו שייך לשדרוג). `npm run build` ו־ESLint למסך התור עברו. לא שונו תוכן הודעות או מפתחות, לא נוצרו רשומות Outbox אמיתיות ולא השתנה ספק הפעולה.
+- **מה לא אומת:** רציפות הפעלת Worker בפרודקשן, ביצועים אחרי פרסום, HTTP טהור ומסירה לנמען; לא לפרש metrics כראיית משלוח.
+- **המשימה הטכנולוגית הבאה:** WA-P02b.2/WA-P03.2 לפי עדיפות, אחריה WA-P06/07 בפיילוט לאחר פרסום ונמען מאושר. לשמור checkpoint אחרי QA.
 
 ### תבנית לסשן הבא
 `מועד | App ID + HEAD + checkpoint | WA-P IDs | קבצים ששונו | בדיקות מדויקות | נתוני אמת לפני/אחרי | פרסום/לא פורסם | סיכון | ID הבא`
