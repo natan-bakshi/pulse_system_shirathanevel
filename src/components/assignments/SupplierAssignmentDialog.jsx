@@ -1,4 +1,3 @@
-import { refreshEventStatus } from '@/lib/eventStatus';
 import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
