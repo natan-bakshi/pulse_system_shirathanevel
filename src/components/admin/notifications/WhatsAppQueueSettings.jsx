@@ -97,6 +97,9 @@ export default function WhatsAppQueueSettings(){
         <span>מרווח פעיל: <strong>{view.currentIntervalMs}ms</strong></span>
         <span>{view.nextAllowedInMs>0?'מרווח נותר '+(view.nextAllowedInMs/1000).toFixed(2)+' שניות':'מוכן לשליחה ללא המתנה'}</span>
         {view.lastWorkerAt&&<span>עובד נבדק: {new Date(view.lastWorkerAt).toLocaleString('he-IL')}</span>}
+        {view.lastWorkerWakeReason&&<span>מקור התעוררות: <strong>{({outbox_create:'הודעה חדשה',continue:'המשך אצווה',watchdog:'בדיקת התאוששות',manual:'הפעלה ידנית',unattributed:'לא זוהה'})[view.lastWorkerWakeReason]||'לא זוהה'}</strong></span>}
+        {view.lastBatchCount!=null&&<span>ניסיונות בריצה האחרונה: <strong>{view.lastBatchCount}</strong></span>}
+        {view.lastBatchElapsedMs!=null&&<span>משך ריצה אחרונה: <strong>{(view.lastBatchElapsedMs/1000).toFixed(1)} שניות</strong></span>}
         {view.lastError&&<span className="text-red-700">תקלה: {view.lastError}</span>}
       </div>}
       <div className="flex flex-wrap gap-6">
@@ -128,7 +131,7 @@ export default function WhatsAppQueueSettings(){
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
       {metrics&&<section aria-label="מדדי ביצועי WhatsApp" className="rounded-lg border p-3 space-y-2 text-sm">
         <strong>מדדי ביצועי התור — {metrics.sampled} רשומות אחרונות, לא כלל ההיסטוריה</strong>
-        <p className="text-xs text-gray-500">נמדד מתוך חותמות זמן הקיימות ב־Outbox. המתנה מכוונת לשעות שקט אינה נחשבת לעיכוב תור. אישור API אינו אישור מסירה.</p>
+        <p className="text-xs text-gray-500">נמדד מתוך חותמות זמן הקיימות ב־Outbox. המתנה מכוונת לשעות שקט אינה נחשבת לעיכוב תור. אישור API אינו אישור מסירה. מדידה מפורטת זמינה רק להודעות שנוצרו לאחר שדרוג מערכת המדדים.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {[
             ['המתנה בתור לאחר מועד היעד',metrics.timings?.queueWait],
@@ -141,15 +144,36 @@ export default function WhatsAppQueueSettings(){
             <div className="text-xs text-gray-500">מדגם תקין: {sample?.count||0}</div>
           </div>)}
         </div>
+        <details className="rounded border p-2">
+          <summary className="cursor-pointer font-medium">פירוט הסיבות לעיכוב — {metrics.detailedTimingCount||0} הודעות עם נתוני מדידה חדשים</summary>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-3">
+            {[
+              ['המתנה להודעות קודמות',metrics.timings?.backlogWait],
+              ['ויסות קצב הספק',metrics.timings?.pacingWait],
+              ['זמן עד שהעובד הגיע להודעה',metrics.timings?.workerLag],
+              ['עבודה בשרת לפני ניסיון השליחה',metrics.timings?.claimToTransport],
+              ['זמן פעולת השליחה (כולל הכנת קובץ)',metrics.timings?.transportDuration],
+              ['שמירת תוצאת השליחה במסד',metrics.timings?.persistence]
+            ].map(([label,item])=><div key={label} className="rounded border p-2">
+              <div className="font-medium">{label}</div>
+              <div>חציון: {item?.p50Ms==null?'טרם נמדד':(item.p50Ms/1000).toFixed(2)+' שניות'}</div>
+              <div>95%: {item?.p95Ms==null?'טרם נמדד':(item.p95Ms/1000).toFixed(2)+' שניות'}</div>
+              <div className="text-xs text-gray-500">רשומות: {item?.count||0}</div>
+            </div>)}
+          </div>
+          <p className="pt-2 text-xs text-gray-500">תחילת ניסיון ועד תוצאה כוללת גם כתיבת תוצאות. פעולת השליחה כוללת גם הכנת קישור חתום למסמך, ולכן אינה זמן רשת HTTP טהור.</p>
+          <p className="text-xs text-gray-500">מקורות התעוררות: {Object.entries(metrics.byWakeReason||{}).map(([reason,count])=>reason+': '+count).join(' · ')||'טרם נאסף מידע'}</p>
+        </details>
         <p>ממתינות לאחר מועד היעד: <strong>{metrics.dueStillQueued}</strong> · עתידיות: <strong>{metrics.scheduledForFuture}</strong> · תוצאה לא ידועה: <strong>{metrics.unknownCount}</strong></p>
         {!!metrics.missingAttemptTimestamp&&<p className="text-amber-700">ב־{metrics.missingAttemptTimestamp} רשומות חסרה חותמת תחילת ניסיון — מדדי זמני התור לגביהן אינם זמינים.</p>}
         <table className="w-full text-right text-xs">
-          <thead><tr><th>ספק</th><th>ניסיונות במדגם</th><th>חציון המתנה בתור</th><th>חציון טיפול ספק</th></tr></thead>
+          <thead><tr><th>ספק</th><th>ניסיונות במדגם</th><th>חציון המתנה בתור</th><th>חציון ריצה עד רישום תוצאה</th><th>פעולת שליחה בלבד</th></tr></thead>
           <tbody>{Object.entries(metrics.byProvider||{}).map(([provider,item])=><tr key={provider} className="border-t">
             <td>{provider==='wasender'?'WasenderAPI':provider==='green'?'Green API':provider}</td>
             <td>{item.count}</td>
             <td>{item.queueWait?.p50Ms==null?'חסר':(item.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</td>
             <td>{item.providerProcessing?.p50Ms==null?'חסר':(item.providerProcessing.p50Ms/1000).toFixed(1)+' שניות'}</td>
+            <td>{item.transportDuration?.p50Ms==null?'טרם נמדד':(item.transportDuration.p50Ms/1000).toFixed(2)+' שניות'}</td>
           </tr>)}</tbody>
         </table>
       </section>}
