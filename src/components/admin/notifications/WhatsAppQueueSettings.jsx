@@ -33,6 +33,7 @@ export default function WhatsAppQueueSettings(){
   const [form,setForm]=useState(defaults),[view,setView]=useState(null);
   const [units,setUnits]=useState({wasender:'seconds',green:'seconds'});
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [metrics,setMetrics]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
   const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
   const read=async()=>{
@@ -53,6 +54,12 @@ export default function WhatsAppQueueSettings(){
     setBusy(true);setError('');setNotice('');
     try{
       const res=await base44.functions.invoke('WhatsAppQueueAdmin',{action,...params});
+      if(action==='metrics'){
+        if(!res.data?.success)throw Error(res.data?.error||'חישוב מדדי התור נכשל');
+        setMetrics(res.data.metrics);
+        setNotice('מדידה היסטורית עודכנה ללא שליחת WhatsApp. זהו מדגם בלבד.');
+        return;
+      }
       if(action==='diagnose'){
         const data=res.data||{};
         const checks=(data.checks||[]).map(x=>x.step+': '+(x.ok?'תקין':'שגיאה ('+(x.kind||'unknown')+')')).join(' | ');
@@ -111,6 +118,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" disabled={busy||!view} onClick={()=>run('configure',form)}><Save className="h-4 w-4 ml-2"/>שמור הגדרות</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}><RefreshCw className="h-4 w-4 ml-2"/>רענן</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>אבחון ללא שליחה</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
@@ -118,6 +126,33 @@ export default function WhatsAppQueueSettings(){
       </div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+      {metrics&&<section aria-label="מדדי ביצועי WhatsApp" className="rounded-lg border p-3 space-y-2 text-sm">
+        <strong>מדדי ביצועי התור — {metrics.sampled} רשומות אחרונות, לא כלל ההיסטוריה</strong>
+        <p className="text-xs text-gray-500">נמדד מתוך חותמות זמן הקיימות ב־Outbox. המתנה מכוונת לשעות שקט אינה נחשבת לעיכוב תור. אישור API אינו אישור מסירה.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {[
+            ['המתנה בתור לאחר מועד היעד',metrics.timings?.queueWait],
+            ['זמן טיפול לאחר תחילת ניסיון',metrics.timings?.providerProcessing],
+            ['סה״כ מרגע שההודעה הייתה מוכנה',metrics.timings?.afterDue]
+          ].map(([label,sample])=><div key={label} className="rounded border p-2">
+            <div className="font-medium">{label}</div>
+            <div>חציון: {sample?.p50Ms==null?'אין נתון':(sample.p50Ms/1000).toFixed(1)+' שניות'}</div>
+            <div>95%: {sample?.p95Ms==null?'אין נתון':(sample.p95Ms/1000).toFixed(1)+' שניות'}</div>
+            <div className="text-xs text-gray-500">מדגם תקין: {sample?.count||0}</div>
+          </div>)}
+        </div>
+        <p>ממתינות לאחר מועד היעד: <strong>{metrics.dueStillQueued}</strong> · עתידיות: <strong>{metrics.scheduledForFuture}</strong> · תוצאה לא ידועה: <strong>{metrics.unknownCount}</strong></p>
+        {!!metrics.missingAttemptTimestamp&&<p className="text-amber-700">ב־{metrics.missingAttemptTimestamp} רשומות חסרה חותמת תחילת ניסיון — מדדי זמני התור לגביהן אינם זמינים.</p>}
+        <table className="w-full text-right text-xs">
+          <thead><tr><th>ספק</th><th>ניסיונות במדגם</th><th>חציון המתנה בתור</th><th>חציון טיפול ספק</th></tr></thead>
+          <tbody>{Object.entries(metrics.byProvider||{}).map(([provider,item])=><tr key={provider} className="border-t">
+            <td>{provider==='wasender'?'WasenderAPI':provider==='green'?'Green API':provider}</td>
+            <td>{item.count}</td>
+            <td>{item.queueWait?.p50Ms==null?'חסר':(item.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</td>
+            <td>{item.providerProcessing?.p50Ms==null?'חסר':(item.providerProcessing.p50Ms/1000).toFixed(1)+' שניות'}</td>
+          </tr>)}</tbody>
+        </table>
+      </section>}
       <div className="border-t pt-4"><WhatsAppQueueMessages refreshSignal={refreshSignal}/></div>
       <p className="text-xs text-gray-500">הודעה שהתקבלה אצל ספק WhatsApp אינה בהכרח הודעה שנמסרה לנמען. במצב לא ידוע יש לאמת אצל הספק לפני שליחה מחדש.</p>
       {(totals.unknown||0)>0&&<p className="text-sm text-amber-700 flex gap-2">
