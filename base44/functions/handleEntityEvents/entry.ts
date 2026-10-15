@@ -857,7 +857,10 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
         const svcId = serviceObj.service_id || serviceObj.serviceid;
         if (svcId) {
             try {
-                const svc = await base44.asServiceRole.entities.Service.get(svcId);
+                const key='serviceCatalog:'+svcId;
+                const svc=batchCache
+                  ? await (batchCache[key]||(batchCache[key]=base44.asServiceRole.entities.Service.get(svcId)))
+                  : await base44.asServiceRole.entities.Service.get(svcId);
                 if (svc) resolvedServiceName = svc.service_name || '';
             } catch (e) {
                 console.warn(`[triggerWhatsApp] Failed to fetch Service ${svcId}`);
