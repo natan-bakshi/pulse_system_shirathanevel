@@ -155,8 +155,11 @@ export async function processAgreementMilestones(client,config) {
        await client.entities.PaymentMilestone.update(m.id,{message_state:delivery.state,...(delivery.state==="skipped_paid"?{state:"paid"}:{})});continue;
       }
       await client.entities.PaymentMilestone.update(m.id,{message_state:delivery.state,message_id:delivery.id});
-      await audit(client,current,"reminder_accepted","system",{milestone_id:m.id,delivery_id:delivery.id});
-      if(current.notifications?.notify_admin)await notifyAgreementAdmin(client,current,"תזכורת תשלום נשלחה",m.label+" — ההודעה התקבלה אצל ספק הוואטסאפ.");
+      await audit(client,current,delivery.state==="accepted"?"reminder_accepted":"reminder_queued","system",
+       {milestone_id:m.id,delivery_id:delivery.id});
+      if(current.notifications?.notify_admin)await notifyAgreementAdmin(client,current,
+       delivery.state==="accepted"?"תזכורת תשלום התקבלה אצל הספק":"תזכורת תשלום נשמרה בתור",
+       m.label+(delivery.state==="accepted"?" — הספק קיבל את ההודעה.":" — ממתינה לאישור ספק WhatsApp."));
       sent++;
      }catch{await client.entities.PaymentMilestone.update(m.id,{message_state:"unknown"});}
     }
