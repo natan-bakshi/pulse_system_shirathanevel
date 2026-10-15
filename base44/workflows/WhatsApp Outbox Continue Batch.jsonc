@@ -24,7 +24,9 @@
           "call": "invoke_backend_function",
           "with": {
             "function_name": "processWhatsAppOutbox",
-            "args": {}
+            "args": {
+              "wakeReason": "continue"
+            }
           },
           "then": "end"
         }
