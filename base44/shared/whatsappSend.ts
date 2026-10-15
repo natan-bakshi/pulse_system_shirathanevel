@@ -49,7 +49,7 @@ function requireBackend(client) {
 // calls a provider, and all messages enter the durable global queue.
 async function routeWhatsApp(client, entry) {
   const control=await readWhatsAppQueueControl(client);
-  if(control.enabled) return enqueueWhatsApp(client, entry);
+  if(control.enabled) return enqueueWhatsApp(client, entry, control);
   if(control.paused) throw new Error('WhatsApp is paused by the administrator');
   const provider=await resolveWhatsAppProvider(client);
   const receipt=await sendWhatsAppTransport({
