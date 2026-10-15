@@ -154,6 +154,10 @@ export async function processAgreementMilestones(client,config) {
       if(delivery.state==="skipped_paid"||delivery.state==="skipped_inactive"){
        await client.entities.PaymentMilestone.update(m.id,{message_state:delivery.state,...(delivery.state==="skipped_paid"?{state:"paid"}:{})});continue;
       }
+      if(!["queued","accepted"].includes(delivery.state)){
+       await client.entities.PaymentMilestone.update(m.id,{message_state:"unknown",message_id:delivery.id});
+       continue; // Prior failed/unknown row is not evidence of a new delivery.
+      }
       await client.entities.PaymentMilestone.update(m.id,{message_state:delivery.state,message_id:delivery.id});
       await audit(client,current,delivery.state==="accepted"?"reminder_accepted":"reminder_queued","system",
        {milestone_id:m.id,delivery_id:delivery.id});
