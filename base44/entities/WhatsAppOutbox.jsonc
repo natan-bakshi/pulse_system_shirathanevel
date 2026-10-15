@@ -84,6 +84,12 @@
     "rate_ready_at": {
       "type": "string"
     },
+    "prior_dispatch_at": {
+      "type": "string"
+    },
+    "configured_interval_ms": {
+      "type": "number"
+    },
     "transport_started_at": {
       "type": "string"
     },
