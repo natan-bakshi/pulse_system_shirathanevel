@@ -78,6 +78,11 @@ async function queueStatus(client:any){
     nextQueued:(totals.queued||0)+(totals.retry_wait||0),
     lastWorkerAt:control.last_worker_at||null,lastInvokedAt:control.last_invoked_at||null,
     lastInvocationResult:control.last_invocation_result||'',lastDispatchedAt:control.last_dispatched_at||null,
+    lastWorkerWakeReason:control.last_worker_wake_reason||null,
+    lastWorkerRunId:control.last_worker_run_id||null,
+    lastWorkerFinishedAt:control.last_worker_finished_at||null,
+    lastBatchCount:Number.isFinite(control.last_batch_count)?control.last_batch_count:null,
+    lastBatchElapsedMs:Number.isFinite(control.last_batch_elapsed_ms)?control.last_batch_elapsed_ms:null,
     lastError:control.last_error||'',activeProvider:provider,
     currentIntervalMs:ms,
     latest:jobs.filter((x:any)=>x.archived!==true).slice(0,20).map((x:any)=>renderJob(x))
@@ -252,7 +257,7 @@ Deno.serve(async(req)=>{
       // Explicit system-owner action. A failure can occur after one or more
       // provider calls, so never claim that nothing was sent.
       try {
-        const dispatch=await drainWhatsAppOutbox(client);
+        const dispatch=await drainWhatsAppOutbox(client,{wakeReason:'manual'});
         return RESPONSE({success:true,dispatch});
       }catch(error){
         const phase=clean((error as any)?.queuePhase||'unclassified',64);
