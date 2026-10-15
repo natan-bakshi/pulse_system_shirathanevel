@@ -6,7 +6,7 @@ const lockPause = (ms: number) => new Promise(resolve=>setTimeout(resolve,ms));
 
 // A separate short lease for duplicate-key creation. This does not block the
 // transport worker: sending and enqueueing use different control fields.
-async function withEnqueueLock(client:any,run:()=>Promise<any>) {
+async function withEnqueueLock(client:any,run:(lockedControl:any)=>Promise<any>) {
   const entity=client.asServiceRole.entities.WhatsAppQueueControl;
   const token=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : 'enqueue-'+Date.now()+'-'+Math.random();
   const deadline=Date.now()+20000;
@@ -29,7 +29,7 @@ async function withEnqueueLock(client:any,run:()=>Promise<any>) {
   if(!control || !lockAcquired) {
     throw new Error('WhatsApp outbox enqueue lock unavailable; message not queued');
   }
-  try{return await run();}
+  try{return await run(control);}
   finally{await entity.updateMany({id:control.id,enqueue_owner:token},{$set:{enqueue_owner:'',enqueue_until:''}});}
 }
 
@@ -72,7 +72,10 @@ export async function enqueueWhatsApp(client: any, data: {
   const key = String(context.idempotencyKey || '').trim();
   const entity = client.asServiceRole.entities.WhatsAppOutbox;
   if (key.length > 240) throw new Error('Invalid WhatsApp idempotency key');
-  const createOrReturnExisting=async()=>{
+  const createOrReturnExisting=async(latestControl:any=control)=>{
+    // The queued message must not bypass a disable made between the caller's
+    // initial read and acquisition of the global CAS enqueue lock.
+    if(latestControl.enabled!==true)throw new Error('Central WhatsApp queue was disabled before enqueue');
     if(key){
       const previous=await entity.filter({idempotency_key:key},'-created_date',3);
       if(previous.length){
