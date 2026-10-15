@@ -1,3 +1,7 @@
+## Pulse — required project work plan
+
+Before changing Pulse code, workflows or data, read the **single active master plan**: [docs/pulse-stability-recovery-plan-2026-10-14.md](docs/pulse-stability-recovery-plan-2026-10-14.md). Update its task checkboxes, test evidence, session log and next action before ending each work session. Keep all future ideas in that file's backlog instead of creating a competing plan. Do not equate API acceptance with WhatsApp delivery; never auto-retry uncertain deliveries.
+
 **Welcome to your Base44 project** 
 
 **About**
