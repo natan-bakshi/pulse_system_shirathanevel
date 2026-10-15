@@ -30,9 +30,9 @@ function fixture({sendError=false,receiptWriteFails=false}={}){
       }
     }
   };
-  let exported={};
+  const module={exports:{}};
   vm.runInNewContext(code,{
-    exports:exported,module:{exports:exported},console:{error:()=>{},warn:()=>{}},
+    exports:module.exports,module,console:{error:()=>{},warn:()=>{}}, 
     require:path=>{
       if(path.endsWith('whatsappSend.ts'))return {
         sendWhatsAppText:async(_phone,_msg,client,context)=>{
@@ -55,7 +55,7 @@ function fixture({sendError=false,receiptWriteFails=false}={}){
   });
   const agreement={id:'agreement-1',event_id:'event-1',recipient_phone:'0520000000',
     created_by_user_id:'admin1',link_expires_at:new Date(Date.now()+86400000).toISOString()};
-  return {scoped,agreement,rows,alerts,calls,deliver:exported.deliver};
+  return {scoped,agreement,rows,alerts,calls,deliver:module.exports.deliver};
 }
 test('agreement invitation passes the privileged backend shape to WhatsApp and queues exactly once',async()=>{
   const f=fixture();
