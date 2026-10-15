@@ -191,7 +191,7 @@
 ## H — אבטחה, איכות ונתוני אמת (P1)
 
 - [x] **H01 — בדיקות ממוקדות:** כיסוי worker, enqueue, fanout, reminder cutoff, PDF, הסכם, card, crash ו־idempotency נכתב. **TEST**.
-- [x] **H02 — רגרסיה מתועדת:** בגל תיקונים קודם 176/177; לאחר D18 נבדקו **181/182** (181 עברו, 1 נכשל), `npm run build` הצליח, backend syntax תקין. הכשל היחיד שנצפה: `tests/event-agreement.test.mjs`, מדיניות `EventAgreement.create` של מנהל סותרת ציפיית RLS בטסט. **אין לשנות RLS ללא החלטה ואימות נפרדים**. **TEST**, לא PROD.
+- [x] **H02 — רגרסיה מתועדת:** בגל תיקונים קודם 176/177; לאחר D18–D23 נבדקו **183/184** (183 עברו, 1 נכשל), `npm run build` הצליח, backend syntax תקין. הכשל היחיד שנצפה: `tests/event-agreement.test.mjs`, מדיניות `EventAgreement.create` של מנהל סותרת ציפיית RLS בטסט. **אין לשנות RLS ללא החלטה ואימות נפרדים**. **TEST**, לא PROD.
 - [ ] **H03 — הכרעת אבטחה:** `EventAgreement.create` — האם רק backend מוגן או יצירה ישירה למנהל? לבדוק workflow לפני שינוי RLS; לא "לתקן" בדיקה בהחלשת אבטחה.
 - [ ] **H04 — RLS מקיף:** Outbox, QueueControl, ClientMessageDelivery, Pending, Supplier, User, לוג התראות ופעולות ניהול.
 - [ ] **H05 — סקירת secrets:** אין מפתחות Green/Wasender/Invoice4U או URL חתום בפלט ללקוח/לוג/קובץ תכנון.
