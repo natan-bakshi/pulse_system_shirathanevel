@@ -25,6 +25,13 @@ const formatDate=(value:any)=>{
   return '\u200e'+String(d.getUTCDate()).padStart(2,'0')+'/'+
     String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear();
 };
+// Assignment templates sometimes include "בשעה {{event_time}}" even when no
+// time is known. Strip only that dangling phrase; never fabricate an hour or
+// alter a message whose time is populated.
+export function cleanMissingAssignmentTime(message:string,hasTime:boolean):string{
+  if(hasTime)return String(message||'');
+  return String(message||'').replace(/\s+בשעה\s*:?\s*(?=[.!?,\n]|$)/g,'').trim();
+}
 export function renderAssignmentWhatsApp(template:string,event:any,service:any,supplier:any,serviceName=''){
   const notes=(()=>{
     try{
@@ -48,9 +55,10 @@ export function renderAssignmentWhatsApp(template:string,event:any,service:any,s
     event_id:String(event?.id||''),supplier_note:note?'📝 הערה עבורך: '+note:'',
     supplier_phone:String(field(supplier,'phone'))
   };
-  return String(template||'').replace(/\{\{?([\w_]+)\}?}/g,
+  const rendered=String(template||'').replace(/\{\{?([\w_]+)\}?}/g,
     (match,key)=>Object.prototype.hasOwnProperty.call(vars,key)?vars[key]:match)
     .replace(/~\s*~/g,'').replace(/\n\s*\n\s*\n/g,'\n\n').trim();
+  return cleanMissingAssignmentTime(rendered,Boolean(time));
 }
 export function supplierTargetChatId(supplier:any,toChatId:(phone:string)=>string){
   const preferred=String(supplier?.preferred_channel||'phone');
