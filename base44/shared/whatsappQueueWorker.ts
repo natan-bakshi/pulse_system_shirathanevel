@@ -182,10 +182,16 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         if(!(await isStillRelevant(client,currentJob))) {
           const expired=!!currentJob.expires_at && Number.isFinite(Date.parse(currentJob.expires_at))
             && Date.now()>=Date.parse(currentJob.expires_at);
-          await db.WhatsAppOutbox.updateMany({id:currentJob.id,status:currentJob.status},{$set:{
-            status:expired?'expired':'cancelled',completed_at:new Date().toISOString(),
+          const outcome=expired?'expired':'cancelled';
+          const changed=await db.WhatsAppOutbox.updateMany({id:currentJob.id,status:currentJob.status},{$set:{
+            status:outcome,completed_at:new Date().toISOString(),
             last_error:expired?'Message expired before dispatch':'Assignment no longer requires supplier approval'
           }});
+          if(changed?.updated===1){
+            // A cancelled/expired private agreement link must not continue to
+            // display "queued" in the customer delivery history forever.
+            await syncWhatsAppStatus(client,currentJob,outcome,'');
+          }
           continue;
         }
       }catch(error){lastError='Assignment status validation unavailable';break;}
