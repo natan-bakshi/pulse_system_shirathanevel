@@ -65,7 +65,6 @@ export async function enqueueWhatsApp(client: any, data: {
   const context = data.context || {};
   const key = String(context.idempotencyKey || '').trim();
   const entity = client.asServiceRole.entities.WhatsAppOutbox;
-  const requestedProvider=await resolveWhatsAppProvider(client);
   if (key.length > 240) throw new Error('Invalid WhatsApp idempotency key');
   const createOrReturnExisting=async()=>{
     if(key){
@@ -76,6 +75,9 @@ export async function enqueueWhatsApp(client: any, data: {
           status:item.status,jobId:item.id,messageId:item.provider_message_id||'',deduplicated:true};
       }
     }
+    // Read provider only when creating a NEW job. Repeated supplier-trigger
+    // attempts with the same idempotency key must not query settings again.
+    const requestedProvider=await resolveWhatsAppProvider(client);
     const record = await entity.create({
     chat_id: data.chatId, message_type: data.messageType,
     message_text: data.messageText || '', document_url: data.documentUrl || '',
