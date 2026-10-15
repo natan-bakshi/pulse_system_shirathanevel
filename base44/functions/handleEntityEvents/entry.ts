@@ -4,6 +4,7 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
 import { assignmentWhatsAppKey } from '../../shared/assignmentWhatsApp.ts';
+import { shouldScheduleAssignmentReplyReminder } from '../../shared/assignmentReminderTiming.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -453,6 +454,10 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     const timingUnit = template.timing_unit || template.reminder_interval_unit || 'hours';
     const scheduledFor = new Date();
     applyTimingOffset(scheduledFor, timingUnit, timingValue);
+    // A 24-hour response reminder after the event starts is worse than no
+    // reminder. The immediate assignment notice still goes through normally.
+    // Never alter the event-day reminder system through this rule.
+    if(!shouldScheduleAssignmentReplyReminder(eventObj,eventServiceData,scheduledFor))return false;
 
     const targetUserId = supplierUser?.id || `virtual_supplier_${supplierId}`;
     const targetEmail = supplierUser?.email || supplierObj.contact_emails?.[0] || '';
