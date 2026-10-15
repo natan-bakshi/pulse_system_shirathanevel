@@ -1188,21 +1188,25 @@ export default function EventDetails() {
         supplier_ids: JSON.stringify(supplierFormData.supplierIds),
         supplier_notes: JSON.stringify(supplierFormData.notes)
       });
-      await verifyAndRefreshAssignment(selectedServiceForSupplier.id,added,eventId);
-
-      if (supplierFormData.supplierIds.length > 0) {
+      // Only newly assigned suppliers should receive a new assignment Push.
+      // Push and WhatsApp verification are independent, and must not block
+      // one another. An existing supplier must not receive repeat Push simply
+      // because another supplier was added to the same service.
+      const notifyPush=async()=>{
+        if(!added.length)return;
+        const serviceDetails=allServices.find(s=>s.id===selectedServiceForSupplier.service_id);
         try {
-          const serviceDetails = allServices.find(s => s.id === selectedServiceForSupplier.service_id);
-          await base44.functions.invoke('notifySupplierAssignment', {
-            supplierIds: supplierFormData.supplierIds,
-            eventId: eventId,
-            serviceName: selectedServiceForSupplier.service_name || serviceDetails?.service_name || 'שירות',
-            eventServiceId: selectedServiceForSupplier.id
+          await base44.functions.invoke('notifySupplierAssignment',{
+            supplierIds:added,eventId,
+            serviceName:selectedServiceForSupplier.service_name || serviceDetails?.service_name || 'שירות',
+            eventServiceId:selectedServiceForSupplier.id
           });
-        } catch (notifyError) {
-          console.warn("Failed to notify suppliers:", notifyError);
-        }
-      }
+        }catch(notifyError){console.warn('Assignment push notification is pending verification');}
+      };
+      await Promise.all([
+        verifyAndRefreshAssignment(selectedServiceForSupplier.id,added,eventId),
+        notifyPush()
+      ]);
 
       setShowSupplierDialog(false);
       setSelectedServiceForSupplier(null);
