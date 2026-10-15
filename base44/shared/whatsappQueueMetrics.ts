@@ -84,9 +84,9 @@ export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
     const sentAttempt=['accepted','unknown','failed'].includes(state)&&Number(j.attempt_count)>0;
     if(!sentAttempt)continue;
     if(sample.hasDetailedTiming)detailedTimingCount++;
-    if(job.worker_wake_reason){
-      const reason=['outbox_create','continue','watchdog','manual'].includes(job.worker_wake_reason)
-        ? job.worker_wake_reason : 'unattributed';
+    if(j.worker_wake_reason){
+      const reason=['outbox_create','continue','watchdog','manual'].includes(j.worker_wake_reason)
+        ? j.worker_wake_reason : 'unattributed';
       byWakeReason[reason]=(byWakeReason[reason]||0)+1;
     }
     for(const field of fields){
