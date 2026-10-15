@@ -1,5 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
-import { newAssignmentRecipients, verifyAssignmentWhatsApp, showAssignmentWhatsAppWarning } from '@/lib/assignmentWhatsAppGuarantee';
+import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -85,10 +85,7 @@ export default function SupplierAssignmentDialog({
         client_notes: editingService.serviceNotes,
         min_suppliers: parseInt(editingService.minSuppliers) || 0
       });
-      const notification=await verifyAssignmentWhatsApp(editingService.eventServiceId,added);
-      showAssignmentWhatsAppWarning(notification);
-
-      await refreshEventStatus(eventServiceData.event_id);
+      await verifyAndRefreshAssignment(editingService.eventServiceId,added,eventServiceData.event_id);
       queryClient.invalidateQueries({ queryKey: ['eventServices'] });
       
       if (onSaved) onSaved();
