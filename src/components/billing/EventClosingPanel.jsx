@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import MilestoneScheduleEditor from '@/components/billing/MilestoneScheduleEditor';
 import CurrentPaymentSchedule from '@/components/billing/CurrentPaymentSchedule';
 const input="block w-full min-w-0 rounded-lg border border-input bg-background p-2.5 mt-1.5 text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-red-800/30 focus-visible:border-red-800 disabled:opacity-60";
-const auditNames={created:"נוצרה גרסת הסכם",link_issued:"הופק קישור",invitation_accepted:"הזמנה התקבלה אצל ספק הוואטסאפ",opened:"הקישור נפתח",verification_sent:"נשלח קוד אימות",verified:"הטלפון אומת",admin_verified:"המנהל אימת באמצעות סיסמה",card_linked:"כרטיס קיים קושר להסכם",signed:"ההסכם נחתם",token_link_created:"נוצר קישור לכרטיס",token_verified:"הכרטיס אומת",deposit_link_created:"נוצר קישור למקדמה",deposit_paid:"המקדמה שולמה",deposit_verified:"תשלום המקדמה אומת מול הספק",event_closed:"האירוע נסגר לפי הנוהל",superseded:"הוחלף בגרסה חדשה",cancelled:"ההסכם בוטל",notification_settings_changed:"עודכנו הגדרות הודעות",amendment_recorded:"תועד שינוי מוסכם",reminder_accepted:"תזכורת התקבלה אצל הספק",milestones_updated:"אבני הדרך עודכנו לטובת הלקוח",exceptional_notice:"נשלחה הודעה על חיוב חריג",workflow_recovered:"שוחררה פעולה שנקטעה"};
+const auditNames={created:"נוצרה גרסת הסכם",link_issued:"הופק קישור",invitation_queued:"הודעת ההזמנה נשמרה בתור",invitation_accepted:"הזמנה התקבלה אצל ספק הוואטסאפ",opened:"הקישור נפתח",verification_sent:"נשלח קוד אימות",verified:"הטלפון אומת",admin_verified:"המנהל אימת באמצעות סיסמה",card_linked:"כרטיס קיים קושר להסכם",signed:"ההסכם נחתם",token_link_created:"נוצר קישור לכרטיס",token_verified:"הכרטיס אומת",deposit_link_created:"נוצר קישור למקדמה",deposit_paid:"המקדמה שולמה",deposit_verified:"תשלום המקדמה אומת מול הספק",event_closed:"האירוע נסגר לפי הנוהל",superseded:"הוחלף בגרסה חדשה",cancelled:"ההסכם בוטל",notification_settings_changed:"עודכנו הגדרות הודעות",amendment_recorded:"תועד שינוי מוסכם",reminder_accepted:"תזכורת התקבלה אצל הספק",milestones_updated:"אבני הדרך עודכנו לטובת הלקוח",exceptional_notice:"נשלחה הודעה על חיוב חריג",workflow_recovered:"שוחררה פעולה שנקטעה"};
 function Notifications({value:n,onChange}){
  return <fieldset className="space-y-3 border rounded p-3"><legend>שליטה בהודעות מקדימות</legend>
   <label className="flex gap-2"><input type="checkbox" checked={!!n.enabled} onChange={e=>onChange({...n,enabled:e.target.checked})}/>אפשר תזכורות תשלום אוטומטיות</label>
@@ -33,8 +33,16 @@ export default function EventClosingPanel({event,onChanged}){
  const run=async fn=>{setBusy(true);setError("");setMessage("");try{await fn();await refetch();if(onChanged)await onChanged();}catch(e){setError(agreementError(e));}finally{setBusy(false);}};
  const openDraft=()=>run(async()=>{const p=await agreementAction("preview",{eventId:event.id});setDraft({...p,name:"",phone:"",email:"",send_whatsapp:true});});
  useEffect(()=>{const open=e=>{if(e.detail===event.id)openDraft();};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
- const sentNotice="טופס סגירת האירוע נשלח ללקוח לחתימה";
- const issue=send=>run(async()=>{const r=await agreementAction("issue",{agreementId:a.id,send});setUrl(r.url);setMessage(r.warning|| (send?"הקישור התקבל אצל ספק הוואטסאפ. פתיחה וחתימה יופיעו במעקב.":"הקישור מוכן להעתקה."));if(send&&!r.warning)toast.success(sentNotice,{description:"ההודעה התקבלה אצל ספק הוואטסאפ; פתיחה וחתימה יופיעו במעקב."});});
+ const receiptMessage=state=>state==='accepted'
+   ?"ההודעה התקבלה אצל ספק WhatsApp. מסירה לנמען טרם אומתה."
+   :"ההודעה נשמרה בתור WhatsApp וממתינה לאישור הספק. ניתן לבדוק את התקדמותה במעקב.";
+ const issue=send=>run(async()=>{
+   const r=await agreementAction("issue",{agreementId:a.id,send});
+   setUrl(r.url);
+   setMessage(r.warning||(send?receiptMessage(r.delivery_state):"הקישור מוכן להעתקה."));
+   if(send&&!r.warning)toast.success(r.delivery_state==='accepted'?"התקבל אצל ספק WhatsApp":"נשמר בתור WhatsApp",
+     {description:receiptMessage(r.delivery_state)});
+ });
  const saveDraft=()=>run(async()=>{
   const {send_whatsapp,...payload}=draft;
   const created=await agreementAction("create",{...payload,eventId:event.id});
@@ -44,8 +52,9 @@ export default function EventClosingPanel({event,onChanged}){
    const r=await agreementAction("issue",{agreementId:created.id,send:true});
    setUrl(r.url);
    if(r.warning){setMessage("הטופס נשמר, אך שליחת הקישור לא אושרה: "+r.warning);return;}
-   setMessage("הקישור התקבל אצל ספק הוואטסאפ. פתיחה וחתימה יופיעו במעקב.");
-   toast.success(sentNotice,{description:"ההודעה התקבלה אצל ספק הוואטסאפ; פתיחה וחתימה יופיעו במעקב."});
+   setMessage(receiptMessage(r.delivery_state));
+   toast.success(r.delivery_state==='accepted'?"התקבל אצל ספק WhatsApp":"נשמר בתור WhatsApp",
+     {description:receiptMessage(r.delivery_state)});
   }catch(e){throw new Error("הטופס נשמר, אך מצב שליחת הקישור לא אומת. יש לבדוק את המעקב לפני שליחה חוזרת. "+agreementError(e));}
  });
  const openPdf=(id,kind="signed")=>run(async()=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await agreementAction("pdf",{agreementId:id,kind});if(tab)tab.location.replace(r.url);else window.location.assign(r.url);}catch(e){tab?.close();throw e;}});
