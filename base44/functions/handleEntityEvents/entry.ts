@@ -251,6 +251,8 @@ Deno.serve(async (req) => {
         // schedule twice. One malformed reminder must never prevent the
         // immediate assignment/other notification templates from running.
         let reminderScheduleErrors=0;
+        // Request-local cache only; no cross-request or cross-user state.
+        const notificationCache={};
         if (entityName === 'EventService' && triggerType === 'entity_update') {
             const candidates=pendingApprovalReminderSupplierIds(
                 data.supplier_ids||data.supplierids,
@@ -258,9 +260,8 @@ Deno.serve(async (req) => {
                 event.changed_status_supplier_ids||[],
                 data.supplier_statuses||data.supplierstatuses
             );
-            const perEventCache={};
             for(const supId of candidates){
-                try{await scheduleSupplierPendingReminder(base44,data,supId,perEventCache);}
+                try{await scheduleSupplierPendingReminder(base44,data,supId,notificationCache);}
                 catch(error){
                     reminderScheduleErrors++;
                     console.error('[HandleEntityEvents] One pending-approval reminder could not be scheduled');
@@ -305,7 +306,7 @@ Deno.serve(async (req) => {
                         for (const supId of event.added_supplier_ids) {
                             assignmentSupplierBeingProcessed = supId;
                             const specificEvent = { ...event, specific_recipient_id: supId };
-                            await sendNotification(base44, template, enrichedData, specificEvent, entityName);
+                            await sendNotification(base44, template, enrichedData, specificEvent, entityName, notificationCache);
                             notificationsSent++;
                         }
                     }
@@ -329,7 +330,7 @@ Deno.serve(async (req) => {
                                 continue;
                             }
                             const specificEvent = { ...event, specific_recipient_id: supId };
-                            await sendNotification(base44, template, enrichedData, specificEvent, entityName);
+                            await sendNotification(base44, template, enrichedData, specificEvent, entityName, notificationCache);
                             notificationsSent++;
                         }
                     }
@@ -359,13 +360,13 @@ Deno.serve(async (req) => {
                                 specific_recipient_id: changeContext.id,
                                 ...changeContext 
                             };
-                            await sendNotification(base44, template, contextEnrichedData, specificEvent, entityName);
+                            await sendNotification(base44, template, contextEnrichedData, specificEvent, entityName, notificationCache);
                             notificationsSent++;
                         }
                     } 
                     // Case 4 - Broadcast
                     else {
-                        await sendNotification(base44, template, enrichedData, event, entityName);
+                        await sendNotification(base44, template, enrichedData, event, entityName, notificationCache);
                         notificationsSent++;
                     }
                 }
@@ -446,9 +447,9 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     // user on every supplier assignment. This was an avoidable hot-path scan.
     const [eventObj, supplierObj, serviceObj, allUsers] = await Promise.all([
         shared('pendingReminderEvent',()=>base44.asServiceRole.entities.Event.get(eventServiceData.event_id)),
-        base44.asServiceRole.entities.Supplier.get(supplierId),
+        shared('supplier:'+supplierId,()=>base44.asServiceRole.entities.Supplier.get(supplierId)),
         eventServiceData.service_id
-          ? shared('pendingReminderService',()=>base44.asServiceRole.entities.Service.get(eventServiceData.service_id).catch(()=>null))
+          ? shared('serviceCatalog:'+eventServiceData.service_id,()=>base44.asServiceRole.entities.Service.get(eventServiceData.service_id).catch(()=>null))
           : Promise.resolve(null),
         allowedChannels.includes('push')
           ? shared('pendingReminderUsers',()=>base44.asServiceRole.entities.User.list())
@@ -611,7 +612,7 @@ async function checkSingleCondition(entityData, condition) {
     }
 }
 
-async function sendNotification(base44, template, entityData, event, entityName) {
+async function sendNotification(base44, template, entityData, event, entityName, batchCache=null) {
     let relatedEventId;
     let relatedSupplierId;
     let relatedServiceId;
@@ -632,6 +633,11 @@ async function sendNotification(base44, template, entityData, event, entityName)
         supplierObj = entityData;
     }
 
+    // The reminder path may already have loaded this same event. Reuse its
+    // promise instead of fetching once for every new supplier.
+    if(!eventObj && relatedEventId && entityData?.event_id===relatedEventId && batchCache?.pendingReminderEvent){
+        try{eventObj=await batchCache.pendingReminderEvent;}catch{}
+    }
     // Fetch Missing Event with Error Handling
     if (!eventObj && relatedEventId) {
         try {
@@ -699,7 +705,9 @@ async function sendNotification(base44, template, entityData, event, entityName)
         for (const supId of suppliersToSend) {
             let currentSupplierObj = (supplierObj && supplierObj.id === supId) ? supplierObj : null;
             if (!currentSupplierObj) {
-                try { currentSupplierObj = await base44.asServiceRole.entities.Supplier.get(supId); } catch(e) {
+                try { currentSupplierObj = batchCache?.['supplier:'+supId]
+                    ? await batchCache['supplier:'+supId]
+                    : await base44.asServiceRole.entities.Supplier.get(supId); } catch(e) {
                     console.error(`[HandleEntityEvents] Failed to fetch supplier ${supId}`);
                     continue;
                 }
@@ -726,7 +734,7 @@ async function sendNotification(base44, template, entityData, event, entityName)
                 const isEnabled = currentSupplierObj.whatsapp_enabled !== false;
                 const whatsappTarget = getSupplierWhatsAppTarget(currentSupplierObj);
                 if (isEnabled && whatsappTarget.chatId) {
-                    await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null, true);
+                    await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null, true, batchCache);
                 }
             }
 
@@ -837,7 +845,7 @@ function getSupplierWhatsAppTarget(supplierObj, fallbackPhone = null) {
     return getPhoneWhatsAppTarget(fallbackPhone || supplierObj?.phone);
 }
 
-async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj, useSupplierTarget = false) {
+async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj, useSupplierTarget = false, batchCache=null) {
     const whatsappTarget = useSupplierTarget && supplierObj ? getSupplierWhatsAppTarget(supplierObj, phone) : getPhoneWhatsAppTarget(phone);
     if (!whatsappTarget.chatId) return;
     const targetLabel = whatsappTarget.label || phone || whatsappTarget.chatId;
