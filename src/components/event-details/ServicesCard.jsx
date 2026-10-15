@@ -1,5 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
-import { newAssignmentRecipients, verifyAssignmentWhatsApp, showAssignmentWhatsAppWarning } from '@/lib/assignmentWhatsAppGuarantee';
+import { newAssignmentRecipients, verifyAssignmentWhatsApp, showAssignmentWhatsAppWarning, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -283,14 +283,12 @@ export default function ServicesCard({
         supplier_statuses: JSON.stringify(nextStatuses),
         supplier_notes: JSON.stringify(localSupplierFormData.notes)
       });
-      const notification=await verifyAssignmentWhatsApp(localSelectedService.id,added);
-      showAssignmentWhatsAppWarning(notification);
+      await verifyAndRefreshAssignment(localSelectedService.id,added,event.id);
 
       setShowLocalSupplierDialog(false);
       setLocalSelectedService(null);
       setLocalSupplierFormData({ supplierIds: [], notes: {} });
       setLocalSupplierSearchTerm("");
-      await refreshEventStatus(event.id);
       await loadEventData();
     } catch (error) {
       console.error("Failed to assign suppliers:", error);
