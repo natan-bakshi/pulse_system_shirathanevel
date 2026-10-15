@@ -128,6 +128,28 @@ test('provider is pinned when enqueued and is never silently changed when defaul
   assert.deepEqual(routes.map(x=>x.provider),['green','wasender']);
 });
 
+test('bounded batches wake the entity workflow with update after releasing the lease',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0,max_messages_per_run:1});
+ const controls=x.client.asServiceRole.entities.WhatsAppQueueControl;
+ const updates=[];
+ const original=controls.update;
+ controls.update=async(id,patch)=>{updates.push({patch,leased:!!x.control.lease_owner});return original(id,patch);};
+ for(let i=0;i<3;i++)await sendWhatsAppText('0501234567','batch '+i,x.client);
+ const receipts=[];
+ const transport=async(job)=>{receipts.push(job.id);return {messageId:'batch-'+receipts.length}};
+ const first=await drainWhatsAppOutbox(x.client,{transport});
+ assert.equal(first.accepted,1);assert.equal(first.continued,true);
+ assert.equal(updates.length,1);
+ assert.equal(updates[0].leased,false);
+ assert.ok(updates[0].patch.wake_requested_at);
+ const second=await drainWhatsAppOutbox(x.client,{transport});
+ assert.equal(second.accepted,1);assert.equal(second.continued,true);
+ const third=await drainWhatsAppOutbox(x.client,{transport});
+ assert.equal(third.accepted,1);assert.equal(third.continued,false);
+ assert.equal(updates.length,2,'Do not self-trigger when the queue is empty');
+ assert.equal(new Set(receipts).size,3);
+});
+
 test('one worker dispatches multiple sources FIFO without delay before first',async()=>{
  const x=fixture();
  for(const type of ['assignment','reminder','invoice','payment_link','manual']){
