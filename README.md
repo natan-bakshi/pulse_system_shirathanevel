@@ -1,6 +1,11 @@
 ## Pulse — required project work plan
 
-Before changing Pulse code, workflows or data, read the **single active master plan**: [docs/pulse-stability-recovery-plan-2026-10-14.md](docs/pulse-stability-recovery-plan-2026-10-14.md). Update its task checkboxes, test evidence, session log and next action before ending each work session. Keep all future ideas in that file's backlog instead of creating a competing plan. Do not equate API acceptance with WhatsApp delivery; never auto-retry uncertain deliveries.
+Before changing Pulse code, workflows or data, read the relevant **independent active work plan**:
+
+- **Pulse general stability, assignment UI and business reminders:** [docs/pulse-stability-recovery-plan-2026-10-14.md](docs/pulse-stability-recovery-plan-2026-10-14.md).
+- **WhatsApp upgrade performance, provider routing, central outbox, workers and delivery:** [docs/whatsapp-performance-and-reliability-plan-2026-10-15.md](docs/whatsapp-performance-and-reliability-plan-2026-10-15.md).
+
+When a change crosses domains, link dependent task IDs but track performance, tests and future improvements in the **responsible plan only**. Update the checkboxes, QA evidence, session log and next action in each affected plan. Do not equate provider API acceptance with WhatsApp delivery; never auto-retry uncertain deliveries.
 
 **Welcome to your Base44 project** 
 
