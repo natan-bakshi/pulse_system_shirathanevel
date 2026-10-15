@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
-import {assignmentWhatsAppKey,renderAssignmentWhatsApp,supplierTargetChatId,addedSupplierIds} from '../base44/shared/assignmentWhatsApp.ts';
+import {assignmentWhatsAppKey,renderAssignmentWhatsApp,cleanMissingAssignmentTime,supplierTargetChatId,addedSupplierIds} from '../base44/shared/assignmentWhatsApp.ts';
 
 const tpl="שלום {{supplier_name}}, שובצת לשירות '{{service_name}}' באירוע של משפחת {{family_name}} בתאריך {{event_date}} בשעה {{event_time}}.\n📍 מיקום: {{event_location}}\n\n{{supplier_note}}\n\nנא אשר את השתתפותך במערכת Pulse.\n\nhttps://pulse-system.base44.app/SupplierCalendarDashboard";
 function env(overrides={}){
@@ -60,6 +60,15 @@ test('exact assignment renderer preserves supplier-specific time and note',()=>{
  assert.match(text,/עדי/);assert.match(text,/09:40/);
  assert.match(text,/16\/11\/2026/);assert.match(text,/📝 הערה עבורך: להגיע לפני הזמן/);
  assert.match(text,/SupplierCalendarDashboard/);
+});
+test('assignment message without a known time omits dangling בשעה . without fabricating a time',()=>{
+ const x=env({event:{event_time:''},svc:{supplier_arrival_time:''}});
+ const actual=renderAssignmentWhatsApp(tpl,x.event,x.svc,x.supplier,'להקה');
+ assert.doesNotMatch(actual,/בשעה\s*[.\n]/);
+ assert.match(actual,/16\/11\/2026\./);
+ assert.match(actual,/נא אשר/);
+ assert.equal(cleanMissingAssignmentTime('הגעה בשעה .',false),'הגעה.');
+ assert.equal(cleanMissingAssignmentTime('הגעה בשעה 09:40.',true),'הגעה בשעה 09:40.');
 });
 test('newly added suppliers are identified while existing unchanged IDs are skipped',()=>{
  assert.deepEqual(addedSupplierIds('[\"a\"]','[\"a\",\"b\",\"c\"]'),['b','c']);
