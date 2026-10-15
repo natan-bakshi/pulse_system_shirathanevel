@@ -110,6 +110,21 @@ test('migration safety: disabled queue preserves legacy delivery instead of losi
  }finally{globalThis.fetch=previousFetch;}
 });
 
+test('deduplicated messages do not waste provider configuration reads',async()=>{
+ const x=fixture({selectedProvider:'green'});
+ let reads=0;
+ x.client.asServiceRole.entities.AppSettings.filter=async()=>{
+   reads++;return [{setting_key:'whatsapp_default_provider',setting_value:'green'}];
+ };
+ const opts={sourceType:'assignment_new',idempotencyKey:'stable-assignment:1'};
+ const a=await sendWhatsAppText('0501234567','Once',x.client,opts);
+ const b=await sendWhatsAppText('0501234567','Once',x.client,opts);
+ assert.equal(a.queued,true);
+ assert.equal(b.deduplicated,true);
+ assert.equal(x.jobs.length,1);
+ assert.equal(reads,1,'Provider settings should be read only for the new job');
+});
+
 test('provider is pinned when enqueued and is never silently changed when default provider changes',async()=>{
   const x=fixture({selectedProvider:'green',green_interval_ms:0,wasender_interval_ms:0});
   await sendWhatsAppText('0501234567','green-created',x.client,{sourceType:'assignment_new'});
