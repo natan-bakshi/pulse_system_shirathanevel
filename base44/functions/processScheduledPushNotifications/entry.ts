@@ -71,6 +71,14 @@ Deno.serve(async (req) => {
                         continue;
                     }
                     const fanoutResult = await processEventReminderFanout(base44, pending, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY, allUsers);
+                    // An individual WhatsApp enqueue failure must NOT mark the
+                    // entire event reminder as processed. Next scheduled run
+                    // resumes safely using the same per-recipient outbox keys.
+                    if(fanoutResult.enqueueFailures > 0){
+                        errorCount += fanoutResult.enqueueFailures;
+                        console.error('[ScheduledPush] Event reminder enqueue incomplete; kept pending for safe reconciliation');
+                        continue;
+                    }
                     await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
                     successCount += fanoutResult.sent;
                     console.log(`[ScheduledPush] Fan-out for event ${pending.related_event_id}: sent ${fanoutResult.sent}`);
@@ -402,7 +410,7 @@ async function isConditionStillMet(base44, pending, cache) {
 // push (למשתמשים רשומים) + whatsapp (ישירות לטלפון).
 // ============================================================
 async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSignalApiKey, preloadedUsers = null) {
-    const result = { sent: 0 };
+    const result = { sent: 0, enqueueFailures: 0 };
     const eventId = pending.related_event_id;
     if (!eventId) return result;
 
@@ -499,12 +507,22 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
         try {
             const chatId = wa.chatId || toChatId(wa.phone);
             if (!chatId) continue;
-            await sendWhatsAppToChat(chatId, wa.message, base44, {sourceType:'scheduled_fanout',sourceId:pending.id||'',idempotencyKey:'fanout:'+pending.id+':'+chatId});
-            result.sent++;
+            const receipt=await sendWhatsAppToChat(chatId, wa.message, base44, {sourceType:'scheduled_fanout',sourceId:pending.id||'',idempotencyKey:'fanout:'+pending.id+':'+chatId});
+            if(receipt?.queued===true || receipt?.status==='accepted' || receipt?.legacyDirect===true){
+                result.sent++;
+            }else{
+                // A previous unknown/rejected outbox record is not safe to
+                // replay automatically. Leave the source open for review.
+                result.enqueueFailures++;
+            }
         } catch (e) {
-            console.warn('[ScheduledPush] Fan-out WhatsApp failed for one recipient');
+            result.enqueueFailures++;
+            console.warn('[ScheduledPush] Fan-out WhatsApp enqueue failed for one recipient');
         }
     }
+    // Never send Push then retry it a second time simply because a sibling
+    // WhatsApp failed to enter the durable queue. Retry only missing WA next run.
+    if(result.enqueueFailures>0)return result;
 
     // ---- שליחת Push ----
     if (oneSignalAppId && oneSignalApiKey && pushQueue.length > 0) {
