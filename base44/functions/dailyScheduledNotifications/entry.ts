@@ -199,7 +199,6 @@ Deno.serve(async (req) => {
             allSuppliers,
             allUsers,
             allTemplates,
-            allPendingNotifications,
             existingNotifications,
             allPayments,
             allServices,
@@ -210,7 +209,6 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.Supplier.list(),
             base44.asServiceRole.entities.User.list(),
             base44.asServiceRole.entities.NotificationTemplate.filter({ is_active: true }),
-            base44.asServiceRole.entities.PendingPushNotification.filter({ is_sent: false }),
             base44.asServiceRole.entities.InAppNotification.filter({ is_resolved: false }),
             base44.asServiceRole.entities.Payment.list(),
             base44.asServiceRole.entities.Service.list(),
@@ -1109,22 +1107,8 @@ Deno.serve(async (req) => {
             }
         }
 
-        // ============================================================
-        // PHASE 8: Cleanup old PendingPushNotifications
-        // ============================================================
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
-        const oldNotifications = allPendingNotifications.filter(n => 
-            n.is_sent && new Date(n.created_date) < sevenDaysAgo
-        );
-        
-        for (const old of oldNotifications) {
-            try {
-                await base44.asServiceRole.entities.PendingPushNotification.delete(old.id);
-                results.cleaned_up++;
-            } catch (e) {}
-        }
+        // PendingPushNotification cleanup is also owned by the hourly
+        // processScheduledPushNotifications worker. No duplicate daily sweep.
 
         console.log('[DailyNotifications] Completed:', JSON.stringify(results));
         
