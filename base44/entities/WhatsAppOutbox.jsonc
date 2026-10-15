@@ -72,6 +72,24 @@
     "send_started_at": {
       "type": "string"
     },
+    "worker_run_id": {
+      "type": "string"
+    },
+    "worker_wake_reason": {
+      "type": "string"
+    },
+    "job_claimed_at": {
+      "type": "string"
+    },
+    "rate_ready_at": {
+      "type": "string"
+    },
+    "transport_started_at": {
+      "type": "string"
+    },
+    "transport_finished_at": {
+      "type": "string"
+    },
     "completed_at": {
       "type": "string"
     },
