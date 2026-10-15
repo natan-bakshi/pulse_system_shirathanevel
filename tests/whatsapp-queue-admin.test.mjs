@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {delayUntilNextSendMs,providerIntervalMs} from '../base44/shared/whatsappQueueWorker.ts';
+import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
 
 function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
@@ -45,6 +46,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        syncWhatsAppStatus:async(_client,job,status)=>syncs.push({id:job.id,status})
      };
      if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
+     if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
      throw Error('Unexpected import: '+name);
    }
  });
