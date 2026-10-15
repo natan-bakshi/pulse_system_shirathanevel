@@ -424,8 +424,18 @@ export default Deno.serve(async req=>{
     const url=APP+"/EventClosing?id="+a.id+"#token="+token;
     await audit(client,a,"link_issued",user.id,{expires_at:expiry});
     if(body.send===true){
-     try{await deliver(client,a,"invitation",a.id+":invitation:"+a.revision,renderClosingMessage(config,"invitation",a.notifications?.language||a.snapshot.message_language,{customer_name:a.recipient_name,event_name:a.snapshot.event_name,link:url}));await audit(client,a,"invitation_accepted",user.id);}
-     catch(e){return Response.json({url,warning:e.message});}
+     try{
+      const delivery=await deliver(client,a,"invitation",a.id+":invitation:"+a.revision,
+       renderClosingMessage(config,"invitation",a.notifications?.language||a.snapshot.message_language,
+       {customer_name:a.recipient_name,event_name:a.snapshot.event_name,link:url}));
+      // "Queued" is not "accepted by provider". Never tell the administrator
+      // that the customer has received an invitation on enqueue alone.
+      if(!['queued','accepted'].includes(delivery.state))
+       return Response.json({url,delivery_state:delivery.state,warning:'מצב הודעת ההזמנה אינו מאושר. בדוק את היסטוריית השליחה לפני ניסיון נוסף.'});
+      await audit(client,a,delivery.state==='accepted'?'invitation_accepted':'invitation_queued',user.id,
+       {delivery_id:delivery.id});
+      return Response.json({url,delivery_state:delivery.state,delivery_id:delivery.id});
+     }catch(e){return Response.json({url,delivery_state:'failed',warning:e.message});}
     }
     return Response.json({url});
    }
