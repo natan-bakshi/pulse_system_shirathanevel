@@ -192,6 +192,20 @@ test('expired payment links and OTP messages are not sent after queue delay',asy
   assert.equal(x.jobs[0].status,'expired');
 });
 
+test('expired agreement links reconcile downstream delivery state without contacting provider',async()=>{
+ const x=fixture();
+ await sendWhatsAppText('0501234567','obsolete verification code',x.client,{
+   sourceType:'agreement',clientMessageDeliveryId:'delivery-1',
+   expiresAt:new Date(Date.now()-120000).toISOString()
+ });
+ const provider=async()=>{throw Error('Expired message must never reach a provider')};
+ const r=await drainWhatsAppOutbox(x.client,{transport:provider});
+ assert.equal(x.jobs[0].status,'expired');
+ assert.equal(x.agreements.length,1);
+ assert.equal(x.agreements[0].value.state,'expired');
+ assert.equal(r.accepted,0);
+});
+
 test('provider timeout remains unknown and is never retried',async()=>{
  const x=fixture();await sendWhatsAppText('0501234567','message',x.client);
  let calls=0;const transport=async()=>{calls++;throw {deliveryUncertain:true,errorCode:503}};
