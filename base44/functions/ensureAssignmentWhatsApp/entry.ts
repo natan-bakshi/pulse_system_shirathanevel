@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
 import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { resolveNotificationDelay } from '../../shared/quietHours.ts';
-import { assignmentWhatsAppKey, renderAssignmentWhatsApp, supplierTargetChatId } from '../../shared/assignmentWhatsApp.ts';
+import { assignmentWhatsAppContext, renderAssignmentWhatsApp, supplierTargetChatId } from '../../shared/assignmentWhatsApp.ts';
 
 // Reliable, explicit supplier-notification safeguard called *after* successful
 // EventService saves. It does not change assignments. Entity triggers may run
@@ -70,12 +70,8 @@ Deno.serve(async(req)=>{
           result.errors.push('Supplier '+supplierId+': quiet hours require central queue to be active');
           continue;
         }
-        const response=await sendWhatsAppToChat(chatId,text,client,{
-          sourceType:'assignment_new',sourceId:svc.id,
-          eventServiceId:svc.id,supplierId,
-          idempotencyKey:assignmentWhatsAppKey(svc,supplierId,template.type),
-          ...(delay.shouldDelay?{availableAt:delay.scheduledFor.toISOString()}:{})
-        });
+        const response=await sendWhatsAppToChat(chatId,text,client,
+          assignmentWhatsAppContext(svc,supplierId,template.type,delay));
         // A duplicate key may refer to an old FAILED/UNKNOWN/EXPIRED job.
         // It is NOT success and must never silently become "skipped":
         // this is precisely how managers lose confidence that notifications
