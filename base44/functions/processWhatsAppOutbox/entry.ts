@@ -13,7 +13,8 @@ Deno.serve(async (req) => {
     }
     // Only telemetry reads this hint. The server still selects/locks every job;
     // an untrusted caller cannot specify recipients or bypass the rate limit.
-    const request=await req.json().catch(()=>({}));
+    let request:any={};
+    try{request=typeof req.json==='function'?await req.json():{};}catch{}
     const wakeReason=['outbox_create','continue','watchdog'].includes(request?.wakeReason)
       ? request.wakeReason : 'unattributed';
     // Record a harmless invocation heartbeat even while the queue is disabled.
