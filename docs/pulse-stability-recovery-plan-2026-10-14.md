@@ -99,6 +99,28 @@
 - [x] **D18 — אין הצלחה מדומה ב־dedup (CODE+TEST 15.10):** `ensureAssignmentWhatsApp` החזיר בעבר `success=true` גם כאשר Outbox קודם באותו `idempotency_key` היה `failed/unknown/cancelled/expired/resolved`, כי סיווג אותו כ־`skipped`. כעת המצבים הללו מוחזרים כ־`success=false`, עם jobId ואזהרה למנהל **ללא יצירת שליחה חוזרת**. גם תשובה לא מזוהה כבר אינה `skipped` מוצלח. נוסף כיסוי בדיקות ל־failed/unknown/accepted ותשובה לא מזוהה ב־`tests/assignment-whatsapp-guarantee.test.mjs`.
 - [ ] **D19 — PROD:** אחרי פרסום, לבדוק ש־D18 מוצג נכון בממשק ושלא נוצרים retry או הודעות נוספות כאשר קיימת שגיאת עבר במפתח עסקי זהה.
 
+- [x] **D20 — שעת שיבוץ חסרה (CODE+TEST 15.10):** הפונקציה `cleanMissingAssignmentTime` ב־`base44/shared/assignmentWhatsApp.ts` מנקה רק ביטוי "בשעה ." כשהשעה חסרה, הן בתבנית הנבנית דרך `ensureAssignmentWhatsApp` והן ב־`handleEntityEvents.triggerWhatsApp`. אם קיימת שעה, שומרים אותה ללא שינוי. נבדק ב־`tests/assignment-whatsapp-guarantee.test.mjs` וב־`tests/assignment-trigger-quiet-outbox.test.mjs`. **נדרשת עדיין בדיקת תוכן LIVE לאחר פרסום.**
+- [x] **D21 — שעות שקט עם מפתח ותור אחיד (CODE+TEST 15.10):** לפני השינוי, הטריגר שמר הודעת שיבוץ בשעות שקט ב־`PendingPushNotification` עם מפתח `scheduled-wa:<pendingId>`, בעוד בדיקת השיבוץ שמרה את אותה הודעה ב־`WhatsAppOutbox` עם מפתח `assignment:<serviceId>:<supplierId>:<updated_date>:SUPPLIER_NEW_ASSIGNMENT` — ולכן היה סיכון לשליחה כפולה כשהגיע זמן ההמתנה. מעכשיו **המסלול של הודעת שיבוץ** משתמש ב־`assignmentWhatsAppContext`, `resolveNotificationDelay(supplier)` ו־`availableAt` בתוך Outbox *בשני היצרנים*, גם בשעות שקט/שבת. נתיבי Pending של **תבניות שאינן הודעת שיבוץ** לא שונו.
+- [x] **D22 — בדיקת שעות שקט (TEST 15.10):** `tests/assignment-trigger-quiet-outbox.test.mjs` מפעיל את קוד `triggerWhatsApp` האמיתי בסביבה מדומה עם תזמון עתידי; מאמת Outbox יחיד, מפתח אחיד, `availableAt` ו־**אפס** יצירות Pending נוספות. `assignment-whatsapp-guarantee.test.mjs` בודק בנפרד אותו context עבור שני היצרנים. **לא בוצעה שליחה אמיתית**.
+- [x] **D23 — תאימות SDK (CODE+TEST 15.10):** ה־SDK הישן של `handleEntityEvents` עודכן מ־`0.8.6` לגרסת `0.8.38` שכבר שימשה במסלול השרת הפעיל; המודול עבר parse ו־Build. תאימות וטריגרים בפרודקשן עדיין דורשים אימות.
+- [ ] **D24 — PROD:** לבדוק שיבוץ יחיד בזמן quiet-hours/שבת לפי מדיניות הנמען: Outbox יחיד עם `availableAt`, אין Pending כפול, אין מסירה מוקדמת, השליחה נשמרת אחרי סגירת דפדפן, וכל שינוי נוסף אינו יוצר הודעה חדשה בטעות.
+- [ ] **D25 — GROUP SAFETY:** ב־`supplierTargetChatId` וב־`getSupplierWhatsAppTarget` יש עדיין fallback למספר פרטי כאשר הוגדר יעד קבוצה אך chat ID אינו תקין. נדרש להחליט על כשל סגור עם הודעת מנהל במקום ניתוב בשקט למספר אחר; לכתוב בדיקות לפני המימוש.
+
+### D08–D11 — פירוק העבודה הארכיטקטונית למקטעים מחייבים
+
+- [ ] **D08.1** לאסוף ולהגדיר מטריצה של כל הפעולות: הוספה, הסרה, rejected→pending, confirmed→pending, שינוי פרטי שירות בלבד, שיבוץ מחדש, שינוי מועד, שתי עריכות מקבילות, ספק עם קבוצת WhatsApp, ספק ללא מספר, שעות שקט.
+- [ ] **D08.2** לבחור מקור אמת אחד בשרת ליצירת **בקשת הודעת שיבוץ**. לתעד האם EventService נשמר לפני intent אטומי, ואיך עובד reconciler מוצא שינוי שנשמר אבל לא קיבל intent.
+- [ ] **D08.3** לכתוב מפתח עסקי **stable per transition**; `updated_date` של EventService אינו מתאים כשהשירות משתנה מסיבות אחרות. יש להגן משחזור הודעה ישנה אחרי עדכון לא קשור ומאישור מחודש שמחייב הודעה חדשה.
+- [ ] **D08.4** לכתוב schema ל־intent וסטטוסים: `requested`, `queued`, `accepted`, `failed_definite`, `unknown`, `cancelled`, `resolved`, עם revision, timestamp, source event ויעד.
+- [ ] **D08.5** מנגנון idempotency אטומי גם כש־Frontend ו־workflow מתעוררים בו זמנית; אסור לשני המסלולים לכתוב שתי הודעות עם שני מפתחות שונים.
+- [ ] **D08.6** להבטיח rollback ממוקד/feature flag ליצרן החדש בלי לכבות את Worker המסמכים, תזכורות, חשבוניות והסכמים.
+- [ ] **D09.1** להעביר את ארבעת מסכי השיבוץ ל־persist intent בשרת, ואז **להפסיק להמתין ל־HTTP לספק**, רק אחרי שבקשת הודעה עמידה נמצאת ב־DB.
+- [ ] **D09.2** UI מציג בנפרד "השיבוץ נשמר" ו"ההודעה ממתינה/נכשלה/נמסרה עם הוכחה", ולא חלון מתמשך שמונע עבודה.
+- [ ] **D09.3** בדיקות תחרות והמשך עיבוד כשמנהל יוצא מהמסך; לא להחליף בהפעלת Promise לא־ממתין בדפדפן.
+- [ ] **D10.1** מבחן עומס 1/5/10 ספקים ו־p95 ברשת סבירה; להשוות למצב הבסיס, לתעד תוצאות ולא לנחש.
+- [ ] **D10.2** בדיקת רגרסיה רוחבית: תשלום, שינוי תאריך אירוע, אישור ספק, ביטול שיבוץ, קבוצה, מסמך, הגדרות התראה, הרשאות וספק חלופי.
+
+
 **תנאי קבלה:** שיבוצים חדשים יציבים ומהירים; אין תלות בתוצאת ספק בהשלמת שמירת DB; כל שינוי עסקי יוצר אפס או הודעת אישור אחת מתועדת — לפי כללים מפורשים.
 
 ## E — תזכורות אירוע, תזכורות אישור והתראות מתוזמנות (P0)
