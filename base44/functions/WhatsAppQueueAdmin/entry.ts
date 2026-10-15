@@ -128,6 +128,11 @@ async function mutateOne(client:any,jobId:string,action:string,body:any,actor:an
     patch.status='queued';patch.available_at=stamp;patch.error_code=0;patch.last_error='';
     patch.archived=false;patch.archived_at='';
     patch.send_started_at='';patch.completed_at='';patch.lease_token='';
+    // Do not display timestamps belonging to a previous, manually verified
+    // send attempt when a job is returned to the pending queue.
+    patch.worker_run_id='';patch.worker_wake_reason='';patch.job_claimed_at='';
+    patch.rate_ready_at='';patch.prior_dispatch_at='';patch.configured_interval_ms=0;
+    patch.transport_started_at='';patch.transport_finished_at='';
     patch.attempt_count=0;patch.manual_retry_count=(Number(row.manual_retry_count)||0)+1;
     patch.resolution=prior==='unknown'?'verified_not_sent_then_requeued':'definite_failure_requeued';
   }else if(action==='resolve'){
