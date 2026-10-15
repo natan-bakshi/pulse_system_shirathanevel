@@ -5,7 +5,7 @@ import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
 import { assignmentWhatsAppKey, assignmentWhatsAppContext, cleanMissingAssignmentTime } from '../../shared/assignmentWhatsApp.ts';
 import { resolveNotificationDelay } from '../../shared/quietHours.ts';
-import { shouldScheduleAssignmentReplyReminder } from '../../shared/assignmentReminderTiming.ts';
+import { shouldScheduleAssignmentReplyReminder, pendingApprovalReminderSupplierIds } from '../../shared/assignmentReminderTiming.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -246,24 +246,24 @@ Deno.serve(async (req) => {
             }
         }
 
-        // תזמון תזכורת לספק שלא התייחס לשיבוץ: פועל מיד כשספק נוסף/עובר לסטטוס pending.
+        // Supplier reply reminders are secondary work. A single supplier can
+        // be both "added" and "changed to pending" in this same event; do not
+        // schedule twice. One malformed reminder must never prevent the
+        // immediate assignment/other notification templates from running.
+        let reminderScheduleErrors=0;
         if (entityName === 'EventService' && triggerType === 'entity_update') {
-            const currentStatusesForPending = safeParse(data.supplier_statuses || data.supplierstatuses);
-            const addedForPending = Array.isArray(event.added_supplier_ids) ? event.added_supplier_ids : [];
-            const changedForPending = Array.isArray(event.changed_status_supplier_ids) ? event.changed_status_supplier_ids : [];
-
-            for (const supId of addedForPending) {
-                const currentStatus = currentStatusesForPending && typeof currentStatusesForPending === 'object'
-                    ? (currentStatusesForPending[supId] || 'pending')
-                    : 'pending';
-                if (currentStatus === 'pending') {
-                    await scheduleSupplierPendingReminder(base44, data, supId);
-                }
-            }
-
-            for (const changeContext of changedForPending) {
-                if (changeContext.status === 'pending') {
-                    await scheduleSupplierPendingReminder(base44, data, changeContext.id);
+            const candidates=pendingApprovalReminderSupplierIds(
+                data.supplier_ids||data.supplierids,
+                event.added_supplier_ids||[],
+                event.changed_status_supplier_ids||[],
+                data.supplier_statuses||data.supplierstatuses
+            );
+            const perEventCache={};
+            for(const supId of candidates){
+                try{await scheduleSupplierPendingReminder(base44,data,supId,perEventCache);}
+                catch(error){
+                    reminderScheduleErrors++;
+                    console.error('[HandleEntityEvents] One pending-approval reminder could not be scheduled');
                 }
             }
         }
@@ -282,7 +282,8 @@ Deno.serve(async (req) => {
         
         if (templates.length === 0) {
             // console.log(`[HandleEntityEvents] No templates found for ${entityName} (Types: ${triggerTypesToFetch.join(', ')})`);
-            return Response.json({ success: true, notifications_sent: 0 });
+            return Response.json({ success: reminderScheduleErrors===0, notifications_sent: 0,
+                reminder_schedule_errors:reminderScheduleErrors });
         }
 
         console.log(`[HandleEntityEvents] Found ${templates.length} templates for ${entityName}`);
@@ -406,8 +407,9 @@ Deno.serve(async (req) => {
             }
         }
 
-        return Response.json({ success: notificationErrors.length===0,
-          notifications_sent: notificationsSent,failed_templates:notificationErrors });
+        return Response.json({ success: notificationErrors.length===0 && reminderScheduleErrors===0,
+          notifications_sent: notificationsSent,failed_templates:notificationErrors,
+          reminder_schedule_errors:reminderScheduleErrors });
 
     } catch (error) {
         console.error('[HandleEntityEvents] Fatal Error:', error);
@@ -416,7 +418,7 @@ Deno.serve(async (req) => {
 });
 
 
-async function scheduleSupplierPendingReminder(base44, eventServiceData, supplierId) {
+async function scheduleSupplierPendingReminder(base44, eventServiceData, supplierId, batchCache=null) {
     if (!eventServiceData?.id || !eventServiceData?.event_id || !supplierId) return false;
 
     const existing = await base44.asServiceRole.entities.PendingPushNotification.filter({
@@ -427,10 +429,15 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     });
     if (existing.length > 0) return false;
 
-    const templates = await base44.asServiceRole.entities.NotificationTemplate.filter({
-        type: 'SUPPLIER_PENDING_REMINDER',
-        is_active: true
-    });
+    // Cache data shared by all suppliers in one EventService notification run.
+    // Supplier-specific records, pending checks and resulting notifications
+    // are still isolated per supplier.
+    const cache=batchCache||{};
+    const shared=(name,load)=>cache[name]||(cache[name]=load());
+    const templates = await shared('pendingReminderTemplate',()=>
+        base44.asServiceRole.entities.NotificationTemplate.filter({
+            type:'SUPPLIER_PENDING_REMINDER',is_active:true
+        }));
     const template = templates[0];
     if (!template) return false;
 
@@ -438,10 +445,14 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     // WhatsApp-only reminder templates do not require loading every system
     // user on every supplier assignment. This was an avoidable hot-path scan.
     const [eventObj, supplierObj, serviceObj, allUsers] = await Promise.all([
-        base44.asServiceRole.entities.Event.get(eventServiceData.event_id),
+        shared('pendingReminderEvent',()=>base44.asServiceRole.entities.Event.get(eventServiceData.event_id)),
         base44.asServiceRole.entities.Supplier.get(supplierId),
-        eventServiceData.service_id ? base44.asServiceRole.entities.Service.get(eventServiceData.service_id).catch(() => null) : Promise.resolve(null),
-        allowedChannels.includes('push') ? base44.asServiceRole.entities.User.list() : Promise.resolve([])
+        eventServiceData.service_id
+          ? shared('pendingReminderService',()=>base44.asServiceRole.entities.Service.get(eventServiceData.service_id).catch(()=>null))
+          : Promise.resolve(null),
+        allowedChannels.includes('push')
+          ? shared('pendingReminderUsers',()=>base44.asServiceRole.entities.User.list())
+          : Promise.resolve([])
     ]);
 
     if (!eventObj || !supplierObj) return false;
