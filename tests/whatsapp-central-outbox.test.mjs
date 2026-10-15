@@ -110,6 +110,33 @@ test('migration safety: disabled queue preserves legacy delivery instead of losi
  }finally{globalThis.fetch=previousFetch;}
 });
 
+test('hot-path idempotent enqueue avoids duplicate control reads and redundant CAS confirmation reads',async()=>{
+ const x=fixture({selectedProvider:'green'});
+ let controlFilters=0,controlGets=0;
+ const controls=x.client.asServiceRole.entities.WhatsAppQueueControl;
+ const filter=controls.filter,get=controls.get;
+ controls.filter=async(...args)=>{controlFilters++;return filter(...args)};
+ controls.get=async(...args)=>{controlGets++;return get(...args)};
+ const r=await sendWhatsAppText('0501234567','one durable message',x.client,{
+   sourceType:'assignment_new',idempotencyKey:'canonical:once'
+ });
+ assert.equal(r.queued,true);
+ assert.equal(controlFilters,2,'One control read at route and one at lock acquisition, not three');
+ assert.equal(controlGets,0,'Conditional compare-and-swap is enough ownership proof');
+ assert.equal(x.jobs.length,1);
+});
+test('enqueue detects a disable occurring after the caller originally checked the queue',async()=>{
+ const x=fixture({selectedProvider:'green'});
+ const controls=x.client.asServiceRole.entities.WhatsAppQueueControl;
+ const filter=controls.filter;let reads=0;
+ controls.filter=async(...args)=>{reads++;if(reads===2)x.control.enabled=false;return filter(...args)};
+ await assert.rejects(sendWhatsAppText('0501234567','must not queue while disabled',x.client,{
+   idempotencyKey:'disabled-during-lock'
+ }),/disabled before enqueue/i);
+ assert.equal(x.jobs.length,0,'No job may be written after the lock sees disabled');
+ assert.equal(x.control.enqueue_owner,'','The enqueue lock must always release on this error');
+});
+
 test('deduplicated messages do not waste provider configuration reads',async()=>{
  const x=fixture({selectedProvider:'green'});
  let reads=0;
