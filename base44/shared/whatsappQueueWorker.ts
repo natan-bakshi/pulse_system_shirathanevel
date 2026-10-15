@@ -226,6 +226,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         status:'sending',send_started_at:startedAt,attempt_count:attempt,lease_token:token,provider,
         worker_run_id:token,worker_wake_reason:wakeReason,job_claimed_at:startedAt,
         rate_ready_at:rateReadyAt?new Date(rateReadyAt).toISOString():startedAt,
+        prior_dispatch_at:control.last_dispatched_at||'',configured_interval_ms:intervalMs,
         transport_started_at:'',transport_finished_at:'',last_status_at:startedAt
       }}));
       if(jobClaim?.updated!==1)continue;  // Another worker already processed it.
