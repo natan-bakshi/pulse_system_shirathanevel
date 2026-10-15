@@ -47,22 +47,32 @@ export async function deliver(client,a,kind,key,message,file=null,config={}) {
  const prior=await client.entities.ClientMessageDelivery.filter({key},"id",1);
  if(prior.length)return prior[0];
  const row=await client.entities.ClientMessageDelivery.create({agreement_id:a.id,event_id:a.event_id,kind,key,target_masked:"••••"+a.recipient_phone.slice(-4),state:"dispatching",attempted_at:new Date().toISOString()});
+ const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id,
+  expiresAt:kind==='verification'?new Date(Date.now()+600000).toISOString():kind==='invitation'?(a.link_expires_at||''):''};
+ // Agreement database calls are scoped to asServiceRole. Transport calls
+ // require the root backend-client shape, including asServiceRole.entities.
+ const waBackend=client?.asServiceRole?.entities ? client : {asServiceRole:client};
+ let receipt:any;
  try{
-  const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id,
-   expiresAt:kind==='verification'?new Date(Date.now()+600000).toISOString():kind==='invitation'?(a.link_expires_at||''):''};
-  // Agreement callers deliberately use a service-role client for DB access.
-  // WhatsApp shared transport requires the *root* backend-client shape, whose
-  // asServiceRole.entities points at those same privileged entities.
-  const waBackend=client?.asServiceRole?.entities ? client : {asServiceRole:client};
-  const result=file?(file.uri?await sendWhatsAppFileUri(a.recipient_phone,file.uri,file.name,message,waBackend,context):await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,waBackend,context)):await sendWhatsAppText(a.recipient_phone,message,waBackend,context);
-  return await client.entities.ClientMessageDelivery.update(row.id,{state:result.queued?"queued":"accepted",provider_message_id:result.queued?"":(result.messageId||""),error:"",queued_at:new Date().toISOString(),queue_job_id:result.jobId||"",...(result.queued?{}:{sent_at:new Date().toISOString()})});
+  receipt=file?(file.uri?await sendWhatsAppFileUri(a.recipient_phone,file.uri,file.name,message,waBackend,context):await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,waBackend,context)):await sendWhatsAppText(a.recipient_phone,message,waBackend,context);
  }catch(error){
-  // No provider call is made here when the queue insertion fails. Log only a
-  // sanitized error phase, never customer phone, token, text or signed links.
+  // Provider was not contacted when enqueue fails. Never include customer
+  // content, token, phone, file URI, or links in diagnostics.
   console.error('[AgreementDelivery] enqueue failed',error instanceof Error?error.name:'unknown',String((error as any)?.queuePhase||'enqueue').slice(0,55));
   await client.entities.ClientMessageDelivery.update(row.id,{state:"failed",error:"ההודעה לא נכנסה לתור WhatsApp. יש לבדוק את ההגדרות."});
-  await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח","ההודעה לא נשמרה לתור WhatsApp. ניתן לראות פרטים בכרטיסיית האירוע.");
+  try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח","ההודעה לא נשמרה לתור WhatsApp. ניתן לראות פרטים בכרטיסיית האירוע.");}
+  catch{console.warn('[AgreementDelivery] failure notification could not be recorded');}
   throw new AgreementError("שמירת הודעת הוואטסאפ בתור נכשלה. לא בוצעה שליחה לספק.",502);
+ }
+ // An accepted/queued receipt MUST NOT be rewritten as a false "failed" row
+ // just because the secondary delivery-status update momentarily failed.
+ const patch={state:receipt.queued?"queued":"accepted",provider_message_id:receipt.queued?"":(receipt.messageId||""),
+  error:"",queued_at:new Date().toISOString(),queue_job_id:receipt.jobId||"",
+  ...(receipt.queued?{}:{sent_at:new Date().toISOString()})};
+ try{return await client.entities.ClientMessageDelivery.update(row.id,patch);}
+ catch{
+  console.warn('[AgreementDelivery] receipt persistence pending; outbox receipt remains authoritative');
+  return {...row,...patch};
  }
 }
 export async function reconcileAgreement(client,eventId,config=null) {
