@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
-import { assignmentWhatsAppKey } from '../../shared/assignmentWhatsApp.ts';
+import { assignmentWhatsAppKey, cleanMissingAssignmentTime } from '../../shared/assignmentWhatsApp.ts';
 import { shouldScheduleAssignmentReplyReminder } from '../../shared/assignmentReminderTiming.ts';
 
 /**
@@ -859,6 +859,9 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     
     // Clean up empty supplier_note placeholders: remove lines with only ~~ or empty tildes
     message = message.replace(/~\s*~/g, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+    if(template.type==='SUPPLIER_NEW_ASSIGNMENT'){
+      message=cleanMissingAssignmentTime(message,Boolean(serviceObj?.supplier_arrival_time||eventObj?.event_time));
+    }
     
     // Check quiet hours (default 22:00-08:00 Israel time)
     const DEFAULT_QUIET_START = 22;
