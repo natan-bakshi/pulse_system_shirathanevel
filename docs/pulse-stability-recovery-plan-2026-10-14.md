@@ -85,7 +85,7 @@
 - [x] **D04 — Push לספקים חדשים בלבד:** שינוי במסך EventDetails מפעיל Push רק ל־`added`, לא לכל מי שכבר שובץ לשירות. **CODE**.
 - [x] **D05 — מניעת התראה מטעה:** בעת כשל ב־`handleEntityEvents` מתבצעת בדיקה ל־Outbox קיים לפני הכרזה על "לא נוצרה הודעה", ומוגבלת התראה פעילה אחת לכל שירות. **CODE**.
 - [x] **D06 — חיסכון בשאילתות:** אין `User.list()` לכל תזכורת WhatsApp־בלבד כשאין ערוץ Push רלוונטי. **CODE**.
-- [ ] **D07 — מפת טריגרים קנונית:** לתעד מי מפעיל `EventService.update`, איזה שינוי מייצר בקשת שיבוץ, איזה מסלול יוצר Outbox, והיכן מתרחש ההמתן ב־UI. לסרוק גם ביטול/העברה/תאריך/קבוצה.
+- [x] **D07 — מפת טריגרים קנונית (CODE REVIEW 15.10):** נמצאו שני workflows ל־EventService: `EventService Notification Trigger.jsonc` ב־UPDATE ו־`EventService Notification Trigger - Create.jsonc` ב־CREATE. שניהם מפעילים `handleEntityEvents`. ה־Frontend שומר `EventService` ואז קורא `verifyAndRefreshAssignment`, שבתוכו `ensureAssignmentWhatsApp` ו־`refreshEventStatus` במקביל; במסך EventDetails מופעל גם `notifySupplierAssignment` ל־Push. שני יוצרי WhatsApp קיימים: `handleEntityEvents` ו־`ensureAssignmentWhatsApp`, שניהם מפנים ל־`sendWhatsAppToChat` ול־Outbox לפי `assignmentWhatsAppKey`. Worker מופעל ע"י CREATE של `WhatsAppOutbox`, UPDATE של `WhatsAppQueueControl` (wake) ו־watchdog כל חמש דקות. **מיפוי קוד בוצע; מדידת זמני UI, ביטול/העברה בקצה ופיילוט עדיין פתוחים ב־D12–D17.**
 - [ ] **D08 — מקור אמת בשרת אחד:** לבטל בעלות כפולה על יצירת WhatsApp בין Frontend safeguard ו־entity workflow. **אסור** להסיר את ה־await בדפדפן לפני שיש בקשת הודעה עמידה בשרת.
 - [ ] **D09 — מפתח שיבוץ קנוני:** לא להשתמש ב־`updated_date` כדי להבדיל פעולת שיבוץ עסקית משינוי פרט אחר. להגדיר גרסת בקשת אישור/transition יציבה, כולל הוספה מחדש ומצב `rejected/confirmed → pending`.
 - [ ] **D10 — יצירת הודעה עמידה:** שלב DB/Server transaction או אירוע change-log שיש בו סטטוס "דרישת הודעה נקלטה" לפני שה־UI מאשר; reconciler חסום־כפילויות יטפל בשיבוץ שנשמר אך enqueue נכשל.
@@ -93,9 +93,11 @@
 - [ ] **D12 — הסרת fetch כפול:** למדוד `refreshEventStatus` / `loadEventData` / `notifySupplierAssignment` ונקודות re-render; לדחות/למזג רק שאילתות שהוכחו כמיותרות.
 - [ ] **D13 — בדיקת מהירות מספרית:** 1/5/10 ספקים, רשת איטית ונייד; למדוד p50/p95 בנתוני ניסוי; יעד מוצע p95 ~2 שניות עד חיווי שמירה, כפוף לבסיס אמיתי.
 - [ ] **D14 — שיבוץ קבוצתי:** יעד `@g.us` מדויק, ללא fallback שקט למספר פרטי כשהמנהל בחר קבוצה. לוג שגיאה בטוח ליעד חסר.
-- [ ] **D15 — טקסט חסר שעה:** למנוע נוסח `בשעה .` בלי להמציא שעת אירוע; טיפול מותנה בתבנית ובתצוגת הודעות.
+- [x] **D15 — טקסט חסר שעה (CODE+TEST):** נמצא קוד `cleanMissingAssignmentTime` ב־`base44/shared/assignmentWhatsApp.ts` בשימוש במסלול הטריגר, ובדיקה `assignment message without a known time omits dangling בשעה . without fabricating a time` עוברת. **פיילוט תוכן ב־PROD עדיין נדרש**.
 - [ ] **D16 — בטיחות פעולות:** double click, שני מנהלים עורכים אותו שיבוץ, ספק שמאשר בזמן עדכון, ביטול, החלפה והעברה — ללא כפילות/אובדן.
 - [ ] **D17 — בדיקות פרודקשן:** הדיאלוג נסגר מהר, השיבוץ נשמר פעם אחת, Outbox מקושר, הודעה מתקבלת אצל ספק הבדיקה והדפדפן אינו נדרש.
+- [x] **D18 — אין הצלחה מדומה ב־dedup (CODE+TEST 15.10):** `ensureAssignmentWhatsApp` החזיר בעבר `success=true` גם כאשר Outbox קודם באותו `idempotency_key` היה `failed/unknown/cancelled/expired/resolved`, כי סיווג אותו כ־`skipped`. כעת המצבים הללו מוחזרים כ־`success=false`, עם jobId ואזהרה למנהל **ללא יצירת שליחה חוזרת**. גם תשובה לא מזוהה כבר אינה `skipped` מוצלח. נוסף כיסוי בדיקות ל־failed/unknown/accepted ותשובה לא מזוהה ב־`tests/assignment-whatsapp-guarantee.test.mjs`.
+- [ ] **D19 — PROD:** אחרי פרסום, לבדוק ש־D18 מוצג נכון בממשק ושלא נוצרים retry או הודעות נוספות כאשר קיימת שגיאת עבר במפתח עסקי זהה.
 
 **תנאי קבלה:** שיבוצים חדשים יציבים ומהירים; אין תלות בתוצאת ספק בהשלמת שמירת DB; כל שינוי עסקי יוצר אפס או הודעת אישור אחת מתועדת — לפי כללים מפורשים.
 
@@ -167,7 +169,7 @@
 ## H — אבטחה, איכות ונתוני אמת (P1)
 
 - [x] **H01 — בדיקות ממוקדות:** כיסוי worker, enqueue, fanout, reminder cutoff, PDF, הסכם, card, crash ו־idempotency נכתב. **TEST**.
-- [x] **H02 — רגרסיה:** 176/177 עברו, Build עבר ב־15.10. ה־RLS הישן של `EventAgreement` נשאר כשל. **TEST**.
+- [x] **H02 — רגרסיה מתועדת:** בגל תיקונים קודם 176/177; לאחר D18 נבדקו **181/182** (181 עברו, 1 נכשל), `npm run build` הצליח, backend syntax תקין. הכשל היחיד שנצפה: `tests/event-agreement.test.mjs`, מדיניות `EventAgreement.create` של מנהל סותרת ציפיית RLS בטסט. **אין לשנות RLS ללא החלטה ואימות נפרדים**. **TEST**, לא PROD.
 - [ ] **H03 — הכרעת אבטחה:** `EventAgreement.create` — האם רק backend מוגן או יצירה ישירה למנהל? לבדוק workflow לפני שינוי RLS; לא "לתקן" בדיקה בהחלשת אבטחה.
 - [ ] **H04 — RLS מקיף:** Outbox, QueueControl, ClientMessageDelivery, Pending, Supplier, User, לוג התראות ופעולות ניהול.
 - [ ] **H05 — סקירת secrets:** אין מפתחות Green/Wasender/Invoice4U או URL חתום בפלט ללקוח/לוג/קובץ תכנון.
@@ -230,6 +232,16 @@
 - תיקון התיעוד בסשן המשך: התוכנית הישנה של 106 שורות הוחלפה במסמך מרכזי עם משימות ממוספרות, סטטוסים וקריטריונים.
 - **המשימה הבאה לאחר עדכון המסמך:** D07–D10 — מיפוי מדויק של טריגרים והחלפת יוצרי שיבוץ כפולים בבעלים עמיד אחד, בלי לאבד מהירות שמירה; במקביל בדיקת C08–C09 כאשר יש פרסום ונמען בדיקה מאושר.
 - **נקודת עצירה:** אחרי בדיקת התוכנית, הרצת QA מחדש, עדכון יומן סשן, checkpoint נפרד. אין לקפוץ לשינוי גורף של מודל השיבוץ באותו גל ללא חוזה נתונים ובדיקות תחרות.
+
+### 15.10.2026 — אימות חד־משמעי בין שתי אפליקציות Pulse + תיקון D18
+- **זהות פרויקט:** נשלפה רשימת האפליקציות; Pulse שירת הנבל ID `687d1de6659eff83e9c034f7` מחובר ל־`natan-bakshi/pulse_system_shirathanevel`. Pulse הרב־חברתי ID `6a33dd29fd912621a5d8443a` מחובר ל־`natan-bakshi/pulse`. **לא נכתב דבר לרב־חברתי.** הוסף guard למסמך זה ונוהל בדיקה בתחילת כל סשן.
+- **Checkpoint לפני שינוי:** `6ad0bf85c616ac178b9bc786` (בסיס commit `17c7f0b`). לאחר ההרחבה הראשונה המסמך נוכח בקוד בעדכון `c2b9b14`. קיים קובץ תכנון מרכזי **בן למעלה מ־240 שורות** עם משימות אטומיות; נמשיך לערוך אותו ולא ליצור תוכניות מתחרות.
+- **ממצא D18:** בחזרה של `enqueueWhatsApp` עם מפתח שכבר קיים וסטטוס `failed/unknown`, בדיקת השיבוץ ספרה זאת כדילוג תקין. תוקן fail-closed; אין resend אוטומטי, ומה שנשלח כבר לא נשלח שוב.
+- **מפת D07:** שני workflows של EventService; שני מסלולי יצרן WhatsApp; worker CREATE/UPDATE+watchdog. טרם פישטנו את הארכיטקטורה; D08–D11 עדיין פתוחים, ולא מסירים await בלי תחליף עמיד.
+- **QA:** 35/35 בדיקות ממוקדות; 181/182 רגרסיות מלאות, אחת קיימת בתחום RLS; `npm run build` הצליח; פענוח backend עבר. **לא בוצעה שליחת WhatsApp אמיתית**.
+- **נתוני מערכת:** מדגם אחרון 21 `accepted`, שתי `unknown`, תור enabled ו־unpaused. לא בוצעו שינויים ב־Outbox, בלקוחות, בשיבוצים או בתשלומים.
+- **נקודת עצירה הבאה:** לשמור checkpoint אחרי תיעוד התיקון; לפתח D08–D10 (יוצר שיבוץ עמיד יחיד, תוך שמירת מהירות) רק אחרי פירוט מדויק של חוזה הנתונים ובדיקות תחרות. בנפרד להוכיח C08–C09 לאחר פרסום ופיילוט מאושר. אי־ודאות במשלוח או רגרסיה ביצועים מחייבות עצירה.
+- **פרסום:** לא בוצע בסשן זה; בדיקת קוד ו־Build אינן הוכחת יציבות בפרודקשן.
 
 ### תבנית חובה ליומן סשן הבא
 
