@@ -1,6 +1,6 @@
 import { getEventFields, getEventContacts, prepareContacts, normalizeEventValues, validateEventFields } from '@/lib/eventFields';
 import { refreshEventStatus, refreshStoredCardPolicy } from '@/lib/eventStatus';
-import { newAssignmentRecipients, verifyAssignmentWhatsApp, showAssignmentWhatsAppWarning } from '@/lib/assignmentWhatsAppGuarantee';
+import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
@@ -1188,10 +1188,7 @@ export default function EventDetails() {
         supplier_ids: JSON.stringify(supplierFormData.supplierIds),
         supplier_notes: JSON.stringify(supplierFormData.notes)
       });
-      const notification=await verifyAssignmentWhatsApp(selectedServiceForSupplier.id,added);
-      showAssignmentWhatsAppWarning(notification);
-
-      await refreshEventStatus(eventId);
+      await verifyAndRefreshAssignment(selectedServiceForSupplier.id,added,eventId);
 
       if (supplierFormData.supplierIds.length > 0) {
         try {
