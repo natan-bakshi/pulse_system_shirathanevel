@@ -11,6 +11,7 @@ async function withEnqueueLock(client:any,run:()=>Promise<any>) {
   const token=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : 'enqueue-'+Date.now()+'-'+Math.random();
   const deadline=Date.now()+20000;
   let control:any=null;
+  let lockAcquired=false;
   while(Date.now()<deadline) {
     control=await readWhatsAppQueueControl(client);
     const occupied=!!control.enqueue_owner && Date.parse(control.enqueue_until||'')>Date.now();
@@ -18,11 +19,14 @@ async function withEnqueueLock(client:any,run:()=>Promise<any>) {
       const won=await entity.updateMany({
         id:control.id,enqueue_owner:control.enqueue_owner||'',enqueue_until:control.enqueue_until||''
       },{$set:{enqueue_owner:token,enqueue_until:new Date(Date.now()+30000).toISOString()}});
-      if(won?.updated===1)break;
+      if(won?.updated===1){lockAcquired=true;break;}
     }
     await lockPause(40+Math.floor(Math.random()*65));
   }
-  if(!control || (await entity.get(control.id)).enqueue_owner!==token) {
+  // The conditional updateMany is an atomic compare-and-swap. Its confirmed
+  // update is the ownership proof; re-reading the same row per message added
+  // another serial API round trip on the hot enqueue path.
+  if(!control || !lockAcquired) {
     throw new Error('WhatsApp outbox enqueue lock unavailable; message not queued');
   }
   try{return await run();}
@@ -58,8 +62,10 @@ export async function enqueueWhatsApp(client: any, data: {
   chatId: string; messageType: 'text' | 'document'; messageText?: string;
   documentUrl?: string; fileUri?: string; fileName?: string; caption?: string;
   context?: any;
-}) {
-  const control = await readWhatsAppQueueControl(client);
+}, validatedControl:any=null) {
+  // The shared send entrypoint already validated this singleton. Reuse it
+  // rather than fetching queue settings twice before taking the CAS lock.
+  const control = validatedControl || await readWhatsAppQueueControl(client);
   // Fail closed, never bypass the queue, even while disabled.
   if (!control.enabled) throw new Error('Central WhatsApp queue has not been activated');
   const context = data.context || {};
