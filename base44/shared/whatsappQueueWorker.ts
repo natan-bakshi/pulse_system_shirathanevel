@@ -154,11 +154,14 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   const nowMs=Date.now();
   if(control.lease_owner && asEpoch(control.lease_until)>nowMs) return {success:true,reason:'busy',sent:0};
   const token=randomToken();
+  const wakeReason=['outbox_create','continue','watchdog','manual'].includes(opts.wakeReason)
+    ? opts.wakeReason : 'unattributed';
   const claim=await queueStage('lease_acquire',()=>controls.updateMany({
     id:control.id,lease_owner:control.lease_owner||'',lease_until:control.lease_until||''
   },{$set:{
     lease_owner:token,lease_until:new Date(nowMs+LEASE_MS).toISOString(),
-    last_worker_at:new Date(nowMs).toISOString()
+    last_worker_at:new Date(nowMs).toISOString(),
+    last_worker_run_id:token,last_worker_wake_reason:wakeReason
   }}));
   if(claim?.updated!==1) return {success:true,reason:'busy',sent:0};
   const deadline=Date.now()+(Number(opts.maxRuntimeMs)||MAX_RUNTIME_MS);
@@ -214,8 +217,16 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
 
       const job=options.job,attempt=Number(job.attempt_count||0)+1;
       const startedAt=new Date().toISOString();
+      // Split due→rate-limited eligibility from eligibility→worker claim.
+      // Rate barrier is captured from BEFORE this message takes its slot.
+      const dueAt=Math.max(asEpoch(job.created_date),asEpoch(job.available_at));
+      const prevDispatch=asEpoch(control.last_dispatched_at);
+      const rateReadyAt=Math.max(dueAt,prevDispatch?prevDispatch+intervalMs:0);
       const jobClaim=await queueStage('job_claim',()=>db.WhatsAppOutbox.updateMany({id:job.id,status:job.status},{$set:{
-        status:'sending',send_started_at:startedAt,attempt_count:attempt,lease_token:token,provider,last_status_at:startedAt
+        status:'sending',send_started_at:startedAt,attempt_count:attempt,lease_token:token,provider,
+        worker_run_id:token,worker_wake_reason:wakeReason,job_claimed_at:startedAt,
+        rate_ready_at:rateReadyAt?new Date(rateReadyAt).toISOString():startedAt,
+        transport_started_at:'',transport_finished_at:'',last_status_at:startedAt
       }}));
       if(jobClaim?.updated!==1)continue;  // Another worker already processed it.
       const timeSlot=await queueStage('rate_slot_claim',()=>controls.updateMany({id:control.id,lease_owner:token},{$set:{
@@ -228,20 +239,28 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         break;
       }
       processed++;
+      // This interval measures the transport function (including a private
+      // file's just-in-time signed URL), not strictly HTTP/network alone.
+      const transportStartedAt=new Date().toISOString();
+      let transportFinishedAt='';
       try {
         // Only this line reaches a provider. Never call the public enqueue method.
         const receipt=await (opts.transport||sendWhatsAppTransport)(job,provider,client);
+        transportFinishedAt=new Date().toISOString();
         await db.WhatsAppOutbox.update(job.id,{
           status:'accepted',provider_message_id:receipt.messageId||'',completed_at:new Date().toISOString(),
+          transport_started_at:transportStartedAt,transport_finished_at:transportFinishedAt,
           last_error:'',error_code:0,last_status_at:new Date().toISOString()
         });
         accepted++;
         await syncWhatsAppStatus(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),'accepted',receipt.messageId||'');
       }catch(error){
+        transportFinishedAt ||= new Date().toISOString();
         const outcome=classifyWhatsAppError(error,attempt,Number(job.max_attempts||3));
         await db.WhatsAppOutbox.update(job.id,{
           status:outcome.status,available_at:outcome.retryAt||job.available_at,
           error_code:outcome.code,last_error:outcome.reason,completed_at:new Date().toISOString(),
+          transport_started_at:transportStartedAt,transport_finished_at:transportFinishedAt,
           last_status_at:new Date().toISOString()
         });
         if(outcome.status==='unknown') unknown++;
@@ -262,7 +281,9 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       requestWake=processed>0 && !!remainder.job && !existing.paused && existing.enabled && !lastError;
       const released=await queueStage('lease_release',()=>controls.updateMany({id:control.id,lease_owner:token},{$set:{
         lease_owner:'',lease_until:'',
-        last_worker_at:new Date().toISOString(),last_error:lastError
+        last_worker_at:new Date().toISOString(),last_error:lastError,
+        last_worker_finished_at:new Date().toISOString(),last_batch_count:processed,
+        last_batch_elapsed_ms:Math.max(0,Date.now()-nowMs)
       }}));
       // Base44's entity-UPDATE workflow must be woken with a real update(),
       // not updateMany(): an atomic CAS write alone may not emit the entity
