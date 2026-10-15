@@ -16,7 +16,7 @@ const plugin={name:"offline-agreements",setup(b){
  secrets:"export const secrets={get:k=>globalThis.__secrets[k]};",
  quote:'export const generateQuoteHtml=async()=>({html:"הצעת מחיר לבדיקת הסכם"});',
  pdf:'export async function persistAgreementPdf(c,a){if(a.pdf_uri)return a;globalThis.__pdfCount++;return c.entities.EventAgreement.update(a.id,{pdf_uri:"private:test.pdf",pdf_state:"ready"});}',
- whatsapp:'export const normalizeIsraeliPhone=s=>s&&/^0?5\\d{8}$/.test(s)?s:"";export const sendWhatsAppText=async(phone,message)=>{globalThis.__messages.push({phone,message});return {messageId:"m"+globalThis.__messages.length};};export const sendWhatsAppFileByUrl=async(phone,url,name,message)=>{globalThis.__messages.push({phone,url,name,message});return {messageId:"m"+globalThis.__messages.length};};export const sendWhatsAppFileUri=async(phone,uri,name,message)=>{globalThis.__messages.push({phone,uri,name,message});return {messageId:"m"+globalThis.__messages.length};};',
+ whatsapp:'export const normalizeIsraeliPhone=s=>s&&/^0?5\\d{8}$/.test(s)?s:"";export const sendWhatsAppText=async(phone,message)=>{globalThis.__messages.push({phone,message});return globalThis.__queueAgreementMessages?{queued:true,jobId:"outbox-"+globalThis.__messages.length}:{messageId:"m"+globalThis.__messages.length};};export const sendWhatsAppFileByUrl=async(phone,url,name,message)=>{globalThis.__messages.push({phone,url,name,message});return {messageId:"m"+globalThis.__messages.length};};export const sendWhatsAppFileUri=async(phone,uri,name,message)=>{globalThis.__messages.push({phone,uri,name,message});return {messageId:"m"+globalThis.__messages.length};};',
  html:"export const convert=s=>s;"
  }[path]}));
 }};
@@ -41,7 +41,7 @@ function fixture(){
  delete:async id=>{db[name]=db[name].filter(x=>x.id!==id);}
  };}});
  const client={entities,auth:{me:async()=>({id:"admin",role:"admin"})},integrations:{Core:{CreateFileSignedUrl:async()=>({signed_url:"https://files.example.test/agreement.pdf"})}}};client.asServiceRole=client;
- globalThis.__client=client;globalThis.__secrets={};globalThis.__messages=[];globalThis.__pdfCount=0;globalThis.__failEntity="";
+ globalThis.__client=client;globalThis.__secrets={};globalThis.__messages=[];globalThis.__queueAgreementMessages=false;globalThis.__pdfCount=0;globalThis.__failEntity="";
  globalThis.fetch=async()=>{throw new Error("Live provider calls forbidden in tests");};
  return {client,db};
 }
@@ -131,6 +131,18 @@ test("a consent-free route cannot accidentally trigger a charge; daily job sends
  assert.equal(sent,2);
  await lifecycle.processAgreementMilestones(f.client,{});assert.equal(globalThis.__messages.length-before,sent);
  assert.equal(f.db.Payment?.length||0,0);
+});
+test("issued agreement reports queued distinctly from provider acceptance",async()=>{
+ const f=fixture(),a=await create();
+ globalThis.__queueAgreementMessages=true;
+ const r=await req("issue",{agreementId:a.id,send:true});
+ assert.equal(r.status,200,JSON.stringify(r));
+ assert.equal(r.data.delivery_state,"queued");
+ assert.equal(f.db.ClientMessageDelivery[0].state,"queued");
+ assert.ok(f.db.AgreementAuditEvent.some(e=>e.kind==="invitation_queued"));
+ assert.equal(f.db.AgreementAuditEvent.some(e=>e.kind==="invitation_accepted"),false);
+ const labels=(await import("node:fs")).readFileSync("src/lib/agreementApi.js","utf8");
+ assert.match(labels,/queued:"ממתין בתור WhatsApp"/);
 });
 test("agreement schemas deny direct writes and non-admin reads",async()=>{
  const fs=await import("node:fs");
