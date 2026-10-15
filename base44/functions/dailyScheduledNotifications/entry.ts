@@ -228,58 +228,14 @@ Deno.serve(async (req) => {
         const pushQueue = []; // { subscriptionId, title, message, link, notificationRecordId }
 
         // ============================================================
-        // PHASE 1: Process Pending Notifications (from quiet hours/shabbat)
+        // PHASE 1: Delayed notifications have ONE owner.
+        // The hourly processScheduledPushNotifications worker alone claims,
+        // validates and enqueues PendingPushNotification rows. Previously the
+        // daily worker marked is_sent=true BEFORE WhatsApp was enqueued, and
+        // used a different idempotency key, risking lost/duplicate messages.
+        // This daily scan intentionally does not touch those rows.
         // ============================================================
-        console.log('[DailyNotifications] Phase 1: Processing pending notifications...');
-        
-        const dueNotifications = allPendingNotifications.filter(n => {
-            if (!n.scheduled_for) return false;
-            return new Date(n.scheduled_for) <= now;
-        });
-        
-        console.log(`[DailyNotifications] Found ${dueNotifications.length} due pending notifications`);
-
-        for (const pending of dueNotifications) {
-            try {
-                // Parse WhatsApp data
-                let whatsappData = null;
-                try { whatsappData = pending.data ? JSON.parse(pending.data) : {}; } catch(e) {}
-
-                // Send WhatsApp if queued
-                if (whatsappData && whatsappData.send_whatsapp) {
-                    const phoneToUse = whatsappData.phone;
-                    if (phoneToUse) {
-                        whatsappQueue.push({
-                            phone: phoneToUse,
-                            message: whatsappData.whatsapp_message || pending.message,
-                            inAppNotificationId: pending.in_app_notification_id || '',
-                            sourceType:'scheduled_notification', sourceId:pending.id,
-                            idempotencyKey:'daily-pending:'+pending.id
-                        });
-                    }
-                }
-
-                // Send Push if user has subscription
-                const targetUser = allUsers.find(u => u.id === pending.user_id);
-                if (targetUser?.push_enabled && targetUser?.onesignal_subscription_id) {
-                    pushQueue.push({
-                        subscriptionId: targetUser.onesignal_subscription_id,
-                        title: pending.title,
-                        message: pending.message,
-                        link: pending.link || '',
-                        notificationRecordId: pending.in_app_notification_id
-                    });
-                }
-
-                // Mark as sent
-                await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, { is_sent: true });
-                results.pending_processed++;
-                
-            } catch (error) {
-                console.error(`[DailyNotifications] Error processing pending ${pending.id}:`, error);
-                results.errors++;
-            }
-        }
+        console.log('[DailyNotifications] Scheduled pending delivery belongs to processScheduledPushNotifications');
 
         // ============================================================
         // PHASE 2: Process scheduled_check Templates
