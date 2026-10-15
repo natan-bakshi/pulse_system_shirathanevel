@@ -15,8 +15,9 @@ export function assignmentReplyDeadline(event:any,eventService:any):Date|null {
     .map(t=>String(t||'').trim()).filter(t=>/^([01]?\d|2[0-3]):[0-5]\d$/.test(t));
   // If start time is unknown, do not invent 09:00; conservatively cut off
   // approval reminders when the event date begins.
-  const first=times.length?times.sort()[0]:'00:00';
-  const [h,m]=first.split(':').map(Number);
+  const first=times.length?times.map(t=>t.split(':').map(Number))
+    .sort((a,b)=>(a[0]*60+a[1])-(b[0]*60+b[1]))[0]:[0,0];
+  const [h,m]=first;
   return fromJerusalemWallClock(year,month,day,h,m);
 }
 export function shouldScheduleAssignmentReplyReminder(event:any,service:any,scheduledAt:Date):boolean {
