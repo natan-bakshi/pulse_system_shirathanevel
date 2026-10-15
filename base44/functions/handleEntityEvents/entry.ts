@@ -1,9 +1,10 @@
 import { getClientContacts, getEventContacts } from '../../shared/eventFields.js';
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
-import { assignmentWhatsAppKey, cleanMissingAssignmentTime } from '../../shared/assignmentWhatsApp.ts';
+import { assignmentWhatsAppKey, assignmentWhatsAppContext, cleanMissingAssignmentTime } from '../../shared/assignmentWhatsApp.ts';
+import { resolveNotificationDelay } from '../../shared/quietHours.ts';
 import { shouldScheduleAssignmentReplyReminder } from '../../shared/assignmentReminderTiming.ts';
 
 /**
@@ -863,6 +864,23 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
       message=cleanMissingAssignmentTime(message,Boolean(serviceObj?.supplier_arrival_time||eventObj?.event_time));
     }
     
+    // One assignment enqueue path in both normal and quiet hours. Previously
+    // the entity trigger scheduled a PendingPushNotification during quiet
+    // hours, while the on-save safeguard used WhatsAppOutbox with a DIFFERENT
+    // dedupe key. That could produce two messages for one assignment.
+    if(template.type==='SUPPLIER_NEW_ASSIGNMENT' && serviceObj?.id && supplierObj?.id){
+        const delay=resolveNotificationDelay(supplierObj);
+        const receipt=await sendWhatsAppToChat(whatsappTarget.chatId,message,base44,
+            assignmentWhatsAppContext(serviceObj,supplierObj.id,template.type,delay));
+        if(!receipt?.queued && receipt?.status!=='accepted' && receipt?.status!=='sending' && receipt?.status!=='retry_wait'){
+            throw new Error('Assignment WhatsApp outbox is not in a sendable state');
+        }
+        console.log('[HandleEntityEvents] Assignment WhatsApp outbox receipt state:',receipt.status||'queued');
+        return;
+    }
+
+    // Other (non-assignment) notification templates retain their existing
+    // delayed notification handling until their separate migration is tested.
     // Check quiet hours (default 22:00-08:00 Israel time)
     const DEFAULT_QUIET_START = 22;
     const DEFAULT_QUIET_END = 8;
