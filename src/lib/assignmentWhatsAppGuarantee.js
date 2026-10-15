@@ -1,4 +1,5 @@
 import {base44} from '@/api/base44Client';
+import {refreshEventStatus} from '@/lib/eventStatus';
 
 // Assignment saves are considered successful in the business database even if
 // WhatsApp fails; report that distinction instead of pretending to have sent.
@@ -36,6 +37,23 @@ export async function verifyAssignmentWhatsApp(eventServiceId, supplierIds){
       error?.message||'תקלה לא ידועה';
     return {success:false,requested:supplierIds.length,error:detail};
   }
+}
+// Save already succeeded. Both backend checks are independent: waiting for one
+// before starting the other only increases time spent in the supplier dialog.
+// A notification failure must never be labelled a failed assignment save.
+export async function verifyAndRefreshAssignment(eventServiceId, supplierIds, eventId){
+  const [delivery, status] = await Promise.allSettled([
+    verifyAssignmentWhatsApp(eventServiceId,supplierIds),
+    refreshEventStatus(eventId)
+  ]);
+  const report=delivery.status==='fulfilled'?delivery.value:
+    {success:false,error:'בדיקת תור WhatsApp נכשלה'};
+  showAssignmentWhatsAppWarning(report);
+  if(status.status==='rejected'){
+    console.warn('[Assignments] event status refresh pending');
+    window.alert('השיבוץ נשמר, אבל עדכון סטטוס האירוע טרם אושר. כדאי לרענן את האירוע.');
+  }
+  return {delivery:report,statusUpdated:status.status==='fulfilled'};
 }
 export function showAssignmentWhatsAppWarning(report){
   if(report?.success)return;
