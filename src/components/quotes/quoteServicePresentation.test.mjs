@@ -51,7 +51,9 @@ for(const visible of [true,false]) for(const mode of ['default','direct_payment'
   // Visibility has no effect on the binding financial total.
   const other=fixture(!visible,mode);
   const otherPdf=await generateQuoteHtml(event.id,other.client);
-  assert.equal(pdf.html.split('summary-section')[1],otherPdf.html.split('summary-section')[1]);
+  const summary = html => html.match(/<table class="summary-table">[\s\S]*?<\/table>/)?.[0];
+  assert.ok(summary(pdf.html));
+  assert.equal(summary(pdf.html),summary(otherPdf.html));
  });
 }
 for(const visible of [true,false]) test(`modular parent and child honor visibility ${visible}`,async()=>{
