@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 const code=esbuild.transformSync(fs.readFileSync('base44/functions/processWhatsAppOutbox/entry.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
 function fixture({role='admin',enabled=true,paused=false,hasWork=true}={}){
- let handler;const control={id:'global',control_key:'global',enabled,paused};const updates=[];let dispatched=0;
+ let handler;const control={id:'global',control_key:'global',enabled,paused};const updates=[];let dispatched=0;const wakeReasons=[];
  const client={
    auth:{me:async()=>role?{role}:null},
    asServiceRole:{entities:{
@@ -24,13 +24,33 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true}={}){
    require:name=>{
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(name.endsWith('/whatsappQueueWorker.ts'))return {
-       drainWhatsAppOutbox:async()=>{dispatched++;return {success:true,reason:'processed',accepted:1}}
+       drainWhatsAppOutbox:async(_client,opts)=>{dispatched++;wakeReasons.push(opts?.wakeReason);return {success:true,reason:'processed',accepted:1}}
      };
      throw Error('Unexpected worker import: '+name);
    }
  });
- return {call:()=>handler({method:'POST'}),updates,get dispatched(){return dispatched;}};
+ return {call:(payload={})=>handler({method:'POST',json:async()=>payload}),updates,wakeReasons,get dispatched(){return dispatched;}};
 }
+test('workflow wake reasons are attributed only as telemetry and unknown inputs are sanitized',async()=>{
+ for(const reason of ['outbox_create','continue','watchdog']){
+   const f=fixture();
+   const response=await f.call({wakeReason:reason});
+   assert.equal(response.status,200);
+   assert.deepEqual(f.wakeReasons,[reason]);
+ }
+ const untrusted=fixture();
+ await untrusted.call({wakeReason:'arbitrary_external_payload',recipient:'not-permitted'});
+ assert.deepEqual(untrusted.wakeReasons,['unattributed']);
+ for(const [filename,reason] of [
+   ['WhatsApp Outbox Wake On Create.jsonc','outbox_create'],
+   ['WhatsApp Outbox Continue Batch.jsonc','continue'],
+   ['WhatsApp Outbox Watchdog 5min.jsonc','watchdog']
+ ]){
+   const file=JSON.parse(fs.readFileSync('base44/workflows/'+filename,'utf8'));
+   assert.equal(file.definition.do[0].run_function.with.args.wakeReason,reason);
+ }
+});
+
 test('background function rejects anonymous or non-admin calls before touching data',async()=>{
  for(const role of [null,'supplier','customer']){
    const f=fixture({role});
