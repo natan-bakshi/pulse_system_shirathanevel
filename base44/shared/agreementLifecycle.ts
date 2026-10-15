@@ -24,6 +24,12 @@ export async function financials(client,event,config) {
 export async function notifyAgreementAdmin(client,a,title,message) {
  const admin=await client.entities.User.get(a.created_by_user_id);
  if(admin?.role!=="admin")return;
+ // One active actionable failure per agreement event. Other agreement
+ // notifications (OTP, payments) are not suppressed or combined.
+ if(title==='נדרשת בדיקת תור הודעות לקוח'){
+  const existing=await client.entities.InAppNotification.filter({user_id:admin.id,related_event_id:a.event_id,template_type:'EVENT_AGREEMENT',title,is_resolved:false},'-created_date',1);
+  if(existing.length)return existing[0];
+ }
  await client.entities.InAppNotification.create({user_id:admin.id,user_email:admin.email||"",title,message,template_type:"EVENT_AGREEMENT",is_read:false,is_resolved:false,link:"/EventDetails?id="+a.event_id,related_event_id:a.event_id});
 }
 // Caller holds the agreement lock. Enqueue once; the worker records provider acceptance asynchronously.
@@ -44,9 +50,16 @@ export async function deliver(client,a,kind,key,message,file=null,config={}) {
  try{
   const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id,
    expiresAt:kind==='verification'?new Date(Date.now()+600000).toISOString():kind==='invitation'?(a.link_expires_at||''):''};
-  const result=file?(file.uri?await sendWhatsAppFileUri(a.recipient_phone,file.uri,file.name,message,client,context):await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,client,context)):await sendWhatsAppText(a.recipient_phone,message,client,context);
+  // Agreement callers deliberately use a service-role client for DB access.
+  // WhatsApp shared transport requires the *root* backend-client shape, whose
+  // asServiceRole.entities points at those same privileged entities.
+  const waBackend=client?.asServiceRole?.entities ? client : {asServiceRole:client};
+  const result=file?(file.uri?await sendWhatsAppFileUri(a.recipient_phone,file.uri,file.name,message,waBackend,context):await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,waBackend,context)):await sendWhatsAppText(a.recipient_phone,message,waBackend,context);
   return await client.entities.ClientMessageDelivery.update(row.id,{state:result.queued?"queued":"accepted",provider_message_id:result.queued?"":(result.messageId||""),error:"",queued_at:new Date().toISOString(),queue_job_id:result.jobId||"",...(result.queued?{}:{sent_at:new Date().toISOString()})});
- }catch{
+ }catch(error){
+  // No provider call is made here when the queue insertion fails. Log only a
+  // sanitized error phase, never customer phone, token, text or signed links.
+  console.error('[AgreementDelivery] enqueue failed',error instanceof Error?error.name:'unknown',String((error as any)?.queuePhase||'enqueue').slice(0,55));
   await client.entities.ClientMessageDelivery.update(row.id,{state:"failed",error:"ההודעה לא נכנסה לתור WhatsApp. יש לבדוק את ההגדרות."});
   await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח","ההודעה לא נשמרה לתור WhatsApp. ניתן לראות פרטים בכרטיסיית האירוע.");
   throw new AgreementError("שמירת הודעת הוואטסאפ בתור נכשלה. לא בוצעה שליחה לספק.",502);
