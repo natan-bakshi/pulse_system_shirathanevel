@@ -11,6 +11,11 @@ Deno.serve(async (req) => {
     if(!actor || actor.role!=='admin'){
       return Response.json({success:false,error:'Unauthorized queue worker'},{status:403});
     }
+    // Only telemetry reads this hint. The server still selects/locks every job;
+    // an untrusted caller cannot specify recipients or bypass the rate limit.
+    const request=await req.json().catch(()=>({}));
+    const wakeReason=['outbox_create','continue','watchdog'].includes(request?.wakeReason)
+      ? request.wakeReason : 'unattributed';
     // Record a harmless invocation heartbeat even while the queue is disabled.
     // This allows us to verify that entity/scheduled workflows actually reach
     // an authenticated worker, without sending a test WhatsApp message.
@@ -25,7 +30,7 @@ Deno.serve(async (req) => {
     },'created_date',1);
     if(!work.length)return Response.json({success:true,reason:'empty',sent:0});
     await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invoked_at:new Date().toISOString()});
-    const result=await drainWhatsAppOutbox(client);
+    const result=await drainWhatsAppOutbox(client,{wakeReason});
     await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invocation_result:result.reason||''});
     return Response.json(result);
   }catch(error){
