@@ -1,6 +1,7 @@
 import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, systemKey } from './eventFields.js';
 import { getEventDisplayName } from './eventName.ts';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
+import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
 
 // Import helper functions
 function formatDate(dateStringOrDate) {
@@ -570,6 +571,8 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                         <div class="package-header">
                             <h3 class="package-title">${mainPkg.package_name || mainPkg.service_name}</h3>
                             ${(mainPkg.package_description || mainPkg.service_description) ? `<div class="package-description">${mainPkg.package_description || mainPkg.service_description}</div>` : ''}
+                            ${quoteServiceNotesHtml(mainPkg, quoteBodyFontSize)}
+                            ${quoteServicePriceHtml(mainPkg, packageTotal, quoteBodyFontSize, false)}
                         </div>
                         <div class="package-content">
                 `;
@@ -628,7 +631,8 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                             <div style="flex: 1;">
                                 <strong style="color: #333; font-size: ${quoteBodyFontSize}px;">${service.service_name || service.details?.service_name || 'שירות'}</strong>
                                 ${serviceDescription ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.95); margin-top: 2px;">${serviceDescription}</div>` : ''}
-                                ${service.client_notes ? `<div style="color: #888; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${service.client_notes}</div>` : ''}
+                                ${quoteServiceNotesHtml(service, quoteBodyFontSize)}
+                                ${quoteServicePriceHtml(service, (service.custom_price || 0) * (service.quantity || 1), quoteBodyFontSize, !event.all_inclusive)}
                                 ${service.quantity > 1 ? `<div style="color: #666; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${service.quantity}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
@@ -639,7 +643,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                 servicesHtml += `</div>`;
 
                 // Footer with price
-                if (!event.all_inclusive) {
+                if (quotePriceVisible(mainPkg, !event.all_inclusive)) {
                     servicesHtml += `
                         <div class="package-footer">
                             <div class="package-price-label">סה"כ לחבילה:</div>
@@ -713,16 +717,11 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
                             <div style="flex: 1; min-width: 200px;">
                                 <strong style="color: #1f2937; font-size: ${quoteBodyFontSize}px;">${service.service_name || service.details?.service_name || 'שירות'}</strong>
                                 ${serviceDescription ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 5px;">${serviceDescription}</div>` : ''}
-                                ${service.client_notes ? `<div style="color: #9ca3af; font-size: calc(${quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${service.client_notes}</div>` : ''}
-                                ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}${!event.all_inclusive ? ` × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : ''}</div>` : ''}
+                                ${quoteServiceNotesHtml(service, quoteBodyFontSize)}
+                                ${service.quantity > 1 ? `<div style="color: #6b7280; font-size: ${quoteBodyFontSize}px; margin-top: 3px;">כמות: ${service.quantity}${quotePriceVisible(service, !event.all_inclusive) ? ` × ₪${(service.custom_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : ''}</div>` : ''}
                                 ${transportDetailsHtml}
                             </div>
-                            ${!event.all_inclusive ? `
-                            <div style="text-align: left; margin-top: 10px;">
-                                <strong style="color: #8B0000; font-size: ${quoteBodyFontSize}px;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
-                                ${service.includes_vat ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(כולל מע"מ)</div>` : `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(לא כולל מע"מ)</div>`}
-                            </div>
-                            ` : ''}
+                            <div style="text-align: left; margin-top: 10px;">${quoteServicePriceHtml(service, serviceTotal, quoteBodyFontSize, !event.all_inclusive)}</div>
                         </div>
                     </div>
                 `;
@@ -748,19 +747,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
             const serviceNotes = service.client_notes || service.notes || '';
             const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
 
-            // Price display logic
-            const displayMode = service.price_display_mode || 'default';
-            const showPrice = service.show_price_in_quote !== false;
-            let priceLabel = '';
-            if (displayMode === 'direct_payment') priceLabel = 'תשלום ישיר';
-            else if (displayMode === 'estimated_price') priceLabel = 'מחיר מוערך';
-            else if (displayMode === 'custom_text') priceLabel = service.price_display_text || '';
-
-            const priceHtml = displayMode === 'default'
-                ? `<strong style="color: #8B0000; font-size: ${quoteBodyFontSize}px;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
-                   ${service.includes_vat ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(כולל מע"מ)</div>` : `<div style="font-size: calc(${quoteBodyFontSize}px * 0.8); color: #6b7280;">(לא כולל מע"מ)</div>`}`
-                : `${priceLabel ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #b45309; font-weight: 600;">${priceLabel}</div>` : ''}
-                   ${showPrice && serviceTotal > 0 ? `<div style="font-size: calc(${quoteBodyFontSize}px * 0.9); color: #6b7280;">₪${serviceTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}`;
+            const priceHtml = quoteServicePriceHtml(service, serviceTotal, quoteBodyFontSize);
 
             externalServicesHtml += `
                 <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">

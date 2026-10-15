@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 import { composeModularQuoteHtml } from '../../shared/modularQuote.ts';
+import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from '../../shared/quoteServicePresentation.ts';
 
 // =====================================================================
 // Helpers
@@ -193,6 +194,8 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
         <div class="package-header" style="padding-bottom: 8px; border-bottom: 1px solid #DAA520; margin-bottom: 15px;">
           <h3 class="package-title" style="color: #8B0000; font-size: calc(${settings.quoteTitleFontSize}px * 0.95); font-weight: 700; margin: 0;">${escapeHtml(mp.package_name || mp.service_name || '')}</h3>
           ${showDescriptions && (mp.package_description || mp.service_description) ? `<div class="package-description" style="color: #555; font-style: italic; margin-top: 6px; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); line-height: 1.4;">${mp.package_description || mp.service_description}</div>` : ''}
+          ${showClientNotes ? quoteServiceNotesHtml(mp, settings.quoteBodyFontSize) : ''}
+          ${quoteServicePriceHtml(mp, total, settings.quoteBodyFontSize, false)}
         </div>
         <div class="package-content" style="padding-right: 15px;">
           ${children.map(child => `
@@ -201,14 +204,15 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
               <div style="flex: 1;">
                 <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || child.details?.service_name || 'שירות')}</strong>
                 ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
-                ${showClientNotes && child.client_notes ? `<div style="color: #888; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${child.client_notes}</div>` : ''}
+                ${showClientNotes ? quoteServiceNotesHtml(child, settings.quoteBodyFontSize) : ''}
+                ${quoteServicePriceHtml(child, safeFloat(child.custom_price) * (child.quantity || 1), settings.quoteBodyFontSize, showPrices)}
                 ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
                 ${showTransportDetails ? renderTransportDetails(child, settings) : ''}
               </div>
             </div>
           `).join('')}
         </div>
-        ${showPrices ? `
+        ${quotePriceVisible(mp, showPrices) ? `
         <div class="package-footer" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #DAA520; display: flex; justify-content: space-between; align-items: center;">
           <div style="font-size: ${settings.quoteBodyFontSize}px; font-weight: 600; color: #444;">סה"כ לחבילה:</div>
           <div>
@@ -240,14 +244,15 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
                 <div style="flex: 1;">
                   <strong style="color: #333; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(child.service_name || child.details?.service_name || 'שירות')}</strong>
                   ${showDescriptions && child.service_description ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.95); margin-top: 2px;">${child.service_description}</div>` : ''}
-                  ${showClientNotes && child.client_notes ? `<div style="color: #888; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px; font-style: italic;">${child.client_notes}</div>` : ''}
+                  ${showClientNotes ? quoteServiceNotesHtml(child, settings.quoteBodyFontSize) : ''}
+                ${quoteServicePriceHtml(child, safeFloat(child.custom_price) * (child.quantity || 1), settings.quoteBodyFontSize, showPrices)}
                   ${showQuantities && child.quantity > 1 ? `<div style="color: #666; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 2px;">כמות: ${child.quantity}</div>` : ''}
                   ${showTransportDetails ? renderTransportDetails(child, settings) : ''}
                 </div>
               </div>
             `).join('')}
           </div>
-          ${showPrices ? `
+          ${quotePriceVisible(rep, showPrices) ? `
           <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #DAA520; display: flex; justify-content: space-between;">
             <div style="font-size: ${settings.quoteBodyFontSize}px; font-weight: 600; color: #444;">סה"כ לחבילה:</div>
             <div>
@@ -272,15 +277,11 @@ function renderServicesBlock(block, event, allServices, eventServices, settings)
           <div style="flex: 1; min-width: 200px;">
             <strong style="color: #1f2937; font-size: ${settings.quoteBodyFontSize}px;">${escapeHtml(s.service_name || s.details?.service_name || 'שירות')}</strong>
             ${showDescriptions && s.service_description ? `<div style="color: #6b7280; font-size: ${settings.quoteBodyFontSize}px; margin-top: 5px;">${s.service_description}</div>` : ''}
-            ${showClientNotes && s.client_notes ? `<div style="color: #9ca3af; font-size: calc(${settings.quoteBodyFontSize}px * 0.9); margin-top: 5px; font-style: italic;">${s.client_notes}</div>` : ''}
+            ${showClientNotes ? quoteServiceNotesHtml(s, settings.quoteBodyFontSize) : ''}
             ${showQuantities && s.quantity > 1 ? `<div style="color: #6b7280; font-size: ${settings.quoteBodyFontSize}px; margin-top: 3px;">כמות: ${s.quantity}</div>` : ''}
             ${showTransportDetails ? renderTransportDetails(s, settings) : ''}
           </div>
-          ${showPrices ? `
-          <div style="text-align: left; margin-top: 10px;">
-            <strong style="color: #8B0000; font-size: ${settings.quoteBodyFontSize}px;">${fmt(total)}</strong>
-            <div style="font-size: calc(${settings.quoteBodyFontSize}px * 0.8); color: #6b7280;">${s.includes_vat ? '(כולל מע"מ)' : '(לא כולל מע"מ)'}</div>
-          </div>` : ''}
+          <div style="text-align: left; margin-top: 10px;">${quoteServicePriceHtml(s, total, settings.quoteBodyFontSize, showPrices)}</div>
         </div>
       </div>`;
   });
