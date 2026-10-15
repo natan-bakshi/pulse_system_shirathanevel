@@ -5,6 +5,19 @@ export function assignmentWhatsAppKey(service:any,supplierId:string,templateType
   return ['assignment',String(service?.id||''),String(supplierId||''),
     String(service?.updated_date||''),templateType].join(':');
 }
+// One canonical queue context for both the entity-workflow producer and
+// explicit assignment safeguard. A quiet-hours deferral remains an Outbox
+// available_at timestamp, NOT a separate PendingPushNotification with a
+// different idempotency key (which could later duplicate the same request).
+export function assignmentWhatsAppContext(service:any,supplierId:string,templateType='SUPPLIER_NEW_ASSIGNMENT',delay:any=null){
+  return {
+    sourceType:'assignment_new',sourceId:String(service?.id||''),
+    eventServiceId:String(service?.id||''),supplierId:String(supplierId||''),
+    idempotencyKey:assignmentWhatsAppKey(service,supplierId,templateType),
+    ...(delay?.shouldDelay && delay?.scheduledFor && Number.isFinite(new Date(delay.scheduledFor).getTime())
+      ? {availableAt:new Date(delay.scheduledFor).toISOString()} : {})
+  };
+}
 export function addedSupplierIds(previous:any,next:any){
   const parse=(value:any):string[]=>{
     if(Array.isArray(value))return value.filter(x=>typeof x==='string');
