@@ -289,6 +289,7 @@ Deno.serve(async (req) => {
         const notificationErrors = [];
 
         for (const template of templates) {
+            let assignmentSupplierBeingProcessed = '';
             try {
                 // Check Conditions
                 const conditionsMet = await checkConditions(base44, template, enrichedData, oldData, event, triggerType);
@@ -299,6 +300,7 @@ Deno.serve(async (req) => {
                     // Case 1 - New Supplier Assignment
                     if (template.trigger_type === 'supplier_assignment_create' && event.added_supplier_ids?.length > 0) {
                         for (const supId of event.added_supplier_ids) {
+                            assignmentSupplierBeingProcessed = supId;
                             const specificEvent = { ...event, specific_recipient_id: supId };
                             await sendNotification(base44, template, enrichedData, specificEvent, entityName);
                             notificationsSent++;
@@ -367,20 +369,37 @@ Deno.serve(async (req) => {
             } catch (e) {
                 console.error(`[HandleEntityEvents] Error processing template ${template.name}`, e);
                 notificationErrors.push(String(template.type || 'unknown'));
-                if (template.type === 'SUPPLIER_NEW_ASSIGNMENT') {
+                if (template.type === 'SUPPLIER_NEW_ASSIGNMENT' && assignmentSupplierBeingProcessed && enrichedData?.id) {
                     try {
-                        const owners=await base44.asServiceRole.entities.User.filter({email:'natib8000@gmail.com'},'-created_date',1);
-                        if(owners[0]?.id) {
-                            await base44.asServiceRole.entities.InAppNotification.create({
-                                user_id:owners[0].id,user_email:owners[0].email,
-                                title:'תקלה ביצירת הודעת שיבוץ WhatsApp',
-                                message:'שיבוץ עודכן, אך יצירת ההודעה נכשלה. בדוק את האירוע ואת תור WhatsApp לפני שליחה חוזרת.',
-                                related_event_id:enrichedData?.event_id||'',
-                                related_event_service_id:enrichedData?.id||'',
-                                template_type:'WHATSAPP_QUEUE_ERROR',is_read:false,whatsapp_sent:false
-                            });
+                        const db=base44.asServiceRole.entities;
+                        // A concurrent safeguard may already have enqueued the same
+                        // notification. Never report "not queued" in that case.
+                        const key=assignmentWhatsAppKey(enrichedData,assignmentSupplierBeingProcessed,template.type);
+                        const receipts=await db.WhatsAppOutbox.filter({idempotency_key:key},'-created_date',2);
+                        const queued=receipts.some(job=>['queued','retry_wait','sending','accepted'].includes(job.status));
+                        if(!queued){
+                            const openNotices=await db.InAppNotification.filter({
+                                related_event_service_id:enrichedData.id,
+                                template_type:'WHATSAPP_QUEUE_ERROR',
+                                is_resolved:false
+                            },'-created_date',1);
+                            if(!openNotices.length){
+                                const owners=await db.User.filter({email:'natib8000@gmail.com'},'-created_date',1);
+                                if(owners[0]?.id){
+                                    await db.InAppNotification.create({
+                                        user_id:owners[0].id,user_email:owners[0].email,
+                                        title:'תקלה ביצירת הודעת שיבוץ WhatsApp',
+                                        message:'יצירת הודעת שיבוץ נכשלה. בדוק את התור ואת האירוע. לא מבוצעת שליחה חוזרת אוטומטית.',
+                                        related_event_id:enrichedData.event_id||'',
+                                        related_event_service_id:enrichedData.id,
+                                        related_supplier_id:assignmentSupplierBeingProcessed,
+                                        template_type:'WHATSAPP_QUEUE_ERROR',is_read:false,
+                                        is_resolved:false,whatsapp_sent:false
+                                    });
+                                }
+                            }
                         }
-                    }catch(logError){console.error('[HandleEntityEvents] Could not persist queue error audit');}
+                    }catch(logError){console.error('[HandleEntityEvents] Could not verify assignment queue receipt');}
                 }
             }
         }
@@ -413,11 +432,14 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     const template = templates[0];
     if (!template) return false;
 
+    const allowedChannels = template.allowed_channels || ['push'];
+    // WhatsApp-only reminder templates do not require loading every system
+    // user on every supplier assignment. This was an avoidable hot-path scan.
     const [eventObj, supplierObj, serviceObj, allUsers] = await Promise.all([
         base44.asServiceRole.entities.Event.get(eventServiceData.event_id),
         base44.asServiceRole.entities.Supplier.get(supplierId),
         eventServiceData.service_id ? base44.asServiceRole.entities.Service.get(eventServiceData.service_id).catch(() => null) : Promise.resolve(null),
-        base44.asServiceRole.entities.User.list()
+        allowedChannels.includes('push') ? base44.asServiceRole.entities.User.list() : Promise.resolve([])
     ]);
 
     if (!eventObj || !supplierObj) return false;
@@ -432,7 +454,6 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     const scheduledFor = new Date();
     applyTimingOffset(scheduledFor, timingUnit, timingValue);
 
-    const allowedChannels = template.allowed_channels || ['push'];
     const targetUserId = supplierUser?.id || `virtual_supplier_${supplierId}`;
     const targetEmail = supplierUser?.email || supplierObj.contact_emails?.[0] || '';
     const serviceName = serviceObj?.service_name || '';
