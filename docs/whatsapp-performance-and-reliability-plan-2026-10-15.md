@@ -95,6 +95,9 @@
 - [ ] **WA-F05:** ייצוא היסטוריית Outbox לניתוח איכות השירות, ללא פרטי הודעות רגישים.
 - [ ] **WA-F06:** מדידה של Base44 automation credits ועומס queue worker לפי שעה וספק.
 - [ ] **WA-F07:** ניתוח sender reauthentication, QR loss ומגבלות provider כאשר Linked Device נופל.
+- [ ] **WA-F08:** reconciler ייעודי לדרישות הודעה שנשמרו במקור עסקי אבל לא נוצר להן Outbox; רק אחרי מיפוי idempotency ומניעת replay מסוכן.
+- [ ] **WA-F09:** runbook תפעולי למנהל: בדוק ספק, סטטוס unknown, בחירת provider, wake/diagnose, retry מבוקר, ביטול ושליחה ידנית אחרי כשל מוכח.
+- [ ] **WA-F10:** מסך היסטוריית הודעות מאוחדת לפי מקור עסקי, עם קישור בין Intent → Outbox → ניסיון → ספק → מסירה מאומתת.
 
 ## 8. יומן סשן (WhatsApp בלבד)
 ### 13–15.10.2026 — תשתית ושינויים קודמים
