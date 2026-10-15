@@ -57,6 +57,64 @@ test('invalid, reversed and absent dates do not count as real timing measurement
   assert.equal(s.totalMs,null);
   assert.deepEqual(summarizeMillis([]),{count:0,p50Ms:null,p95Ms:null,maxMs:null});
 });
+test('detailed breakdown distinguishes queue backlog, provider pacing, worker lag and actual transport duration',()=>{
+ const record=sample('instrumented','accepted',{
+   created_date:stamp(0),
+   available_at:stamp(1),
+   prior_dispatch_at:stamp(2),
+   configured_interval_ms:3000,
+   rate_ready_at:'2026-10-15T08:02:03.000Z',
+   job_claimed_at:'2026-10-15T08:02:05.000Z',
+   send_started_at:'2026-10-15T08:02:05.000Z',
+   transport_started_at:'2026-10-15T08:02:05.050Z',
+   transport_finished_at:'2026-10-15T08:02:05.500Z',
+   completed_at:'2026-10-15T08:02:05.900Z',
+   worker_run_id:'run-1',worker_wake_reason:'continue'
+ });
+ const s=readOutboxTiming(record);
+ assert.equal(s.backlogWaitMs,60000,'One minute waiting for older queued messages');
+ assert.equal(s.spacingWaitMs,3000,'Configured Green provider gap');
+ assert.equal(s.workerLagMs,2000,'Worker resumed two seconds after message was rate eligible');
+ assert.equal(s.claimToTransportMs,50);
+ assert.equal(s.transportDurationMs,450);
+ assert.equal(s.persistenceMs,400);
+ assert.equal(s.queueWaitMs,65000);
+ assert.equal(s.backlogWaitMs+s.spacingWaitMs+s.workerLagMs,s.queueWaitMs);
+ assert.equal(s.hasDetailedTiming,true);
+ const aggregated=summarizeWhatsAppOutbox([record],stamp(3));
+ assert.equal(aggregated.detailedTimingCount,1);
+ assert.equal(aggregated.byWakeReason.continue,1);
+ assert.equal(aggregated.timings.transportDuration.p50Ms,450);
+ assert.equal(aggregated.byProvider.green.transportDuration.p50Ms,450);
+ assert.equal(JSON.stringify(aggregated).includes('run-1'),false,'No worker run tokens leaked in aggregated report');
+});
+test('no preceding dispatch means no pacing wait; the worker can act on an idle queue immediately',()=>{
+ const s=readOutboxTiming(sample('fresh','accepted',{
+   created_date:stamp(0),available_at:stamp(1),prior_dispatch_at:'',
+   configured_interval_ms:7000,rate_ready_at:stamp(1),
+   job_claimed_at:'2026-10-15T08:01:00.100Z',
+   send_started_at:'2026-10-15T08:01:00.100Z',
+   transport_started_at:'2026-10-15T08:01:00.110Z',
+   transport_finished_at:'2026-10-15T08:01:00.160Z',
+   completed_at:'2026-10-15T08:01:00.180Z'
+ }));
+ assert.equal(s.backlogWaitMs,0);
+ assert.equal(s.spacingWaitMs,0);
+ assert.equal(s.workerLagMs,100);
+ assert.equal(s.transportDurationMs,50);
+});
+test('legacy jobs without new instrumentation remain measurable only at old granularity',()=>{
+ const s=readOutboxTiming(sample('old'));
+ assert.equal(s.hasDetailedTiming,false);
+ assert.equal(s.workerLagMs,null);
+ assert.equal(s.transportDurationMs,null);
+ assert.equal(s.spacingWaitMs,null);
+ const agg=summarizeWhatsAppOutbox([sample('old')],stamp(10));
+ assert.equal(agg.detailedTimingCount,0);
+ assert.equal(agg.timings.workerLag.count,0);
+ assert.equal(agg.timings.queueWait.count,1);
+});
+
 test('metrics endpoint is read-only and accessible only to the system owner',async()=>{
   const src=esbuild.transformSync(fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8'),{
     loader:'ts',format:'cjs',target:'es2022'
