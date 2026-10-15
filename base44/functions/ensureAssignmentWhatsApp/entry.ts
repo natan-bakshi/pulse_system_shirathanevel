@@ -28,26 +28,38 @@ Deno.serve(async(req)=>{
     const assigned=typeof svc.supplier_ids==='string'?JSON.parse(svc.supplier_ids||'[]'):svc.supplier_ids||[];
     const statuses=typeof svc.supplier_statuses==='string'?JSON.parse(svc.supplier_statuses||'{}'):svc.supplier_statuses||{};
     if(!Array.isArray(assigned))throw new Error('Malformed supplier assignments');
-    const event=await db.Event.get(svc.event_id);
+    // Independent reads happen together. Before this change every assignment
+    // save waited for Event, Template, QueueControl and Service sequentially.
+    const [event,templates,control,service]=await Promise.all([
+      db.Event.get(svc.event_id),
+      db.NotificationTemplate.filter({type:'SUPPLIER_NEW_ASSIGNMENT',is_active:true},'-created_date',2),
+      readWhatsAppQueueControl(client),
+      svc.service_id?db.Service.get(svc.service_id).catch(()=>null):Promise.resolve(null)
+    ]);
     if(!event||['cancelled','completed'].includes(event.status)){
       return Response.json({success:false,error:'Event is no longer eligible for supplier notifications'},{status:409});
     }
-    const templates=await db.NotificationTemplate.filter({type:'SUPPLIER_NEW_ASSIGNMENT',is_active:true},'-created_date',2);
     const template=templates[0];
     if(!template || !(template.allowed_channels||[]).includes('whatsapp')){
       return Response.json({success:true,requested:ids.length,queued:0,accepted:0,skipped:ids.length,
         reason:'WhatsApp assignment template is intentionally disabled'});
     }
-    const control=await readWhatsAppQueueControl(client);
-    const service=svc.service_id?await db.Service.get(svc.service_id).catch(()=>null):null;
     const textTemplate=template.whatsapp_body_template||template.body_template||'';
     const result={success:true,requested:ids.length,queued:0,accepted:0,skipped:0,errors:[] as string[],jobIds:[] as string[]};
+    // Fetch contacts concurrently in bounded groups, but retain sequential
+    // queue insertion to respect the one global idempotency/ordering lock.
+    const suppliers=new Map<string,any>();
+    for(let i=0;i<ids.length;i+=8){
+      const chunk=ids.slice(i,i+8);
+      const records=await Promise.all(chunk.map(id=>db.Supplier.get(id).catch(()=>null)));
+      chunk.forEach((id,j)=>suppliers.set(id,records[j]));
+    }
     for(const supplierId of ids){
       try{
         if(!assigned.includes(supplierId)||(statuses?.[supplierId]&&statuses[supplierId]!=='pending')){
           result.skipped++;continue;
         }
-        const supplier=await db.Supplier.get(supplierId);
+        const supplier=suppliers.get(supplierId);
         if(!supplier||supplier.whatsapp_enabled===false){result.skipped++;continue;}
         const chatId=supplierTargetChatId(supplier,toChatId);
         if(!chatId){result.errors.push('Supplier '+supplierId+': WhatsApp destination missing');continue;}
