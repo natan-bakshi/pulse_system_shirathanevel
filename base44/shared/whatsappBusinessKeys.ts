@@ -18,3 +18,42 @@ export function eventReminderWhatsAppKey(event:any,template:any,recipientKind:'s
   if(key.length>240)throw new Error('Event reminder key too long');
   return key;
 }
+
+// Business-scoped keys only for AUTOMATIC messages. Manual WhatsApp sends,
+// user-triggered reminders and forwarded PDFs intentionally receive a fresh
+// Outbox job each time; deduplicating message text would lose real requests.
+export function automatedWhatsAppKey(kind:'supplier_pending'|'admin_missing'|'client_payment'|'scheduled_template',values:{
+  eventId:any;recipientId:any;eventDate?:any;templateType?:any;
+  serviceId?:any;version?:any;target?:any;
+}):string {
+  const allowed=new Set(['supplier_pending','admin_missing','client_payment','scheduled_template']);
+  if(!allowed.has(kind))throw new Error('Unsupported automatic WhatsApp category');
+  const eventId=String(values?.eventId||'').trim();
+  const recipientId=String(values?.recipientId||'').trim();
+  if(!eventId||!recipientId)throw new Error('Missing automatic WhatsApp business identity');
+  const parts=['automatic-wa-v1',kind,eventId,recipientId,
+    String(values.eventDate||'').slice(0,10),String(values.templateType||''),
+    String(values.serviceId||''),String(values.version??0),String(values.target||'')];
+  const key=parts.map(p=>encodeURIComponent(p)).join(':');
+  if(key.length>240)throw new Error('Automatic WhatsApp key too long');
+  return key;
+}
+
+// Deterministic batch key depends only on task IDs, due-date revisions and
+// recipient identity, NEVER on message body. Hash prevents >240-byte keys
+// for large aggregated task digests. Deno and Node both expose WebCrypto.
+export async function taskDigestWhatsAppKey(recipientId:any,tasks:any[]):Promise<string> {
+  const id=String(recipientId||'').trim();
+  if(!id||!Array.isArray(tasks)||!tasks.length)throw new Error('Invalid task digest identity');
+  const normalized=tasks.map(t=>{
+    if(!t?.id||!t?.due_date)throw new Error('Task without durable ID or due date');
+    return String(t.id)+'@'+String(t.due_date);
+  }).sort();
+  const bytes=new TextEncoder().encode(normalized.join('|'));
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  const hex=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const key='task-digest-v1:'+encodeURIComponent(id)+':'+hex;
+  if(key.length>240)throw new Error('Task digest key too long');
+  return key;
+}
+
