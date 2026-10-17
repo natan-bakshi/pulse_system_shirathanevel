@@ -3,6 +3,7 @@ import { isMissingAssignmentAlertDue, renderMissingAssignmentAlert } from '../..
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText, sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
+import { whatsappEnqueueReceiptState, isWhatsAppEnqueueConfirmed } from '../../shared/whatsappReceipt.ts';
 import { isShabbat, getShabbatEndTime, resolveNotificationDelay } from '../../shared/quietHours.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
@@ -176,9 +177,8 @@ Deno.serve(async (req) => {
                             const receipt=pendingData.chat_id && String(pendingData.chat_id).endsWith('@g.us')
                                 ? await sendWhatsAppToChat(pendingData.chat_id,pendingData.whatsapp_message || pending.message,base44,context)
                                 : await sendWhatsAppText(phoneToUse,pendingData.whatsapp_message || pending.message,base44,context);
-                            const receiptState=String(receipt?.status||'');
-                            if(receipt?.success!==false && (receipt?.queued===true ||
-                                ['accepted','sending','retry_wait'].includes(receiptState) || receipt?.legacyDirect===true)){
+                            const receiptState=whatsappEnqueueReceiptState(receipt);
+                            if(isWhatsAppEnqueueConfirmed(receipt)){
                                 remainingWhatsApp=false;
                                 successCount++; // Queued/accepted by API, NEVER proof of delivery.
                             }else if(receiptState==='unknown' ||
@@ -528,7 +528,7 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
             const chatId = wa.chatId || toChatId(wa.phone);
             if (!chatId) continue;
             const receipt=await sendWhatsAppToChat(chatId, wa.message, base44, {sourceType:'scheduled_fanout',sourceId:pending.id||'',idempotencyKey:'fanout:'+pending.id+':'+chatId});
-            if(receipt?.queued===true || receipt?.status==='accepted' || receipt?.legacyDirect===true){
+            if(isWhatsAppEnqueueConfirmed(receipt)){
                 result.sent++;
             }else{
                 // A previous unknown/rejected outbox record is not safe to
