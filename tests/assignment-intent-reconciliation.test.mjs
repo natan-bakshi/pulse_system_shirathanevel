@@ -120,6 +120,25 @@ test('a post-create exception is recovered by querying Outbox BEFORE any repeat 
  assert.equal(b.queued,1);assert.equal(b.success,true);
  assert.equal(x.jobs.length,1);assert.equal(calls,1,'Second run must NOT call enqueue again');
 });
+test('provider ACCEPTED remains accepted even after supplier confirmed and before intent sync',async()=>{
+ const x=scenario();
+ x.jobs.push({id:'accepted-job',status:'accepted',idempotency_key:x.next.intents[0].key});
+ x.service.supplier_statuses=JSON.stringify({[supplier1]:'confirmed'});
+ const r=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:()=>{throw Error('No sends')}});
+ assert.equal(r.alreadyAccepted,1);
+ assert.equal(r.cancelled,0);
+ assert.equal(JSON.parse(x.service.assignment_notification_intents)[0].state,'accepted');
+ assert.equal(x.jobs.length,1);
+});
+test('provider UNKNOWN stays uncertain even when supplier was later removed',async()=>{
+ const x=scenario();
+ x.jobs.push({id:'unknown-job',status:'unknown',idempotency_key:x.next.intents[0].key});
+ x.service.supplier_ids='[]';
+ const r=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:()=>{throw Error('No sends')}});
+ assert.equal(r.unknown,1);
+ assert.equal(r.cancelled,0);
+ assert.equal(JSON.parse(x.service.assignment_notification_intents)[0].state,'unknown');
+});
 test('existing UNKNOWN is never re-enqueued and never mislabeled accepted',async()=>{
  const x=scenario();
  x.jobs.push({id:'unknown-job',status:'unknown',idempotency_key:x.next.intents[0].key});
