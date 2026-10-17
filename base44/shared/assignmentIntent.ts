@@ -53,8 +53,17 @@ export function planAssignmentTransition(service:any,request:any,stamp:string){
   const beforeMap=stringMap(service.supplier_statuses||'{}','old supplier statuses');
   const ids=stringList(request.supplierIds);
   const assigned=new Set(ids);
-  const statusMap=stringMap(request.supplierStatuses||{},'supplier statuses',assigned);
-  const notesMap=stringMap(request.supplierNotes||{},'supplier notes',assigned);
+  // Never silently erase statuses or notes because a caller omitted a field.
+  if(request.supplierStatuses===undefined||request.supplierNotes===undefined){
+    throw new Error('Supplier statuses and notes must be provided explicitly');
+  }
+  const statusMap=stringMap(request.supplierStatuses,'supplier statuses',assigned);
+  const notesMap=stringMap(request.supplierNotes,'supplier notes',assigned);
+  // A missing status for an already assigned supplier means "unchanged";
+  // for a first-time assignment, it means "pending" (legacy behavior).
+  for(const id of ids){
+    if(statusMap[id]===undefined && beforeMap[id]!==undefined)statusMap[id]=beforeMap[id];
+  }
   const was=new Set(before);
   // Assignment requests exist only when approval is genuinely required.
   const candidates=ids.filter(id=>{
