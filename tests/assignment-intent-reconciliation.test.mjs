@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {planAssignmentTransition} from '../base44/shared/assignmentIntent.ts';
-import {reconcileOutboxIntentStatus,processSupplierAssignmentIntents} from '../base44/shared/assignmentIntentReconciler.ts';
+import {reconcileOutboxIntentStatus,processSupplierAssignmentIntents,sweepPendingSupplierAssignmentIntents} from '../base44/shared/assignmentIntentReconciler.ts';
 import {assignmentWhatsAppKey,assignmentWhatsAppContext} from '../base44/shared/assignmentWhatsApp.ts';
 
 const svcId='service-aaa123',supplier1='supplier-aaa123',supplier2='supplier-bbb234';
@@ -53,6 +53,36 @@ function scenario({enabled=true,newSuppliers=[supplier1],supplier={},statuses={}
    get serviceReads(){return serviceReads},get contacts(){return contacts},
    get templateQueries(){return templateQueries}};
 }
+test('existing five-minute watchdog skips any EventService scan while V2 is OFF',async()=>{
+ let scanned=0;
+ const client={asServiceRole:{entities:{
+   AppSettings:{filter:async()=>[]},
+   EventService:{filter:async()=>{scanned++;throw Error('Feature OFF may not scan services')}}
+ }}};
+ const result=await sweepPendingSupplierAssignmentIntents(client);
+ assert.equal(result.reason,'feature_disabled');
+ assert.equal(result.scanned,0);
+ assert.equal(scanned,0);
+});
+test('watchdog scans only flagged pending services with bounded work and no new schedules',async()=>{
+ const ids=['svc-aa1','svc-bb2','svc-cc3'];
+ const visits=[];
+ const client={asServiceRole:{entities:{
+   AppSettings:{filter:async()=>[{setting_value:'true'}]},
+   EventService:{filter:async(q,sort,limit)=>{
+     assert.equal(q.assignment_intents_pending,true);
+     assert.equal(sort,'updated_date');assert.equal(limit,2);
+     return ids.slice(0,limit).map(id=>({id}));
+   }}
+ }}};
+ const r=await sweepPendingSupplierAssignmentIntents(client,{
+   maxServices:2,reconcile:async(_,id,opts)=>{
+     visits.push(id);assert.equal(opts.limit,4);return {success:true,processed:1};
+   }
+ });
+ assert.equal(r.scanned,2);assert.equal(r.recovered,2);
+ assert.deepEqual(visits,ids.slice(0,2));
+});
 test('feature OFF: no service scan, no enqueue, no database writes',async()=>{
  const x=scenario({enabled:false});
  const r=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:x.enqueue});
