@@ -373,6 +373,45 @@ test('expired agreement links reconcile downstream delivery state without contac
  assert.equal(r.accepted,0);
 });
 
+test('an HTTP 401 from Green does not block a queued Wasender message',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0,wasender_interval_ms:0});
+ await sendWhatsAppText('0501234567','green message',x.client);
+ x.control.selectedProvider='wasender';
+ await sendWhatsAppText('0501234567','wasender message',{...x.client});
+ const attempts=[];
+ const r=await drainWhatsAppOutbox(x.client,{transport:async(job,provider)=>{
+   attempts.push(provider);
+   if(provider==='green')throw Object.assign(new Error('Unauthorized'),{errorCode:401,deliveryUncertain:false});
+   return {messageId:'wasender-accepted'};
+ }});
+ assert.equal(r.failed,1);
+ assert.equal(r.accepted,1);
+ assert.deepEqual(attempts,['green','wasender']);
+ assert.deepEqual(x.jobs.map(j=>j.status),['failed','accepted']);
+ assert.equal(x.jobs[0].attempt_count,1);
+ assert.equal(x.jobs[1].provider_message_id,'wasender-accepted');
+});
+test('missing Green credentials safely defers only Green with zero transport attempts; Wasender proceeds',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0,wasender_interval_ms:0});
+ await sendWhatsAppText('0501234567','green no-key',x.client);
+ x.control.selectedProvider='wasender';
+ await sendWhatsAppText('0501234567','wasender ready',{...x.client});
+ const before=globalThis.Deno;
+ globalThis.Deno={env:{get:key=>key==='GREEN_API_INSTANCE_ID'||key==='GREEN_API_TOKEN'?'':key==='WASENDER_API_KEY'?'has-session':''}};
+ try{
+   let calls=0;
+   const r=await drainWhatsAppOutbox(x.client,{transport:async(job,provider)=>{
+     calls++;assert.equal(provider,'wasender');return {messageId:'wa-success'};
+   }});
+   assert.equal(calls,1);
+   assert.equal(r.accepted,1);
+   assert.equal(r.retried,1);
+   assert.equal(x.jobs[0].status,'retry_wait');
+   assert.equal(x.jobs[0].attempt_count,0,'No external send was attempted without credentials');
+   assert.ok(Date.parse(x.jobs[0].available_at)>Date.now());
+   assert.equal(x.jobs[1].status,'accepted');
+ }finally{globalThis.Deno=before;}
+});
 test('provider timeout remains unknown and is never retried',async()=>{
  const x=fixture();await sendWhatsAppText('0501234567','message',x.client);
  let calls=0;const transport=async()=>{calls++;throw {deliveryUncertain:true,errorCode:503}};
