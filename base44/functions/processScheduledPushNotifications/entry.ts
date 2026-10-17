@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
                         console.log(`[ScheduledPush] No phone for pending ${pending.id} - WhatsApp skipped`);
                     } else {
                         try {
-                            const context={sourceType:pendingData.source_type||'scheduled_notification',sourceId:pending.id,idempotencyKey:'scheduled-wa:'+pending.id,inAppNotificationId:pending.in_app_notification_id||'',eventServiceId:pending.related_event_service_id||'',supplierId:pending.related_supplier_id||''};
+                            const context={sourceType:pendingData.source_type||'scheduled_notification',sourceId:pending.id,idempotencyKey:pendingData.idempotency_key||'scheduled-wa:'+pending.id,inAppNotificationId:pending.in_app_notification_id||'',eventServiceId:pending.related_event_service_id||'',supplierId:pending.related_supplier_id||''};
                             const receipt=pendingData.chat_id && String(pendingData.chat_id).endsWith('@g.us')
                                 ? await sendWhatsAppToChat(pendingData.chat_id,pendingData.whatsapp_message || pending.message,base44,context)
                                 : await sendWhatsAppText(phoneToUse,pendingData.whatsapp_message || pending.message,base44,context);
