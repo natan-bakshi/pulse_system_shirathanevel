@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     });
 
     const outcome=notificationResult?.data||{};
-    const pushFailed=outcome.success===false || Number(outcome?.push?.failureCount||0)>0;
+    const pushFailed=outcome.success===false || outcome?.push?.noTokens===true || Number(outcome?.push?.failureCount||0)>0;
     // Function invocation can succeed at HTTP level while all FCM sends fail.
     // Never tell the assignment screen that the supplier Push succeeded in
     // that case. Assignment WhatsApp remains owned by its separate Outbox.
