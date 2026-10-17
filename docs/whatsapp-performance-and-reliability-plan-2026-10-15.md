@@ -156,7 +156,7 @@
 - **קבצים חדשים:** `base44/shared/whatsappReceipt.ts`, `whatsappBusinessKeys.ts`, `notificationLookup.ts`, `tests/client-billing-whatsapp-receipt.test.mjs`, `tests/whatsapp-event-reminder-idempotency.test.mjs`, `tests/whatsapp-notification-lookup.test.mjs`. שונו בנוסף shared transport, worker, schema QueueControl, Admin endpoint, כל יצרני ההודעות שנזכרו ובדיקותיהם.
 - **אין Claim של פרודקשן:** לא בוצעה הודעת אמת, לא הופעלה גרסת V2, לא בוצעה החלפת ספק, לא התקבלה ראיית delivery ומצב פרסום Live של גרסת הקוד הנוכחית **לא אומת**. ה־checkpoint אינו deployment. אסור להכריז על פתרון מלא או על שיפור p95 עד בדיקות WA-P41/WA-P43 ו־PROD WA-P24/25/28.
 - **סדר התחלה בסשן הבא:** P0 WA-P40 — מפתחות מקור משימות/תזכורת/מסמכים בהקשרים עסקיים מבלי להשתיק ידני; WA-P42 — source state ↔ Outbox; WA-P41 — אימות אמת של Worker wake בלי דפדפן, לאחר פרסום מבוקר; WA-P43 — מבחן שליחה לנמען QA בלבד. בטרם הפעלה יש למדוד timeout/ניטור ומקרי failover (unknown לעולם אינו אוטומטי).
-- **עצירה:** בוצע QA, מסמכים מעודכנים וייווצר checkpoint נקודת שחזור; אין לפתוח תהליך שליחה חדש לאחר עצירה זו.
+- **Checkpoint סיום QA:** `6ad3d9666fbef9071c8086ee`, commit `36ecf88765269d8bd6ddefd56d9d19243b5fcb97` (לפני הוספת מספר הצ'קפוינט למסמכים עצמם). הסתיים ללא פעולה בנתונים עסקיים; אין לפתוח תהליך שליחה חדש לאחר עצירה זו.
 
 ### תבנית לסשן הבא
 `מועד | App ID + HEAD + checkpoint | WA-P IDs | קבצים ששונו | בדיקות מדויקות | נתוני אמת לפני/אחרי | פרסום/לא פורסם | סיכון | ID הבא`
