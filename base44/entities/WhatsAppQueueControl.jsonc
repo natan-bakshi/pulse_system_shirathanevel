@@ -41,6 +41,14 @@
     "last_dispatched_at": {
       "type": "string"
     },
+    "last_green_dispatched_at": {
+      "type": "string",
+      "description": "Green API most recent transport claim; independently paced from WasenderAPI"
+    },
+    "last_wasender_dispatched_at": {
+      "type": "string",
+      "description": "WasenderAPI most recent transport claim; independently paced from Green API"
+    },
     "next_allowed_at": {
       "type": "string"
     },
