@@ -87,7 +87,16 @@ Deno.serve(async (req) => {
       }
     });
 
-    return new Response(JSON.stringify({ success: true, message: 'Notification process initiated.', details: notificationResult.data }), { status: 200, headers: { "Content-Type": "application/json" } });
+    const outcome=notificationResult?.data||{};
+    const pushFailed=outcome.success===false || Number(outcome?.push?.failureCount||0)>0;
+    // Function invocation can succeed at HTTP level while all FCM sends fail.
+    // Never tell the assignment screen that the supplier Push succeeded in
+    // that case. Assignment WhatsApp remains owned by its separate Outbox.
+    return new Response(JSON.stringify({
+      success:!pushFailed,partial_failure:pushFailed,
+      message:pushFailed?'Supplier assignment Push incomplete; review required':'Notification process initiated.',
+      details:outcome
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
 
   } catch (error) {
     console.error('Error in notifySupplierAssignment:', error);
