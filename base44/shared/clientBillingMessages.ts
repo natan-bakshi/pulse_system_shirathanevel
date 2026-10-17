@@ -1,6 +1,7 @@
 // הודעות אוטומטיות ללקוח בעקבות תשלום: אישור תשלום עם קישור לקבלה,
 // ותזכורת לפני תפוגת דרישת תשלום שנשלחה בקישור. תומך בעברית ובאנגלית.
 import { sendWhatsAppText } from "./whatsappSend.ts";
+import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from "./whatsappReceipt.ts";
 
 const defaults = {
   receipt: {
@@ -33,7 +34,7 @@ export async function sendClientMessage(base44, { phone, email, subject, body, b
       const receipt=await sendWhatsAppText(phone, body, base44, {
         sourceType:'client_billing',sourceId:idempotencyKey,idempotencyKey
       });
-      const state=String(receipt?.status||'');
+      const state=whatsappEnqueueReceiptState(receipt);
       // An old deduplicated job can be UNKNOWN/FAILED rather than queued.
       // Never suppress email because of a false WhatsApp success; also never
       // automatically email when the prior WhatsApp outcome is uncertain.
@@ -42,9 +43,7 @@ export async function sendClientMessage(base44, { phone, email, subject, body, b
           deliveryUncertain:true,queueStatus:state,jobId:receipt?.jobId||''
         });
       }
-      const accepted=receipt?.success!==false && (state==='accepted' ||
-        (receipt?.queued===true&&!['failed','unknown'].includes(state)) ||
-        ['sending','retry_wait'].includes(state) || receipt?.legacyDirect===true);
+      const accepted=isWhatsAppEnqueueConfirmed(receipt);
       if(!accepted)throw new Error('WhatsApp outbox has no confirmed queue receipt');
       channels.push('whatsapp'); // Queued, not necessarily delivered.
     } catch (error) {
