@@ -4,7 +4,7 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
 import {eventReminderWhatsAppKey,taskDigestWhatsAppKey,automatedWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
-import {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark} from '../../shared/taskNotificationAck.ts';
+import {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark,readScheduledTaskOwners} from '../../shared/taskNotificationAck.ts';
 import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
@@ -892,6 +892,10 @@ Deno.serve(async (req) => {
                 });
                 
                 console.log(`[DailyNotifications] Found ${tasksDueNow.length} tasks needing notifications`);
+                // The event-driven Task scheduler already owns many of these
+                // messages via PendingPushNotification. A daily digest must
+                // not send the SAME task to the SAME admin a second time.
+                const taskScheduledOwners=await readScheduledTaskOwners(base44.asServiceRole.entities,tasksDueNow);
                 
                 const allowedChannels = taskTemplate.allowed_channels || ['whatsapp'];
                 const sendWA = allowedChannels.includes('whatsapp');
@@ -915,6 +919,16 @@ Deno.serve(async (req) => {
                     if (recipients.length === 0) continue;
                     
                     for (const admin of recipients) {
+                        const owned=taskScheduledOwners.get(String(task.id))?.get(String(admin.id));
+                        if(owned){
+                            // The Pending owner is responsible for this target.
+                            // Only acknowledge it when its source AND, for WA,
+                            // its Outbox receipt are durably settled.
+                            expectTaskRecipient(taskExpectedRecipients,task.id,admin.id);
+                            taskDueDates.set(task.id,task.due_date);
+                            if(owned.confirmed)acknowledgeTaskRecipient(taskAcknowledgedRecipients,task.id,admin.id);
+                            continue;
+                        }
                         if (!tasksByAdmin.has(admin.id)) {
                             tasksByAdmin.set(admin.id, { admin, tasks: [] });
                         }
