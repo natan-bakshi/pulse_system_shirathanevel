@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
                                     reminder_count: 0,
                                     is_resolved: false
                                 });
-                                if(whatsAppResult?.queued) await attachOutboxInAppReceipt(base44,whatsAppResult,reminderLog.id);
+                                if(whatsAppResult?.jobId) await attachOutboxInAppReceipt(base44,whatsAppResult,reminderLog.id);
                                 if(pendingQueueRow?.id) await base44.asServiceRole.entities.PendingPushNotification.update(pendingQueueRow.id,{in_app_notification_id:reminderLog.id});
                                 sentCount++;
                             } catch (error) {
@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
                                 reminder_count: 0,
                                 is_resolved: false
                             });
-                            if(whatsAppResult?.queued) await attachOutboxInAppReceipt(base44,whatsAppResult,reminderLog.id);
+                            if(whatsAppResult?.jobId) await attachOutboxInAppReceipt(base44,whatsAppResult,reminderLog.id);
                             if(pendingQueueRow?.id) await base44.asServiceRole.entities.PendingPushNotification.update(pendingQueueRow.id,{in_app_notification_id:reminderLog.id});
                             sentCount++;
                         } catch (error) {
