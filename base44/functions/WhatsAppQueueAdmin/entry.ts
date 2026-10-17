@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
-import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
+import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDispatchForProvider, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 
@@ -8,6 +8,18 @@ const OWNER_EMAIL = 'natib8000@gmail.com';
 const MAX_PAGE = 60;
 const MAX_ACTION_BATCH = 100;
 const MAX_INTERVAL_MS = 300_000;
+// Base44 supports server-side field projections. Loading full message bodies,
+// private document URLs and captions for 500 status records on EVERY settings
+// refresh was unnecessary and slowed the admin screen significantly.
+const LIST_FIELDS=['id','source_type','source_id','status','message_type',
+  'chat_id','requested_provider','created_date','available_at','attempt_count',
+  'provider','error_code','last_error','provider_message_id','manual_review_note',
+  'manual_action','resolution','archived','manual_retry_count'];
+const TIMING_FIELDS=['created_date','available_at','send_started_at','completed_at',
+  'job_claimed_at','rate_ready_at','prior_dispatch_at','configured_interval_ms',
+  'transport_started_at','transport_finished_at','status','attempt_count',
+  'provider','requested_provider','worker_wake_reason'];
+const HISTORY_FIELDS=LIST_FIELDS;
 const ACTIVE = new Set(['queued','retry_wait','sending']);
 const CANCELLABLE = new Set(['queued','retry_wait']);
 const ARCHIVABLE = new Set(['accepted','failed','cancelled','expired','resolved']);
@@ -54,14 +66,14 @@ async function queueStatus(client:any){
   const provider=await resolveWhatsAppProvider(client);
   const ms=providerIntervalMs(control,provider);
   const entity=client.asServiceRole.entities.WhatsAppOutbox;
-  const jobs=await entity.list('-created_date',500);
+  const jobs=await entity.list('-created_date',500,0,HISTORY_FIELDS);
   const totals:Record<string,number>={};
   for(const job of jobs){
     if(job.archived===true)continue;
     totals[job.status]=(totals[job.status]||0)+1;
   }
   const busy=!!control.lease_owner&&Date.parse(control.lease_until||'')>Date.now();
-  const waitMs=delayUntilNextSendMs(control.last_dispatched_at,Date.now(),ms);
+  const waitMs=delayUntilNextSendMs(lastDispatchForProvider(control,provider),Date.now(),ms);
   const wasenderMs=Number.isInteger(control.wasender_interval_ms)?control.wasender_interval_ms:
     Math.max(0,Number(control.min_interval_seconds||7)*1000);
   const greenMs=Number.isInteger(control.green_interval_ms)?control.green_interval_ms:
@@ -100,8 +112,8 @@ async function listJobs(client:any,body:any){
   if(status&&status!=='all')query.status=status;
   if(source&&source!=='all')query.source_type=source;
   const rows=Object.keys(query).length
-    ?await db.filter(query,'-created_date',MAX_PAGE+1,offset)
-    :await db.list('-created_date',MAX_PAGE+1,offset);
+    ?await db.filter(query,'-created_date',MAX_PAGE+1,offset,LIST_FIELDS)
+    :await db.list('-created_date',MAX_PAGE+1,offset,LIST_FIELDS);
   return RESPONSE({success:true,rows:rows.slice(0,MAX_PAGE)
     .filter((x:any)=>body.showArchived===true||x.archived!==true).map((x:any)=>renderJob(x)),
     nextOffset:rows.length>MAX_PAGE?offset+MAX_PAGE:null,totalUnknown:true});
@@ -247,7 +259,7 @@ Deno.serve(async(req)=>{
     if(action==='metrics'){
       // Explicit read-only request; no provider calls and no message contents.
       // Avoid querying another 200 records every time settings are opened.
-      const rows=await client.asServiceRole.entities.WhatsAppOutbox.list('-created_date',200);
+      const rows=await client.asServiceRole.entities.WhatsAppOutbox.list('-created_date',200,0,TIMING_FIELDS);
       return RESPONSE({success:true,metrics:summarizeWhatsAppOutbox(rows,nowIso())});
     }
     if(action==='diagnose')return RESPONSE(await diagnoseQueue(client));
