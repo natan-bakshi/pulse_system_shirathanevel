@@ -154,7 +154,9 @@ Deno.serve(async (req) => {
                         });
                         errorCount++;
                     } else {
-                        const finalPatch = pendingData.whatsapp_delivery_state === 'unknown'
+                        const terminalWhatsAppState=['unknown','failed','cancelled','expired','resolved']
+                            .includes(pendingData.whatsapp_delivery_state);
+                        const finalPatch = terminalWhatsAppState
                             ? { is_sent: true, data: JSON.stringify({ ...pendingData, send_push: false, send_whatsapp: false }) }
                             : { is_sent: true };
                         await base44.asServiceRole.entities.PendingPushNotification.update(pending.id, finalPatch);
@@ -171,13 +173,31 @@ Deno.serve(async (req) => {
                     } else {
                         try {
                             const context={sourceType:pendingData.source_type||'scheduled_notification',sourceId:pending.id,idempotencyKey:'scheduled-wa:'+pending.id,inAppNotificationId:pending.in_app_notification_id||'',eventServiceId:pending.related_event_service_id||'',supplierId:pending.related_supplier_id||''};
-                            if(pendingData.chat_id && String(pendingData.chat_id).endsWith('@g.us')) {
-                                await sendWhatsAppToChat(pendingData.chat_id,pendingData.whatsapp_message || pending.message,base44,context);
-                            } else {
-                                await sendWhatsAppText(phoneToUse,pendingData.whatsapp_message || pending.message,base44,context);
+                            const receipt=pendingData.chat_id && String(pendingData.chat_id).endsWith('@g.us')
+                                ? await sendWhatsAppToChat(pendingData.chat_id,pendingData.whatsapp_message || pending.message,base44,context)
+                                : await sendWhatsAppText(phoneToUse,pendingData.whatsapp_message || pending.message,base44,context);
+                            const receiptState=String(receipt?.status||'');
+                            if(receipt?.success!==false && (receipt?.queued===true ||
+                                ['accepted','sending','retry_wait'].includes(receiptState) || receipt?.legacyDirect===true)){
+                                remainingWhatsApp=false;
+                                successCount++; // Queued/accepted by API, NEVER proof of delivery.
+                            }else if(receiptState==='unknown' ||
+                                ['failed','cancelled','expired','resolved'].includes(receiptState)){
+                                // An idempotent Outbox lookup may find a past terminal
+                                // failure/unknown. Never claim it queued or trigger another
+                                // automatic send (the same business key cannot be replayed).
+                                remainingWhatsApp=false;
+                                pendingData.whatsapp_delivery_state=receiptState;
+                                pendingData.whatsapp_job_id=String(receipt?.jobId||'');
+                                pendingData.whatsapp_last_attempt_at=new Date().toISOString();
+                                await base44.asServiceRole.entities.PendingPushNotification.update(pending.id,{
+                                    data:JSON.stringify({...pendingData,send_whatsapp:false})
+                                });
+                                if(receiptState!=='unknown')errorCount++;
+                                console.warn('[ScheduledPush] Existing WhatsApp outbox requires review, state='+receiptState);
+                            }else{
+                                throw new Error('WhatsApp outbox did not confirm queue acceptance');
                             }
-                            remainingWhatsApp = false;
-                            successCount++; // Queued, not provider-accepted yet.
                         } catch (waErr) {
                             if (waErr?.deliveryUncertain) {
                                 remainingWhatsApp = false;
