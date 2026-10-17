@@ -125,6 +125,20 @@
 - [ ] **D08.5b | PROD+CONCURRENCY:** לבחון trigger legacy ו־Reconciler שמתחרים בפועל בזמן שיבוץ, תזכורת שיבוץ והפעלה חוזרת של Worker לאחר קריסה. אין לשנות ספק או להפעיל retry כללי במהלך הבדיקה.
 - [x] **D08.6a | CODE+TEST — מתג כבוי וחזרה בטוחה בקוד:** `AppSettings.setting_key=assignment_intent_v1_enabled` חייב להיות רשומה **אחת בדיוק** עם `setting_value='true'` כדי להתיר mutation/reconcile; **היעדר רשומה = כבוי**. ב־17.10 שאילתת DATA לא מצאה רשומה כזאת ולא נמצאו רשומות `EventService.assignment_intents_pending=true`. ללא המתג אין כתיבת Intent או שליחת הודעה, וה־Watchdog אינו סורק EventService. אין תלות בבחירת ספק Green/Wasender.
 - [ ] **D08.6b | ROLLBACK PROD:** תהליך כיבוי מדורג לשירותים שכבר עברו ל־V2, כולל Pending/Unknown, ניקוי `mode` כאשר מתאים, ויכולת להחזיר את ארבעת מסכי השיבוץ ל־Legacy **בלי לשגר שוב בקשות עבר**. לא להפעיל את המנגנון טרם פתרון זה.
+- [ ] **D08.7 | BLOCKER לפני הפעלה — שאר ערוצי ההתראות:** `EventService.updateMany` ב־V2 נבחר בגלל CAS אבל לא ניתן להניח שהוא מפעיל את ה־workflow הקיים `EventService Notification Trigger` על `supplier_ids` / `supplier_statuses`. לכן **אסור להפעיל V2 לפני שמוכחת רציפות** של תזכורת אישור שיבוץ `PendingPushNotification`, הודעות Push לספק, הודעות מנהל על דחייה, ולוגיקת סטטוס/יומן. ה־wake החדש מפעיל כרגע רק Intent WhatsApp; נדרש עסקית לשמר את כל יתר ההשלכות של שינוי השיבוץ, עם מניעת כפל בכל ערוץ.
+- [ ] **D08.8 | COVERAGE — כל נקודות כתיבת שיבוץ:** לבדוק/להעביר ל־V2 את המסכים `SupplierAssignmentDialog`, `EventsBoard`, `ServicesCard`, `EventDetails`, וכן עריכות שיבוץ ב־`AdminDashboard`, `SupplierManagement`, `EventForm` ופעולות Backend, או להוכיח שאינן יוצרות הודעת שיבוץ חדשה. **לא להפעיל V2 בעוד כותב Legacy ממשיך לשנות `supplier_ids` / `supplier_statuses` ללא revision.**
+
+### D08 — תנאי מעבר קשיחים (Go/No-Go)
+
+1. **ברירת מחדל OFF בלבד:** לא ליצור את `AppSettings.assignment_intent_v1_enabled=true` לפני אישור לאחר פיילוט, השלמת D08.7/8 ו־D08.6b. המתג הזה **אינו** הגדרת ספק WhatsApp, ואסור לחשוף אותו כעוד כפתור פעיל בדף ההגדרות כרגע.
+2. **שמירת DB:** יש להוכיח ב־Base44 Preview ששתי בקשות עם `expectedUpdatedAt` זהה לא משבצות שתי גרסאות במקביל; אם `updateMany` לא מעדכן `updated_date` אוטומטית או ה־CAS אינו אטומי בפועל — לעצור את המעבר ולבנות מנגנון version/fencing בשרת.
+3. **התעוררות:** לבדוק שה־`EventService.update({assignment_intent_wake_at})` אחרי CAS מעורר רק את Workflow החדש, בלי ליצור הודעות שיבוץ Legacy נוספות; לעקוב אחרי גיבוי ה־Watchdog הקיים. בלי ודאות לגבי wake לא מסמנים PROD.
+4. **אותן תופעות לוואי עסקיות:** Push, תזכורות אישור, סטטוס אירוע, יומן ספק ואישור ספק אינם נעלמים. לא להסתפק בכך שהודעות WhatsApp נוצרו.
+5. **תחרות ואיבוד קישוריות:** שני מנהלים, כיבוי דפדפן מיד אחרי שמירה, כשל אחרי יצירת Outbox ולפני receipt, חידוש status, תוצאה unknown, הצטרפות/הסרה וחזרה לשיבוץ — ללא שליחה כפולה או שיבוץ שנעלם.
+6. **חוויית משתמש:** דיאלוג שיבוץ נסגר ברגע שקיים `saved:true` ו־intent עמיד (לא אחרי משלוח), וחיווי אחר כך מבחין `requested`/`queued`/`accepted`/`unknown`/`failed` בלי שגיאת שמירה מדומה. לא לחסום את המסך על תוצאת Provider.
+7. **Rollback אמיתי:** מתג כבוי בלבד אינו מספיק לשירותים שיש להם `assignment_intent_mode=durable_v1` — יש לטפל בהיסטוריה ובמפתח הישן; אין למחוק Outbox/Unknown או לשגר שוב הודעות כדי להחזיר גרסה.
+8. **אישור הפעלה:** פיילוט במספר/משתמש בדיקה מאושר בלבד. בלי ממצאי ביצועים ומסירה אמיתיים אין טענת Production Ready.
+
 - [ ] **D09.1** להעביר את ארבעת מסכי השיבוץ ל־persist intent בשרת, ואז **להפסיק להמתין ל־HTTP לספק**, רק אחרי שבקשת הודעה עמידה נמצאת ב־DB.
 - [ ] **D09.2** UI מציג בנפרד "השיבוץ נשמר" ו"ההודעה ממתינה/נכשלה/נמסרה עם הוכחה", ולא חלון מתמשך שמונע עבודה.
 - [ ] **D09.3** בדיקות תחרות והמשך עיבוד כשמנהל יוצא מהמסך; לא להחליף בהפעלת Promise לא־ממתין בדפדפן.
