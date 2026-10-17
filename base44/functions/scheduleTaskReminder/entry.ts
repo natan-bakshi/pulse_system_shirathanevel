@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import {taskDigestWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 
 /**
  * scheduleTaskReminder
@@ -146,9 +147,17 @@ Deno.serve(async (req) => {
 
         let scheduled = 0;
         for (const admin of recipients) {
-            const waData = (allowedChannels.includes('whatsapp') && admin.phone)
-                ? JSON.stringify({ send_whatsapp: true, whatsapp_message: waMessage, phone: admin.phone })
-                : JSON.stringify({});
+            const waKey=await taskDigestWhatsAppKey(admin.id,[task]);
+            // The Task entity workflow may recreate this Pending source on
+            // a harmless update. Keep the Outbox key tied to recipient+task
+            // and due version, NEVER to the transient Pending row ID.
+            const waData = JSON.stringify({
+                ...(allowedChannels.includes('whatsapp') && admin.phone
+                    ? {send_whatsapp:true,whatsapp_message:waMessage,phone:admin.phone} : {}),
+                task_due_date:dueDate.toISOString(),
+                idempotency_key:waKey,
+                source_type:'task_due_reminder'
+            });
 
             await base44.asServiceRole.entities.PendingPushNotification.create({
                 user_id: admin.id,
