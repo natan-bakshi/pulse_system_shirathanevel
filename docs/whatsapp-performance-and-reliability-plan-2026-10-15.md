@@ -163,6 +163,17 @@
 - **סדר התחלה בסשן הבא:** P0 WA-P40 — מפתחות מקור משימות/תזכורת/מסמכים בהקשרים עסקיים מבלי להשתיק ידני; WA-P42 — source state ↔ Outbox; WA-P41 — אימות אמת של Worker wake בלי דפדפן, לאחר פרסום מבוקר; WA-P43 — מבחן שליחה לנמען QA בלבד. בטרם הפעלה יש למדוד timeout/ניטור ומקרי failover (unknown לעולם אינו אוטומטי).
 - **Checkpoint סיום QA:** `6ad3d9666fbef9071c8086ee`, commit `36ecf88765269d8bd6ddefd56d9d19243b5fcb97` (לפני הוספת מספר הצ'קפוינט למסמכים עצמם). הסתיים ללא פעולה בנתונים עסקיים; אין לפתוח תהליך שליחה חדש לאחר עצירה זו.
 
+### 17.10.2026 — סשן המשך P0: Task, scheduled_check, מקור מול Outbox
+- **App/Checkpoint פתיחה:** Pulse המקורי `687d1de6659eff83e9c034f7`, checkpoint `6ad3dbece6680c5a1a12e4ea`, Git HEAD בסיס `f554b5f0cb04359751d1fab6d3e7d6d747fec67a`. לא שונו הגדרות ספק/קצב או מתג V2.
+- **QA ונתוני אמת לפני השינוי (Read only):** מדגם Outbox **24 הודעות** — 21 `accepted` אצל API (לא הוכחת מסירה), 2 `unknown` ו־1 `cancelled`; QueueControl `enabled=true`, `paused=false`, `green_interval_ms=3000`, `wasender_interval_ms=7000`. אין הודעות queued במדגם; האחרון שנשלח לא מוכיח את בריאות Wake/Watchdog כעת.
+- **WA-P40a שנעשה:** `automatedWhatsAppKey` מוגבל למקורות אוטומטיים ומבוסס זהות עסקית/נמען/גרסה (ללא hash גוף הודעה); `taskDigestWhatsAppKey` הוא SHA-256 של מזהי משימות + גרסאות due ו־admin, נשאר קצר גם ל־500 משימות. `dailyScheduledNotifications`, `scheduleTaskReminder`, `checkAutomatedTriggers` וכן Pending מתוזמן דרך `processScheduledPushNotifications` חולקים מזהים מתאימים לאותו אירוע; `unknown` אינו הצלחה. שליחה ידנית יזומה נשארה ללא dedup בכוונה. **WA-P40b עדיין פתוח** ליתר נקודות הכתיבה והודעות חילופי אירוע.
+- **WA-P42a שנעשה:** `WhatsAppQueueAdmin.sourceAudit` + כפתור בדף ניהול תור, לבעלים בלבד, קריאה בלבד; שליפת שדות metadata בהפעלה יזומה ולא ב־page load. מזהה mismatch בין `InApp` ל־`Outbox`; הודעת `unknown` לעולם אינה משודרת שנית; `InApp` היסטורי ללא קישור אינו מוצג כאובדן מוכח.
+- **מקטעי Business משלימים (לקרוא במסמך הכללי):** E20a/b — הדגל `Task.whatsapp_notification_sent` נכתב רק לאחר קליטה עמידה לכל הנמענים הדרושים; המתזמן לפי Task/Pending הוא בעלים לפני ה־digest היומי, כולל שמירת version ותוצאה לא ידועה. G11 — תיקון העברת `servicesByEvent` דרך עזרי `scheduled_check` ומבחן ריצה המונע ReferenceError.
+- **QA:** סוויטה מלאה `node --test tests/*.test.mjs`: **277/278 עברו**; כשל אחד מוכר **ישן** ב־`tests/event-agreement.test.mjs`, RLS `EventAgreement.create` למנהל מול ציפיית הבדיקה `false`. Build Vite, Parse של קוד Backend, ESLint למסך Admin עברו. בדיקות VM לא־חיות לספקים/תזמונים/Task/מפתחות/היסטוריה לא יצרו הודעה אמיתית.
+- **לא הושלם:** אין בדיקות E2E ספק/קבוצת WhatsApp/קבצי PDF/חשבוניות/פוש בפרודקשן, אין הוכחת wake מידי או latency p95 חדש (WA-P41/43), אין reconciliation שמתקן מקור חסר (WA-P42b/E21b), ואין מפתחות business לכל `arrival_time_change`, `assignment_cancel`, `assignment_update` (WA-P40b). הודעות שכבר הוגדרו `unknown` אינן משוחזרות; אין שינוי במסדי Live.
+- **פעולת השחרור:** עדיין **לא ידוע/לא אומת** אם גרסת הקוד פורסמה ב־Live; אין להציג "Production Ready". להפעיל רק אחרי פיילוט נמען מאושר, QA עסקי, בדיקת workflow והתאוששות.
+- **נקודת עצירה:** השלמת קוד + בדיקות + שני מסמכי תכנון; לייצר checkpoint סיום לפני עצירה. המשך לפי WA-P40b/WA-P42b ו־WA-P41 לאימות אמת.
+
 ### תבנית לסשן הבא
 `מועד | App ID + HEAD + checkpoint | WA-P IDs | קבצים ששונו | בדיקות מדויקות | נתוני אמת לפני/אחרי | פרסום/לא פורסם | סיכון | ID הבא`
 
