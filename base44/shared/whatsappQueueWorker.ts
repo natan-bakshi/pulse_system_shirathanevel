@@ -219,11 +219,26 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       let provider;
       try {
         provider=jobCandidateProvider(options.job) || await resolveWhatsAppProvider(client);
-        if(provider==='wasender'&&!Deno.env.get('WASENDER_API_KEY'))throw new Error('Wasender session key unavailable');
-        if(provider==='green'&&(!Deno.env.get('GREEN_API_INSTANCE_ID')||!Deno.env.get('GREEN_API_TOKEN')))throw new Error('Green API credentials unavailable');
       }catch(error) {
-        lastError='WhatsApp provider not configured';
-        break;  // Keep queued jobs intact; settings page shows this error.
+        lastError='WhatsApp provider selection unavailable';
+        break; // Malformed global configuration needs operator attention.
+      }
+      const credentialsReady=provider==='wasender'
+        ? !!Deno.env.get('WASENDER_API_KEY')
+        : !!(Deno.env.get('GREEN_API_INSTANCE_ID')&&Deno.env.get('GREEN_API_TOKEN'));
+      if(!credentialsReady){
+        // No HTTP request can have occurred. This is safe to defer with the
+        // SAME Outbox ID, leaving other-provider jobs free to make progress.
+        // Do not spin over the same unconfigured job in the current batch.
+        const nextAttemptAt=new Date(Date.now()+60_000).toISOString();
+        const moved=await queueStage('provider_credentials_wait',()=>
+          db.WhatsAppOutbox.updateMany({id:currentJob.id,status:currentJob.status},
+            {$set:{status:'retry_wait',available_at:nextAttemptAt,
+              last_error:'WhatsApp provider credentials unavailable; no send attempted',
+              error_code:0,last_status_at:new Date().toISOString()}}));
+        processed++;
+        if(moved?.updated===1)retried++;
+        continue;
       }
       const intervalMs=providerIntervalMs(control,provider);
       const providerLastDispatchAt=lastDispatchForProvider(control,provider);
@@ -290,7 +305,13 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         if(outcome.status==='failed') failed++;
         if(outcome.status==='retry_wait') retried++;
         if(outcome.status!=='retry_wait') await syncWhatsAppStatus(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),outcome.status,'');
-        if(outcome.code===401||outcome.code===403) {lastError='WhatsApp provider authorization rejected';break;}
+        // HTTP 401/403 is a DEFINITE rejection for this job. Report its
+        // failed state, but do not stop unrelated queued jobs (including the
+        // backup provider) until the next five-minute watchdog. Never retry
+        // this rejected job without an explicit administrative decision.
+        if(outcome.code===401||outcome.code===403) {
+          console.error('[WhatsAppOutbox] Provider authentication rejected a job');
+        }
       }
     }
   } finally {
