@@ -68,7 +68,11 @@ Deno.serve(async (req) => {
                 const link = data.link || data.click_action || '';
                 const whatsappMessage = `*${title}*\n\n${body}${link ? `\n\n${link}` : ''}`;
                 const receipt=await sendWhatsAppText(u.phone, whatsappMessage, base44, {sourceType:'push_mirror'});
-                whatsappResults.push({ userId: u.id, success: true, queued:receipt.queued===true, messageId:receipt.messageId||'' });
+                const status=String(receipt?.status||'');
+                const confirmed=receipt?.success!==false && !['unknown','failed','cancelled','expired','resolved'].includes(status) &&
+                  (receipt?.queued===true || status==='accepted' || status==='sending' || status==='retry_wait' || receipt?.legacyDirect===true);
+                whatsappResults.push({ userId:u.id,success:confirmed,queued:confirmed&&receipt?.queued===true,
+                  state:confirmed?(status||'queued'):status||'unverified',messageId:confirmed?(receipt?.messageId||''):'' });
             } catch (waError) {
                 console.error('[sendPushNotification] WhatsApp send error:', waError?.message || 'unknown');
                 whatsappResults.push({ userId: u.id, success: false, error: waError.message });
