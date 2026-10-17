@@ -190,7 +190,7 @@
 - **QA:** **309 מתוך 310 בדיקות עברו**. הכשל היחיד הוא `tests/event-agreement.test.mjs` (RLS `EventAgreement.create` למנהל מול assertion `false`), היה קיים קודם; לא נגעתי בסכמה/הרשאות. `npm run build`=0, `eslint EventDetails/WhatsAppQueueSettings`=0, Parse של Backend TS ו־2 סכמות JSON=OK. פרטים ייעודיים: `tests/assignment-transition-queue-guard.test.mjs`, `whatsapp-outbox-mirror-binding.test.mjs`, `whatsapp-watchdog-heartbeat.test.mjs`, `whatsapp-mirror-watchdog-repair.test.mjs`, `send-push-whatsapp-partial.test.mjs`, `notify-supplier-push-report.test.mjs`. **הבדיקות בספקים מדומים בלבד**.
 - **נותר פתוח P0:** WA-P40e לעוד producer לא־שיבוץ (`handleEntityEvents` generic ו־Push idempotency), WA-P41b להוכיח בדאטה LIVE heartbeat אמיתי + Wake <seconds ו־batch>16, WA-P42d לשחזור מקור לפני Outbox ול־Push multi-channel. `InAppNotification` ללא link היסטורי אינו הוכחת אובדן. `Unknown` לעולם אינו replay אוטומטי.
 - **הפעלה:** לא נשלחה הודעת אמת, לא בוצעו Cancel/Confirm/Reassign אמיתיים, לא בוצע Publish/Deploy מאומת, לא הופעל V2. אין להבטיח SLA או מסירה עד פיילוט פרודקשן עם נמען QA מורשה. 
-- **נקודת עצירה:** QA+מסמכים וקביעת checkpoint סופי; session הבא מתחיל באימות LIVE מאושר ולא בשחזור מיידי של UNKNOWN.
+- **Checkpoint QA סופי:** `6ad3fb91045949e6ae48553c`, commit `aa3f3170c41ae1f2d5331e4fd134c0547204ab8a` (לפני הוספת מזהה הצ'קפוינט למסמכים עצמם). Session הבא מתחיל באימות LIVE מאושר ולא בשחזור מיידי של UNKNOWN.
 
 ### תבנית לסשן הבא
 `מועד | App ID + HEAD + checkpoint | WA-P IDs | קבצים ששונו | בדיקות מדויקות | נתוני אמת לפני/אחרי | פרסום/לא פורסם | סיכון | ID הבא`
