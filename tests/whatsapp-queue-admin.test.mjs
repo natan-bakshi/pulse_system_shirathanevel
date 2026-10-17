@@ -3,20 +3,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
-import {delayUntilNextSendMs,providerIntervalMs} from '../base44/shared/whatsappQueueWorker.ts';
+import {delayUntilNextSendMs,providerIntervalMs,lastDispatchForProvider} from '../base44/shared/whatsappQueueWorker.ts';
 import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
 
 function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
- const syncs=[],calls=[];
+ const syncs=[],calls=[],listProjections=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
    return record[key]===val;
  });
  const jobEntity={
-   list:async(_sort,limit=500,offset=0)=>jobs.slice(offset,offset+limit),
+   list:async(_sort,limit=500,offset=0,fields)=>{listProjections.push(fields);return jobs.slice(offset,offset+limit);},
    filter:async(query,_sort,limit=500,offset=0)=>jobs.filter(x=>matches(x,query)).slice(offset,offset+limit),
    get:async(id)=>jobs.find(x=>x.id===id)||null,
    updateMany:async(query,{ $set })=>{
@@ -42,7 +42,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>record};
      if(name.endsWith('whatsappQueueWorker.ts'))return {
        drainWhatsAppOutbox:async()=>{calls.push('dispatch');return {accepted:0,reason:'empty'}},
-       providerIntervalMs,delayUntilNextSendMs,
+       providerIntervalMs,delayUntilNextSendMs,lastDispatchForProvider,
        syncWhatsAppStatus:async(_client,job,status)=>syncs.push({id:job.id,status})
      };
      if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
@@ -50,7 +50,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      throw Error('Unexpected import: '+name);
    }
  });
- return {record,jobs,syncs,calls,invoke:async(action,params={})=>await handler({
+ return {record,jobs,syncs,calls,listProjections,invoke:async(action,params={})=>await handler({
    method:'POST',json:async()=>({action,...params})
  })};
 }
@@ -82,6 +82,34 @@ test('status/list/get are read only and mask recipient until owner requests deta
  assert.equal(detail.body.message.chatId,'972501234567@c.us');
  assert.equal(detail.body.message.text,'Hello');
  assert.equal(ctx.calls.length,0);
+});
+test('lightweight read-only status/list/metrics use server-side field projection, not 500 message bodies',async()=>{
+ const ctx=context({jobs:[makeJob('job-123')]});
+ await ctx.invoke('status');
+ await ctx.invoke('list');
+ const m=await ctx.invoke('metrics');
+ assert.equal(m.status,200);
+ assert.ok(ctx.listProjections.length>=3);
+ for(const fields of ctx.listProjections){
+   assert.ok(Array.isArray(fields));
+   for(const privateField of ['message_text','caption','document_url','file_uri','chat_id_secret']){
+     assert.equal(fields.includes(privateField),false,'Never fetch private '+privateField+' when only summary needed');
+   }
+ }
+ assert.ok(ctx.listProjections[0].includes('status'));
+ assert.ok(ctx.listProjections.at(-1).includes('transport_finished_at'));
+});
+test('provider wait UI uses its own dispatch history, not the other provider cooldown',async()=>{
+ const recent=new Date(Date.now()-1000).toISOString();
+ const old=new Date(Date.now()-60000).toISOString();
+ const ctx=context({state:{enabled:true,last_dispatched_at:recent,last_provider:'green',
+   last_green_dispatched_at:recent,last_wasender_dispatched_at:old,
+   green_interval_ms:5000,wasender_interval_ms:9000}});
+ const r=await ctx.invoke('status');
+ assert.equal(r.status,200);
+ assert.equal(r.body.activeProvider,'wasender');
+ assert.equal(r.body.nextAllowedInMs,0,
+   'Wasender can send even when latest global dispatch was Green');
 });
 test('configure persists each provider in milliseconds and enables wake once',async()=>{
  const ctx=context();
