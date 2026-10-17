@@ -26,19 +26,36 @@ export function renderClientMessage(config, kind: "receipt" | "reminder", langua
 }
 
 // שולח בוואטסאפ, ואם אין טלפון או שהשליחה נכשלה - נסיגה לאימייל.
-export async function sendClientMessage(base44, { phone, email, subject, body, businessName }) {
+export async function sendClientMessage(base44, { phone, email, subject, body, businessName, idempotencyKey='' }) {
   const channels: string[] = [];
   if (phone) {
     try {
-      await sendWhatsAppText(phone, body, base44, {sourceType:'client_billing'});
-      channels.push("whatsapp");
+      const receipt=await sendWhatsAppText(phone, body, base44, {
+        sourceType:'client_billing',sourceId:idempotencyKey,idempotencyKey
+      });
+      const state=String(receipt?.status||'');
+      // An old deduplicated job can be UNKNOWN/FAILED rather than queued.
+      // Never suppress email because of a false WhatsApp success; also never
+      // automatically email when the prior WhatsApp outcome is uncertain.
+      if(['unknown','resolved','cancelled','expired'].includes(state)){
+        throw Object.assign(new Error('WhatsApp outcome needs manual review'),{
+          deliveryUncertain:true,queueStatus:state,jobId:receipt?.jobId||''
+        });
+      }
+      const accepted=receipt?.success!==false && (state==='accepted' ||
+        (receipt?.queued===true&&!['failed','unknown'].includes(state)) ||
+        ['sending','retry_wait'].includes(state) || receipt?.legacyDirect===true);
+      if(!accepted)throw new Error('WhatsApp outbox has no confirmed queue receipt');
+      channels.push('whatsapp'); // Queued, not necessarily delivered.
     } catch (error) {
-      console.warn(`[clientBillingMessages] whatsapp failed: ${error.message}`);
+      if(error?.deliveryUncertain===true)throw error;
+      console.warn('[clientBillingMessages] WhatsApp was not queued; evaluating email fallback');
     }
   }
   if (!channels.length && email) {
     await base44.asServiceRole.integrations.Core.SendEmail({ to: email, subject, body: body.replaceAll("\n", "<br>"), from_name: businessName });
     channels.push("email");
   }
+  if(!channels.length)throw new Error('Neither WhatsApp nor email accepted the billing notification');
   return channels;
 }
