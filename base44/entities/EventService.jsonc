@@ -167,6 +167,27 @@
       "type": "number",
       "description": "\u05de\u05e1\u05e4\u05e8 \u05e1\u05e4\u05e7\u05d9\u05dd \u05de\u05d9\u05e0\u05d9\u05de\u05dc\u05d9 \u05dc\u05e9\u05d9\u05d1\u05d5\u05e5 (null = \u05d9\u05e8\u05e9 \u05de\u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc \u05e9\u05dc \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea)"
     },
+    "assignment_intent_mode": {
+      "type": "string",
+      "enum": [
+        "durable_v1"
+      ],
+      "description": "Internal feature-gated assignment notification intent mode; not the WhatsApp provider status"
+    },
+    "assignment_intent_revision": {
+      "type": "number",
+      "default": 0,
+      "description": "Monotonic notification transition revision; only advances when supplier needs a NEW approval request"
+    },
+    "assignment_notification_intents": {
+      "type": "string",
+      "description": "Bounded durable JSON intent journal written atomically with supplier assignments; never stores phone/message body"
+    },
+    "assignment_intents_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "Reconciler work marker; flag alone never authorizes automatic resends of UNKNOWN results"
+    },
     "status": {
       "type": "string",
       "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05e4\u05e0\u05d9\u05de\u05d9 \u05e9\u05dc \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea \u05d1\u05d0\u05d9\u05e8\u05d5\u05e2"
