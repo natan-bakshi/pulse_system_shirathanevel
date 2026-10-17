@@ -36,13 +36,10 @@ export function lastDispatchForProvider(control:any,provider:string):string {
   const field=provider==='green'?'last_green_dispatched_at':'last_wasender_dispatched_at';
   const pinned=String(control?.[field]||'');
   if(pinned && Number.isFinite(Date.parse(pinned)))return pinned;
-  // Upgrade safety: old control rows had only a global timestamp. Preserve
-  // pacing if the last provider was THIS provider, then populate the new field
-  // on its next send. The opposite provider is independently eligible.
-  if(!control?.last_provider || control.last_provider===provider) {
-    return String(control?.last_dispatched_at||'');
-  }
-  return '';
+  // Upgrade safety: historic queue rows only tracked a global timestamp.
+  // Until the first post-upgrade send for this provider, use the conservative
+  // global timestamp rather than risk breaking its minimum spacing.
+  return String(control?.last_dispatched_at||'');
 }
 export function providerIntervalMs(control: any, provider: string): number {
   if(provider !== 'green' && provider !== 'wasender')throw new Error('Unsupported WhatsApp provider');
