@@ -5,8 +5,9 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {delayUntilNextSendMs,providerIntervalMs,lastDispatchForProvider} from '../base44/shared/whatsappQueueWorker.ts';
 import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
+import {summarizeWhatsAppSourceAudit} from '../base44/shared/whatsappSourceAudit.ts';
 
-function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[]}={}){
+function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
@@ -27,7 +28,8 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  };
  const client={auth:{me:async()=>actor},asServiceRole:{entities:{
    WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch)},
-   WhatsAppOutbox:jobEntity
+   WhatsAppOutbox:jobEntity,
+   InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}}
  }}};
  let handler=null;
  const js=esbuild.transformSync(fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8'),{
@@ -47,6 +49,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      };
      if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
      if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
+     if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit};
      throw Error('Unexpected import: '+name);
    }
  });
@@ -60,7 +63,7 @@ const makeJob=(id,status='queued')=>({id,status,chat_id:'972501234567@c.us',mess
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
