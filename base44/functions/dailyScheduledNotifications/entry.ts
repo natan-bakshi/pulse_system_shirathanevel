@@ -498,7 +498,13 @@ Deno.serve(async (req) => {
                     // WhatsApp - direct to phone (works for non-registered users)
                     if (supplier.phone && supplier.whatsapp_enabled !== false &&
                         pendingTemplate.allowed_channels?.includes('whatsapp')) {
-                        whatsappQueue.push({ phone: supplier.phone, message: waMessage });
+                        whatsappQueue.push({phone:supplier.phone,message:waMessage,
+                          sourceType:'supplier_pending_reminder',sourceId:es.id,
+                          idempotencyKey:automatedWhatsAppKey('supplier_pending',{
+                            eventId:event.id,recipientId:supplierId,eventDate:event.event_date,
+                            serviceId:es.id,templateType:'SUPPLIER_PENDING_REMINDER',
+                            version:existingNotification?(Number(existingNotification.reminder_count)||0)+1:0
+                          })});
                     }
                     
                     // Push + InApp - only for registered users
@@ -653,7 +659,17 @@ Deno.serve(async (req) => {
                     for (const admin of targetedAdmins) {
                         // WhatsApp
                         if (allowedChannels.includes('whatsapp') && admin.phone) {
-                            whatsappQueue.push({ phone: admin.phone, message: waMessage });
+                            whatsappQueue.push({phone:admin.phone,message:waMessage,
+                              sourceType:'admin_missing_assignment',sourceId:event.id,
+                              idempotencyKey:automatedWhatsAppKey('admin_missing',{
+                                eventId:event.id,recipientId:admin.id,eventDate:event.event_date,
+                                templateType:'ADMIN_MISSING_ASSIGNMENT',
+                                // The current business rule allows only one active
+                                // missing-assignment alert per event. Reappearance
+                                // after manual resolution needs a distinct version;
+                                // this is tracked in E21, not guessed here.
+                                version:String(event.updated_date||event.event_date||'')
+                              })});
                         }
                         
                         // InApp + Push
@@ -794,7 +810,13 @@ Deno.serve(async (req) => {
                     if (allowedChannels.includes('whatsapp') && getClientContacts(event)) {
                         const parent = getClientContacts(event).find(p => p.email?.toLowerCase() === clientUser.email?.toLowerCase());
                         if (parent?.phone) {
-                            whatsappQueue.push({ phone: parent.phone, message: waMessage });
+                            whatsappQueue.push({phone:parent.phone,message:waMessage,
+                              sourceType:'client_payment_reminder',sourceId:event.id,
+                              idempotencyKey:automatedWhatsAppKey('client_payment',{
+                                eventId:event.id,recipientId:clientUser.id,eventDate:event.event_date,
+                                templateType:'CLIENT_PAYMENT_REMINDER',
+                                version:existingNotification?(Number(existingNotification.reminder_count)||0)+1:0
+                              })});
                         }
                     }
                     
@@ -1290,7 +1312,12 @@ async function sendScheduledToAudiences(base44, template, event, servicesByEvent
                 
                 // WhatsApp - direct to phone number (no user dependency)
                 if (sendWA && supplier.phone && supplier.whatsapp_enabled !== false) {
-                    whatsappQueue.push({ phone: supplier.phone, message: waMessage });
+                    whatsappQueue.push({phone:supplier.phone,message:waMessage,
+                      sourceType:'scheduled_template',sourceId:event.id,
+                      idempotencyKey:automatedWhatsAppKey('scheduled_template',{
+                        eventId:event.id,recipientId:supId,eventDate:event.event_date,
+                        serviceId:es.id,templateType:template.type,target:'supplier'
+                      })});
                 }
                 
                 // Push - only for registered users
@@ -1333,7 +1360,12 @@ async function sendScheduledToAudiences(base44, template, event, servicesByEvent
                 const waMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
                 
                 if (sendWA && p.phone) {
-                    whatsappQueue.push({ phone: p.phone, message: waMessage });
+                    whatsappQueue.push({phone:p.phone,message:waMessage,
+                      sourceType:'scheduled_template',sourceId:event.id,
+                      idempotencyKey:automatedWhatsAppKey('scheduled_template',{
+                        eventId:event.id,recipientId:p.email||p.phone,eventDate:event.event_date,
+                        templateType:template.type,target:'client'
+                      })});
                 }
                 if (sendPush && p.email) {
                     const user = allUsers.find(u => u.email === p.email);
@@ -1375,7 +1407,12 @@ async function sendScheduledToAudiences(base44, template, event, servicesByEvent
             const waMessage = replacePlaceholders(template.whatsapp_body_template || template.body_template, contextData);
             
             if (sendWA && admin.phone) {
-                whatsappQueue.push({ phone: admin.phone, message: waMessage });
+                whatsappQueue.push({phone:admin.phone,message:waMessage,
+                  sourceType:'scheduled_template',sourceId:event.id,
+                  idempotencyKey:automatedWhatsAppKey('scheduled_template',{
+                    eventId:event.id,recipientId:admin.id,eventDate:event.event_date,
+                    templateType:template.type,target:'admin'
+                  })});
             }
             
             try {
