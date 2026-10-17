@@ -75,9 +75,25 @@ export async function syncWhatsAppStatus(client:any,job:any,status:string,messag
   // Each downstream mirror is independently best-effort. One broken entity
   // must not suppress receipt propagation to unrelated agreements/cards.
   if(job.in_app_notification_id && status==='accepted') {
-    try {await db.InAppNotification.update(job.in_app_notification_id,{
-      whatsapp_sent:true,whatsapp_message_id:messageId||''
-    });}catch(error){console.error('[WhatsAppOutbox] InApp status sync failed');}
+    try {
+      await db.InAppNotification.update(job.in_app_notification_id,{
+        whatsapp_sent:true,whatsapp_message_id:messageId||''
+      });
+      if(job.mirror_sync_pending===true) {
+        await db.WhatsAppOutbox.updateMany({id:job.id,mirror_sync_pending:true},
+          {$set:{mirror_sync_pending:false,mirror_sync_last_attempt_at:new Date().toISOString()}});
+      }
+    }catch(error){
+      // A temporary InApp write failure must not turn provider ACCEPTED into
+      // UNKNOWN, and must not cause a second WhatsApp send. Persist a repair
+      // flag instead; the ALREADY EXISTING watchdog safely retries the mirror.
+      console.error('[WhatsAppOutbox] InApp status sync failed; scheduling mirror-only repair');
+      try {
+        await db.WhatsAppOutbox.updateMany({id:job.id,status:'accepted'},{$set:{
+          mirror_sync_pending:true,mirror_sync_last_attempt_at:new Date().toISOString()
+        }});
+      }catch(repairError){console.error('[WhatsAppOutbox] Mirror repair flag not persisted');}
+    }
   }
   if(job.client_message_delivery_id) {
     try {
@@ -99,6 +115,34 @@ export async function syncWhatsAppStatus(client:any,job:any,status:string,messag
       ...(status==='accepted'?{link_message_id:messageId||''}:{})
     });}catch(error){console.error('[WhatsAppOutbox] card setup status sync failed');}
   }
+}
+// Repair only proven provider-ACCEPTED source mirrors. This never contacts
+// Green API/Wasender, never modifies an UNKNOWN/FAILED job, and costs one
+// filtered read per existing five-minute watchdog. Work is bounded to 10.
+export async function reconcileAcceptedWhatsAppMirrors(client:any,limit=10){
+  const db=client.asServiceRole.entities;
+  const rows=await db.WhatsAppOutbox.filter({
+    status:'accepted',mirror_sync_pending:true
+  },'-created_date',Math.max(1,Math.min(10,limit)),0,
+  ['id','status','provider_message_id','in_app_notification_id','mirror_sync_pending']);
+  let repaired=0,failed=0;
+  for(const row of rows){
+    if(!row.in_app_notification_id){failed++;continue;}
+    try{
+      await db.InAppNotification.update(row.in_app_notification_id,{
+        whatsapp_sent:true,whatsapp_message_id:row.provider_message_id||''
+      });
+      const cas=await db.WhatsAppOutbox.updateMany({
+        id:row.id,status:'accepted',mirror_sync_pending:true
+      },{$set:{mirror_sync_pending:false,mirror_sync_last_attempt_at:new Date().toISOString()}});
+      if(cas?.updated===1)repaired++;
+      else failed++;
+    }catch(error){
+      failed++;
+      console.error('[WhatsAppOutbox] Deferred mirror repair failed');
+    }
+  }
+  return {examined:rows.length,repaired,failed};
 }
 async function staleSendingToUnknown(client:any, now:number) {
   const db=client.asServiceRole.entities.WhatsAppOutbox;
