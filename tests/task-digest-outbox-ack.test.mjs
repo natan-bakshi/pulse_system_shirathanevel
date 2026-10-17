@@ -142,6 +142,58 @@ test('push-only task still uses durable InApp evidence, never an in-memory Whats
  assert.equal(x.flagWrites.length,1);
  assert.equal(x.currentTasks[0].whatsapp_notification_sent,true);
 });
+
+test('scheduled Pending task reminder owns its recipient; daily digest never sends it again',async()=>{
+ const key=await taskDigestWhatsAppKey('admin-a',[samples[0]]);
+ const row={id:'pending-task-owner',related_task_id:'task-1',user_id:'admin-a',
+   template_type:'TASK_DUE_REMINDER',scheduled_for:samples[0].due_date,is_sent:false,
+   data:JSON.stringify({send_whatsapp:true,task_due_date:samples[0].due_date,idempotency_key:key})};
+ const providerJob={id:'outbox-task-owner',idempotency_key:key,status:'accepted'};
+ const x=harness({pendingRows:[row],outboxRows:[providerJob]});
+ const a=await x.run();
+ assert.equal(a.status,200);
+ assert.equal(x.enqueued.length,1,'Only admin B should get the fallback digest');
+ assert.equal(x.enqueued[0].phone,'0502222222');
+ assert.equal(x.currentTasks[0].whatsapp_notification_sent,false,
+   'A pending Task source must remain intact; a Task update could delete it');
+ assert.equal(x.flagWrites.length,0);
+ row.is_sent=true; // Hourly worker processed the original Pending safely.
+ const b=await x.run();
+ assert.equal(b.status,200);
+ assert.equal(x.enqueued.length,1,'No duplicate sent to either admin');
+ assert.equal(x.flagWrites.length,1,'Task flag is safe only AFTER both owners settle');
+ assert.equal(x.currentTasks[0].whatsapp_notification_sent,true);
+});
+test('unknown scheduled Task provider outcome is never replayed by the daily backup',async()=>{
+ const key=await taskDigestWhatsAppKey('admin-a',[samples[0]]);
+ const row={id:'pending-unknown',related_task_id:'task-1',user_id:'admin-a',
+   template_type:'TASK_DUE_REMINDER',scheduled_for:samples[0].due_date,is_sent:true,
+   data:JSON.stringify({send_whatsapp:true,task_due_date:samples[0].due_date,idempotency_key:key})};
+ const x=harness({users:[{id:'admin-a',email:'a@example.test',phone:'0501111111',role:'admin'}],
+   pendingRows:[row],outboxRows:[{id:'job-unknown',idempotency_key:key,status:'unknown'}]});
+ await x.run();
+ assert.equal(x.enqueued.length,0);
+ assert.equal(x.flagWrites.length,0,'Unknown must remain unresolved for manual review');
+});
+test('owner key for revised due date does not suppress a genuinely new reminder version',async()=>{
+ const old=await taskDigestWhatsAppKey('admin-a',[samples[0]]);
+ const row={id:'pending-old',related_task_id:'task-1',user_id:'admin-a',
+   template_type:'TASK_DUE_REMINDER',is_sent:true,scheduled_for:samples[0].due_date,
+   data:JSON.stringify({send_whatsapp:true,task_due_date:samples[0].due_date,idempotency_key:old})};
+ const revised={...samples[0],due_date:'2026-10-19T10:00:00.000Z'};
+ const x=harness({users:[{id:'admin-a',email:'a@example.test',phone:'0501111111',role:'admin'}],
+   tasks:[revised],pendingRows:[row]});
+ await x.run();
+ assert.equal(x.enqueued.length,1,'Revised due date merits a new notification key');
+ assert.notEqual(x.enqueued[0].context.idempotencyKey,old);
+});
+test('task scheduling writes durable idempotency key independent of ephemeral Pending row IDs',()=>{
+ const src=fs.readFileSync('base44/functions/scheduleTaskReminder/entry.ts','utf8');
+ assert.match(src,/taskDigestWhatsAppKey\(admin\.id,\[task\]\)/);
+ assert.match(src,/task_due_date:dueDate\.toISOString\(\)/);
+ assert.match(src,/idempotency_key:waKey/);
+});
+
 test('task digest updater is structurally after all Outbox sends, not before',()=>{
  const src=fs.readFileSync('base44/functions/dailyScheduledNotifications/entry.ts','utf8');
  assert.ok(src.indexOf('Phase 7c: only now')>src.indexOf('// 5a. Enqueue every WhatsApp message'));
