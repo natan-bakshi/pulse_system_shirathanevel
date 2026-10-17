@@ -8,7 +8,7 @@ import {reconcileOutboxIntentStatus,processSupplierAssignmentIntents,sweepPendin
 import {assignmentWhatsAppKey,assignmentWhatsAppContext} from '../base44/shared/assignmentWhatsApp.ts';
 
 const svcId='service-aaa123',supplier1='supplier-aaa123',supplier2='supplier-bbb234';
-function scenario({enabled=true,newSuppliers=[supplier1],supplier={},statuses={},eventStatus='confirmed',existingOutbox=[]}={}){
+function scenario({enabled=true,newSuppliers=[supplier1],supplier={},statuses={},eventStatus='confirmed',existingOutbox=[],wakeThrows=false}={}){
  const original={id:svcId,event_id:'event-aaa123',service_id:'catalog-aaa123',
   supplier_ids:'[]',supplier_statuses:'{}',supplier_notes:'{}',
   updated_date:'2026-10-17T15:00:00Z'};
@@ -26,7 +26,7 @@ function scenario({enabled=true,newSuppliers=[supplier1],supplier={},statuses={}
        if(filter.id!==svcId||filter.assignment_notification_intents!==service.assignment_notification_intents)return {updated:0};
        Object.assign(service,update.$set);writes++;return {updated:1};
      },
-     update:async(_,patch)=>{wakes++;Object.assign(service,patch);return {...service}}
+     update:async(_,patch)=>{wakes++;if(wakeThrows)throw Error('Synthetic wake failure');Object.assign(service,patch);return {...service}}
    },
    Event:{get:async()=>({id:'event-aaa123',status:eventStatus,event_name:'Family Test',
      event_date:'2026-12-10',event_time:'10:00',location:'Jerusalem'})},
@@ -192,6 +192,18 @@ test('two supplier requests are handled in bounded batches without losing later 
  assert.equal(x.wakes,1);
  assert.equal(x.jobs.length,2);
  assert.equal(x.service.assignment_intents_pending,false);
+});
+test('failed continuation wake leaves remaining intent durable for the existing watchdog',async()=>{
+ const x=scenario({newSuppliers:[supplier1,supplier2],wakeThrows:true});
+ const first=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:x.enqueue,limit:1});
+ assert.equal(first.success,true,'One completed enqueue must not turn into a false business-save failure');
+ assert.equal(first.continued,false);
+ assert.equal(first.remaining,true);
+ assert.equal(x.service.assignment_intents_pending,true);
+ assert.equal(x.jobs.length,1);
+ const second=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:x.enqueue,limit:1});
+ assert.equal(second.remaining,false);
+ assert.equal(x.jobs.length,2,'Watchdog recovery never duplicates first enqueue');
 });
 test('Outbox states are not silently changed into delivery receipts',()=>{
  assert.equal(reconcileOutboxIntentStatus('accepted'),'accepted');
