@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
 
         let notificationsSent = 0;
         let whatsappEnqueueFailures = 0;
+        let notificationFailures = 0;
         let confirmedWhatsApp = 0;
 
         for (const template of templates) {
@@ -196,21 +197,22 @@ Deno.serve(async (req) => {
 
                     notificationsSent++;
                 } catch (e) {
-                    whatsappEnqueueFailures++;
-                    console.error(`[ReconfirmAssignments] Supplier notification was not durably queued: ${supId}`, e);
+                    notificationFailures++;
+                    if(e?.whatsappEnqueueError===true)whatsappEnqueueFailures++;
+                    console.error(`[ReconfirmAssignments] Supplier notification not confirmed: ${supId}`, e);
                 }
             }
         }
 
-        if(whatsappEnqueueFailures>0){
+        if(notificationFailures>0){
             // Keep event.date_change_pending_action for an explicit safe
             // retry/review. Supplier statuses were already reset above; the
             // same event transition key makes retry idempotent.
             return Response.json({
                 success:false,recovery_required:true,
-                error:'Supplier WhatsApp queue incomplete; date-change follow-up remains pending',
+                error:'Required supplier notifications incomplete; date-change follow-up remains pending',
                 whatsapp_confirmed:confirmedWhatsApp,
-                whatsapp_failures:whatsappEnqueueFailures
+                whatsapp_failures:whatsappEnqueueFailures,notification_failures:notificationFailures
             },{status:409});
         }
 
@@ -230,7 +232,8 @@ Deno.serve(async (req) => {
 });
 
 async function sendWhatsAppNotification(base44,phone,message,identity){
-    return enqueueAssignmentTransitionWhatsApp(base44,phone,message,identity,'assignment_update');
+    try{return await enqueueAssignmentTransitionWhatsApp(base44,phone,message,identity,'assignment_update');}
+    catch(e){if(e && typeof e==='object')e.whatsappEnqueueError=true;throw e;}
 }
 
 function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote) {
