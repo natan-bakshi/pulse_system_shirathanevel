@@ -188,6 +188,10 @@
       "default": false,
       "description": "Reconciler work marker; flag alone never authorizes automatic resends of UNKNOWN results"
     },
+    "assignment_intent_wake_at": {
+      "type": "string",
+      "description": "Explicit SDK update() wake after the CAS atomic save; fallback watchdog recovers if this update fails"
+    },
     "status": {
       "type": "string",
       "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05e4\u05e0\u05d9\u05de\u05d9 \u05e9\u05dc \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea \u05d1\u05d0\u05d9\u05e8\u05d5\u05e2"
