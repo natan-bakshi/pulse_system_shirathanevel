@@ -4,6 +4,7 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
 import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
+import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -218,6 +219,8 @@ Deno.serve(async (req) => {
         ]);
 
         const suppliersMap = new Map(allSuppliers.map(s => [s.id, s]));
+        const servicesByEvent=indexEventServicesByEvent(allEventServices);
+        const existingEventReminders=indexEventReminderReceipts(existingNotifications);
         const eventsMap = new Map(allEvents.map(e => [e.id, e]));
         const servicesMap = new Map(allServices.map(s => [s.id, s]));
         const adminUsers = allUsers.filter(u => u.role === 'admin');
@@ -279,7 +282,7 @@ Deno.serve(async (req) => {
                 applyTimingOffset(reminderCutoff, timingUnit, -timingValue);
                 
                 if (now >= reminderCutoff) {
-                    const eventServices = allEventServices.filter(es => es.event_id === event.id);
+                    const eventServices = servicesByEvent.get(event.id)||[];
                     
                     for (const es of eventServices) {
                         if (!es.supplier_ids || !es.supplier_statuses) continue;
@@ -298,11 +301,7 @@ Deno.serve(async (req) => {
                             if (!supplier) continue;
                             
                             // Check duplicate
-                            const hasExisting = existingNotifications.some(n => 
-                                n.template_type === 'SUPPLIER_EVENT_REMINDER' &&
-                                n.related_event_id === event.id &&
-                                n.related_supplier_id === supplierId
-                            );
+                            const hasExisting=existingEventReminders.supplier.has(String(event.id)+':'+String(supplierId));
                             if (hasExisting) continue;
                             
                             const contextData = buildEventContext(event, supplier, null, es);
@@ -378,11 +377,7 @@ Deno.serve(async (req) => {
                     // סינון מנהלים ספציפיים לפי הגדרת התבנית
                     const targetedAdmins = filterTargetedAdmins(adminReminderTemplate, adminUsers);
                     for (const admin of targetedAdmins) {
-                        const hasExisting = existingNotifications.some(n => 
-                            n.template_type === 'ADMIN_EVENT_REMINDER' &&
-                            n.related_event_id === event.id &&
-                            n.user_id === admin.id
-                        );
+                        const hasExisting=existingEventReminders.admin.has(String(event.id)+':'+String(admin.id));
                         if (hasExisting) continue;
                         
                         const contextData = buildEventContext(event, null, admin);
@@ -566,7 +561,7 @@ Deno.serve(async (req) => {
                 for (const event of upcomingEvents) {
                     // צבירת כל השירותים שחסרים בהם ספקים באירוע הזה
                     const missingServices = []; // [{ es, serviceName, minRequired, approvedCount }]
-                    const eventServices = allEventServices.filter(es => es.event_id === event.id);
+                    const eventServices = servicesByEvent.get(event.id)||[];
                     
                     for (const es of eventServices) {
                         const serviceDef = servicesMap.get(es.service_id);
@@ -718,7 +713,7 @@ Deno.serve(async (req) => {
                     totalCost = event.total_override;
                     if (!event.total_override_includes_vat) totalCost *= (1 + vatRate);
                 } else {
-                    const eventServices = allEventServices.filter(es => es.event_id === event.id);
+                    const eventServices = servicesByEvent.get(event.id)||[];
                     for (const es of eventServices) {
                         const price = es.custom_price || es.total_price || 0;
                         const quantity = es.quantity || 1;
@@ -1248,7 +1243,7 @@ async function sendScheduledToAudiences(base44, template, event, allEventService
     
     // Supplier audience
     if (audiences.includes('supplier')) {
-        const eventServices = allEventServices.filter(es => es.event_id === event.id);
+        const eventServices = servicesByEvent.get(event.id)||[];
         for (const es of eventServices) {
             if (!es.supplier_ids) continue;
             let supplierIds = [];
