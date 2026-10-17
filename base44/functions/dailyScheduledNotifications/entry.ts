@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
         
         for (const template of scheduledTemplates) {
             try {
-                await processScheduledTemplate(base44, template, allEvents, allEventServices, allSuppliers, allUsers, suppliersMap, existingNotifications, whatsappQueue, pushQueue, results);
+                await processScheduledTemplate(base44, template, allEvents, servicesByEvent, allSuppliers, allUsers, suppliersMap, existingNotifications, whatsappQueue, pushQueue, results);
                 results.scheduled_templates_processed++;
             } catch (e) {
                 console.error(`[DailyNotifications] Error in scheduled template ${template.type}:`, e);
@@ -1132,7 +1132,7 @@ Deno.serve(async (req) => {
 // ============================================================
 // PHASE 2 Helper: Process a scheduled_check template
 // ============================================================
-async function processScheduledTemplate(base44, template, allEvents, allEventServices, allSuppliers, allUsers, suppliersMap, existingNotifications, whatsappQueue, pushQueue, results) {
+async function processScheduledTemplate(base44, template, allEvents, servicesByEvent, allSuppliers, allUsers, suppliersMap, existingNotifications, whatsappQueue, pushQueue, results) {
     if (!template.timing_value || !template.timing_unit || !template.timing_direction) return;
     
     const targetDateStart = new Date();
@@ -1184,7 +1184,7 @@ async function processScheduledTemplate(base44, template, allEvents, allEventSer
         if (hasDuplicate) continue;
         
         // Send to audiences
-        await sendScheduledToAudiences(base44, template, event, allEventServices, allSuppliers, allUsers, suppliersMap, whatsappQueue, pushQueue, results);
+        await sendScheduledToAudiences(base44, template, event, servicesByEvent, allSuppliers, allUsers, suppliersMap, whatsappQueue, pushQueue, results);
     }
 }
 
@@ -1235,7 +1235,7 @@ function checkSimpleCondition(event, cond) {
     }
 }
 
-async function sendScheduledToAudiences(base44, template, event, allEventServices, allSuppliers, allUsers, suppliersMap, whatsappQueue, pushQueue, results) {
+async function sendScheduledToAudiences(base44, template, event, servicesByEvent, allSuppliers, allUsers, suppliersMap, whatsappQueue, pushQueue, results) {
     const audiences = template.target_audiences || [];
     const allowedChannels = template.allowed_channels || ['push'];
     const sendWA = allowedChannels.includes('whatsapp');
