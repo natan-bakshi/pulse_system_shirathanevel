@@ -429,7 +429,7 @@ async function triggerNotification(base44, template, event, user, supplier, even
             reminder_count: 0,
             is_resolved: false
         });
-        if(whatsAppResult?.queued) await attachOutboxInAppReceipt(base44,whatsAppResult,notificationRow.id);
+        if(whatsAppResult?.jobId) await attachOutboxInAppReceipt(base44,whatsAppResult,notificationRow.id);
         if(pendingQueueRow?.id) await base44.asServiceRole.entities.PendingPushNotification.update(pendingQueueRow.id,{in_app_notification_id:notificationRow.id});
         results.notifications_created++;
         console.log(`[AutomatedTriggers] Log created for ${targetUserId}`);
