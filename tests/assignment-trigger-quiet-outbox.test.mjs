@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
+import {planAssignmentTransition} from '../base44/shared/assignmentIntent.ts';
 
 // Execute only the actual trigger's internal send path in isolation, without
 // triggering a real Base44 workflow, inserting Pending rows, or contacting WhatsApp.
@@ -54,4 +55,16 @@ test('assignment trigger uses the same Outbox key while quiet, never a second Pe
  assert.equal(queued[0].ctx.idempotencyKey,assignmentWhatsAppKey(service,supplier.id));
  assert.equal(queued[0].ctx.availableAt,delay.scheduledFor.toISOString());
  assert.doesNotMatch(queued[0].message,/בשעה\s*\./);
+ // The CURRENT entity-trigger producer must use the identical, persisted
+ // transition key when a future V2 EventService record is used.
+ const transition=planAssignmentTransition({...service,supplier_ids:'[]',supplier_statuses:'{}'},
+   {supplierIds:[supplier.id],supplierStatuses:{[supplier.id]:'pending'},supplierNotes:{}},
+   '2026-10-15T08:01:00Z');
+ Object.assign(service,transition.patch);
+ service.updated_date='2026-10-15T08:03:00Z'; // unrelated edits must not change key.
+ await module.exports.__testTriggerWhatsApp(client,template,supplier.phone,event,supplier,service,null,true);
+ assert.equal(queued.length,2);
+ assert.equal(queued[1].ctx.idempotencyKey,transition.intents[0].key);
+ assert.equal(queued[1].ctx.idempotencyKey,assignmentWhatsAppKey(service,supplier.id));
+ assert.equal(queued[1].ctx.availableAt,delay.scheduledFor.toISOString());
 });
