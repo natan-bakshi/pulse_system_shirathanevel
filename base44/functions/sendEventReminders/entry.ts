@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
+import {whatsappEnqueueReceiptState} from '../../shared/whatsappReceipt.ts';
 import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
