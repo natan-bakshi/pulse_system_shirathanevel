@@ -56,7 +56,8 @@ export default async function(req) {
             email: payment.payer_email,
             subject: language === "en" ? `Payment confirmation - ${businessName}` : `אישור תשלום - ${businessName}`,
             body,
-            businessName
+            businessName,
+            idempotencyKey:'payment-receipt:'+payment.id
           });
         }
       } catch (receiptError) { console.warn(`[ClearingCallback] client receipt failed: ${receiptError.message}`); }
