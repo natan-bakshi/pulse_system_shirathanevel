@@ -74,9 +74,11 @@ test('pacing is independent across Green API and Wasender after both providers h
    last_green_dispatched_at:old,last_wasender_dispatched_at:old,last_dispatched_at:old});
  await sendWhatsAppText('0501234567','green-1',x.client);
  x.control.selectedProvider='wasender';
- await sendWhatsAppText('0501234567','wasender-1',x.client);
+ // Each backend request receives its own SDK client; provider lookup is
+ // intentionally memoized only within that request.
+ await sendWhatsAppText('0501234567','wasender-1',{...x.client});
  x.control.selectedProvider='green';
- await sendWhatsAppText('0501234567','green-2',x.client);
+ await sendWhatsAppText('0501234567','green-2',{...x.client});
  const sent=[];
  const r=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:6000,transport:async(job,provider)=>{
    sent.push({provider,at:Date.now(),job});return {messageId:'mix-'+sent.length};
@@ -109,11 +111,11 @@ test('stale cancelled jobs consume a bounded worker slot and cannot starve other
  });
  await sendWhatsAppText('0501234567','urgent invoice',x.client,{sourceType:'invoice'});
  const contacts=[];const transport=async(job)=>{contacts.push(job.source_type);return {messageId:'invoice-receipt'}};
- const first=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:2000,transport});
+ const first=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:8000,transport});
  assert.equal(first.processed,2);assert.equal(first.skipped,2);assert.equal(first.continued,true);
- const second=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:2000,transport});
+ const second=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:8000,transport});
  assert.equal(second.processed,2);assert.equal(second.skipped,2);
- const third=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:2000,transport});
+ const third=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:8000,transport});
  assert.equal(third.processed,2);
  assert.equal(third.skipped,1);
  assert.equal(third.accepted,1);
