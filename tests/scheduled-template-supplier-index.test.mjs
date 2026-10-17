@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {indexEventServicesByEvent} from '../base44/shared/notificationLookup.ts';
+import {automatedWhatsAppKey} from '../base44/shared/whatsappBusinessKeys.ts';
 
 test('scheduled_check reaches supplier audience using an explicitly passed event-service index',async()=>{
   const source=fs.readFileSync('base44/functions/dailyScheduledNotifications/entry.ts','utf8');
   const start=source.indexOf('async function processScheduledTemplate(');
   assert.ok(start>0);
   const sandbox={
-    console:{log:()=>{},warn:()=>{}},
+    console:{log:()=>{},warn:()=>{}},automatedWhatsAppKey,
     buildEventContext:(event,supplier)=>({event_name:event.event_name,supplier_name:supplier.supplier_name}),
     replacePlaceholders:(tpl,ctx)=>String(tpl||'').replace(/\{\{(\w+)\}\}/g,(_x,k)=>ctx[k]||''),
     getClientContacts:()=>[],formatDate:d=>d,formatEventContacts:()=>'',URLSearchParams
