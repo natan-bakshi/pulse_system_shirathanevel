@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
+import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 
 test('event-reminder fan-out does not mark scheduled source as sent after partial WhatsApp enqueue failure',async()=>{
  const text=fs.readFileSync('base44/functions/processScheduledPushNotifications/entry.ts','utf8');
@@ -36,6 +37,7 @@ test('event-reminder fan-out does not mark scheduled source as sent after partia
    Response:{json:(data)=>({body:data})},console:{log:()=>{},warn:()=>{},error:()=>{}},
    require:path=>{
      if(path.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
+     if(path.endsWith('whatsappReceipt.ts'))return {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed};
      if(path.endsWith('whatsappSend.ts'))return {
        sendWhatsAppToChat:async(chatId,message,_client,ctx)=>{
          const key=ctx.idempotencyKey;
