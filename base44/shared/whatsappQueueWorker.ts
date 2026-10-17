@@ -178,7 +178,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   }}));
   if(claim?.updated!==1) return {success:true,reason:'busy',sent:0};
   const deadline=Date.now()+(Number(opts.maxRuntimeMs)||MAX_RUNTIME_MS);
-  let accepted=0,failed=0,unknown=0,retried=0,processed=0,requestWake=false;
+  let accepted=0,failed=0,unknown=0,retried=0,skipped=0,processed=0,requestWake=false;
   let lastError='';
   try {
     await staleSendingToUnknown(client,Date.now());
@@ -208,6 +208,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           // until the runtime deadline and hold up urgent valid messages.
           processed++;
           if(changed?.updated===1){
+            skipped++;
             // A cancelled/expired private agreement link must not continue to
             // display "queued" in the customer delivery history forever.
             await syncWhatsAppStatus(client,currentJob,outcome,'');
@@ -323,6 +324,6 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       }
     }
   }
-  return {success:true,reason:lastError?'blocked':'processed',accepted,failed,unknown,retried,processed,
+  return {success:true,reason:lastError?'blocked':'processed',accepted,failed,unknown,retried,skipped,processed,
     continued:requestWake};
 }
