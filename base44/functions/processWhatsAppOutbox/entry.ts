@@ -23,7 +23,20 @@ Deno.serve(async (req) => {
     // an authenticated worker, without sending a test WhatsApp message.
     const controlRows=await client.asServiceRole.entities.WhatsAppQueueControl.filter({control_key:'global'},'-created_date',2);
     if(controlRows.length!==1)return Response.json({success:false,error:'Queue control missing or duplicated'},{status:409});
-    // Idle watchdog runs should not write entities or trigger any other workflow.
+    if(wakeReason==='watchdog'){
+      // Without this heartbeat, a healthy but empty queue looks as though the
+      // worker died days ago. One bounded CAS write per EXISTING watchdog run
+      // proves that the scheduled workflow reached authenticated backend code.
+      // updateMany does NOT wake the entity UPDATE/continue workflow.
+      try{
+        await client.asServiceRole.entities.WhatsAppQueueControl.updateMany({
+          id:controlRows[0].id
+        },{$set:{last_watchdog_at:new Date().toISOString()}});
+      }catch(error){
+        console.error('[WhatsAppOutbox] Watchdog heartbeat could not be persisted');
+      }
+    }
+    // Disabled/paused queues still have an observable watchdog heartbeat.
     if(!controlRows[0].enabled || controlRows[0].paused){
       return Response.json({success:true,reason:controlRows[0].paused?'paused':'disabled',sent:0});
     }
