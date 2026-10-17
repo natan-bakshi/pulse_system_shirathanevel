@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { drainWhatsAppOutbox } from '../../shared/whatsappQueueWorker.ts';
+import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIntentReconciler.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
 // crash watchdog. Does not accept arbitrary message/recipient parameters.
@@ -25,6 +26,13 @@ Deno.serve(async (req) => {
     // Idle watchdog runs should not write entities or trigger any other workflow.
     if(!controlRows[0].enabled || controlRows[0].paused){
       return Response.json({success:true,reason:controlRows[0].paused?'paused':'disabled',sent:0});
+    }
+    // Reuse our existing five-minute watchdog for missed durable intents,
+    // but ONLY when the separate assignment-intent feature is enabled. An
+    // exception must never prevent regular WhatsApp queued jobs from working.
+    if(wakeReason==='watchdog'){
+      try{await sweepPendingSupplierAssignmentIntents(client,{maxServices:4});}
+      catch(error){console.error('[WhatsAppOutbox] intent watchdog unavailable',error instanceof Error?error.name:'unknown');}
     }
     const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
       status:{$in:['queued','retry_wait','sending']}
