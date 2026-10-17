@@ -28,6 +28,22 @@ export function delayUntilNextSendMs(lastDispatchedAt: string, now = Date.now(),
 export function delayUntilNextSend(lastDispatchedAt: string, now = Date.now(), intervalSeconds = 7) {
   return delayUntilNextSendMs(lastDispatchedAt, now, intervalSeconds * 1000);
 }
+// The singleton worker still serializes ALL providers, but pacing belongs to
+// the provider that will actually send this job. A Green API message must NOT
+// unnecessarily inherit Wasender's 7s cooldown (or vice versa).
+export function lastDispatchForProvider(control:any,provider:string):string {
+  if(provider!=='green' && provider!=='wasender')throw new Error('Unsupported WhatsApp provider');
+  const field=provider==='green'?'last_green_dispatched_at':'last_wasender_dispatched_at';
+  const pinned=String(control?.[field]||'');
+  if(pinned && Number.isFinite(Date.parse(pinned)))return pinned;
+  // Upgrade safety: old control rows had only a global timestamp. Preserve
+  // pacing if the last provider was THIS provider, then populate the new field
+  // on its next send. The opposite provider is independently eligible.
+  if(!control?.last_provider || control.last_provider===provider) {
+    return String(control?.last_dispatched_at||'');
+  }
+  return '';
+}
 export function providerIntervalMs(control: any, provider: string): number {
   if(provider !== 'green' && provider !== 'wasender')throw new Error('Unsupported WhatsApp provider');
   const field=provider === 'green' ? 'green_interval_ms' : 'wasender_interval_ms';
@@ -190,6 +206,10 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
             status:outcome,completed_at:new Date().toISOString(),
             last_error:expired?'Message expired before dispatch':'Assignment no longer requires supplier approval'
           }});
+          // Settling a stale/obsolete job consumes a bounded worker slot too.
+          // Otherwise a large backlog of cancelled assignments can spin
+          // until the runtime deadline and hold up urgent valid messages.
+          processed++;
           if(changed?.updated===1){
             // A cancelled/expired private agreement link must not continue to
             // display "queued" in the customer delivery history forever.
@@ -208,7 +228,8 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         break;  // Keep queued jobs intact; settings page shows this error.
       }
       const intervalMs=providerIntervalMs(control,provider);
-      const wait=delayUntilNextSendMs(control.last_dispatched_at,Date.now(),intervalMs);
+      const providerLastDispatchAt=lastDispatchForProvider(control,provider);
+      const wait=delayUntilNextSendMs(providerLastDispatchAt,Date.now(),intervalMs);
       // This is the only pacing decision. Idle first message is immediate.
       if(wait>0){
         if(Date.now()+wait>=deadline-5000) break;
@@ -222,18 +243,19 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // Base44 timestamps and worker clocks may differ by a few milliseconds.
       // A job already selected as due must not be attributed a future due-time.
       const dueAt=Math.min(Date.parse(startedAt),Math.max(asEpoch(job.created_date),asEpoch(job.available_at)));
-      const prevDispatch=asEpoch(control.last_dispatched_at);
+      const prevDispatch=asEpoch(providerLastDispatchAt);
       const rateReadyAt=Math.max(dueAt,prevDispatch?prevDispatch+intervalMs:0);
       const jobClaim=await queueStage('job_claim',()=>db.WhatsAppOutbox.updateMany({id:job.id,status:job.status},{$set:{
         status:'sending',send_started_at:startedAt,attempt_count:attempt,lease_token:token,provider,
         worker_run_id:token,worker_wake_reason:wakeReason,job_claimed_at:startedAt,
         rate_ready_at:rateReadyAt?new Date(rateReadyAt).toISOString():startedAt,
-        prior_dispatch_at:control.last_dispatched_at||'',configured_interval_ms:intervalMs,
+        prior_dispatch_at:providerLastDispatchAt,configured_interval_ms:intervalMs,
         transport_started_at:'',transport_finished_at:'',last_status_at:startedAt
       }}));
       if(jobClaim?.updated!==1)continue;  // Another worker already processed it.
       const timeSlot=await queueStage('rate_slot_claim',()=>controls.updateMany({id:control.id,lease_owner:token},{$set:{
         last_dispatched_at:startedAt,last_provider:provider,
+        [provider==='green'?'last_green_dispatched_at':'last_wasender_dispatched_at']:startedAt,
         next_allowed_at:new Date(Date.now()+intervalMs).toISOString(),last_worker_at:startedAt
       }}));
       if(timeSlot?.updated!==1) {
