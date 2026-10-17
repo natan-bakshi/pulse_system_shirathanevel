@@ -90,6 +90,9 @@ async function queueStatus(client:any){
     nextAllowedInSeconds:Math.ceil(waitMs/1000),nextAllowedInMs:waitMs,
     nextQueued:(totals.queued||0)+(totals.retry_wait||0),
     lastWorkerAt:control.last_worker_at||null,lastInvokedAt:control.last_invoked_at||null,
+    lastWatchdogAt:control.last_watchdog_at||null,
+    watchdogLate:control.last_watchdog_at&&Number.isFinite(Date.parse(control.last_watchdog_at))
+      ? Math.max(0,Date.now()-Date.parse(control.last_watchdog_at))>15*60*1000 : null,
     lastInvocationResult:control.last_invocation_result||'',lastDispatchedAt:control.last_dispatched_at||null,
     lastWorkerWakeReason:control.last_worker_wake_reason||null,
     lastWorkerRunId:control.last_worker_run_id||null,
