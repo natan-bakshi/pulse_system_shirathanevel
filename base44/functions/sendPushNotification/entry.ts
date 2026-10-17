@@ -29,16 +29,6 @@ function initializeFirebaseAdmin() {
 }
 
 Deno.serve(async (req) => {
-  let app;
-  try {
-    // Moved initialization inside the request to prevent deployment crashes.
-    // If this fails, it will be caught and a proper error response will be sent.
-    app = initializeFirebaseAdmin();
-  } catch (error) {
-    console.error('Firebase Admin Initialization Failed:', error.message);
-    return new Response(JSON.stringify({ error: 'Firebase Admin initialization failed.', details: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
-  }
-
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -104,6 +94,21 @@ Deno.serve(async (req) => {
       }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
+    // Firebase is NOT a prerequisite for WhatsApp. Initialize it only if
+    // real Push tokens exist. A missing/expired FCM configuration must never
+    // prevent an independent WhatsApp Outbox enqueue or hide its result.
+    let app;
+    try{
+      app=initializeFirebaseAdmin();
+    }catch(error){
+      console.error('[sendPushNotification] Firebase unavailable for requested Push');
+      return new Response(JSON.stringify({
+        success:false,partial_failure:true,manual_review_required:true,
+        push:{successCount:0,failureCount:allTokens.length,
+          error:'Firebase initialization unavailable'},
+        whatsapp:whatsappSummary
+      }),{status:200,headers:{"Content-Type":"application/json"}});
+    }
     const messaging = getMessaging(app);
 
     const response = await messaging.sendEachForMulticast({
