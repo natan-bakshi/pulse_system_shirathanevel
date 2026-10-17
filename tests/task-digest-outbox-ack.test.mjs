@@ -6,7 +6,7 @@ import esbuild from 'esbuild';
 import {eventReminderWhatsAppKey,automatedWhatsAppKey,taskDigestWhatsAppKey} from '../base44/shared/whatsappBusinessKeys.ts';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 import {indexEventServicesByEvent,indexEventReminderReceipts} from '../base44/shared/notificationLookup.ts';
-import {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark} from '../base44/shared/taskNotificationAck.ts';
+import {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark,readScheduledTaskOwners} from '../base44/shared/taskNotificationAck.ts';
 
 const TEST_NOW='2026-10-19T12:00:00.000Z';
 class TestDate extends Date {
@@ -19,7 +19,7 @@ const samples=[
 function harness({channel=['whatsapp'],users=[
  {id:'admin-a',email:'a@example.test',full_name:'Admin A',phone:'0501111111',role:'admin'},
  {id:'admin-b',email:'b@example.test',full_name:'Admin B',phone:'0502222222',role:'admin'}
-],failedPhone='',tasks=samples}={}){
+],failedPhone='',tasks=samples,pendingRows=[],outboxRows=[]}={}){
  const currentTasks=tasks.map(t=>({...t}));
  const seen=new Map(),enqueued=[],flagWrites=[],inApp=[],errors=[];let failOnce=true;
  const db={
@@ -36,6 +36,8 @@ function harness({channel=['whatsapp'],users=[
    update:async()=>({})
   },
   Payment:{list:async()=>[]},Service:{list:async()=>[]},AppSettings:{list:async()=>[]},
+  PendingPushNotification:{filter:async(query)=>pendingRows.filter(row=>row.template_type===query.template_type&&query.related_task_id.$in.includes(row.related_task_id))},
+  WhatsAppOutbox:{filter:async(query)=>outboxRows.filter(row=>query.idempotency_key.$in.includes(row.idempotency_key))},
   Task:{
    list:async()=>currentTasks,
    update:async()=>{throw Error('Unsafe Task.update called before enqueue');},
@@ -71,7 +73,7 @@ function harness({channel=['whatsapp'],users=[
      }};
      if(path.endsWith('whatsappReceipt.ts'))return {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed};
      if(path.endsWith('whatsappBusinessKeys.ts'))return {eventReminderWhatsAppKey,automatedWhatsAppKey,taskDigestWhatsAppKey};
-     if(path.endsWith('taskNotificationAck.ts'))return {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark};
+     if(path.endsWith('taskNotificationAck.ts'))return {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark,readScheduledTaskOwners};
      if(path.endsWith('notificationLookup.ts'))return {indexEventServicesByEvent,indexEventReminderReceipts};
      throw Error('Unexpected imported module: '+path);
    }
