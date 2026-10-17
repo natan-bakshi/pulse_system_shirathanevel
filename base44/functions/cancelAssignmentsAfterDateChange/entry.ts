@@ -3,7 +3,7 @@ import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
-import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
 
 /**
  * Called when admin chooses NOT to reassign the same suppliers after a date change.
@@ -68,6 +68,8 @@ Deno.serve(async (req) => {
         });
 
         let notificationsSent = 0;
+        let whatsappEnqueueFailures = 0;
+        let confirmedWhatsApp = 0;
 
         for (const template of templates) {
             const audiences = template.target_audiences || [];
@@ -112,7 +114,14 @@ Deno.serve(async (req) => {
                     waMessage = waMessage.replace(/~\s*~/g, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
 
                     if (sendWhatsApp && supplier.whatsapp_enabled !== false && supplier.phone) {
-                        await sendWhatsAppNotification(base44, supplier.phone, waMessage);
+                        await sendWhatsAppNotification(base44,supplier.phone,waMessage,{
+                            kind:'date_cancel',eventId:event.id,supplierId:supId,
+                            templateId:template.id||template.type,
+                            oldEventDate:event.previous_event_date||'',
+                            oldEventTime:event.previous_event_time||'',
+                            eventDate:event.event_date,eventTime:event.event_time
+                        });
+                        confirmedWhatsApp++;
                     }
 
                     if (sendPush) {
@@ -144,9 +153,26 @@ Deno.serve(async (req) => {
 
                     notificationsSent++;
                 } catch (e) {
-                    console.error(`Failed processing supplier ${supId}:`, e);
+                    // A failed enqueue must never be counted as delivered or
+                    // allow destructive assignment removal to proceed silently.
+                    whatsappEnqueueFailures++;
+                    console.error(`[CancelAssignments] Supplier notification was not durably queued: ${supId}`, e);
                 }
             }
+        }
+
+        if(whatsappEnqueueFailures>0){
+            // Safe retry: the same event-date transition and supplier use the
+            // same Outbox key. Existing queue jobs will not be sent twice.
+            // Do NOT clear assignments or the recovery flag if any required
+            // WhatsApp message could not be persisted. UNKNOWN must be checked
+            // manually, never replayed with a fresh key.
+            return Response.json({
+                success:false,recovery_required:true,
+                error:'Supplier WhatsApp queue incomplete; assignments were not removed',
+                whatsapp_confirmed:confirmedWhatsApp,
+                whatsapp_failures:whatsappEnqueueFailures
+            },{status:409});
         }
 
         // 2. Remove all suppliers from each service
@@ -167,7 +193,7 @@ Deno.serve(async (req) => {
             previous_event_time: ''
         });
 
-        return Response.json({ success: true, notifications_sent: notificationsSent });
+        return Response.json({ success: true, notifications_sent: notificationsSent, whatsapp_confirmed:confirmedWhatsApp });
 
     } catch (error) {
         console.error('[cancelAssignmentsAfterDateChange] Error:', error);
@@ -175,13 +201,8 @@ Deno.serve(async (req) => {
     }
 });
 
-async function sendWhatsAppNotification(base44, phone, message) {
-    try {
-        // Preserves the existing notification flow; transport is selected centrally.
-        await sendWhatsAppText(phone, message, base44, {sourceType:'assignment_cancel'});
-    } catch (e) {
-        console.error('WhatsApp notification failed:', e?.message || 'unknown');
-    }
+async function sendWhatsAppNotification(base44,phone,message,identity){
+    return enqueueAssignmentTransitionWhatsApp(base44,phone,message,identity,'assignment_cancel');
 }
 
 function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote) {
