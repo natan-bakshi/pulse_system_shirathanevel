@@ -3,6 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
+import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -310,9 +311,12 @@ Deno.serve(async (req) => {
                             const waMessage = replacePlaceholders(supplierReminderTemplate.whatsapp_body_template || supplierReminderTemplate.body_template, contextData);
                             const link = buildDeepLink(supplierReminderTemplate.deep_link_base, supplierReminderTemplate.deep_link_params_map, contextData);
                             
-                            // WhatsApp - direct to phone (works for non-registered users)
+                            // Both reminder producers use the same business key;
+                            // only ONE Outbox job is created for this supplier/event.
                             if (supplier.phone && supplier.whatsapp_enabled !== false) {
-                                whatsappQueue.push({ phone: supplier.phone, message: waMessage });
+                                whatsappQueue.push({ phone:supplier.phone,message:waMessage,
+                                  sourceType:'event_reminder',sourceId:event.id,
+                                  idempotencyKey:eventReminderWhatsAppKey(event,supplierReminderTemplate,'supplier',supplierId) });
                             }
                             
                             // Push + InApp - only for registered users
@@ -387,9 +391,11 @@ Deno.serve(async (req) => {
                         const waMessage = replacePlaceholders(adminReminderTemplate.whatsapp_body_template || adminReminderTemplate.body_template, contextData);
                         const link = buildDeepLink(adminReminderTemplate.deep_link_base, adminReminderTemplate.deep_link_params_map, contextData);
                         
-                        // WhatsApp for admin
+                        // WhatsApp for admin, shared key with older scheduler.
                         if (admin.phone) {
-                            whatsappQueue.push({ phone: admin.phone, message: waMessage });
+                            whatsappQueue.push({phone:admin.phone,message:waMessage,
+                              sourceType:'event_reminder',sourceId:event.id,
+                              idempotencyKey:eventReminderWhatsAppKey(event,adminReminderTemplate,'admin',admin.id)});
                         }
                         
                         // InApp + Push
