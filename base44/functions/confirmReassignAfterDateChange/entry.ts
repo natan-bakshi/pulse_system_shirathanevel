@@ -3,7 +3,7 @@ import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
-import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
 
 /**
  * Called when admin confirms to reassign the same suppliers to an event after a date change.
@@ -82,6 +82,8 @@ Deno.serve(async (req) => {
         });
 
         let notificationsSent = 0;
+        let whatsappEnqueueFailures = 0;
+        let confirmedWhatsApp = 0;
 
         for (const template of templates) {
             const audiences = template.target_audiences || [];
@@ -154,7 +156,14 @@ Deno.serve(async (req) => {
 
                     // WhatsApp - send via Green API
                     if (sendWhatsApp && supplier.whatsapp_enabled !== false && supplier.phone) {
-                        await sendWhatsAppNotification(base44, supplier.phone, waMessage);
+                        await sendWhatsAppNotification(base44,supplier.phone,waMessage,{
+                            kind:'date_reconfirm',eventId:event.id,supplierId:supId,
+                            templateId:template.id||template.type,
+                            oldEventDate:event.previous_event_date||'',
+                            oldEventTime:event.previous_event_time||'',
+                            eventDate:event.event_date,eventTime:event.event_time
+                        });
+                        confirmedWhatsApp++;
                     }
 
                     // Push - via createNotification (which handles in-app + push)
@@ -187,9 +196,22 @@ Deno.serve(async (req) => {
 
                     notificationsSent++;
                 } catch (e) {
-                    console.error(`Failed processing supplier ${supId}:`, e);
+                    whatsappEnqueueFailures++;
+                    console.error(`[ReconfirmAssignments] Supplier notification was not durably queued: ${supId}`, e);
                 }
             }
+        }
+
+        if(whatsappEnqueueFailures>0){
+            // Keep event.date_change_pending_action for an explicit safe
+            // retry/review. Supplier statuses were already reset above; the
+            // same event transition key makes retry idempotent.
+            return Response.json({
+                success:false,recovery_required:true,
+                error:'Supplier WhatsApp queue incomplete; date-change follow-up remains pending',
+                whatsapp_confirmed:confirmedWhatsApp,
+                whatsapp_failures:whatsappEnqueueFailures
+            },{status:409});
         }
 
         // 3. Clear the pending flag
@@ -199,7 +221,7 @@ Deno.serve(async (req) => {
             previous_event_time: ''
         });
 
-        return Response.json({ success: true, notifications_sent: notificationsSent });
+        return Response.json({ success: true, notifications_sent: notificationsSent, whatsapp_confirmed:confirmedWhatsApp });
 
     } catch (error) {
         console.error('[confirmReassignAfterDateChange] Error:', error);
@@ -207,13 +229,8 @@ Deno.serve(async (req) => {
     }
 });
 
-async function sendWhatsAppNotification(base44, phone, message) {
-    try {
-        // Preserves the existing notification flow; transport is selected centrally.
-        await sendWhatsAppText(phone, message, base44, {sourceType:'assignment_update'});
-    } catch (e) {
-        console.error('WhatsApp notification failed:', e?.message || 'unknown');
-    }
+async function sendWhatsAppNotification(base44,phone,message,identity){
+    return enqueueAssignmentTransitionWhatsApp(base44,phone,message,identity,'assignment_update');
 }
 
 function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote) {
