@@ -73,6 +73,10 @@
     "last_invoked_at": {
       "type": "string"
     },
+    "last_watchdog_at": {
+      "type": "string",
+      "description": "Authenticated five-minute watchdog last seen; updated even if no messages are due"
+    },
     "last_invocation_result": {
       "type": "string"
     },
