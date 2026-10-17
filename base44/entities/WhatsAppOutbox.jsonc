@@ -39,6 +39,14 @@
     "in_app_notification_id": {
       "type": "string"
     },
+    "mirror_sync_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "Provider accepted but updating the related InApp mirror failed; the existing watchdog safely repairs only this mirror"
+    },
+    "mirror_sync_last_attempt_at": {
+      "type": "string"
+    },
     "client_message_delivery_id": {
       "type": "string"
     },
