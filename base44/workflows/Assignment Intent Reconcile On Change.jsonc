@@ -1,0 +1,34 @@
+{
+  "name": "Assignment intents \u2014 reconcile after atomic save",
+  "description": "Feature-gated: on a durable intent journal update, enqueue supplier WhatsApp through central Outbox using a stable business key; never send directly",
+  "trigger": {
+    "condition": "${ (.trigger.changed_fields | index(\"assignment_notification_intents\") != null) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "EventService"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pulse_assignment_intents_reconcile",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "reconcileSupplierAssignmentIntents",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
