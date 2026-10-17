@@ -188,6 +188,32 @@ test('resolve unknown without resending; archive only terminal statuses',async()
  r=await ctx.invoke('archive',{id:'job-q'});
  assert.equal(r.status,409);
 });
+
+test('sourceAudit is read-only and loads projected metadata only on explicit action',async()=>{
+ const notifications=[
+  {id:'inapp-a',whatsapp_sent:false,template_type:'SUPPLIER_EVENT_REMINDER'},
+  {id:'inapp-b',whatsapp_sent:true,template_type:'PUSH_ONLY'}
+ ];
+ const jobs=[{...makeJob('job-abc','accepted'),in_app_notification_id:'inapp-a'}];
+ const ctx=context({jobs,notifications});
+ await ctx.invoke('status');
+ assert.equal(ctx.listProjections.length,1,
+   'Ordinary status must not fetch the InApp source audit');
+ const a=await ctx.invoke('sourceAudit');
+ assert.equal(a.status,200);
+ assert.equal(a.body.success,true);
+ assert.equal(a.body.audit.noMessagesSent,true);
+ assert.equal(a.body.audit.acceptedWithoutMirror.length,1);
+ assert.equal(ctx.calls.length,0,'Audit must never call worker or provider');
+ assert.equal(ctx.listProjections.length,3);
+ for(const fields of ctx.listProjections.slice(1)){
+   assert.ok(fields.includes('id'));
+   for(const sensitive of ['message','message_text','chat_id','file_uri','document_url','phone']){
+     assert.equal(fields.includes(sensitive),false,'Source audit must NOT load '+sensitive);
+   }
+ }
+});
+
 test('admin explicit worker kick is only action that dispatches',async()=>{
  const ctx=context();
  await ctx.invoke('status');
