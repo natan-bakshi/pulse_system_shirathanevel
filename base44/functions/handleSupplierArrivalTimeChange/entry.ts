@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
 
         let notificationsSent = 0;
         let whatsappEnqueueFailures = 0;
+        let notificationFailures = 0;
         let confirmedWhatsApp = 0;
 
         if (mode === 'notify') {
@@ -174,17 +175,19 @@ Deno.serve(async (req) => {
 
                         notificationsSent++;
                     } catch (e) {
-                        whatsappEnqueueFailures++;
-                        console.error(`[ArrivalChange] Supplier message was not durably queued: ${supId}`, e);
+                        notificationFailures++;
+                        if(e?.whatsappEnqueueError===true)whatsappEnqueueFailures++;
+                        console.error(`[ArrivalChange] Supplier notification not confirmed: ${supId}`, e);
                     }
                 }
             }
 
-            if(whatsappEnqueueFailures>0){
+            if(notificationFailures>0){
                 return Response.json({
                     success:false,mode:'notify',recovery_required:true,
                     error:'Some supplier WhatsApp messages were not confirmed in the queue',
-                    whatsapp_confirmed:confirmedWhatsApp,whatsapp_failures:whatsappEnqueueFailures
+                    whatsapp_confirmed:confirmedWhatsApp,whatsapp_failures:whatsappEnqueueFailures,
+                    notification_failures:notificationFailures
                 },{status:409});
             }
             return Response.json({success:true,mode:'notify',notifications_sent:notificationsSent,
@@ -263,20 +266,22 @@ Deno.serve(async (req) => {
 
                         notificationsSent++;
                     } catch (e) {
-                        whatsappEnqueueFailures++;
-                        console.error(`[ArrivalChange] Supplier message was not durably queued: ${supId}`, e);
+                        notificationFailures++;
+                        if(e?.whatsappEnqueueError===true)whatsappEnqueueFailures++;
+                        console.error(`[ArrivalChange] Supplier notification not confirmed: ${supId}`, e);
                     }
                 }
             }
 
-            if(whatsappEnqueueFailures>0){
+            if(notificationFailures>0){
                 // Do not remove assigned suppliers if the required cancellation
                 // message has not been durably queued. This preserves a safe
                 // operator retry path without creating duplicate WhatsApps.
                 return Response.json({
                     success:false,mode:'cancel',recovery_required:true,
                     error:'Supplier cancellations were not confirmed in WhatsApp queue; assignments remain unchanged',
-                    whatsapp_confirmed:confirmedWhatsApp,whatsapp_failures:whatsappEnqueueFailures
+                    whatsapp_confirmed:confirmedWhatsApp,whatsapp_failures:whatsappEnqueueFailures,
+                    notification_failures:notificationFailures
                 },{status:409});
             }
 
@@ -301,7 +306,8 @@ Deno.serve(async (req) => {
 });
 
 async function sendWhatsAppNotification(base44,phone,message,identity){
-    return enqueueAssignmentTransitionWhatsApp(base44,phone,message,identity,'arrival_time_change');
+    try{return await enqueueAssignmentTransitionWhatsApp(base44,phone,message,identity,'arrival_time_change');}
+    catch(e){if(e && typeof e==='object')e.whatsappEnqueueError=true;throw e;}
 }
 
 function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote) {
