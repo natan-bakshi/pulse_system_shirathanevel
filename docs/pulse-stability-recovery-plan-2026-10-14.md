@@ -372,6 +372,16 @@
 - **חסם UI השיבוצים:** D08.7 (רציפות תוצאות לוואי Push/טריגרים), D08.8 (כל כותבי Legacy), D08.6b (rollback) והוכחת CAS לא הסתיימו. לפיכך V2 נשאר כבוי, ואין לקצר זמני spinner על ידי שליחה לא־עמידה בדפדפן. **השלב הבא:** D08.7 בצירוף תכנון source-of-truth ל־Push/WhatsApp, D08.8/E21b, ורק אז D09 ו־Go/No-Go.
 - **Checkpoint סיום:** `6ad3e1774633d4a171a089aa`, commit `4904a5a828159212ed6106d895045b757904a703` (לפני הוספת מספר הצ'קפוינט למסמך), ללא שינוי מצב הספק/הדאטה.
 
+### 18.10.2026 — מעבר מתיקון חריגים לתשתית התאוששות ורציפות Push
+- **Checkpoint פתיחה:** `6ad3f5e6bb1216d1e858907d` (Pulse `687d1de6659eff83e9c034f7`), `assignment_intent_v1_enabled` לא הופעל. 24 Outbox במדגם קודם, אין הוכחת heartbeat עכשווי לפני פרסום. לא בוצעו שינויים בהזמנות אמת.
+- **E22 Done:** שלוש פעולות שינויי תאריך/שעת ספק שומרות מצב ביטול/אישור מחדש פתוח אם WhatsApp לא נקלט. כשל מוצג לבקשה כ־`success:false/recovery_required:true` עם קודי 409; אין מחיקת supplierIds קודם למתן קבלת תור. ייצור הודעה חוזר משתמש במפתח טרנזקציה ולא בגוף ההודעה. **פער:** לחלק מהפעולות יש side effects עסקיים לפני שכל הערוצים מאושרים, ולכן D08.7 ו־D08.6b עדיין חסמי הפעלת V2.
+- **E23 Done:** `sendPushNotification` כבר אינו תלוי ב־Firebase אם אין צורך ב־Push; תגובת WhatsApp אינה נעלמת כשאין טוקנים. `notifySupplierAssignment` בודק `success=false`/FCM failures/no tokens, דף EventDetails מזהיר על כשל Push בלי לטעון שיצירת השיבוץ נכשלה. `eslint` נוקה מ־9 imports לא־משומשים בדף זה (אין שינוי לוגיקה באותם imports). **D08.7 נשאר פתוח:** שמירת Intent Push בשרת, CAS לכל נמען והפרדת ACK/מסירה.
+- **E21c Done:** תיקון אוטומטי של InApp שנכשל אחרי ACK מהספק דרך `mirror_sync_pending` + Watchdog, ללא ריטריי להודעת WhatsApp עצמה, ללא שינוי לקבצים/חשבוניות ותוך שמירת `unknown`. עדיין נדרש E21b למקרים שבהם הודעת המקור נשמרה ללא Outbox מלכתחילה.
+- **G12 Done code/test:** מדד `last_watchdog_at` חדש שיכול לציין התרעה על worker שלא התעורר מעל 15 דקות גם בתור ריק. זוהי תשתית Health תצפיתית; כרגע אין ראיית LIVE. תוספת כתיבת בקרה אחת בכל Cron 5 דקות, ללא Cron חדש.
+- **בדיקות QA:** `node --test tests/*.test.mjs` **309/310** עברו; הכשל היחיד ישן ב־`EventAgreement.create` schema RLS, ללא שינוי הרשאות. Build, Parsing, ESLint של שני המסכים עברו. אין הודעת WhatsApp/Push אמיתית שנשלחה בבדיקות, אין הוכחת latency p95 או שיפור שמירה בזמן רשת.
+- **עדיין פתוח:** D08.7 Push תוצאות לוואי, D08.8 כל כותבי Legacy, D08.6b rollback אמיתי, D09 שמירת שיבוץ מהירה; E20c Push לכל Task ונמען; E21b מקור ששמר InApp לפני enqueue; B16 Payment state גם במקרה כשל ספק; WA-P41b בדיקת Scheduled Workflow/Watchdog/Outbox מול QA מורשה. אין לקצר Spinner דרך Promise לא־ממתין בדפדפן.
+- **עצירה:** ייווצר checkpoint לאחר כתיבת היומן; לא שונה Provider/תור/מפתח V2 ב־DATA. לא לאפשר שליחת Legacy pending אוטומטית במסגרת פיילוט.
+
 ### תבנית חובה ליומן סשן הבא
 
 - תאריך/שעה:
