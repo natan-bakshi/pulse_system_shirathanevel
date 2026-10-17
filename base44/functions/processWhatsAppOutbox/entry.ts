@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
-import { drainWhatsAppOutbox } from '../../shared/whatsappQueueWorker.ts';
+import { drainWhatsAppOutbox, reconcileAcceptedWhatsAppMirrors } from '../../shared/whatsappQueueWorker.ts';
 import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIntentReconciler.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
@@ -46,6 +46,11 @@ Deno.serve(async (req) => {
     if(wakeReason==='watchdog'){
       try{await sweepPendingSupplierAssignmentIntents(client,{maxServices:4});}
       catch(error){console.error('[WhatsAppOutbox] intent watchdog unavailable',error instanceof Error?error.name:'unknown');}
+      // Mirror drift is a source-state issue, NOT a reason to retry a WhatsApp.
+      // Repair only jobs explicitly marked by a failed InApp write; at most
+      // 10 per existing watchdog run, including when the Outbox itself is idle.
+      try{await reconcileAcceptedWhatsAppMirrors(client,10);}
+      catch(error){console.error('[WhatsAppOutbox] mirror repair watchdog unavailable');}
     }
     const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
       status:{$in:['queued','retry_wait','sending']}
