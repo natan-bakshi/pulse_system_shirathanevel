@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 
-function makeHandler({receipt={success:true,queued:true,status:'queued',jobId:'job-one'},tokens=[],firebaseFailures=0}={}){
+function makeHandler({receipt={success:true,queued:true,status:'queued',jobId:'job-one'},tokens=[],firebaseFailures=0,firebaseReady=true}={}){
  let handler;const sentWA=[],sentFCM=[];
  const users=[{id:'admin-recipient',phone:'0501234567',email:'admin@example.test',
    whatsapp_enabled:true,push_tokens:tokens}];
@@ -22,7 +22,7 @@ function makeHandler({receipt={success:true,queued:true,status:'queued',jobId:'j
    require:name=>{
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(name.startsWith('npm:firebase-admin')&&name.includes('/app'))return {
-       getApps:()=>[{}],getApp:()=>({}),initializeApp:()=>({}),cert:()=>({})
+       getApps:()=>firebaseReady?[{}]:[],getApp:()=>({}),initializeApp:()=>({}),cert:()=>({})
      };
      if(name.startsWith('npm:firebase-admin')&&name.includes('/messaging'))return {
        getMessaging:()=>({sendEachForMulticast:async(params)=>{
@@ -78,6 +78,26 @@ test('when FCM token delivery fails response reports partial failure despite que
  assert.equal(r.body.push.failureCount,1);
  assert.equal(r.body.whatsapp.confirmed,1);
  assert.equal(x.sentFCM.length,1);
+});
+test('missing Firebase secret does not block independent WhatsApp enqueue with no Push tokens',async()=>{
+ const x=makeHandler({firebaseReady:false,tokens:[]});
+ const r=await x.invoke();
+ assert.equal(r.status,200);
+ assert.equal(r.body.success,true,'WhatsApp is independent from FCM configuration');
+ assert.equal(r.body.whatsapp.confirmed,1);
+ assert.equal(x.sentWA.length,1);
+ assert.equal(x.sentFCM.length,0);
+});
+test('missing Firebase secret with Push tokens reports Push failure but keeps WhatsApp receipt',async()=>{
+ const x=makeHandler({firebaseReady:false,tokens:['token-one']});
+ const r=await x.invoke();
+ assert.equal(r.status,200);
+ assert.equal(r.body.success,false);
+ assert.equal(r.body.partial_failure,true);
+ assert.equal(r.body.push.failureCount,1);
+ assert.equal(r.body.whatsapp.confirmed,1);
+ assert.equal(x.sentWA.length,1);
+ assert.equal(x.sentFCM.length,0);
 });
 test('caller opting out of WhatsApp does not create a new WhatsApp Outbox message',async()=>{
  const x=makeHandler({tokens:[]});
