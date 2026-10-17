@@ -1038,8 +1038,16 @@ Deno.serve(async (req) => {
         {
             for (const wa of whatsappQueue) {
                 try {
-                    await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
-                    results.pending_whatsapp_sent++; // Queued; provider acceptance is tracked by the worker.
+                    const receipt=await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
+                    const state=String(receipt?.status||'');
+                    // Deduplicated UNKNOWN/FAILED jobs are NOT freshly queued.
+                    // Never inflate the successful-enqueue count or claim that
+                    // the recipient got a message on a previous unknown attempt.
+                    if(receipt?.success===false || !(receipt?.queued===true && !['unknown','failed','cancelled','expired','resolved'].includes(state) ||
+                        ['accepted','sending','retry_wait'].includes(state) && receipt?.success!==false || receipt?.legacyDirect===true)){
+                        throw new Error('WhatsApp outbox requires manual review: '+(state||'unverified'));
+                    }
+                    results.pending_whatsapp_sent++; // Only Outbox queued / API accepted.
                 } catch (e) {
                     console.error('[DailyNotifications] WhatsApp send failed:', e?.message || 'unknown');
                     results.errors++;
