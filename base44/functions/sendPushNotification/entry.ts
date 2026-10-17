@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.7.0';
 import { getApps, initializeApp, cert, getApp } from 'npm:firebase-admin@12.0.0/app';
 import { getMessaging } from 'npm:firebase-admin@12.0.0/messaging';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
 
 // Helper to safely initialize Firebase Admin.
 // It will only initialize if it hasn't been already.
@@ -68,9 +69,8 @@ Deno.serve(async (req) => {
                 const link = data.link || data.click_action || '';
                 const whatsappMessage = `*${title}*\n\n${body}${link ? `\n\n${link}` : ''}`;
                 const receipt=await sendWhatsAppText(u.phone, whatsappMessage, base44, {sourceType:'push_mirror'});
-                const status=String(receipt?.status||'');
-                const confirmed=receipt?.success!==false && !['unknown','failed','cancelled','expired','resolved'].includes(status) &&
-                  (receipt?.queued===true || status==='accepted' || status==='sending' || status==='retry_wait' || receipt?.legacyDirect===true);
+                const status=whatsappEnqueueReceiptState(receipt);
+                const confirmed=isWhatsAppEnqueueConfirmed(receipt);
                 whatsappResults.push({ userId:u.id,success:confirmed,queued:confirmed&&receipt?.queued===true,
                   state:confirmed?(status||'queued'):status||'unverified',messageId:confirmed?(receipt?.messageId||''):'' });
             } catch (waError) {
