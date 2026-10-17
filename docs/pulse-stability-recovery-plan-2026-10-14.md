@@ -322,6 +322,18 @@
 - **סיכון פתוח:** הסתמכות על `updated_date` במפתח WhatsApp; טריגר ובדיקת מסך עדיין שני יצרנים. יצרן יחיד חייב מנגנון revision ו־reconciler חסין־כפילויות **לפני** שחרור שמירה מהירה בלתי־חוסמת.
 - **השלב הבא:** D08.2–D08.6 — בדיקת יכולות CAS ב־EventService, מודל durable intent ותרחישי concurrent saves; אחריהם D09.1–D10.2 בפרסום מבוקר. D25 (קבוצת WhatsApp שגויה) מחכה להחלטת מדיניות. נדרש checkpoint סיום.
 
+### 17.10.2026, 22:18 — תשתית Durable Assignment Intent V2 (כבויה עד פיילוט)
+- **App ID ו־Checkpoint פתיחה:** Pulse המקורי `687d1de6659eff83e9c034f7`, Git HEAD בתחילת העבודה `c621969a409fff1be105cdd6e1bebe7703742786`, checkpoint `6ad3ca38225302ab7056df21`.
+- **מצב נתוני אמת לפני העבודה:** 24 רשומות Outbox במדגם, 21 `accepted` (אישור ספק API בלבד), 2 `unknown` (ללא replay) ו־1 `cancelled`; תור enabled ולא paused. `AppSettings` לא כלל `assignment_intent_v1_enabled`, ואין `EventService.assignment_intents_pending=true` בנתוני LIVE שנבדקו — המנגנון החדש **כבוי**.
+- **משימות שבוצעו בקוד/בדיקות:** D08.2a/b, D08.3a, D08.4a, D08.5a, D08.6a. תכנון מדיניות ומסלולי חסימה D08.2c, D08.3b, D08.4b, D08.5b, D08.6b, D08.7, D08.8 נרשמו כ־[ ] ולא יופעלו לפני QA.
+- **קבצים חדשים:** `base44/shared/assignmentIntent.ts`, `base44/shared/assignmentIntentReconciler.ts`, `base44/functions/saveSupplierAssignmentsV2/entry.ts`, `base44/functions/reconcileSupplierAssignmentIntents/entry.ts`, `base44/workflows/Assignment Intent Reconcile On Change.jsonc`, `tests/assignment-durable-intent.test.mjs`, `tests/assignment-intent-reconciliation.test.mjs`.
+- **קבצים שהורחבו:** `base44/entities/EventService.jsonc` (שדות optional), `base44/shared/assignmentWhatsApp.ts` (key יציב רק ל־`durable_v1`), `base44/functions/processWhatsAppOutbox/entry.ts` (גיבוי Intent ב־Watchdog הישן בלבד), `tests/whatsapp-background-worker.test.mjs`, `tests/assignment-trigger-quiet-outbox.test.mjs`.
+- **מנגנון מדויק:** backend מאמת admin ו־Feature Flag, קורא EventService ומבצע CAS מול `updated_date` לשמירת השיבוץ וה־Intent **באותה כתיבה**; אחרי שמירת הצלחה מבצע `EventService.update` על `assignment_intent_wake_at` להערת Workflow מפורשת. failure של wake אינו מוחק Intent. Reconciler בודק Outbox קודם, מגן על unknown, קבוצות לא תקינות ושיבוץ שכבר לא pending, ומסיים לכל היותר 8 בקשות בריצה עם wake המשך. במקרה נפילה, Watchdog התור הקיים בודק עד 4 EventServices ועד 4 Intents בכל שירות, **רק כשהמתג מופעל**. כשמתג כבוי אין סריקת EventService או יצירת Outbox.
+- **QA מעודכן:** לפני עדכון יומן זה עברו **226/227 בדיקות מערכת**, וה־Build, Backend TS parse ו־JSON schema parse הצליחו. הכשל היחיד מוכר וישן: `EventAgreement.create` RLS תואם admin לפי schema מול test הדורש `false` — **לא שונו הרשאות ולא הוסתר הכשל**. בנוסף **27/27 בדיקות ממוקדות** למנגנון Intent ולמפתח המשותף עברו לאחר תיקון ההתעוררות.
+- **סיכוני הפעלה קריטיים:** (1) יש לאמת CAS בפועל ב־Base44 ולא להסתפק במוק; (2) `EventService.updateMany` יכול שלא להפעיל טריגר עסקי Legacy עבור Push ותזכורות אישור — D08.7 הוא **חסם הפעלה**; (3) כותבי Legacy עדיין קיימים ומפתח V2 יכול להישאר בשירות אחרי rollback; D08.6b ו־D08.8 פתוחים; (4) אין ראיית משלוח פרודקשן. אין להפעיל flag או להעביר UI כרגע.
+- **לא נעשה:** לא פורסמה גרסת Live חדשה בסשן הזה, לא נוצרו שיבוצים/Outbox חדשים בנתוני אמת, לא נשלחו הודעות לנמענים ולא שוחזרו ההודעות הלא־ודאיות; הגדרת ספק WhatsApp נשמרה כפי שהייתה.
+- **משימה הבאה ונקודת עצירה:** קודם D08.7 — לשמור את Push, אישור ספק ותזכורות עסקיות במעבר לכתיבת CAS; אחריה D08.8 (לסגור כותבי Legacy), D08.6b (rollback) ורק אז D09–D10 ומבחן פרודקשן בנמען בדיקה מאושר. בשלב הבא למדוד חיסכון latency בפועל ורק אם תקין לשקול rollout.
+
 ### תבנית חובה ליומן סשן הבא
 
 - תאריך/שעה:
