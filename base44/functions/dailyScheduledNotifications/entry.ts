@@ -2,6 +2,7 @@ import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -1039,13 +1040,11 @@ Deno.serve(async (req) => {
             for (const wa of whatsappQueue) {
                 try {
                     const receipt=await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
-                    const state=String(receipt?.status||'');
+                    const state=whatsappEnqueueReceiptState(receipt);
                     // Deduplicated UNKNOWN/FAILED jobs are NOT freshly queued.
-                    // Never inflate the successful-enqueue count or claim that
-                    // the recipient got a message on a previous unknown attempt.
-                    if(receipt?.success===false || !(receipt?.queued===true && !['unknown','failed','cancelled','expired','resolved'].includes(state) ||
-                        ['accepted','sending','retry_wait'].includes(state) && receipt?.success!==false || receipt?.legacyDirect===true)){
-                        throw new Error('WhatsApp outbox requires manual review: '+(state||'unverified'));
+                    // Never inflate successful-enqueue counts or claim delivery.
+                    if(!isWhatsAppEnqueueConfirmed(receipt)){
+                        throw new Error('WhatsApp outbox requires manual review: '+state);
                     }
                     results.pending_whatsapp_sent++; // Only Outbox queued / API accepted.
                 } catch (e) {
