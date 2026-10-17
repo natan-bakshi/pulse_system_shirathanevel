@@ -12,6 +12,36 @@ const FLAG='assignment_intent_v1_enabled';
 const LIMIT=8;
 const finalStates=new Set(['queued','accepted','unknown','failed_definite','cancelled','resolved']);
 
+
+// Reuse the EXISTING 5-minute WhatsApp crash watchdog as the low-frequency
+// fallback if the initial intent-trigger workflow was unavailable. No new
+// periodic automation. OFF flag performs only one settings read, no service scan.
+export async function sweepPendingSupplierAssignmentIntents(client:any,opts:any={}){
+  const db=client?.asServiceRole?.entities;
+  if(!db)throw new Error('Backend service client required');
+  const flag=await db.AppSettings.filter({setting_key:FLAG},'-created_date',2);
+  if(flag.length!==1||flag[0].setting_value!=='true')
+    return {success:true,reason:'feature_disabled',scanned:0};
+  const limit=Number.isInteger(opts.maxServices)&&opts.maxServices>0?
+    Math.min(opts.maxServices,4):4;
+  const due=await db.EventService.filter({assignment_intents_pending:true},'updated_date',limit);
+  let scanned=0,recovered=0,blocked=0;
+  for(const svc of due){
+    scanned++;
+    try{
+      const result=await (opts.reconcile||processSupplierAssignmentIntents)(
+        client,svc.id,{limit:4}
+      );
+      recovered+=Number(result.processed||0);
+      if(result.success===false)blocked++;
+    }catch(error){
+      blocked++;
+      console.error('[AssignmentIntent] watchdog reconciliation failed',error instanceof Error?error.name:'unknown');
+    }
+  }
+  return {success:blocked===0,reason:blocked?'needs_review':'reconciled',scanned,recovered,blocked};
+}
+
 export function reconcileOutboxIntentStatus(status:string){
   if(['queued','sending','retry_wait'].includes(status))return 'queued';
   if(status==='accepted')return 'accepted'; // Provider acceptance, NOT recipient delivery.
