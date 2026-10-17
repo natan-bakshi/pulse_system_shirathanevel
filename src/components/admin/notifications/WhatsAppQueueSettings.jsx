@@ -103,7 +103,13 @@ export default function WhatsAppQueueSettings(){
         <span>{view.workerBusy?'עובד התור פעיל':'עובד התור פנוי'}</span>
         <span>מרווח פעיל: <strong>{view.currentIntervalMs}ms</strong></span>
         <span>{view.nextAllowedInMs>0?'מרווח נותר '+(view.nextAllowedInMs/1000).toFixed(2)+' שניות':'מוכן לשליחה ללא המתנה'}</span>
-        {view.lastWorkerAt&&<span>עובד נבדק: {new Date(view.lastWorkerAt).toLocaleString('he-IL')}</span>}
+        {view.lastWorkerAt&&<span>טיפול אחרון בהודעות: {new Date(view.lastWorkerAt).toLocaleString('he-IL')}</span>}
+        {view.lastWatchdogAt
+          ?<span className={view.watchdogLate?'text-red-700 font-semibold':''}>
+            בדיקת התאוששות מתוזמנת: {new Date(view.lastWatchdogAt).toLocaleString('he-IL')}
+            {view.watchdogLate?' · לא נצפתה בדיקה חדשה במשך מעל 15 דקות':''}
+          </span>
+          :<span className="text-amber-700">טרם התקבלה חותמת מעקב של בדיקת ההתאוששות (לא הוכחת תקלה)</span>}
         {view.lastWorkerWakeReason&&<span>מקור התעוררות: <strong>{({outbox_create:'הודעה חדשה',continue:'המשך אצווה',watchdog:'בדיקת התאוששות',manual:'הפעלה ידנית',unattributed:'לא זוהה'})[view.lastWorkerWakeReason]||'לא זוהה'}</strong></span>}
         {view.lastBatchCount!=null&&<span>ניסיונות בריצה האחרונה: <strong>{view.lastBatchCount}</strong></span>}
         {view.lastBatchElapsedMs!=null&&<span>משך ריצה אחרונה: <strong>{(view.lastBatchElapsedMs/1000).toFixed(1)} שניות</strong></span>}
