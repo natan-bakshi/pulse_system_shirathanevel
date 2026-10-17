@@ -34,6 +34,7 @@ export default function WhatsAppQueueSettings(){
   const [units,setUnits]=useState({wasender:'seconds',green:'seconds'});
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
   const [metrics,setMetrics]=useState(null);
+  const [sourceAudit,setSourceAudit]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
   const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
   const read=async()=>{
@@ -58,6 +59,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'חישוב מדדי התור נכשל');
         setMetrics(res.data.metrics);
         setNotice('מדידה היסטורית עודכנה ללא שליחת WhatsApp. זהו מדגם בלבד.');
+        return;
+      }
+      if(action==='sourceAudit'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת התאמה נכשלה');
+        setSourceAudit(res.data.audit);
+        setNotice('בדיקת מקור מול תור הסתיימה ללא שליחת הודעה. מדגם בלבד, ללא אימות מסירה.');
         return;
       }
       if(action==='diagnose'){
@@ -122,6 +129,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}><RefreshCw className="h-4 w-4 ml-2"/>רענן</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>אבחון ללא שליחה</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
@@ -129,6 +137,26 @@ export default function WhatsAppQueueSettings(){
       </div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+      {sourceAudit&&<section aria-label="בדיקת התאמה WhatsApp למקור" className="rounded-lg border p-3 space-y-2 text-sm">
+        <strong>התאמת מקור ↔ תור — {sourceAudit.sampledInApp} התראות ו־{sourceAudit.sampledOutbox} הודעות במדגם</strong>
+        <p className="text-xs text-gray-600">זו בדיקה לקריאה בלבד. הודעת WhatsApp ללא קישור ל־Outbox עשויה להיות ישנה או הודעת Push בלבד — אין בכך הוכחה לכשל. "התקבל אצל הספק" אינו אישור מסירה.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="rounded border p-2">אישור ספק בלי עדכון התראה: <strong>{sourceAudit.acceptedWithoutMirror?.length||0}</strong></div>
+          <div className="rounded border p-2">תוצאה לא ידועה מול סימון נשלח: <strong>{sourceAudit.unknownWithSentMirror?.length||0}</strong></div>
+          <div className="rounded border p-2">התראות מסומנות ללא קישור במדגם: <strong>{sourceAudit.unlinkedSentFlag?.length||0}</strong></div>
+        </div>
+        {[
+          ['אישור ספק שאינו משתקף בהתראה',sourceAudit.acceptedWithoutMirror],
+          ['תוצאה לא ידועה אך ההודעה מסומנת כנשלחה',sourceAudit.unknownWithSentMirror],
+          ['דיווח היסטורי ללא קישור במדגם (לא הוכחת אובדן)',sourceAudit.unlinkedSentFlag]
+        ].map(([label,rows])=><details key={label} className="border rounded p-2">
+          <summary className="cursor-pointer font-medium">{label} — עד {rows?.length||0} פריטים</summary>
+          <ul className="list-disc list-inside pt-2 space-y-1 text-xs">
+            {(rows||[]).map((item,i)=><li key={item.inAppId||i}>התראה {item.inAppId} {item.jobId?'· הודעה '+item.jobId:''} {item.templateType?'· '+item.templateType:''}</li>)}
+          </ul>
+        </details>)}
+        <p className="text-xs text-amber-700">אין כאן לחצן שליחה מחדש. תוצאה לא ידועה מחייבת בדיקה אצל ספק WhatsApp כדי למנוע כפילויות.</p>
+      </section>}
       {metrics&&<section aria-label="מדדי ביצועי WhatsApp" className="rounded-lg border p-3 space-y-2 text-sm">
         <strong>מדדי ביצועי התור — {metrics.sampled} רשומות אחרונות, לא כלל ההיסטוריה</strong>
         <p className="text-xs text-gray-500">נמדד מתוך חותמות זמן הקיימות ב־Outbox. המתנה מכוונת לשעות שקט אינה נחשבת לעיכוב תור. אישור API אינו אישור מסירה. מדידה מפורטת זמינה רק להודעות שנוצרו לאחר שדרוג מערכת המדדים.</p>
