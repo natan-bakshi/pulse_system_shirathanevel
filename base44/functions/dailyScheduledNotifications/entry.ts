@@ -3,7 +3,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
-import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
+import {eventReminderWhatsAppKey,taskDigestWhatsAppKey,automatedWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
+import {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark} from '../../shared/taskNotificationAck.ts';
 import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
@@ -227,8 +228,13 @@ Deno.serve(async (req) => {
         const now = new Date();
 
         // Collect all messages to send
-        const whatsappQueue = []; // { phone, message }
+        const whatsappQueue = []; // { phone, message, idempotencyKey, optional taskIds/recipientId }
         const pushQueue = []; // { subscriptionId, title, message, link, notificationRecordId }
+        // A Task flag must NEVER be written before every intended recipient
+        // has a durable Outbox enqueue (or durable InApp for push-only).
+        const taskExpectedRecipients=new Map();
+        const taskAcknowledgedRecipients=new Map();
+        const taskDueDates=new Map();
 
         // ============================================================
         // PHASE 1: Delayed notifications have ONE owner.
@@ -914,10 +920,15 @@ Deno.serve(async (req) => {
                     return `${priorityIcon}${task.title || ''}${timeSuffix}${eventSuffix}`;
                 };
                 
-                // משלוח הודעה מאוחדת לכל מנהל
-                const handledTaskIds = new Set();
+                // משלוח הודעה מאוחדת לכל מנהל. Stage receipts, do not update Task yet.
                 for (const { admin, tasks } of tasksByAdmin.values()) {
                     try {
+                        const hasWA=sendWA && !!admin.phone;
+                        if(!hasWA&&!sendPush)continue;
+                        for(const task of tasks){
+                            expectTaskRecipient(taskExpectedRecipients,task.id,admin.id);
+                            taskDueDates.set(task.id,task.due_date);
+                        }
                         let title, message, waMessage, link, contextDataForLink;
                         
                         if (tasks.length === 1) {
@@ -970,12 +981,14 @@ Deno.serve(async (req) => {
                         
                         link = buildDeepLink(taskTemplate.deep_link_base, taskTemplate.deep_link_params_map, contextDataForLink);
                         
-                        let sentToAtLeastOne = false;
-                        
-                        // WhatsApp
-                        if (sendWA && admin.phone) {
-                            whatsappQueue.push({ phone: admin.phone, message: waMessage });
-                            sentToAtLeastOne = true;
+                        // WhatsApp is an Outbox intent, NOT a successful send.
+                        // The key binds the exact task IDs/due versions for the
+                        // aggregated admin digest, even across failed retries.
+                        if (hasWA) {
+                            whatsappQueue.push({phone:admin.phone,message:waMessage,
+                              sourceType:'task_due_digest',sourceId:admin.id,
+                              idempotencyKey:await taskDigestWhatsAppKey(admin.id,tasks),
+                              taskIds:tasks.map(t=>t.id),taskRecipientId:admin.id});
                         }
                         
                         // Push + InApp
@@ -1001,15 +1014,16 @@ Deno.serve(async (req) => {
                                         notificationRecordId: notif.id
                                     });
                                 }
-                                sentToAtLeastOne = true;
+                                if(!hasWA){
+                                    // Preserve the legacy in-app-only fallback;
+                                    // a requested WhatsApp channel must instead
+                                    // wait for its durable Outbox receipt.
+                                    for(const t of tasks)acknowledgeTaskRecipient(taskAcknowledgedRecipients,t.id,admin.id);
+                                    results.task_notifications_sent++;
+                                }
                             } catch(e) {
                                 console.warn('[DailyNotifications] Task push DB error:', e.message);
                             }
-                        }
-                        
-                        if (sentToAtLeastOne) {
-                            tasks.forEach(t => handledTaskIds.add(t.id));
-                            results.task_notifications_sent++;
                         }
                     } catch (terr) {
                         console.warn('[DailyNotifications] Task notification error:', terr.message);
@@ -1017,14 +1031,8 @@ Deno.serve(async (req) => {
                     }
                 }
                 
-                // סימון המשימות ששלחו לפחות הודעה אחת ('whatsapp_notification_sent' כדגל "טופלה היום")
-                for (const taskId of handledTaskIds) {
-                    try {
-                        await base44.asServiceRole.entities.Task.update(taskId, { whatsapp_notification_sent: true });
-                    } catch (uerr) {
-                        console.warn('[DailyNotifications] Failed to mark task notification sent:', uerr.message);
-                    }
-                }
+                // Task completion is deliberately AFTER Phase 7a; the previous
+                // implementation marked tasks before any Outbox write existed.
             }
         } catch (taskPhaseErr) {
             console.error('[DailyNotifications] Phase 6.5 (tasks) error:', taskPhaseErr);
@@ -1048,6 +1056,12 @@ Deno.serve(async (req) => {
                         throw new Error('WhatsApp outbox requires manual review: '+state);
                     }
                     results.pending_whatsapp_sent++; // Only Outbox queued / API accepted.
+                    if(wa.taskRecipientId && Array.isArray(wa.taskIds)){
+                        for(const taskId of wa.taskIds){
+                            acknowledgeTaskRecipient(taskAcknowledgedRecipients,taskId,wa.taskRecipientId);
+                        }
+                        results.task_notifications_sent++;
+                    }
                 } catch (e) {
                     console.error('[DailyNotifications] WhatsApp send failed:', e?.message || 'unknown');
                     results.errors++;
@@ -1112,6 +1126,22 @@ Deno.serve(async (req) => {
                     console.error('[DailyNotifications] Push batch error:', e);
                     results.errors++;
                 }
+            }
+        }
+
+        // Phase 7c: only now, after durable WhatsApp enqueue/receipt, may the
+        // source Task be marked handled. A failed recipient leaves its Task
+        // eligible for the next run; the digest key prevents duplicate sends
+        // to recipients whose Outbox job already exists.
+        for(const taskId of taskIdsReadyToMark(taskExpectedRecipients,taskAcknowledgedRecipients)){
+            try{
+                const changed=await base44.asServiceRole.entities.Task.updateMany({
+                    id:taskId,due_date:taskDueDates.get(taskId),is_completed:false
+                },{$set:{whatsapp_notification_sent:true}});
+                if(changed?.updated!==1)console.warn('[DailyNotifications] Task changed during notification; flag not written');
+            }catch(e){
+                console.warn('[DailyNotifications] Task receipt persisted but flag update failed');
+                results.errors++;
             }
         }
 
