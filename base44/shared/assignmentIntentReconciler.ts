@@ -175,14 +175,29 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
     }
   }
   const remaining=copy.some(x=>x.state==='requested');
+  let continued=false;
   if(JSON.stringify(copy)!==raw||service.assignment_intents_pending!==remaining){
     const updated=await db.EventService.updateMany({
       id:serviceId,assignment_notification_intents:raw
     },{$set:{assignment_notification_intents:JSON.stringify(copy),
       assignment_intents_pending:remaining}});
     if(updated?.updated!==1)return {...counters,success:false,reason:'changed_concurrently'};
+    // updateMany CAS alone may not fire the entity UPDATE workflow. Only
+    // request a successor after actual progress with work still remaining.
+    // If the wake fails, the persistent pending flag lets the existing
+    // five-minute watchdog recover WITHOUT resending known Outbox jobs.
+    if(remaining && counters.processed>0){
+      try{
+        const previous=Date.parse(service.assignment_intent_wake_at||'')||0;
+        const wakeAt=new Date(Math.max(Date.now(),previous+1)).toISOString();
+        await db.EventService.update(serviceId,{assignment_intent_wake_at:wakeAt});
+        continued=true;
+      }catch(error){
+        console.error('[AssignmentIntent] batch continuation wake failed; watchdog will recover');
+      }
+    }
   }
-  return {...counters,success:counters.blocked===0,
+  return {...counters,continued,success:counters.blocked===0,
     reason:counters.blocked?'needs_review':remaining?'more_pending':'reconciled',
     remaining};
 }
