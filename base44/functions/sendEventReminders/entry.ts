@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
                                     // Send immediately
                                     try {
                                         whatsAppResult = await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
-                                        whatsappSent = whatsAppResult.queued !== true;
+                                        whatsappSent = whatsAppResult?.success!==false && whatsAppResult?.status==='accepted';
                                     } catch (waError) {
                                         console.error('[EventReminders] WhatsApp send failed:', waError?.message || 'unknown');
                                     }
@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
                             } else {
                                 try {
                                     whatsAppResult = await sendWhatsAppText(admin.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
-                                    whatsappSent = whatsAppResult.queued !== true;
+                                    whatsappSent = whatsAppResult?.success!==false && whatsAppResult?.status==='accepted';
                                 } catch (waError) {
                                     console.error('[EventReminders] WhatsApp admin send failed:', waError?.message || 'unknown');
                                 }
