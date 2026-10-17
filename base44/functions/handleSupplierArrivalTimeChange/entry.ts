@@ -4,7 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
-import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
 
 /**
  * Handles a change to supplier_arrival_time on a specific EventService.
@@ -83,6 +83,8 @@ Deno.serve(async (req) => {
         } catch (e) { supplierNotes = {}; }
 
         let notificationsSent = 0;
+        let whatsappEnqueueFailures = 0;
+        let confirmedWhatsApp = 0;
 
         if (mode === 'notify') {
             // Use 'event_critical_update' template (same as the one used after event date/time change)
@@ -133,7 +135,14 @@ Deno.serve(async (req) => {
                         waMessage = waMessage.replace(/~\s*~/g, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
 
                         if (sendWhatsApp && supplier.whatsapp_enabled !== false && supplier.phone) {
-                            await sendWhatsAppNotification(base44, supplier.phone, waMessage);
+                            await sendWhatsAppNotification(base44,supplier.phone,waMessage,{
+                                kind:mode==='cancel'?'arrival_cancel':'arrival_notify',
+                                eventId:event.id,eventServiceId:eventService.id,supplierId:supId,
+                                templateId:template.id||template.type,
+                                eventDate:event.event_date,eventTime:event.event_time,
+                                supplierArrivalTime:eventService.supplier_arrival_time||''
+                            });
+                            confirmedWhatsApp++;
                         }
 
                         if (sendPush) {
@@ -165,12 +174,21 @@ Deno.serve(async (req) => {
 
                         notificationsSent++;
                     } catch (e) {
-                        console.error(`Failed processing supplier ${supId}:`, e);
+                        whatsappEnqueueFailures++;
+                        console.error(`[ArrivalChange] Supplier message was not durably queued: ${supId}`, e);
                     }
                 }
             }
 
-            return Response.json({ success: true, mode: 'notify', notifications_sent: notificationsSent });
+            if(whatsappEnqueueFailures>0){
+                return Response.json({
+                    success:false,mode:'notify',recovery_required:true,
+                    error:'Some supplier WhatsApp messages were not confirmed in the queue',
+                    whatsapp_confirmed:confirmedWhatsApp,whatsapp_failures:whatsappEnqueueFailures
+                },{status:409});
+            }
+            return Response.json({success:true,mode:'notify',notifications_sent:notificationsSent,
+                whatsapp_confirmed:confirmedWhatsApp});
         }
 
         if (mode === 'cancel') {
@@ -206,7 +224,14 @@ Deno.serve(async (req) => {
                         waMessage = waMessage.replace(/~\s*~/g, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
 
                         if (sendWhatsApp && supplier.whatsapp_enabled !== false && supplier.phone) {
-                            await sendWhatsAppNotification(base44, supplier.phone, waMessage);
+                            await sendWhatsAppNotification(base44,supplier.phone,waMessage,{
+                                kind:mode==='cancel'?'arrival_cancel':'arrival_notify',
+                                eventId:event.id,eventServiceId:eventService.id,supplierId:supId,
+                                templateId:template.id||template.type,
+                                eventDate:event.event_date,eventTime:event.event_time,
+                                supplierArrivalTime:eventService.supplier_arrival_time||''
+                            });
+                            confirmedWhatsApp++;
                         }
 
                         if (sendPush) {
@@ -238,9 +263,21 @@ Deno.serve(async (req) => {
 
                         notificationsSent++;
                     } catch (e) {
-                        console.error(`Failed processing supplier ${supId}:`, e);
+                        whatsappEnqueueFailures++;
+                        console.error(`[ArrivalChange] Supplier message was not durably queued: ${supId}`, e);
                     }
                 }
+            }
+
+            if(whatsappEnqueueFailures>0){
+                // Do not remove assigned suppliers if the required cancellation
+                // message has not been durably queued. This preserves a safe
+                // operator retry path without creating duplicate WhatsApps.
+                return Response.json({
+                    success:false,mode:'cancel',recovery_required:true,
+                    error:'Supplier cancellations were not confirmed in WhatsApp queue; assignments remain unchanged',
+                    whatsapp_confirmed:confirmedWhatsApp,whatsapp_failures:whatsappEnqueueFailures
+                },{status:409});
             }
 
             // Remove all suppliers from this specific service (and their statuses/notes)
@@ -251,7 +288,8 @@ Deno.serve(async (req) => {
             });
             await recalculateEventStatus(base44.asServiceRole, eventService.event_id);
 
-            return Response.json({ success: true, mode: 'cancel', notifications_sent: notificationsSent });
+            return Response.json({ success: true, mode: 'cancel', notifications_sent: notificationsSent,
+                whatsapp_confirmed:confirmedWhatsApp });
         }
 
         return Response.json({ success: true });
@@ -262,13 +300,8 @@ Deno.serve(async (req) => {
     }
 });
 
-async function sendWhatsAppNotification(base44, phone, message) {
-    try {
-        // Preserves the existing notification flow; transport is selected centrally.
-        await sendWhatsAppText(phone, message, base44, {sourceType:'arrival_time_change'});
-    } catch (e) {
-        console.error('WhatsApp notification failed:', e?.message || 'unknown');
-    }
+async function sendWhatsAppNotification(base44,phone,message,identity){
+    return enqueueAssignmentTransitionWhatsApp(base44,phone,message,identity,'arrival_time_change');
 }
 
 function replaceVariables(text, eventObj, supplierObj, serviceObj, userObj, resolvedServiceName, supplierNote) {
