@@ -160,7 +160,10 @@ Deno.serve(async (req) => {
                             let whatsAppResult = null;
                             let pendingQueueRow = null;
                             
-                            if (supplier.phone) {
+                            // Match the daily scheduler: suppliers who disabled
+                            // WhatsApp must not get the same reminder through
+                            // the legacy event reminder producer.
+                            if (supplier.phone && supplier.whatsapp_enabled !== false) {
                                 if (currentlyInQuietHours) {
                                     // Queue for later
                                     try {
