@@ -49,11 +49,29 @@ Deno.serve(async(req)=>{
     if(updated?.updated!==1){
       return Response.json({success:false,error:'Concurrent edit: no assignment was saved; refresh the event'},{status:409});
     }
+    // Base44's conditional updateMany CAS may not emit an entity UPDATE
+    // workflow. The separate update() wake is intentional and is performed
+    // AFTER the durable assignment+intent has been committed atomically.
+    // A failed wake is recoverable from assignment_intents_pending by the
+    // already scheduled WhatsApp watchdog; it must not turn a saved assignment
+    // into a false business-save failure.
+    let wakeRequested=false;
+    if(plan.hasNewIntent){
+      try{
+        const previous=Date.parse(existing.assignment_intent_wake_at||'')||0;
+        const stamp=new Date(Math.max(Date.now(),previous+1)).toISOString();
+        await db.EventService.update(serviceId,{assignment_intent_wake_at:stamp});
+        wakeRequested=true;
+      }catch(error){
+        console.error('[SaveSupplierAssignmentsV2] intent wake failed; watchdog will recover');
+      }
+    }
     return Response.json({
       success:true,saved:true,notificationIntentsPersisted:plan.intents.length,
       // Persisted is NOT queued/delivered; downstream status is separate.
       notificationState:plan.intents.length?'requested':'no_new_request',
-      revision:plan.revision,reconcilerRequired:plan.hasNewIntent
+      revision:plan.revision,reconcilerRequired:plan.hasNewIntent,
+      wakeRequested,wakeFallbackRequired:plan.hasNewIntent&&!wakeRequested
     });
   }catch(error){
     console.error('[SaveSupplierAssignmentsV2] failed',error instanceof Error?error.name:'unknown');
