@@ -68,7 +68,10 @@ export default async function(req) {
           email: payment.payer_email,
           subject: language === "en" ? `Payment reminder - ${businessName}` : `תזכורת לתשלום - ${businessName}`,
           body,
-          businessName
+          businessName,
+          // Retry of this scheduled task never creates a second WhatsApp for
+          // the SAME payment request / expiration. A renewed link gets a new key.
+          idempotencyKey:'payment-link-reminder:'+payment.id+':'+String(payment.link_expires_at||'')
         });
         await base44.asServiceRole.entities.Payment.update(payment.id, { link_reminder_sent: true });
         result.reminded += 1;
