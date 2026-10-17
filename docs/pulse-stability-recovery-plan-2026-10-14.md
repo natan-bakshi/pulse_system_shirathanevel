@@ -380,7 +380,7 @@
 - **G12 Done code/test:** מדד `last_watchdog_at` חדש שיכול לציין התרעה על worker שלא התעורר מעל 15 דקות גם בתור ריק. זוהי תשתית Health תצפיתית; כרגע אין ראיית LIVE. תוספת כתיבת בקרה אחת בכל Cron 5 דקות, ללא Cron חדש.
 - **בדיקות QA:** `node --test tests/*.test.mjs` **309/310** עברו; הכשל היחיד ישן ב־`EventAgreement.create` schema RLS, ללא שינוי הרשאות. Build, Parsing, ESLint של שני המסכים עברו. אין הודעת WhatsApp/Push אמיתית שנשלחה בבדיקות, אין הוכחת latency p95 או שיפור שמירה בזמן רשת.
 - **עדיין פתוח:** D08.7 Push תוצאות לוואי, D08.8 כל כותבי Legacy, D08.6b rollback אמיתי, D09 שמירת שיבוץ מהירה; E20c Push לכל Task ונמען; E21b מקור ששמר InApp לפני enqueue; B16 Payment state גם במקרה כשל ספק; WA-P41b בדיקת Scheduled Workflow/Watchdog/Outbox מול QA מורשה. אין לקצר Spinner דרך Promise לא־ממתין בדפדפן.
-- **עצירה:** ייווצר checkpoint לאחר כתיבת היומן; לא שונה Provider/תור/מפתח V2 ב־DATA. לא לאפשר שליחת Legacy pending אוטומטית במסגרת פיילוט.
+- **Checkpoint QA סופי:** `6ad3fb91045949e6ae48553c`, commit `aa3f3170c41ae1f2d5331e4fd134c0547204ab8a` (לפני עדכון מספר הצ'קפוינט בתיעוד). לא שונה Provider/תור/מפתח V2 ב־DATA. לא לאפשר שליחת Legacy pending אוטומטית במסגרת פיילוט.
 
 ### תבנית חובה ליומן סשן הבא
 
