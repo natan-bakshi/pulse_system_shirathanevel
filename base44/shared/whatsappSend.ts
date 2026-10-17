@@ -125,7 +125,17 @@ async function callGreenApi(method, body) {
       retryAfterSeconds:response.status===429?Math.min(3600,Number.isFinite(seconds)?seconds:0):0
     });
   }
-  const messageId = data && typeof data==='object' ? (data.idMessage || '') : '';
+  // Green API normally confirms with {idMessage}. HTTP 200 without a real
+  // receipt (or with a provider-level failure payload) is NOT proof of API
+  // acceptance. The provider could still have sent the message; classify as
+  // UNKNOWN, not failed/retryable, to prevent duplicate WhatsApp deliveries.
+  const messageId=typeof data?.idMessage==='string'?data.idMessage.trim():'';
+  if(data?.success===false || !messageId){
+    console.error('[WhatsAppQueue] Green API 2xx receipt missing or negative');
+    throw Object.assign(new Error('Green API returned an unverified receipt'),{
+      deliveryUncertain:true,errorCode:502
+    });
+  }
   return { success:true,provider:'green',messageId,idMessage:messageId,deliveryStatus:'accepted' };
 }
 
