@@ -1192,16 +1192,21 @@ export default function EventDetails() {
       // Push and WhatsApp verification are independent, and must not block
       // one another. An existing supplier must not receive repeat Push simply
       // because another supplier was added to the same service.
+      let assignmentPushWarning='';
       const notifyPush=async()=>{
         if(!added.length)return;
         const serviceDetails=allServices.find(s=>s.id===selectedServiceForSupplier.service_id);
         try {
-          await base44.functions.invoke('notifySupplierAssignment',{
+          const response=await base44.functions.invoke('notifySupplierAssignment',{
             supplierIds:added,eventId,
             serviceName:selectedServiceForSupplier.service_name || serviceDetails?.service_name || 'שירות',
             eventServiceId:selectedServiceForSupplier.id
           });
-        }catch(notifyError){console.warn('Assignment push notification is pending verification');}
+          if(response?.data?.success===false)assignmentPushWarning='השיבוץ נשמר, אבל התראת ה־Push לספק לא הושלמה. בדוק את מצב ההתראות לפני שתסמוך עליה.';
+        }catch(notifyError){
+          assignmentPushWarning='השיבוץ נשמר, אך לא ניתן היה לאמת את התראת ה־Push לספק. ייתכן שנדרשת בדיקה ידנית.';
+          console.warn('Assignment push notification is pending verification');
+        }
       };
       await Promise.all([
         verifyAndRefreshAssignment(selectedServiceForSupplier.id,added,eventId),
@@ -1213,6 +1218,7 @@ export default function EventDetails() {
       setSupplierFormData({ supplierIds: [], notes: {} });
       setSupplierSearchTerm("");
       await loadEventData();
+      if(assignmentPushWarning)alert(assignmentPushWarning);
     } catch (error) {
       console.error("Failed to assign suppliers:", error);
       alert("שגיאה בשיבוץ הספקים");
