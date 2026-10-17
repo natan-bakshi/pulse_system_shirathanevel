@@ -3,6 +3,7 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
 import {whatsappEnqueueReceiptState} from '../../shared/whatsappReceipt.ts';
 import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
+import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
 import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
@@ -52,6 +53,9 @@ Deno.serve(async (req) => {
         const existingNotifications = await base44.asServiceRole.entities.InAppNotification.filter({
             is_resolved: false
         });
+        // Index once, preserving the event/service and reminder semantics.
+        const servicesByEvent=indexEventServicesByEvent(allEventServices);
+        const existingEventReminders=indexEventReminderReceipts(existingNotifications);
         
         // Secrets for WA
         const GREEN_API_INSTANCE_ID = Deno.env.get("GREEN_API_INSTANCE_ID");
@@ -96,7 +100,7 @@ Deno.serve(async (req) => {
                 // Check if it's time to send reminder
                 if (now >= reminderCutoff) {
                     // Get approved suppliers for this event
-                    const eventServices = allEventServices.filter(es => es.event_id === event.id);
+                    const eventServices = servicesByEvent.get(event.id)||[];
                     
                     for (const es of eventServices) {
                         if (!es.supplier_ids || !es.supplier_statuses) continue;
@@ -124,11 +128,7 @@ Deno.serve(async (req) => {
                             const targetUserEmail = supplier.contact_emails?.[0] || '';
 
                             // Check for existing reminder in DB logs
-                            const hasExisting = existingNotifications.some(n => 
-                                n.template_type === 'SUPPLIER_EVENT_REMINDER' &&
-                                n.related_event_id === event.id &&
-                                n.related_supplier_id === supplierId
-                            );
+                            const hasExisting=existingEventReminders.supplier.has(String(event.id)+':'+String(supplierId));
 
                             if (hasExisting) {
                                 skippedCount++;
@@ -239,11 +239,7 @@ Deno.serve(async (req) => {
                 if (now >= reminderCutoff) {
                     for (const admin of adminUsers) {
                         // Check for existing reminder
-                        const hasExisting = existingNotifications.some(n => 
-                            n.template_type === 'ADMIN_EVENT_REMINDER' &&
-                            n.related_event_id === event.id &&
-                            n.user_id === admin.id
-                        );
+                        const hasExisting=existingEventReminders.admin.has(String(event.id)+':'+String(admin.id));
                         
                         if (hasExisting) {
                             skippedCount++;
