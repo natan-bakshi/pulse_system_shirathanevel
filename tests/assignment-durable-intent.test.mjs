@@ -71,11 +71,11 @@ test('reject missing status/notes, invalid supplier IDs and corrupt intent histo
  assert.throws(()=>planAssignmentTransition({...s,assignment_notification_intents:'corrupt'},input(s),when),/Malformed/);
  assert.deepEqual(readAssignmentIntents('[]'),[]);
 });
-function server({actor='admin',flag=false,service=initial(),eventStatus='confirmed'}={}){
+function server({actor='admin',flag=false,service=initial(),eventStatus='confirmed',wakeThrows=false}={}){
  const bodySrc=fs.readFileSync('base44/functions/saveSupplierAssignmentsV2/entry.ts','utf8');
  const cjs=esbuild.transformSync(bodySrc,{loader:'ts',format:'cjs',target:'es2022'}).code;
  let handler;
- let writes=0,providerCalls=0;
+ let writes=0,providerCalls=0,wakes=0;
  const db={
   AppSettings:{filter:async()=>flag?[{setting_key:'assignment_intent_v1_enabled',setting_value:'true'}]:[]},
   EventService:{
@@ -86,6 +86,11 @@ function server({actor='admin',flag=false,service=initial(),eventStatus='confirm
      Object.assign(service,update.$set);
      service.updated_date=new Date(Date.parse(service.updated_date)+1000).toISOString();
      return {updated:1};
+   },
+   update:async(_,patch)=>{
+     wakes++;
+     if(wakeThrows)throw Error('Simulated missing entity-update wake');
+     Object.assign(service,patch);return {...service};
    }
   },
   Event:{get:async()=>({id:'event-aaa123',status:eventStatus})},
@@ -103,7 +108,7 @@ function server({actor='admin',flag=false,service=initial(),eventStatus='confirm
      throw Error('Unexpected import '+name);
    }
  });
- return {service,get writes(){return writes},get providerCalls(){return providerCalls},
+ return {service,get writes(){return writes},get wakes(){return wakes},get providerCalls(){return providerCalls},
    call:body=>handler({method:'POST',json:async()=>body})};
 }
 test('new migration is OFF by default and does not touch assignments or WhatsApp',async()=>{
@@ -126,12 +131,27 @@ test('valid save atomically records changed assignment + notification intent but
  assert.equal(r.body.notificationIntentsPersisted,1);
  assert.equal(r.body.notificationState,'requested');
  assert.equal(f.writes,1);
+ assert.equal(f.wakes,1,'An explicit update() wakes the entity trigger after the CAS business save');
+ assert.equal(r.body.wakeRequested,true);
+ assert.equal(r.body.wakeFallbackRequired,false);
  assert.equal(f.providerCalls,0);
  assert.equal(f.service.assignment_intent_revision,1);
  assert.equal(f.service.assignment_intents_pending,true);
  const stored=readAssignmentIntents(f.service.assignment_notification_intents);
  assert.equal(stored.length,1);
  assert.equal(stored[0].key,'assignment:service-aaa123:supplier-bbb234:r1:SUPPLIER_NEW_ASSIGNMENT');
+});
+test('failed explicit wake does not roll back a successfully persisted assignment intent',async()=>{
+ const f=server({flag:true,wakeThrows:true});
+ const r=await f.call(input());
+ assert.equal(r.status,200);
+ assert.equal(r.body.saved,true);
+ assert.equal(r.body.notificationState,'requested');
+ assert.equal(r.body.wakeFallbackRequired,true);
+ assert.equal(f.writes,1);
+ assert.equal(f.wakes,1);
+ assert.equal(f.service.assignment_intents_pending,true);
+ assert.equal(readAssignmentIntents(f.service.assignment_notification_intents).length,1);
 });
 test('stale requests cannot overwrite newer assignments',async()=>{
  const f=server({flag:true});
