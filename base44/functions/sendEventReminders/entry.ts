@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import {whatsappEnqueueReceiptState} from '../../shared/whatsappReceipt.ts';
 import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
@@ -182,7 +183,7 @@ Deno.serve(async (req) => {
                                     // Send immediately
                                     try {
                                         whatsAppResult = await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
-                                        whatsappSent = whatsAppResult?.success!==false && whatsAppResult?.status==='accepted';
+                                        whatsappSent = whatsappEnqueueReceiptState(whatsAppResult)==='accepted';
                                     } catch (waError) {
                                         console.error('[EventReminders] WhatsApp send failed:', waError?.message || 'unknown');
                                     }
@@ -291,7 +292,7 @@ Deno.serve(async (req) => {
                             } else {
                                 try {
                                     whatsAppResult = await sendWhatsAppText(admin.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
-                                    whatsappSent = whatsAppResult?.success!==false && whatsAppResult?.status==='accepted';
+                                    whatsappSent = whatsappEnqueueReceiptState(whatsAppResult)==='accepted';
                                 } catch (waError) {
                                     console.error('[EventReminders] WhatsApp admin send failed:', waError?.message || 'unknown');
                                 }
