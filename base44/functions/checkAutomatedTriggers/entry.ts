@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
+import {automatedWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
+import {whatsappEnqueueReceiptState} from '../../shared/whatsappReceipt.ts';
 import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
@@ -357,6 +359,16 @@ async function triggerNotification(base44, template, event, user, supplier, even
     }
 
     if (phoneToUse && template.allowed_channels && template.allowed_channels.includes('whatsapp')) {
+        // The daily scheduler and this legacy periodic trigger run for the
+        // SAME scheduled_check templates. They must share one recipient-level
+        // WhatsApp business key, including a delayed quiet-hours delivery.
+        const target=supplier?'supplier':user?.role==='admin'?'admin':'client';
+        const recipientId=supplier?.id ||
+          (target==='admin'?user?.id:(user?.email||user?.id));
+        const waKey=automatedWhatsAppKey('scheduled_template',{
+          eventId:event.id,recipientId,eventDate:event.event_date,
+          serviceId:eventService?.id||'',templateType:template.type,target
+        });
         const DEFAULT_QUIET_START = 22;
         const DEFAULT_QUIET_END = 8;
         const inQuietHours = isInQuietHours(DEFAULT_QUIET_START, DEFAULT_QUIET_END);
@@ -377,7 +389,8 @@ async function triggerNotification(base44, template, event, user, supplier, even
                     scheduled_for: quietEnd.toISOString(),
                     template_type: template.type,
                     is_sent: false,
-                    data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsapp_message, phone: phoneToUse })
+                    data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsapp_message, phone: phoneToUse,
+                        source_type:'scheduled_template',idempotency_key:waKey })
                 });
                 console.log(`[AutomatedTriggers] WhatsApp QUEUED for ${phoneToUse} until ${quietEnd.toISOString()}`);
             } catch (qErr) {
@@ -385,8 +398,10 @@ async function triggerNotification(base44, template, event, user, supplier, even
             }
         } else {
             try {
-                whatsAppResult = await sendWhatsAppText(phoneToUse, whatsapp_message, base44, {sourceType:'automated_trigger',sourceId:template.id||''});
-                whatsappSent = whatsAppResult.queued !== true; // Provider-accepted only in legacy compatibility mode.
+                whatsAppResult = await sendWhatsAppText(phoneToUse, whatsapp_message, base44, {
+                    sourceType:'scheduled_template',sourceId:event.id||'',idempotencyKey:waKey
+                });
+                whatsappSent = whatsappEnqueueReceiptState(whatsAppResult)==='accepted'; // API receipt, not delivery.
             } catch (e) {
                 console.error('[AutomatedTriggers] WhatsApp send failed:', e?.message || 'unknown');
             }
