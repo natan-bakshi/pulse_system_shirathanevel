@@ -17,7 +17,7 @@ function scenario({enabled=true,newSuppliers=[supplier1],supplier={},statuses={}
   supplierNotes:Object.fromEntries(newSuppliers.map(id=>[id,'']))
  },'2026-10-17T15:01:00Z');
  const service={...original,...next.patch,updated_date:'2026-10-17T15:01:00Z'};
- let writes=0,serviceReads=0,contacts=0,templateQueries=0;
+ let writes=0,wakes=0,serviceReads=0,contacts=0,templateQueries=0;
  const jobs=[...existingOutbox];
  const db={
    AppSettings:{filter:async()=>enabled?[{setting_value:'true'}]:[]},
@@ -25,7 +25,9 @@ function scenario({enabled=true,newSuppliers=[supplier1],supplier={},statuses={}
      updateMany:async(filter,update)=>{
        if(filter.id!==svcId||filter.assignment_notification_intents!==service.assignment_notification_intents)return {updated:0};
        Object.assign(service,update.$set);writes++;return {updated:1};
-     }},
+     },
+     update:async(_,patch)=>{wakes++;Object.assign(service,patch);return {...service}}
+   },
    Event:{get:async()=>({id:'event-aaa123',status:eventStatus,event_name:'Family Test',
      event_date:'2026-12-10',event_time:'10:00',location:'Jerusalem'})},
    Supplier:{get:async id=>{contacts++;return {
@@ -49,7 +51,7 @@ function scenario({enabled=true,newSuppliers=[supplier1],supplier={},statuses={}
    jobs.push(job);
    return {queued:true,status:'queued',jobId:job.id};
  };
- return {client,service,jobs,next,enqueue,get writes(){return writes},
+ return {client,service,jobs,next,enqueue,get writes(){return writes},get wakes(){return wakes},
    get serviceReads(){return serviceReads},get contacts(){return contacts},
    get templateQueries(){return templateQueries}};
 }
@@ -181,9 +183,13 @@ test('two supplier requests are handled in bounded batches without losing later 
  const x=scenario({newSuppliers:[supplier1,supplier2]});
  const a=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:x.enqueue,limit:1});
  assert.equal(a.processed,1);assert.equal(a.remaining,true);
+ assert.equal(a.continued,true,'A bounded batch explicitly wakes the next batch');
+ assert.equal(x.wakes,1);
  assert.equal(x.jobs.length,1);
  const b=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:x.enqueue,limit:1});
  assert.equal(b.processed,1);assert.equal(b.remaining,false);
+ assert.equal(b.continued,false,'No extra wake after the final item');
+ assert.equal(x.wakes,1);
  assert.equal(x.jobs.length,2);
  assert.equal(x.service.assignment_intents_pending,false);
 });
@@ -198,7 +204,9 @@ test('workflow is scoped to assignment intent journal changes only',()=>{
  const wf=JSON.parse(fs.readFileSync('base44/workflows/Assignment Intent Reconcile On Change.jsonc','utf8'));
  assert.equal(wf.trigger.config.entity_name,'EventService');
  assert.deepEqual(wf.trigger.config.events,['update']);
- assert.ok(wf.trigger.condition.includes('assignment_notification_intents'));
+ assert.ok(wf.trigger.condition.includes('assignment_intent_wake_at'));
+ assert.ok(!wf.trigger.condition.includes('assignment_notification_intents'),
+   'CAS updateMany is not sufficient proof that a workflow will fire');
  const src=fs.readFileSync('base44/functions/reconcileSupplierAssignmentIntents/entry.ts','utf8');
  const cjs=esbuild.transformSync(src,{loader:'ts',format:'cjs',target:'es2022'}).code;
  const responses=[];
