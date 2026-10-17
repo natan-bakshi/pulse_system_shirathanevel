@@ -470,6 +470,46 @@ test('parallel idempotent enqueues are serialized and produce only one job',asyn
  assert.equal(x.control.enqueue_owner,'');
 });
 
+test('mixed-source 100-message batch preserves each result and never sends UNKNOWN twice across worker restarts',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0,wasender_interval_ms:0,max_messages_per_run:30});
+ const sourceKinds=['assignment_new','event_reminder','invoice','payment_link','agreement','manual','supplier_notice','billing_receipt','scheduled_notification','document'];
+ for(let i=0;i<100;i++){
+   x.control.selectedProvider=i%2===0?'green':'wasender';
+   const ctx={sourceType:sourceKinds[i%sourceKinds.length],sourceId:'event-'+i,idempotencyKey:'stress:'+i};
+   await sendWhatsAppText('0501234567','Synthetic notification '+i,{...x.client},ctx);
+ }
+ const attempted=new Set();
+ const transport=async(job,provider)=>{
+   assert.ok(!attempted.has(job.id),'Duplicate provider transport call: '+job.id);
+   attempted.add(job.id);
+   const n=Number(job.id.split('-').at(-1))-1;
+   if(n%23===0)throw Object.assign(new Error('Synthetic timeout'),{deliveryUncertain:true,errorCode:503});
+   if(n%17===0)throw Object.assign(new Error('Synthetic auth rejection'),{deliveryUncertain:false,errorCode:401});
+   if(n%19===0)throw Object.assign(new Error('Synthetic rate limit'),{deliveryUncertain:false,errorCode:429,retryAfterSeconds:120});
+   assert.equal(provider,n%2===0?'green':'wasender');
+   return {messageId:'synthetic-'+n};
+ };
+ for(let iteration=0;iteration<9;iteration++){
+   const due=x.jobs.filter(j=>j.status==='queued'||j.status==='retry_wait'&&Date.parse(j.available_at)<=Date.now());
+   if(!due.length)break;
+   const [a,b]=await Promise.all([
+     drainWhatsAppOutbox(x.client,{transport}),
+     drainWhatsAppOutbox(x.client,{transport})
+   ]);
+   assert.ok(['busy','processed','empty'].includes(a.reason));
+   assert.ok(['busy','processed','empty'].includes(b.reason));
+ }
+ assert.equal(attempted.size,100,'All sources reach either provider or a definite/unknown state');
+ const states=x.jobs.reduce((map,j)=>(map[j.status]=(map[j.status]||0)+1,map),{});
+ assert.equal(Object.values(states).reduce((n,v)=>n+v,0),100);
+ assert.ok((states.accepted||0)>60);
+ assert.ok((states.unknown||0)>0);
+ assert.ok((states.failed||0)>0);
+ assert.ok((states.retry_wait||0)>0);
+ assert.equal(x.control.lease_owner,'');
+ await drainWhatsAppOutbox(x.client,{transport});
+ assert.equal(attempted.size,100,'Restarting a worker never replays unknown or terminal messages');
+});
 test('worker updates linked record only after provider acceptance',async()=>{
  const x=fixture();
  await sendWhatsAppText('0501234567','confirmation',x.client,{inAppNotificationId:'notice-1',clientMessageDeliveryId:'agreement-1',cardSetupRequestId:'card-1'});
