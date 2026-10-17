@@ -1,5 +1,6 @@
 // Durable centralized WhatsApp outbox. Producers never call WhatsApp providers directly.
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
+import {isWhatsAppEnqueueConfirmed} from './whatsappReceipt.ts';
 // Security: only backend clients with service-role entity access may enqueue.
 const CONTROL_KEY = 'global';
 const lockPause = (ms: number) => new Promise(resolve=>setTimeout(resolve,ms));
@@ -47,15 +48,41 @@ export async function readWhatsAppQueueControl(client: any) {
 // Used when a business workflow creates its InAppNotification after enqueueing.
 // Handles either ordering of worker acceptance and notification persistence.
 export async function attachOutboxInAppReceipt(client:any,sendResult:any,notificationId:string) {
-  if(!sendResult?.queued||!sendResult.jobId||!notificationId)return;
+  // Deduplicated provider ACCEPTED has queued=false. That still represents
+  // an existing durable Outbox receipt and must be linkable; UNKNOWN cannot.
+  if(!isWhatsAppEnqueueConfirmed(sendResult)||!sendResult?.jobId||!notificationId)
+    return {linked:false,reason:'no_confirmed_outbox_receipt'};
   const db=client.asServiceRole.entities;
-  await db.WhatsAppOutbox.updateMany({id:sendResult.jobId},{$set:{in_app_notification_id:notificationId}});
-  const latest=await db.WhatsAppOutbox.get(sendResult.jobId);
-  if(latest?.status==='accepted') {
+  const jobId=String(sendResult.jobId);
+  const old=await db.WhatsAppOutbox.get(jobId);
+  if(!old)return {linked:false,reason:'outbox_job_missing'};
+  if(old.in_app_notification_id && old.in_app_notification_id!==notificationId) {
+    // An idempotency hit may point to the ORIGINAL notification, not the
+    // duplicate InApp log created by a second scheduler. Never steal that
+    // original job link; that could suppress its eventual provider receipt.
+    return {linked:false,reason:'outbox_already_linked'};
+  }
+  if(!old.in_app_notification_id) {
+    const written=await db.WhatsAppOutbox.updateMany({
+      id:jobId,in_app_notification_id:old.in_app_notification_id||''
+    },{$set:{in_app_notification_id:notificationId}});
+    if(written?.updated!==1){
+      const current=await db.WhatsAppOutbox.get(jobId);
+      if(current?.in_app_notification_id!==notificationId)
+        return {linked:false,reason:'outbox_link_race'};
+    }
+  }
+  // The worker could finish BEFORE the log is linked. Close the race by
+  // observing its latest API acceptance AFTER attaching the Outbox receipt.
+  const latest=await db.WhatsAppOutbox.get(jobId);
+  if(latest?.in_app_notification_id!==notificationId)
+    return {linked:false,reason:'outbox_link_changed'};
+  if(latest.status==='accepted') {
     await db.InAppNotification.update(notificationId,{
       whatsapp_sent:true,whatsapp_message_id:latest.provider_message_id||''
     });
   }
+  return {linked:true,providerAccepted:latest.status==='accepted'};
 }
 
 export async function enqueueWhatsApp(client: any, data: {
