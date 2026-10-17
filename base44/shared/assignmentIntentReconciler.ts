@@ -100,15 +100,10 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
     const index=copy.findIndex(x=>x.key===intent.key);
     if(index<0)continue;
     const next=copy[index];
-    // If an older intent is no longer relevant, do not notify a supplier who
-    // was removed/confirmed before a delayed worker woke up.
-    if(!event || ['cancelled','completed'].includes(event.status) ||
-       !assigned.includes(intent.supplier_id) ||
-       (statuses[intent.supplier_id] && statuses[intent.supplier_id]!=='pending')){
-      next.state='cancelled';next.resolution='assignment_no_longer_pending';
-      counters.cancelled++;counters.processed++;continue;
-    }
     try{
+      // Check Outbox history FIRST. An existing accepted/unknown message is
+      // still accepted/unknown even if its supplier later confirmed or left.
+      // Never rewrite a real provider attempt as "not sent".
       // Check provider history FIRST. Both entity trigger and reconciler can
       // race; the persisted key + central Outbox CAS prevents duplicates.
       const existing=await db.WhatsAppOutbox.filter({idempotency_key:intent.key},'-created_date',2);
@@ -121,6 +116,14 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
         if(state==='cancelled')counters.cancelled++;
         if(state==='queued')counters.queued++;
         counters.processed++;continue;
+      }
+      // No Outbox record exists. A newly cancelled/approved assignment can
+      // safely close its unsent intent instead of contacting a recipient.
+      if(!event || ['cancelled','completed'].includes(event.status) ||
+         !assigned.includes(intent.supplier_id) ||
+         (statuses[intent.supplier_id] && statuses[intent.supplier_id]!=='pending')){
+        next.state='cancelled';next.resolution='assignment_no_longer_pending';
+        counters.cancelled++;counters.processed++;continue;
       }
       if(!whatsappEnabled){
         next.state='resolved';next.resolution='whatsapp_template_disabled';
