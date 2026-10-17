@@ -80,13 +80,28 @@ Deno.serve(async (req) => {
         }
     }
     // --- WhatsApp Logic End ---
+    // Keep WhatsApp result visible even if ZERO users have Firebase tokens.
+    // Previously the early return below hid every WhatsApp failure.
+    const whatsappSummary={
+      count:whatsappResults.length,
+      confirmed:whatsappResults.filter(r=>r.success===true).length,
+      failed:whatsappResults.filter(r=>r.success!==true).length,
+      results:whatsappResults
+    };
 
     const usersWithTokens = targetedUsers.filter(u => u.push_tokens && u.push_tokens.length > 0);
 
     const allTokens = usersWithTokens.flatMap(u => u.push_tokens);
 
     if (allTokens.length === 0) {
-      return new Response(JSON.stringify({ success: true, message: 'No push tokens found for the target users.' }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({
+        success:whatsappSummary.failed===0,
+        partial_failure:whatsappSummary.failed>0,
+        manual_review_required:whatsappSummary.failed>0,
+        message:'No push tokens found for the target users.',
+        push:{successCount:0,failureCount:0,noTokens:true},
+        whatsapp:whatsappSummary
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
     const messaging = getMessaging(app);
@@ -126,9 +141,11 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ 
-        success: true, 
+        success: response.failureCount===0 && whatsappSummary.failed===0,
+        partial_failure:response.failureCount>0 || whatsappSummary.failed>0,
+        manual_review_required:whatsappSummary.failed>0,
         push: { successCount: response.successCount, failureCount: response.failureCount },
-        whatsapp: { count: whatsappResults.length, results: whatsappResults }
+        whatsapp: whatsappSummary
     }), { status: 200, headers: { "Content-Type": "application/json" } });
 
   } catch (error) {
