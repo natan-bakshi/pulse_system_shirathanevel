@@ -1,7 +1,14 @@
+import { savedAssignmentIntentKey } from './assignmentIntent.ts';
 // Shared, side-effect-free supplier assignment notification renderer.
 // This ensures the explicit on-save safety path and the entity workflow use
 // the same unique business key for one assignment change.
 export function assignmentWhatsAppKey(service:any,supplierId:string,templateType='SUPPLIER_NEW_ASSIGNMENT'){
+  // A durable V2 transition is the canonical key for BOTH the event trigger
+  // and explicit safeguard/reconciler. Legacy EventServices remain unchanged.
+  if(templateType==='SUPPLIER_NEW_ASSIGNMENT' && service?.assignment_intent_mode==='durable_v1'){
+    const key=savedAssignmentIntentKey(service,supplierId);
+    if(key)return key;
+  }
   return ['assignment',String(service?.id||''),String(supplierId||''),
     String(service?.updated_date||''),templateType].join(':');
 }
