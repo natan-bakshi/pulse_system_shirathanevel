@@ -2,7 +2,7 @@
   "name": "Assignment intents \u2014 reconcile after atomic save",
   "description": "Feature-gated: on a durable intent journal update, enqueue supplier WhatsApp through central Outbox using a stable business key; never send directly",
   "trigger": {
-    "condition": "${ (.trigger.changed_fields | index(\"assignment_notification_intents\") != null) }",
+    "condition": "${ (.trigger.changed_fields | index(\"assignment_intent_wake_at\") != null) }",
     "config": {
       "trigger_type": "entity",
       "events": [
