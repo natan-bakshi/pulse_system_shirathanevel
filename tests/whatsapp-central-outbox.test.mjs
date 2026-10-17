@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sendWhatsAppText, sendWhatsAppToChat, sendWhatsAppFileUri, sendWhatsAppTransport } from '../base44/shared/whatsappSend.ts';
-import { drainWhatsAppOutbox, delayUntilNextSend, delayUntilNextSendMs, providerIntervalMs, classifyWhatsAppError } from '../base44/shared/whatsappQueueWorker.ts';
+import { drainWhatsAppOutbox, delayUntilNextSend, delayUntilNextSendMs, providerIntervalMs, lastDispatchForProvider, classifyWhatsAppError } from '../base44/shared/whatsappQueueWorker.ts';
 import { readWhatsAppQueueControl } from '../base44/shared/whatsappOutbox.ts';
 
 globalThis.Deno={env:{get:key=>({WASENDER_API_KEY:'synthetic-wasender',GREEN_API_INSTANCE_ID:'synthetic-green',GREEN_API_TOKEN:'synthetic-token'})[key]}};
@@ -65,6 +65,87 @@ test('provider-specific millisecond intervals and idle first message',()=>{
  assert.equal(delayUntilNextSendMs('2026-10-13T13:59:59.950Z',now,6250),6200);
  assert.equal(delayUntilNextSendMs('2026-10-13T13:59:00Z',now,6250),0);
  assert.equal(providerIntervalMs({min_interval_seconds:3},'green'),3000);
+});
+
+
+test('pacing is independent across Green API and Wasender after both providers have history',async()=>{
+ const old=new Date(Date.now()-60_000).toISOString();
+ const x=fixture({selectedProvider:'green',green_interval_ms:170,wasender_interval_ms:5000,
+   last_green_dispatched_at:old,last_wasender_dispatched_at:old,last_dispatched_at:old});
+ await sendWhatsAppText('0501234567','green-1',x.client);
+ x.control.selectedProvider='wasender';
+ await sendWhatsAppText('0501234567','wasender-1',x.client);
+ x.control.selectedProvider='green';
+ await sendWhatsAppText('0501234567','green-2',x.client);
+ const sent=[];
+ const r=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:6000,transport:async(job,provider)=>{
+   sent.push({provider,at:Date.now(),job});return {messageId:'mix-'+sent.length};
+ }});
+ assert.equal(r.accepted,3,'Switching from Green to Wasender must not impose 5s before first Wasender message');
+ assert.deepEqual(sent.map(e=>e.provider),['green','wasender','green']);
+ assert.ok(sent[1].at-sent[0].at<1100,'A different provider does not inherit Green cooldown');
+ assert.ok(sent[2].at-sent[0].at>=155,'Return to Green respects only previous GREEN dispatch');
+ assert.equal(sent[2].job.prior_dispatch_at,sent[0].job.send_started_at);
+ assert.equal(sent[1].job.prior_dispatch_at,old);
+ assert.equal(x.control.last_green_dispatched_at,sent[2].job.send_started_at);
+ assert.equal(x.control.last_wasender_dispatched_at,sent[1].job.send_started_at);
+ assert.equal(x.control.last_provider,'green');
+});
+test('legacy queue rows retain safe pacing without per-provider timestamps',()=>{
+ const t=new Date('2026-10-17T10:00:00Z').toISOString();
+ const cfg={last_provider:'wasender',last_dispatched_at:t};
+ assert.equal(lastDispatchForProvider(cfg,'wasender'),t);
+ assert.equal(lastDispatchForProvider(cfg,'green'),t,
+   'Migration must not accidentally violate a provider gap with unknown history');
+ assert.equal(lastDispatchForProvider({...cfg,last_green_dispatched_at:'2026-10-17T09:58:00Z'},'green'),
+   '2026-10-17T09:58:00Z');
+ assert.equal(lastDispatchForProvider({last_dispatched_at:''},'green'),'');
+});
+test('stale cancelled jobs consume a bounded worker slot and cannot starve other sources',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0,wasender_interval_ms:0,
+   max_messages_per_run:2});
+ for(let i=0;i<5;i++)await sendWhatsAppText('0501234567','obsolete '+i,x.client,{
+   sourceType:'assignment_new',eventServiceId:'service-a',supplierId:'supplier-a'
+ });
+ await sendWhatsAppText('0501234567','urgent invoice',x.client,{sourceType:'invoice'});
+ const contacts=[];const transport=async(job)=>{contacts.push(job.source_type);return {messageId:'invoice-receipt'}};
+ const first=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:2000,transport});
+ assert.equal(first.processed,2);assert.equal(first.skipped,2);assert.equal(first.continued,true);
+ const second=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:2000,transport});
+ assert.equal(second.processed,2);assert.equal(second.skipped,2);
+ const third=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:2000,transport});
+ assert.equal(third.processed,2);
+ assert.equal(third.skipped,1);
+ assert.equal(third.accepted,1);
+ assert.deepEqual(contacts,['invoice']);
+ assert.equal(x.jobs.filter(j=>j.status==='cancelled').length,5);
+});
+test('Green API 200 without idMessage is UNKNOWN, never proof of delivery',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0});
+ await sendWhatsAppText('0501234567','must have receipt',x.client,{sourceType:'invoice'});
+ const originalFetch=globalThis.fetch;
+ let networkCalls=0;
+ globalThis.fetch=async()=>{networkCalls++;return {ok:true,status:200,json:async()=>({})};};
+ try{
+   const r=await drainWhatsAppOutbox(x.client);
+   assert.equal(r.unknown,1);
+   assert.equal(r.accepted,0);
+   assert.equal(x.jobs[0].status,'unknown');
+   assert.equal(networkCalls,1);
+   await drainWhatsAppOutbox(x.client);
+   assert.equal(networkCalls,1,'Never silently replay a provider request with unverified receipt');
+ }finally{globalThis.fetch=originalFetch;}
+});
+test('Green API explicit idMessage is recognized as provider acceptance, NOT delivery',async()=>{
+ const x=fixture({selectedProvider:'green',green_interval_ms:0});
+ await sendWhatsAppText('0501234567','message',x.client);
+ const originalFetch=globalThis.fetch;
+ globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({idMessage:'green-abc-42'})});
+ try{
+   const r=await drainWhatsAppOutbox(x.client);
+   assert.equal(r.accepted,1);
+   assert.equal(x.jobs[0].provider_message_id,'green-abc-42');
+ }finally{globalThis.fetch=originalFetch;}
 });
 
 test('the active provider controls real worker pacing in milliseconds',async()=>{
