@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
-import {whatsappEnqueueReceiptState} from '../../shared/whatsappReceipt.ts';
+import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
+import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
@@ -151,6 +152,7 @@ Deno.serve(async (req) => {
                             let message = replacePlaceholders(supplierTemplate.body_template, contextData);
                             const whatsappMessage = replacePlaceholders(supplierTemplate.whatsapp_body_template || supplierTemplate.body_template, contextData);
                             const link = buildDeepLink(supplierTemplate.deep_link_base, supplierTemplate.deep_link_params_map, contextData);
+                            const reminderKey=eventReminderWhatsAppKey(event,supplierTemplate,'supplier',supplierId);
 
                             // WHATSAPP SEND with quiet hours check
                             let whatsappSent = false;
@@ -171,7 +173,8 @@ Deno.serve(async (req) => {
                                             scheduled_for: quietHoursEndTime.toISOString(),
                                             template_type: 'SUPPLIER_EVENT_REMINDER',
                                             is_sent: false,
-                                            data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: supplier.phone })
+                                            data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: supplier.phone,
+                                              idempotency_key:reminderKey,source_type:'event_reminder' })
                                         });
                                         whatsappQueued = true;
                                         queuedCount++;
@@ -182,7 +185,7 @@ Deno.serve(async (req) => {
                                 } else {
                                     // Send immediately
                                     try {
-                                        whatsAppResult = await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
+                                        whatsAppResult = await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||'',idempotencyKey:reminderKey});
                                         whatsappSent = whatsappEnqueueReceiptState(whatsAppResult)==='accepted';
                                     } catch (waError) {
                                         console.error('[EventReminders] WhatsApp send failed:', waError?.message || 'unknown');
@@ -263,6 +266,7 @@ Deno.serve(async (req) => {
                         const message = replacePlaceholders(adminTemplate.body_template, contextData);
                         const whatsappMessage = replacePlaceholders(adminTemplate.whatsapp_body_template || adminTemplate.body_template, contextData);
                         const link = buildDeepLink(adminTemplate.deep_link_base, adminTemplate.deep_link_params_map, contextData);
+                        const reminderKey=eventReminderWhatsAppKey(event,adminTemplate,'admin',admin.id);
                         
                         // WHATSAPP SEND with quiet hours check (Admin)
                         let whatsappSent = false;
@@ -282,7 +286,8 @@ Deno.serve(async (req) => {
                                         scheduled_for: quietHoursEndTime.toISOString(),
                                         template_type: 'ADMIN_EVENT_REMINDER',
                                         is_sent: false,
-                                        data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: admin.phone })
+                                        data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: admin.phone,
+                                          idempotency_key:reminderKey,source_type:'event_reminder' })
                                     });
                                     queuedCount++;
                                     console.log(`[EventReminders] WhatsApp QUEUED for admin ${admin.full_name} until ${quietHoursEndTime.toISOString()}`);
@@ -291,7 +296,7 @@ Deno.serve(async (req) => {
                                 }
                             } else {
                                 try {
-                                    whatsAppResult = await sendWhatsAppText(admin.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||''});
+                                    whatsAppResult = await sendWhatsAppText(admin.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||'',idempotencyKey:reminderKey});
                                     whatsappSent = whatsappEnqueueReceiptState(whatsAppResult)==='accepted';
                                 } catch (waError) {
                                     console.error('[EventReminders] WhatsApp admin send failed:', waError?.message || 'unknown');
