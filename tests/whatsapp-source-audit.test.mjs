@@ -32,6 +32,27 @@ test('audit identifies mirror drift without confusing API acceptance with delive
  assert.equal(r.sourceOutsideSample[0].jobId,'job-orphan');
  assert.equal(JSON.stringify(r).includes('0501234567'),false);
 });
+test('read-only audit finds the two VERIFIED assignment duplicate timestamp formats',()=>{
+ const ids={service:'service-abc123',supplier:'supplier-abc123'};
+ const mk=(id,date,status='accepted',supplier=ids.supplier)=>({
+   id,source_type:'assignment_new',event_service_id:ids.service,supplier_id:supplier,
+   status,created_date:'2026-10-18T10:22:21Z',
+   idempotency_key:['assignment',ids.service,supplier,date,'SUPPLIER_NEW_ASSIGNMENT'].join(':')
+ });
+ const jobs=[
+   mk('accepted-micro','2026-10-18T10:22:19.719051'),
+   mk('accepted-milli','2026-10-18T10:22:19.719000'),
+   mk('next-revision','2026-10-18T10:22:20.719000'),
+   mk('another-supplier','2026-10-18T10:22:19.719000','accepted','supplier-other')
+ ];
+ const a=summarizeWhatsAppSourceAudit([],jobs,'2026-10-18T10:23:00Z');
+ assert.equal(a.duplicateAssignments.length,1,'Only the same supplier and same millisecond are duplicates');
+ assert.deepEqual(a.duplicateAssignments[0].jobIds,['accepted-micro','accepted-milli']);
+ assert.deepEqual(a.duplicateAssignments[0].statuses,['accepted','accepted']);
+ assert.equal(a.duplicateAssignments[0].distinctRawKeys,2);
+ assert.equal(a.duplicateAssignments[0].classification,'duplicate_assignment_business_version');
+ assert.equal(a.noMessagesSent,true);
+});
 test('audit never outputs message text or phone numbers even if model payload contains them',()=>{
  const notes=[{id:'inapp-secret',whatsapp_sent:true,template_type:'PRIVATE',
    message:'THE_MESSAGE_SECRET',phone:'0501234567'}];
