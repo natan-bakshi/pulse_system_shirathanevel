@@ -1,4 +1,21 @@
 import { savedAssignmentIntentKey } from './assignmentIntent.ts';
+// Base44 entity event payloads can carry sub-millisecond UTC precision,
+// e.g. 2026-10-18T10:22:19.719051 while EventService.get returns the SAME
+// write as 2026-10-18T10:22:19.719000. Raw string identity created two
+// independently ACCEPTED WhatsAppOutbox jobs for one business assignment.
+// Normalize to UTC milliseconds, but retain the legacy SIX-digit timestamp
+// layout. This both converges future trigger/safeguard keys and still matches
+// the already-persisted .719000 legacy Outbox key after deployment.
+export function canonicalAssignmentUpdatedDate(value:any):string {
+  const raw=String(value||'').trim();
+  if(!raw)return raw;
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})?$/.test(raw))
+    return raw; // Unrecognized legacy values keep their exact old identity.
+  const utc=raw.endsWith('Z')||/[+-]\d{2}:\d{2}$/.test(raw)?raw:raw+'Z';
+  const date=new Date(utc);
+  if(!Number.isFinite(date.getTime()))return raw;
+  return date.toISOString().slice(0,-1)+'000';
+}
 // Shared, side-effect-free supplier assignment notification renderer.
 // This ensures the explicit on-save safety path and the entity workflow use
 // the same unique business key for one assignment change.
@@ -10,7 +27,7 @@ export function assignmentWhatsAppKey(service:any,supplierId:string,templateType
     if(key)return key;
   }
   return ['assignment',String(service?.id||''),String(supplierId||''),
-    String(service?.updated_date||''),templateType].join(':');
+    canonicalAssignmentUpdatedDate(service?.updated_date),templateType].join(':');
 }
 // One canonical queue context for both the entity-workflow producer and
 // explicit assignment safeguard. A quiet-hours deferral remains an Outbox
