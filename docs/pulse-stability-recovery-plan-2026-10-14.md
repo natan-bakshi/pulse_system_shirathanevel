@@ -388,7 +388,7 @@
 - **תיקון קוד בלבד:** `assignmentWhatsAppKey` מנרמל UTC/microseconds למילישנייה אחת בריפוד `000` בצד Legacy, ושומר key עמיד `durable_v1` כמות שהוא. הותירה את שני מסלולי הבטיחות כדי לא לאבד הודעה אם טריגר אחד נכשל; ה־Outbox מפעיל idempotency משותף. WA-P40f/WA-P42e מתועדים **רק** במסמך WhatsApp הטכנולוגי.
 - **פלט QC:** שני זוגות `accepted` בדאטה אמת; 55/55 focused ו־43/43 focused; 314/315 full tests; Build/ESLint/Backend parse עברו; הכשל היחיד היסטורי `EventAgreement.create` RLS. לא היה mutation ב־EventService, לא שונו הגדרות ספקים/התראות ולא נשלחו הודעות אמת.
 - **לא הושלם:** תיקון production מחייב Publish ואימות על שיבוץ QA. D08.7 (רציפות Push/תזכורות), D08.8 (כל כותבי Legacy), D08.6b (rollback), D09 (שמירה מהירה) עדיין חוסמי הפעלה של V2. נרמול timestamp הוא חסם כפילות מיידי, **אינו תחליף** למזהה transition revision עמיד מול שינויים עסקיים חוזרים.
-- **נקודות שחזור:** פתיחה `6ad49e89646eb8b156d92f3d`, אחרי תיקון מפתח `6ad49f90127bd0512c9b24a2`. נקודת סיום לאחר עדכון המסמכים תיקבע.
+- **נקודות שחזור:** פתיחה `6ad49e89646eb8b156d92f3d`, אחרי תיקון מפתח `6ad49f90127bd0512c9b24a2`. Checkpoint סיום QA `6ad4a133c5878e1ef43b2625`, commit `aa73003838d250482d0d3c55fd9875427e02563d` (לפני עדכון מספר ה־checkpoint במסמך).
 
 ### תבנית חובה ליומן סשן הבא
 
