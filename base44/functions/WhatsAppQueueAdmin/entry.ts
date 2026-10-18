@@ -274,7 +274,8 @@ Deno.serve(async(req)=>{
         db.InAppNotification.list('-created_date',300,0,
           ['id','created_date','template_type','whatsapp_sent','whatsapp_message_id']),
         db.WhatsAppOutbox.list('-created_date',500,0,
-          ['id','created_date','in_app_notification_id','source_type','status'])
+          ['id','created_date','in_app_notification_id','source_type','status',
+           'event_service_id','supplier_id','idempotency_key'])
       ]);
       return RESPONSE({success:true,audit:summarizeWhatsAppSourceAudit(notifications,jobs,nowIso())});
     }
