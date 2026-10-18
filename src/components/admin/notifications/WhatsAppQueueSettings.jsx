@@ -146,19 +146,21 @@ export default function WhatsAppQueueSettings(){
       {sourceAudit&&<section aria-label="בדיקת התאמה WhatsApp למקור" className="rounded-lg border p-3 space-y-2 text-sm">
         <strong>התאמת מקור ↔ תור — {sourceAudit.sampledInApp} התראות ו־{sourceAudit.sampledOutbox} הודעות במדגם</strong>
         <p className="text-xs text-gray-600">זו בדיקה לקריאה בלבד. הודעת WhatsApp ללא קישור ל־Outbox עשויה להיות ישנה או הודעת Push בלבד — אין בכך הוכחה לכשל. "התקבל אצל הספק" אינו אישור מסירה.</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="rounded border p-2">כפילויות שיבוץ שאותרו במדגם: <strong>{sourceAudit.duplicateAssignments?.length||0}</strong></div>
           <div className="rounded border p-2">אישור ספק בלי עדכון התראה: <strong>{sourceAudit.acceptedWithoutMirror?.length||0}</strong></div>
           <div className="rounded border p-2">תוצאה לא ידועה מול סימון נשלח: <strong>{sourceAudit.unknownWithSentMirror?.length||0}</strong></div>
           <div className="rounded border p-2">התראות מסומנות ללא קישור במדגם: <strong>{sourceAudit.unlinkedSentFlag?.length||0}</strong></div>
         </div>
         {[
+          ['שתי הודעות לאותו שיבוץ (אותו מועד עדכון)',sourceAudit.duplicateAssignments],
           ['אישור ספק שאינו משתקף בהתראה',sourceAudit.acceptedWithoutMirror],
           ['תוצאה לא ידועה אך ההודעה מסומנת כנשלחה',sourceAudit.unknownWithSentMirror],
           ['דיווח היסטורי ללא קישור במדגם (לא הוכחת אובדן)',sourceAudit.unlinkedSentFlag]
         ].map(([label,rows])=><details key={label} className="border rounded p-2">
           <summary className="cursor-pointer font-medium">{label} — עד {rows?.length||0} פריטים</summary>
           <ul className="list-disc list-inside pt-2 space-y-1 text-xs">
-            {(rows||[]).map((item,i)=><li key={item.inAppId||i}>התראה {item.inAppId} {item.jobId?'· הודעה '+item.jobId:''} {item.templateType?'· '+item.templateType:''}</li>)}
+            {(rows||[]).map((item,i)=><li key={item.inAppId||item.eventServiceId||i}>{item.jobIds?`שיבוץ ${item.eventServiceId} · ספק ${item.supplierId} · הודעות ${item.jobIds.join(', ')} · סטטוסים ${item.statuses?.join(', ')}`:`התראה ${item.inAppId} ${item.jobId?'· הודעה '+item.jobId:''} ${item.templateType?'· '+item.templateType:''}`}</li>)}
           </ul>
         </details>)}
         <p className="text-xs text-amber-700">אין כאן לחצן שליחה מחדש. תוצאה לא ידועה מחייבת בדיקה אצל ספק WhatsApp כדי למנוע כפילויות.</p>
