@@ -383,6 +383,13 @@
 - **עדיין פתוח:** D08.7 Push תוצאות לוואי, D08.8 כל כותבי Legacy, D08.6b rollback אמיתי, D09 שמירת שיבוץ מהירה; E20c Push לכל Task ונמען; E21b מקור ששמר InApp לפני enqueue; B16 Payment state גם במקרה כשל ספק; WA-P41b בדיקת Scheduled Workflow/Watchdog/Outbox מול QA מורשה. אין לקצר Spinner דרך Promise לא־ממתין בדפדפן.
 - **Checkpoint QA סופי:** `6ad3fb91045949e6ae48553c`, commit `aa3f3170c41ae1f2d5331e4fd134c0547204ab8a` (לפני עדכון מספר הצ'קפוינט בתיעוד). לא שונה Provider/תור/מפתח V2 ב־DATA. לא לאפשר שליחת Legacy pending אוטומטית במסגרת פיילוט.
 
+### 18.10.2026 13:24 — תיקון חירום לכפילויות שיבוץ, ללא הפעלת V2
+- **סיבת השינוי:** שתי הודעות לאותו שיבוץ הודגמו ב־Outbox בפרודקשן: `updated_date` של אירוע Entity נשמר ב־microseconds ואילו `EventService.get` החזיר אותו עם מילישניות בלבד וריפוד `000`. שני המסלולים הייצוריים `handleEntityEvents` + `ensureAssignmentWhatsApp` השתמשו ב־raw string כמפתח עסקי. שתי הודעות נוצרו/אושרו בנפרד על ידי Green API.
+- **תיקון קוד בלבד:** `assignmentWhatsAppKey` מנרמל UTC/microseconds למילישנייה אחת בריפוד `000` בצד Legacy, ושומר key עמיד `durable_v1` כמות שהוא. הותירה את שני מסלולי הבטיחות כדי לא לאבד הודעה אם טריגר אחד נכשל; ה־Outbox מפעיל idempotency משותף. WA-P40f/WA-P42e מתועדים **רק** במסמך WhatsApp הטכנולוגי.
+- **פלט QC:** שני זוגות `accepted` בדאטה אמת; 55/55 focused ו־43/43 focused; 314/315 full tests; Build/ESLint/Backend parse עברו; הכשל היחיד היסטורי `EventAgreement.create` RLS. לא היה mutation ב־EventService, לא שונו הגדרות ספקים/התראות ולא נשלחו הודעות אמת.
+- **לא הושלם:** תיקון production מחייב Publish ואימות על שיבוץ QA. D08.7 (רציפות Push/תזכורות), D08.8 (כל כותבי Legacy), D08.6b (rollback), D09 (שמירה מהירה) עדיין חוסמי הפעלה של V2. נרמול timestamp הוא חסם כפילות מיידי, **אינו תחליף** למזהה transition revision עמיד מול שינויים עסקיים חוזרים.
+- **נקודות שחזור:** פתיחה `6ad49e89646eb8b156d92f3d`, אחרי תיקון מפתח `6ad49f90127bd0512c9b24a2`. נקודת סיום לאחר עדכון המסמכים תיקבע.
+
 ### תבנית חובה ליומן סשן הבא
 
 - תאריך/שעה:
