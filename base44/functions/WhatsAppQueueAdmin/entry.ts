@@ -3,7 +3,7 @@ import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDispatchForProvider, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
-import { summarizeWhatsAppSourceAudit } from '../../shared/whatsappSourceAudit.ts';
+import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit } from '../../shared/whatsappSourceAudit.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
 const MAX_PAGE = 60;
@@ -280,14 +280,21 @@ Deno.serve(async(req)=>{
       // Explicit system-owner READ ONLY action. The day-to-day status refresh
       // must stay fast: this extra DB work happens only on demand.
       const db=client.asServiceRole.entities;
-      const [notifications,jobs]=await Promise.all([
+      const [notifications,jobs,pending]=await Promise.all([
         db.InAppNotification.list('-created_date',300,0,
           ['id','created_date','template_type','whatsapp_sent','whatsapp_message_id']),
         db.WhatsAppOutbox.list('-created_date',500,0,
           ['id','created_date','in_app_notification_id','source_type','status',
-           'event_service_id','supplier_id','idempotency_key'])
+           'event_service_id','supplier_id','idempotency_key']),
+        db.PendingPushNotification.filter({is_sent:false},'-created_date',151,0,
+          ['template_type','scheduled_for','data','condition_type']).catch(()=>null)
       ]);
-      return RESPONSE({success:true,audit:summarizeWhatsAppSourceAudit(notifications,jobs,nowIso())});
+      const stamp=nowIso();
+      const audit=summarizeWhatsAppSourceAudit(notifications,jobs,stamp);
+      audit.businessReminders=pending===null
+        ? {available:false,interpretation:'Business-scheduler status could not be read; do not treat as zero pending reminders'}
+        : {available:true,...summarizePendingWhatsAppAudit(pending,stamp)};
+      return RESPONSE({success:true,audit});
     }
     if(action==='diagnose')return RESPONSE(await diagnoseQueue(client));
     if(action==='list')return await listJobs(client,body);
