@@ -9,6 +9,7 @@ import { providerCall, hasErrors, providerFailure } from "../../shared/storedCar
 import { secrets } from "base44:runtime";
 import { normalizeIsraeliPhone } from "../../shared/whatsappSend.ts";
 import {inspectAgreementWhatsApp} from "../../shared/agreementDeliveryDiagnostics.ts";
+import {invitationFailureView,hasUnresolvedAgreementInvitation} from "../../shared/agreementInvitationSafety.ts";
 import { readAll } from "../../shared/eventReadiness.ts";
 import { closingDefaults, canonical, digest, cleanText, defaultMilestones, validateMilestones, roundMoney, firstCompletedPayment } from "../../shared/agreementRules.ts";
 import { AgreementError, audit, lockAgreement, settings, financials, deliver, reconcileAgreement } from "../../shared/agreementLifecycle.ts";
@@ -422,6 +423,15 @@ export default Deno.serve(async req=>{
    if(action==="milestones")return Response.json(await updateAgreementMilestones(client,a,body,user,config));
    if(action==="issue"){
     if(!a.active)throw new AgreementError("הסכם לא פעיל");
+    if(body.send===true && await hasUnresolvedAgreementInvitation(client.entities,a.id)){
+     // A second send with a new agreement revision/key can duplicate a
+     // previous UNKNOWN WhatsApp attempt. Require explicit admin review;
+     // never interpret a historic unclassified failed row as proof of no send.
+     if(body.confirmPriorUncertain!==true)throw new AgreementError(
+      "נמצא ניסיון הזמנה קודם שתוצאתו אינה ודאית. בדוק את היסטוריית WhatsApp לפני יצירת הודעה נוספת, ואשר במפורש אם ברצונך לשלוח שוב.",409);
+     await audit(client,a,"invitation_uncertain_review_acknowledged",user.id,
+      {reviewed:true,prior_delivery_ambiguous:true});
+    }
     const token=crypto.randomUUID()+crypto.randomUUID();
     const expiry=new Date(Date.now()+7*86400000).toISOString();
     a=await client.entities.EventAgreement.update(a.id,{link_hash:await digest(token),link_expires_at:expiry,otp_sends:0,otp_attempts:0,otp_hash:"",session_hash:"",state:a.signed_at?a.state:"issued"});
@@ -439,7 +449,12 @@ export default Deno.serve(async req=>{
       await audit(client,a,delivery.state==='accepted'?'invitation_accepted':'invitation_queued',user.id,
        {delivery_id:delivery.id});
       return Response.json({url,delivery_state:delivery.state,delivery_id:delivery.id});
-     }catch(e){return Response.json({url,delivery_state:'failed',warning:e.message});}
+     }catch(e){
+      // The enqueue may have persisted even when its response was lost.
+      // Report the journal state, never collapse UNKNOWN into false FAILED.
+      return Response.json(await invitationFailureView(client.entities,
+        a.id+':invitation:'+a.revision,url));
+     }
     }
     return Response.json({url});
    }
