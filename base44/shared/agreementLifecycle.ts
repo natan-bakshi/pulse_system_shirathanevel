@@ -3,6 +3,7 @@ import { loadMilestonePaymentBalance } from "./milestonePaymentBalance.ts";
 import { calculateEventBalance } from "./eventBilling.ts";
 import { canClose, milestoneState, formatMessage, closingDefaults, roundMoney, firstCompletedPayment, effectiveDeposit, effectiveMilestones, milestoneDeliveryKey } from "./agreementRules.ts";
 import { sendWhatsAppText, sendWhatsAppFileByUrl, sendWhatsAppFileUri } from "./whatsappSend.ts";
+import {agreementDeliveryStatus,agreementDeliverySafeErrorLabel,agreementDeliveryErrorCode,agreementReceiptPatch} from "./agreementDeliverySafety.ts";
 
 export class AgreementError extends Error { status:number; constructor(message,status=400){super(message);this.name="AgreementError";this.status=status;} }
 export async function audit(client,a,kind,actor,details={}) {
@@ -33,7 +34,7 @@ export async function notifyAgreementAdmin(client,a,title,message) {
  await client.entities.InAppNotification.create({user_id:admin.id,user_email:admin.email||"",title,message,template_type:"EVENT_AGREEMENT",is_read:false,is_resolved:false,link:"/EventDetails?id="+a.event_id,related_event_id:a.event_id});
 }
 // Caller holds the agreement lock. Enqueue once; the worker records provider acceptance asynchronously.
-export async function deliver(client,a,kind,key,message,file=null,config={}) {
+export async function deliver(client,a,kind,key,message,file=null,config={},backendClient:any=null) {
  if(kind==="milestone"){
   const prefix=a.id+":milestone:";
   if(!key.startsWith(prefix))throw new AgreementError("מזהה תזכורת תשלום לא תקין");
@@ -44,32 +45,84 @@ export async function deliver(client,a,kind,key,message,file=null,config={}) {
   // Render using the fresh outstanding balance, not the earlier loop's snapshot.
   message=formatMessage(balance.milestone.template||closingDefaults[a.notifications?.language==="en"?"closing_message_template_en":"closing_message_template"],{customer_name:a.recipient_name,event_name:(await client.entities.Event.get(a.event_id)).event_name,amount:balance.outstanding,currency:balance.currency,due_date:balance.milestone.due_date,business_phone:config.business_phone||""});
  }
- const prior=await client.entities.ClientMessageDelivery.filter({key},"id",1);
- if(prior.length)return prior[0];
+ const db=client.entities;
+ const linkedOutbox=async(row:any)=>{
+  // The first enqueue may have committed even if its HTTP response, or the
+  // subsequent ClientMessageDelivery update, failed. Never create a second
+  // Outbox job merely because our status mirror was stale.
+  const found=await db.WhatsAppOutbox.filter({idempotency_key:key},'-created_date',2);
+  if(!found.length)return null;
+  const job=found[0];
+  const patch=agreementReceiptPatch({
+    status:job.status,jobId:job.id,messageId:job.provider_message_id||''
+  },new Date().toISOString());
+  try{return await db.ClientMessageDelivery.update(row.id,patch);}
+  catch{
+    console.warn('[AgreementDelivery] outbox linked; delivery mirror update pending');
+    return {...row,...patch};
+  }
+ };
+ const prior=await db.ClientMessageDelivery.filter({key},"id",1);
+ if(prior.length){
+   if(prior[0].state==='accepted')return prior[0];
+   // READ ONLY reconciliation from the existing Outbox; NO transport or retry.
+   try{return await linkedOutbox(prior[0])||prior[0];}
+   catch{return prior[0];}
+ }
  const row=await client.entities.ClientMessageDelivery.create({agreement_id:a.id,event_id:a.event_id,kind,key,target_masked:"••••"+a.recipient_phone.slice(-4),state:"dispatching",attempted_at:new Date().toISOString()});
  const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id,
   expiresAt:kind==='verification'?new Date(Date.now()+600000).toISOString():kind==='invitation'?(a.link_expires_at||''):''};
  // Agreement database calls are scoped to asServiceRole. Transport calls
  // require the root backend-client shape, including asServiceRole.entities.
- const waBackend=client?.asServiceRole?.entities ? client : {asServiceRole:client};
+ // Prefer the actual authenticated request backend when available, rather
+ // than a simulated root wrapper around a service-role proxy. Daily/cron
+ // callers continue using the backwards-compatible service-role adapter.
+ const waBackend=backendClient?.asServiceRole?.entities
+   ?backendClient
+   :client?.asServiceRole?.entities?client:{asServiceRole:client};
  let receipt:any;
  try{
   receipt=file?(file.uri?await sendWhatsAppFileUri(a.recipient_phone,file.uri,file.name,message,waBackend,context):await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,waBackend,context)):await sendWhatsAppText(a.recipient_phone,message,waBackend,context);
  }catch(error){
-  // Provider was not contacted when enqueue fails. Never include customer
-  // content, token, phone, file URI, or links in diagnostics.
-  console.error('[AgreementDelivery] enqueue failed',error instanceof Error?error.name:'unknown',String((error as any)?.queuePhase||'enqueue').slice(0,55));
-  await client.entities.ClientMessageDelivery.update(row.id,{state:"failed",error:"ההודעה לא נכנסה לתור WhatsApp. יש לבדוק את ההגדרות."});
-  try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח","ההודעה לא נשמרה לתור WhatsApp. ניתן לראות פרטים בכרטיסיית האירוע.");}
+  // Classify WITHOUT persisting raw errors (may include sensitive URLs or
+  // provider responses). A thrown enqueue request is not proof that storage
+  // did not commit: check the SAME Outbox business key first.
+  const reason=agreementDeliveryErrorCode(error);
+  console.error('[AgreementDelivery] queue did not confirm',reason);
+  let recovered=null,lookupFailed=false;
+  try{recovered=await linkedOutbox(row);}
+  catch{lookupFailed=true;}
+  if(recovered)return recovered; // Found committed record; no duplicate send.
+  let queueEnabled:null|boolean=null;
+  try{
+    const controls=await db.WhatsAppQueueControl.filter({control_key:'global'},'-created_date',2);
+    if(controls.length===1)queueEnabled=controls[0].enabled===true;
+  }catch{}
+  // If Outbox could not be inspected or queue was in legacy-direct mode,
+  // absence of a job cannot prove the provider was not contacted.
+  const ambiguous=lookupFailed||queueEnabled!==true||(error as any)?.deliveryUncertain===true;
+  const code=lookupFailed?'QUEUE_LOOKUP_UNAVAILABLE':reason;
+  const safeText=agreementDeliverySafeErrorLabel(code);
+  await db.ClientMessageDelivery.update(row.id,{
+    state:ambiguous?'unknown':'failed',error:safeText,error_code:code,
+    failure_phase:ambiguous?'unverified':'enqueue_not_confirmed'
+  });
+  try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח",
+    "שליחת ההודעה לא אושרה: "+safeText+" נא לבדוק את היסטוריית התור לפני שליחה חוזרת.");}
   catch{console.warn('[AgreementDelivery] failure notification could not be recorded');}
-  throw new AgreementError("שמירת הודעת הוואטסאפ בתור נכשלה. לא בוצעה שליחה לספק.",502);
+  throw new AgreementError(safeText+
+    (ambiguous?" תוצאת השליחה אינה ודאית. אין לשלוח שוב לפני בירור.":" ההודעה לא נקלטה בתור."),
+    502);
  }
- // An accepted/queued receipt MUST NOT be rewritten as a false "failed" row
- // just because the secondary delivery-status update momentarily failed.
- const patch={state:receipt.queued?"queued":"accepted",provider_message_id:receipt.queued?"":(receipt.messageId||""),
-  error:"",queued_at:new Date().toISOString(),queue_job_id:receipt.jobId||"",
-  ...(receipt.queued?{}:{sent_at:new Date().toISOString()})};
- try{return await client.entities.ClientMessageDelivery.update(row.id,patch);}
+ // A deduplicated Outbox job may have status UNKNOWN/FAILED. queued=false
+ // alone must NEVER be interpreted as supplier acceptance.
+ const patch=agreementReceiptPatch(receipt,new Date().toISOString());
+ if(!['queued','accepted'].includes(patch.state)){
+   try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח",
+     "קיימת רשומת WhatsApp במצב "+patch.state+". נדרש בירור לפני שליחה נוספת.");}
+   catch{console.warn('[AgreementDelivery] ambiguous delivery alert pending');}
+ }
+ try{return await db.ClientMessageDelivery.update(row.id,patch);}
  catch{
   console.warn('[AgreementDelivery] receipt persistence pending; outbox receipt remains authoritative');
   return {...row,...patch};
