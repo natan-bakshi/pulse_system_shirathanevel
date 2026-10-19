@@ -23,7 +23,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
     setLoadingAction('reassign');
     try {
       await confirmReassignAfterDateChange({ event_id: event.id });
-      toast.success('הספקים שובצו מחדש והתראת עדכון נשלחה');
+      toast.success('השיבוצים עודכנו; הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה.');
       onResolved?.();
     } catch (error) {
       console.error('Reassign failed:', error);
@@ -38,7 +38,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
     setLoadingAction('cancel');
     try {
       await cancelAssignmentsAfterDateChange({ event_id: event.id });
-      toast.success('השיבוצים בוטלו והתראות ביטול נשלחו לספקים');
+      toast.success('השיבוצים בוטלו; הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה.');
       onResolved?.();
     } catch (error) {
       console.error('Cancel failed:', error);
