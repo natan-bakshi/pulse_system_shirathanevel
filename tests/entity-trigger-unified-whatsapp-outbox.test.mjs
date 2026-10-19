@@ -6,6 +6,7 @@ import esbuild from 'esbuild';
 import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
 import {assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {sendWhatsAppToChat} from '../base44/shared/whatsappSend.ts';
 
 const base={
  entityName:'EventService',origin:{id:'es-120',updated_date:'2026-10-19T05:26:02.583051'},
@@ -97,6 +98,44 @@ function loadTrigger({now='2026-10-19T20:30:00Z',reply,statusCode='',sendError=n
    origin||{entityName:'EventService',origin:base.origin,specificSupplierId:'supplier-1'}
  ),sent,get pending(){return pending;}};
 }
+test('REAL central Outbox CAS deduplicates concurrent daytime/nighttime entity triggers without provider calls',async()=>{
+  const control={id:'global-control',control_key:'global',enabled:true,paused:false,
+    enqueue_owner:'',enqueue_until:''};
+  const jobs=[];let providersCalled=0;
+  const db={
+    WhatsAppQueueControl:{
+      filter:async()=>[control],
+      updateMany:async(q,ops)=>{
+        if(q.enqueue_owner!==control.enqueue_owner)return {updated:0};
+        Object.assign(control,ops.$set);return {updated:1};
+      }
+    },
+    WhatsAppOutbox:{
+      filter:async q=>jobs.filter(j=>j.idempotency_key===q.idempotency_key),
+      create:async data=>{const job={id:'job-'+(jobs.length+1),...data};jobs.push(job);return job;}
+    },
+    AppSettings:{filter:async()=>[{setting_value:'green'}]}
+  };
+  const client={asServiceRole:{entities:db}};
+  const before=globalThis.Deno;
+  globalThis.Deno={env:{get:()=>''}};
+  try{
+    const night=await entityTriggerWhatsAppContext(base,new Date('2026-10-19T20:30:00Z'));
+    const day=await entityTriggerWhatsAppContext(base,new Date('2026-10-19T08:30:00Z'));
+    const receipts=await Promise.all([
+      sendWhatsAppToChat(base.recipientChatId,'Same notification',client,night),
+      sendWhatsAppToChat(base.recipientChatId,'Same notification',client,day)
+    ]);
+    assert.equal(jobs.length,1);
+    assert.equal(receipts[0].jobId,receipts[1].jobId);
+    assert.ok(receipts.some(r=>r.deduplicated));
+    assert.equal(jobs[0].status,'queued');
+    assert.equal(jobs[0].idempotency_key,night.idempotencyKey);
+    assert.equal(providersCalled,0,'Producers create only Outbox rows; provider worker is independent');
+  }finally{
+    if(before===undefined)delete globalThis.Deno;else globalThis.Deno=before;
+  }
+});
 test('runtime: quiet hours create ONE Outbox intent; no PendingPushNotification or provider direct send',async()=>{
  const fx=loadTrigger();
  await fx.invoke();
