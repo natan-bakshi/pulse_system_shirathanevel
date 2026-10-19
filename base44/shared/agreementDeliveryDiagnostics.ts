@@ -50,6 +50,15 @@ export async function inspectAgreementWhatsApp(client:any,backend:any,agreementI
       provider:provider||'unknown',credentialsConfigured:providerCredentialsReady,
       controlError},
     attempts:items,
+    activeLink:{
+      issued:agreement.active===true && Number.isFinite(Date.parse(agreement.link_expires_at||'')) &&
+        Date.parse(agreement.link_expires_at)>Date.now(),
+      expiresAt:agreement.active===true?agreement.link_expires_at||null:null,
+      tokenRecoverable:false // Only a cryptographic hash is stored in DB.
+    },
+    safeNextStep:items.some(x=>['failed','unknown','dispatching'].includes(x.state))
+      ?'Check provider history before a NEW send; if the old private URL was saved, it may be copied manually while its agreement is active. Otherwise new issue requires explicit review and rotates the old URL.'
+      :'No historical send error found in the sampled invitation history.',
     limitations:'Provider acceptance is not proof of recipient delivery. Older failures have no classified cause.'
   };
 }
