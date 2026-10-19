@@ -8,6 +8,7 @@ import { CardError, requireCards, reserveHostedPayment } from "../../shared/stor
 import { providerCall, hasErrors, providerFailure } from "../../shared/storedCardProvider.ts";
 import { secrets } from "base44:runtime";
 import { normalizeIsraeliPhone } from "../../shared/whatsappSend.ts";
+import {inspectAgreementWhatsApp} from "../../shared/agreementDeliveryDiagnostics.ts";
 import { readAll } from "../../shared/eventReadiness.ts";
 import { closingDefaults, canonical, digest, cleanText, defaultMilestones, validateMilestones, roundMoney, firstCompletedPayment } from "../../shared/agreementRules.ts";
 import { AgreementError, audit, lockAgreement, settings, financials, deliver, reconcileAgreement } from "../../shared/agreementLifecycle.ts";
@@ -276,6 +277,9 @@ export default Deno.serve(async req=>{
   }
   let user;try{user=await base44.auth.me();}catch{}
   if(user?.role!=="admin")throw new AgreementError("נדרשת הרשאת מנהל",403);
+  // Explicit, admin-only queue troubleshooting without sending or changing
+  // agreement state. Do NOT run on page load; the UI requests it on click.
+  if(action==="delivery_health")return Response.json(await inspectAgreementWhatsApp(client,base44,String(body.agreementId||"")));
   const config={...closingDefaults,...await settings(client)};
   if(action==="reconcile"){await reconcileAgreement(client,body.eventId,config);return Response.json({success:true});}
   if(action==="payment_only_policy"){
