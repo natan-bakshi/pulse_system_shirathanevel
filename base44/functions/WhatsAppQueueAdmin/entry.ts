@@ -69,9 +69,18 @@ async function queueStatus(client:any){
   const entity=client.asServiceRole.entities.WhatsAppOutbox;
   const jobs=await entity.list('-created_date',500,0,HISTORY_FIELDS);
   const totals:Record<string,number>={};
+  let dueReadyCount=0,scheduledForFutureCount=0;
+  const at=Date.now();
   for(const job of jobs){
     if(job.archived===true)continue;
     totals[job.status]=(totals[job.status]||0)+1;
+    if(job.status==='queued'||job.status==='retry_wait'){
+      const available=Date.parse(String(job.available_at||''));
+      // A missing or malformed date is not grounds for claiming a future
+      // schedule. The worker itself decides if it can dispatch that record.
+      if(Number.isFinite(available)&&available>at)scheduledForFutureCount++;
+      else dueReadyCount++;
+    }
   }
   const busy=!!control.lease_owner&&Date.parse(control.lease_until||'')>Date.now();
   const waitMs=delayUntilNextSendMs(lastDispatchForProvider(control,provider),Date.now(),ms);
@@ -86,7 +95,8 @@ async function queueStatus(client:any){
       wasenderIntervalMs:wasenderMs,greenIntervalMs:greenMs,
       maxMessagesPerRun:Number(control.max_messages_per_run)||16
     },
-    totals,historyTruncated:jobs.length>=500,workerBusy:busy,
+    totals,dueReadyCount,scheduledForFutureCount,
+    historyTruncated:jobs.length>=500,workerBusy:busy,
     nextAllowedInSeconds:Math.ceil(waitMs/1000),nextAllowedInMs:waitMs,
     nextQueued:(totals.queued||0)+(totals.retry_wait||0),
     lastWorkerAt:control.last_worker_at||null,lastInvokedAt:control.last_invoked_at||null,
