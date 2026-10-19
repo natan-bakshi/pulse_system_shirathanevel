@@ -238,6 +238,9 @@
 - **QA:** `node --test tests/*.test.mjs`: **350/351 עברו**, בדיקה יחידה היסטורית `tests/event-agreement.test.mjs` (פער ציפייה לרשאות `EventAgreement.create`), ללא שינוי RLS. `npm run build`, TypeScript server parse ו־ESLint לשני מסכי EventClosingPanel/EventDetails עברו.
 - **חסמים פתוחים:** WA-P44e/WA-P41b — פיילוט נמען QA לאחר פרסום והוכחת `Outbox.create→worker`, זיהוי ספק ודוח מסירה; WA-P42d — בירור מקור בלי Outbox; WA-P40e — יתר יצרני legacy. לא לבצע replay של UNKNOWN ולא לייצר הסכם שלישי לפני בירור/אישור מפורש. אין כלי להפעלת פונקציית `delivery_health` ב־Live במסגרת סשן זה; בדיקת נתונים בוצעה דרך Base44 Entities בלבד.
 
+- [x] **WA-P45 | CODE+TEST 19.10:** `agreementInvitationSafety` מסווג חריגה לאחר בדיקת יומן `ClientMessageDelivery` ולא מסמן `failed` ללא הוכחה; `issue` חסום מפני ניסיון חוזר שקט לאחר `failed` היסטורי/UNKNOWN עד אישור מנהל מפורש; ה־UI מציג אזהרה, ו־`delivery_health` אינו חושף טוקן או משחזר URL מתוך hash. 23/23 בדיקות ממוקדות בקוד WhatsApp/הסכמים עברו, ללא שליחה אמת.
+- [ ] **WA-P46 | P0 PROD:** לאמת לאחר פרסום שמערכת E.164 בינלאומית וישראלית שומרת `ClientMessageDelivery.queue_job_id`, שיוך ל־`WhatsAppOutbox`, התעוררות Worker, תשובת ספק, ובידוד שגיאות. בנתוני 19.10 לא שמורה סיבת הכשל המקורית; **אסור** להכריז שהתקלה נפתרה או לשלוח מחדש הסכם קיים לצורך QA בלבד.
+
 ## 9. היסטוריה טכנית — תוכנית C המקורית כפי שתועדה במסמך Pulse הכללי
 הפרק הזה שומר תוכן היסטורי ורציונל, אבל **סימון ביצוע עדכני מנוהל בסעיף 3 בלבד** כדי לא ליצור פנקסים מתחרים.
 
