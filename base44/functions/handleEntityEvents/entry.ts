@@ -853,7 +853,6 @@ function getSupplierWhatsAppTarget(supplierObj, fallbackPhone = null) {
 async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj, useSupplierTarget = false, batchCache=null, origin=null) {
     const whatsappTarget = useSupplierTarget && supplierObj ? getSupplierWhatsAppTarget(supplierObj, phone) : getPhoneWhatsAppTarget(phone);
     if (!whatsappTarget.chatId) return;
-    const targetLabel = whatsappTarget.label || phone || whatsappTarget.chatId;
     
     // Resolve real Service name from Service entity (serviceObj is EventService, not Service)
     let resolvedServiceName = '';
@@ -906,86 +905,24 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
         return;
     }
 
-    // All automatic entity-trigger WhatsApp notifications use ONE Outbox job,
-    // with available_at for quiet hours and a stable business idempotency key.
-    // No separate PendingPushNotification will be written for WhatsApp here.
-    // Check quiet hours (default 22:00-08:00 Israel time)
-    const DEFAULT_QUIET_START = 22;
-    const DEFAULT_QUIET_END = 8;
-    const inQuietHours = isInQuietHours(DEFAULT_QUIET_START, DEFAULT_QUIET_END);
-    
-    if (inQuietHours) {
-        // Queue for later
-        try {
-            const quietEnd = getQuietHoursEndTime(DEFAULT_QUIET_END);
-            const userId = userObj?.id || (supplierObj ? `virtual_supplier_${supplierObj.id}` : 'virtual_unknown');
-            const userEmail = userObj?.email || supplierObj?.contact_emails?.[0] || '';
-            
-            await base44.asServiceRole.entities.PendingPushNotification.create({
-                user_id: userId,
-                user_email: userEmail,
-                title: replaceVariables(template.title_template || '', eventObj, supplierObj, serviceObj, userObj),
-                message: message,
-                link: '',
-                scheduled_for: quietEnd.toISOString(),
-                template_type: template.type,
-                is_sent: false,
-                condition_type:template.type === 'SUPPLIER_NEW_ASSIGNMENT' ? 'supplier_still_pending' : 'none',
-                related_event_id:eventObj?.id||'',related_event_service_id:serviceObj?.id||'',
-                related_supplier_id:supplierObj?.id||'',
-                data: JSON.stringify({
-                  send_whatsapp: true,whatsapp_message:message,phone:phone||'',chat_id:whatsappTarget.chatId,
-                  source_type:template.type==='SUPPLIER_NEW_ASSIGNMENT'?'assignment_new':'notification'
-                })
-            });
-            console.log(`[HandleEntityEvents] WhatsApp QUEUED for ${targetLabel} until ${quietEnd.toISOString()}`);
-        } catch (qErr) {
-            console.error(`[HandleEntityEvents] Failed to queue WhatsApp:`, qErr);
-        }
-        return;
+    // Non-assignment notifications no longer create an independently timed
+    // PendingPushNotification. The canonical Outbox carries both the business
+    // identity and its availability time, even when the trigger is replayed.
+    // An enqueue failure propagates to the existing template-error mechanism.
+    const ctx=await entityTriggerWhatsAppContext({
+      entityName:origin?.entityName||'',
+      origin:origin?.origin||null,
+      template,recipientChatId:whatsappTarget.chatId,
+      specificSupplierId:origin?.specificSupplierId||supplierObj?.id||'',
+      eventServiceId:serviceObj?.id||'',
+      eventId:eventObj?.id||'',
+      sourceType:template?.category||'notification'
+    });
+    const receipt=await sendWhatsAppToChat(whatsappTarget.chatId,message,base44,ctx);
+    if(!isWhatsAppEnqueueConfirmed(receipt)){
+      throw new Error('Automatic WhatsApp Outbox not confirmed: '+String(receipt?.status||'unverified'));
     }
-
-    // Every source now enqueues. Do not perform provider calls inside the assignment trigger.
-    const assignmentKey=template?.type==='SUPPLIER_NEW_ASSIGNMENT'&&serviceObj?.id&&supplierObj?.id
-       ? assignmentWhatsAppKey(serviceObj,supplierObj.id,template.type)
-       : '';
-    const result=await sendWhatsAppToChat(whatsappTarget.chatId,message,base44,{
-      sourceType:template?.type==='SUPPLIER_NEW_ASSIGNMENT'?'assignment_new':(template?.category||'notification'),sourceId:serviceObj?.id||eventObj?.id||'',
-      eventServiceId:serviceObj?.id||'',supplierId:supplierObj?.id||'',
-      idempotencyKey:assignmentKey
-    });
-    console.log('[HandleEntityEvents] WhatsApp queued; jobId present:',Boolean(result.jobId));
-}
-
-// --- Quiet Hours Helpers ---
-function isInQuietHours(quietStart, quietEnd, timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
-    const currentHour = parseInt(formatter.format(now), 10);
-    if (quietStart > quietEnd) return currentHour >= quietStart || currentHour < quietEnd;
-    return currentHour >= quietStart && currentHour < quietEnd;
-}
-
-function getQuietHoursEndTime(quietEnd, timezone = 'Asia/Jerusalem') {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
-    const currentHour = parseInt(formatter.format(now), 10);
-    const israelDateFormatter = new Intl.DateTimeFormat('en-US', { 
-        year: 'numeric', month: '2-digit', day: '2-digit', 
-        hour: '2-digit', minute: '2-digit', hour12: false, 
-        timeZone: timezone 
-    });
-    const parts = israelDateFormatter.formatToParts(now);
-    const year = parts.find(p => p.type === 'year')?.value;
-    const month = parts.find(p => p.type === 'month')?.value;
-    const day = parts.find(p => p.type === 'day')?.value;
-    let endDate = new Date(`${year}-${month}-${day}T${String(quietEnd).padStart(2,'0')}:00:00`);
-    const m = parseInt(month, 10);
-    const isSummer = m >= 4 && m <= 10;
-    const offsetHours = isSummer ? 3 : 2;
-    endDate = new Date(endDate.getTime() - offsetHours * 60 * 60 * 1000);
-    if (now >= endDate) endDate.setDate(endDate.getDate() + 1);
-    return endDate;
+    console.log('[HandleEntityEvents] Automatic WhatsApp receipt:',receipt.status||'queued');
 }
 
 async function triggerInApp(base44, template, user, eventObj, supplierObj, serviceObj) {
