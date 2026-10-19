@@ -121,6 +121,7 @@ export default function EventClosingPanel({event,onChanged}){
      <strong>אבחון WhatsApp — קריאה בלבד</strong>
      <p>פורמט המספר: {deliveryHealth.recipientFormat?.valid?"תקין מבחינת מבנה":"לא תקין"} · קידומת: {deliveryHealth.recipientFormat?.countryHint||"לא ידוע"}. תקינות מבנה אינה אישור שהמספר רשום ב־WhatsApp.</p>
      <p>התור: {deliveryHealth.queue?.enabled?"פעיל":"אינו פעיל או לא נגיש"} · {deliveryHealth.queue?.paused?"מושהה":"לא מושהה"} · ספק: {deliveryHealth.queue?.provider||"לא ידוע"} · הרשאות הספק: {deliveryHealth.queue?.credentialsConfigured?"מוגדרות":"חסרות או לא ניתנות לאימות"}</p>
+     {deliveryHealth.activeLink?.issued&&<p className="text-amber-800">קישור ההסכם הנוכחי עדיין בתוקף, אך המערכת שומרת רק גיבוב מאובטח של הטוקן ולכן אינה יכולה לשחזר את הכתובת הסודית. אם הקישור המקורי נשמר, ניתן להעתיק אותו ידנית. אחרת יש לבדוק את ניסיון WhatsApp הקודם לפני הפקת קישור חדש.</p>}
      {(deliveryHealth.attempts||[]).map((item,i)=><div key={i} className="border-t pt-2">
        <p>{israelDateTime(item.attempted_at)} · {({invitation:"הזמנה להסכם",verification:"קוד אימות",signed_copy:"עותק חתום",milestone:"תזכורת לתשלום"})[item.kind]||item.kind} · מקור: {statusLabel(item.state)}</p>
        <p>רשומה בתור: {item.jobFound?("כן, "+statusLabel(item.queueStatus)):(item.historyComplete?"לא נמצאה":"לא ניתן לבדוק כעת")}</p>
