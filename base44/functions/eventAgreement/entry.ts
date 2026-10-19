@@ -93,7 +93,7 @@ function validateSignature(body){
  if(count>12000||count<5||movement<0.03)throw new AgreementError("נדרשת חתימה ברורה");
  return {name,role:cleanText(body.role,120),strokes};
 }
-async function finishDocument(client,a){
+async function finishDocument(client,a,backendClient=null){
  const consent=await readAll(client.entities.ConsentClause,{agreement_id:a.id});
  for(const c of localizedAgreement(a.snapshot,a.signature?.language).clauses)if(!consent.some(x=>x.code===c.code))await client.entities.ConsentClause.create({agreement_id:a.id,event_id:a.event_id,code:c.code,text:c.text,version:a.version,accepted_at:a.signed_at});
  try{a=await persistAgreementPdf(client,a);}
@@ -103,7 +103,7 @@ async function finishDocument(client,a){
   try{
    // Store the private file URI in the outbox. The worker creates a fresh signed
    // URL at dispatch, so a long queue cannot expire an agreement attachment.
-   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy",renderClosingMessage(await settings(client),"signed",a.notifications?.language||a.snapshot.message_language,{event_name:a.snapshot.event_name,customer_name:a.recipient_name}),{uri:a.pdf_uri,name:"agreement-"+a.id+".pdf"});
+   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy",renderClosingMessage(await settings(client),"signed",a.notifications?.language||a.snapshot.message_language,{event_name:a.snapshot.event_name,customer_name:a.recipient_name}),{uri:a.pdf_uri,name:"agreement-"+a.id+".pdf"},{},backendClient);
    a=await client.entities.EventAgreement.update(a.id,{copy_state:d.state});
   }catch{a=await client.entities.EventAgreement.update(a.id,{copy_state:"unknown"});}
  }
@@ -183,7 +183,7 @@ export default Deno.serve(async req=>{
      if(a.otp_sent_at&&Date.now()-Date.parse(a.otp_sent_at)<60000)throw new AgreementError("ניתן לשלוח קוד נוסף לאחר דקה",429);
      const n=crypto.getRandomValues(new Uint32Array(1))[0]%1000000,code=String(n).padStart(6,"0");
      await client.entities.EventAgreement.update(a.id,{otp_hash:await digest(a.id+":"+code),otp_sent_at:new Date().toISOString(),otp_expires_at:new Date(Date.now()+600000).toISOString(),otp_sends:(a.otp_sends||0)+1});
-     await deliver(client,a,"verification",a.id+":otp:"+((a.otp_sends||0)+1),renderClosingMessage(await settings(client),"otp",a.notifications?.language||a.snapshot.message_language,{code,customer_name:a.recipient_name,event_name:a.snapshot.event_name}));
+     await deliver(client,a,"verification",a.id+":otp:"+((a.otp_sends||0)+1),renderClosingMessage(await settings(client),"otp",a.notifications?.language||a.snapshot.message_language,{code,customer_name:a.recipient_name,event_name:a.snapshot.event_name}),null,{},base44);
      await audit(client,a,"verification_sent","customer");return Response.json({sent:true});
     }
     if(action==="admin_verify"){
@@ -208,7 +208,7 @@ export default Deno.serve(async req=>{
     }
     if(action==="view"){await reconcileAgreement(client,a.event_id);a=await client.entities.EventAgreement.get(a.id);return Response.json(publicAgreement(a));}
     if(action==="sign"){
-     if(a.signed_at){a=await finishDocument(client,a);await reconcileAgreement(client,a.event_id);return Response.json(publicAgreement(await client.entities.EventAgreement.get(a.id)));}
+     if(a.signed_at){a=await finishDocument(client,a,base44);await reconcileAgreement(client,a.event_id);return Response.json(publicAgreement(await client.entities.EventAgreement.get(a.id)));}
      if(body.contentHash!==a.content_hash)throw new AgreementError("נוסח ההסכם השתנה; יש לרענן",409);
      const sig=validateSignature(body);
      const language=agreementLanguage(body.language||a.snapshot.form_language);
@@ -219,7 +219,7 @@ export default Deno.serve(async req=>{
      const signedAt=new Date().toISOString();
      a=await client.entities.EventAgreement.update(a.id,{signature,signature_hash:await digest(canonical({signature,content_hash:a.content_hash,signed_at:signedAt})),signed_at:signedAt,state:"signed",link_hash:"",otp_hash:"",pdf_state:"pending"});
      await audit(client,a,"signed","customer",{content_hash:a.content_hash,signature_hash:a.signature_hash});
-     a=await finishDocument(client,a);await reconcileAgreement(client,a.event_id);
+     a=await finishDocument(client,a,base44);await reconcileAgreement(client,a.event_id);
      return Response.json(publicAgreement(await client.entities.EventAgreement.get(a.id)));
     }
     // Read-only access to the exact proposal frozen in this agreement; existing verified-session authorization applies.
@@ -230,7 +230,7 @@ export default Deno.serve(async req=>{
     }
     if(!a.signed_at)throw new AgreementError("יש לחתום לפני שמירת כרטיס או תשלום",409);
     if(action==="document"){
-     a=await finishDocument(client,a);if(!a.pdf_uri)throw new AgreementError("החתימה נשמרה; הפקת המסמך ממתינה לטיפול",503);
+     a=await finishDocument(client,a,base44);if(!a.pdf_uri)throw new AgreementError("החתימה נשמרה; הפקת המסמך ממתינה לטיפול",503);
      const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.pdf_uri,expires_in:600});
      return Response.json({url:signed_url});
     }
@@ -427,7 +427,7 @@ export default Deno.serve(async req=>{
      try{
       const delivery=await deliver(client,a,"invitation",a.id+":invitation:"+a.revision,
        renderClosingMessage(config,"invitation",a.notifications?.language||a.snapshot.message_language,
-       {customer_name:a.recipient_name,event_name:a.snapshot.event_name,link:url}));
+       {customer_name:a.recipient_name,event_name:a.snapshot.event_name,link:url}),null,{},base44);
       // "Queued" is not "accepted by provider". Never tell the administrator
       // that the customer has received an invitation on enqueue alone.
       if(!['queued','accepted'].includes(delivery.state))
@@ -450,7 +450,7 @@ export default Deno.serve(async req=>{
      return Response.json({url:signed_url});
     }
     if(!a.signed_at)throw new AgreementError("ההסכם טרם נחתם");
-    a=await finishDocument(client,a);
+    a=await finishDocument(client,a,base44);
     if(!a.pdf_uri)throw new AgreementError("הפקת PDF נכשלה; ניתן לנסות שוב",503);
     const {signed_url}=await client.integrations.Core.CreateFileSignedUrl({file_uri:a.pdf_uri,expires_in:600});
     return Response.json({url:signed_url});
@@ -462,7 +462,7 @@ export default Deno.serve(async req=>{
      if(m.message_state==="pending")await client.entities.PaymentMilestone.update(m.id,{notification_enabled:n.enabled,template:n.template,notify_at:reminderTime(m.due_date,n.days,n.time)});
     }
     await audit(client,a,"notification_settings_changed",user.id,{...n,send_copy:!!body.send_copy});
-    if(body.send_copy&&a.signed_at)await finishDocument(client,await client.entities.EventAgreement.get(a.id));
+    if(body.send_copy&&a.signed_at)await finishDocument(client,await client.entities.EventAgreement.get(a.id),base44);
     return Response.json({success:true});
    }
    if(action==="amendment"){
