@@ -53,8 +53,13 @@ export async function deliver(client,a,kind,key,message,file=null,config={},back
   const found=await db.WhatsAppOutbox.filter({idempotency_key:key},'-created_date',2);
   if(!found.length)return null;
   const job=found[0];
+  // This is an authoritative persisted Outbox row, not a send() receipt.
+  // Some receipts require queued=true, while persisted records only have
+  // status='queued'; never misclassify a committed job as UNKNOWN.
   const patch=agreementReceiptPatch({
-    status:job.status,jobId:job.id,messageId:job.provider_message_id||''
+    success:true,status:job.status,
+    queued:['queued','sending','retry_wait'].includes(String(job.status)),
+    jobId:job.id,messageId:job.provider_message_id||''
   },new Date().toISOString());
   try{return await db.ClientMessageDelivery.update(row.id,patch);}
   catch{
