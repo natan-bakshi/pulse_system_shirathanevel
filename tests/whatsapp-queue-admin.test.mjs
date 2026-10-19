@@ -102,6 +102,35 @@ test('lightweight read-only status/list/metrics use server-side field projection
  assert.ok(ctx.listProjections[0].includes('status'));
  assert.ok(ctx.listProjections.at(-1).includes('transport_finished_at'));
 });
+test('queue status distinguishes due jobs, quiet-hour futures and a genuinely empty queue',async()=>{
+ const now=new Date().toISOString();
+ const future=new Date(Date.now()+90*60*1000).toISOString();
+ const due=makeJob('job-due','queued');
+ due.available_at=now;
+ const scheduled=makeJob('job-later','retry_wait');
+ scheduled.available_at=future;
+ const finished=makeJob('job-done','accepted');
+ const archived=makeJob('job-archived','queued');
+ archived.archived=true;
+ const contextWithJobs=context({state:{enabled:true},jobs:[due,scheduled,finished,archived]});
+ const r=await contextWithJobs.invoke('status');
+ assert.equal(r.status,200);
+ assert.equal(r.body.dueReadyCount,1);
+ assert.equal(r.body.scheduledForFutureCount,1);
+ assert.equal(r.body.workerBusy,false);
+ assert.equal(r.body.historyTruncated,false);
+ const empty=await context({state:{enabled:true},jobs:[]}).invoke('status');
+ assert.equal(empty.body.dueReadyCount,0);
+ assert.equal(empty.body.scheduledForFutureCount,0);
+ assert.equal(empty.body.nextQueued,0);
+});
+test('queue settings UI does not label an empty queue ready to send',()=>{
+ const source=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+ assert.match(source,/view\.dueReadyCount/);
+ assert.match(source,/view\.scheduledForFutureCount/);
+ assert.match(source,/התור ריק/);
+ assert.doesNotMatch(source,/מוכן לשליחה ללא המתנה/);
+});
 test('provider wait UI uses its own dispatch history, not the other provider cooldown',async()=>{
  const recent=new Date(Date.now()-1000).toISOString();
  const old=new Date(Date.now()-60000).toISOString();
