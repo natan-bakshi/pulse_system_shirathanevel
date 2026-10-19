@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
 import {planAssignmentTransition} from '../base44/shared/assignmentIntent.ts';
+import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
+import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 
 // Execute only the actual trigger's internal send path in isolation, without
 // triggering a real Base44 workflow, inserting Pending rows, or contacting WhatsApp.
@@ -36,6 +38,8 @@ test('assignment trigger uses the same Outbox key while quiet, never a second Pe
        assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTime
      };
      if(path.endsWith('assignmentReminderTiming.ts'))return {shouldScheduleAssignmentReplyReminder:()=>true};
+     if(path.endsWith('entityTriggerWhatsApp.ts'))return {entityTriggerWhatsAppContext};
+     if(path.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed};
      if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>delay};
      throw Error('Unexpected dependency '+path);
    }
