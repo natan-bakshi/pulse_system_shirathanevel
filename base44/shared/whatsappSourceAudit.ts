@@ -1,4 +1,41 @@
 import {canonicalAssignmentUpdatedDate} from './assignmentWhatsApp.ts';
+
+// The business scheduler is NOT the transport Outbox. A pending, conditional
+// reminder can be healthy while WhatsAppOutbox is empty. Return only coarse
+// counts; never expose its JSON data (which contains private phones/content).
+// Older rows without idempotency_key still have a per-row scheduled-wa:<id>
+// fallback later, but cannot dedupe two different Pending rows for one intent.
+export function summarizePendingWhatsAppAudit(rows:any[],nowIso:string,maxSample=151){
+  const now=Date.parse(String(nowIso||''));
+  let whatsappWaiting=0,withBusinessKey=0,legacyWithoutBusinessKey=0;
+  let scheduledFuture=0,scheduledDue=0,invalidScheduledTime=0,malformedData=0;
+  const byTemplate=new Map<string,number>();
+  for(const row of rows||[]){
+    let data:any={};
+    try{data=row.data?JSON.parse(row.data):{};}catch{malformedData++;continue;}
+    if(data?.send_whatsapp!==true)continue;
+    whatsappWaiting++;
+    if(typeof data.idempotency_key==='string'&&data.idempotency_key.trim())withBusinessKey++;
+    else legacyWithoutBusinessKey++;
+    const due=Date.parse(String(row.scheduled_for||''));
+    if(!Number.isFinite(due)||!Number.isFinite(now))invalidScheduledTime++;
+    else if(due>now)scheduledFuture++;
+    else scheduledDue++;
+    const type=String(row.template_type||'unknown').slice(0,80);
+    byTemplate.set(type,(byTemplate.get(type)||0)+1);
+  }
+  return {
+    sampledPending:rows?.length||0,
+    sampleTruncated:(rows?.length||0)>=maxSample,
+    whatsappWaiting,withBusinessKey,legacyWithoutBusinessKey,
+    scheduledFuture,scheduledDue,invalidScheduledTime,malformedData,
+    byTemplate:[...byTemplate.entries()].sort((a,b)=>b[1]-a[1])
+      .slice(0,20).map(([templateType,count])=>({templateType,count})),
+    noMessagesSent:true,providerAcceptanceIsNotDelivery:true,
+    interpretation:'Business reminders awaiting their time/condition are NOT yet WhatsAppOutbox jobs. Due does not prove stuck; verify the scheduled worker separately.'
+  };
+}
+
 // Read-only reconciliation between Outbox receipts and InApp mirrors.
 // Sampled records cannot prove historical delivery or non-delivery: legacy
 // WhatsApp sends preceded the central Outbox, and Push-only notifications
