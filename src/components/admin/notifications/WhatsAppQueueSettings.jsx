@@ -102,7 +102,14 @@ export default function WhatsAppQueueSettings(){
         <span>לא ידוע: <strong>{totals.unknown||0}</strong></span>
         <span>{view.workerBusy?'עובד התור פעיל':'עובד התור פנוי'}</span>
         <span>מרווח פעיל: <strong>{view.currentIntervalMs}ms</strong></span>
-        <span>{view.nextAllowedInMs>0?'מרווח נותר '+(view.nextAllowedInMs/1000).toFixed(2)+' שניות':'מוכן לשליחה ללא המתנה'}</span>
+        <span>זמינות: <strong>{!view.config?.enabled?'התור כבוי':view.config?.paused?'התור מושהה':
+          view.workerBusy?'העובד מטפל בהודעות':(view.dueReadyCount||0)>0?
+            ((view.nextAllowedInMs||0)>0?'הודעות זמינות, בהמתנה למרווח הספק':'הודעות זמינות — העובד יכול לטפל בהן'):
+          (view.scheduledForFutureCount||0)>0?'כל הממתינות במדגם מתוזמנות לעתיד':
+          view.historyTruncated?'לא נמצאו הודעות זמינות במדגם':'התור ריק — ההודעה הבאה אינה ממתינה לתור קיים'}</strong></span>
+        <span>מוכנות כעת: <strong>{view.dueReadyCount||0}</strong> · מתוזמנות לעתיד: <strong>{view.scheduledForFutureCount||0}</strong></span>
+        {(view.dueReadyCount||0)>0&&(view.nextAllowedInMs||0)>0&&
+          <span>המתנת ספק נוכחי: {(view.nextAllowedInMs/1000).toFixed(2)} שניות</span>}
         {view.lastWorkerAt&&<span>טיפול אחרון בהודעות: {new Date(view.lastWorkerAt).toLocaleString('he-IL')}</span>}
         {view.lastWatchdogAt
           ?<span className={view.watchdogLate?'text-red-700 font-semibold':''}>
