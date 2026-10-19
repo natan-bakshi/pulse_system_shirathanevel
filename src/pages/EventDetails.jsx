@@ -395,9 +395,15 @@ export default function EventDetails() {
   });
 
   const loadEventData = useCallback(async () => {
-    await queryClient.refetchQueries({ queryKey: ['event', eventId] });
-    await queryClient.refetchQueries({ queryKey: ['eventServices', eventId] });
-    await queryClient.refetchQueries({ queryKey: ['payments', eventId] });
+    // The three read-only queries are independent AFTER a mutation commits.
+    // Refreshing serially held the EventClosingPanel (and other editors)
+    // spinner open for three network round trips. Keep every query key and
+    // wait for ALL results, but overlap their network time.
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['event', eventId] }),
+      queryClient.refetchQueries({ queryKey: ['eventServices', eventId] }),
+      queryClient.refetchQueries({ queryKey: ['payments', eventId] })
+    ]);
   }, [eventId, queryClient]);
 
   const filteredServicesForSupplier = useMemo(() => {
