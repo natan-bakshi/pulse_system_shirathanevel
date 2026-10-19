@@ -43,6 +43,9 @@ export async function invitationFailureView(db:any,key:string,url:string){
 export async function hasUnresolvedAgreementInvitation(db:any,agreementId:string){
   const rows=await db.ClientMessageDelivery.filter({agreement_id:agreementId,kind:'invitation'},
     '-created_date',20,0,['state','error_code','failure_phase','key','attempted_at']);
+  // A truncated 20-row snapshot cannot prove there were no older unresolved
+  // sends. Demand explicit review instead of silently minting a new token.
+  if(rows.length>=20)return true;
   return rows.some((row:any)=>{
     const s=String(row.state||'');
     if(s==='dispatching'||s==='unknown')return true;
