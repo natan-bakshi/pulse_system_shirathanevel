@@ -81,16 +81,16 @@ test('agreement private PDF enqueues with service-role backend context, without 
   assert.equal(f.calls[0].context.idempotencyKey,'agreement-1:signed-copy');
   assert.equal(f.alerts.length,0);
 });
-test('outbox enqueue rejection creates a real failed record and one actionable alert per event',async()=>{
+test('ambiguous outbox enqueue rejection creates UNKNOWN and one actionable alert per event',async()=>{
   const f=fixture({sendError:true});
   await assert.rejects(f.deliver(f.scoped,f.agreement,'invitation','agreement-1:invite-a','message'));
   await assert.rejects(f.deliver(f.scoped,f.agreement,'invitation','agreement-1:invite-b','message'));
   assert.equal(f.rows.length,2);
-  assert.equal(f.rows[0].state,'failed');
+  assert.equal(f.rows[0].state,'unknown');
   assert.equal(f.alerts.length,1);
   const count=f.calls.length;
   const prev=await f.deliver(f.scoped,f.agreement,'invitation','agreement-1:invite-a','message');
-  assert.equal(prev.state,'failed');
+  assert.equal(prev.state,'unknown');
   assert.equal(f.calls.length,count,'Do not auto-retry previous failed messages after a code fix');
 });
 test('a failed status-record update after successful enqueue never creates a false failure alert',async()=>{
