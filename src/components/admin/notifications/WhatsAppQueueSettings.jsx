@@ -153,6 +153,13 @@ export default function WhatsAppQueueSettings(){
       {sourceAudit&&<section aria-label="בדיקת התאמה WhatsApp למקור" className="rounded-lg border p-3 space-y-2 text-sm">
         <strong>התאמת מקור ↔ תור — {sourceAudit.sampledInApp} התראות ו־{sourceAudit.sampledOutbox} הודעות במדגם</strong>
         <p className="text-xs text-gray-600">זו בדיקה לקריאה בלבד. הודעת WhatsApp ללא קישור ל־Outbox עשויה להיות ישנה או הודעת Push בלבד — אין בכך הוכחה לכשל. "התקבל אצל הספק" אינו אישור מסירה.</p>
+        {sourceAudit.businessReminders?.available?<details className="rounded border p-2" open>
+          <summary className="cursor-pointer font-medium">תזכורות עסקיות שטרם הגיעו לתור הספק — {sourceAudit.businessReminders.whatsappWaiting} הודעות WhatsApp במדגם</summary>
+          <p className="text-xs pt-2">ממתינות לתאריך או לתנאי: {sourceAudit.businessReminders.scheduledFuture} עתידיות; {sourceAudit.businessReminders.scheduledDue} הגיע מועדן. הגעת המועד אינה הוכחה לכשל — יש לבדוק גם את עובד התזכורות.</p>
+          <p className="text-xs">עם מזהה עסקי: {sourceAudit.businessReminders.withBusinessKey}; רשומות ותיקות ללא מזהה עסקי: {sourceAudit.businessReminders.legacyWithoutBusinessKey}. אלה אינן נשלחות שוב אוטומטית באבחון.</p>
+          {sourceAudit.businessReminders.sampleTruncated&&<p className="text-xs text-amber-700">הנתונים מוגבלים למדגם האחרון, ולא לכלל התזכורות.</p>}
+          <ul className="list-disc list-inside text-xs pt-1">{(sourceAudit.businessReminders.byTemplate||[]).map(x=><li key={x.templateType}>{x.templateType}: {x.count}</li>)}</ul>
+        </details>:<p className="text-xs text-amber-700">לא ניתן לקרוא כרגע את תזכורות המקור. זה אינו אומר שאין תזכורות ממתינות.</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div className="rounded border p-2">כפילויות שיבוץ שאותרו במדגם: <strong>{sourceAudit.duplicateAssignments?.length||0}</strong></div>
           <div className="rounded border p-2">אישור ספק בלי עדכון התראה: <strong>{sourceAudit.acceptedWithoutMirror?.length||0}</strong></div>
