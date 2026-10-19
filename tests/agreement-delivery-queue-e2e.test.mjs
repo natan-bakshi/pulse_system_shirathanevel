@@ -140,7 +140,7 @@ test('ambiguous database enqueue failure is UNKNOWN without leaking customer con
 });
 test('definite pre-create validation rejects safely with FAILED, not UNKNOWN',async()=>{
  const x=fixture({createMode:'before_definite'});
- await assert.rejects(x.deliver(),/אינה פעיל/);
+ await assert.rejects(x.deliver(),/אינו פעיל/);
  assert.equal(x.deliveries[0].state,'failed');
  assert.equal(x.deliveries[0].error_code,'QUEUE_DISABLED');
  assert.equal(x.deliveries[0].failure_phase,'enqueue_not_confirmed');
