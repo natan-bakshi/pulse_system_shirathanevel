@@ -24,7 +24,7 @@ function Notifications({value:n,onChange}){
  </fieldset>;
 }
 export default function EventClosingPanel({event,onChanged}){
- const qc=useQueryClient(),detailsRef=useRef(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[url,setUrl]=useState(""),[draft,setDraft]=useState(null),[notification,setNotification]=useState(null),[amendment,setAmendment]=useState(null);
+ const qc=useQueryClient(),detailsRef=useRef(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[url,setUrl]=useState(""),[draft,setDraft]=useState(null),[notification,setNotification]=useState(null),[amendment,setAmendment]=useState(null),[deliveryHealth,setDeliveryHealth]=useState(null);
  const {data,error:loadError,refetch}=useQuery({queryKey:["eventAgreement",event.id],queryFn:()=>agreementAction("list",{eventId:event.id}),staleTime:45000});
  const a=data?.current;
  const [editingMilestones,setEditingMilestones]=useState(false);
@@ -36,6 +36,16 @@ export default function EventClosingPanel({event,onChanged}){
  const receiptMessage=state=>state==='accepted'
    ?"ההודעה התקבלה אצל ספק WhatsApp. מסירה לנמען טרם אומתה."
    :"ההודעה נשמרה בתור WhatsApp וממתינה לאישור הספק. ניתן לבדוק את התקדמותה במעקב.";
+ const inspectDelivery=async()=>{
+  if(!a?.id)return;
+  setBusy(true);setError("");setMessage("");
+  try{
+   const info=await agreementAction("delivery_health",{agreementId:a.id});
+   setDeliveryHealth(info);
+   setMessage("בדיקת WhatsApp הושלמה. לא בוצעה שליחה ללקוח.");
+  }catch(e){setError(agreementError(e));}
+  finally{setBusy(false);}
+ };
  const issue=send=>run(async()=>{
    const r=await agreementAction("issue",{agreementId:a.id,send});
    setUrl(r.url);
@@ -89,12 +99,24 @@ export default function EventClosingPanel({event,onChanged}){
    <div className="flex flex-wrap gap-2">
     <Button disabled={busy} variant="outline" onClick={()=>issue(true)}>שלח קישור בוואטסאפ</Button>
     <Button disabled={busy} variant="outline" onClick={()=>issue(false)}>הפק קישור להעתקה</Button>
+    <Button disabled={busy} variant="outline" onClick={inspectDelivery}>בדוק WhatsApp ללא שליחה</Button>
     {a.signed_at&&a.token_state!=="verified"&&<Button disabled={busy} variant="outline" onClick={()=>run(async()=>{await agreementAction("link_existing_card",{eventId:event.id});setMessage("הכרטיס הקיים קושר להרשאה החתומה");})}>קשר כרטיס קיים להסכם</Button>}
     {a.signed_at&&<Button disabled={busy} variant="outline" onClick={()=>openPdf(a.id)}>הסכם PDF חתום</Button>}
     <Button disabled={busy} variant="outline" onClick={()=>setNotification({notifications:a.notifications,send_copy:a.send_copy})}>הגדרות הודעות</Button>
     {a.signed_at&&<Button disabled={busy} variant="outline" onClick={()=>setAmendment({description:"",channel:"וואטסאפ",approved_by:"",approved_at:new Date().toISOString().slice(0,16),price_change:0,requires_resign:false})}>תעד שינוי מוסכם</Button>}
     <Button disabled={busy} variant="ghost" onClick={()=>{if(window.confirm("לבטל את הקישור והמשך השימוש בטופס? התיעוד החתום יישמר."))run(async()=>{await agreementAction("cancel",{agreementId:a.id});setUrl("");});}}>בטל טופס</Button>
    </div>
+   {deliveryHealth&&<section aria-label="אבחון WhatsApp לסגירת אירוע" className="border rounded-lg p-3 text-sm space-y-2">
+     <strong>אבחון WhatsApp — קריאה בלבד</strong>
+     <p>פורמט המספר: {deliveryHealth.recipientFormat?.valid?"תקין מבחינת מבנה":"לא תקין"} · קידומת: {deliveryHealth.recipientFormat?.countryHint||"לא ידוע"}. תקינות מבנה אינה אישור שהמספר רשום ב־WhatsApp.</p>
+     <p>התור: {deliveryHealth.queue?.enabled?"פעיל":"אינו פעיל או לא נגיש"} · {deliveryHealth.queue?.paused?"מושהה":"לא מושהה"} · ספק: {deliveryHealth.queue?.provider||"לא ידוע"} · הרשאות הספק: {deliveryHealth.queue?.credentialsConfigured?"מוגדרות":"חסרות או לא ניתנות לאימות"}</p>
+     {(deliveryHealth.attempts||[]).map((item,i)=><div key={i} className="border-t pt-2">
+       <p>{israelDateTime(item.attempted_at)} · {({invitation:"הזמנה להסכם",verification:"קוד אימות",signed_copy:"עותק חתום",milestone:"תזכורת לתשלום"})[item.kind]||item.kind} · מקור: {statusLabel(item.state)}</p>
+       <p>רשומה בתור: {item.jobFound?("כן, "+statusLabel(item.queueStatus)):(item.historyComplete?"לא נמצאה":"לא ניתן לבדוק כעת")}</p>
+       {item.errorLabel&&<p className="text-amber-800">אבחון: {item.errorLabel}</p>}
+     </div>)}
+     <p className="text-xs text-muted-foreground">לא התבצעה שליחה חוזרת. היעדר רשומה ישנה בתור אינו מוכיח שהודעה לא נמסרה. אישור ספק אינו אישור מסירה ללקוח.</p>
+   </section>}
    {url&&<div className="space-y-2 bg-blue-50 p-3 rounded"><label>קישור פרטי ללקוח<input readOnly dir="ltr" className={input} value={url} onFocus={e=>e.target.select()}/></label><Button variant="outline" onClick={()=>run(async()=>{await navigator.clipboard.writeText(url);setMessage("הקישור הועתק");})}>העתק</Button><p className="text-xs">הפקת קישור חדש מבטלת את הקישור וההפעלה הקודמים. תוקף הקישור שבעה ימים.</p></div>}
    {data.deposits?.filter(p=>p.pending).map(p=><div key={p.id} className="rounded bg-amber-50 p-3 text-sm"><p>תשלום מקדמה בסך {p.amount} בבירור. מזהה: {p.id}</p>{p.canRecover?<Button disabled={busy} variant="outline" onClick={()=>run(async()=>{await agreementAction("recover_deposit",{eventId:event.id,paymentId:p.id});setMessage("תוצאת הספק נבדקה מחדש");})}>ברר ואמת מול הספק</Button>:<p>טרם התקבל מזהה עסקה מהספק. אין ליצור תשלום נוסף לפני בירור.</p>}</div>)}
    {a.active&&<div className="space-y-3"><Button disabled={busy||a.busy_operation} variant="outline" onClick={()=>setEditingMilestones(true)}>ערוך אבני דרך</Button><CurrentPaymentSchedule rows={data.milestones||[]} currency={a.snapshot.currency}/></div>}
