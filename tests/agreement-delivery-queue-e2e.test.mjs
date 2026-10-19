@@ -35,6 +35,7 @@ function fixture({phone='15165551234',createMode='normal',lookupFails=false}={})
      },
      create:async data=>{
        createAttempts++;
+       if(createMode==='before_definite')throw Error('Central WhatsApp queue has not been activated');
        if(createMode==='before')throw Error('synthetic storage create failure');
        const job={...data,id:'outbox-'+(++serial)};
        outbox.push(job);
@@ -125,17 +126,25 @@ test('Outbox committed but response lost is recovered by SAME key, not sent twic
  await x.deliver();
  assert.equal(x.createAttempts,1);
 });
-test('pre-enqueue failure is classified without recording tokens, phones or message content',async()=>{
+test('ambiguous database enqueue failure is UNKNOWN without leaking customer content',async()=>{
  const x=fixture({createMode:'before'});
- await assert.rejects(x.deliver(),/לא התקבל אישור/);
+ await assert.rejects(x.deliver(),/אינה ודאית/);
  assert.equal(x.outbox.length,0);
- assert.equal(x.deliveries[0].state,'failed');
+ assert.equal(x.deliveries[0].state,'unknown');
  assert.equal(x.deliveries[0].error_code,'QUEUE_ENQUEUE_UNVERIFIED');
- assert.equal(x.deliveries[0].failure_phase,'enqueue_not_confirmed');
+ assert.equal(x.deliveries[0].failure_phase,'unverified');
  assert.equal(x.alerts.length,1);
  const safe=JSON.stringify(x.deliveries[0]);
  assert.ok(!safe.includes('15165551234'));
  assert.ok(!safe.includes('Synthetic closing invitation'));
+});
+test('definite pre-create validation rejects safely with FAILED, not UNKNOWN',async()=>{
+ const x=fixture({createMode:'before_definite'});
+ await assert.rejects(x.deliver(),/אינה פעיל/);
+ assert.equal(x.deliveries[0].state,'failed');
+ assert.equal(x.deliveries[0].error_code,'QUEUE_DISABLED');
+ assert.equal(x.deliveries[0].failure_phase,'enqueue_not_confirmed');
+ assert.equal(x.outbox.length,0);
 });
 test('if Outbox status cannot be checked, no failed/not-sent claim is permitted',async()=>{
  const x=fixture({createMode:'before',lookupFails:true});
