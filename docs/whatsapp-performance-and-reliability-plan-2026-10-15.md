@@ -226,7 +226,7 @@
 - **בדיקות:** `node --test tests/*.test.mjs` — **339/340 עברו**; כשל יחיד ישן ב־`tests/event-agreement.test.mjs` שמצפה ל־RLS `create=false` בזמן ש־schema מאפשר `admin` (הרשאות לא שונו). `npm run build` עבר, `eslint` בשלושת מסכי UI עבר, `esbuild` parse לקוד שרת ו־JSON schema עבר. ב־`tests/agreement-delivery-queue-e2e.test.mjs` הוזנו מס' QA של ישראל/צפון אמריקה, ונבדקו כשל לפני ואחרי Commit, התאוששות דרך אותו Outbox, Unknown, מידע לא רגיש ופעולת אבחון ללא הודעה. כל הבדיקות עם ספקי Mock; **לא נשלח WhatsApp אמיתי**.
 - **לא טופל/חסם P0:** אין הוכחה לפרסום Live או לסיבת השגיאה המקורית; אין אימות ניסיון ראשון תוך שניות/מיילסטון לקוח אמיתי; אין מנגנון safe replay להודעות היסטוריות; D08.7/8 ו־D08.6b עדיין חוסמי השיבוצים המהירים. כיסוי idempotency לשאר `handleEntityEvents` ו־`sendPushNotification` עדיין WA-P40e; A→B→A במעבר זמן ספק דורש revision עמיד, אין להבטיח exactly-once עסקי ללא אותו revision.
 - **המשך:** WA-P44e (פיילוט בנמען QA מאושר לאחר Publish), WA-P41b (Worker+Watchdog ממשי), WA-P42d (מקור לא מקושר), WA-P40e (יתרת producers) בשמירה על zero auto replay של unknown. אין לבצע פעולת בדיקה המשנה נתוני לקוח/ספק אמת.
-- **עצירה:** לאחר מסמכי התוכנית ייווצר checkpoint סיום מסודר. לא נעשו עדכוני נתוני אירועים או תשלומים.
+- **Checkpoint סיום:** `6ad67c67dc1ea2e37900ca83`, commit `bd65cd712007ea8d176767296fafbc4f7af19f0e` (טרם רישום מספר ה־checkpoint במסמך עצמו). לא נעשו עדכוני נתוני אירועים או תשלומים.
 
 ## 9. היסטוריה טכנית — תוכנית C המקורית כפי שתועדה במסמך Pulse הכללי
 הפרק הזה שומר תוכן היסטורי ורציונל, אבל **סימון ביצוע עדכני מנוהל בסעיף 3 בלבד** כדי לא ליצור פנקסים מתחרים.
