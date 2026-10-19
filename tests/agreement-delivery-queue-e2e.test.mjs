@@ -173,6 +173,20 @@ test('readonly agreement diagnosis never sends a WhatsApp or leaks customer phon
  assert.ok(!output.includes('15165551234'));
  assert.ok(!output.includes('Synthetic closing invitation'));
 });
+test('read-only diagnosis explains active private token cannot be reconstructed from the stored hash',async()=>{
+ const x=fixture({phone:'+1 (516) 555-1234'});
+ x.agreements[0].active=true;
+ x.agreements[0].link_expires_at=new Date(Date.now()+86400_000).toISOString();
+ x.deliveries.push({id:'failed-previous',agreement_id:'agreement-aa123',kind:'invitation',
+   state:'failed',key:'agreement-aa123:invitation:1'});
+ const report=await inspectAgreementWhatsApp(x.scoped,x.root,'agreement-aa123');
+ assert.equal(report.activeLink.issued,true);
+ assert.equal(report.activeLink.tokenRecoverable,false);
+ assert.ok(report.activeLink.expiresAt);
+ assert.equal(report.messageSent,false);
+ const safe=JSON.stringify(report);
+ assert.ok(!safe.includes('15165551234'));
+});
 test('classification covers invalid foreign number and queue states without exposing input',()=>{
  for(const [error,code] of [
    [new Error('Invalid WhatsApp phone number: +15551234567'), 'INVALID_PHONE_FORMAT'],
