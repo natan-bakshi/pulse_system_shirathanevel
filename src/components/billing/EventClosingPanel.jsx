@@ -46,13 +46,24 @@ export default function EventClosingPanel({event,onChanged}){
   }catch(e){setError(agreementError(e));}
   finally{setBusy(false);}
  };
- const issue=send=>run(async()=>{
-   const r=await agreementAction("issue",{agreementId:a.id,send});
+ const issue=send=>{
+   // A previous UNKNOWN/unclassified failure might already have reached
+   // WhatsApp. Generating a fresh invitation token would create a NEW
+   // idempotency key; never perform such a resend without explicit review.
+   const previousAmbiguous=!!send&&(data?.deliveries||[]).some(d=>
+     d.kind==='invitation'&&['unknown','dispatching','failed'].includes(d.state));
+   if(previousAmbiguous&&!window.confirm(
+     "נמצאה הודעת הזמנה קודמת שלא ניתן לאמת אם נמסרה. בדוק תחילה ב'בדוק WhatsApp ללא שליחה' ובחשבון ספק WhatsApp. שליחה חוזרת עלולה ליצור כפילות. האם בדקת ואתה מבקש לשלוח הודעה חדשה בכל זאת?"
+   ))return;
+   return run(async()=>{
+   const r=await agreementAction("issue",{agreementId:a.id,send,
+     confirmPriorUncertain:previousAmbiguous});
    setUrl(r.url);
    setMessage(r.warning||(send?receiptMessage(r.delivery_state):"הקישור מוכן להעתקה."));
    if(send&&!r.warning)toast.success(r.delivery_state==='accepted'?"התקבל אצל ספק WhatsApp":"נשמר בתור WhatsApp",
      {description:receiptMessage(r.delivery_state)});
  });
+ };
  const saveDraft=()=>run(async()=>{
   const {send_whatsapp,...payload}=draft;
   const created=await agreementAction("create",{...payload,eventId:event.id});
