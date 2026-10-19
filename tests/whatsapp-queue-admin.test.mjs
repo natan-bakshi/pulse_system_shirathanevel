@@ -225,8 +225,11 @@ test('sourceAudit is read-only and loads projected metadata only on explicit act
   {id:'inapp-b',whatsapp_sent:true,template_type:'PUSH_ONLY'}
  ];
  const jobs=[{...makeJob('job-abc','accepted'),in_app_notification_id:'inapp-a'}];
- const ctx=context({jobs,notifications});
+ const pendingRows=[{id:'p-1',template_type:'ADMIN_MISSING_ASSIGNMENT',scheduled_for:new Date(Date.now()+3600000).toISOString(),
+   data:JSON.stringify({send_whatsapp:true,phone:'0501234567',whatsapp_message:'private text'})}];
+ const ctx=context({jobs,notifications,pendingRows});
  await ctx.invoke('status');
+ assert.equal(ctx.pendingProjections.length,0,'Regular status refresh must not read business schedules');
  assert.equal(ctx.listProjections.length,1,
    'Ordinary status must not fetch the InApp source audit');
  const a=await ctx.invoke('sourceAudit');
@@ -234,6 +237,13 @@ test('sourceAudit is read-only and loads projected metadata only on explicit act
  assert.equal(a.body.success,true);
  assert.equal(a.body.audit.noMessagesSent,true);
  assert.equal(a.body.audit.acceptedWithoutMirror.length,1);
+ assert.equal(a.body.audit.businessReminders.available,true);
+ assert.equal(a.body.audit.businessReminders.whatsappWaiting,1);
+ assert.equal(a.body.audit.businessReminders.legacyWithoutBusinessKey,1);
+ assert.equal(ctx.pendingProjections.length,1);
+ assert.ok(ctx.pendingProjections[0].includes('data'));
+ assert.ok(!JSON.stringify(a.body).includes('0501234567'));
+ assert.ok(!JSON.stringify(a.body).includes('private text'));
  assert.equal(ctx.calls.length,0,'Audit must never call worker or provider');
  assert.equal(ctx.listProjections.length,3);
  for(const fields of ctx.listProjections.slice(1)){
