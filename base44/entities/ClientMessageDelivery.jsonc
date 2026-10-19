@@ -29,6 +29,14 @@
     "error": {
       "type": "string"
     },
+    "error_code": {
+      "type": "string",
+      "description": "Sanitized reason category for an Outbox enqueue/receipt error. Never raw phone, message, token or provider secret."
+    },
+    "failure_phase": {
+      "type": "string",
+      "description": "Stage of failure, not proof that a provider did or did not receive a request."
+    },
     "sent_at": {
       "type": "string"
     },
