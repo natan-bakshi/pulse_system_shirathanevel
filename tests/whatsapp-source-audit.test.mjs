@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarizeWhatsAppSourceAudit} from '../base44/shared/whatsappSourceAudit.ts';
+import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit} from '../base44/shared/whatsappSourceAudit.ts';
 
 const notifications=[
  {id:'inapp-a',whatsapp_sent:false,template_type:'SUPPLIER_EVENT_REMINDER',created_date:'2026-10-17T10:00:00Z'},
@@ -14,6 +14,44 @@ const jobs=[
  {id:'job-orphan',in_app_notification_id:'old-inapp-outside-sample',source_type:'other',status:'accepted'},
  {id:'job-unlinked',in_app_notification_id:'',source_type:'manual_text',status:'accepted'}
 ];
+test('business reminder audit distinguishes pending scheduler from provider Outbox without exposing content',()=>{
+ const now='2026-10-19T08:00:00Z';
+ const items=[
+  {id:'pending-1',template_type:'ADMIN_MISSING_ASSIGNMENT',scheduled_for:'2026-10-19T07:30:00Z',
+   data:JSON.stringify({send_whatsapp:true,whatsapp_message:'PRIVATE_MESSAGE',phone:'0501234567'})},
+  {id:'pending-2',template_type:'SUPPLIER_PENDING_REMINDER',scheduled_for:'2026-10-20T05:00:00Z',
+   data:JSON.stringify({send_whatsapp:true,phone:'0501234567',idempotency_key:'stable-reminder'})},
+  {id:'push-only',template_type:'TASK_DUE_REMINDER',scheduled_for:'2026-10-19T07:00:00Z',
+   data:JSON.stringify({send_push:true,send_whatsapp:false})},
+  {id:'corrupt',template_type:'ADMIN_MISSING_ASSIGNMENT',scheduled_for:'2026-10-19T07:00:00Z',data:'broken'}
+ ];
+ const result=summarizePendingWhatsAppAudit(items,now);
+ assert.equal(result.sampledPending,4);
+ assert.equal(result.whatsappWaiting,2);
+ assert.equal(result.scheduledDue,1);
+ assert.equal(result.scheduledFuture,1);
+ assert.equal(result.withBusinessKey,1);
+ assert.equal(result.legacyWithoutBusinessKey,1);
+ assert.equal(result.malformedData,1);
+ assert.equal(result.sampleTruncated,false);
+ assert.equal(result.byTemplate.length,2);
+ const safe=JSON.stringify(result);
+ assert.equal(safe.includes('PRIVATE_MESSAGE'),false);
+ assert.equal(safe.includes('0501234567'),false);
+ assert.equal(safe.includes('stable-reminder'),false);
+ assert.equal(result.noMessagesSent,true);
+});
+test('business reminder audit reports sample cap and never claims due means failed',()=>{
+ const entries=Array.from({length:151},(_,i)=>({
+   id:'p-'+i,template_type:'ADMIN_QUOTE_FOLLOWUP',
+   scheduled_for:'2026-10-19T01:00:00Z',data:'{"send_whatsapp":true}'
+ }));
+ const summary=summarizePendingWhatsAppAudit(entries,'2026-10-19T08:00:00Z');
+ assert.equal(summary.sampleTruncated,true);
+ assert.equal(summary.whatsappWaiting,151);
+ assert.equal(summary.scheduledDue,151);
+ assert.match(summary.interpretation,/Due does not prove stuck/);
+});
 test('audit identifies mirror drift without confusing API acceptance with delivery',()=>{
  const r=summarizeWhatsAppSourceAudit(notifications,jobs,'2026-10-17T12:00:00Z');
  assert.equal(r.noMessagesSent,true);
