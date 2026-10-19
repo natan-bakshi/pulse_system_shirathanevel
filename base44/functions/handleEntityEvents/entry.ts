@@ -5,6 +5,8 @@ import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
 import { assignmentWhatsAppKey, assignmentWhatsAppContext, cleanMissingAssignmentTime } from '../../shared/assignmentWhatsApp.ts';
 import { resolveNotificationDelay } from '../../shared/quietHours.ts';
+import { entityTriggerWhatsAppContext } from '../../shared/entityTriggerWhatsApp.ts';
+import { isWhatsAppEnqueueConfirmed } from '../../shared/whatsappReceipt.ts';
 import { shouldScheduleAssignmentReplyReminder, pendingApprovalReminderSupplierIds } from '../../shared/assignmentReminderTiming.ts';
 
 /**
@@ -734,7 +736,8 @@ async function sendNotification(base44, template, entityData, event, entityName,
                 const isEnabled = currentSupplierObj.whatsapp_enabled !== false;
                 const whatsappTarget = getSupplierWhatsAppTarget(currentSupplierObj);
                 if (isEnabled && whatsappTarget.chatId) {
-                    await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null, true, batchCache);
+                    await triggerWhatsApp(base44, template, currentSupplierObj.phone, eventObj, currentSupplierObj, currentServiceObj, null, true, batchCache,
+                      {entityName,origin:entityData,specificSupplierId:event.specific_recipient_id||supId});
                 }
             }
 
@@ -760,7 +763,8 @@ async function sendNotification(base44, template, entityData, event, entityName,
         if (Array.isArray(parents)) {
             for (const p of parents) {
                 if (sendWhatsApp && p.phone) {
-                     await triggerWhatsApp(base44, template, p.phone, eventObj, null, null, p);
+                     await triggerWhatsApp(base44, template, p.phone, eventObj, null, null, p, false, batchCache,
+                       {entityName,origin:entityData,specificSupplierId:event.specific_recipient_id||''});
                 }
                 if (sendPush && p.email) {
                     const users = await base44.asServiceRole.entities.User.filter({ email: p.email });
@@ -804,7 +808,8 @@ async function sendNotification(base44, template, entityData, event, entityName,
                 const normalizedPhone = String(admin.phone).replace(/[^0-9]/g, '');
                 if (normalizedPhone && !sentWhatsAppPhones.has(normalizedPhone)) {
                     sentWhatsAppPhones.add(normalizedPhone);
-                    await triggerWhatsApp(base44, template, admin.phone, eventObj, adminSupplierObj, adminServiceObj, admin);
+                    await triggerWhatsApp(base44, template, admin.phone, eventObj, adminSupplierObj, adminServiceObj, admin, false, batchCache,
+                      {entityName,origin:entityData,specificSupplierId:event.specific_recipient_id||''});
                 }
             }
             if (sendPush) {
@@ -845,7 +850,7 @@ function getSupplierWhatsAppTarget(supplierObj, fallbackPhone = null) {
     return getPhoneWhatsAppTarget(fallbackPhone || supplierObj?.phone);
 }
 
-async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj, useSupplierTarget = false, batchCache=null) {
+async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, serviceObj, userObj, useSupplierTarget = false, batchCache=null, origin=null) {
     const whatsappTarget = useSupplierTarget && supplierObj ? getSupplierWhatsAppTarget(supplierObj, phone) : getPhoneWhatsAppTarget(phone);
     if (!whatsappTarget.chatId) return;
     const targetLabel = whatsappTarget.label || phone || whatsappTarget.chatId;
@@ -894,15 +899,16 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
         const delay=resolveNotificationDelay(supplierObj);
         const receipt=await sendWhatsAppToChat(whatsappTarget.chatId,message,base44,
             assignmentWhatsAppContext(serviceObj,supplierObj.id,template.type,delay));
-        if(!receipt?.queued && receipt?.status!=='accepted' && receipt?.status!=='sending' && receipt?.status!=='retry_wait'){
+        if(!isWhatsAppEnqueueConfirmed(receipt)){
             throw new Error('Assignment WhatsApp outbox is not in a sendable state');
         }
         console.log('[HandleEntityEvents] Assignment WhatsApp outbox receipt state:',receipt.status||'queued');
         return;
     }
 
-    // Other (non-assignment) notification templates retain their existing
-    // delayed notification handling until their separate migration is tested.
+    // All automatic entity-trigger WhatsApp notifications use ONE Outbox job,
+    // with available_at for quiet hours and a stable business idempotency key.
+    // No separate PendingPushNotification will be written for WhatsApp here.
     // Check quiet hours (default 22:00-08:00 Israel time)
     const DEFAULT_QUIET_START = 22;
     const DEFAULT_QUIET_END = 8;
