@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {readOutboxTiming,summarizeMillis,summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
-import {summarizeWhatsAppSourceAudit} from '../base44/shared/whatsappSourceAudit.ts';
+import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit} from '../base44/shared/whatsappSourceAudit.ts';
 
 const stamp=(mins=0)=>new Date(Date.UTC(2026,9,15,8,0)+mins*60000).toISOString();
 const sample=(id,status='accepted',fields={})=>({
@@ -147,7 +147,7 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
         };
         if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
         if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
-        if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit};
+        if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
       }
     });
