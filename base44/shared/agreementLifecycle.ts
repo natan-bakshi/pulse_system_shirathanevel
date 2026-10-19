@@ -105,7 +105,19 @@ export async function deliver(client,a,kind,key,message,file=null,config={},back
   }catch{}
   // If Outbox could not be inspected or queue was in legacy-direct mode,
   // absence of a job cannot prove the provider was not contacted.
-  const ambiguous=lookupFailed||queueEnabled!==true||(error as any)?.deliveryUncertain===true;
+  // An ambiguous SDK POST/create failure can commit without returning its
+  // receipt, and a just-written Outbox row might not yet be visible to this
+  // reader. Negative query alone is NOT enough proof of non-enqueue. Only
+  // fail-closed validation/configuration errors prove no provider was called.
+  const definitelyBeforeCreate=new Set([
+    'INVALID_PHONE_FORMAT','EMPTY_MESSAGE','QUEUE_DISABLED',
+    'QUEUE_PAUSED','QUEUE_LOCK_BUSY','QUEUE_CONTROL_UNAVAILABLE',
+    'PROVIDER_CONFIG_UNAVAILABLE','QUEUE_PERMISSION_DENIED',
+    'QUEUE_SCHEMA_REJECTED'
+  ]);
+  const ambiguous=lookupFailed||queueEnabled!==true||
+    !definitelyBeforeCreate.has(reason)||
+    (error as any)?.deliveryUncertain===true;
   const code=lookupFailed?'QUEUE_LOOKUP_UNAVAILABLE':reason;
   const safeText=agreementDeliverySafeErrorLabel(code);
   await db.ClientMessageDelivery.update(row.id,{
