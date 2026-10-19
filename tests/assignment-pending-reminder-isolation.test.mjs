@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {pendingApprovalReminderSupplierIds} from '../base44/shared/assignmentReminderTiming.ts';
 import {assignmentWhatsAppContext,assignmentWhatsAppKey,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
+import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
+import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 
 test('one optional reminder failure does not block assignment notices; repeated data is loaded once',async()=>{
  const src=fs.readFileSync('base44/functions/handleEntityEvents/entry.ts','utf8');
@@ -67,6 +69,8 @@ test('one optional reminder failure does not block assignment notices; repeated 
      if(path.endsWith('assignmentReminderTiming.ts'))return {
        shouldScheduleAssignmentReplyReminder:()=>true,pendingApprovalReminderSupplierIds
      };
+     if(path.endsWith('entityTriggerWhatsApp.ts'))return {entityTriggerWhatsAppContext};
+     if(path.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed};
      if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false})};
      throw Error('Unexpected import '+path);
    }
