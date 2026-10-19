@@ -55,6 +55,9 @@ test('new invitation is allowed, but unknown/dispatching/unclassified failed inv
  }]),id),false);
  assert.equal(await hasUnresolvedAgreementInvitation(client([{agreement_id:'someone-else',kind:'invitation',
    state:'unknown'}]),id),false);
+ assert.equal(await hasUnresolvedAgreementInvitation(client(Array.from({length:20},(_,i)=>({
+   agreement_id:id,kind:'invitation',state:'cancelled',id:'old-'+i
+ }))),id),true,'Truncated journal requires review before another potential send');
 });
 test('international numbers for North America, Europe and Asia retain their dialing prefixes',()=>{
  for(const [input,expected] of [
