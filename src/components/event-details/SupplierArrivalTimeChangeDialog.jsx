@@ -31,9 +31,9 @@ export default function SupplierArrivalTimeChangeDialog({
     try {
       await handleSupplierArrivalTimeChange({ event_service_id: eventServiceId, mode });
       if (mode === 'notify') {
-        toast.success('התראת עדכון נשלחה לספקים של שירות זה');
+        toast.success('עדכון השירות הושלם. הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה.');
       } else if (mode === 'cancel') {
-        toast.success('השיבוצים בשירות זה בוטלו והספקים קיבלו התראה');
+        toast.success('השיבוצים בוטלו. הודעות הביטול שנדרשו נשמרו בתור — מסירה טרם אומתה.');
       } else {
         toast.success('שעת ההתייצבות עודכנה במערכת בלבד');
       }
