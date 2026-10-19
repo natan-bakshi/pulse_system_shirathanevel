@@ -5,13 +5,13 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {delayUntilNextSendMs,providerIntervalMs,lastDispatchForProvider} from '../base44/shared/whatsappQueueWorker.ts';
 import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
-import {summarizeWhatsAppSourceAudit} from '../base44/shared/whatsappSourceAudit.ts';
+import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit} from '../base44/shared/whatsappSourceAudit.ts';
 
-function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[]}={}){
+function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
- const syncs=[],calls=[],listProjections=[];
+ const syncs=[],calls=[],listProjections=[],pendingProjections=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
    return record[key]===val;
@@ -29,7 +29,8 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  const client={auth:{me:async()=>actor},asServiceRole:{entities:{
    WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch)},
    WhatsAppOutbox:jobEntity,
-   InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}}
+   InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}},
+   PendingPushNotification:{filter:async(_q,_sort,limit,offset,fields)=>{pendingProjections.push(fields);return pendingRows.slice(offset,offset+limit);}}
  }}};
  let handler=null;
  const js=esbuild.transformSync(fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8'),{
@@ -49,11 +50,11 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      };
      if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
      if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
-     if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit};
+     if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
      throw Error('Unexpected import: '+name);
    }
  });
- return {record,jobs,syncs,calls,listProjections,invoke:async(action,params={})=>await handler({
+ return {record,jobs,syncs,calls,listProjections,pendingProjections,invoke:async(action,params={})=>await handler({
    method:'POST',json:async()=>({action,...params})
  })};
 }
