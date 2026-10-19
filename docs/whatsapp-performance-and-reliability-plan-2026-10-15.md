@@ -217,6 +217,17 @@
 
 ---
 
+### 19.10.2026 — כשל הזמנה להסכם בינלאומי, אבחון אמיתי והמשך WA-P40c
+- **נושא/היקף:** בקשת המשתמש לבדוק היום כשל בשליחת קישור לסגירת אירוע ללקוחה מחו״ל, ולהמשיך בתוכנית כל ההודעות. לא הוחלף ספק ולא שונה קצב או סטטוס WhatsAppQueueControl.
+- **Checkpoint בסיס:** `6ad676e710d93210ef097bde` (לפני תיקוני הסכם); Git בסיס `ad6f728e45e136e320045220fadb83a77637ba0f`.
+- **נתוני LIVE — קריאה בלבד:** באירוע `6a9463994d4c3235f146732a` נמצאו שתי הודעות invitation (19.10 12:27/12:28 UTC) במצב `failed`, שתיהן ללא רשומת WhatsAppOutbox עבור ה־idempotency_key. מספר הלקוחה בפורמט NANP +1 / 11 ספרות (המזהה המלא לא נרשם ביומן); ב־15.10 נכשלו בקשות invitation של מספר ישראלי. אין נתון Error-Code היסטורי ולכן **אין הוכחה מדוע נכשל enqueue**. עובדת המספר הבינלאומי אינה ראיה לחסימת ספק. בבדיקת QueueControl: `enabled=true`, `paused=false`, מרווח Green=3s, Wasender=7s, ללא lease פעיל. No replay/no resend.
+- **קוד:** WA-P44a/b/c/d/f — מיפוי receipt אמיתי בתיק ההסכם, שדה `error_code/failure_phase` מסווג ללא PII, recovery למקרה Outbox כבר נוצר אבל תגובת POST אבדה, שימוש ב־root Base44 client בפעולות invitation/OTP/PDF. פענוח dedup `unknown/failed` אינו הופך ל־accepted בגלל queued=false. כאשר חריגת כתיבה כללית לא מוכיחה אי־כתיבה, נבחר `unknown` ולא `failed` בלי replay. נוסף `delivery_health` קריאה בלבד למנהל ב־`EventClosingPanel`; כפתור לחיצה ולא טעינה עם המסך; מתריע על שגיאות היסטוריות לא מסווגות. נוסף הסבר על קידומת מדינה מלאה (E.164) בשדה המספר.
+- **מסלולים משיקים:** שינויי שעת הגעה/ביטול/אישור מחדש כבר משתמשים ב־`assignmentTransitionWhatsApp.ts`, מפתח transition קבוע ו־409/recovery_required בכשל. הוחלפו ארבע הודעות הצלחה ב־`DateChangeDecisionDialog`/`SupplierArrivalTimeChangeDialog` לניסוח `נשמר בתור, מסירה טרם אומתה`. המסר אינו מוכיח delivery או קריאת ספק.
+- **בדיקות:** `node --test tests/*.test.mjs` — **339/340 עברו**; כשל יחיד ישן ב־`tests/event-agreement.test.mjs` שמצפה ל־RLS `create=false` בזמן ש־schema מאפשר `admin` (הרשאות לא שונו). `npm run build` עבר, `eslint` בשלושת מסכי UI עבר, `esbuild` parse לקוד שרת ו־JSON schema עבר. ב־`tests/agreement-delivery-queue-e2e.test.mjs` הוזנו מס' QA של ישראל/צפון אמריקה, ונבדקו כשל לפני ואחרי Commit, התאוששות דרך אותו Outbox, Unknown, מידע לא רגיש ופעולת אבחון ללא הודעה. כל הבדיקות עם ספקי Mock; **לא נשלח WhatsApp אמיתי**.
+- **לא טופל/חסם P0:** אין הוכחה לפרסום Live או לסיבת השגיאה המקורית; אין אימות ניסיון ראשון תוך שניות/מיילסטון לקוח אמיתי; אין מנגנון safe replay להודעות היסטוריות; D08.7/8 ו־D08.6b עדיין חוסמי השיבוצים המהירים. כיסוי idempotency לשאר `handleEntityEvents` ו־`sendPushNotification` עדיין WA-P40e; A→B→A במעבר זמן ספק דורש revision עמיד, אין להבטיח exactly-once עסקי ללא אותו revision.
+- **המשך:** WA-P44e (פיילוט בנמען QA מאושר לאחר Publish), WA-P41b (Worker+Watchdog ממשי), WA-P42d (מקור לא מקושר), WA-P40e (יתרת producers) בשמירה על zero auto replay של unknown. אין לבצע פעולת בדיקה המשנה נתוני לקוח/ספק אמת.
+- **עצירה:** לאחר מסמכי התוכנית ייווצר checkpoint סיום מסודר. לא נעשו עדכוני נתוני אירועים או תשלומים.
+
 ## 9. היסטוריה טכנית — תוכנית C המקורית כפי שתועדה במסמך Pulse הכללי
 הפרק הזה שומר תוכן היסטורי ורציונל, אבל **סימון ביצוע עדכני מנוהל בסעיף 3 בלבד** כדי לא ליצור פנקסים מתחרים.
 
