@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
+import {agreementDeliveryErrorCode,agreementDeliverySafeErrorLabel,agreementReceiptPatch} from '../base44/shared/agreementDeliverySafety.ts';
 
 const code=esbuild.transformSync(fs.readFileSync('base44/shared/agreementLifecycle.ts','utf8'),{
   loader:'ts',format:'cjs',target:'es2022'
@@ -21,6 +22,8 @@ function fixture({sendError=false,receiptWriteFails=false}={}){
           const row=rows.find(r=>r.id===id);Object.assign(row,patch);return {...row};
         }
       },
+      WhatsAppOutbox:{filter:async()=>[]},
+      WhatsAppQueueControl:{filter:async()=>[{enabled:true}]},
       User:{get:async()=>({id:'admin1',role:'admin',email:'admin@localhost'})},
       InAppNotification:{
         filter:async filters=>alerts.filter(x=>x.user_id===filters.user_id&&
@@ -34,6 +37,7 @@ function fixture({sendError=false,receiptWriteFails=false}={}){
   vm.runInNewContext(code,{
     exports:module.exports,module,console:{error:()=>{},warn:()=>{}}, 
     require:path=>{
+      if(path.endsWith('agreementDeliverySafety.ts'))return {agreementDeliveryErrorCode,agreementDeliverySafeErrorLabel,agreementReceiptPatch};
       if(path.endsWith('whatsappSend.ts'))return {
         sendWhatsAppText:async(_phone,_msg,client,context)=>{
           assert.equal(client.asServiceRole,scoped,'Backend service-role must be wrapped in root context');
