@@ -50,6 +50,14 @@
     "client_message_delivery_id": {
       "type": "string"
     },
+    "delivery_mirror_sync_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "A terminal provider status exists in Outbox but updating ClientMessageDelivery or agreement copy state failed; repair source state only, never resend"
+    },
+    "delivery_mirror_sync_last_attempt_at": {
+      "type": "string"
+    },
     "card_setup_request_id": {
       "type": "string"
     },
