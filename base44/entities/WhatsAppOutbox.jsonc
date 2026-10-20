@@ -69,6 +69,14 @@
     "card_mirror_sync_last_attempt_at": {
       "type": "string"
     },
+    "review_alert_claim_until": {
+      "type": "string",
+      "description": "Short CAS reservation for notifying the system owner of an UNKNOWN outcome; never controls transport"
+    },
+    "review_alert_sent_at": {
+      "type": "string",
+      "description": "Owner in-app review alert acknowledged or found by its exact job identity; prevents repeated watchdog alerts"
+    },
     "event_service_id": {
       "type": "string"
     },
