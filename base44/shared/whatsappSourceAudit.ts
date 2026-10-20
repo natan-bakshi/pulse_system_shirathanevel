@@ -36,30 +36,10 @@ export function summarizePendingWhatsAppAudit(rows:any[],nowIso:string,maxSample
   };
 }
 
-// Read-only reconciliation between Outbox receipts and InApp mirrors.
-// Sampled records cannot prove historical delivery or non-delivery: legacy
-// WhatsApp sends preceded the central Outbox, and Push-only notifications
-// legitimately have no WhatsApp job.
-export function summarizeWhatsAppSourceAudit(notifications:any[],jobs:any[],nowIso:string){
-  const source=new Map((notifications||[]).map(n=>[String(n.id),n]));
-  const linked=new Map<string,any[]>();
-  for(const job of jobs||[]){
-    if(!job?.in_app_notification_id)continue;
-    const id=String(job.in_app_notification_id);
-    const rows=linked.get(id)||[];
-    rows.push(job);linked.set(id,rows);
-  }
-  const acceptedWithoutMirror:any[]=[];
-  const unknownWithSentMirror:any[]=[];
-  const unlinkedSentFlag:any[]=[];
-  const unlinkedUnsentCount={value:0};
-  const withoutRecentSource:any[]=[];
-  const limit=25;
-  // Group only ORIGINAL legacy assignment keys: V2 revision-based keys are
-  // intentionally a separate scheme. Group equivalent UTC millisecond
-  // instants, not raw 6-digit microsecond strings. This reveals the exact
-  // incident where two independently accepted Green API jobs had timestamps
-  // .719000 vs .719051 for one EventService/supplier assignment.
+// Read-only grouping of SAME supplier + EventService + canonical save
+// timestamp. Independent edits minutes apart must not be conflated.
+// This function NEVER contacts the provider or changes queue records.
+export function findDuplicateAssignmentVersions(jobs:any[],limit=25){
   const assignmentGroups=new Map<string,any[]>();
   for(const job of jobs||[]){
     if(job?.source_type!=='assignment_new')continue;
@@ -85,6 +65,29 @@ export function summarizeWhatsAppSourceAudit(notifications:any[],jobs:any[],nowI
       classification:'duplicate_assignment_business_version'
     });
   }
+  return duplicateAssignments;
+}
+
+// Read-only reconciliation between Outbox receipts and InApp mirrors.
+// Sampled records cannot prove historical delivery or non-delivery: legacy
+// WhatsApp sends preceded the central Outbox, and Push-only notifications
+// legitimately have no WhatsApp job.
+export function summarizeWhatsAppSourceAudit(notifications:any[],jobs:any[],nowIso:string){
+  const source=new Map((notifications||[]).map(n=>[String(n.id),n]));
+  const linked=new Map<string,any[]>();
+  for(const job of jobs||[]){
+    if(!job?.in_app_notification_id)continue;
+    const id=String(job.in_app_notification_id);
+    const rows=linked.get(id)||[];
+    rows.push(job);linked.set(id,rows);
+  }
+  const acceptedWithoutMirror:any[]=[];
+  const unknownWithSentMirror:any[]=[];
+  const unlinkedSentFlag:any[]=[];
+  const unlinkedUnsentCount={value:0};
+  const withoutRecentSource:any[]=[];
+  const limit=25;
+  const duplicateAssignments=findDuplicateAssignmentVersions(jobs,limit);
   for(const job of jobs||[]){
     const id=String(job?.in_app_notification_id||'');
     if(id && !source.has(id) && withoutRecentSource.length<limit){
