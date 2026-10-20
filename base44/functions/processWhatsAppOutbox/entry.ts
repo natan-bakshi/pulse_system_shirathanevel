@@ -3,6 +3,7 @@ import { drainWhatsAppOutbox, reconcileAcceptedWhatsAppMirrors, reconcileAgreeme
 import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIntentReconciler.ts';
 import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueReconciler.ts';
 import { reconcileStalledCardSetupEnqueues } from '../../shared/cardSetupQueueReconciler.ts';
+import { alertUnknownWhatsAppOutcomes } from '../../shared/whatsappUnknownReviewAlerts.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
 // crash watchdog. Does not accept arbitrary message/recipient parameters.
@@ -61,6 +62,10 @@ Deno.serve(async (req) => {
       catch(error){console.error('[WhatsAppOutbox] agreement mirror repair watchdog unavailable');}
       try{await reconcileCardSetupWhatsAppMirrors(client,10);}
       catch(error){console.error('[WhatsAppOutbox] card mirror repair watchdog unavailable');}
+      // Owner notification is source-only; UNKNOWN jobs are never replayed.
+      // Run even when there are no queued sends, without a new Cron job.
+      try{await alertUnknownWhatsAppOutcomes(client,{limit:8});}
+      catch(error){console.error('[WhatsAppOutbox] unknown-result owner alerts unavailable');}
     }
     const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
       status:{$in:['queued','retry_wait','sending']}
