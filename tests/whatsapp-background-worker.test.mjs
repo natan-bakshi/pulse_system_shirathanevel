@@ -4,14 +4,19 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 const code=esbuild.transformSync(fs.readFileSync('base44/functions/processWhatsAppOutbox/entry.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
-function fixture({role='admin',enabled=true,paused=false,hasWork=true}={}){
+function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryFailAt=''}={}){
  let handler;const control={id:'global',control_key:'global',enabled,paused};const updates=[];let dispatched=0;let sweeps=0;const wakeReasons=[];
  const client={
    auth:{me:async()=>role?{role}:null},
    asServiceRole:{entities:{
      WhatsAppQueueControl:{
        filter:async()=>[control],
-       update:async(_id,patch)=>{updates.push(patch);Object.assign(control,patch);}
+       update:async(_id,patch)=>{
+         if(telemetryFailAt==='all' || telemetryFailAt==='before'&&patch.last_invoked_at ||
+           telemetryFailAt==='after'&&patch.last_invocation_result)
+           throw Error('Synthetic noncritical metrics write outage');
+         updates.push(patch);Object.assign(control,patch);
+       }
      },
      WhatsAppOutbox:{
        filter:async()=>hasWork?[{id:'job',status:'queued'}]:[]
@@ -95,6 +100,34 @@ test('idle active watchdog does not write entities or dispatch',async()=>{
  assert.equal(f.updates.length,0);
  assert.equal(f.dispatched,0);
 });
+test('failed invocation telemetry never suppresses a queued WhatsApp dispatch',async()=>{
+ const x=fixture({telemetryFailAt:'before'});
+ const result=await x.call({wakeReason:'outbox_create'});
+ assert.equal(result.status,200);
+ assert.equal(result.body.accepted,1);
+ assert.equal(x.dispatched,1);
+ assert.deepEqual(x.wakeReasons,['outbox_create']);
+ assert.equal(x.updates.length,1,'Only successful after-dispatch telemetry is saved');
+});
+
+test('failed result telemetry after dispatch never converts provider success to endpoint failure',async()=>{
+ const x=fixture({telemetryFailAt:'after'});
+ const result=await x.call({wakeReason:'continue'});
+ assert.equal(result.status,200);
+ assert.equal(result.body.accepted,1);
+ assert.equal(x.dispatched,1);
+ assert.equal(x.updates.length,1);
+ assert.ok(x.updates[0].last_invoked_at);
+});
+
+test('failed telemetry before AND after dispatch cannot create a false HTTP 500',async()=>{
+ const x=fixture({telemetryFailAt:'all'});
+ const result=await x.call({wakeReason:'outbox_create'});
+ assert.equal(result.status,200);
+ assert.equal(x.dispatched,1);
+ assert.equal(x.updates.length,0);
+});
+
 test('authenticated background worker records heartbeat only when there is queued work',async()=>{
  const f=fixture();
  const r=await f.call();
