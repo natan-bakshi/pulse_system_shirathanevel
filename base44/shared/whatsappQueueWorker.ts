@@ -85,6 +85,15 @@ async function updateAgreementDeliveryMirror(client:any,job:any,status:string,me
   }
 }
 
+async function updateCardSetupWhatsAppMirror(client:any,job:any,status:string,messageId:string){
+  await client.asServiceRole.entities.CardSetupRequest.update(job.card_setup_request_id,{
+    link_message_state:status==='accepted'?'accepted':
+      status==='unknown'?'unknown':status==='failed'?'rejected':
+      ['cancelled','resolved','expired'].includes(status)?'cancelled':'queued',
+    ...(status==='accepted'?{link_message_id:messageId||''}:{})
+  });
+}
+
 export async function syncWhatsAppStatus(client:any,job:any,status:string,messageId:string) {
   const db=client.asServiceRole.entities;
   // Each downstream mirror is independently best-effort. One broken entity
@@ -130,10 +139,23 @@ export async function syncWhatsAppStatus(client:any,job:any,status:string,messag
     }
   }
   if(job.card_setup_request_id) {
-    try {await db.CardSetupRequest.update(job.card_setup_request_id,{
-      link_message_state:status==='accepted'?'accepted':status==='unknown'?'unknown':status==='failed'?'rejected':status==='cancelled'||status==='resolved'||status==='expired'?'cancelled':'queued',
-      ...(status==='accepted'?{link_message_id:messageId||''}:{})
-    });}catch(error){console.error('[WhatsAppOutbox] card setup status sync failed');}
+    try{
+      await updateCardSetupWhatsAppMirror(client,job,status,messageId);
+      if(job.card_mirror_sync_pending===true){
+        await db.WhatsAppOutbox.updateMany({
+          id:job.id,status,card_mirror_sync_pending:true
+        },{$set:{card_mirror_sync_pending:false,card_mirror_sync_last_attempt_at:new Date().toISOString()}});
+      }
+    }catch{
+      // The customer's card is unchanged. Provider receipt remains in Outbox;
+      // repair the card-link mirror without ever sending a new WhatsApp.
+      console.error('[WhatsAppOutbox] card mirror unavailable; source-only repair queued');
+      try{
+        await db.WhatsAppOutbox.updateMany({id:job.id,status},{$set:{
+          card_mirror_sync_pending:true,card_mirror_sync_last_attempt_at:new Date().toISOString()
+        }});
+      }catch{console.error('[WhatsAppOutbox] card mirror repair flag could not be persisted');}
+    }
   }
 }
 // Repair only proven provider-ACCEPTED source mirrors. This never contacts
@@ -189,6 +211,34 @@ export async function reconcileAgreementWhatsAppMirrors(client:any,limit=10){
     }catch{
       failed++;
       console.error('[WhatsAppOutbox] agreement source-only mirror repair unavailable');
+    }
+  }
+  return {examined:rows.length,repaired,failed};
+}
+
+// Card-setup source repairs are independent of payment processing. Repair
+// only a terminal WhatsApp receipt already persisted in Outbox. No provider
+// HTTP, no tokenization, no customer/account charging, and no resend.
+export async function reconcileCardSetupWhatsAppMirrors(client:any,limit=10){
+  const db=client.asServiceRole.entities;
+  const states=['accepted','unknown','failed','cancelled','expired','resolved'];
+  const rows=await db.WhatsAppOutbox.filter({
+    card_mirror_sync_pending:true,status:{$in:states}
+  },'created_date',Math.max(1,Math.min(10,limit)),0,
+  ['id','status','provider_message_id','card_setup_request_id','card_mirror_sync_pending']);
+  let repaired=0,failed=0;
+  for(const row of rows){
+    if(!row.card_setup_request_id){failed++;continue;}
+    try{
+      await updateCardSetupWhatsAppMirror(client,row,row.status,row.provider_message_id||'');
+      const updated=await db.WhatsAppOutbox.updateMany({
+        id:row.id,status:row.status,card_mirror_sync_pending:true
+      },{$set:{card_mirror_sync_pending:false,card_mirror_sync_last_attempt_at:new Date().toISOString()}});
+      if(updated?.updated===1)repaired++;
+      else failed++;
+    }catch{
+      failed++;
+      console.error('[WhatsAppOutbox] card setup source-only mirror repair unavailable');
     }
   }
   return {examined:rows.length,repaired,failed};
