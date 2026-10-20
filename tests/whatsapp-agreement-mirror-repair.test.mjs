@@ -76,10 +76,10 @@ test('if source database remains unavailable watchdog leaves marker for later',a
  assert.equal(x.job.status,'failed');
  assert.equal(x.job.delivery_mirror_sync_pending,true);
 });
-test('recovery uses existing scheduled watchdog even while dispatch is paused',()=>{
+test('recovery reuses the existing watchdog while preserving paused queue semantics',()=>{
  const worker=fs.readFileSync('base44/functions/processWhatsAppOutbox/entry.ts','utf8');
  assert.match(worker,/reconcileAgreementWhatsAppMirrors\(client,10\)/);
- assert.ok(worker.indexOf('reconcileAgreementWhatsAppMirrors(client,10)')<
+ assert.ok(worker.indexOf('reconcileAgreementWhatsAppMirrors(client,10)')>
    worker.indexOf("if(!controlRows[0].enabled || controlRows[0].paused)"),
-   'Mirrors should be repaired during a paused queue, with no provider activity');
+   'A paused queue has only a heartbeat and no extra mirror scans');
 });
