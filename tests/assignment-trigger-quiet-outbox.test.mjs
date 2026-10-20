@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
 import {planAssignmentTransition} from '../base44/shared/assignmentIntent.ts';
+import {toChatId} from '../base44/shared/whatsappSend.ts';
 import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 
@@ -30,6 +31,7 @@ test('assignment trigger uses the same Outbox key while quiet, never a second Pe
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(path.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
      if(path.endsWith('whatsappSend.ts'))return {
+       toChatId,
        sendWhatsAppToChat:async(chatId,message,_client,ctx)=>{
          queued.push({chatId,message,ctx});return {success:true,queued:true,status:'queued',jobId:'mock1'};
        }
