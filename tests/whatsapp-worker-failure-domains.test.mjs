@@ -49,6 +49,82 @@ function fixture(){
 }
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
+test('seven ready scheduled fan-out recipients drain in ONE run instead of waiting five minutes for watchdog',async()=>{
+ const x=fixture();
+ for(let i=0;i<7;i++){
+   await sendWhatsAppText('0501234567','scheduled fanout '+i,x.client,{
+     sourceType:'scheduled_fanout',sourceId:'qa-fanout',
+     idempotencyKey:'qa-fanout-recipient-'+i
+   });
+ }
+ const started=Date.now(),seen=[];
+ const result=await drainWhatsAppOutbox(x.client,{
+   wakeReason:'outbox_create',
+   transport:async job=>{seen.push(job.message_text);return {messageId:'green-fanout-'+seen.length}}
+ });
+ assert.equal(result.accepted,7);
+ assert.equal(result.processed,7);
+ assert.equal(result.continued,false);
+ assert.equal(x.jobs.length,7);
+ assert.equal(x.jobs.filter(j=>j.status==='accepted').length,7);
+ assert.equal(new Set(seen).size,7);
+ assert.equal(x.control.lease_owner,'');
+ assert.ok(Date.now()-started<2500,'Ready burst must not sleep until the next five-minute watchdog');
+});
+
+test('fanout jobs created WHILE first provider call runs get picked up by same worker',async()=>{
+ const x=fixture();
+ await sendWhatsAppText('0501234567','fanout first',x.client,{
+   sourceType:'scheduled_fanout',sourceId:'qa-fanout',idempotencyKey:'qa-first'});
+ let calls=0,created=false;
+ const r=await drainWhatsAppOutbox(x.client,{wakeReason:'outbox_create',
+   transport:async()=>{
+     calls++;
+     if(!created){
+       created=true;
+       for(let i=1;i<7;i++){
+         await x.outbox.create({chat_id:'972501234567@c.us',message_type:'text',
+           message_text:'fanout followup '+i,source_type:'scheduled_fanout',
+           idempotency_key:'qa-followup-'+i,requested_provider:'green',
+           status:'queued',available_at:new Date().toISOString(),attempt_count:0});
+       }
+     }
+     return {messageId:'green-concurrent-'+calls};
+   }
+ });
+ assert.equal(r.accepted,7);
+ assert.equal(calls,7,'A newly queued fanout job must be sent only once');
+ assert.equal(x.jobs.every(j=>j.status==='accepted'),true);
+ assert.equal(r.continued,false);
+});
+
+test('seven-recipient fanout exceeding batch limit wakes two successors, never five-minute watchdog',async()=>{
+ const x=fixture();
+ x.control.max_messages_per_run=3;
+ let wakes=0,sends=0;
+ const old=x.controls.update;
+ x.controls.update=async(id,patch)=>{
+   if(patch.wake_requested_at)wakes++;
+   return old(id,patch);
+ };
+ for(let i=0;i<7;i++){
+   await sendWhatsAppText('0501234567','fanout batch '+i,x.client,{
+     sourceType:'scheduled_fanout',sourceId:'qa-batch',idempotencyKey:'qa-batch-'+i
+   });
+ }
+ const transport=async()=>({messageId:'green-batch-'+(++sends)});
+ const first=await drainWhatsAppOutbox(x.client,{wakeReason:'outbox_create',transport});
+ const second=await drainWhatsAppOutbox(x.client,{wakeReason:'continue',transport});
+ const third=await drainWhatsAppOutbox(x.client,{wakeReason:'continue',transport});
+ assert.deepEqual([first.accepted,second.accepted,third.accepted],[3,3,1]);
+ assert.deepEqual([first.continued,second.continued,third.continued],[true,true,false]);
+ assert.equal(wakes,2);
+ assert.equal(sends,7);
+ assert.equal(x.jobs.filter(j=>j.status==='accepted').length,7);
+ assert.equal(x.jobs.filter(j=>j.attempt_count!==1).length,0);
+ assert.equal(x.control.lease_owner,'');
+});
+
 test('future-only notification releases global lease immediately; urgent invoice is not blocked',async()=>{
  const x=fixture();
  await sendWhatsAppText('0501234567','future scheduled message',x.client,{
