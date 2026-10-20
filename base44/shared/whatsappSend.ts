@@ -4,21 +4,19 @@ import { sanitizeText, LIMITS } from './notificationValidation.ts';
 import { sendWasenderTextToChat, sendWasenderDocumentToChat } from './wasenderSend.ts';
 import { enqueueWhatsApp, readWhatsAppQueueControl } from './whatsappOutbox.ts';
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
+import { parseWhatsAppPhone } from './whatsappPhone.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
 
+// Historical export retained for existing callers. Both text and file sends
+// now use one E.164 parser; ambiguous foreign numbers fail closed.
 export function normalizeIsraeliPhone(phone) {
-  let clean = String(phone || '').replace(/[^0-9]/g, '');
-  if (clean.startsWith('00')) clean = clean.slice(2);
-  if (clean.startsWith('05')) clean = '972' + clean.slice(1);
-  else if (clean.length === 9 && clean.startsWith('5')) clean = '972' + clean;
-  return clean.length >= 8 && clean.length <= 15 ? clean : '';
+  return parseWhatsAppPhone(phone).digits;
 }
 
 export function toChatId(phone) {
-  const normalized = normalizeIsraeliPhone(phone);
-  return normalized ? normalized + '@c.us' : '';
+  return parseWhatsAppPhone(phone).chatId;
 }
 
 export function sanitizeMessage(message) { return sanitizeText(message, LIMITS.message); }
@@ -32,8 +30,11 @@ function invalidInput(message) {
 }
 function validatedChatId(chatId) {
   const cleaned = sanitizeText(chatId, 80);
-  if (!/^[0-9A-Za-z_-]+@(c|g)\.us$/.test(cleaned)) throw invalidInput('Invalid WhatsApp target');
-  return cleaned;
+  // A group is not a telephone number. A canonical person JID must not
+  // contain a national trunk-zero or an unbounded number of digits.
+  if (/^[0-9A-Za-z_-]+@g\.us$/.test(cleaned)) return cleaned;
+  if (/^[1-9][0-9]{7,14}@c\.us$/.test(cleaned) && !/^9720/.test(cleaned)) return cleaned;
+  throw invalidInput('Invalid WhatsApp target');
 }
 function validatedUrl(url) {
   let parsed;
