@@ -162,6 +162,72 @@ test('provider 2xx without messageId remains UNKNOWN, never accepted and never r
  assert.equal(calls,1);
 });
 
+test('new Outbox CREATE during lease release cannot be lost until watchdog',async()=>{
+ const x=fixture();
+ await sendWhatsAppText('0501234567','first message',x.client,{sourceType:'manual'});
+ const originalRelease=x.controls.updateMany,originalWake=x.controls.update;
+ let injected=0,wakes=0,providerCalls=0;
+ x.controls.updateMany=async(q,p)=>{
+   const result=await originalRelease(q,p);
+   if(q.lease_owner && p.$set?.lease_owner==='' && !injected){
+     injected++;
+     // Simulates an Outbox CREATE whose own workflow saw the worker BUSY.
+     await x.outbox.create({chat_id:'972501234567@c.us',message_type:'text',
+       message_text:'second message during release',requested_provider:'green',
+       status:'queued',available_at:new Date().toISOString()});
+   }
+   return result;
+ };
+ x.controls.update=async(id,patch)=>{
+   if(patch.wake_requested_at)wakes++;
+   return originalWake(id,patch);
+ };
+ const transport=async()=>{providerCalls++;return {messageId:'provider-'+providerCalls}};
+ const first=await drainWhatsAppOutbox(x.client,{transport});
+ assert.equal(first.accepted,1);
+ assert.equal(first.continued,true,'Post-release scan must trigger successor for raced CREATE');
+ assert.equal(wakes,1);
+ assert.equal(x.jobs.length,2);
+ assert.equal(x.jobs[1].status,'queued');
+ const next=await drainWhatsAppOutbox(x.client,{transport,wakeReason:'continue'});
+ assert.equal(next.accepted,1);
+ assert.equal(providerCalls,2);
+ assert.equal(x.jobs.every(j=>j.status==='accepted'),true);
+});
+
+test('future-only worker with no processed sends still catches urgent CREATE during lease release',async()=>{
+ const x=fixture();
+ await sendWhatsAppText('0501234567','tomorrow reminder',x.client,{
+   sourceType:'scheduled_notification',availableAt:new Date(Date.now()+60000).toISOString()});
+ const originalRelease=x.controls.updateMany,originalWake=x.controls.update;
+ let injected=0,wakes=0;
+ x.controls.updateMany=async(q,p)=>{
+   const result=await originalRelease(q,p);
+   if(q.lease_owner && p.$set?.lease_owner==='' && !injected){
+     injected++;
+     await x.outbox.create({chat_id:'972501234567@c.us',message_type:'text',
+       message_text:'urgent queued while future-only worker finishes',
+       requested_provider:'green',status:'queued',available_at:new Date().toISOString()});
+   }
+   return result;
+ };
+ x.controls.update=async(id,patch)=>{
+   if(patch.wake_requested_at)wakes++;
+   return originalWake(id,patch);
+ };
+ const r=await drainWhatsAppOutbox(x.client,{transport:async()=>{throw Error('should not send future job')}});
+ assert.equal(r.processed,0);
+ assert.equal(r.continued,true);
+ assert.equal(wakes,1);
+ assert.equal(x.jobs.length,2);
+ assert.equal(x.jobs[0].status,'queued');
+ const processed=await drainWhatsAppOutbox(x.client,{wakeReason:'continue',
+   transport:async()=>({messageId:'urgent-accepted'})});
+ assert.equal(processed.accepted,1);
+ assert.equal(x.jobs[1].status,'accepted');
+ assert.equal(x.jobs[0].status,'queued');
+});
+
 test('direct database persistence helper validates both write and read failures conservatively',async()=>{
  const record={id:'row-1',status:'sending',lease_token:'lease-1'};
  const job={...record};
