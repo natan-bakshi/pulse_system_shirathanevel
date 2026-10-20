@@ -460,30 +460,29 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   } finally {
     const existing=await queueStage('lease_final_read',()=>controls.get(control.id));
     if(existing?.lease_owner===token){
-      const remainder=await queueStage('remaining_query',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
-      // Kick a successor after any completed batch, even when empty. This also
-      // closes the race where a new job arrives between the last queue read
-      // and lease release; an empty successor exits without another wake.
-      // The 5-minute watchdog remains a crash-recovery fallback only.
-      requestWake=processed>0 && !!remainder.job && !existing.paused && existing.enabled && !lastError;
       const released=await queueStage('lease_release',()=>controls.updateMany({id:control.id,lease_owner:token},{$set:{
         lease_owner:'',lease_until:'',
         last_worker_at:new Date().toISOString(),last_error:lastError,
         last_worker_finished_at:new Date().toISOString(),last_batch_count:processed,
         last_batch_elapsed_ms:Math.max(0,Date.now()-nowMs)
       }}));
-      // Base44's entity-UPDATE workflow must be woken with a real update(),
-      // not updateMany(): an atomic CAS write alone may not emit the entity
-      // trigger. This was leaving the remainder for the 5-minute watchdog.
-      // Make the wake observable AFTER lease release, and only if due work
-      // remains. No empty-queue cascade / credits on every run.
-      if(requestWake && released?.updated===1){
-        const wakeAt=new Date(Math.max(Date.now(),asEpoch(existing.wake_requested_at)+1)).toISOString();
-        try {
-          await queueStage('continue_wake',()=>controls.update(control.id,{wake_requested_at:wakeAt}));
-        }catch(error){
-          console.error('[WhatsAppOutbox] continuation wake failed; watchdog will retry');
-          requestWake=false;
+      // The previous order queried remaining jobs BEFORE releasing the lease.
+      // A new Outbox CREATE in that gap triggered a busy worker and was then
+      // missed, leaving the message until the five-minute watchdog.
+      // Read ONCE after release: any new due job arriving while busy is now
+      // visible. Only invoke a successor if work really remains.
+      if(released?.updated===1 && !existing.paused && existing.enabled &&
+        !lastError && processed>0){
+        const remainder=await queueStage('remaining_query',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
+        requestWake=!!remainder.job;
+        if(requestWake){
+          const wakeAt=new Date(Math.max(Date.now(),asEpoch(existing.wake_requested_at)+1)).toISOString();
+          try {
+            await queueStage('continue_wake',()=>controls.update(control.id,{wake_requested_at:wakeAt}));
+          }catch(error){
+            console.error('[WhatsAppOutbox] continuation wake failed; watchdog will retry');
+            requestWake=false;
+          }
         }
       }
     }
