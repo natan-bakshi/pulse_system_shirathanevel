@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { drainWhatsAppOutbox, reconcileAcceptedWhatsAppMirrors, reconcileAgreementWhatsAppMirrors, reconcileCardSetupWhatsAppMirrors } from '../../shared/whatsappQueueWorker.ts';
 import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIntentReconciler.ts';
 import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueReconciler.ts';
+import { reconcileStalledCardSetupEnqueues } from '../../shared/cardSetupQueueReconciler.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
 // crash watchdog. Does not accept arbitrary message/recipient parameters.
@@ -52,6 +53,8 @@ Deno.serve(async (req) => {
       // No replay if a crashed enqueue did not leave an Outbox row.
       try{await reconcileStalledAgreementEnqueues(client,8);}
       catch(error){console.error('[WhatsAppOutbox] stalled agreement journal check unavailable');}
+      try{await reconcileStalledCardSetupEnqueues(client,8);}
+      catch(error){console.error('[WhatsAppOutbox] stalled card setup journal check unavailable');}
       try{await reconcileAcceptedWhatsAppMirrors(client,10);}
       catch(error){console.error('[WhatsAppOutbox] InApp mirror repair watchdog unavailable');}
       try{await reconcileAgreementWhatsAppMirrors(client,10);}
