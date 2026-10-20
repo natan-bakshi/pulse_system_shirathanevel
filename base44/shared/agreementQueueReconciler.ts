@@ -42,15 +42,16 @@ export async function reconcileStalledAgreementEnqueues(client:any,maxRows=8,now
       const jobs=row.key?await db.WhatsAppOutbox.filter({
         idempotency_key:row.key
       },'-created_date',2,0,
-      ['id','status','provider_message_id','client_message_delivery_id']):[];
+      ['id','status','provider_message_id','client_message_delivery_id','completed_at']):[];
       const job=jobs[0]||null;
       const state=job?sourceState(String(job.status||'')):'unknown';
       const patch:any={
         state,
         ...(job?{queue_job_id:job.id,provider_message_id:state==='accepted'?job.provider_message_id||'':''}:{}),
-        ...(state==='accepted'?{sent_at:new Date(now).toISOString()}:{}),
+        ...(state==='accepted'&&Number.isFinite(Date.parse(String(job?.completed_at||'')))
+          ?{sent_at:job.completed_at}:{}),
         ...(['failed','unknown','cancelled','expired','resolved'].includes(state)
-          ?{error_code:job?'UNKNOWN_OUTBOX_STATE':'QUEUE_ENQUEUE_UNVERIFIED',
+          ?{error_code:job?(state==='unknown'?'UNKNOWN_OUTBOX_STATE':'OUTBOX_TERMINAL'):'QUEUE_ENQUEUE_UNVERIFIED',
             failure_phase:job?'provider_or_queue_terminal':'unverified',
             error:job?'יש לבדוק את תוצאת הודעת WhatsApp בתור לפני שליחה חוזרת.'
               :'אין אישור שנוצרה הודעת WhatsApp בתור; אין לשלוח שוב לפני בירור.'}
