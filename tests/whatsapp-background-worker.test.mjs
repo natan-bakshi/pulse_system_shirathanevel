@@ -37,6 +37,7 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      if(name.endsWith('/whatsappQueueWorker.ts'))return {
        reconcileAcceptedWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
        reconcileAgreementWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
+       reconcileCardSetupWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
        drainWhatsAppOutbox:async(_client,opts)=>{dispatched++;wakeReasons.push(opts?.wakeReason);return {success:true,reason:'processed',accepted:1}}
      };
      throw Error('Unexpected worker import: '+name);
