@@ -848,7 +848,7 @@ export default function EventDetails() {
       });
       if (response.data?.error) throw new Error(response.data.error);
       if (isLink) {
-        setPaymentLinkResult({ paymentLink: response.data.paymentLink });
+        setPaymentLinkResult({ paymentLink:response.data.paymentLink, sentVia:response.data.sentVia||[], queuedVia:response.data.queuedVia||[], failures:response.data.failures||[], manual_review_required:response.data.manual_review_required===true });
         await loadEventData();
         return;
       }
