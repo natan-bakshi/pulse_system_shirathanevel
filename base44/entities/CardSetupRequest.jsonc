@@ -65,6 +65,10 @@
     },
     "link_message_id": {
       "type": "string"
+    },
+    "link_send_started_at": {
+      "type": "string",
+      "description": "Durable timestamp of CardSetup WhatsApp enqueue attempt for safe watchdog reconciliation; no card processing"
     }
   },
   "required": [
