@@ -29,7 +29,11 @@ const toLocale = value => {
 
 export default function WhatsAppQueueMessages({refreshSignal=0}){
   const [rows,setRows]=useState([]);
-  const [status,setStatus]=useState('all');
+  const [status,setStatus]=useState(()=>{
+    if(typeof window==='undefined')return 'all';
+    return new URLSearchParams(window.location.search).get('whatsappQueue')==='review'
+      ?'unknown':'all';
+  });
   const [source,setSource]=useState('');
   const [showArchived,setShowArchived]=useState(false);
   const [offset,setOffset]=useState(0);
