@@ -240,6 +240,27 @@ export default function WhatsAppQueueSettings(){
             <td>{item.transportDuration?.p50Ms==null?'טרם נמדד':(item.transportDuration.p50Ms/1000).toFixed(2)+' שניות'}</td>
           </tr>)}</tbody>
         </table>
+        <details className="border rounded p-2">
+          <summary className="cursor-pointer font-medium">פירוט זמני התור לפי סוג הודעה (מדגם היסטורי)</summary>
+          <p className="text-xs text-gray-600 py-2">
+            נמדד לאחר מועד היעד של ההודעה, ללא המתנה מכוונת לשעות שקט.
+            תוצאה של חמש דקות יכולה להעיד על התעוררות Watchdog מאוחרת — אך אינה מוכיחה לבדה מה גרם לה.
+            זמן פעולת הספק מחושב רק כשהיו חותמות Transport מפורטות.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-xs min-w-[580px]">
+              <thead><tr><th>סוג הודעה</th><th>ניסיונות</th><th>חציון המתנה בתור</th>
+                <th>95% מהזמן לאחר היעד</th><th>חציון פעולת ספק</th></tr></thead>
+              <tbody>{Object.entries(metrics.bySource||{})
+                .sort((a,b)=>b[1].count-a[1].count).slice(0,20).map(([source,item])=><tr key={source} className="border-t">
+                  <td>{source}</td><td>{item.count}</td>
+                  <td>{item.queueWait?.p50Ms==null?'אין נתון':(item.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</td>
+                  <td>{item.afterDue?.p95Ms==null?'אין נתון':(item.afterDue.p95Ms/1000).toFixed(1)+' שניות'}</td>
+                  <td>{item.transportDuration?.p50Ms==null?'לא נמדד':(item.transportDuration.p50Ms/1000).toFixed(2)+' שניות'}</td>
+                </tr>)}</tbody>
+            </table>
+          </div>
+        </details>
       </section>}
       <div className="border-t pt-4"><WhatsAppQueueMessages refreshSignal={refreshSignal}/></div>
       <p className="text-xs text-gray-500">הודעה שהתקבלה אצל ספק WhatsApp אינה בהכרח הודעה שנמסרה לנמען. במצב לא ידוע יש לאמת אצל הספק לפני שליחה מחדש.</p>
