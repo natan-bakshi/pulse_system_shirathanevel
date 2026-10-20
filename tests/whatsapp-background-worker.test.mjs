@@ -26,7 +26,12 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true}={}){
      if(name.endsWith('/assignmentIntentReconciler.ts'))return {
        sweepPendingSupplierAssignmentIntents:async()=>{sweeps++;return {success:true,reason:'feature_disabled'}}
      };
+     if(name.endsWith('/agreementQueueReconciler.ts'))return {
+       reconcileStalledAgreementEnqueues:async()=>({examined:0,linked:0,unverified:0,alerts:0,errors:0})
+     };
      if(name.endsWith('/whatsappQueueWorker.ts'))return {
+       reconcileAcceptedWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
+       reconcileAgreementWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
        drainWhatsAppOutbox:async(_client,opts)=>{dispatched++;wakeReasons.push(opts?.wakeReason);return {success:true,reason:'processed',accepted:1}}
      };
      throw Error('Unexpected worker import: '+name);
