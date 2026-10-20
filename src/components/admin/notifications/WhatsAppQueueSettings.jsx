@@ -130,6 +130,12 @@ export default function WhatsAppQueueSettings(){
         {view.lastBatchElapsedMs!=null&&<span>משך ריצה אחרונה: <strong>{(view.lastBatchElapsedMs/1000).toFixed(1)} שניות</strong></span>}
         {view.lastError&&<span className="text-red-700">תקלה: {view.lastError}</span>}
       </div>}
+      {view?.duplicateAssignmentVersions?.count>0 && <p role="status" className="text-sm border rounded p-3 text-amber-800">
+        זוהו {view.duplicateAssignmentVersions.count} זוגות או קבוצות של הודעות שיבוץ עם אותה גרסת עדכון עסקית במדגם.
+        אלה אירועים היסטוריים המחייבים בדיקת מקור מול תור; אין לשלוח מחדש או למחוק הודעות.
+        לפירוט לחץ על "בדיקת התאמה מקור ↔ תור" בהמשך.
+        {view.duplicateAssignmentVersions.sampleTruncated && ' הנתונים מוגבלים ל־500 הרשומות האחרונות.'}
+      </p>}
       <div className="flex flex-wrap gap-6">
         <label className="flex gap-2 items-center text-sm"><Switch checked={!!form.enabled} disabled={busy} onCheckedChange={enabled=>setForm(s=>({...s,enabled}))}/>הפעל תור מרכזי</label>
         <label className="flex gap-2 items-center text-sm"><Switch checked={!!form.paused} disabled={busy} onCheckedChange={paused=>setForm(s=>({...s,paused}))}/>השהה שליחות חדשות</label>
