@@ -31,7 +31,7 @@ export function parseWhatsAppPhone(phone:any):WhatsAppPhoneResult {
   if(!explicitInternational){
     // Israel's domestic mobile and national telephone formats are the only
     // ones inferred without a country code; foreign trunk-0 is ambiguous.
-    if(/^05\d{8}$/.test(digits)||/^0[2-9]\d{7}$/.test(digits))digits='972'+digits.slice(1);
+    if(/^05\d{8}$/.test(digits)||/^0[234789]\d{7}$/.test(digits))digits='972'+digits.slice(1);
     else if(/^5\d{8}$/.test(digits))digits='972'+digits;
     else if(digits.startsWith('0'))return bad('NEEDS_COUNTRY_CODE','COUNTRY_CODE_REQUIRED');
     else if(digits.startsWith('9720'))return bad('INVALID','INVALID_ISRAEL_TRUNK');
