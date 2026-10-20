@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
-import { drainWhatsAppOutbox, reconcileAcceptedWhatsAppMirrors, reconcileAgreementWhatsAppMirrors } from '../../shared/whatsappQueueWorker.ts';
+import { drainWhatsAppOutbox, reconcileAcceptedWhatsAppMirrors, reconcileAgreementWhatsAppMirrors, reconcileCardSetupWhatsAppMirrors } from '../../shared/whatsappQueueWorker.ts';
 import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIntentReconciler.ts';
 import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueReconciler.ts';
 
@@ -56,6 +56,8 @@ Deno.serve(async (req) => {
       catch(error){console.error('[WhatsAppOutbox] InApp mirror repair watchdog unavailable');}
       try{await reconcileAgreementWhatsAppMirrors(client,10);}
       catch(error){console.error('[WhatsAppOutbox] agreement mirror repair watchdog unavailable');}
+      try{await reconcileCardSetupWhatsAppMirrors(client,10);}
+      catch(error){console.error('[WhatsAppOutbox] card mirror repair watchdog unavailable');}
     }
     const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
       status:{$in:['queued','retry_wait','sending']}
