@@ -12,7 +12,7 @@ import {inspectAgreementWhatsApp} from "../../shared/agreementDeliveryDiagnostic
 import {invitationFailureView,hasUnresolvedAgreementInvitation} from "../../shared/agreementInvitationSafety.ts";
 import { readAll } from "../../shared/eventReadiness.ts";
 import { closingDefaults, canonical, digest, cleanText, defaultMilestones, validateMilestones, roundMoney, firstCompletedPayment } from "../../shared/agreementRules.ts";
-import { AgreementError, audit, lockAgreement, settings, financials, deliver, reconcileAgreement } from "../../shared/agreementLifecycle.ts";
+import { AgreementError, audit, lockAgreement, settings, financials, deliver, notifyAgreementAdmin, reconcileAgreement } from "../../shared/agreementLifecycle.ts";
 import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
@@ -450,6 +450,12 @@ export default Deno.serve(async req=>{
        {delivery_id:delivery.id});
       return Response.json({url,delivery_state:delivery.state,delivery_id:delivery.id});
      }catch(e){
+      // A crash before ClientMessageDelivery.create has no journal row at
+      // all. Do not leave that failed customer invitation silent: add ONE
+      // existing deduplicated owner alert, without a retry or token rotation.
+      try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח",
+        "הזמנת ההסכם לא אושרה בתור WhatsApp. יש לבדוק את היסטוריית ההודעות לפני ניסיון נוסף.");}
+      catch{console.error('[AgreementDelivery] fallback admin alert unavailable');}
       // The enqueue may have persisted even when its response was lost.
       // Report the journal state, never collapse UNKNOWN into false FAILED.
       return Response.json(await invitationFailureView(client.entities,
