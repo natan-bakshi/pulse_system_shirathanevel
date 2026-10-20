@@ -2,7 +2,7 @@ import { getClientContacts, getEventContacts } from '../../shared/eventFields.js
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
-import { sendWhatsAppToChat } from '../../shared/whatsappSend.ts';
+import { sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
 import { assignmentWhatsAppKey, assignmentWhatsAppContext, cleanMissingAssignmentTime } from '../../shared/assignmentWhatsApp.ts';
 import { resolveNotificationDelay } from '../../shared/quietHours.ts';
 import { entityTriggerWhatsAppContext } from '../../shared/entityTriggerWhatsApp.ts';
@@ -820,11 +820,7 @@ async function sendNotification(base44, template, entityData, event, entityName,
 }
 
 function normalizePhoneChatId(phone) {
-    if (!phone) return '';
-    let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-    if (cleanPhone.startsWith('05')) cleanPhone = '972' + cleanPhone.substring(1);
-    else if (cleanPhone.length === 9 && cleanPhone.startsWith('5')) cleanPhone = '972' + cleanPhone;
-    return cleanPhone ? `${cleanPhone}@c.us` : '';
+    return toChatId(phone);
 }
 
 function normalizeGroupChatId(groupValue) {
