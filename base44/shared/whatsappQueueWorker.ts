@@ -415,39 +415,47 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // This interval measures the transport function (including a private
       // file's just-in-time signed URL), not strictly HTTP/network alone.
       const transportStartedAt=new Date().toISOString();
-      let transportFinishedAt='';
-      try {
-        // Only this line reaches a provider. Never call the public enqueue method.
-        const receipt=await (opts.transport||sendWhatsAppTransport)(job,provider,client);
-        transportFinishedAt=new Date().toISOString();
-        await db.WhatsAppOutbox.update(job.id,{
-          status:'accepted',provider_message_id:receipt.messageId||'',completed_at:new Date().toISOString(),
-          transport_started_at:transportStartedAt,transport_finished_at:transportFinishedAt,
-          last_error:'',error_code:0,last_status_at:new Date().toISOString()
-        });
-        accepted++;
-        await syncWhatsAppStatus(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),'accepted',receipt.messageId||'');
-      }catch(error){
-        transportFinishedAt ||= new Date().toISOString();
-        const outcome=classifyWhatsAppError(error,attempt,Number(job.max_attempts||3));
-        await db.WhatsAppOutbox.update(job.id,{
-          status:outcome.status,available_at:outcome.retryAt||job.available_at,
-          error_code:outcome.code,last_error:outcome.reason,completed_at:new Date().toISOString(),
-          transport_started_at:transportStartedAt,transport_finished_at:transportFinishedAt,
-          last_status_at:new Date().toISOString()
-        });
-        if(outcome.status==='unknown') unknown++;
-        if(outcome.status==='failed') failed++;
-        if(outcome.status==='retry_wait') retried++;
-        if(outcome.status!=='retry_wait') await syncWhatsAppStatus(client,await db.WhatsAppOutbox.get(job.id).catch(()=>job),outcome.status,'');
-        // HTTP 401/403 is a DEFINITE rejection for this job. Report its
-        // failed state, but do not stop unrelated queued jobs (including the
-        // backup provider) until the next five-minute watchdog. Never retry
-        // this rejected job without an explicit administrative decision.
-        if(outcome.code===401||outcome.code===403) {
-          console.error('[WhatsAppOutbox] Provider authentication rejected a job');
-        }
+      let receipt:any=null,transportError:any=null;
+      try{
+        // This is the ONLY provider call. It is never retried by this worker.
+        receipt=await (opts.transport||sendWhatsAppTransport)(job,provider,client);
+        if(!String(receipt?.messageId||'').trim())
+          throw Object.assign(new Error('Provider returned no verified message ID'),{
+            deliveryUncertain:true,errorCode:502
+          });
+      }catch(error){transportError=error;}
+      const transportFinishedAt=new Date().toISOString();
+      const outcome=transportError
+        ? classifyWhatsAppError(transportError,attempt,Number(job.max_attempts||3))
+        : {status:'accepted',code:0,retryAt:'',reason:''};
+      const patch={
+        status:outcome.status,
+        provider_message_id:outcome.status==='accepted'?String(receipt.messageId):'',
+        available_at:outcome.retryAt||job.available_at,
+        error_code:outcome.code,last_error:outcome.reason,
+        completed_at:new Date().toISOString(),
+        transport_started_at:transportStartedAt,transport_finished_at:transportFinishedAt,
+        last_status_at:new Date().toISOString()
+      };
+      // A DB failure AFTER provider acceptance must not be interpreted as a
+      // provider rejection. Confirm/update the receipt without another HTTP.
+      const confirmed=await persistWhatsAppProviderOutcome(db.WhatsAppOutbox,job,patch);
+      if(!confirmed){
+        lastError='Provider result persistence unverified; manual reconciliation required';
+        break; // Do not continue while the provider receipt remains unconfirmed.
       }
+      if(outcome.status==='accepted')accepted++;
+      else if(outcome.status==='unknown')unknown++;
+      else if(outcome.status==='failed')failed++;
+      else if(outcome.status==='retry_wait')retried++;
+      if(outcome.status!=='retry_wait'){
+        const mirroredJob=await db.WhatsAppOutbox.get(job.id).catch(()=>null);
+        await syncWhatsAppStatus(client,mirroredJob||{...job,...patch},
+          outcome.status,patch.provider_message_id);
+      }
+      // Definite 401/403 must not block other queued providers' messages.
+      if(outcome.code===401||outcome.code===403)
+        console.error('[WhatsAppOutbox] Provider authentication rejected a job');
     }
   } finally {
     const existing=await queueStage('lease_final_read',()=>controls.get(control.id));
