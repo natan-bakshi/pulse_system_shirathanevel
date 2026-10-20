@@ -49,6 +49,49 @@ test('p50, p95 use real attempts only and never fabricate missing timestamps',()
   assert.equal(JSON.stringify(result).includes('Private message'),false);
   assert.equal(JSON.stringify(result).includes('972501234567'),false);
 });
+test('read-only latency diagnostics isolate five-minute scheduled fanout tails by source',()=>{
+ const jobs=[
+  sample('fanout-1','accepted',{source_type:'scheduled_fanout',
+   send_started_at:'2026-10-15T08:05:00.000Z',
+   transport_started_at:'2026-10-15T08:05:00.000Z',
+   transport_finished_at:'2026-10-15T08:05:00.400Z',
+   completed_at:'2026-10-15T08:05:00.700Z'}),
+  sample('fanout-2','accepted',{source_type:'scheduled_fanout',
+   send_started_at:'2026-10-15T08:05:01.000Z',
+   transport_started_at:'2026-10-15T08:05:01.000Z',
+   transport_finished_at:'2026-10-15T08:05:01.350Z',
+   completed_at:'2026-10-15T08:05:01.700Z'}),
+  sample('assignment-1','accepted',{source_type:'assignment_new',
+   send_started_at:'2026-10-15T08:00:02.000Z',
+   transport_started_at:'2026-10-15T08:00:02.000Z',
+   transport_finished_at:'2026-10-15T08:00:02.450Z',
+   completed_at:'2026-10-15T08:00:02.700Z'}),
+  sample('queued','queued',{source_type:'scheduled_fanout',
+   attempt_count:0,send_started_at:'',completed_at:''}),
+  sample('invalid','unknown',{source_type:'private@972501234567',
+   send_started_at:'',completed_at:stamp(5)})
+ ];
+ const m=summarizeWhatsAppOutbox(jobs,stamp(10));
+ assert.equal(m.bySource.scheduled_fanout.count,2);
+ assert.equal(m.bySource.scheduled_fanout.queueWait.p50Ms,300000);
+ assert.equal(m.bySource.scheduled_fanout.afterDue.p95Ms,301700);
+ assert.equal(m.bySource.scheduled_fanout.transportDuration.p50Ms,350);
+ assert.equal(m.bySource.assignment_new.count,1);
+ assert.equal(m.bySource.assignment_new.queueWait.p50Ms,2000);
+ assert.equal(m.bySource.assignment_new.transportDuration.p50Ms,450);
+ assert.equal(m.bySource.unattributed.count,1);
+ assert.equal(JSON.stringify(m).includes('private@9725'),false);
+ assert.equal(JSON.stringify(m).includes('Private message'),false);
+ assert.equal(m.providerAcceptanceIsNotDelivery,true);
+});
+test('admin latency panel groups sources from existing projected read and is collapsed by default',()=>{
+ const backend=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
+ const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+ assert.match(backend,/const TIMING_FIELDS=[\s\S]*?'source_type'\]/);
+ assert.match(ui,/Object.entries\(metrics.bySource\|\|\{\}\)/);
+ assert.match(ui,/פירוט זמני התור לפי סוג הודעה/);
+ assert.match(ui,/<details className="border rounded p-2">/);
+});
 test('invalid, reversed and absent dates do not count as real timing measurements',()=>{
   const s=readOutboxTiming(sample('a','unknown',{
     created_date:'not-a-date',available_at:'',send_started_at:stamp(1),completed_at:stamp(0)
