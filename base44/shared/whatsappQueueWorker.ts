@@ -275,13 +275,22 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   const db=client?.asServiceRole?.entities;
   if(!db) throw new Error('A backend service client is required');
   const controls=db.WhatsAppQueueControl;
-  let control=await queueStage('control_read',()=>readWhatsAppQueueControl(client));
+  // The authenticated backend wrapper has already read this singleton. Reuse
+  // it for the preflight; CAS claim and per-job reload still enforce current
+  // state. Direct/test callers without preflight retain the existing read.
+  let control=opts.initialControl?.control_key==='global'
+    ? opts.initialControl
+    : await queueStage('control_read',()=>readWhatsAppQueueControl(client));
   if(!control.enabled) return {success:true,reason:'disabled',sent:0};
   if(control.paused) return {success:true,reason:'paused',sent:0};
   const first=await queueStage('due_job_query',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
-  const inFlight=await queueStage('inflight_query',()=>db.WhatsAppOutbox.filter({status:'sending'},'send_started_at',1));
-  // A crashed worker can leave only a 'sending' record. The watchdog must
-  // inspect it and mark unknown rather than treating the queue as empty.
+  // On the hot CREATE path, due work can be dispatched without scanning
+  // every in-flight record. Stale sends are still inspected on each watchdog
+  // and whenever 'sending' is the only work left in an otherwise empty queue.
+  const checkInFlight=opts.wakeReason==='watchdog'||!first.pending;
+  const inFlight=checkInFlight
+    ? await queueStage('inflight_query',()=>db.WhatsAppOutbox.filter({status:'sending'},'send_started_at',1))
+    : [];
   if(!first.pending && !inFlight.length) return {success:true,reason:'empty',sent:0};
 
   // Atomic compare-and-swap on one persistent singleton, not browser-local state.
@@ -302,7 +311,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   let accepted=0,failed=0,unknown=0,retried=0,skipped=0,processed=0,requestWake=false;
   let lastError='';
   try {
-    await staleSendingToUnknown(client,Date.now());
+    if(checkInFlight)await staleSendingToUnknown(client,Date.now());
     const maxPerRun=Math.max(1,Math.min(30,Number(control.max_messages_per_run)||16));
     while(processed<maxPerRun && Date.now()<deadline-5000) {
       control=await queueStage('control_reload',()=>controls.get(control.id));
