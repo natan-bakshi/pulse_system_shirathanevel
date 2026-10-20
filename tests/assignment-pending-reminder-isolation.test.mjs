@@ -7,6 +7,7 @@ import {pendingApprovalReminderSupplierIds} from '../base44/shared/assignmentRem
 import {assignmentWhatsAppContext,assignmentWhatsAppKey,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
 import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {toChatId} from '../base44/shared/whatsappSend.ts';
 
 test('one optional reminder failure does not block assignment notices; repeated data is loaded once',async()=>{
  const src=fs.readFileSync('base44/functions/handleEntityEvents/entry.ts','utf8');
@@ -61,6 +62,7 @@ test('one optional reminder failure does not block assignment notices; repeated 
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(path.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
      if(path.endsWith('whatsappSend.ts'))return {
+       toChatId,
        sendWhatsAppToChat:async()=>{counters.waNotices++;return {success:true,queued:true,status:'queued',jobId:'test-job'}}
      };
      if(path.endsWith('assignmentWhatsApp.ts'))return {
