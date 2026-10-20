@@ -19,7 +19,7 @@ const LIST_FIELDS=['id','source_type','source_id','status','message_type',
 const TIMING_FIELDS=['created_date','available_at','send_started_at','completed_at',
   'job_claimed_at','rate_ready_at','prior_dispatch_at','configured_interval_ms',
   'transport_started_at','transport_finished_at','status','attempt_count',
-  'provider','requested_provider','worker_wake_reason'];
+  'provider','requested_provider','worker_wake_reason','source_type'];
 // Three small business keys allow reliable same-revision duplicate detection
 // in the existing status sample, without another query or message bodies.
 const HISTORY_FIELDS=[...LIST_FIELDS,'idempotency_key','event_service_id','supplier_id'];
