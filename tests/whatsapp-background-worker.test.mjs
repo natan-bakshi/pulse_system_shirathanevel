@@ -31,6 +31,9 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      if(name.endsWith('/assignmentIntentReconciler.ts'))return {
        sweepPendingSupplierAssignmentIntents:async()=>{sweeps++;return {success:true,reason:'feature_disabled'}}
      };
+     if(name.endsWith('/cardSetupQueueReconciler.ts'))return {
+       reconcileStalledCardSetupEnqueues:async()=>({examined:0,linked:0,unverified:0,alerts:0,errors:0})
+     };
      if(name.endsWith('/agreementQueueReconciler.ts'))return {
        reconcileStalledAgreementEnqueues:async()=>({examined:0,linked:0,unverified:0,alerts:0,errors:0})
      };
