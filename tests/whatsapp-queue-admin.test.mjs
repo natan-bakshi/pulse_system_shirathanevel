@@ -61,6 +61,43 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
 const config={enabled:true,paused:false,wasenderIntervalMs:2500,greenIntervalMs:180,maxMessagesPerRun:16};
 const makeJob=(id,status='queued')=>({id,status,chat_id:'972501234567@c.us',message_type:'text',message_text:'Hello',source_type:'assignment_new',available_at:new Date().toISOString(),created_date:new Date().toISOString(),attempt_count:0,archived:false});
 
+test('queue status flags only same-business-version assignment duplicates without extra DB reads',async()=>{
+ const make=(id,service,supplier,time)=>({
+  ...makeJob(id,'accepted'),
+  source_type:'assignment_new',event_service_id:service,supplier_id:supplier,
+  idempotency_key:'assignment:'+service+':'+supplier+':'+time+':SUPPLIER_NEW_ASSIGNMENT'
+ });
+ const rows=[
+  make('job-a1','svc-a','supplier-a','2026-10-18T10:22:19.719000'),
+  make('job-a2','svc-a','supplier-a','2026-10-18T10:22:19.719051'),
+  make('job-b1','svc-b','supplier-b','2026-10-18T06:39:07.866000'),
+  make('job-b2','svc-b','supplier-b','2026-10-18T06:39:07.866640'),
+  make('job-c1','svc-c','supplier-c','2026-10-13T16:01:30.402000'),
+  make('job-c2','svc-c','supplier-c','2026-10-13T16:03:03.411000')
+ ];
+ const ctx=context({jobs:rows});
+ const r=await ctx.invoke('status');
+ assert.equal(r.status,200);
+ assert.equal(r.body.duplicateAssignmentVersions.count,2,
+   'Two microsecond collisions qualify; independent saves remain separate');
+ assert.equal(r.body.duplicateAssignmentVersions.providerAcceptanceIsNotDelivery,true);
+ assert.equal(ctx.listProjections.length,1,'Reuse existing projected status read');
+ assert.equal(ctx.listProjections[0].includes('idempotency_key'),true);
+ assert.equal(ctx.listProjections[0].includes('event_service_id'),true);
+ assert.equal(ctx.listProjections[0].includes('supplier_id'),true);
+ assert.equal(JSON.stringify(r.body.latest).includes('idempotency_key'),false);
+ assert.equal(ctx.calls.length,0,'Read-only status must not dispatch provider');
+});
+test('owner review deep link opens queue details and filters unknown without dispatch',()=>{
+ const settings=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+ const messages=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueMessages.jsx','utf8');
+ assert.match(settings,/id="whatsapp-queue"/);
+ assert.match(settings,/open=\{expanded\}/);
+ assert.match(settings,/duplicateAssignmentVersions\.count/);
+ assert.match(settings,/onClick=\{\(\)=>run\('sourceAudit'\)\}/);
+ assert.match(messages,/get\('whatsappQueue'\)==='review'/);
+ assert.match(messages,/\?'unknown':'all'/);
+});
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
