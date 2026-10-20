@@ -80,9 +80,15 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
 
   const handleShare = async (payload) => {
     setActionLoading(true);
-    await runAction(() => base44.functions.invoke("shareFinancialDocument", { documentId: documentToShare.id, ...payload }), "המסמך נשלח");
-    setActionLoading(false);
-    setDocumentToShare(null);
+    try{
+      const {data}=await base44.functions.invoke("shareFinancialDocument",{documentId:documentToShare.id,...payload});
+      if(data?.manual_review_required)toast.warning('מצב שליחת המסמך בוואטסאפ אינו ודאי. בדוק את התור לפני ניסיון נוסף.');
+      else if(data?.queued)toast.message('הודעת המסמך נשמרה בתור WhatsApp וממתינה לאישור הספק.');
+      else if(data?.failures?.length)toast.warning('חלק מערוצי שיתוף המסמך נכשלו.');
+      else toast.success(payload.channel==='whatsapp'?'המסמך התקבל אצל ספק WhatsApp; מסירה טרם אומתה.':'המסמך נשלח באימייל.');
+      refresh();
+    }catch(error){toast.error(error.response?.data?.error||error.message);}
+    finally{setActionLoading(false);setDocumentToShare(null);}
   };
 
   const visible = documents.filter((doc) => !doc.is_detached_from_event);
