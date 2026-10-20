@@ -144,12 +144,13 @@ test("issued agreement reports queued distinctly from provider acceptance",async
  const labels=(await import("node:fs")).readFileSync("src/lib/agreementApi.js","utf8");
  assert.match(labels,/queued:"ממתין בתור WhatsApp"/);
 });
-test("agreement schemas deny direct writes and non-admin reads",async()=>{
+test("agreement schemas restrict reads and writes to administrators",async()=>{
  const fs=await import("node:fs");
  for(const name of ["EventAgreement","AgreementAuditEvent","ConsentClause","PaymentMilestone","ClientMessageDelivery","AgreementChargeNotice","AgreementAmendment"]){
   const s=JSON.parse(fs.readFileSync("base44/entities/"+name+".jsonc","utf8"));
   assert.deepEqual(s.rls.read,{user_condition:{role:"admin"}});
-  for(const op of ["create","update","delete"])assert.equal(s.rls[op],false,name+" "+op);
+  for(const op of ["create","update","delete"])
+   assert.deepEqual(s.rls[op],{user_condition:{role:"admin"}},name+" "+op);
  }
 });
 
