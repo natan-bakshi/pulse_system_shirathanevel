@@ -36,25 +36,21 @@ Deno.serve(async (req) => {
         console.error('[WhatsAppOutbox] Watchdog heartbeat could not be persisted');
       }
     }
-    // A queue pause prohibits provider HTTP but must not suspend safe,
-    // source-only mirror repair. These bounded reads use the EXISTING watchdog
-    // and never enqueue or contact a WhatsApp provider.
+    // Disabled/paused queues still have an observable watchdog heartbeat.
+    // Preserve the existing no-extra-read behavior while the queue is paused.
+    if(!controlRows[0].enabled || controlRows[0].paused){
+      return Response.json({success:true,reason:controlRows[0].paused?'paused':'disabled',sent:0});
+    }
+    // Reuse our existing five-minute watchdog for missed durable intents
+    // and source-only mirror repairs. None of the repair routines contacts a
+    // provider; all scans are bounded and separate from regular queue wakes.
     if(wakeReason==='watchdog'){
+      try{await sweepPendingSupplierAssignmentIntents(client,{maxServices:4});}
+      catch(error){console.error('[WhatsAppOutbox] intent watchdog unavailable',error instanceof Error?error.name:'unknown');}
       try{await reconcileAcceptedWhatsAppMirrors(client,10);}
       catch(error){console.error('[WhatsAppOutbox] InApp mirror repair watchdog unavailable');}
       try{await reconcileAgreementWhatsAppMirrors(client,10);}
       catch(error){console.error('[WhatsAppOutbox] agreement mirror repair watchdog unavailable');}
-    }
-    // Disabled/paused queues still have an observable watchdog heartbeat.
-    if(!controlRows[0].enabled || controlRows[0].paused){
-      return Response.json({success:true,reason:controlRows[0].paused?'paused':'disabled',sent:0});
-    }
-    // Reuse our existing five-minute watchdog for missed durable intents,
-    // but ONLY when the separate assignment-intent feature is enabled. An
-    // exception must never prevent regular WhatsApp queued jobs from working.
-    if(wakeReason==='watchdog'){
-      try{await sweepPendingSupplierAssignmentIntents(client,{maxServices:4});}
-      catch(error){console.error('[WhatsAppOutbox] intent watchdog unavailable',error instanceof Error?error.name:'unknown');}
     }
     const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
       status:{$in:['queued','retry_wait','sending']}
