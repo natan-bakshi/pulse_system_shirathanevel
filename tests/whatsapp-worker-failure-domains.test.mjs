@@ -228,6 +228,54 @@ test('future-only worker with no processed sends still catches urgent CREATE dur
  assert.equal(x.jobs[0].status,'queued');
 });
 
+test('authenticated wrapper preflight reuses control and fast due dispatch avoids stale-row scans',async()=>{
+ const x=fixture();
+ await sendWhatsAppText('0501234567','fast path',x.client);
+ const controls=x.client.asServiceRole.entities.WhatsAppQueueControl;
+ const outbox=x.client.asServiceRole.entities.WhatsAppOutbox;
+ let controlsReads=0,inflightReads=0;
+ const originalControlRead=controls.filter,originalOutboxRead=outbox.filter;
+ controls.filter=async(...args)=>{controlsReads++;return originalControlRead(...args)};
+ outbox.filter=async(...args)=>{
+   if(args[0]?.status==='sending')inflightReads++;
+   return originalOutboxRead(...args);
+ };
+ const r=await drainWhatsAppOutbox(x.client,{
+   initialControl:{...x.control},wakeReason:'outbox_create',
+   transport:async()=>({messageId:'fast-accepted'})
+ });
+ assert.equal(r.accepted,1);
+ assert.equal(controlsReads,0,'No duplicate control read on authenticated hot path');
+ assert.equal(inflightReads,0,'Watchdog-only sweep must not delay a fresh message');
+});
+
+test('watchdog still recovers old in-flight sending while processing new due messages',async()=>{
+ const x=fixture();
+ x.jobs.push({id:'stale-old',created_date:'2026-10-10T00:00:00Z',
+   available_at:'2026-10-10T00:00:00Z',send_started_at:'2026-10-10T00:00:00Z',
+   status:'sending',attempt_count:1});
+ await sendWhatsAppText('0501234567','due right now',x.client);
+ let calls=0;
+ const result=await drainWhatsAppOutbox(x.client,{wakeReason:'watchdog',
+   transport:async()=>{calls++;return {messageId:'accepted-current'}}});
+ assert.equal(result.accepted,1);
+ assert.equal(calls,1);
+ assert.equal(x.jobs[0].status,'unknown','Old in-flight is inspected only; not replayed');
+ assert.equal(x.jobs[1].status,'accepted');
+});
+
+test('stale optimistic control preflight cannot send after administrator pauses queue',async()=>{
+ const x=fixture();
+ await sendWhatsAppText('0501234567','must not send',x.client);
+ const earlier={...x.control};
+ x.control.paused=true;
+ const r=await drainWhatsAppOutbox(x.client,{initialControl:earlier,
+   transport:async()=>{throw Error('Paused queue must never call provider')}});
+ assert.equal(r.processed,0);
+ assert.equal(x.jobs[0].status,'queued');
+ assert.equal(x.control.lease_owner,'');
+});
+
 test('direct database persistence helper validates both write and read failures conservatively',async()=>{
  const record={id:'row-1',status:'sending',lease_token:'lease-1'};
  const job={...record};
