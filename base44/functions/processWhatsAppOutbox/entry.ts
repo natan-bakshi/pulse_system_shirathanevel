@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       await client.asServiceRole.entities.WhatsAppQueueControl.update(
         controlRows[0].id,{last_invoked_at:new Date().toISOString()});
     }catch{console.error('[WhatsAppOutbox] invocation telemetry unavailable');}
-    const result=await drainWhatsAppOutbox(client,{wakeReason});
+    const result=await drainWhatsAppOutbox(client,{wakeReason,initialControl:controlRows[0]});
     // A lost telemetry acknowledgement AFTER dispatch is not a send failure.
     try{
       await client.asServiceRole.entities.WhatsAppQueueControl.update(
