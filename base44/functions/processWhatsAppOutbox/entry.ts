@@ -61,9 +61,18 @@ Deno.serve(async (req) => {
       status:{$in:['queued','retry_wait','sending']}
     },'created_date',1);
     if(!work.length)return Response.json({success:true,reason:'empty',sent:0});
-    await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invoked_at:new Date().toISOString()});
+    // Telemetry is not a prerequisite for sending. The previous code returned
+    // HTTP 500 without dispatching a queued job when this harmless write failed.
+    try{
+      await client.asServiceRole.entities.WhatsAppQueueControl.update(
+        controlRows[0].id,{last_invoked_at:new Date().toISOString()});
+    }catch{console.error('[WhatsAppOutbox] invocation telemetry unavailable');}
     const result=await drainWhatsAppOutbox(client,{wakeReason});
-    await client.asServiceRole.entities.WhatsAppQueueControl.update(controlRows[0].id,{last_invocation_result:result.reason||''});
+    // A lost telemetry acknowledgement AFTER dispatch is not a send failure.
+    try{
+      await client.asServiceRole.entities.WhatsAppQueueControl.update(
+        controlRows[0].id,{last_invocation_result:result.reason||''});
+    }catch{console.error('[WhatsAppOutbox] result telemetry unavailable');}
     return Response.json(result);
   }catch(error){
     console.error('[WhatsAppOutbox] worker failed:',error instanceof Error?error.name:'unknown');
