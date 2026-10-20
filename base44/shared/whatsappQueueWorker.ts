@@ -70,6 +70,21 @@ function jobCandidateProvider(job:any):string {
 function randomToken() {
   return typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : 'worker-'+Date.now()+'-'+Math.random();
 }
+// Keep agreement source state aligned with the persisted Outbox receipt.
+// This function must NEVER contact WhatsApp or enqueue a new Outbox job.
+async function updateAgreementDeliveryMirror(client:any,job:any,status:string,messageId:string){
+  const db=client.asServiceRole.entities;
+  await db.ClientMessageDelivery.update(job.client_message_delivery_id,{
+    state:status,provider_message_id:status==='accepted'?messageId||'':'',
+    ...(status==='accepted'?{sent_at:new Date().toISOString()}:{})
+  });
+  const delivery=await db.ClientMessageDelivery.get?.(job.client_message_delivery_id);
+  if(delivery?.kind==='signed_copy'&&delivery.agreement_id){
+    const updated=await db.EventAgreement.updateMany({id:delivery.agreement_id},{$set:{copy_state:status}});
+    if(updated?.updated!==1)throw new Error('Agreement copy mirror update was not confirmed');
+  }
+}
+
 export async function syncWhatsAppStatus(client:any,job:any,status:string,messageId:string) {
   const db=client.asServiceRole.entities;
   // Each downstream mirror is independently best-effort. One broken entity
@@ -97,17 +112,22 @@ export async function syncWhatsAppStatus(client:any,job:any,status:string,messag
   }
   if(job.client_message_delivery_id) {
     try {
-      await db.ClientMessageDelivery.update(job.client_message_delivery_id,{
-        state:status,provider_message_id:status==='accepted' ? messageId||'' : '',
-        ...(status==='accepted'?{sent_at:new Date().toISOString()}:{})
-      });
-      const delivery=await db.ClientMessageDelivery.get?.(job.client_message_delivery_id);
-      if(delivery?.kind==='signed_copy' && delivery.agreement_id) {
-        await db.EventAgreement.updateMany({id:delivery.agreement_id},{$set:{
-          copy_state:status
-        }});
+      await updateAgreementDeliveryMirror(client,job,status,messageId);
+      if(job.delivery_mirror_sync_pending===true){
+        await db.WhatsAppOutbox.updateMany({
+          id:job.id,status,delivery_mirror_sync_pending:true
+        },{$set:{delivery_mirror_sync_pending:false,delivery_mirror_sync_last_attempt_at:new Date().toISOString()}});
       }
-    }catch(error){console.error('[WhatsAppOutbox] agreement status sync failed');}
+    }catch(error){
+      // The provider's outcome remains authoritative; an unavailable business
+      // mirror is NEVER grounds for a second send, or for demoting ACCEPTED.
+      console.error('[WhatsAppOutbox] agreement mirror unavailable; source-only repair queued');
+      try{
+        await db.WhatsAppOutbox.updateMany({id:job.id,status},{$set:{
+          delivery_mirror_sync_pending:true,delivery_mirror_sync_last_attempt_at:new Date().toISOString()
+        }});
+      }catch{console.error('[WhatsAppOutbox] agreement mirror repair flag could not be persisted');}
+    }
   }
   if(job.card_setup_request_id) {
     try {await db.CardSetupRequest.update(job.card_setup_request_id,{
@@ -144,6 +164,36 @@ export async function reconcileAcceptedWhatsAppMirrors(client:any,limit=10){
   }
   return {examined:rows.length,repaired,failed};
 }
+// Repair ONLY the stored business receipt, with one bounded read in the
+// existing five-minute watchdog. No provider HTTP, token regeneration or
+// enqueue. An UNKNOWN remains UNKNOWN; a failed mirror never changes its job.
+export async function reconcileAgreementWhatsAppMirrors(client:any,limit=10){
+  const db=client.asServiceRole.entities;
+  const states=['accepted','unknown','failed','cancelled','expired','resolved'];
+  const rows=await db.WhatsAppOutbox.filter({
+    delivery_mirror_sync_pending:true,status:{$in:states}
+  },'created_date',Math.max(1,Math.min(10,limit)),0,
+  ['id','status','provider_message_id','client_message_delivery_id','delivery_mirror_sync_pending']);
+  let repaired=0,failed=0;
+  for(const row of rows){
+    if(!row.client_message_delivery_id){failed++;continue;}
+    try{
+      await updateAgreementDeliveryMirror(client,row,row.status,row.provider_message_id||'');
+      const changed=await db.WhatsAppOutbox.updateMany({
+        id:row.id,status:row.status,delivery_mirror_sync_pending:true
+      },{$set:{
+        delivery_mirror_sync_pending:false,delivery_mirror_sync_last_attempt_at:new Date().toISOString()
+      }});
+      if(changed?.updated===1)repaired++;
+      else failed++;
+    }catch{
+      failed++;
+      console.error('[WhatsAppOutbox] agreement source-only mirror repair unavailable');
+    }
+  }
+  return {examined:rows.length,repaired,failed};
+}
+
 async function staleSendingToUnknown(client:any, now:number) {
   const db=client.asServiceRole.entities.WhatsAppOutbox;
   const inFlight=await db.filter({status:'sending'},'send_started_at',100);
