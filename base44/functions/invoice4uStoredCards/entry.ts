@@ -349,7 +349,7 @@ export default Deno.serve(async req => {
       if(!customer.busy_operation_id?.startsWith("setup:"))throw new CardError("אין בקשת שמירה פתוחה");
       const s=await client.entities.CardSetupRequest.get(customer.busy_operation_id.slice(6));
       if(s.state!=="pending"||Date.parse(s.expires_at)<Date.now()||!s.redirect_url)throw new CardError("קישור שמירת הכרטיס אינו זמין");
-      const claim=await client.entities.CardSetupRequest.updateMany({id:s.id,state:"pending",link_message_state:{$nin:["dispatching","accepted","unknown"]}},{$set:{link_message_state:"dispatching"}});
+      const claim=await client.entities.CardSetupRequest.updateMany({id:s.id,state:"pending",link_message_state:{$nin:["dispatching","accepted","unknown"]}},{$set:{link_message_state:"dispatching",link_send_started_at:new Date().toISOString()}});
       if(claim.updated!==1)throw new CardError("הקישור כבר נשלח או שהשליחה בבירור",409);
       // An enqueue and its source-status update are different failure domains.
       // A DB error AFTER enqueue cannot prove that WhatsApp did not receive it.
