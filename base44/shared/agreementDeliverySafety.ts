@@ -1,5 +1,5 @@
 import {whatsappEnqueueReceiptState} from './whatsappReceipt.ts';
-import {normalizeIsraeliPhone} from './whatsappSend.ts';
+import {parseWhatsAppPhone} from './whatsappPhone.ts';
 
 // No customer data, raw phone, token, message, URL, secrets or arbitrary
 // exception text is ever copied into business/audit records.
@@ -57,12 +57,13 @@ export function agreementDeliverySafeErrorLabel(code:string):string {
 export function agreementPhoneFormatEvidence(phone:any){
   const raw=String(phone||'').trim();
   const digits=raw.replace(/\D/g,'');
-  const normalized=normalizeIsraeliPhone(raw);
-  const israel=normalized.startsWith('972');
-  const international=!!normalized&&!israel;
-  const countryHint=israel?'IL':normalized.length===11&&normalized.startsWith('1')?'NANP':'INTERNATIONAL_OTHER';
-  return {valid:!!normalized,e164Digits:digits.length,
-    international,countryHint:normalized?countryHint:'INVALID',
+  const parsed=parseWhatsAppPhone(raw);
+  const israel=parsed.digits.startsWith('972');
+  const international=parsed.status==='VALID'&&!israel;
+  const countryHint=israel?'IL':parsed.digits.length===11&&parsed.digits.startsWith('1')?'NANP':'INTERNATIONAL_OTHER';
+  return {valid:parsed.status==='VALID',e164Digits:digits.length,
+    international,countryHint:parsed.status==='VALID'?countryHint:'INVALID',
+    formatStatus:parsed.status,formatReason:parsed.reason,
     // This is only syntax evidence; it does not verify WhatsApp registration.
     destinationRegistrationVerified:false};
 }
