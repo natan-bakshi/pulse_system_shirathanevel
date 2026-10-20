@@ -60,7 +60,7 @@ export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
   const providers:Record<string,{count:number,queueWaitMs:number[],providerWaitMs:number[],transportDurationMs:number[]}>= {};
   // Diagnostic category only. The source name is NOT a phone, message,
   // business ID, URL or recipient; never include arbitrary source content.
-  const sourceGroups:Record<string,{count:number,queueWaitMs:number[],afterDueMs:number[],transportDurationMs:number[]}>= {};
+  const sourceGroups:Record<string,{count:number,queueWaitMs:number[],afterDueMs:number[],transportDurationMs:number[]}>=Object.create(null);
   const byWakeReason:Record<string,number>={};
   let detailedTimingCount=0;
   let dueStillQueued=0;
@@ -102,7 +102,9 @@ export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
     if(sample.queueWaitMs!==null)group.queueWaitMs.push(sample.queueWaitMs);
     if(sample.providerWaitMs!==null)group.providerWaitMs.push(sample.providerWaitMs);
     if(sample.transportDurationMs!==null)group.transportDurationMs.push(sample.transportDurationMs);
-    const sourceName=String(j.source_type||'unattributed').slice(0,64);
+    const sourceLabel=String(j.source_type||'');
+    const sourceName=/^[a-zA-Z0-9_-]{1,64}$/.test(sourceLabel)
+      ?sourceLabel:'unattributed';
     const source=sourceGroups[sourceName]||(sourceGroups[sourceName]={
       count:0,queueWaitMs:[],afterDueMs:[],transportDurationMs:[]
     });
