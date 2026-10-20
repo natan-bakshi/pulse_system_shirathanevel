@@ -73,7 +73,7 @@ export default function BillingDashboard() {
     try {
       const { data } = await base44.functions.invoke('invoice4uCreateClearingRequest', { amount: form.amount, description: form.description, language: form.language, mode: "link", sendLink: { via: form.via, phone: form.phone, email: form.email }, payer: { fullName: form.fullName, phone: form.phone, email: form.email, isInterestedInInvoice: form.isInterestedInInvoice } });
       if (data?.error) throw new Error(data.error);
-      setPaymentLinkResult({ paymentLink: data.paymentLink });
+      setPaymentLinkResult({ paymentLink:data.paymentLink, sentVia:data.sentVia||[], queuedVia:data.queuedVia||[], failures:data.failures||[], manual_review_required:data.manual_review_required===true });
       queryClient.invalidateQueries({ queryKey: ["generalPayments"] });
     } catch (error) {
       alert("לא ניתן לשלוח קישור לתשלום: " + (error.response?.data?.error || error.message));
