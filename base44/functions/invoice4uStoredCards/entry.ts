@@ -375,7 +375,7 @@ export default Deno.serve(async req => {
           id:s.id,link_message_state:"dispatching"
         },{$set:{
           link_message_state:outcome.linkState,
-          link_message_id:outcome.jobId||outcome.messageId
+          link_message_id:outcome.sent?(outcome.messageId||outcome.jobId):outcome.jobId
         }});
         sourceUpdated=updated?.updated===1;
         if(!sourceUpdated){
