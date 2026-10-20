@@ -58,6 +58,9 @@ export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
   const metrics:Record<string,number[]>={};
   for(const field of fields)metrics[field]=[];
   const providers:Record<string,{count:number,queueWaitMs:number[],providerWaitMs:number[],transportDurationMs:number[]}>= {};
+  // Diagnostic category only. The source name is NOT a phone, message,
+  // business ID, URL or recipient; never include arbitrary source content.
+  const sourceGroups:Record<string,{count:number,queueWaitMs:number[],afterDueMs:number[],transportDurationMs:number[]}>= {};
   const byWakeReason:Record<string,number>={};
   let detailedTimingCount=0;
   let dueStillQueued=0;
@@ -99,12 +102,28 @@ export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
     if(sample.queueWaitMs!==null)group.queueWaitMs.push(sample.queueWaitMs);
     if(sample.providerWaitMs!==null)group.providerWaitMs.push(sample.providerWaitMs);
     if(sample.transportDurationMs!==null)group.transportDurationMs.push(sample.transportDurationMs);
+    const sourceName=String(j.source_type||'unattributed').slice(0,64);
+    const source=sourceGroups[sourceName]||(sourceGroups[sourceName]={
+      count:0,queueWaitMs:[],afterDueMs:[],transportDurationMs:[]
+    });
+    source.count++;
+    if(sample.queueWaitMs!==null)source.queueWaitMs.push(sample.queueWaitMs);
+    if(sample.afterDueMs!==null)source.afterDueMs.push(sample.afterDueMs);
+    if(sample.transportDurationMs!==null)source.transportDurationMs.push(sample.transportDurationMs);
   }
   const byProvider:Record<string,any>={};
   for(const [name,group] of Object.entries(providers)){
     byProvider[name]={count:group.count,queueWait:summarizeMillis(group.queueWaitMs),
       providerProcessing:summarizeMillis(group.providerWaitMs),
       transportDuration:summarizeMillis(group.transportDurationMs)};
+  }
+  const bySource:Record<string,any>={};
+  for(const [name,group] of Object.entries(sourceGroups)){
+    bySource[name]={
+      count:group.count,queueWait:summarizeMillis(group.queueWaitMs),
+      afterDue:summarizeMillis(group.afterDueMs),
+      transportDuration:summarizeMillis(group.transportDurationMs)
+    };
   }
   return {
     sampled:jobs.length,measuredAt:nowIsoValue,statuses:counters,
@@ -122,7 +141,7 @@ export function summarizeWhatsAppOutbox(jobs:any[],nowIsoValue:string){
       transportDuration:summarizeMillis(metrics.transportDurationMs),
       persistence:summarizeMillis(metrics.persistenceMs)
     },
-    byProvider,
+    byProvider,bySource,
     // Only a sample, not all historical records. Never claim delivery.
     sampleOnly:true,providerAcceptanceIsNotDelivery:true
   };
