@@ -9,6 +9,7 @@ import PaymentLinkChannelPicker from "@/components/billing/PaymentLinkChannelPic
 import DialogLanguageToggle from "@/components/billing/DialogLanguageToggle";
 import { billingText, feeLabelForLang } from "@/components/billing/billingI18n";
 import { calcProcessingFee } from "@/components/billing/clearingUtils";
+import {paymentLinkDeliveryNotice} from './paymentLinkDeliveryNotice';
 
 const emptyForm = { fullName: "", phone: "", email: "", description: "", amount: "", isInterestedInInvoice: true };
 
@@ -54,9 +55,9 @@ export default function PaymentLinkDialog({ open, onOpenChange, settings = {}, o
 
         {result?.paymentLink ? (
           <div className="space-y-4">
-            <div className="rounded-lg bg-green-50 p-4 text-sm text-green-800">
-              <p className="font-semibold">{text.linkSentTitle}</p>
-              <p className="mt-1">{text.linkSentBody}</p>
+            <div className={`rounded-lg p-4 text-sm ${paymentLinkDeliveryNotice(result,lang).tone==='warning'?'bg-amber-50 text-amber-900':'bg-stone-50 text-stone-800'}`}>
+              <p className="font-semibold">{paymentLinkDeliveryNotice(result,lang).title}</p>
+              <p className="mt-1">{paymentLinkDeliveryNotice(result,lang).body}</p>
             </div>
             <div>
               <Label>{text.paymentLink}</Label>
