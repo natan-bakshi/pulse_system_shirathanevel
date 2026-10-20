@@ -61,6 +61,14 @@
     "card_setup_request_id": {
       "type": "string"
     },
+    "card_mirror_sync_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "Outbox provider result is authoritative but CardSetupRequest status update failed; watchdog source-only repair"
+    },
+    "card_mirror_sync_last_attempt_at": {
+      "type": "string"
+    },
     "event_service_id": {
       "type": "string"
     },
