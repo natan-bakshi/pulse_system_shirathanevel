@@ -1,6 +1,7 @@
 import { completeSetup, recoverCardSetup } from "../../shared/storedCardCompletion.ts";
 import { storeConsentEvidence } from "../../shared/consentEvidence.ts";
 import { sendWhatsAppText } from "../../shared/whatsappSend.ts";
+import {cardSetupWhatsAppOutcome} from "../../shared/cardSetupWhatsAppReceipt.ts";
 import { chargeContext, authorizeCharge, createChargeNotice } from "../../shared/agreementCharge.ts";
 import { beginSetup } from "../../shared/storedCardSetup.ts";
 import { afterAgreementChange } from "../../shared/agreementLifecycle.ts";
@@ -350,14 +351,49 @@ export default Deno.serve(async req => {
       if(s.state!=="pending"||Date.parse(s.expires_at)<Date.now()||!s.redirect_url)throw new CardError("קישור שמירת הכרטיס אינו זמין");
       const claim=await client.entities.CardSetupRequest.updateMany({id:s.id,state:"pending",link_message_state:{$nin:["dispatching","accepted","unknown"]}},{$set:{link_message_state:"dispatching"}});
       if(claim.updated!==1)throw new CardError("הקישור כבר נשלח או שהשליחה בבירור",409);
+      // An enqueue and its source-status update are different failure domains.
+      // A DB error AFTER enqueue cannot prove that WhatsApp did not receive it.
+      let receipt;
       try{
-        const sent=await sendWhatsAppText(customer.phone,"שלום "+customer.name+", לשמירת כרטיס באופן מאובטח אצל Invoice4U, ללא חיוב:\n"+s.redirect_url,base44,{sourceType:'card_setup',sourceId:s.id,cardSetupRequestId:s.id,idempotencyKey:'card-setup:'+s.id,expiresAt:s.expires_at||''});
-        await client.entities.CardSetupRequest.update(s.id,{link_message_state:sent.queued?"queued":"accepted",link_message_id:sent.queued?(sent.jobId||""):(sent.messageId||"")});
-        return Response.json({sent:sent.queued!==true,queued:sent.queued===true,jobId:sent.jobId||""});
-      }catch{
-        await client.entities.CardSetupRequest.update(s.id,{link_message_state:"failed"});
-        throw new CardError("ההודעה לא נכנסה לתור WhatsApp. לא בוצעה שליחה.",409);
+        receipt=await sendWhatsAppText(customer.phone,"שלום "+customer.name+", לשמירת כרטיס באופן מאובטח אצל Invoice4U, ללא חיוב:\n"+s.redirect_url,base44,{sourceType:'card_setup',sourceId:s.id,cardSetupRequestId:s.id,idempotencyKey:'card-setup:'+s.id,expiresAt:s.expires_at||''});
+      }catch(error){
+        const definite=error?.errorCode===400 && error?.deliveryUncertain===false;
+        const state=definite?"rejected":"unknown";
+        try{
+          await client.entities.CardSetupRequest.updateMany({id:s.id,link_message_state:"dispatching"},
+            {$set:{link_message_state:state}});
+        }catch{console.error('[CardSetup] WhatsApp source outcome could not be persisted');}
+        return Response.json({sent:false,queued:false,manual_review_required:!definite,
+          delivery_state:state,jobId:"",
+          warning:definite?"בקשת WhatsApp נדחתה לפני שליחה. יש לבדוק את פרטי היעד."
+            :"קליטת הודעת WhatsApp אינה ודאית. בדוק את התור לפני ניסיון נוסף."});
       }
+      let outcome=cardSetupWhatsAppOutcome(receipt);
+      let sourceUpdated=false;
+      try{
+        const updated=await client.entities.CardSetupRequest.updateMany({
+          id:s.id,link_message_state:"dispatching"
+        },{$set:{
+          link_message_state:outcome.linkState,
+          link_message_id:outcome.jobId||outcome.messageId
+        }});
+        sourceUpdated=updated?.updated===1;
+        if(!sourceUpdated){
+          // The Worker might have already stored an ACCEPTED result. Do not
+          // regress that record back to QUEUED just because enqueue returned late.
+          const fresh=await client.entities.CardSetupRequest.get(s.id);
+          if(fresh?.link_message_state==="accepted"){
+            outcome={...outcome,linkState:"accepted",deliveryState:"accepted",
+              sent:true,queued:false,manualReviewRequired:false};
+            sourceUpdated=true;
+          }else if(fresh?.link_message_state==="queued"&&outcome.queued)
+            sourceUpdated=true;
+        }
+      }catch{console.error('[CardSetup] WhatsApp receipt mirror temporarily unavailable');}
+      const needsReview=outcome.manualReviewRequired||!sourceUpdated;
+      return Response.json({sent:outcome.sent,queued:outcome.queued,jobId:outcome.jobId,
+        delivery_state:outcome.deliveryState,manual_review_required:needsReview,
+        ...(needsReview?{warning:"נדרש לבדוק את רישום הודעת WhatsApp לפני שליחה חוזרת."}:{})});
     }
     if (action === "setup") {
       if (body.consentConfirmed !== true) throw new CardError("נדרשת הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם");
