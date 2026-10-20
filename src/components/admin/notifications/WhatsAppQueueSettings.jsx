@@ -30,6 +30,12 @@ function IntervalEditor({name,which,ms,unit,onUnit,onMs,disabled}){
   </div>;
 }
 export default function WhatsAppQueueSettings(){
+  const reviewDeepLink=typeof window!=='undefined' &&
+    new URLSearchParams(window.location.search).get('whatsappQueue')==='review';
+  const [expanded,setExpanded]=useState(reviewDeepLink);
+  useEffect(()=>{
+    if(reviewDeepLink)document.getElementById('whatsapp-queue')?.scrollIntoView({block:'start'});
+  },[reviewDeepLink]);
   const [form,setForm]=useState(defaults),[view,setView]=useState(null);
   const [units,setUnits]=useState({wasender:'seconds',green:'seconds'});
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -87,7 +93,9 @@ export default function WhatsAppQueueSettings(){
     finally{setBusy(false);}
   }
   const totals=view?.totals||{};
-  return <details className="rounded-lg border bg-white p-4" dir="rtl">
+  return <details id="whatsapp-queue" open={expanded}
+    onToggle={event=>setExpanded(event.currentTarget.open)}
+    className="rounded-lg border bg-white p-4" dir="rtl">
     <summary className="cursor-pointer font-semibold text-base">תור WhatsApp מרכזי — קצב לכל ספק וניהול הודעות</summary>
     <div className="mt-4 space-y-4">
       <p className="text-sm text-gray-600">כל סוגי ההודעות עוברים באותו תור. הודעה ראשונה נשלחת מיד כשהתור פנוי; המרווח מוגדר לכל ספק בנפרד, בשניות או במילישניות.</p>
