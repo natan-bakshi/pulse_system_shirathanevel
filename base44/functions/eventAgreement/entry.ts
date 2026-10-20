@@ -450,16 +450,18 @@ export default Deno.serve(async req=>{
        {delivery_id:delivery.id});
       return Response.json({url,delivery_state:delivery.state,delivery_id:delivery.id});
      }catch(e){
-      // A crash before ClientMessageDelivery.create has no journal row at
-      // all. Do not leave that failed customer invitation silent: add ONE
-      // existing deduplicated owner alert, without a retry or token rotation.
-      try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח",
-        "הזמנת ההסכם לא אושרה בתור WhatsApp. יש לבדוק את היסטוריית ההודעות לפני ניסיון נוסף.");}
-      catch{console.error('[AgreementDelivery] fallback admin alert unavailable');}
-      // The enqueue may have persisted even when its response was lost.
-      // Report the journal state, never collapse UNKNOWN into false FAILED.
-      return Response.json(await invitationFailureView(client.entities,
-        a.id+':invitation:'+a.revision,url));
+      // A crash before ClientMessageDelivery.create has no journal row.
+      // But an exception AFTER queue acceptance (e.g. audit failure) must
+      // never cause a false failure alert. Read the persisted evidence FIRST.
+      const view=await invitationFailureView(client.entities,
+        a.id+':invitation:'+a.revision,url);
+      if(!['queued','accepted'].includes(view.delivery_state)){
+        try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח",
+          "הזמנת ההסכם אינה מאומתת בתור WhatsApp. יש לבדוק את היסטוריית ההודעות לפני ניסיון נוסף.");}
+        catch{console.error('[AgreementDelivery] fallback admin alert unavailable');}
+      }
+      // No retry, no link regeneration and no false FAILED classification.
+      return Response.json(view);
      }
     }
     return Response.json({url});
