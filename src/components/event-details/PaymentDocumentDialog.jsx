@@ -70,7 +70,10 @@ export default function PaymentDocumentDialog({ open, onOpenChange, payment, eve
       const document = response.data?.document;
       if (sendToClient && document?.id) {
         try {
-          await base44.functions.invoke("shareFinancialDocument", { documentId: document.id, channel, recipients: [recipient.trim()] });
+          const share=(await base44.functions.invoke("shareFinancialDocument", { documentId: document.id, channel, recipients: [recipient.trim()] })).data;
+          if(share?.manual_review_required)alert('המסמך הופק, אך מצב שליחת WhatsApp אינו ודאי. בדוק את התור לפני ניסיון נוסף.');
+          else if(share?.queued)alert('המסמך הופק והודעת WhatsApp נשמרה בתור. מסירה ללקוח טרם אומתה.');
+          else if(share?.failures?.length)alert('המסמך הופק, אך יש לבדוק את שגיאות השיתוף.');
         } catch (shareError) {
           setError("המסמך הופק אך השליחה ללקוח נכשלה: " + (shareError.response?.data?.error || shareError.message));
           onCreated?.(document);
