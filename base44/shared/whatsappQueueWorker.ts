@@ -470,9 +470,11 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // A new Outbox CREATE in that gap triggered a busy worker and was then
       // missed, leaving the message until the five-minute watchdog.
       // Read ONCE after release: any new due job arriving while busy is now
-      // visible. Only invoke a successor if work really remains.
+      // visible. This also covers a future-only worker (processed=0) that
+      // received a new urgent CREATE while its lease was still held. Only
+      // invoke a successor if due work really remains.
       if(released?.updated===1 && !existing.paused && existing.enabled &&
-        !lastError && processed>0){
+        !lastError && (processed>0 || !first.job)){
         const remainder=await queueStage('remaining_query',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
         requestWake=!!remainder.job;
         if(requestWake){
