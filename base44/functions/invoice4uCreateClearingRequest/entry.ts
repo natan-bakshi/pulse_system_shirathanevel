@@ -2,6 +2,7 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
 import { buildDocumentItems, calculateEventBalance, calculateProcessingFee, itemsToPipedFields } from "../../shared/eventBilling.ts";
 import { sendWhatsAppText } from "../../shared/whatsappSend.ts";
+import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from "../../shared/whatsappReceipt.ts";
 
 import { reserveHostedPayment } from "../../shared/storedCards.ts";
 
@@ -171,21 +172,43 @@ export default async function(req) {
 
     const failures: string[] = [];
     const queuedVia: string[] = [];
+    const sentVia: string[] = [];
+    const manualReviewVia: string[] = [];
     for (const channel of linkChannels) {
       try {
         if (channel === "whatsapp") {
           const receipt=await sendWhatsAppText(linkPhone,messageBody,base44,{sourceType:'payment_link',sourceId:payment.id||'',idempotencyKey:'payment-link:'+payment.id,expiresAt:expiresAt||''});
-          if(receipt.queued)queuedVia.push('whatsapp');
+          const state=whatsappEnqueueReceiptState(receipt);
+          if(isWhatsAppEnqueueConfirmed(receipt)){
+            if(state==='accepted')sentVia.push('whatsapp');
+            else queuedVia.push('whatsapp');
+          }else if(state==='failed'||state==='cancelled'||state==='expired'||state==='resolved'){
+            failures.push('וואטסאפ: ההודעה הקודמת נדחתה או הסתיימה, יש לבדוק לפני שליחה חוזרת.');
+          }else{
+            // An UNKNOWN dedup response is NEVER a fresh provider acceptance.
+            manualReviewVia.push('whatsapp');
+          }
+        }else{
+          await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === "en" ? `Payment request - ${subject}` : `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
+          sentVia.push('email');
         }
-        else await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === "en" ? `Payment request - ${subject}` : `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
       } catch (sendError) {
-        failures.push(`${channel === "whatsapp" ? "וואטסאפ" : "אימייל"}: ${sendError.message}`);
+        if(channel==='whatsapp' && !(sendError?.errorCode===400 && sendError?.deliveryUncertain===false)){
+          // An SDK timeout may occur after an Outbox commit. No auto resend.
+          manualReviewVia.push('whatsapp');
+        }else{
+          failures.push(channel === "whatsapp"
+            ? "וואטסאפ: בקשת השליחה נדחתה לפני קליטה לתור."
+            : "אימייל: שליחת ההודעה נכשלה.");
+        }
       }
     }
-    if (failures.length === linkChannels.length) {
+    if (failures.length === linkChannels.length && !manualReviewVia.length) {
       await base44.asServiceRole.entities.Payment.update(payment.id, { notes: `${payment.notes || ""} (שליחת קישור נכשלה)`.trim() });
       return Response.json({ error: `הקישור נוצר אך השליחה נכשלה - ${failures.join(", ")}`, paymentId: payment.id, paymentLink: redirectUrl }, { status: 400 });
     }
-    return Response.json({ paymentId: payment.id, paymentLink: redirectUrl, chargedTotal: chargeTotal, fee: fee.amount, sentVia: linkChannels.filter((channel) => !queuedVia.includes(channel) && !failures.some((failure) => failure.startsWith(channel === "whatsapp" ? "וואטסאפ" : "אימייל"))), queuedVia, failures });
+    return Response.json({ paymentId: payment.id, paymentLink: redirectUrl,
+      chargedTotal: chargeTotal, fee: fee.amount, sentVia, queuedVia, failures,
+      manualReviewVia,manual_review_required:manualReviewVia.length>0 });
   } catch (error) { return Response.json({ error: error.message }, { status: error.status || 500 }); }
 }
