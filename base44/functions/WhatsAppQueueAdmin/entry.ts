@@ -3,7 +3,7 @@ import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDispatchForProvider, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
-import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit } from '../../shared/whatsappSourceAudit.ts';
+import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
 const MAX_PAGE = 60;
@@ -20,7 +20,9 @@ const TIMING_FIELDS=['created_date','available_at','send_started_at','completed_
   'job_claimed_at','rate_ready_at','prior_dispatch_at','configured_interval_ms',
   'transport_started_at','transport_finished_at','status','attempt_count',
   'provider','requested_provider','worker_wake_reason'];
-const HISTORY_FIELDS=LIST_FIELDS;
+// Three small business keys allow reliable same-revision duplicate detection
+// in the existing status sample, without another query or message bodies.
+const HISTORY_FIELDS=[...LIST_FIELDS,'idempotency_key','event_service_id','supplier_id'];
 const ACTIVE = new Set(['queued','retry_wait','sending']);
 const CANCELLABLE = new Set(['queued','retry_wait']);
 const ARCHIVABLE = new Set(['accepted','failed','cancelled','expired','resolved']);
@@ -96,6 +98,10 @@ async function queueStatus(client:any){
       maxMessagesPerRun:Number(control.max_messages_per_run)||16
     },
     totals,dueReadyCount,scheduledForFutureCount,
+    duplicateAssignmentVersions:{
+      count:findDuplicateAssignmentVersions(jobs,500).length,
+      sampleTruncated:jobs.length>=500,providerAcceptanceIsNotDelivery:true
+    },
     historyTruncated:jobs.length>=500,workerBusy:busy,
     nextAllowedInSeconds:Math.ceil(waitMs/1000),nextAllowedInMs:waitMs,
     nextQueued:(totals.queued||0)+(totals.retry_wait||0),
