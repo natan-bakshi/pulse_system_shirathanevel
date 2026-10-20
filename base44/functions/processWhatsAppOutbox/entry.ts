@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
-import { drainWhatsAppOutbox, reconcileAcceptedWhatsAppMirrors } from '../../shared/whatsappQueueWorker.ts';
+import { drainWhatsAppOutbox, reconcileAcceptedWhatsAppMirrors, reconcileAgreementWhatsAppMirrors } from '../../shared/whatsappQueueWorker.ts';
 import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIntentReconciler.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
@@ -36,6 +36,15 @@ Deno.serve(async (req) => {
         console.error('[WhatsAppOutbox] Watchdog heartbeat could not be persisted');
       }
     }
+    // A queue pause prohibits provider HTTP but must not suspend safe,
+    // source-only mirror repair. These bounded reads use the EXISTING watchdog
+    // and never enqueue or contact a WhatsApp provider.
+    if(wakeReason==='watchdog'){
+      try{await reconcileAcceptedWhatsAppMirrors(client,10);}
+      catch(error){console.error('[WhatsAppOutbox] InApp mirror repair watchdog unavailable');}
+      try{await reconcileAgreementWhatsAppMirrors(client,10);}
+      catch(error){console.error('[WhatsAppOutbox] agreement mirror repair watchdog unavailable');}
+    }
     // Disabled/paused queues still have an observable watchdog heartbeat.
     if(!controlRows[0].enabled || controlRows[0].paused){
       return Response.json({success:true,reason:controlRows[0].paused?'paused':'disabled',sent:0});
@@ -46,11 +55,6 @@ Deno.serve(async (req) => {
     if(wakeReason==='watchdog'){
       try{await sweepPendingSupplierAssignmentIntents(client,{maxServices:4});}
       catch(error){console.error('[WhatsAppOutbox] intent watchdog unavailable',error instanceof Error?error.name:'unknown');}
-      // Mirror drift is a source-state issue, NOT a reason to retry a WhatsApp.
-      // Repair only jobs explicitly marked by a failed InApp write; at most
-      // 10 per existing watchdog run, including when the Outbox itself is idle.
-      try{await reconcileAcceptedWhatsAppMirrors(client,10);}
-      catch(error){console.error('[WhatsAppOutbox] mirror repair watchdog unavailable');}
     }
     const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
       status:{$in:['queued','retry_wait','sending']}
