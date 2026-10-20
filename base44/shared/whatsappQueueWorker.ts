@@ -244,6 +244,33 @@ async function chooseDueJob(db:any,now:number) {
   return {job:null,nextAt:earliest.length?asEpoch(earliest[0].available_at):Infinity,
     pending:earliest.length>0};
 }
+// Provider HTTP and durable receipt writes are separate failure domains.
+// Retry ONLY the database acknowledgement, never the provider transport.
+// An unconfirmed result stays 'sending' until conservative watchdog review.
+export async function persistWhatsAppProviderOutcome(outbox:any,job:any,patch:any){
+  try{
+    await outbox.update(job.id,patch);
+    return true;
+  }catch{
+    console.error('[WhatsAppOutbox] provider receipt DB write unconfirmed; verifying same job');
+  }
+  const matches=(record:any)=>record?.status===patch.status &&
+    (patch.status!=='accepted'||record.provider_message_id===patch.provider_message_id);
+  try{
+    if(matches(await outbox.get(job.id)))return true;
+  }catch{console.error('[WhatsAppOutbox] receipt verification read unavailable');}
+  try{
+    const result=await outbox.updateMany({
+      id:job.id,status:'sending',lease_token:job.lease_token
+    },{$set:patch});
+    if(result?.updated===1)return true;
+  }catch{console.error('[WhatsAppOutbox] receipt recovery CAS write unconfirmed');}
+  try{
+    if(matches(await outbox.get(job.id)))return true;
+  }catch{console.error('[WhatsAppOutbox] receipt recovery verification unavailable');}
+  return false;
+}
+
 export async function drainWhatsAppOutbox(client:any,opts:any={}) {
   const db=client?.asServiceRole?.entities;
   if(!db) throw new Error('A backend service client is required');
@@ -283,8 +310,9 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       const options=await queueStage('job_selection',()=>chooseDueJob(db.WhatsAppOutbox,Date.now()));
       if(!options.pending) break;
       if(!options.job) {
-        const delay=options.nextAt-Date.now();
-        if(delay>0 && delay<=60000 && Date.now()+delay<deadline-5000){await sleep(delay);continue;}
+        // Future-only jobs cannot hold the GLOBAL worker lease for up to
+        // 45 seconds and block a newly created urgent message. Release now;
+        // the existing watchdog resumes scheduled jobs when due.
         break;
       }
       const currentJob=options.job;
@@ -309,7 +337,20 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           }
           continue;
         }
-      }catch(error){lastError='Assignment status validation unavailable';break;}
+      }catch(error){
+        // Pre-provider validation failed. Defer ONLY this assignment safely
+        // so it never prevents unrelated invoices or customer messages.
+        const retryAt=new Date(Date.now()+30_000).toISOString();
+        const moved=await queueStage('assignment_validation_defer',()=>
+          db.WhatsAppOutbox.updateMany({id:currentJob.id,status:currentJob.status},{$set:{
+            status:'retry_wait',available_at:retryAt,
+            last_error:'Assignment state temporarily unavailable; no send attempted',
+            last_status_at:new Date().toISOString()
+          }}));
+        processed++;
+        if(moved?.updated===1)retried++;
+        continue;
+      }
       let provider;
       try {
         provider=jobCandidateProvider(options.job) || await resolveWhatsAppProvider(client);
