@@ -42,6 +42,9 @@ function context({actor={role:'admin'},enabled=true,paused=false,heartbeatFails=
       reconcileAcceptedWhatsAppMirrors:async()=>{
       workerCalls.push('mirror-repair-read');return {examined:0,repaired:0,failed:0};
     }};
+    if(name.endsWith('cardSetupQueueReconciler.ts'))return {
+      reconcileStalledCardSetupEnqueues:async()=>{workerCalls.push('stalled-card-read');return {examined:0}}
+    };
     if(name.endsWith('agreementQueueReconciler.ts'))return {
       reconcileStalledAgreementEnqueues:async()=>{workerCalls.push('stalled-agreement-read');return {examined:0}}
     };
