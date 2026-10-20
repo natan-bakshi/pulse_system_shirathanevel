@@ -1,3 +1,5 @@
+import { parseWhatsAppPhone } from '../../base44/shared/whatsappPhone.ts';
+
 export const DEFAULT_CONTACT_ACTIONS = {
   show_phone: true,
   allow_phone_copy: true,
@@ -46,8 +48,6 @@ export function getTelLink(phone) {
 }
 
 export function getWhatsAppLink(phone) {
-  const digits = getPhoneDigits(phone);
-  if (!digits) return '#';
-  const normalized = digits.startsWith('0') ? `972${digits.slice(1)}` : digits;
-  return `https://wa.me/${normalized}`;
+  const result = parseWhatsAppPhone(phone);
+  return result.status === 'VALID' ? `https://wa.me/${result.digits}` : '#';
 }
