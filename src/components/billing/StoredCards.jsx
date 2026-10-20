@@ -149,7 +149,10 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
             <a href={data.pending.url} target="_blank" rel="noopener noreferrer" className="underline">פתח דף שמירת כרטיס</a>
             <Button variant="outline" disabled={busy} onClick={() => run(async () => { await navigator.clipboard.writeText(data.pending.url); setMessage("הקישור הועתק"); })}>העתק קישור ללקוח</Button>
           </div>}
-          {data.pending.url && <Button variant="outline" disabled={busy || !!data.pending.messageState} onClick={()=>run(async()=>{await storedCardAction("send_setup_link",{customerId:customer.id,eventId:event.id});setMessage("הקישור התקבל אצל ספק הוואטסאפ");})}>{data.pending.messageState==="accepted"?"הקישור נשלח בוואטסאפ":data.pending.messageState?"שליחה בבירור":"שלח קישור בוואטסאפ"}</Button>}
+          {data.pending.url && <Button variant="outline" disabled={busy || !!data.pending.messageState} onClick={()=>run(async()=>{
+            const result=await storedCardAction("send_setup_link",{customerId:customer.id,eventId:event.id});
+            setMessage(result.manual_review_required?"תוצאת הודעת WhatsApp אינה ודאית; יש לבדוק את התור לפני ניסיון נוסף.":result.queued?"הקישור נשמר בתור WhatsApp וממתין לאישור הספק.":result.sent?"הקישור התקבל אצל ספק WhatsApp; מסירה ללקוח טרם אומתה.":result.warning||"לא אושרה קליטה לתור WhatsApp.");
+          })}>{data.pending.messageState==="accepted"?"התקבל אצל ספק WhatsApp":data.pending.messageState==="queued"?"ממתין בתור WhatsApp":data.pending.messageState?"נדרשת בדיקת שליחה":"שלח קישור בוואטסאפ"}</Button>}
           {data.pending.canRecover && <Button variant="outline" disabled={busy} onClick={() => run(async () => {
             await storedCardAction("recover_setup", { customerId: customer.id }); setMessage("שמירת הכרטיס אומתה והושלמה"); await changed();
           })}>בדוק ואמת כרטיס מול הספק</Button>}
