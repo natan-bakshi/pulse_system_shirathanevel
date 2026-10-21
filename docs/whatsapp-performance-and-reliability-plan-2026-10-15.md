@@ -434,3 +434,9 @@
 - Crucial conservative handling: Outbox CREATE may commit despite throwing or timing out; its stage does NOT convert UNKNOWN to FAILED and retains prior `QUEUE_ENQUEUE_UNVERIFIED` classification. No automatic resend or duplicate acceptance.
 - Existing full suite 427/427 passes; build and diff check passed. No authorized live recipient test occurred, so repeated customer invitation failure is not yet proven resolved.
 - Next: targeted injected-stage regression tests, check deployment and first post-change failure codes, and verify with an authorized QA destination only.
+
+### WA-P59 — 21.10.2026 — production publication confirmed; continue stability tests
+- User confirmed they published the Base44 changes and the invitation was sent. Live read-only evidence: invitation ClientMessageDelivery 6ad88b77ed0a8840579848f5 at 09:52:55 UTC became `accepted` with Outbox job 6ad88b787126e86e97d85d6c, provider receipt present. Outbox created 09:52:56.373 UTC and send_started_at 09:52:57.356 UTC (~0.98s after Outbox creation). Provider accepted is NOT proof of recipient delivery. Older 09:49 failed row predates publication.
+- Live read-only control: enabled, unpaused, Green pacing 3000ms, Wasender pacing 7000ms, max 16/run, no worker lease owner. No policy change and no unsolicited send.
+- Added two injection regressions to `tests/agreement-delivery-queue-e2e.test.mjs`: provider settings read failure and idempotency lookup failure now preserve safe `failure_phase` while staying UNKNOWN without a duplicate or leaked customer content. Focused 13/13, full 429/429 pass.
+- NEXT: QA fanout above 16 recipients and delayed jobs with approved test destinations; measure wake/continuation and document delivery acknowledgements separately. Audit assignment duplicate reports after publication and remaining source mirrors. Do not claim zero external provider outages.
