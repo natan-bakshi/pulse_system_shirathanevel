@@ -428,3 +428,9 @@
 ### WA-P57 — 21.10.2026 — injected failure regressions for enqueue CAS cleanup
 - Added two deterministic regression tests in `tests/whatsapp-central-outbox.test.mjs`: successful Outbox CREATE with failed lease-release preserves confirmed job receipt and deduplicates on the same business key after TTL; failed Outbox CREATE plus failed lease-release still propagates original create error without claiming success. These test both sides of the try/finally failure boundary with no provider traffic.
 - Full suite: 427/427 passing. No real customer send and no proof of production delivery. Next: isolate the repeated pre-Outbox agreement failure by capturing sanitized stage-specific errors; verify with approved QA recipient. Evaluate replacing global enqueue CAS bottleneck with database-enforced uniqueness/transaction only after confirming Base44 capabilities and migration safety.
+
+### WA-P58 — 21.10.2026 — safe enqueue phase diagnostics
+- Added stage tagging at queue control read, duplicate-key lookup, provider configuration lookup, and Outbox CREATE, without persisting raw SDK error text. Agreement journal now retains a safe stage label where diagnostic confidence is sufficient.
+- Crucial conservative handling: Outbox CREATE may commit despite throwing or timing out; its stage does NOT convert UNKNOWN to FAILED and retains prior `QUEUE_ENQUEUE_UNVERIFIED` classification. No automatic resend or duplicate acceptance.
+- Existing full suite 427/427 passes; build and diff check passed. No authorized live recipient test occurred, so repeated customer invitation failure is not yet proven resolved.
+- Next: targeted injected-stage regression tests, check deployment and first post-change failure codes, and verify with an authorized QA destination only.
