@@ -419,3 +419,8 @@
 - Code: agreementLifecycle deliver now enqueues via the exact same service-role entity facade as its journal writes, rather than preferring a different request-root SDK entity facade. No automatic resend, no provider traffic.
 - QA: 425/425 unit tests pass, 16 agreement-focused tests pass, Vite build succeeds. This is not a live delivery validation.
 - NEXT P0: inspect new failure classification in production; add distinct enqueue-stage observability if still failing; verify provider receipt with explicitly authorized test recipient; audit all message producers for consistency. No delivery guarantee without proof.
+
+### WA-P56 — 21.10.2026 — prevent false enqueue failures from CAS lease cleanup
+- Root-level defect fixed: withEnqueueLock previously returned the successful Outbox CREATE receipt inside try, but a failing `finally` lease-release update overwrote the success with an exception. This could make a confirmed enqueue appear failed, causing a misleading agreement error. The lease already has a bounded TTL. Lease-release failures now emit only a generic non-sensitive warning; successful create receipts remain successful, and failed create errors still propagate. No duplicate/retry is initiated.
+- Agreement producer remains on the scoped service-role entity facade shared with the agreement journal; comment updated to reflect current implementation.
+- Existing 425 regression tests passed. Still requires explicit QA to inject release failure and live verification. Historical missing Outbox records are not explained solely by this bug. No customer messages sent.
