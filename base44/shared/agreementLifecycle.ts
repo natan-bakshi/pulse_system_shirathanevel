@@ -82,9 +82,7 @@ export async function deliver(client,a,kind,key,message,file=null,config={},back
  // Prefer the actual authenticated request backend when available, rather
  // than a simulated root wrapper around a service-role proxy. Daily/cron
  // callers continue using the backwards-compatible service-role adapter.
- const waBackend=backendClient?.asServiceRole?.entities
-   ?backendClient
-   :client?.asServiceRole?.entities?client:{asServiceRole:client};
+ const waBackend=client?.asServiceRole?.entities ? client : {asServiceRole:client};
  let receipt:any;
  try{
   receipt=file?(file.uri?await sendWhatsAppFileUri(a.recipient_phone,file.uri,file.name,message,waBackend,context):await sendWhatsAppFileByUrl(a.recipient_phone,file.url,file.name,message,waBackend,context)):await sendWhatsAppText(a.recipient_phone,message,waBackend,context);
