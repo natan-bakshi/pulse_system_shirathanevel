@@ -31,7 +31,7 @@ export function agreementDeliveryErrorCode(err:any):string {
   if(/permission|unauthorized|forbidden|\b403\b/.test(msg))return 'QUEUE_PERMISSION_DENIED';
   if(/schema|validation|invalid.*field/.test(msg))return 'QUEUE_SCHEMA_REJECTED';
   if(err?.deliveryUncertain===true)return 'TRANSPORT_UNCERTAIN';
-  if(err?.queuePhase)return 'QUEUE_PHASE_FAILURE';
+  if(err?.queuePhase && err.queuePhase!=='outbox_create')return 'QUEUE_PHASE_FAILURE';
   return 'QUEUE_ENQUEUE_UNVERIFIED';
 }
 export function agreementDeliverySafeErrorLabel(code:string):string {
