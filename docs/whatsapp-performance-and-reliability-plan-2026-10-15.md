@@ -413,3 +413,9 @@
 - [ ] **C16 — דוח שגיאות:** עבור `failed/unknown` לציין error stage, קוד ספק, אפשרות פעולה והאם בוצעה פנייה לספק; אין כפתור resend חופשי ל־unknown.
 
 **תנאי קבלה לשלב:** 0 כפילויות בבדיקות תחרות; 0 אובדן מסרים; המשך אצוות אוטומטי; רישום סטטוס אמת; יעד ניסיון ראשון תוך שניות (לא הבטחה לפני הוכחת הפלטפורמה).
+
+### WA-P55 — 21.10.2026 — closing invitation enqueue failure follow-up
+- Live failure at 07:10:58 UTC, delivery 6ad86582eb6e4e01c07f2a3c, agreement 6ad8657f94fb1ce64ff2f80b: failed without Outbox ID, error_code or failure_phase. Same failure pattern on 19 and 21 October. Root cause remains unproven.
+- Code: agreementLifecycle deliver now enqueues via the exact same service-role entity facade as its journal writes, rather than preferring a different request-root SDK entity facade. No automatic resend, no provider traffic.
+- QA: 425/425 unit tests pass, 16 agreement-focused tests pass, Vite build succeeds. This is not a live delivery validation.
+- NEXT P0: inspect new failure classification in production; add distinct enqueue-stage observability if still failing; verify provider receipt with explicitly authorized test recipient; audit all message producers for consistency. No delivery guarantee without proof.
