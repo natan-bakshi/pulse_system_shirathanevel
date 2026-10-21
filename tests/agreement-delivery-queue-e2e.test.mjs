@@ -138,6 +138,23 @@ test('ambiguous database enqueue failure is UNKNOWN without leaking customer con
  assert.ok(!safe.includes('15165551234'));
  assert.ok(!safe.includes('Synthetic closing invitation'));
 });
+test('provider configuration outage records a safe precise enqueue phase',async()=>{
+ const x=fixture();
+ x.entities.AppSettings.filter=async()=>{throw Error('synthetic config failure');};
+ await assert.rejects(x.deliver(),/אינה ודאית/);
+ assert.equal(x.deliveries[0].failure_phase,'provider_config');
+ assert.equal(x.deliveries[0].state,'unknown');
+ assert.equal(x.outbox.length,0);
+ assert.equal(x.createAttempts,0);
+});
+test('idempotency lookup outage records a safe precise enqueue phase',async()=>{
+ const x=fixture({lookupFails:true});
+ await assert.rejects(x.deliver(),/אינה ודאית/);
+ assert.equal(x.deliveries[0].failure_phase,'dedupe_lookup');
+ assert.equal(x.deliveries[0].error_code,'QUEUE_LOOKUP_UNAVAILABLE');
+ assert.equal(x.outbox.length,0);
+ assert.equal(x.createAttempts,0);
+});
 test('definite pre-create validation rejects safely with FAILED, not UNKNOWN',async()=>{
  const x=fixture({createMode:'before_definite'});
  await assert.rejects(x.deliver(),/אינו פעיל/);
