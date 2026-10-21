@@ -140,7 +140,7 @@ test('ambiguous database enqueue failure is UNKNOWN without leaking customer con
 });
 test('provider configuration outage records a safe precise enqueue phase',async()=>{
  const x=fixture();
- x.entities.AppSettings.filter=async()=>{throw Error('synthetic config failure');};
+ x.root.asServiceRole.entities.AppSettings.filter=async()=>{throw Error('synthetic config failure');};
  await assert.rejects(x.deliver(),/אינה ודאית/);
  assert.equal(x.deliveries[0].failure_phase,'provider_config');
  assert.equal(x.deliveries[0].state,'unknown');
