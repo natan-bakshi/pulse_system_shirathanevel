@@ -117,7 +117,8 @@ export async function deliver(client,a,kind,key,message,file=null,config={},back
   const safeText=agreementDeliverySafeErrorLabel(code);
   await db.ClientMessageDelivery.update(row.id,{
     state:ambiguous?'unknown':'failed',error:safeText,error_code:code,
-    failure_phase:ambiguous?'unverified':'enqueue_not_confirmed'
+    failure_phase:typeof (error as any)?.queuePhase==='string'
+      ?(error as any).queuePhase:(ambiguous?'unverified':'enqueue_not_confirmed')
   });
   try{await notifyAgreementAdmin(client,a,"נדרשת בדיקת תור הודעות לקוח",
     "שליחת ההודעה לא אושרה: "+safeText+" נא לבדוק את היסטוריית התור לפני שליחה חוזרת.");}

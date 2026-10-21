@@ -4,6 +4,11 @@ import {isWhatsAppEnqueueConfirmed} from './whatsappReceipt.ts';
 // Security: only backend clients with service-role entity access may enqueue.
 const CONTROL_KEY = 'global';
 const lockPause = (ms: number) => new Promise(resolve=>setTimeout(resolve,ms));
+async function enqueueStage<T>(stage:string, action:()=>Promise<T>):Promise<T> {
+  try{return await action();}
+  catch(e){if(e && typeof e==='object')(e as any).queuePhase=stage;throw e;}
+}
+
 
 // A separate short lease for duplicate-key creation. This does not block the
 // transport worker: sending and enqueueing use different control fields.
@@ -14,7 +19,7 @@ async function withEnqueueLock(client:any,run:(lockedControl:any)=>Promise<any>)
   let control:any=null;
   let lockAcquired=false;
   while(Date.now()<deadline) {
-    control=await readWhatsAppQueueControl(client);
+    control=await enqueueStage('control_read',()=>readWhatsAppQueueControl(client));
     const occupied=!!control.enqueue_owner && Date.parse(control.enqueue_until||'')>Date.now();
     if(!occupied) {
       const won=await entity.updateMany({
@@ -110,7 +115,7 @@ export async function enqueueWhatsApp(client: any, data: {
     // initial read and acquisition of the global CAS enqueue lock.
     if(latestControl.enabled!==true)throw new Error('Central WhatsApp queue was disabled before enqueue');
     if(key){
-      const previous=await entity.filter({idempotency_key:key},'-created_date',3);
+      const previous=await enqueueStage('dedupe_lookup',()=>entity.filter({idempotency_key:key},'-created_date',3));
       if(previous.length){
         const item=previous[0];
         return {success:true,queued:['queued','retry_wait','sending'].includes(item.status),
@@ -119,8 +124,8 @@ export async function enqueueWhatsApp(client: any, data: {
     }
     // Read provider only when creating a NEW job. Repeated supplier-trigger
     // attempts with the same idempotency key must not query settings again.
-    const requestedProvider=await resolveWhatsAppProvider(client);
-    const record = await entity.create({
+    const requestedProvider=await enqueueStage('provider_config',()=>resolveWhatsAppProvider(client));
+    const record = await enqueueStage('outbox_create',()=>entity.create({
     chat_id: data.chatId, message_type: data.messageType,
     message_text: data.messageText || '', document_url: data.documentUrl || '',
     file_uri: data.fileUri || '', file_name: data.fileName || '', caption: data.caption || '',
@@ -136,7 +141,7 @@ export async function enqueueWhatsApp(client: any, data: {
     expires_at:String(context.expiresAt || ''),
     status: 'queued', available_at: context.availableAt && Number.isFinite(Date.parse(context.availableAt))
       ? new Date(context.availableAt).toISOString() : new Date().toISOString(), attempt_count: 0, max_attempts: 3
-  });
+  }));
     // The WhatsAppOutbox CREATE workflow wakes a worker. Watchdog covers interruptions.
     return {success:true,queued:true,status:'queued',jobId:record.id,messageId:''};
   };
