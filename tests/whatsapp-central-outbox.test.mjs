@@ -208,6 +208,47 @@ test('hot-path idempotent enqueue avoids duplicate control reads and redundant C
  assert.equal(controlGets,0,'Conditional compare-and-swap is enough ownership proof');
  assert.equal(x.jobs.length,1);
 });
+test('confirmed enqueue survives lease-release API failure and deduplicates the next request',async()=>{
+ const x=fixture({selectedProvider:'green'});
+ const control=x.client.asServiceRole.entities.WhatsAppQueueControl;
+ const original=control.updateMany;
+ let failedReleases=0;
+ control.updateMany=async(query,patch)=>{
+   if(patch?.$set?.enqueue_owner===''){
+     failedReleases++;
+     throw new Error('Synthetic lease-release API failure');
+   }
+   return original(query,patch);
+ };
+ const context={sourceType:'agreement',sourceId:'agreement-test',idempotencyKey:'agreement-test:invite:1'};
+ const first=await sendWhatsAppText('0501234567','Invitation',x.client,context);
+ assert.equal(first.queued,true);
+ assert.ok(first.jobId);
+ assert.equal(x.jobs.length,1);
+ assert.equal(failedReleases,1);
+ // The simulated lease is still held. A new caller must NOT bypass the lock;
+ // after its TTL expires, the same business key must resolve to the first job.
+ x.control.enqueue_until=new Date(Date.now()-1000).toISOString();
+ const second=await sendWhatsAppText('0501234567','Invitation',x.client,context);
+ assert.equal(second.deduplicated,true);
+ assert.equal(second.jobId,first.jobId);
+ assert.equal(x.jobs.length,1);
+});
+test('enqueue create failure still propagates despite a failing lease cleanup',async()=>{
+ const x=fixture({selectedProvider:'green'});
+ const control=x.client.asServiceRole.entities.WhatsAppQueueControl;
+ const original=control.updateMany;
+ control.updateMany=async(query,patch)=>{
+   if(patch?.$set?.enqueue_owner==='')throw new Error('Synthetic cleanup failure');
+   return original(query,patch);
+ };
+ const outbox=x.client.asServiceRole.entities.WhatsAppOutbox;
+ outbox.create=async()=>{throw new Error('Synthetic Outbox create failure');};
+ await assert.rejects(sendWhatsAppText('0501234567','Invitation',x.client,
+   {sourceType:'agreement',idempotencyKey:'agreement-test:create-fails'}),
+   /Synthetic Outbox create failure/);
+ assert.equal(x.jobs.length,0);
+});
 test('enqueue detects a disable occurring after the caller originally checked the queue',async()=>{
  const x=fixture({selectedProvider:'green'});
  const controls=x.client.asServiceRole.entities.WhatsAppQueueControl;
