@@ -30,8 +30,14 @@ async function withEnqueueLock(client:any,run:(lockedControl:any)=>Promise<any>)
   if(!control || !lockAcquired) {
     throw new Error('WhatsApp outbox enqueue lock unavailable; message not queued');
   }
+  // A lease-release API failure must never overwrite a confirmed enqueue
+  // receipt. The lease expires automatically; watchdog can clean it later.
+  // Otherwise the caller sees a false failure and may regenerate a link.
   try{return await run(control);}
-  finally{await entity.updateMany({id:control.id,enqueue_owner:token},{$set:{enqueue_owner:'',enqueue_until:''}});}
+  finally{
+    try{await entity.updateMany({id:control.id,enqueue_owner:token},{$set:{enqueue_owner:'',enqueue_until:''}});}
+    catch{console.warn('[WhatsAppOutbox] enqueue lease release pending; TTL recovery will apply');}
+  }
 }
 
 export async function readWhatsAppQueueControl(client: any) {

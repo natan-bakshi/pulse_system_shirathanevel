@@ -77,11 +77,8 @@ export async function deliver(client,a,kind,key,message,file=null,config={},back
  const row=await client.entities.ClientMessageDelivery.create({agreement_id:a.id,event_id:a.event_id,kind,key,target_masked:"••••"+a.recipient_phone.slice(-4),state:"dispatching",attempted_at:new Date().toISOString()});
  const context={sourceType:'agreement',sourceId:a.id,idempotencyKey:key,clientMessageDeliveryId:row.id,
   expiresAt:kind==='verification'?new Date(Date.now()+600000).toISOString():kind==='invitation'?(a.link_expires_at||''):''};
- // Agreement database calls are scoped to asServiceRole. Transport calls
- // require the root backend-client shape, including asServiceRole.entities.
- // Prefer the actual authenticated request backend when available, rather
- // than a simulated root wrapper around a service-role proxy. Daily/cron
- // callers continue using the backwards-compatible service-role adapter.
+ // Agreement journal and Outbox writes use the SAME scoped service-role
+ // entities. Avoid switching to a different SDK proxy for enqueue.
  const waBackend=client?.asServiceRole?.entities ? client : {asServiceRole:client};
  let receipt:any;
  try{
