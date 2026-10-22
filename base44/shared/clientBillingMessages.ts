@@ -50,8 +50,8 @@ export async function sendClientMessage(base44, { phone, email, subject, body, b
       // An Outbox write/lookup/control failure may have committed even when
       // its SDK response was lost. Do not send a second notification by email
       // until a human verifies whether the WhatsApp request exists.
-      if(error?.deliveryUncertain===true ||
-         ['outbox_create','dedupe_lookup','control_read','lock_acquire'].includes(String(error?.queuePhase||''))){
+      if(error?.deliveryUncertain===true)throw error;
+      if(['outbox_create','dedupe_lookup','control_read','lock_acquire'].includes(String(error?.queuePhase||''))){
         throw Object.assign(new Error('WhatsApp enqueue outcome needs manual review'),{
           deliveryUncertain:true,queuePhase:String(error?.queuePhase||'unverified')
         });
