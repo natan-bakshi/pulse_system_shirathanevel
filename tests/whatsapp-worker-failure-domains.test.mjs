@@ -125,6 +125,33 @@ test('seven-recipient fanout exceeding batch limit wakes two successors, never f
  assert.equal(x.control.lease_owner,'');
 });
 
+test('production-size 33-message burst drains across 16+16+1 runs with no duplicate provider calls',async()=>{
+ const x=fixture();
+ x.control.max_messages_per_run=16;
+ let wakes=0,calls=0;
+ const original=x.controls.update;
+ x.controls.update=async(id,patch)=>{
+   if(patch.wake_requested_at)wakes++;
+   return original(id,patch);
+ };
+ for(let i=0;i<33;i++){
+   await sendWhatsAppText('0501234567','batch '+i,x.client,{
+     sourceType:'scheduled_fanout',sourceId:'qa-33',idempotencyKey:'qa-33-'+i
+   });
+ }
+ const transport=async()=>({messageId:'receipt-'+(++calls)});
+ const a=await drainWhatsAppOutbox(x.client,{wakeReason:'outbox_create',transport});
+ const b=await drainWhatsAppOutbox(x.client,{wakeReason:'continue',transport});
+ const c=await drainWhatsAppOutbox(x.client,{wakeReason:'continue',transport});
+ assert.deepEqual([a.accepted,b.accepted,c.accepted],[16,16,1]);
+ assert.deepEqual([a.continued,b.continued,c.continued],[true,true,false]);
+ assert.equal(wakes,2);
+ assert.equal(calls,33);
+ assert.equal(x.jobs.filter(j=>j.status==='accepted').length,33);
+ assert.equal(x.jobs.filter(j=>j.attempt_count!==1).length,0);
+ assert.equal(x.control.lease_owner,'');
+});
+
 test('future-only notification releases global lease immediately; urgent invoice is not blocked',async()=>{
  const x=fixture();
  await sendWhatsAppText('0501234567','future scheduled message',x.client,{
