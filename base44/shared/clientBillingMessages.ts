@@ -47,7 +47,15 @@ export async function sendClientMessage(base44, { phone, email, subject, body, b
       if(!accepted)throw new Error('WhatsApp outbox has no confirmed queue receipt');
       channels.push('whatsapp'); // Queued, not necessarily delivered.
     } catch (error) {
-      if(error?.deliveryUncertain===true)throw error;
+      // An Outbox write/lookup/control failure may have committed even when
+      // its SDK response was lost. Do not send a second notification by email
+      // until a human verifies whether the WhatsApp request exists.
+      if(error?.deliveryUncertain===true ||
+         ['outbox_create','dedupe_lookup','control_read','lock_acquire'].includes(String(error?.queuePhase||''))){
+        throw Object.assign(new Error('WhatsApp enqueue outcome needs manual review'),{
+          deliveryUncertain:true,queuePhase:String(error?.queuePhase||'unverified')
+        });
+      }
       console.warn('[clientBillingMessages] WhatsApp was not queued; evaluating email fallback');
     }
   }
