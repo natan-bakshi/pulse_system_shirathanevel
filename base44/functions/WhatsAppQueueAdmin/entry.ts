@@ -3,7 +3,7 @@ import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDispatchForProvider, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
-import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
+import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
 const MAX_PAGE = 60;
@@ -286,7 +286,7 @@ Deno.serve(async(req)=>{
       // Explicit system-owner READ ONLY action. The day-to-day status refresh
       // must stay fast: this extra DB work happens only on demand.
       const db=client.asServiceRole.entities;
-      const [notifications,jobs,pending,payments]=await Promise.all([
+      const [notifications,jobs,pending,payments,tasks,taskPending]=await Promise.all([
         db.InAppNotification.list('-created_date',300,0,
           ['id','created_date','template_type','whatsapp_sent','whatsapp_message_id']),
         db.WhatsAppOutbox.list('-created_date',500,0,
@@ -295,7 +295,11 @@ Deno.serve(async(req)=>{
         db.PendingPushNotification.filter({is_sent:false},'-created_date',151,0,
           ['template_type','scheduled_for','data','condition_type']).catch(()=>null),
         db.Payment.list('-created_date',200,0,
-          ['id','link_expires_at','link_reminder_sent','is_payment_link']).catch(()=>null)
+          ['id','link_expires_at','link_reminder_sent','is_payment_link']).catch(()=>null),
+        db.Task.list('-created_date',200,0,
+          ['id','whatsapp_notification_sent','due_date']).catch(()=>null),
+        db.PendingPushNotification.filter({template_type:'TASK_DUE_REMINDER'},'-created_date',151,0,
+          ['template_type','related_task_id','is_sent','data']).catch(()=>null)
       ]);
       const stamp=nowIso();
       const audit=summarizeWhatsAppSourceAudit(notifications,jobs,stamp);
@@ -305,6 +309,9 @@ Deno.serve(async(req)=>{
       audit.paymentReminders=payments===null
         ? {available:false,interpretation:'Payment source status unavailable; do not treat as zero drift'}
         : summarizePaymentReminderAudit(payments.filter(p=>p.is_payment_link===true),jobs);
+      audit.tasks=tasks===null||taskPending===null
+        ? {available:false,interpretation:'Task source status unavailable; do not treat as zero drift'}
+        : summarizeTaskWhatsAppAudit(tasks,taskPending,jobs);
       return RESPONSE({success:true,audit});
     }
     if(action==='diagnose')return RESPONSE(await diagnoseQueue(client));
