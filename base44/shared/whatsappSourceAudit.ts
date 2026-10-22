@@ -162,3 +162,34 @@ export function summarizePaymentReminderAudit(payments:any[],jobs:any[],maxSampl
     noMessagesSent:true,providerAcceptanceIsNotDelivery:true,
     caveat:'Read-only sampled audit: a flag may represent email fallback, legacy send or a job outside the sample. No automatic replay or flag mutation.'};
 }
+
+// Task sources have two legitimate producer shapes: daily digest Outbox jobs
+// and per-task scheduled PendingPushNotification rows. This is a read-only
+// consistency snapshot, not proof that every targeted recipient was notified.
+export function summarizeTaskWhatsAppAudit(tasks:any[],pending:any[],jobs:any[],maxSample=200){
+  const scheduled=new Map<string,number>();
+  let scheduledWaiting=0,scheduledSent=0,scheduledMalformed=0;
+  for(const row of pending||[]){
+    if(row.template_type!=='TASK_DUE_REMINDER')continue;
+    let data:any={};
+    try{data=JSON.parse(String(row.data||'{}'));}catch{scheduledMalformed++;continue;}
+    if(data.send_whatsapp!==true)continue;
+    const id=String(row.related_task_id||'');
+    if(!id)continue;
+    scheduled.set(id,(scheduled.get(id)||0)+1);
+    if(row.is_sent===true)scheduledSent++;else scheduledWaiting++;
+  }
+  let flaggedWithoutScheduledSource=0,unflaggedWithScheduledSource=0;
+  for(const task of tasks||[]){
+    const count=scheduled.get(String(task.id||''))||0;
+    if(task.whatsapp_notification_sent===true&&!count)flaggedWithoutScheduledSource++;
+    if(task.whatsapp_notification_sent!==true&&count)unflaggedWithScheduledSource++;
+  }
+  const digestJobs=(jobs||[]).filter(j=>String(j.idempotency_key||'').startsWith('task-digest-v1:'));
+  return {available:true,sampledTasks:tasks?.length||0,sampledPending:pending?.length||0,
+    sampleTruncated:(tasks?.length||0)>=maxSample||(pending?.length||0)>=151||(jobs?.length||0)>=500,
+    scheduledWaiting,scheduledSent,scheduledMalformed,flaggedWithoutScheduledSource,
+    unflaggedWithScheduledSource,digestJobs: digestJobs.length,
+    noMessagesSent:true,providerAcceptanceIsNotDelivery:true,
+    caveat:'A daily digest may legitimately have no Pending row. Pending sent is not provider delivery. Samples cannot establish missing recipients; no flags mutated.'};
+}

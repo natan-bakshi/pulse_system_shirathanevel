@@ -125,3 +125,21 @@ test('payment reminder audit separates accepted, pending, unknown and email/lega
  assert.equal(r.noMessagesSent,true);
  assert.equal(JSON.stringify(r).includes('PRIVATE'),false);
 });
+
+test('Task audit keeps scheduled and digest ownership separate without leaking content',async()=>{
+ const {summarizeTaskWhatsAppAudit}=await import('../base44/shared/whatsappSourceAudit.ts');
+ const tasks=[{id:'t1',whatsapp_notification_sent:true},{id:'t2',whatsapp_notification_sent:false},
+  {id:'t3',whatsapp_notification_sent:true}];
+ const pending=[{template_type:'TASK_DUE_REMINDER',related_task_id:'t1',is_sent:true,
+  data:JSON.stringify({send_whatsapp:true,phone:'SECRET_PHONE'})},
+  {template_type:'TASK_DUE_REMINDER',related_task_id:'t2',is_sent:false,
+  data:JSON.stringify({send_whatsapp:true,body:'SECRET_BODY'})}];
+ const jobs=[{idempotency_key:'task-digest-v1:abc',status:'accepted'}];
+ const a=summarizeTaskWhatsAppAudit(tasks,pending,jobs);
+ assert.equal(a.scheduledSent,1);assert.equal(a.scheduledWaiting,1);
+ assert.equal(a.flaggedWithoutScheduledSource,1);
+ assert.equal(a.unflaggedWithScheduledSource,1);
+ assert.equal(a.digestJobs,1);
+ assert.equal(a.noMessagesSent,true);
+ assert.equal(JSON.stringify(a).includes('SECRET'),false);
+});
