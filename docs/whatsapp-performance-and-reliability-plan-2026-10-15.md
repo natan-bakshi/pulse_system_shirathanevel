@@ -463,3 +463,9 @@
 - Added regression for all four states; existing admin tests updated with safe Payment stub; full 435/435 pass. No flags rewritten, no retries or emails sent.
 - Important: source `link_reminder_sent` can reflect EMAIL fallback, legacy or a job outside sample. This audit is evidence for human review, not a self-healing migration. Payment lifecycle must retain no-duplicate semantics.
 - Next P0: read-only live sample with system-owner permission; Task mirror coverage and assignment collision QA; authorized QA for 16+ wake and delayed jobs. Explicitly do not auto-repair unknown outcomes.
+
+### WA-P64 — 22.10.2026 — Task source read-only reconciliation (P42 partial)
+- Added read-only Task audit to explicit `WhatsAppQueueAdmin sourceAudit` with sampled Task flags, scheduled Pending ownership, sent/pending scheduler counts, and daily digest Outbox count. No automatic flag updates, no replay, no provider calls.
+- All read-only queries are projected and bounded. If either Task or Task Pending query fails, audit reports unavailable rather than zero. Caveat: Task digest may legitimately have no Pending source; pending is not proof of transport delivery.
+- Added Task audit privacy/state regression and updated queue admin tests. No production messages sent.
+- Remaining: validate live source sample, cross-recipient per-task receipts, manual approval for any mirror-only repair, and assignment duplicate live QA. This is diagnostic coverage, not completed P42.
