@@ -440,3 +440,8 @@
 - Live read-only control: enabled, unpaused, Green pacing 3000ms, Wasender pacing 7000ms, max 16/run, no worker lease owner. No policy change and no unsolicited send.
 - Added two injection regressions to `tests/agreement-delivery-queue-e2e.test.mjs`: provider settings read failure and idempotency lookup failure now preserve safe `failure_phase` while staying UNKNOWN without a duplicate or leaked customer content. Focused 13/13, full 429/429 pass.
 - NEXT: QA fanout above 16 recipients and delayed jobs with approved test destinations; measure wake/continuation and document delivery acknowledgements separately. Audit assignment duplicate reports after publication and remaining source mirrors. Do not claim zero external provider outages.
+
+### WA-P60 — 22.10.2026 — production-sized continuation regression
+- Added an isolated 33-job fanout test at production batch cap 16, exercising 16+16+1 across three worker invocations, two continuation wake requests, 33 unique provider receipts, exactly one provider call per job, and released worker lease. No external WhatsApp traffic.
+- Full automated suite 430/430 passes. Next live acceptance gate remains approved QA recipients for >16 burst and delayed delivery; the synthetic test alone does not prove Base44 workflow triggers execute live or guarantee provider delivery.
+- Maintain provider pacing and no auto-replay of unknown outcomes. Do not alter published production policy without an approved rollout.
