@@ -279,8 +279,10 @@ test('sourceAudit is read-only and loads projected metadata only on explicit act
  assert.equal(a.body.audit.businessReminders.available,true);
  assert.equal(a.body.audit.businessReminders.whatsappWaiting,1);
  assert.equal(a.body.audit.businessReminders.legacyWithoutBusinessKey,1);
- assert.equal(ctx.pendingProjections.length,1);
+ assert.equal(ctx.pendingProjections.length,2);
  assert.ok(ctx.pendingProjections[0].includes('data'));
+ assert.ok(ctx.pendingProjections[1].includes('related_task_id'));
+ assert.equal(a.body.audit.tasks.available,true);
  assert.ok(!JSON.stringify(a.body).includes('0501234567'));
  assert.ok(!JSON.stringify(a.body).includes('private text'));
  assert.equal(ctx.calls.length,0,'Audit must never call worker or provider');
