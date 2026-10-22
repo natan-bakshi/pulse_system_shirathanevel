@@ -457,3 +457,9 @@
 - Added `tests/client-billing-uncertain-fallback.test.mjs` covering uncertain CREATE, uncertain lookup and definite input rejection; 3/3 focused tests pass.
 - Reviewed producer inventory: `dailyScheduledNotifications` has business keys for its seven primary WhatsApp queue sites; `manualTriggerNotification` and `sendPushNotification` still intentionally lack global business dedup because repeated explicit sends can be legitimate. WA-P40/P40b remain OPEN for other event-driven producers and cross-producer revision semantics; do not claim complete coverage.
 - Remaining P0 for billing: verify ambiguous pre-Outbox errors vs definite errors, `Payment.link_reminder_sent` source-to-Outbox reconciliation and email fallback semantics in live QA; no historic replay.
+
+### WA-P63 — 22.10.2026 — payment source reconciliation (P42b partial)
+- Added read-only, projected Payment.link_reminder_sent vs client_billing Outbox audit to explicit system-owner `WhatsAppQueueAdmin sourceAudit`: accepted-without-flag, unknown-with-flag, queued-without-flag, and flagged-without-sampled-job counts. No phones, payment URLs or message bodies fetched or returned; failures to read Payments report unavailable, not zero.
+- Added regression for all four states; existing admin tests updated with safe Payment stub; full 435/435 pass. No flags rewritten, no retries or emails sent.
+- Important: source `link_reminder_sent` can reflect EMAIL fallback, legacy or a job outside sample. This audit is evidence for human review, not a self-healing migration. Payment lifecycle must retain no-duplicate semantics.
+- Next P0: read-only live sample with system-owner permission; Task mirror coverage and assignment collision QA; authorized QA for 16+ wake and delayed jobs. Explicitly do not auto-repair unknown outcomes.
