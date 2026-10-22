@@ -135,3 +135,30 @@ export function summarizeWhatsAppSourceAudit(notifications:any[],jobs:any[],nowI
     caveat:'No linked Outbox row does not prove a WhatsApp error (legacy/PUSH-only/outside sample).'
   };
 }
+
+// Read-only payment reminder source reconciliation. An accepted Outbox receipt
+// proves provider acceptance, not delivery. A flag without a sampled Outbox
+// match may be email-only, legacy or outside the sampled window.
+export function summarizePaymentReminderAudit(payments:any[],jobs:any[],maxSample=200){
+  const linked=new Map<string,any[]>();
+  for(const job of jobs||[]){
+    const key=String(job?.idempotency_key||'');
+    if(job?.source_type!=='client_billing'||!key.startsWith('payment-link-reminder:'))continue;
+    const rows=linked.get(key)||[];rows.push(job);linked.set(key,rows);
+  }
+  let flaggedWithoutSampledReceipt=0,acceptedWithoutFlag=0,unknownWithFlag=0;
+  let pendingWithOutbox=0;
+  for(const payment of payments||[]){
+    const key='payment-link-reminder:'+String(payment.id)+':'+String(payment.link_expires_at||'');
+    const matches=linked.get(key)||[];
+    if(payment.link_reminder_sent===true&&!matches.length)flaggedWithoutSampledReceipt++;
+    if(payment.link_reminder_sent!==true&&matches.some(j=>j.status==='accepted'))acceptedWithoutFlag++;
+    if(payment.link_reminder_sent===true&&matches.some(j=>j.status==='unknown'))unknownWithFlag++;
+    if(payment.link_reminder_sent!==true&&matches.some(j=>['queued','retry_wait','sending'].includes(j.status)))pendingWithOutbox++;
+  }
+  return {available:true,sampledPayments:payments?.length||0,sampledOutbox:jobs?.length||0,
+    sampleTruncated:(payments?.length||0)>=maxSample|| (jobs?.length||0)>=500,
+    flaggedWithoutSampledReceipt,acceptedWithoutFlag,unknownWithFlag,pendingWithOutbox,
+    noMessagesSent:true,providerAcceptanceIsNotDelivery:true,
+    caveat:'Read-only sampled audit: a flag may represent email fallback, legacy send or a job outside the sample. No automatic replay or flag mutation.'};
+}

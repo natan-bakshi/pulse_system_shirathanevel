@@ -106,3 +106,22 @@ test('audit caps per-category UI samples and labels samples, never full history'
  assert.equal(r.cappedSamples,true);
  assert.equal(r.sampledInApp,60);
 });
+
+test('payment reminder audit separates accepted, pending, unknown and email/legacy without private data',async()=>{
+ const {summarizePaymentReminderAudit}=await import('../base44/shared/whatsappSourceAudit.ts');
+ const rows=[
+  {id:'pay-1',link_expires_at:'2026-10-25T00:00:00Z',link_reminder_sent:false,payer_phone:'PRIVATE_PHONE'},
+  {id:'pay-2',link_expires_at:'2026-10-25T00:00:00Z',link_reminder_sent:true},
+  {id:'pay-3',link_expires_at:'2026-10-25T00:00:00Z',link_reminder_sent:false},
+  {id:'pay-4',link_expires_at:'2026-10-25T00:00:00Z',link_reminder_sent:true}
+ ];
+ const mk=(id,status)=>({id:'job-'+id,source_type:'client_billing',status,
+  idempotency_key:'payment-link-reminder:'+id+':2026-10-25T00:00:00Z',message_text:'PRIVATE_BODY'});
+ const r=summarizePaymentReminderAudit(rows,[mk('pay-1','accepted'),mk('pay-2','unknown'),mk('pay-3','queued')]);
+ assert.equal(r.acceptedWithoutFlag,1);
+ assert.equal(r.unknownWithFlag,1);
+ assert.equal(r.pendingWithOutbox,1);
+ assert.equal(r.flaggedWithoutSampledReceipt,1);
+ assert.equal(r.noMessagesSent,true);
+ assert.equal(JSON.stringify(r).includes('PRIVATE'),false);
+});
