@@ -152,6 +152,23 @@ test('production-size 33-message burst drains across 16+16+1 runs with no duplic
  assert.equal(x.control.lease_owner,'');
 });
 
+test('concurrent worker wakeups share one lease and never call provider twice',async()=>{
+ const x=fixture();
+ for(let i=0;i<4;i++)await sendWhatsAppText('0501234567','parallel '+i,x.client,{
+   sourceType:'scheduled_fanout',sourceId:'qa-concurrent',idempotencyKey:'qa-concurrent-'+i
+ });
+ let calls=0;
+ const transport=async()=>{calls++;await wait(5);return {messageId:'parallel-'+calls};};
+ const results=await Promise.all(Array.from({length:6},(_,i)=>drainWhatsAppOutbox(x.client,{
+   wakeReason:i?'continue':'outbox_create',transport
+ })));
+ assert.equal(results.reduce((sum,r)=>sum+(r.accepted||0),0),4);
+ assert.equal(calls,4);
+ assert.equal(x.jobs.filter(j=>j.status==='accepted').length,4);
+ assert.equal(new Set(x.jobs.map(j=>j.provider_message_id)).size,4);
+ assert.equal(x.control.lease_owner,'');
+});
+
 test('future-only notification releases global lease immediately; urgent invoice is not blocked',async()=>{
  const x=fixture();
  await sendWhatsAppText('0501234567','future scheduled message',x.client,{
