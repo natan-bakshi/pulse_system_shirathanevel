@@ -469,3 +469,9 @@
 - All read-only queries are projected and bounded. If either Task or Task Pending query fails, audit reports unavailable rather than zero. Caveat: Task digest may legitimately have no Pending source; pending is not proof of transport delivery.
 - Added Task audit privacy/state regression and updated queue admin tests. No production messages sent.
 - Remaining: validate live source sample, cross-recipient per-task receipts, manual approval for any mirror-only repair, and assignment duplicate live QA. This is diagnostic coverage, not completed P42.
+
+### WA-P65 — 22.10.2026 — live read-only watchdog and historical UNKNOWN triage
+- Read-only production control snapshot: enabled, unpaused, no lease owner, last_watchdog_at 2026-10-22T04:35:30.333Z, last worker wake reason watchdog. This confirms watchdog invocation, NOT complete batch continuation or delivery.
+- Read-only sampled Outbox shows two historical scheduled_fanout UNKNOWN rows from 2026-10-21T06:41 UTC; no provider receipt recorded. Other fanout rows accepted. Do NOT automatically retry these: provider outcome may have committed. Human/provider lookup required.
+- Assignment collision fix has focused concurrency/timestamp tests already, but live post-publication assignment QA remains OPEN. International normalization tests cover Israel, US, UK, France, Germany, India, Spain and reject ambiguous local prefixes; no live foreign recipient verification.
+- Next: system-owner explicit sourceAudit for payment/task counts after publishing WA-P63/64, provider lookup of historical UNKNOWN, and authorized assignment and 16+ batch QA. Keep P0 open until live evidence is collected.
