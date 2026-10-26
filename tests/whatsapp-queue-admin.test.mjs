@@ -15,7 +15,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
- const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[],officeReads=[];
+ const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[],officeReads=[],greenAudits=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
    return record[key]===val;
@@ -62,7 +62,10 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  }).code;
  vm.runInNewContext(js,{
    exports:{},module:{exports:{}},console:{error:()=>{},log:()=>{}},
-   Deno:{serve:fn=>handler=fn},
+   Deno:{serve:fn=>handler=fn,env:{get:key=>({
+     GREEN_API_INSTANCE_ID:'9903183013',
+     GREEN_API_TOKEN:'SYNTHETIC-GREEN-ONLY-API-TOKEN-1234567890'
+   })[key]}}, 
    Response:{json:(body,{status=200}={})=>({body,status})},
    require:name=>{
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
@@ -90,6 +93,18 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('whatsappInboundAudit.ts'))return {summarizeInboundWhatsAppReceipts};
      if(name.endsWith('whatsappInboundInvestigation.ts'))return {inspectInboundReceiptReadOnly};
      if(name.endsWith('whatsappOfficeReferenceLookup.ts'))return {inspectOfficeAssignmentReference};
+     if(name.endsWith('greenWebhookSettingsAudit.ts'))return {
+       inspectGreenWebhookSettingsReadOnly:async options=>{
+         greenAudits.push({...options});
+         return {source:'green_api_get_settings_read_only',
+           webhookConfigured:true,webhookTokenConfigured:true,
+           existingWebhookMustBePreserved:true,
+           notificationFlags:{incomingWebhook:'yes'},
+           activeCategories:1,noMessagesSent:true,noDatabaseQueries:true,
+           providerReadCalls:1,webhookSettingChangesMade:false,
+           safeToReplaceWebhookUrl:false};
+       }
+     };
      if(name.endsWith('whatsappInteractiveReadiness.ts'))return {
        inspectGreenInteractiveReadinessReadOnly:async()=>summarizeWhatsAppInteractiveReadiness({
         control:record,selectedProvider:'green',assignmentIntentEnabled:false,
@@ -102,7 +117,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      throw Error('Unexpected import: '+name);
    }
  });
- return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,inboundProjections,officeReads,invoke:async(action,params={})=>await handler({
+ return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,inboundProjections,officeReads,greenAudits,invoke:async(action,params={})=>await handler({
    method:'POST',json:async()=>({action,...params})
  })};
 }
@@ -149,7 +164,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup','greenWebhookSettingsAudit']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
