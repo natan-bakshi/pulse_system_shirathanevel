@@ -180,6 +180,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
             <td className="p-2">
               {statusNames[row.status]||row.status}
               {row.errorCode&&<p className="text-xs text-amber-700">HTTP {row.errorCode}</p>}
+              {row.interactiveReviewRequired&&<p className="text-xs text-amber-800">כפתורי שיבוץ — נדרש בירור; אין ניסיון חוזר</p>}
             </td>
             <td className="p-2">{row.attemptCount||0}</td>
             <td className="p-2"><div className="flex gap-1 flex-wrap">
