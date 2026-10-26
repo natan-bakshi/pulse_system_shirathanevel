@@ -16,6 +16,7 @@ const baseJob=()=>({
  message_type:'text',chat_id:'972501234567@c.us',
  requested_provider:'green',attempt_count:0,send_started_at:'',
  provider_message_id:'',event_service_id:'service-abc123',supplier_id:'supplier-abc123',
+ idempotency_key:'assignment:service-abc123:supplier-abc123:r2:SUPPLIER_NEW_ASSIGNMENT',
  message_text:'Test assignment',created_date:'2026-10-26T11:00:00Z'
 });
 const baseService=()=>({
@@ -162,6 +163,8 @@ test('legacy send attempt, Wasender job, group, stale supplier or invalid intent
   f=>{f.service.supplier_ids='[]';},
   f=>{f.service.supplier_statuses='{"supplier-abc123":"rejected"}';},
   f=>{f.service.assignment_intent_mode='';},
+  f=>{f.job.idempotency_key='assignment:service-abc123:supplier-abc123:r1:SUPPLIER_NEW_ASSIGNMENT';},
+  f=>{f.job.idempotency_key='assignment:service-abc123:supplier-abc123:r9:SUPPLIER_NEW_ASSIGNMENT';},
   f=>{f.service.assignment_notification_intents='{';},
   f=>{f.service.assignment_notification_intents=JSON.stringify([
    {key:'assignment:service-abc123:supplier-abc123:r5:SUPPLIER_NEW_ASSIGNMENT',
