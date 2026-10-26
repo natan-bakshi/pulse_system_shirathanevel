@@ -189,7 +189,9 @@ test('full offline adapter: GREEN callback -> authenticated Outbox -> signed but
  assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-abc'],'confirmed');
  assert.ok(f.calls.outboxReads<=2,'one bounded original lookup plus one authoritative preflight');
  const replay=await call(f,rawFor(f.buttons[0].buttonId));
- assert.equal(replay.status,'refused');
+ assert.equal(replay.status,'duplicate');
+ assert.equal(replay.terminalReceiptVerified,true);
+ assert.equal(replay.receiptState,'applied');
  assert.equal(f.calls.writes,1);
  assert.equal(f.calls.creates,1);
 });
