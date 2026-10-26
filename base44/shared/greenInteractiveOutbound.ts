@@ -46,16 +46,17 @@ export async function previewGreenInteractiveAssignment(input:{
   job.message_type!=='text'||job.requested_provider!=='green'||
   !PRIVATE_CHAT.test(job.chat_id||''))throw fail('ineligible_interactive_job');
  const text=textBody(job),url=officeUrl(input.officeNumber??'');
- const fallback=(reason:string):GreenOutboundPreview=>({
+ const fallback=(reason:string,includeOfficeLink:boolean):GreenOutboundPreview=>({
   method:'sendMessage',body:{chatId:job.chat_id,
-   message:appendOfficeToText(text,url)},
+   // An inactive feature MUST leave existing plain-text sends unchanged.
+   message:includeOfficeLink?appendOfficeToText(text,url):text},
   kind:'plain_text',fallbackReason:reason,providerRequestsMade:0
  });
  // Unknown capabilities or disabled rollout MUST retain existing delivery.
  // A draft settings record can never turn on beta methods by itself.
- if(input.rolloutEnabled!==true)return fallback('interactive_rollout_disabled');
+ if(input.rolloutEnabled!==true)return fallback('interactive_rollout_disabled',false);
  if(!['reply_only','mixed_url'].includes(input.capability))
-  return fallback('provider_capability_unverified');
+  return fallback('provider_capability_unverified',true);
  if(job.status!=='sending')throw fail('interactive_job_not_claimed');
  if(typeof input.frozenSnapshot!=='string'||input.frozenSnapshot!==job.interactive_button_bindings_json)
   throw fail('frozen_snapshot_missing_or_changed');
