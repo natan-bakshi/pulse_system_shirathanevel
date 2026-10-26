@@ -52,7 +52,7 @@ function fixture(){
    filter:async(query)=>{
     counts.quarantineReads++;
     if(failOnReread&&rows.length)throw Error('database read uncertain');
-    return rows.filter(row=>same(row,query)).map(structuredClone);
+    return rows.filter(row=>same(row,query)).map(row=>structuredClone(row));
    },
    create:async(data)=>{
     counts.quarantineCreates++;
