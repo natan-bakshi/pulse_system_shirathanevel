@@ -7,7 +7,7 @@
 // Base44 Outbox uses admin RLS; never expose this field or signed tokens in UI.
 import {readAssignmentIntents} from './assignmentIntent.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
-import {createFutureInteractiveButtonSnapshot} from './whatsappButtonBindings.ts';
+import {createFutureInteractiveButtonSnapshot,verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 
 const VALID_ID=/^[A-Za-z0-9_-]{3,128}$/;
@@ -49,7 +49,8 @@ function isUnsentQueuedJob(job:any){
   VALID_ID.test(String(job.id||''));
 }
 async function signedButtonsMatch(raw:any,job:any,secret:string,subtle:SubtleCrypto,now:number){
- if(typeof raw!=='string'||raw.length>8192)return false;
+ if(typeof raw!=='string'||raw.length>8192||
+  !(await verifyFutureButtonSnapshotMac(raw,secret,subtle)))return false;
  let data:any;
  try{data=JSON.parse(raw);}catch{return false;}
  if(!data||data.version!==1||data.jobId!==job.id||
@@ -147,7 +148,8 @@ export async function prepareFutureGreenAssignmentOutbox(client:any,input:Params
   current?.send_started_at||current?.provider_message_id||
   current?.sender_account_id!==input.senderAccountId||
   current?.assignment_revision!==revision)
-  throw refused('interactive_snapshot_race_or_unknown',409);
+  throw refused(thrown?'interactive_snapshot_persistence_unknown':
+   'interactive_snapshot_race_or_unknown',thrown?503:409);
  const currentSnapshot=current.interactive_button_bindings_json;
  if(currentSnapshot===snapshot &&
   await signedButtonsMatch(snapshot,current,input.signingSecret,subtle,now))
