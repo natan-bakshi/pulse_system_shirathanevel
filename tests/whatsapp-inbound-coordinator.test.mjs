@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {createSignedWhatsAppAction} from '../base44/shared/whatsappSignedAction.ts';
 import {processVerifiedWhatsAppAssignmentResponse} from '../base44/shared/whatsappInboundCoordinator.ts';
+import {registerVerifiedInboundReceipt} from '../base44/shared/whatsappInboundInbox.ts';
 
 const signingSecret='internal-inbound-test-signing-key-very-long-123';
 const webhookSecret='green-webhook-secret-for-unit-tests-very-long';
@@ -138,7 +139,10 @@ test('verified approve applies ONE status CAS then recalculates and closes recei
  assert.equal(f.records[0].state,'applied');
  assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-abc'],'confirmed');
  const second=await call(f,event);
- assert.equal(second.status,'refused','original assignment no longer pending after success');
+ assert.equal(second.status,'duplicate','durably finalized original must safely recognize Green redelivery');
+ assert.equal(second.reason,'provider_event_already_finalized');
+ assert.equal(second.terminalReceiptVerified,true);
+ assert.equal(second.receiptState,'applied');
  assert.equal(f.stats.supplierWrites,1);
  assert.equal(f.stats.creates,1);
  assert.equal(f.control.lease_owner,'existing-whatsapp-worker');
@@ -171,7 +175,10 @@ test('ambiguous committed supplier CAS gets NEEDS_REVIEW and is NEVER tried twic
  assert.equal(f.stats.supplierWrites,1);
  assert.equal(f.stats.recalc,0);
  const duplicate=await call(f,event);
- assert.equal(duplicate.status,'refused');
+ assert.equal(duplicate.status,'duplicate');
+ assert.equal(duplicate.receiptState,'needs_review');
+ assert.equal(duplicate.resultCode,'unknown_after_write');
+ assert.equal(duplicate.terminalReceiptVerified,true);
  assert.equal(f.stats.supplierWrites,1);
 });
 test('failed event readiness after a committed supplier write is treated as unknown, not replay',async()=>{
@@ -192,7 +199,8 @@ test('receipt finalization timeout leaves processing receipt for review with no 
  assert.equal(f.stats.supplierWrites,1);
  assert.equal(f.records[0].state,'processing');
  const replay=await call(f,event);
- assert.equal(replay.status,'refused');
+ assert.equal(replay.status,'held');
+ assert.equal(replay.reason,'existing_receipt_not_finalized');
  assert.equal(f.stats.supplierWrites,1);
 });
 test('precommit supplier API failures remain conservatively needs_review; no automatic retry',async()=>{
