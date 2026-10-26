@@ -191,8 +191,15 @@ test('finish requires exact owner, unexpired lease, safe result and one terminal
  assert.equal((await claimPendingInboundReceipt(f.client,{...ctx,now:at})).claimed,true);
  assert.equal((await finishInboundReceipt(f.client,{...ctx,claimOwner:'intruder',
   outcome:'applied',resultCode:'applied'})).finalized,false);
- assert.equal((await finishInboundReceipt(f.client,{...ctx,
-  outcome:'applied',resultCode:'arbitrary-function'})).finalized,undefined);
+ await assert.rejects(finishInboundReceipt(f.client,{...ctx,
+  outcome:'applied',resultCode:'arbitrary-function'}),e=>e.code==='invalid_receipt_finalization');
+ assert.equal(f.records[0].state,'processing');
+ const applied=await finishInboundReceipt(f.client,{...ctx,outcome:'applied',resultCode:'applied'});
+ assert.equal(applied.finalized,true);
+ assert.equal(f.records[0].state,'applied');
+ const repeated=await finishInboundReceipt(f.client,{...ctx,outcome:'applied',resultCode:'applied'});
+ assert.equal(repeated.finalized,false);
+ assert.equal(f.records[0].result_code,'applied');
 });
 test('expired processing outcome goes to reconciliation, never autoclaim',async()=>{
  const f=fixture();
