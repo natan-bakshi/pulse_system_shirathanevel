@@ -1,0 +1,84 @@
+{
+  "name": "WhatsAppInboundQuarantine",
+  "type": "object",
+  "description": "Owner-review-only record for authenticated Green callbacks with an unrecognized button shape. No raw message, phone, chat ID, token, original stanzaId or message body is stored. A record is NOT proof of supplier approval. Never automatically replays.",
+  "properties": {
+    "quarantine_key": {
+      "type": "string",
+      "description": "Domain-separated HMAC fingerprint of instance + provider event ID; no raw provider identifier"
+    },
+    "payload_mac": {
+      "type": "string",
+      "description": "Domain-separated HMAC of callback JSON to detect changed/replayed payloads; no raw content"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "green"
+      ]
+    },
+    "company_id": {
+      "type": "string",
+      "description": "Fixed single-system scope shirat_hanevel"
+    },
+    "format_code": {
+      "type": "string",
+      "enum": [
+        "unrecognized_interactive",
+        "unrecognized_incoming"
+      ],
+      "description": "Sanitized general classification, not any supplier-supplied text"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "needs_review"
+      ],
+      "default": "needs_review"
+    },
+    "provider_event_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_code": {
+      "type": "string",
+      "description": "Allowlisted code only, no private content"
+    }
+  },
+  "required": [
+    "quarantine_key",
+    "payload_mac",
+    "provider",
+    "company_id",
+    "format_code",
+    "state",
+    "registered_at",
+    "review_code"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
