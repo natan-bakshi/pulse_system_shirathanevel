@@ -70,7 +70,9 @@ test('unverified provider account and inactive rollout use ordinary text once, w
   assert.equal(result.method,'sendMessage');
   assert.equal(result.providerRequestsMade,0);
   assert.deepEqual(Object.keys(result.body).sort(),['chatId','message']);
-  assert.match(result.body.message,/https:\/\/wa\.me\/972541234567/);
+  if(patch.rolloutEnabled===false)
+   assert.equal(result.body.message,row.message_text,'disabled rollout must not change the legacy text');
+  else assert.match(result.body.message,/https:\/\/wa\.me\/972541234567/);
   assert.equal(result.body.message.includes(secret),false);
  }
 });
