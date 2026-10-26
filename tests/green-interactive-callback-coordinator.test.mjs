@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {createFutureInteractiveButtonSnapshot} from '../base44/shared/whatsappButtonBindings.ts';
 import {processFutureGreenButtonCallback} from '../base44/shared/greenInteractiveCallbackCoordinator.ts';
+import {stageFutureGreenInteractiveHttpCallback} from '../base44/shared/greenInteractiveHttpStaging.ts';
 
 const now=Date.parse('2026-10-26T12:00:00Z');
 const instance='9903183013';
@@ -120,6 +121,62 @@ function call(f,raw,extra={}){
   ...extra
  });
 }
+function requestFor(raw,header='Bearer '+webhookSecret){
+ return new Request('https://invalid.example.test/callback',{method:'POST',
+  headers:{'content-type':'application/json','Authorization':header},
+  body:JSON.stringify(raw)});
+}
+function stageCall(f,req,patch={}){
+ return stageFutureGreenInteractiveHttpCallback(req,{
+  client:f.client,rolloutAuthorized:true,accountCapabilityVerified:true,
+  webhookSecret,actionSigningSecret:signingSecret,
+  expectedInstanceId:instance,claimOwner:'internal-green-worker-123',
+  recalculateEventStatus:f.recalculateEventStatus,
+  now,subtle:webcrypto.subtle,maxPerMinute:30,...patch
+ });
+}
+test('FULL offline HTTP pipeline: authenticated bytes -> budget -> signed original -> one supplier write',async()=>{
+ const f=await setup();
+ const response=await stageCall(f,requestFor(rawFor(f.buttons[0].buttonId)));
+ assert.equal(response.stage,'processed');
+ assert.equal(response.result,'applied');
+ assert.equal(response.providerCalls,0);
+ assert.equal(response.businessWritesAuthorized,true);
+ assert.equal(f.control.inbound_rate_count,1);
+ assert.equal(f.calls.writes,1);
+ assert.equal(f.calls.creates,1);
+ assert.equal(f.calls.recalc,1);
+ assert.equal(f.receipts[0].state,'applied');
+ assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-abc'],'confirmed');
+});
+test('HTTP ingress: rollout off, invalid bearer, wrong instance and size spoof spend zero business writes',async()=>{
+ const cases=[
+  {patch:{rolloutAuthorized:false},raw:rawFor('wa1_stub'),header:'Bearer '+webhookSecret},
+  {patch:{},raw:rawFor('wa1_stub'),header:'Bearer wrong-token'},
+  {patch:{},raw:{...rawFor('wa1_stub'),instanceData:{idInstance:1111111111,typeInstance:'whatsapp'}},header:'Bearer '+webhookSecret}
+ ];
+ for(const item of cases){
+  const f=await setup();
+  const result=await stageCall(f,requestFor(item.raw,item.header),item.patch);
+  assert.notEqual(result.stage,'processed');
+  assert.equal(f.calls.outboxReads,0);
+  assert.equal(f.calls.creates,0);
+  assert.equal(f.calls.writes,0);
+  assert.equal(f.control.inbound_rate_count,undefined);
+ }
+});
+test('HTTP ingress global rate limit refuses authenticated button before Outbox or supplier lookup',async()=>{
+ const f=await setup();
+ f.control.inbound_rate_window_started_at=new Date(now).toISOString();
+ f.control.inbound_rate_count=30;
+ const result=await stageCall(f,requestFor(rawFor(f.buttons[0].buttonId)));
+ assert.equal(result.stage,'rate_guard_refused');
+ assert.equal(result.reason,'rate_limited');
+ assert.equal(result.retryAfterSeconds,60);
+ assert.equal(f.calls.outboxReads,0);
+ assert.equal(f.calls.creates,0);
+ assert.equal(f.calls.writes,0);
+});
 test('full offline adapter: GREEN callback -> authenticated Outbox -> signed button -> receipt -> supplier CAS',async()=>{
  const f=await setup();
  const response=await call(f,rawFor(f.buttons[0].buttonId));
