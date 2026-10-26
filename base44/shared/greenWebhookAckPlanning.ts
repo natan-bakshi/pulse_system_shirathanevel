@@ -34,8 +34,16 @@ const plan=(decision:AckPlan['decision'],reason:string,ok=false):AckPlan=>({
 export function planFutureGreenWebhookAck(result:any):AckPlan{
  if(result?.stage==='invalid_selection'&&
     result.reason==='recognized_non_button_event'&&
-    result.verifiedProviderAndAccount===true)
-  return plan('safe_ack_candidate','non_button_event_safely_ignored',true);
+    result.verifiedProviderAndAccount===true){
+  // Suppliers may continue to chat freely with the office. Ignoring plain
+  // text in the assignment engine is NOT permission to silently consume
+  // messages needed by some other existing inbox/CRM/webhook consumer.
+  // Only an independently approved and verified inbound routing decision
+  // may allow the future HTTP endpoint to ACK a known non-button event.
+  if(result.ordinaryInboundHandlingVerified===true)
+   return plan('safe_ack_candidate','non_button_route_verified',true);
+  return plan('manual_reconcile_candidate','ordinary_inbound_routing_not_verified');
+ }
  if(result?.stage==='processed'){
   // These are confirmed durable end states from the internal coordinator,
   // not guessed delivery from a provider 2xx response.
