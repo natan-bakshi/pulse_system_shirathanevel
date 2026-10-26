@@ -97,6 +97,11 @@ export function planFutureGreenWebhookAck(result:any):AckPlan{
   // Unknown/forged button and out-of-date action are NOT positive ACK proofs.
   return plan('no_ack_candidate','unverified_or_unhandled_button');
  }
+ if(result?.stage==='quarantined_unknown')
+  return plan('manual_reconcile_candidate',
+   'unknown_callback_metadata_only_cannot_recover_action');
+ if(result?.stage==='quarantine_unavailable')
+  return plan('no_ack_candidate','unknown_callback_not_confirmed_stored');
  if(result?.stage==='rate_guard_refused')
   return plan('no_ack_candidate','rate_limit_or_storage_outage');
  if(result?.stage==='request_refused')
