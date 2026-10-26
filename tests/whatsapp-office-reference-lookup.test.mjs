@@ -68,6 +68,42 @@ test('one verified office reference maps to its original event/service/supplier,
   'PRIVATE-PAYER-EMAIL','PRIVATE-ADMIN-NOTES','9990001234567','private-supplier@example.invalid'])
   assert.equal(output.includes(sensitive),false,sensitive);
 });
+test('two inquiries from the SAME supplier resolve by their exact reference regardless of inquiry order',async()=>{
+ const first=fixture(),second=fixture();
+ second.row.id='outbox-SECOND9';
+ second.row.event_service_id='service-SECOND9';
+ second.svc.id='service-SECOND9';
+ second.svc.event_id='event-SECOND9';
+ second.ev.id='event-SECOND9';
+ second.ev.event_name='אירוע ב';
+ second.ev.event_date='2027-07-19';
+ second.svc.service_name='נגנים לאירוע ב';
+ second.row.idempotency_key='assignment:service-SECOND9:supplier-ABC123:r4:SUPPLIER_NEW_ASSIGNMENT';
+ second.svc.assignment_notification_intents=JSON.stringify([{
+  supplier_id:'supplier-ABC123',revision:4,state:'accepted',
+  key:second.row.idempotency_key
+ }]);
+ const records=[first,second],reads=[];
+ const db={
+  WhatsAppOutbox:{get:async id=>{
+   reads.push('outbox:'+id);return records.find(f=>f.row.id===id)?.row||null;
+  }},
+  EventService:{get:async id=>records.find(f=>f.svc.id===id)?.svc||null},
+  Supplier:{get:async id=>first.sup.id===id?first.sup:null},
+  Event:{get:async id=>records.find(f=>f.ev.id===id)?.ev||null}
+ };
+ const client={asServiceRole:{entities:db}};
+ const b=await inspectOfficeAssignmentReference(client,'outbox-SECOND9');
+ const a=await inspectOfficeAssignmentReference(client,'outbox-ABC123');
+ assert.equal(b.eventName,'אירוע ב');
+ assert.equal(a.eventName,'בר מצווה לדוגמה');
+ assert.equal(b.supplierName,a.supplierName);
+ assert.equal(b.reference,'outbox-SECOND9');
+ assert.equal(a.reference,'outbox-ABC123');
+ assert.equal(b.originState,'current_revision');
+ assert.equal(a.originState,'current_revision');
+ assert.deepEqual(reads,['outbox:outbox-SECOND9','outbox:outbox-ABC123']);
+});
 test('old revision and removed assignment remain historical, never presented as current',()=>{
  const f=fixture();
  f.svc.assignment_notification_intents=JSON.stringify([
