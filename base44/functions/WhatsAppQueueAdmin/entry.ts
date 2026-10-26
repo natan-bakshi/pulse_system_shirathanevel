@@ -5,6 +5,7 @@ import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts'
 import {readSavedWhatsAppInteractivePolicy,saveWhatsAppInteractivePolicyDraft} from '../../shared/whatsappInteractiveSettingsStore.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
+import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
@@ -305,6 +306,20 @@ Deno.serve(async(req)=>{
       ]);
       return RESPONSE({success:true,liveInboundEnabled:false,
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
+    }
+    if(action==='inboundInspect'){
+      // Owner-only, explicit, single-record, READ ONLY inspection.
+      // Never clear guards, retry callbacks or mutate supplier statuses.
+      try{
+        const inspection=await inspectInboundReceiptReadOnly(client,body.id);
+        return RESPONSE({success:true,inspection,noMessagesSent:true});
+      }catch(error){
+        const errorStatus=Number((error as any)?.status)||503;
+        const status=[400,404,503].includes(errorStatus)?errorStatus:503;
+        return RESPONSE({success:false,error:status===404?'Inbound receipt not found':
+         status===400?'Invalid inbound receipt ID':'Inbound investigation unavailable',
+         noMessagesSent:true},status);
+      }
     }
     if(action==='metrics'){
       // Explicit read-only request; no provider calls and no message contents.
