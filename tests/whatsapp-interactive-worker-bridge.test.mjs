@@ -104,6 +104,50 @@ function fixture(){
  };
  return {client,outbox,controls,service,control,jobs,events,add};
 }
+test('superseded queued supplier assignment is cancelled without a second provider call, even when interactive OFF',async()=>{
+ const x=fixture();
+ const old=x.add('assignment_new',{
+  idempotency_key:'assignment:service-123:supplier-123:r3:SUPPLIER_NEW_ASSIGNMENT'
+ });
+ const fresh=x.add('assignment_new');
+ const sent=[];
+ const result=await drainWhatsAppOutbox(x.client,{maxRuntimeMs:10000,
+  transport:async job=>{sent.push(job.id);return {messageId:'only-current-'+job.id};}
+ });
+ assert.equal(result.skipped,1);
+ assert.equal(result.accepted,1);
+ assert.equal(old.status,'cancelled');
+ assert.equal(fresh.status,'accepted');
+ assert.deepEqual(sent,[fresh.id]);
+ assert.equal(x.events.snapshotWrites,0);
+});
+test('another supplier later revision does not cancel the still-pending original supplier assignment',async()=>{
+ const x=fixture();
+ x.service.supplier_ids='["supplier-123","supplier-456"]';
+ x.service.supplier_statuses='{"supplier-123":"pending","supplier-456":"pending"}';
+ const history=JSON.parse(x.service.assignment_notification_intents);
+ history.push({supplier_id:'supplier-456',revision:5,state:'accepted',
+  key:'assignment:service-123:supplier-456:r5:SUPPLIER_NEW_ASSIGNMENT'});
+ x.service.assignment_notification_intents=JSON.stringify(history);
+ const current=x.add(),sent=[];
+ const result=await drainWhatsAppOutbox(x.client,{
+  transport:async job=>{sent.push(job.id);return {messageId:'current-assignment-id'};}
+ });
+ assert.equal(result.accepted,1);
+ assert.equal(result.skipped,0);
+ assert.deepEqual(sent,[current.id]);
+});
+test('invalid intent history defers original assignment without any transport',async()=>{
+ const x=fixture(),job=x.add();
+ x.service.assignment_notification_intents='{';
+ const result=await drainWhatsAppOutbox(x.client,{
+  transport:async()=>{throw Error('must not send invalid intent')}
+ });
+ assert.equal(result.retried,1);
+ assert.equal(result.accepted,0);
+ assert.equal(job.status,'retry_wait');
+ assert.equal(job.attempt_count,0);
+});
 test('DEFAULT-OFF worker preserves exact legacy path and does not snapshot or add DB reads',async()=>{
  const x=fixture();const j=x.add();
  const seen=[];
