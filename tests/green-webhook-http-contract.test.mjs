@@ -36,6 +36,11 @@ test('unverified, pending, unknown beta, database or CAS failures never propose 
   {stage:'processed',result:'needs_review',reason:'receipt_finalization_unverified'},
   {stage:'processed',result:'refused',reason:'receipt_registration_unverified'},
   {stage:'processed',result:'refused',reason:'unverified_button_binding'},
+  {stage:'quarantined_unknown',reason:'unknown_button_requires_manual_review',
+   quarantineRecorded:true,quarantineKind:'stored'},
+  {stage:'quarantined_unknown',reason:'unknown_button_requires_manual_review',
+   quarantineRecorded:true,quarantineKind:'duplicate'},
+  {stage:'quarantine_unavailable',reason:'unknown_callback_not_confirmed_stored'},
   {stage:'unknown'}
  ];
  for(const entry of cases){
@@ -45,6 +50,10 @@ test('unverified, pending, unknown beta, database or CAS failures never propose 
   assert.equal(planned.providerWillLikelyRetry,true);
   assert.equal(planned.readyForLiveRollout,false);
  }
+ assert.equal(status({stage:'quarantined_unknown'}),503);
+ assert.equal(status({stage:'quarantine_unavailable'}),503);
+ assert.equal(planFutureGreenWebhookHttpContract({stage:'quarantined_unknown'}).reason,
+  'unknown_button_metadata_review_not_recoverable');
  assert.equal(status({stage:'invalid_selection'}),422);
  assert.equal(status({stage:'processed',result:'held'}),503);
  assert.equal(status({stage:'processed',result:'refused'}),422);
