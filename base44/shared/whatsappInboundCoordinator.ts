@@ -12,11 +12,14 @@ import {persistAuthorizedSupplierStatus} from './supplierStatusPersistence.ts';
 const preflightRefused=(reason:string)=>({status:'refused',reason,
  providerCalls:0,supplierWritesAuthorized:false});
 export type InboundOutcome='refused'|'duplicate'|'held'|'applied'|'rejected'|'needs_review';
+type InboundResult={status:InboundOutcome;reason:string;providerCalls:0;
+ supplierWritesAuthorized:boolean;terminalReceiptVerified?:boolean;
+ receiptState?:string;resultCode?:string};
 export async function processVerifiedWhatsAppAssignmentResponse(input:{
  providerEvent:any;client:any;trustedRolloutEnabled:boolean;
  providerCapabilityVerified:boolean;claimOwner:string;
  recalculateEventStatus:(eventId:string)=>Promise<any>
-}):Promise<{status:InboundOutcome;reason:string;providerCalls:0;supplierWritesAuthorized:boolean}>{
+}):Promise<InboundResult>{
  if(input?.trustedRolloutEnabled!==true||input?.providerCapabilityVerified!==true)
   return preflightRefused('rollout_disabled');
  if(typeof input.claimOwner!=='string'||!/^[A-Za-z0-9_-]{8,100}$/.test(input.claimOwner)||
@@ -32,7 +35,7 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
   // is NOT sufficient proof of duplicate: check the exact durable receipt.
   // One projected read ONLY on these historical/retry paths, not every new
   // callback. There is never another business CAS from this branch.
-  if(admission.verifiedReplayCandidate){
+  if('verifiedReplayCandidate' in admission && admission.verifiedReplayCandidate){
    try{
     const prior=await inspectVerifiedInboundReplay(
      input.client,admission.verifiedReplayCandidate);
@@ -59,11 +62,22 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
  try{registered=await registerVerifiedInboundReceipt(input.client,record);}
  catch{return preflightRefused('receipt_registration_unverified');}
  if(registered.kind==='duplicate'){
-  // A verified receipt can exist while still pending/processing or under
-  // manual review. Merely having a row must NEVER look like a completed ACK.
-  // No replay, no claim, no supplier write on any duplicate path.
-  return {status:'held',reason:'existing_receipt_not_finalized',
-   providerCalls:0,supplierWritesAuthorized:false};
+  // The business state could still look pending after an already terminal
+  // rejection or an incomplete receipt. An existing row is NEVER sufficient
+  // evidence to send HTTP ACK. Verify its full identity + durable terminal
+  // state via a bounded read, without touching the supplier or claiming it.
+  try{
+   const prior=await inspectVerifiedInboundReplay(input.client,record);
+   if(prior.kind==='finalized')
+    return {status:'duplicate',reason:'provider_event_already_finalized',
+     terminalReceiptVerified:true,receiptState:prior.receiptState,
+     resultCode:prior.resultCode,
+     providerCalls:0,supplierWritesAuthorized:false};
+   return {status:'held',reason:prior.kind==='not_found'?
+    'existing_receipt_lookup_unverified':'existing_receipt_not_finalized',
+    providerCalls:0,supplierWritesAuthorized:false};
+  }catch{return {status:'held',reason:'existing_receipt_lookup_unverified',
+   providerCalls:0,supplierWritesAuthorized:false};}
  }
  if(!registered.processAllowed)
   return {status:'held',reason:'receipt_not_newly_pending',
