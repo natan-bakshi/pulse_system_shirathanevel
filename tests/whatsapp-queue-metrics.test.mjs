@@ -206,6 +206,9 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
         if(name.endsWith('whatsappOfficeReferenceLookup.ts'))return {
           inspectOfficeAssignmentReference:()=>{throw Error('Metrics must not perform office lookup')}
         };
+        if(name.endsWith('greenWebhookSettingsAudit.ts'))return {
+          inspectGreenWebhookSettingsReadOnly:()=>{throw Error('Metrics must not contact Green API')}
+        };
         if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
       }
