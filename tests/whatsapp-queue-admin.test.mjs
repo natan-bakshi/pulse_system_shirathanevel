@@ -180,6 +180,41 @@ test('non-system owner cannot read or modify queue operations',async()=>{
    assert.equal(ctx.calls.length,0);
  }
 });
+test('owner unknown Green callback audit is projected, on-demand, masked and NEVER mutates supplier',async()=>{
+ const sample={id:'quarantine-1',
+  quarantine_key:'gq1_'+'a'.repeat(64),
+  payload_mac:'b'.repeat(64),provider:'green',company_id:'shirat_hanevel',
+  format_code:'unrecognized_interactive',state:'needs_review',
+  provider_event_at:'2026-10-26T12:00:00Z',
+  registered_at:'2026-10-26T12:00:01Z',
+  review_code:'unrecognized_button_format',
+  raw_message_text:'PRIVATE-NEVER-EXPOSE',
+  sender_chat:'972501234567@c.us'};
+ const ctx=context({quarantineRows:[sample]});
+ const state=JSON.stringify(ctx.record);
+ await ctx.invoke('status');
+ await ctx.invoke('interactiveReadiness');
+ assert.equal(ctx.unknownProjections.length,0,
+  'normal queue page and readiness NEVER scan unknown quarantine');
+ const result=await ctx.invoke('unknownCallbackAudit');
+ assert.equal(result.status,200);
+ assert.equal(result.body.success,true);
+ assert.equal(result.body.unknownCallbackLiveHandlerEnabled,false);
+ assert.equal(result.body.audit.pendingReview,1);
+ assert.equal(result.body.audit.sampleCount,1);
+ assert.equal(result.body.audit.list[0].reference,'a'.repeat(12));
+ assert.equal(result.body.audit.unknownButtonsNeverAutoApproved,true);
+ assert.equal(ctx.unknownProjections.length,1);
+ assert.equal(ctx.unknownProjections[0].includes('raw_message_text'),false);
+ assert.equal(ctx.unknownProjections[0].includes('payload_mac'),true);
+ assert.equal(ctx.calls.length,0);
+ assert.equal(ctx.officeReads.length,0);
+ assert.equal(JSON.stringify(ctx.record),state);
+ const serialized=JSON.stringify(result.body);
+ for(const hidden of ['PRIVATE-NEVER-EXPOSE','972501234567','gq1_',
+  'b'.repeat(64),'a'.repeat(64)])
+  assert.equal(serialized.includes(hidden),false,hidden);
+});
 test('owner-only Green GetSettings audit is opt-in one provider GET and zero DB/queue mutation',async()=>{
  const ctx=context();
  await ctx.invoke('status');
