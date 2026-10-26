@@ -34,6 +34,9 @@ export default function WhatsAppQueueSettings(){
   const reviewDeepLink=typeof window!=='undefined' &&
     new URLSearchParams(window.location.search).get('whatsappQueue')==='review';
   const [expanded,setExpanded]=useState(reviewDeepLink);
+  // A collapsed settings panel must not run backend status/list queries.
+  // The existing review deep link still opens the queue and its message list.
+  const [messagesOpen,setMessagesOpen]=useState(reviewDeepLink);
   useEffect(()=>{
     if(reviewDeepLink)document.getElementById('whatsapp-queue')?.scrollIntoView({block:'start'});
   },[reviewDeepLink]);
@@ -51,12 +54,13 @@ export default function WhatsAppQueueSettings(){
     apply(res.data);setRefreshSignal(n=>n+1);
   };
   useEffect(()=>{
+    if(!expanded)return;
     let alive=true;
     base44.functions.invoke('WhatsAppQueueAdmin',{action:'status'})
       .then(r=>{if(alive&&r.data?.success)apply(r.data);})
       .catch(()=>{if(alive)setError('לא ניתן לטעון את תור WhatsApp. בדוק שהפונקציות פורסמו.');});
     return()=>{alive=false;};
-  },[]);
+  },[expanded]);
   async function run(action,params={}){
     if(action==='configure'&&view&&!view.config.enabled&&form.enabled&&
       !window.confirm('הפעלת התור משנה את מסלול ה־WhatsApp לכל המערכת. ודא שאוטומציות הרקע ועובד התור פורסמו ונבדקו. להמשיך?'))return;
@@ -293,7 +297,16 @@ export default function WhatsAppQueueSettings(){
         </details>
       </section>}
       <div className="border-t pt-4"><WhatsAppInteractiveDraftSettings /></div>
-      <div className="border-t pt-4"><WhatsAppQueueMessages refreshSignal={refreshSignal}/></div>
+      <div className="border-t pt-4 space-y-3">
+        <Button type="button" size="sm" variant="outline" aria-expanded={messagesOpen}
+          aria-controls="whatsapp-queue-messages-panel" onClick={()=>setMessagesOpen(open=>!open)}>
+          {messagesOpen?'סגור רשימת הודעות':'פתח רשימת הודעות בתור'}
+        </Button>
+        {messagesOpen&&<div id="whatsapp-queue-messages-panel">
+          <WhatsAppQueueMessages refreshSignal={refreshSignal}/>
+        </div>}
+        {!messagesOpen&&<p className="text-xs text-gray-500">רשימת ההודעות נטענת רק בלחיצה — ללא בקשת נתונים מיותרת.</p>}
+      </div>
       <p className="text-xs text-gray-500">הודעה שהתקבלה אצל ספק WhatsApp אינה בהכרח הודעה שנמסרה לנמען. במצב לא ידוע יש לאמת אצל הספק לפני שליחה מחדש.</p>
       {(totals.unknown||0)>0&&<p className="text-sm text-amber-700 flex gap-2">
         <AlertTriangle className="h-4 w-4"/>תוצאה לא ידועה אינה נשלחת שוב אוטומטית.</p>}
