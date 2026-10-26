@@ -6,6 +6,7 @@ import {readSavedWhatsAppInteractivePolicy,saveWhatsAppInteractivePolicyDraft} f
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
+import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
@@ -306,6 +307,15 @@ Deno.serve(async(req)=>{
       ]);
       return RESPONSE({success:true,liveInboundEnabled:false,
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
+    }
+    if(action==='interactiveReadiness'){
+      // On-demand owner-only, strictly read-only readiness checklist.
+      // Never probe Green API, mutate rollout flags, or send a test message.
+      try{
+        const readiness=await inspectGreenInteractiveReadinessReadOnly(client);
+        return RESPONSE({success:true,readiness,noMessagesSent:true});
+      }catch{return RESPONSE({success:false,error:'Interactive readiness check unavailable',
+        noMessagesSent:true},503);}
     }
     if(action==='inboundInspect'){
       // Owner-only, explicit, single-record, READ ONLY inspection.
