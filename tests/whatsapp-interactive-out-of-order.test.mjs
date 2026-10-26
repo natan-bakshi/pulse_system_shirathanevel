@@ -50,7 +50,7 @@ async function fixture(){
   WhatsAppOutbox:{
    filter:async(query)=>{
     counters.outboxReads++;
-    return Object.values(rows).filter(row=>exactMatch(row,query)).map(structuredClone);
+    return Object.values(rows).filter(row=>exactMatch(row,query)).map(row=>structuredClone(row));
    },
    get:async(id)=>{
     counters.outboxReads++;
