@@ -22,6 +22,10 @@ export function planFutureGreenWebhookHttpContract(result:any){
   if([400,401,404,405,413,415].includes(code)){
    status=code;reason='request_boundary_rejected';
   }else{status=401;reason='request_auth_or_parse_not_verified';}
+ }else if(result?.stage==='quarantined_unknown'){
+  status=503;reason='unknown_button_metadata_review_not_recoverable';
+ }else if(result?.stage==='quarantine_unavailable'){
+  status=503;reason='unknown_button_quarantine_not_confirmed';
  }else if(result?.stage==='rate_guard_refused'){
   status=429;reason='durable_rate_budget_exceeded_or_unavailable';
  }else if(result?.stage==='invalid_selection'){
