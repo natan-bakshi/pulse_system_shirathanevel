@@ -19,7 +19,9 @@ const MAX_INTERVAL_MS = 300_000;
 const LIST_FIELDS=['id','source_type','source_id','status','message_type',
   'chat_id','requested_provider','created_date','available_at','attempt_count',
   'provider','error_code','last_error','provider_message_id','manual_review_note',
-  'manual_action','resolution','archived','manual_retry_count'];
+  'manual_action','resolution','archived','manual_retry_count',
+  // Two small metadata flags only; never project the signed JSON snapshot.
+  'sender_account_id','assignment_revision'];
 const TIMING_FIELDS=['created_date','available_at','send_started_at','completed_at',
   'job_claimed_at','rate_ready_at','prior_dispatch_at','configured_interval_ms',
   'transport_started_at','transport_finished_at','status','attempt_count',
@@ -43,6 +45,8 @@ function validateInterval(value:any):number {
   return value;
 }
 function renderJob(job:any,includeBody=false){
+  const interactiveReviewRequired=!!(job.sender_account_id||
+    job.assignment_revision||job.interactive_button_bindings_json);
   const chat=String(job.chat_id||'');
   const mask=chat.length>7?'•••'+chat.slice(-9):'•••';
   const result:any={
@@ -54,7 +58,9 @@ function renderJob(job:any,includeBody=false){
     messageIdPresent:!!job.provider_message_id,manualReview:job.manual_review_note||'',
     manualAction:job.manual_action||'',resolution:job.resolution||'',
     archived:job.archived===true,manualRetryCount:job.manual_retry_count||0,
-    canCancel:CANCELLABLE.has(job.status),canRetry:EDITABLE_FAILED.has(job.status),
+    canCancel:CANCELLABLE.has(job.status),
+    canRetry:EDITABLE_FAILED.has(job.status)&&!interactiveReviewRequired,
+    interactiveReviewRequired,
     canResolve:EDITABLE_FAILED.has(job.status),
     canArchive:ARCHIVABLE.has(job.status)
   };
