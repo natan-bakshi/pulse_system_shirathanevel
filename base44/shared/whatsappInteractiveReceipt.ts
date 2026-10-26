@@ -8,6 +8,7 @@ export function inboundReceiptKey(input:{provider:string;senderAccountId:string;
 }
 export function inboundReceiptDecision(input:{state:string|undefined;claimedBy:string|undefined;claimExpiresAt:string|undefined},now=Date.now()){
  if(input.state==='applied'||input.state==='rejected')return {action:'ignore',reason:'terminal_receipt'};
+ if(input.state==='needs_review')return {action:'reconcile',reason:'manual_review_required'};
  if(input.state==='processing'){
   const expiry=Date.parse(input.claimExpiresAt||'');
   if(!Number.isFinite(expiry)||expiry>now)return {action:'ignore',reason:'active_or_uncertain_claim'};
