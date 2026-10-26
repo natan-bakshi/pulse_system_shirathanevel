@@ -6,6 +6,7 @@ import esbuild from 'esbuild';
 import {delayUntilNextSendMs,providerIntervalMs,lastDispatchForProvider} from '../base44/shared/whatsappQueueWorker.ts';
 import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../base44/shared/whatsappInboundAudit.ts';
+import {inspectInboundReceiptReadOnly} from '../base44/shared/whatsappInboundInvestigation.ts';
 import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions} from '../base44/shared/whatsappSourceAudit.ts';
 
 function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[]}={}){
@@ -28,15 +29,23 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
    }
  };
  const client={auth:{me:async()=>actor},asServiceRole:{entities:{
-   WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch)},
+   WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch),
+     filter:async()=>[record]},
+   EventService:{get:async()=>({id:'service-123',supplier_statuses:'{"supplier-123":"confirmed"}',
+     assignment_intent_mode:'durable_v1',assignment_notification_intents:JSON.stringify([{
+       supplier_id:'supplier-123',revision:2,state:'accepted',
+       key:'assignment:service-123:supplier-123:r2:SUPPLIER_NEW_ASSIGNMENT'}])})},
    WhatsAppOutbox:jobEntity,
    InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}},
    PendingPushNotification:{filter:async(_q,_sort,limit,offset,fields)=>{pendingProjections.push(fields);return pendingRows.slice(offset,offset+limit);}},
    Payment:{list:async()=>[]},
    Task:{list:async()=>[]},
-   WhatsAppInboundReceipt:{list:async(_sort,limit,offset,fields)=>{
-     inboundProjections.push(fields);return inboundRows.slice(offset,offset+limit);
-   }}
+   WhatsAppInboundReceipt:{
+     list:async(_sort,limit,offset,fields)=>{
+       inboundProjections.push(fields);return inboundRows.slice(offset,offset+limit);
+     },
+     get:async(id)=>inboundRows.find(x=>x.id===id)||null
+   }
  }}};
  let handler=null;
  const js=esbuild.transformSync(fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8'),{
@@ -70,6 +79,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      };
      if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
      if(name.endsWith('whatsappInboundAudit.ts'))return {summarizeInboundWhatsAppReceipts};
+     if(name.endsWith('whatsappInboundInvestigation.ts'))return {inspectInboundReceiptReadOnly};
      if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions};
      throw Error('Unexpected import: '+name);
    }
@@ -121,7 +131,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
@@ -173,6 +183,33 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(ctx.calls.length,0);
 });
 
+test('owner-only inboundInspect is explicit read-only, sanitized and never replays supplier mutations',async()=>{
+ const original={id:'receipt-123',provider:'green',state:'needs_review',
+  event_service_id:'service-123',supplier_id:'supplier-123',assignment_revision:'r2',
+  action:'assignment_approve',result_code:'unknown_after_write',
+  receipt_key:'private-provider-event-key',raw_body:'DO NOT EXPOSE',phone:'0500000000',
+  actionToken:'secret-action-token',claim_until:'2026-10-01T00:00:00Z'};
+ const ctx=context({state:{inbound_guard_key:'private-provider-event-key'},inboundRows:[original]});
+ const result=await ctx.invoke('inboundInspect',{id:'receipt-123'});
+ assert.equal(result.status,200);
+ assert.equal(result.body.inspection.state,'needs_review');
+ assert.equal(result.body.inspection.expectedStatus,'confirmed');
+ assert.equal(result.body.inspection.currentStatus,'confirmed');
+ assert.equal(result.body.inspection.businessMatchDoesNotProveCallbackCommitted,true);
+ assert.equal(result.body.inspection.registrationBlocked,true);
+ assert.equal(result.body.inspection.guardMatchesThisReceipt,true);
+ assert.equal(result.body.inspection.automaticReplayAllowed,false);
+ assert.equal(result.body.inspection.automaticGuardReleaseAllowed,false);
+ assert.equal(result.body.noMessagesSent,true);
+ const text=JSON.stringify(result.body);
+ for(const secret of ['DO NOT EXPOSE','0500000000','private-provider-event-key','secret-action-token'])
+  assert.equal(text.includes(secret),false);
+ assert.equal(ctx.calls.length,0);
+ const bad=await ctx.invoke('inboundInspect',{id:'abc\\nunsafe'});
+ assert.equal(bad.status,400);
+ const missing=await ctx.invoke('inboundInspect',{id:'receipt-other'});
+ assert.equal(missing.status,404);
+});
 test('status/list/get are read only and mask recipient until owner requests detail',async()=>{
  const ctx=context({jobs:[makeJob('job-123')]});
  const status=await ctx.invoke('status');
