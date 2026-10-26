@@ -108,6 +108,7 @@ export async function registerVerifiedInboundReceipt(client:any,raw:any){
  let guardKey:string|null=null;
  let created:any=null;
  let duplicate:any=null;
+ let createVerified=false;
  try{
   const existing=await lookupReceipt(entities.WhatsAppInboundReceipt,receipt.receiptKey);
   if(existing){
@@ -131,16 +132,21 @@ export async function registerVerifiedInboundReceipt(client:any,raw:any){
     result_code:'',registered_at:nowIso(Date.now())
    };
    // A rejected/timed-out create may already have committed! Do not retry.
-   created=await entities.WhatsAppInboundReceipt.create(row);
-   if(!created?.id||!matchesReceipt(created,receipt)||created.state!=='pending')
+   const result=await entities.WhatsAppInboundReceipt.create(row);
+   if(!result?.id||!matchesReceipt(result,receipt)||result.state!=='pending')
     throw entityError('inbound_create_receipt_unverified');
+   created=result;
+   createVerified=true;
   }
  }catch(error){
   // guardKey !== null intentionally remains persisted on ambiguous CREATE.
   // Caller may NOT invoke supplier transition after this error.
   throw error;
  }finally{
-  const released=await safeRelease(lease,guardKey);
+  // ONLY a fully verified CREATE may clear the pre-CREATE guard.
+  // A thrown/timed-out CREATE (or malformed receipt) keeps the guard forever
+  // until explicit human reconciliation, even after the mutex itself expires.
+  const released=await safeRelease(lease,createVerified?guardKey:null);
   if(!released){
    // A confirmed CREATE is NOT safe to hand to a future callback handler
    // until its pre-create fence has cleared; do not permit processing.
