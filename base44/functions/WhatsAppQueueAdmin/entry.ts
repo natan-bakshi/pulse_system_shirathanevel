@@ -7,6 +7,7 @@ import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
+import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
 import {inspectOfficeAssignmentReference} from '../../shared/whatsappOfficeReferenceLookup.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
@@ -328,6 +329,20 @@ Deno.serve(async(req)=>{
         const readiness=await inspectGreenInteractiveReadinessReadOnly(client);
         return RESPONSE({success:true,readiness,noMessagesSent:true});
       }catch{return RESPONSE({success:false,error:'Interactive readiness check unavailable',
+        noMessagesSent:true},503);}
+    }
+    if(action==='greenWebhookSettingsAudit'){
+      // Explicit owner CLICK only. One provider GetSettings GET, zero DB reads,
+      // no SetSettings, no 3rd-party send. Do not log or return Green credentials,
+      // callback URL, path, phone/wid, token or raw provider error.
+      try{
+        const settings=await inspectGreenWebhookSettingsReadOnly({
+          instanceId:Deno.env.get('GREEN_API_INSTANCE_ID'),
+          apiToken:Deno.env.get('GREEN_API_TOKEN')
+        });
+        return RESPONSE({success:true,settings,noMessagesSent:true});
+      }catch{return RESPONSE({success:false,
+        error:'בדיקת הגדרות Green API לקריאה בלבד אינה זמינה',
         noMessagesSent:true},503);}
     }
     if(action==='officeReferenceLookup'){
