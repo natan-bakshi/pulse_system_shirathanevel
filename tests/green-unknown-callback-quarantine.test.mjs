@@ -181,6 +181,31 @@ test('ambiguous reread or release remains fail closed; no ACK and no supplier st
   assert.equal(f.counts.supplierWrites,0);
  }
 });
+test('two concurrent unknown Green deliveries cannot create duplicate quarantine records',async()=>{
+ const f=fixture();
+ const first=stageFutureGreenInteractiveHttpCallback(f.callback(),f.opts);
+ const second=stageFutureGreenInteractiveHttpCallback(f.callback(),f.opts);
+ const results=await Promise.all([first,second]);
+ assert.equal(f.rows.length,1);
+ assert.equal(f.counts.quarantineCreates,1);
+ assert.equal(f.counts.supplierWrites,0);
+ assert.ok(results.some(x=>x.stage==='quarantined_unknown'));
+ for(const result of results){
+  assert.notEqual(result.canAcknowledge,true);
+  assert.equal(planFutureGreenWebhookAck(result).mayRespond200AfterProviderQa,false);
+ }
+});
+test('unknown metadata lock is ISOLATED from known signed-button receipt registration guard',async()=>{
+ const f=fixture();
+ f.control.inbound_guard_key='known-receipt-persistent-guard-stays-untouched';
+ const result=await stageFutureGreenInteractiveHttpCallback(f.callback(),f.opts);
+ assert.equal(result.stage,'quarantined_unknown');
+ assert.equal(f.control.inbound_guard_key,
+  'known-receipt-persistent-guard-stays-untouched');
+ assert.equal(f.control.unknown_guard_key,'');
+ const knownCode=fs.readFileSync('base44/shared/whatsappInboundInbox.ts','utf8');
+ assert.doesNotMatch(knownCode,/unknown_guard_key|unknown_create_owner/);
+});
 test('invalid/foreign/expired provider callbacks never reach unknown quarantine or DB',async()=>{
  const bad=[
   {...raw(),timestamp:Math.floor((NOW-72*3600000)/1000)},
