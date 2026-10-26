@@ -10,6 +10,7 @@ import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {whatsappRevisionEligibility} from './supplierStatusPersistence.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
+import {type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
 
 const V2_KEY=/^assignment:[A-Za-z0-9_-]{3,100}:[A-Za-z0-9_-]{3,100}:r[1-9][0-9]{0,12}:SUPPLIER_NEW_ASSIGNMENT$/;
 type GreenCapability='reply_only'|'mixed_url';
@@ -17,6 +18,7 @@ export type TrustedGreenInteractiveConfig={
  enabled:true;accountCapabilityVerified:true;
  capability:GreenCapability;senderAccountId:string;
  signingSecret:string;policy:any;officeNumber?:string;officeLabel?:string;
+ officeContextMode?:OfficeContextMode;
  subtle?:SubtleCrypto;now?:number
 };
 type Decision={kind:'legacy';reason:string;job:any;preview:null}|
@@ -130,7 +132,8 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   frozenSnapshot:persistedJob.interactive_button_bindings_json,
   signingSecret:config.signingSecret,capability:config.capability,
   rolloutEnabled:true,officeNumber:config.officeNumber,
-  officeLabel:config.officeLabel,now:config.now,subtle:config.subtle
+  officeLabel:config.officeLabel,officeContextMode:config.officeContextMode,
+  now:config.now,subtle:config.subtle
  });
  if(!['interactive_reply','interactive_mixed'].includes(preview.kind))
   throw blocked('interactive_preview_not_authorized');
