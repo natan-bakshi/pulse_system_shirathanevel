@@ -5,13 +5,14 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {delayUntilNextSendMs,providerIntervalMs,lastDispatchForProvider} from '../base44/shared/whatsappQueueWorker.ts';
 import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
+import {summarizeInboundWhatsAppReceipts} from '../base44/shared/whatsappInboundAudit.ts';
 import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions} from '../base44/shared/whatsappSourceAudit.ts';
 
-function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[]}={}){
+function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
- const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[];
+ const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
    return record[key]===val;
@@ -32,7 +33,10 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
    InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}},
    PendingPushNotification:{filter:async(_q,_sort,limit,offset,fields)=>{pendingProjections.push(fields);return pendingRows.slice(offset,offset+limit);}},
    Payment:{list:async()=>[]},
-   Task:{list:async()=>[]}
+   Task:{list:async()=>[]},
+   WhatsAppInboundReceipt:{list:async(_sort,limit,offset,fields)=>{
+     inboundProjections.push(fields);return inboundRows.slice(offset,offset+limit);
+   }}
  }}};
  let handler=null;
  const js=esbuild.transformSync(fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8'),{
@@ -65,11 +69,12 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        }
      };
      if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
+     if(name.endsWith('whatsappInboundAudit.ts'))return {summarizeInboundWhatsAppReceipts};
      if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions};
      throw Error('Unexpected import: '+name);
    }
  });
- return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,invoke:async(action,params={})=>await handler({
+ return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,inboundProjections,invoke:async(action,params={})=>await handler({
    method:'POST',json:async()=>({action,...params})
  })};
 }
@@ -116,7 +121,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
@@ -144,6 +149,28 @@ test('interactive drafts are gated by system-owner auth and cannot dispatch What
   assert.equal((await outsider.invoke('interactiveGet',{provider:'green'})).status,403);
   assert.equal((await outsider.invoke('interactiveSave',{provider:'green'})).status,403);
   assert.equal(outsider.interactiveOps.length,0);
+});
+
+test('inboundAudit is explicit owner-only, read-only, bounded and never exposes secrets, phone or body',async()=>{
+ const inboundRows=[{id:'receipt-1',state:'processing',provider:'green',claim_until:'2026-10-01T00:00:00Z',
+  phone:'private',raw_body:'secret-message',webhook_secret:'private-key'},
+ {id:'receipt-2',state:'needs_review',provider:'wasender',claim_until:''}];
+ const ctx=context({state:{inbound_guard_key:'pending-unverified-create'},inboundRows});
+ await ctx.invoke('status');
+ assert.equal(ctx.inboundProjections.length,0,'Routine status must not read inbound ledger');
+ const response=await ctx.invoke('inboundAudit');
+ assert.equal(response.status,200);
+ assert.equal(response.body.liveInboundEnabled,false);
+ assert.equal(response.body.audit.noMessagesSent,true);
+ assert.equal(response.body.audit.registrationBlocked,true);
+ assert.equal(response.body.audit.expiredProcessing,1);
+ assert.equal(response.body.audit.totals.needs_review,1);
+ assert.equal(ctx.inboundProjections.length,1);
+ assert.deepEqual(ctx.inboundProjections[0],['id','state','claim_until','provider']);
+ assert.equal(JSON.stringify(response.body).includes('secret-message'),false);
+ assert.equal(JSON.stringify(response.body).includes('private-key'),false);
+ assert.equal(JSON.stringify(response.body).includes('private'),false);
+ assert.equal(ctx.calls.length,0);
 });
 
 test('status/list/get are read only and mask recipient until owner requests detail',async()=>{
