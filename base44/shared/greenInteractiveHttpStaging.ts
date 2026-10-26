@@ -54,5 +54,11 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
   now,subtle:opts.subtle
  });
  return {stage:'processed',result:result.status,reason:result.reason,
+  ...(result.status==='duplicate'?{
+    terminalReceiptVerified:('terminalReceiptVerified' in result &&
+      result.terminalReceiptVerified===true),
+    receiptState:('receiptState' in result?result.receiptState:undefined),
+    resultCode:('resultCode' in result?result.resultCode:undefined)
+  }:{}),
   providerCalls:0,businessWritesAuthorized:result.supplierWritesAuthorized};
 }
