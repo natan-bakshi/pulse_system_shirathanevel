@@ -12,6 +12,7 @@ import {parseGreenButtonSelection} from './greenInteractiveCallback.ts';
 import {reserveVerifiedGreenInboundBudget} from './whatsappInboundRateBudget.ts';
 import {processFutureGreenButtonCallback} from './greenInteractiveCallbackCoordinator.ts';
 import {isVerifiedGreenNonButtonEvent} from './greenWebhookAckPlanning.ts';
+import {isEligibleUnknownGreenCallback,registerUnknownGreenCallbackQuarantine} from './greenUnknownCallbackQuarantine.ts';
 
 export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  client:any;rolloutAuthorized:boolean;accountCapabilityVerified:boolean;
@@ -40,6 +41,35 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
    return {stage:'ignored_non_button',reason:'owner_approved_buttons_only_filter',
     verifiedProviderAndAccount:true,assignmentOnlyRoute:true,
     noDatabaseCalls:true,providerCalls:0,businessWritesAuthorized:false};
+  // An independently authenticated, account-matched PRIVATE incoming event
+  // with a currently unknown format may be a new Beta button shape. Admit
+  // bounded metadata ONLY through a separate durable CAS quarantine and
+  // owner review. Unknown content is NEVER interpreted as approval, and even
+  // a durably recorded metadata marker is NOT a provider ACK: the raw event
+  // was intentionally not stored, so a future parser cannot safely replay it.
+  if(isEligibleUnknownGreenCallback(decoded.rawCallback,opts.expectedInstanceId,now)){
+   const unknownBudget=await reserveVerifiedGreenInboundBudget(opts.client,{
+    authenticated:true,trustedRolloutEnabled:true,
+    maxPerMinute:opts.maxPerMinute,now
+   });
+   if(!unknownBudget.allowed)return {stage:'rate_guard_refused',
+    reason:unknownBudget.reason,retryAfterSeconds:unknownBudget.retryAfterSeconds,
+    providerCalls:0,businessWritesAuthorized:false};
+   try{
+    const recorded=await registerUnknownGreenCallbackQuarantine(
+     opts.client,decoded.rawCallback,{
+      expectedInstanceId:opts.expectedInstanceId,
+      fingerprintSecret:opts.actionSigningSecret,now,subtle:opts.subtle
+     });
+    return {stage:'quarantined_unknown',reason:'unknown_button_requires_manual_review',
+     quarantineRecorded:true,quarantineKind:recorded.kind,
+     canAcknowledge:false,manualReviewRequired:true,
+     providerCalls:0,businessWritesAuthorized:false};
+   }catch{
+    return {stage:'quarantine_unavailable',reason:'unknown_callback_not_confirmed_stored',
+     manualReviewRequired:true,providerCalls:0,businessWritesAuthorized:false};
+   }
+  }
   return {stage:'invalid_selection',reason:'unverified_green_button_shape',
    verifiedProviderAndAccount:false,providerCalls:0,
    businessWritesAuthorized:false};
