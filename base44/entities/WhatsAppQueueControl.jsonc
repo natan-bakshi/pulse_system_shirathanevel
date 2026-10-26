@@ -103,6 +103,14 @@
     "interactive_assignment_wasender_policy_json": {
       "type": "string",
       "description": "System owner only: versioned, disabled interactive assignment draft for WasenderAPI"
+    },
+    "inbound_create_owner": {
+      "type": "string",
+      "description": "Independent CAS mutex for inbound receipt registration, never the send worker lease"
+    },
+    "inbound_create_until": {
+      "type": "string",
+      "description": "Bounded inbound registration mutex expiry; expired ownership is not proof of provider-event nonreceipt"
     }
   },
   "required": [
