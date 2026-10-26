@@ -48,6 +48,8 @@ export default function WhatsAppQueueSettings(){
   const [inboundAudit,setInboundAudit]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
+  const [officeReference,setOfficeReference]=useState('');
+  const [officeLookup,setOfficeLookup]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
   const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
   const read=async()=>{
@@ -73,6 +75,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'חישוב מדדי התור נכשל');
         setMetrics(res.data.metrics);
         setNotice('מדידה היסטורית עודכנה ללא שליחת WhatsApp. זהו מדגם בלבד.');
+        return;
+      }
+      if(action==='officeReferenceLookup'){
+        if(!res.data?.success)throw Error(res.data?.error||'לא ניתן לאתר את אסמכתת השיבוץ');
+        setOfficeLookup(res.data.lookup);
+        setNotice('השיבוץ אותר לפי אסמכתא בלבד, ללא שליחת הודעות או שינוי נתונים.');
         return;
       }
       if(action==='interactiveReadiness'){
@@ -346,6 +354,40 @@ export default function WhatsAppQueueSettings(){
           </div>
         </details>
       </section>}
+      <details className="border rounded p-3 text-sm" dir="rtl">
+        <summary className="cursor-pointer font-medium">איתור שיבוץ לפי אסמכתא מפנייה ב־WhatsApp (ללא שליחה)</summary>
+        <div className="pt-3 space-y-3">
+          <p className="text-xs text-gray-600">כשהספק פונה למשרד עם אסמכתת ההודעה, אפשר למצוא את האירוע והשירות המקוריים. החיפוש מוגבל לאסמכתא מדויקת אחת, ונשלח רק בלחיצה.</p>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1 min-w-[220px] max-w-sm space-y-1">
+              <Label htmlFor="wa-office-reference">אסמכתת הודעה</Label>
+              <Input id="wa-office-reference" aria-label="אסמכתת הודעת שיבוץ"
+                value={officeReference} maxLength={128}
+                placeholder="מזהה ההודעה אחרי המילה אסמכתא"
+                onChange={event=>{setOfficeReference(event.target.value);setOfficeLookup(null);}}/>
+            </div>
+            <Button variant="outline" size="sm" disabled={busy||!/^[A-Za-z0-9_-]{3,128}$/.test(officeReference)}
+              onClick={()=>run('officeReferenceLookup',{reference:officeReference})}>
+              אתר הודעת שיבוץ
+            </Button>
+          </div>
+          {officeLookup&&<section role="status" className="border rounded p-3 space-y-2 text-xs" aria-label="פרטי הודעת שיבוץ לפי אסמכתא">
+            <strong>אסמכתא: {officeLookup.reference}</strong>
+            <div className="flex flex-wrap gap-x-5 gap-y-1">
+              <span>אירוע: {officeLookup.eventName||'לא זמין'}</span>
+              <span>תאריך: {officeLookup.eventDate||'לא זמין'}</span>
+              <span>שירות: {officeLookup.serviceName||'לא זמין'}</span>
+              <span>ספק: {officeLookup.supplierName||'לא זמין'}</span>
+              <span>סטטוס ספק נוכחי: {({pending:'ממתין',confirmed:'מאושר',rejected:'נדחה'})[officeLookup.supplierStatus]||'לא ידוע'}</span>
+              <span>מצב הודעת המקור: {officeLookup.messageStatus}</span>
+            </div>
+            {officeLookup.originState==='current_revision'
+              ?<p className="text-green-700">האסמכתא קשורה לגרסת השיבוץ האחרונה ביומן.</p>
+              :<p className="text-amber-800">לא אומתה גרסת שיבוץ עדכנית ({officeLookup.originState}). ייתכן שמדובר בהודעה ישנה או ברשומה היסטורית.</p>}
+            <p className="text-gray-600">אסמכתה וסטטוס אינם הוכחה למסירת הודעה, ללחיצה על כפתור או לזהות שולח הפנייה. אין כאן שינוי שיבוץ או ניסיון שליחה חוזר.</p>
+          </section>}
+        </div>
+      </details>
       <div className="border-t pt-4"><WhatsAppInteractiveDraftSettings /></div>
       <div className="border-t pt-4 space-y-3">
         <Button type="button" size="sm" variant="outline" aria-expanded={messagesOpen}
