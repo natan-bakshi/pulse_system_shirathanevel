@@ -141,7 +141,7 @@ async function callGreenApi(method, body) {
 }
 
 // Queue-worker-only transport. Never call from business functions/endpoints.
-export async function sendWhatsAppTransport(job, provider, client) {
+export async function sendWhatsAppTransport(job, provider, client, interactivePreview = null) {
   const chatId = validatedChatId(job.chat_id);
   if (provider !== 'green' && provider !== 'wasender') throw new Error('Unsupported WhatsApp provider');
   let fileUrl = '';
@@ -162,6 +162,22 @@ export async function sendWhatsAppTransport(job, provider, client) {
   }
   const text = sanitizeMessage(job.message_text);
   if (!text) throw invalidInput('Empty WhatsApp message');
+  // Only the guarded worker can supply a pre-validated, frozen beta payload.
+  // Ordinary messages always use the exact legacy sendMessage/sendWasender path.
+  if(interactivePreview){
+    const valid=provider==='green'&&job.source_type==='assignment_new'&&
+      job.message_type==='text'&&job.status==='sending'&&
+      typeof job.interactive_button_bindings_json==='string'&&
+      job.interactive_button_bindings_json.length>0&&
+      ['sendInteractiveButtons','sendInteractiveButtonsReply'].includes(interactivePreview.method)&&
+      ['interactive_mixed','interactive_reply'].includes(interactivePreview.kind)&&
+      interactivePreview.body?.chatId===chatId&&
+      interactivePreview.body?.body&&
+      Array.isArray(interactivePreview.body?.buttons)&&
+      interactivePreview.body.buttons.length>=1&&interactivePreview.body.buttons.length<=3;
+    if(!valid)throw invalidInput('Invalid interactive WhatsApp transport preview');
+    return callGreenApi(interactivePreview.method,interactivePreview.body);
+  }
   return provider === 'wasender'
     ? sendWasenderTextToChat(chatId,text)
     : callGreenApi('sendMessage',{chatId,message:text});
