@@ -7,6 +7,7 @@ import {delayUntilNextSendMs,providerIntervalMs,lastDispatchForProvider} from '.
 import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../base44/shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../base44/shared/whatsappInboundInvestigation.ts';
+import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappInteractiveReadiness.ts';
 import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions} from '../base44/shared/whatsappSourceAudit.ts';
 
 function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[]}={}){
@@ -80,6 +81,14 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
      if(name.endsWith('whatsappInboundAudit.ts'))return {summarizeInboundWhatsAppReceipts};
      if(name.endsWith('whatsappInboundInvestigation.ts'))return {inspectInboundReceiptReadOnly};
+     if(name.endsWith('whatsappInteractiveReadiness.ts'))return {
+       inspectGreenInteractiveReadinessReadOnly:async()=>summarizeWhatsAppInteractiveReadiness({
+        control:record,selectedProvider:'green',assignmentIntentEnabled:false,
+        greenInstanceAvailable:false,greenTokenAvailable:false,
+        webhookCredentialAvailable:false,actionSigningKeyAvailable:false,
+        draftConfigured:false,draftCorrupt:false
+       })
+     };
      if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions};
      throw Error('Unexpected import: '+name);
    }
@@ -131,7 +140,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
@@ -183,6 +192,19 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(ctx.calls.length,0);
 });
 
+test('interactiveReadiness is owner-only, explicitly on-demand and incapable of enabling a send',async()=>{
+ const ctx=context();
+ const status=await ctx.invoke('status');
+ assert.equal(status.status,200);
+ assert.equal(JSON.stringify(status.body).includes('activationEligible'),false);
+ const result=await ctx.invoke('interactiveReadiness');
+ assert.equal(result.status,200);
+ assert.equal(result.body.readiness.activationEligible,false);
+ assert.equal(result.body.readiness.noMessagesSent,true);
+ assert.equal(result.body.readiness.liveSendConfigured,false);
+ assert.ok(result.body.readiness.blockers.includes('real_callback_verified'));
+ assert.equal(ctx.calls.length,0);
+});
 test('owner-only inboundInspect is explicit read-only, sanitized and never replays supplier mutations',async()=>{
  const original={id:'receipt-123',provider:'green',state:'needs_review',
   event_service_id:'service-123',supplier_id:'supplier-123',assignment_revision:'r2',
