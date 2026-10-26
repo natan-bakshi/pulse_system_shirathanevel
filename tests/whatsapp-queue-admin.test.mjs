@@ -8,13 +8,14 @@ import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts'
 import {summarizeInboundWhatsAppReceipts} from '../base44/shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../base44/shared/whatsappInboundInvestigation.ts';
 import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappInteractiveReadiness.ts';
+import {inspectOfficeAssignmentReference} from '../base44/shared/whatsappOfficeReferenceLookup.ts';
 import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions} from '../base44/shared/whatsappSourceAudit.ts';
 
-function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[]}={}){
+function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[],officeServices=[],officeEvents=[],officeSuppliers=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
- const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[];
+ const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[],officeReads=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
    return record[key]===val;
@@ -22,7 +23,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  const jobEntity={
    list:async(_sort,limit=500,offset=0,fields)=>{listProjections.push(fields);return jobs.slice(offset,offset+limit);},
    filter:async(query,_sort,limit=500,offset=0)=>jobs.filter(x=>matches(x,query)).slice(offset,offset+limit),
-   get:async(id)=>jobs.find(x=>x.id===id)||null,
+   get:async(id)=>{officeReads.push('outbox');return jobs.find(x=>x.id===id)||null;},
    updateMany:async(query,{ $set })=>{
      const found=jobs.filter(x=>matches(x,query));
      for(const job of found)Object.assign(job,$set);
@@ -32,10 +33,17 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  const client={auth:{me:async()=>actor},asServiceRole:{entities:{
    WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch),
      filter:async()=>[record]},
-   EventService:{get:async()=>({id:'service-123',supplier_statuses:'{"supplier-123":"confirmed"}',
-     assignment_intent_mode:'durable_v1',assignment_notification_intents:JSON.stringify([{
-       supplier_id:'supplier-123',revision:2,state:'accepted',
-       key:'assignment:service-123:supplier-123:r2:SUPPLIER_NEW_ASSIGNMENT'}])})},
+   EventService:{get:async id=>{
+     officeReads.push('service');
+     return officeServices.length?officeServices.find(x=>x.id===id)||null:{
+       id:'service-123',supplier_statuses:'{"supplier-123":"confirmed"}',
+       assignment_intent_mode:'durable_v1',assignment_notification_intents:JSON.stringify([{
+         supplier_id:'supplier-123',revision:2,state:'accepted',
+         key:'assignment:service-123:supplier-123:r2:SUPPLIER_NEW_ASSIGNMENT'}])
+     };
+   }},
+   Event:{get:async id=>{officeReads.push('event');return officeEvents.find(x=>x.id===id)||null;}},
+   Supplier:{get:async id=>{officeReads.push('supplier');return officeSuppliers.find(x=>x.id===id)||null;}}, 
    WhatsAppOutbox:jobEntity,
    InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}},
    PendingPushNotification:{filter:async(_q,_sort,limit,offset,fields)=>{pendingProjections.push(fields);return pendingRows.slice(offset,offset+limit);}},
@@ -81,6 +89,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
      if(name.endsWith('whatsappInboundAudit.ts'))return {summarizeInboundWhatsAppReceipts};
      if(name.endsWith('whatsappInboundInvestigation.ts'))return {inspectInboundReceiptReadOnly};
+     if(name.endsWith('whatsappOfficeReferenceLookup.ts'))return {inspectOfficeAssignmentReference};
      if(name.endsWith('whatsappInteractiveReadiness.ts'))return {
        inspectGreenInteractiveReadinessReadOnly:async()=>summarizeWhatsAppInteractiveReadiness({
         control:record,selectedProvider:'green',assignmentIntentEnabled:false,
@@ -93,7 +102,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      throw Error('Unexpected import: '+name);
    }
  });
- return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,inboundProjections,invoke:async(action,params={})=>await handler({
+ return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,inboundProjections,officeReads,invoke:async(action,params={})=>await handler({
    method:'POST',json:async()=>({action,...params})
  })};
 }
@@ -140,7 +149,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
