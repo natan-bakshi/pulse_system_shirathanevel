@@ -121,6 +121,18 @@
       "type": "string",
       "description": "Durable registration-in-progress fence: if not cleared, ALL new inbound registrations must halt for human reconciliation"
     },
+    "unknown_create_owner": {
+      "type": "string",
+      "description": "Isolated CAS mutex for unknown Green callback metadata; never shares inbound receipt registration lock"
+    },
+    "unknown_create_until": {
+      "type": "string",
+      "description": "Unknown callback CAS lease expiration; not a licence to reset an unresolved guard"
+    },
+    "unknown_guard_key": {
+      "type": "string",
+      "description": "Persistent unknown-callback pre-CREATE fence; ambiguous create requires owner reconciliation, never auto-cleared"
+    },
     "inbound_rate_window_started_at": {
       "type": "string",
       "description": "Future authenticated Green callback rate window (not active until approved endpoint rollout)"
