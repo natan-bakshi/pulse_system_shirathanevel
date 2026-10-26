@@ -189,6 +189,10 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
           delayUntilNextSendMs:()=>0,providerIntervalMs:()=>0,syncWhatsAppStatus:async()=>{}
         };
         if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
+        if(name.endsWith('whatsappInteractiveSettingsStore.ts'))return {
+          readSavedWhatsAppInteractivePolicy:async()=>{throw Error('Metrics cannot read interactive settings')},
+          saveWhatsAppInteractivePolicyDraft:async()=>{throw Error('Metrics cannot write interactive settings')}
+        };
         if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
         if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
