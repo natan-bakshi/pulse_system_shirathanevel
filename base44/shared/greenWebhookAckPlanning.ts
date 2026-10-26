@@ -1,13 +1,24 @@
 // Pure GREEN webhook ACK planning for a FUTURE explicitly approved endpoint.
-// IMPORTANT: This module does NOT return an HTTP response, make network calls,
-// commit receipts, or authorize any callback. Provider-specific ACK rules MUST
-// be verified with a REAL Green beta account before an endpoint is published.
-// In particular, do not ACK 200 for any event that may not have been stored
-// durably, and do not rely on provider retries to reapply supplier status.
+// This module NEVER returns HTTP, calls a provider, persists receipts or
+// authorizes business mutations. The owner approved a BUTTONS-ONLY assignment
+// inbox: ordinary manual chat is intentionally not captured here. This does
+// NOT disable an existing webhook or other chat consumer. An independently
+// verified Green deployment/ACK protocol is still required before publication.
 const ORDINARY_MESSAGES=new Set([
  'textMessage','extendedTextMessage','audioMessage','imageMessage',
  'videoMessage','documentMessage','stickerMessage','locationMessage',
- 'contactMessage'
+ 'contactMessage','contactsArrayMessage','quotedMessage','reactionMessage',
+ 'groupInviteMessage','pollMessage','pollUpdateMessage',
+ 'editedMessage','deletedMessage','productMessage','orderMessage'
+]);
+// A future/undocumented selection must NOT be discarded as plain chat.
+// Lists are also interactive selections, but are not approved assignment
+// actions and therefore must be investigated rather than auto-processed.
+const SELECTION_FIELDS=new Set([
+ 'buttonsResponseMessage','templateButtonReplyMessage',
+ 'interactiveButtonsResponse','interactiveButtonsReply',
+ 'listResponseMessage','buttonReplyMessage',
+ 'selectedButtonId','selectedId'
 ]);
 export function isVerifiedGreenNonButtonEvent(raw:any,instance:string):boolean{
  return !!raw&&raw.typeWebhook==='incomingMessageReceived'&&
@@ -15,10 +26,10 @@ export function isVerifiedGreenNonButtonEvent(raw:any,instance:string):boolean{
   String(raw.instanceData?.idInstance)===instance&&
   raw.instanceData?.typeInstance==='whatsapp'&&
   !!raw.messageData&&typeof raw.messageData==='object'&&
+  !Array.isArray(raw.messageData)&&
   ORDINARY_MESSAGES.has(raw.messageData.typeMessage)&&
-  !('interactiveButtonsResponse' in raw.messageData)&&
-  !('templateButtonReplyMessage' in raw.messageData)&&
-  !('buttonsResponseMessage' in raw.messageData);
+  ![...SELECTION_FIELDS].some(key=>Object.prototype.hasOwnProperty.call(
+   raw.messageData,key));
 }
 export type AckPlan={
  decision:'safe_ack_candidate'|'no_ack_candidate'|'manual_reconcile_candidate';
@@ -32,17 +43,16 @@ const plan=(decision:AckPlan['decision'],reason:string,ok=false):AckPlan=>({
  automaticSupplierReplayAllowed:false
 });
 export function planFutureGreenWebhookAck(result:any):AckPlan{
- if(result?.stage==='invalid_selection'&&
-    result.reason==='recognized_non_button_event'&&
-    result.verifiedProviderAndAccount===true){
-  // Suppliers may continue to chat freely with the office. Ignoring plain
-  // text in the assignment engine is NOT permission to silently consume
-  // messages needed by some other existing inbox/CRM/webhook consumer.
-  // Only an independently approved and verified inbound routing decision
-  // may allow the future HTTP endpoint to ACK a known non-button event.
-  if(result.ordinaryInboundHandlingVerified===true)
-   return plan('safe_ack_candidate','non_button_route_verified',true);
-  return plan('manual_reconcile_candidate','ordinary_inbound_routing_not_verified');
+ if(result?.stage==='ignored_non_button'&&
+    result.reason==='owner_approved_buttons_only_filter'&&
+    result.verifiedProviderAndAccount===true&&
+    result.assignmentOnlyRoute===true&&result.noDatabaseCalls===true){
+  // The user explicitly approved ignoring manual messages in the isolated
+  // assignment callback. Authentication + exact account check already ran,
+  // and there was no supplier/DB work to persist. The future HTTP endpoint
+  // may consider an ACK after real provider QA; it MUST remain isolated from
+  // existing independent status/office-chat consumers.
+  return plan('safe_ack_candidate','known_non_button_filtered',true);
  }
  if(result?.stage==='processed'){
   // These are confirmed durable end states from the internal coordinator,
