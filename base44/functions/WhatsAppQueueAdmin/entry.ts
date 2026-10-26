@@ -8,6 +8,7 @@ import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudi
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
 import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
+import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {inspectOfficeAssignmentReference} from '../../shared/whatsappOfficeReferenceLookup.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
@@ -330,6 +331,18 @@ Deno.serve(async(req)=>{
         return RESPONSE({success:true,readiness,noMessagesSent:true});
       }catch{return RESPONSE({success:false,error:'Interactive readiness check unavailable',
         noMessagesSent:true},503);}
+    }
+    if(action==='unknownCallbackAudit'){
+      // Owner-only, explicitly requested and bounded to 40 projected metadata
+      // rows. No raw callback, supplier/phone, action token or DB mutation.
+      // Quarantine is separate from CONFIRMED signed-button receipts and
+      // cannot change a supplier or safely acknowledge a Green callback.
+      try{
+        const audit=await inspectUnknownGreenQuarantineReadOnly(client);
+        return RESPONSE({success:true,audit,noMessagesSent:true,
+          unknownCallbackLiveHandlerEnabled:false});
+      }catch{return RESPONSE({success:false,
+        error:'בדיקת תגובות לא מזוהות אינה זמינה',noMessagesSent:true},503);}
     }
     if(action==='greenWebhookSettingsAudit'){
       // Explicit owner CLICK only. One provider GetSettings GET, zero DB reads,
