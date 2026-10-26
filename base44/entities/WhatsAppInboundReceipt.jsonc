@@ -1,0 +1,119 @@
+{
+  "name": "WhatsAppInboundReceipt",
+  "type": "object",
+  "properties": {
+    "receipt_key": {
+      "type": "string",
+      "description": "Provider+sender-account+provider-event deduplication key, never raw message body"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "green",
+        "wasender"
+      ]
+    },
+    "sender_account_id": {
+      "type": "string"
+    },
+    "provider_event_id": {
+      "type": "string"
+    },
+    "provider_message_id": {
+      "type": "string",
+      "description": "Original outgoing message ID accepted by provider"
+    },
+    "company_id": {
+      "type": "string"
+    },
+    "event_service_id": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "assignment_revision": {
+      "type": "string"
+    },
+    "outbox_job_id": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "assignment_approve",
+        "assignment_reject"
+      ]
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "applied",
+        "rejected",
+        "needs_review"
+      ],
+      "default": "pending"
+    },
+    "claim_owner": {
+      "type": "string"
+    },
+    "claim_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result_code": {
+      "type": "string",
+      "description": "Allowlisted safe diagnostic code; never message or phone"
+    },
+    "registered_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "receipt_key",
+    "provider",
+    "sender_account_id",
+    "provider_event_id",
+    "company_id",
+    "event_service_id",
+    "supplier_id",
+    "assignment_revision",
+    "outbox_job_id",
+    "action",
+    "state",
+    "registered_at"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
