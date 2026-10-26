@@ -42,6 +42,7 @@ export default function WhatsAppQueueSettings(){
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
   const [metrics,setMetrics]=useState(null);
   const [sourceAudit,setSourceAudit]=useState(null);
+  const [inboundAudit,setInboundAudit]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
   const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
   const read=async()=>{
@@ -66,6 +67,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'חישוב מדדי התור נכשל');
         setMetrics(res.data.metrics);
         setNotice('מדידה היסטורית עודכנה ללא שליחת WhatsApp. זהו מדגם בלבד.');
+        return;
+      }
+      if(action==='inboundAudit'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת תגובות הספקים נכשלה');
+        setInboundAudit(res.data.audit);
+        setNotice('בדיקת תגובות נכנסות הסתיימה ללא שליחת הודעות או שינוי שיבוצים.');
         return;
       }
       if(action==='sourceAudit'){
@@ -158,6 +165,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>אבחון ללא שליחה</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>בדיקת תגובות WhatsApp (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
@@ -165,6 +173,27 @@ export default function WhatsAppQueueSettings(){
       </div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+      {inboundAudit&&<details className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="font-medium cursor-pointer">תגובות כפתורים — בדיקת קליטה פנימית (לא פעיל בפרודקשן)</summary>
+        <div className="pt-3 space-y-2">
+          <p className="text-xs text-gray-600">מדגם של עד 100 רשומות בלבד. הכפתורים עדיין כבויים; הבדיקה אינה שולחת הודעות ואינה משנה שיבוצים.</p>
+          {inboundAudit.registrationBlocked&&<p role="alert" className="text-amber-800 font-semibold">רישום תגובות חדשות חסום עקב תוצאת שמירה לא ודאית. נדרש בירור ידני. אין לנסות שליחה/טיפול חוזר אוטומטי.</p>}
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <span>נקלטו במדגם: {inboundAudit.sampleCount||0}</span>
+            <span>ממתינות: {inboundAudit.totals?.pending||0}</span>
+            <span>בטיפול: {inboundAudit.totals?.processing||0}</span>
+            <span>בוצעו: {inboundAudit.totals?.applied||0}</span>
+            <span>נדחו: {inboundAudit.totals?.rejected||0}</span>
+            <span>דורשות בירור: {inboundAudit.totals?.needs_review||0}</span>
+            <span>נעילת טיפול שפגה: {inboundAudit.expiredProcessing||0}</span>
+          </div>
+          {inboundAudit.sampleTruncated&&<p className="text-xs text-amber-700">המדגם מוגבל ל־100 הרשומות האחרונות.</p>}
+          {!!inboundAudit.review?.length&&<ul className="text-xs list-disc list-inside space-y-1">
+            {inboundAudit.review.map(x=><li key={x.id}>{x.id} · {x.provider} · {x.reason==='expired_processing'?'נעילה שפגה — בירור ידני':'תוצאה לבדיקה'}</li>)}
+          </ul>}
+          <p className="text-xs text-gray-600">אין כאן פעולה לאישור, דחייה או שליחה מחדש. מצב ״בוצע״ מתייחס לרישום פעולה עסקית בלבד, לא למסירת הודעת WhatsApp.</p>
+        </div>
+      </details>}
       {sourceAudit&&<section aria-label="בדיקת התאמה WhatsApp למקור" className="rounded-lg border p-3 space-y-2 text-sm">
         <strong>התאמת מקור ↔ תור — {sourceAudit.sampledInApp} התראות ו־{sourceAudit.sampledOutbox} הודעות במדגם</strong>
         <p className="text-xs text-gray-600">זו בדיקה לקריאה בלבד. הודעת WhatsApp ללא קישור ל־Outbox עשויה להיות ישנה או הודעת Push בלבד — אין בכך הוכחה לכשל. "התקבל אצל הספק" אינו אישור מסירה.</p>
