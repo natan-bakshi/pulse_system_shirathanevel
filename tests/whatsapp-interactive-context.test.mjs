@@ -14,6 +14,16 @@ test('quotes only accepted original from same provider, account, assignment and 
  assert.equal(resolveAssignmentQuote(origin,{...reply,chatId:'972509999999@c.us'}).reason,'chat_mismatch');
  assert.equal(resolveAssignmentQuote(origin,{...reply,chatId:undefined}).quoteMessageId,null);
 });
+test('Wasender quotes only its own positive numeric msgId, not a WhatsApp stanza id',()=>{
+ const wasender={...origin,provider:'wasender',senderAccountId:'wasender-session',providerMessageId:'100000'};
+ const same={...reply,provider:'wasender',senderAccountId:'wasender-session'};
+ assert.deepEqual(resolveAssignmentQuote(wasender,same),{quoteMessageId:'100000',reason:'matched'});
+ for(const invalid of ['1z3','0','-1','98765432109876543210','3EB0STANZA']){
+  const result=resolveAssignmentQuote({...wasender,providerMessageId:invalid},same);
+  assert.equal(result.quoteMessageId,null);
+  assert.equal(result.reason,'unsupported_provider_receipt');
+ }
+});
 test('reject accepted without receipt and malformed origin',()=>{
  assert.throws(()=>validateAssignmentMessageContext({...origin,providerMessageId:''}));
  assert.throws(()=>validateAssignmentMessageContext({...origin,companyId:'\n'}));
