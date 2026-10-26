@@ -35,8 +35,9 @@ function parseSnapshot(raw:any,expectedJob:any){
  try{
   const data=JSON.parse(raw),origin=originSnapshot(expectedJob);
   if(!data||data.version!==1||data.jobId!==origin.jobId||
-   data.provider!==origin.provider||data.senderAccountId!==origin.senderAccountId||
-   data.revision!==origin.revision||
+   data.eventServiceId!==origin.eventServiceId||data.supplierId!==origin.supplierId||
+   data.chatId!==origin.chatId||data.provider!==origin.provider||
+   data.senderAccountId!==origin.senderAccountId||data.revision!==origin.revision||
    !Array.isArray(data.buttons)||data.buttons.length<1||data.buttons.length>MAX_BINDINGS)return null;
   const ids=new Set(),actions=new Set();
   for(const button of data.buttons){
@@ -82,8 +83,10 @@ export async function createFutureInteractiveButtonSnapshot(input:{
   buttons.push({buttonId:newButtonId(),action:button.action,
    label:button.label,actionToken});
  }
- const encoded=JSON.stringify({version:1,jobId:origin.jobId,provider:origin.provider,
-  senderAccountId:origin.senderAccountId,revision:origin.revision,buttons});
+ const encoded=JSON.stringify({version:1,jobId:origin.jobId,
+  eventServiceId:origin.eventServiceId,supplierId:origin.supplierId,chatId:origin.chatId,
+  provider:origin.provider,senderAccountId:origin.senderAccountId,
+  revision:origin.revision,buttons});
  if(encoded.length>MAX_JSON)invalid('oversized');
  return encoded;
 }
