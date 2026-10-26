@@ -7,6 +7,7 @@ import {Label} from '@/components/ui/label';
 import {RefreshCw,Save,Play,AlertTriangle} from 'lucide-react';
 import WhatsAppQueueMessages from './WhatsAppQueueMessages';
 import WhatsAppInteractiveDraftSettings from './WhatsAppInteractiveDraftSettings';
+import WhatsAppWebhookCreditsEstimator from './WhatsAppWebhookCreditsEstimator';
 
 const defaults={enabled:false,paused:false,wasenderIntervalMs:7000,greenIntervalMs:7000,maxMessagesPerRun:16};
 function IntervalEditor({name,which,ms,unit,onUnit,onMs,disabled}){
@@ -388,6 +389,7 @@ export default function WhatsAppQueueSettings(){
           </section>}
         </div>
       </details>
+      <div className="border-t pt-4"><WhatsAppWebhookCreditsEstimator /></div>
       <div className="border-t pt-4"><WhatsAppInteractiveDraftSettings /></div>
       <div className="border-t pt-4 space-y-3">
         <Button type="button" size="sm" variant="outline" aria-expanded={messagesOpen}
