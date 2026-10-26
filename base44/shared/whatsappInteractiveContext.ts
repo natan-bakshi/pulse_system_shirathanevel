@@ -43,5 +43,5 @@ export function evaluateAssignmentResponse(input:{action:string;companyId:string
  if(!input.assigned)return {allowed:false,reason:'not_assigned'};
  if(!input.revision||input.revision!==input.activeRevision)return {allowed:false,reason:'stale_revision'};
  if(input.currentStatus!=='pending')return {allowed:false,reason:'not_pending'};
- return {allowed:true,reason:'eligible',targetStatus:input.action==='assignment_approve'?'approved':'rejected'};
+ return {allowed:true,reason:'eligible',targetStatus:input.action==='assignment_approve'?'confirmed':'rejected'};
 }

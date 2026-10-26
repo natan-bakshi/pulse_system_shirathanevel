@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
+import { supplierTransition, supplierAssigned } from '../../shared/whatsappSupplierTransition.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
         supplierIds = [];
       }
 
-      if (!supplierIds.includes(matchingSupplier.id)) {
+      if (!supplierAssigned(supplierIds, matchingSupplier.id)) {
         return Response.json({ error: 'Supplier not assigned to this service' }, { status: 403 });
       }
 
@@ -71,7 +72,13 @@ Deno.serve(async (req) => {
         supplierStatuses = {};
       }
 
-      supplierStatuses[matchingSupplier.id] = newStatus;
+      const transition = supplierTransition(supplierStatuses[matchingSupplier.id], newStatus);
+      if (!transition.allowed) return Response.json({ error: 'Invalid supplier status transition' }, { status: 409 });
+      if (!transition.changed) {
+        const eventStatus = await recalculateEventStatus(base44.asServiceRole, eventService.event_id);
+        return Response.json({ success: true, status: newStatus, eventId: eventService.event_id, newStatus: eventStatus.newStatus, unchanged: true });
+      }
+      supplierStatuses[matchingSupplier.id] = transition.next;
 
       const updateData = {
         supplier_statuses: JSON.stringify(supplierStatuses)
