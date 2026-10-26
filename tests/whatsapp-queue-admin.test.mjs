@@ -171,6 +171,34 @@ test('non-system owner cannot read or modify queue operations',async()=>{
    assert.equal(ctx.calls.length,0);
  }
 });
+test('owner-only Green GetSettings audit is opt-in one provider GET and zero DB/queue mutation',async()=>{
+ const ctx=context();
+ await ctx.invoke('status');
+ await ctx.invoke('interactiveReadiness');
+ assert.equal(ctx.greenAudits.length,0,'status/readiness never contacts Green API');
+ const statusBefore=JSON.stringify(ctx.record);
+ const result=await ctx.invoke('greenWebhookSettingsAudit');
+ assert.equal(result.status,200);
+ assert.equal(result.body.success,true);
+ assert.equal(result.body.settings.webhookConfigured,true);
+ assert.equal(result.body.settings.existingWebhookMustBePreserved,true);
+ assert.equal(result.body.settings.safeToReplaceWebhookUrl,false);
+ assert.equal(result.body.settings.noDatabaseQueries,true);
+ assert.equal(result.body.noMessagesSent,true);
+ assert.equal(ctx.greenAudits.length,1);
+ assert.equal(ctx.greenAudits[0].instanceId,'9903183013');
+ assert.equal(ctx.greenAudits[0].apiToken,'SYNTHETIC-GREEN-ONLY-API-TOKEN-1234567890');
+ assert.equal(ctx.calls.length,0);
+ assert.equal(ctx.officeReads.length,0);
+ assert.equal(JSON.stringify(ctx.record),statusBefore);
+ const serialized=JSON.stringify(result.body);
+ for(const secret of ['9903183013','SYNTHETIC-GREEN-ONLY-API-TOKEN-1234567890',
+  'webhookUrlToken','PRIVATE-WEBHOOK-DOMAIN'])
+  assert.equal(serialized.includes(secret),false,secret);
+ const again=await ctx.invoke('status');
+ assert.equal(again.status,200);
+ assert.equal(ctx.greenAudits.length,1,'owner status refresh MUST NOT call Green');
+});
 test('owner office-reference lookup is exact, bounded, masked and performs no provider send',async()=>{
  const row={...makeJob('outbox-ABC123','accepted'),
   event_service_id:'service-ABC123',supplier_id:'supplier-ABC123',
