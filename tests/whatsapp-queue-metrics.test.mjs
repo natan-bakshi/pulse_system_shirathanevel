@@ -203,6 +203,9 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
         if(name.endsWith('whatsappInteractiveReadiness.ts'))return {
           inspectGreenInteractiveReadinessReadOnly:()=>{throw Error('Metrics must not read interactive readiness')}
         };
+        if(name.endsWith('whatsappOfficeReferenceLookup.ts'))return {
+          inspectOfficeAssignmentReference:()=>{throw Error('Metrics must not perform office lookup')}
+        };
         if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
       }
