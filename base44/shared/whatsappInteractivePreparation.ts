@@ -112,7 +112,7 @@ export async function prepareFutureGreenAssignmentOutbox(client:any,input:Params
    original.interactive_button_bindings_json,original,input.signingSecret,subtle,now);
   if(!verified)throw refused('invalid_existing_interactive_snapshot');
   return {status:'already_prepared',jobId:original.id,
-   snapshot:original.interactive_button_bindings_json,noProviderCalled:true};
+   snapshot:original.interactive_button_bindings_json,persistedJob:original,noProviderCalled:true};
  }
  if(original.interactive_button_bindings_json)
   throw refused('orphan_interactive_snapshot_requires_review');
@@ -154,13 +154,13 @@ export async function prepareFutureGreenAssignmentOutbox(client:any,input:Params
  if(currentSnapshot===snapshot &&
   await signedButtonsMatch(snapshot,current,input.signingSecret,subtle,now))
   return {status:updated?'prepared':'verified_after_uncertain_write',
-   jobId:original.id,snapshot,noProviderCalled:true};
+   jobId:original.id,snapshot,persistedJob:current,noProviderCalled:true};
  // An alternate concurrent preparer might have won with different random IDs.
  // It may only be reused after verifying all signed bindings; NEVER overwrite.
  if(currentSnapshot&&
   await signedButtonsMatch(currentSnapshot,current,input.signingSecret,subtle,now))
   return {status:'already_prepared',jobId:original.id,
-   snapshot:currentSnapshot,noProviderCalled:true};
+   snapshot:currentSnapshot,persistedJob:current,noProviderCalled:true};
  throw refused(thrown?'interactive_snapshot_persistence_unknown':
   'interactive_snapshot_conflict',thrown?503:409);
 }
