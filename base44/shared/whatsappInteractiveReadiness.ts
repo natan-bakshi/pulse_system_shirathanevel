@@ -53,6 +53,13 @@ export function summarizeWhatsAppInteractiveReadiness(input:{
   system:'shirat_hanevel',feature:'interactive_assignment_green',
   stage:'development_only',activationEligible:false,
   protectedByDefault,
+  // Owner-approved policy on 26.10.2026. Applies ONLY to the FUTURE isolated
+  // assignment callback path, not any pre-existing Green/office integrations.
+  inboundRoutingPolicy:'buttons_only_ignore_known_non_buttons',
+  knownNonButtonsIgnoredWithoutDatabase:true,
+  unsupportedButtonFormatsRequireReview:true,
+  officeContactOpensManualWhatsAppDraft:true,
+  inboundRoutingPolicyDoesNotEnableLiveWebhook:true,
   unexpectedControlFlagEnabled:c?.interactive_outbound_live_enabled===true,
   liveSendConfigured:false,liveInboundEndpointAvailable:false,
   checks:checked,blockers:checked.filter(x=>x.blocking&&!x.passed).map(x=>x.code),
