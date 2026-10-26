@@ -128,7 +128,7 @@ test('three assignments in SAME CHAT resolve by exact original id even when B,C,
  for(const [no,action,event] of actions){
   results.push(await f.run(f.callback(no,action,event)));
  }
- assert.deepEqual(results.map(r=>r.status),['applied','applied','applied']);
+ assert.deepEqual(results.map(r=>r.status),['applied','applied','applied'],JSON.stringify(results));
  assert.equal(f.counters.supplierWrites,3);
  assert.equal(f.counters.receiptCreates,3);
  assert.deepEqual(f.counters.recalcs,['event-2','event-3','event-1']);
@@ -139,7 +139,8 @@ test('three assignments in SAME CHAT resolve by exact original id even when B,C,
 test('reordered duplicate provider event and a different later click never modify an earlier decision',async()=>{
  const f=await fixture();
  const first=f.callback(1,'assignment_approve','A');
- assert.equal((await f.run(first)).status,'applied');
+ const firstResult=await f.run(first);
+ assert.equal(firstResult.status,'applied',JSON.stringify(firstResult));
  assert.equal((await f.run(first)).status,'refused');
  const newClick=f.callback(1,'assignment_reject','X');
  assert.equal((await f.run(newClick)).status,'refused');
