@@ -46,6 +46,7 @@ export default function WhatsAppQueueSettings(){
   const [metrics,setMetrics]=useState(null);
   const [sourceAudit,setSourceAudit]=useState(null);
   const [inboundAudit,setInboundAudit]=useState(null);
+  const [inboundDetail,setInboundDetail]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
   const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
   const read=async()=>{
@@ -73,8 +74,15 @@ export default function WhatsAppQueueSettings(){
         setNotice('מדידה היסטורית עודכנה ללא שליחת WhatsApp. זהו מדגם בלבד.');
         return;
       }
+      if(action==='inboundInspect'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת רשומת תגובה נכשלה');
+        setInboundDetail(res.data.inspection);
+        setNotice('בדיקת רשומה הושלמה לקריאה בלבד. לא בוצע שינוי בנתונים.');
+        return;
+      }
       if(action==='inboundAudit'){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת תגובות הספקים נכשלה');
+        setInboundDetail(null);
         setInboundAudit(res.data.audit);
         setNotice('בדיקת תגובות נכנסות הסתיימה ללא שליחת הודעות או שינוי שיבוצים.');
         return;
@@ -193,8 +201,28 @@ export default function WhatsAppQueueSettings(){
           </div>
           {inboundAudit.sampleTruncated&&<p className="text-xs text-amber-700">המדגם מוגבל ל־100 הרשומות האחרונות.</p>}
           {!!inboundAudit.review?.length&&<ul className="text-xs list-disc list-inside space-y-1">
-            {inboundAudit.review.map(x=><li key={x.id}>{x.id} · {x.provider} · {x.reason==='expired_processing'?'נעילה שפגה — בירור ידני':'תוצאה לבדיקה'}</li>)}
+            {inboundAudit.review.map(x=><li key={x.id} className="flex gap-2 items-center flex-wrap">
+              <span>{x.id} · {x.provider} · {x.reason==='expired_processing'?'נעילה שפגה — בירור ידני':'תוצאה לבדיקה'}</span>
+              <Button variant="outline" size="sm" disabled={busy}
+                onClick={()=>run('inboundInspect',{id:x.id})}>בדוק רשומה (ללא שינוי)</Button>
+            </li>)}
           </ul>}
+          {inboundDetail&&<section className="border rounded p-3 text-xs space-y-2" aria-label="בירור רשומת WhatsApp">
+            <strong>בירור רשומה {inboundDetail.receiptId}</strong>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <span>ספק: {inboundDetail.provider}</span>
+              <span>מצב: {inboundDetail.state}</span>
+              <span>סטטוס שיבוץ נוכחי: {inboundDetail.currentStatus}</span>
+              <span>הסטטוס הצפוי: {inboundDetail.expectedStatus}</span>
+              <span>גרסת שיבוץ: {inboundDetail.currentRevision}</span>
+              <span>נעילה שפגה: {inboundDetail.expiredClaim?'כן':'לא'}</span>
+              <span>חסימת רישום: {inboundDetail.registrationBlocked?'כן':'לא'}</span>
+            </div>
+            {inboundDetail.stateMatchesExpected&&<p className="text-amber-800">מצב השיבוץ תואם לתגובה, אך אין בכך הוכחה שהתגובה הזו היא שביצעה את העדכון.</p>}
+            {inboundDetail.registrationBlocked&&<p className="text-amber-800">נדרשת בדיקה של רשומת ההגנה החוסמת קליטה חדשה. אין לשחרר נעילה אוטומטית.</p>}
+            <p className="text-amber-800">נדרש בירור ידני מול נתוני הספק והמסד. אין טיפול חוזר אוטומטי או שינוי שיבוץ מתוך בדיקה זו.</p>
+            <Button variant="outline" size="sm" onClick={()=>setInboundDetail(null)}>סגור פרטים</Button>
+          </section>}
           <p className="text-xs text-gray-600">אין כאן פעולה לאישור, דחייה או שליחה מחדש. מצב ״בוצע״ מתייחס לרישום פעולה עסקית בלבד, לא למסירת הודעת WhatsApp.</p>
         </div>
       </details>}
