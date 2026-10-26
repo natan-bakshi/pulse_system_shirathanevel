@@ -26,7 +26,7 @@ function parseStatuses(service:any){
   return result;
  }catch{return null;}
 }
-function latestSupplierRevision(service:any,supplierId:string):string{
+function latestSupplierRevision(service:any,supplierId:string):{revision:string;key:string}{
  if(service?.assignment_intent_mode!=='durable_v1')throw refused('assignment_intents_not_active');
  let intents;
  try{intents=readAssignmentIntents(service.assignment_notification_intents||'[]');}
@@ -36,7 +36,7 @@ function latestSupplierRevision(service:any,supplierId:string):string{
   throw refused('assignment_intent_not_ready');
  const revision='r'+latest.revision;
  if(!/^r[1-9][0-9]{0,12}$/.test(revision))throw refused('assignment_revision_invalid');
- return revision;
+ return {revision,key:latest.key};
 }
 function isUnsentQueuedJob(job:any){
  return !!job&&job.status==='queued'&&job.source_type==='assignment_new'&&
@@ -100,7 +100,13 @@ export async function prepareFutureGreenAssignmentOutbox(client:any,input:Params
  const map=parseStatuses(service);
  if(!map||map[original.supplier_id]!=='pending')
   throw refused('supplier_not_pending');
- const revision=latestSupplierRevision(service,original.supplier_id);
+ const currentIntent=latestSupplierRevision(service,original.supplier_id);
+ // Outbox business idempotency is part of the signed origin. A stale queued
+ // assignment whose supplier has since been re-opened cannot be signed as if
+ // it belonged to the new revision. This is required BEFORE the snapshot CAS.
+ if(original.idempotency_key!==currentIntent.key)
+  throw refused('assignment_intent_key_mismatch');
+ const revision=currentIntent.revision;
  if(original.sender_account_id||original.assignment_revision){
   // Partial origin is not proof that a prior version was never dispatched.
   if(!original.interactive_button_bindings_json)
