@@ -4,6 +4,7 @@ import {webcrypto} from 'node:crypto';
 import {createFutureInteractiveButtonSnapshot} from '../base44/shared/whatsappButtonBindings.ts';
 import {processFutureGreenButtonCallback} from '../base44/shared/greenInteractiveCallbackCoordinator.ts';
 import {stageFutureGreenInteractiveHttpCallback} from '../base44/shared/greenInteractiveHttpStaging.ts';
+import {planFutureGreenWebhookAck} from '../base44/shared/greenWebhookAckPlanning.ts';
 
 const now=Date.parse('2026-10-26T12:00:00Z');
 const instance='9903183013';
@@ -148,6 +149,26 @@ test('FULL offline HTTP pipeline: authenticated bytes -> budget -> signed origin
  assert.equal(f.calls.recalc,1);
  assert.equal(f.receipts[0].state,'applied');
  assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-abc'],'confirmed');
+});
+test('FULL internal HTTP-to-ACK simulation: repeated Green delivery after applied status is verified as durable duplicate, no second write',async()=>{
+ const f=await setup(),raw=rawFor(f.buttons[0].buttonId);
+ const one=await stageCall(f,requestFor(raw));
+ assert.equal(one.result,'applied');
+ assert.equal(planFutureGreenWebhookAck(one).decision,'safe_ack_candidate');
+ const again=await stageCall(f,requestFor(raw));
+ assert.equal(again.result,'duplicate');
+ assert.equal(again.reason,'provider_event_already_finalized');
+ assert.equal(again.terminalReceiptVerified,true);
+ assert.equal(again.receiptState,'applied');
+ assert.equal(again.resultCode,'applied');
+ const plan=planFutureGreenWebhookAck(again);
+ assert.equal(plan.decision,'safe_ack_candidate');
+ assert.equal(plan.reason,'durable_terminal_duplicate');
+ assert.equal(plan.providerAckNotPublished,true);
+ assert.equal(f.calls.writes,1);
+ assert.equal(f.calls.creates,1);
+ assert.equal(f.calls.recalc,1);
+ assert.equal(f.receipts.length,1);
 });
 test('HTTP ingress: rollout off, invalid bearer, wrong instance and size spoof spend zero business writes',async()=>{
  const cases=[
