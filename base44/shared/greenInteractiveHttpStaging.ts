@@ -11,6 +11,7 @@ import {decodeFutureGreenInteractiveHttpRequest} from './greenInteractiveHttpBou
 import {parseGreenButtonSelection} from './greenInteractiveCallback.ts';
 import {reserveVerifiedGreenInboundBudget} from './whatsappInboundRateBudget.ts';
 import {processFutureGreenButtonCallback} from './greenInteractiveCallbackCoordinator.ts';
+import {isVerifiedGreenNonButtonEvent} from './greenWebhookAckPlanning.ts';
 
 export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  client:any;rolloutAuthorized:boolean;accountCapabilityVerified:boolean;
@@ -27,9 +28,16 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
   validationHttpStatus:decoded.status,providerCalls:0,businessWritesAuthorized:false};
  const now=opts.now??Date.now();
  // Verify exact Green instance and recognized selection BEFORE any DB query.
- if(!parseGreenButtonSelection(decoded.rawCallback,opts.expectedInstanceId,now))
-  return {stage:'invalid_selection',reason:'unverified_green_button_shape',
+ if(!parseGreenButtonSelection(decoded.rawCallback,opts.expectedInstanceId,now)){
+  // A verified ordinary text/media event is intentionally ignored BEFORE any
+  // DB or Base44 entity calls. Unknown button formats remain unverified; never
+  // pretend that a beta callback we cannot parse is a harmless text message.
+  const benign=isVerifiedGreenNonButtonEvent(decoded.rawCallback,opts.expectedInstanceId);
+  return {stage:'invalid_selection',
+   reason:benign?'recognized_non_button_event':'unverified_green_button_shape',
+   verifiedProviderAndAccount:benign,
    providerCalls:0,businessWritesAuthorized:false};
+ }
  const budget=await reserveVerifiedGreenInboundBudget(opts.client,{
   authenticated:true,trustedRolloutEnabled:true,maxPerMinute:opts.maxPerMinute,now
  });
