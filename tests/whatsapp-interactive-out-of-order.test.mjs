@@ -189,7 +189,9 @@ test('regular text, normal quoted reply, voice and unrelated outbound statuses d
    claimOwner:'test-click-order-worker-xyz',now,subtle:webcrypto.subtle,
    recalculateEventStatus:async()=>{throw Error('not an action')}
   });
-  assert.equal(result.stage,'invalid_selection',type);
+  assert.equal(result.stage,'ignored_non_button',type);
+  assert.equal(result.reason,'owner_approved_buttons_only_filter',type);
+  assert.equal(result.noDatabaseCalls,true,type);
   assert.equal(f.counters.outboxReads,0,type);
   assert.equal(f.counters.supplierWrites,0,type);
   assert.equal(f.counters.receiptCreates,0,type);
