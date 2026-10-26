@@ -6,6 +6,7 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {RefreshCw,Save,Play,AlertTriangle} from 'lucide-react';
 import WhatsAppQueueMessages from './WhatsAppQueueMessages';
+import WhatsAppInteractiveDraftSettings from './WhatsAppInteractiveDraftSettings';
 
 const defaults={enabled:false,paused:false,wasenderIntervalMs:7000,greenIntervalMs:7000,maxMessagesPerRun:16};
 function IntervalEditor({name,which,ms,unit,onUnit,onMs,disabled}){
@@ -262,6 +263,7 @@ export default function WhatsAppQueueSettings(){
           </div>
         </details>
       </section>}
+      <div className="border-t pt-4"><WhatsAppInteractiveDraftSettings /></div>
       <div className="border-t pt-4"><WhatsAppQueueMessages refreshSignal={refreshSignal}/></div>
       <p className="text-xs text-gray-500">הודעה שהתקבלה אצל ספק WhatsApp אינה בהכרח הודעה שנמסרה לנמען. במצב לא ידוע יש לאמת אצל הספק לפני שליחה מחדש.</p>
       {(totals.unknown||0)>0&&<p className="text-sm text-amber-700 flex gap-2">
