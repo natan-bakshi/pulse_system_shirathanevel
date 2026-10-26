@@ -11,7 +11,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
- const syncs=[],calls=[],listProjections=[],pendingProjections=[];
+ const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
    return record[key]===val;
@@ -51,12 +51,25 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        syncWhatsAppStatus:async(_client,job,status)=>syncs.push({id:job.id,status})
      };
      if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
+     if(name.endsWith('whatsappInteractiveSettingsStore.ts'))return {
+       readSavedWhatsAppInteractivePolicy:async(_client,provider)=>{
+         interactiveOps.push({kind:'get',provider});
+         return {setting:{companyId:'shirat_hanevel',provider,messageKind:'assignment',version:1,
+           officeNumber:'',policy:{enabled:false,quoteAssignment:false,buttons:[]}},configured:false,corrupt:false};
+       },
+       saveWhatsAppInteractivePolicyDraft:async(_client,data)=>{
+         interactiveOps.push({kind:'save',provider:data.provider});
+         if(data.policy?.enabled)throw Object.assign(Error('Interactive rollout disabled'),{status:400});
+         return {setting:{companyId:'shirat_hanevel',provider:data.provider,messageKind:'assignment',version:2,
+           officeNumber:data.officeNumber,policy:data.policy},configured:true,corrupt:false};
+       }
+     };
      if(name.endsWith('whatsappQueueMetrics.ts'))return {summarizeWhatsAppOutbox};
      if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions};
      throw Error('Unexpected import: '+name);
    }
  });
- return {record,jobs,syncs,calls,listProjections,pendingProjections,invoke:async(action,params={})=>await handler({
+ return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,invoke:async(action,params={})=>await handler({
    method:'POST',json:async()=>({action,...params})
  })};
 }
@@ -103,13 +116,36 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
    assert.equal(ctx.calls.length,0);
  }
 });
+test('interactive drafts are gated by system-owner auth and cannot dispatch WhatsApp',async()=>{
+  const actor={role:'admin',email:'natib8000@gmail.com'};
+  const ctx=context({actor});
+  const saved=await ctx.invoke('interactiveSave',{provider:'green',expectedVersion:1,
+    officeNumber:'972501234567',policy:{enabled:false,quoteAssignment:false,buttons:[]}});
+  assert.equal(saved.status,200);
+  assert.equal(saved.body.liveEnabled,false);
+  assert.equal(saved.body.noMessagesSent,true);
+  const read=await ctx.invoke('interactiveGet',{provider:'green'});
+  assert.equal(read.status,200);
+  assert.equal(read.body.liveEnabled,false);
+  assert.deepEqual(ctx.interactiveOps.map(x=>x.kind),['save','get']);
+  assert.equal(ctx.calls.length,0);
+  const invalid=await ctx.invoke('interactiveSave',{provider:'green',expectedVersion:1,
+    policy:{enabled:true,quoteAssignment:false,buttons:[]}});
+  assert.equal(invalid.status,400);
+  assert.equal(ctx.calls.length,0);
+  const outsider=context({actor:{role:'admin',email:'other@example.com'}});
+  assert.equal((await outsider.invoke('interactiveGet',{provider:'green'})).status,403);
+  assert.equal((await outsider.invoke('interactiveSave',{provider:'green'})).status,403);
+  assert.equal(outsider.interactiveOps.length,0);
+});
+
 test('status/list/get are read only and mask recipient until owner requests detail',async()=>{
  const ctx=context({jobs:[makeJob('job-123')]});
  const status=await ctx.invoke('status');
