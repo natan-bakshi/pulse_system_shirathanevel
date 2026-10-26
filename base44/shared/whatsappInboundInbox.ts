@@ -63,6 +63,38 @@ async function lookupReceipt(db:any,key:string){
  if(!Array.isArray(rows)||rows.length>1)throw entityError('duplicate_receipt_rows_manual_review');
  return rows[0]||null;
 }
+// Read-only exact-identity verification for VERIFIED provider redelivery after
+// the business state has changed. Called ONLY if the original signed Outbox,
+// source provider account and supplier phone were independently checked.
+// Never creates/reclaims receipts or releases an uncertain create guard.
+// One projected filter of at most two rows; missing/mismatched results are
+// NOT evidence of a completed provider event.
+export async function inspectVerifiedInboundReplay(client:any,raw:any){
+ const receipt=normalizeInboundReceipt(raw);
+ const db=client?.asServiceRole?.entities?.WhatsAppInboundReceipt;
+ if(!db||typeof db.filter!=='function')
+  throw entityError('inbound_storage_unavailable',503);
+ const row=await lookupReceipt(db,receipt.receiptKey);
+ if(!row)return {kind:'not_found',terminalReceiptVerified:false};
+ if(!matchesReceipt(row,receipt))
+  return {kind:'identity_conflict',terminalReceiptVerified:false};
+ const state=String(row.state||'');
+ const resultCode=String(row.result_code||'');
+ const finalized=Number.isFinite(Date.parse(row.completed_at||''));
+ const allowedTerminal=(state==='applied'&&
+   ['applied','already_applied'].includes(resultCode))||
+  (state==='rejected'&&
+   ['stale_assignment','not_assigned','invalid_assignment','unauthorized_sender',
+    'identity_mismatch','business_conflict'].includes(resultCode))||
+  (state==='needs_review'&&resultCode==='unknown_after_write');
+ if(finalized&&allowedTerminal)
+  return {kind:'finalized',receiptState:state,resultCode,
+   terminalReceiptVerified:true};
+ if(['pending','processing','needs_review'].includes(state))
+  return {kind:'not_terminal',receiptState:state,
+   terminalReceiptVerified:false};
+ return {kind:'unverifiable',terminalReceiptVerified:false};
+}
 async function takeCreateLease(client:any){
  const db=client.asServiceRole.entities.WhatsAppQueueControl;
  const owner=randomToken();
