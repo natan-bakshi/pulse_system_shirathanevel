@@ -4,6 +4,7 @@ import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDisp
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 import {readSavedWhatsAppInteractivePolicy,saveWhatsAppInteractivePolicyDraft} from '../../shared/whatsappInteractiveSettingsStore.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
+import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
@@ -294,6 +295,17 @@ Deno.serve(async(req)=>{
       return RESPONSE(await queueStatus(client));
     }
     if(action==='status')return RESPONSE(await queueStatus(client));
+    if(action==='inboundAudit'){
+      // Explicit system-owner request only. The inbound feature is NOT active;
+      // this never claims a receipt, updates a supplier or invokes transport.
+      const [control,rows]=await Promise.all([
+        readWhatsAppQueueControl(client),
+        client.asServiceRole.entities.WhatsAppInboundReceipt.list('-created_date',100,0,
+          ['id','state','claim_until','provider'])
+      ]);
+      return RESPONSE({success:true,liveInboundEnabled:false,
+        audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
+    }
     if(action==='metrics'){
       // Explicit read-only request; no provider calls and no message contents.
       // Avoid querying another 200 records every time settings are opened.
