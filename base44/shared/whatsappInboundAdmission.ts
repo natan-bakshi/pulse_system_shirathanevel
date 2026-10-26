@@ -1,0 +1,91 @@
+// READ-ONLY admission gate for the FUTURE provider-specific webhook adapter.
+// Not a public backend function. No supplier status mutation, no inbox claim,
+// and NO interactive feature activation here. The real adapter must normalize
+// fields strictly from verified provider payloads, never user-supplied JSON.
+import {authenticateWhatsAppProviderCallback} from './whatsappProviderWebhookAuth.ts';
+import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
+import {loadAssignmentOriginFromOutbox} from './whatsappInteractivePersistence.ts';
+import {parseWhatsAppPhone} from './whatsappPhone.ts';
+import {supplierAssigned} from './whatsappSupplierTransition.ts';
+import {whatsappRevisionEligibility} from './supplierStatusPersistence.ts';
+import {normalizeInboundReceipt} from './whatsappInboundInbox.ts';
+
+const MAX_ACCOUNT=128;
+const MAX_EVENT_ID=180;
+const allowedId=(v:any,max=MAX_EVENT_ID)=>
+ typeof v==='string'&&v.length>0&&v.length<=max&&
+ v.trim()===v&&!/[\u0000-\u001f\u007f]/.test(v);
+const rejected=(reason:string)=>({admissible:false,reason,noMessagesSent:true} as const);
+function supplierPending(row:any,id:string){
+ let statuses;
+ try{statuses=JSON.parse(row.supplier_statuses||'{}');}catch{return false;}
+ return !!statuses&&typeof statuses==='object'&&!Array.isArray(statuses)&&
+  (statuses[id]===undefined||statuses[id]==='pending');
+}
+export async function preflightWhatsAppAssignmentResponse(input:{
+ provider:'green'|'wasender';headers:any;webhookSecret:string;
+ actionToken:string;actionSigningSecret:string;
+ senderAccountId:string;expectedSenderAccountId:string;
+ senderChatId:string;providerEventId:string;originalProviderMessageId:string;
+ now?:number;subtle?:SubtleCrypto
+},serviceClient:any){
+ if(!input||!['green','wasender'].includes(input.provider)||
+  !allowedId(input.senderAccountId,MAX_ACCOUNT)||
+  !allowedId(input.expectedSenderAccountId,MAX_ACCOUNT)||
+  input.senderAccountId!==input.expectedSenderAccountId||
+  !allowedId(input.providerEventId)||!allowedId(input.originalProviderMessageId))
+  return rejected('invalid_provider_event');
+ if(!authenticateWhatsAppProviderCallback({
+  provider:input.provider,headers:input.headers,webhookSecret:input.webhookSecret
+ }))return rejected('provider_authentication_failed');
+ const signed=await verifySignedWhatsAppAction({
+  token:input.actionToken,secret:input.actionSigningSecret,now:input.now
+ },input.subtle??crypto.subtle);
+ if(!signed)return rejected('action_signature_invalid');
+ if(signed.provider!==input.provider||signed.senderAccountId!==input.senderAccountId)
+  return rejected('provider_account_mismatch');
+ const sender=parseWhatsAppPhone(input.senderChatId?.replace(/@c\.us$/,''));
+ if(sender.status!=='VALID'||sender.chatId!==input.senderChatId)
+  return rejected('sender_phone_invalid');
+ const db=serviceClient?.entities;
+ if(!db?.WhatsAppOutbox?.get||!db?.Supplier?.get||!db?.EventService?.get)
+  return rejected('read_only_dependency_unavailable');
+ try{
+  const [origin,supplier,service]=await Promise.all([
+   loadAssignmentOriginFromOutbox(db.WhatsAppOutbox,{
+    companyId:signed.companyId,eventServiceId:signed.eventServiceId,
+    supplierId:signed.supplierId,revision:signed.revision,
+    outboxJobId:signed.outboxJobId,provider:signed.provider,
+    senderAccountId:signed.senderAccountId,chatId:sender.chatId,
+    providerMessageId:input.originalProviderMessageId
+   }),
+   db.Supplier.get(signed.supplierId),
+   db.EventService.get(signed.eventServiceId)
+  ]);
+  if(!origin||origin.status!=='accepted')return rejected('unverified_origin');
+  // A message from another campaign (invoice, event reminder, etc.) cannot
+  // authorize supplier assignment transitions, even with a valid receipt.
+  const job=await db.WhatsAppOutbox.get(signed.outboxJobId);
+  if(job?.source_type!=='assignment_new')return rejected('wrong_message_kind');
+  if(!supplier||supplier.is_active===false||
+   parseWhatsAppPhone(supplier.phone).chatId!==sender.chatId)
+   return rejected('supplier_sender_mismatch');
+  if(!service||service.is_external===true||
+   !supplierAssigned(service.supplier_ids,signed.supplierId))
+   return rejected('supplier_not_assigned');
+  const rev=whatsappRevisionEligibility(service,signed.supplierId,signed.revision);
+  if(!rev.allowed)return rejected(rev.reason);
+  if(!supplierPending(service,signed.supplierId))return rejected('assignment_not_pending');
+  const receipt=normalizeInboundReceipt({
+   companyId:signed.companyId,eventServiceId:signed.eventServiceId,
+   supplierId:signed.supplierId,revision:signed.revision,
+   outboxJobId:signed.outboxJobId,provider:signed.provider,
+   senderAccountId:signed.senderAccountId,providerEventId:input.providerEventId,
+   providerMessageId:input.originalProviderMessageId,action:signed.action
+  });
+  return {admissible:true,reason:'verified_read_only',
+   receipt,action:signed.action,expiresAt:signed.expiresAt,noMessagesSent:true,
+   // Deliberately cannot apply without durable inbox claim and deployment gate.
+   requiresDurableClaim:true,requiresRolloutApproval:true};
+ }catch{return rejected('context_unavailable');}
+}
