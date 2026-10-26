@@ -45,8 +45,20 @@ export function planFutureGreenWebhookAck(result:any):AckPlan{
   if(result.result==='rejected'&&
     ['business_conflict','not_assigned','stale_assignment'].includes(result.reason))
    return plan('safe_ack_candidate','durable_business_conflict_receipt',true);
-  if(result.result==='duplicate'&&result.reason==='provider_event_already_recorded')
-   return plan('safe_ack_candidate','durable_duplicate_receipt',true);
+  // A duplicate provider event is safe ONLY if the full receipt identity
+  // matches and the ledger has a CONFIRMED terminal state/result/timestamp.
+  // A mere row in pending/processing is not a successful application.
+  if(result.result==='duplicate'&&result.reason==='provider_event_already_finalized'&&
+    result.terminalReceiptVerified===true&&(
+      (result.receiptState==='applied'&&
+       ['applied','already_applied'].includes(result.resultCode))||
+      (result.receiptState==='rejected'&&
+       ['stale_assignment','not_assigned','invalid_assignment',
+        'unauthorized_sender','identity_mismatch','business_conflict'].includes(result.resultCode))||
+      (result.receiptState==='needs_review'&&result.resultCode==='unknown_after_write')
+    ))return plan('safe_ack_candidate','durable_terminal_duplicate',true);
+  if(result.result==='duplicate')
+   return plan('manual_reconcile_candidate','duplicate_receipt_not_proven_terminal');
   if(result.result==='needs_review'&&result.reason==='unknown_after_write')
    return plan('safe_ack_candidate','durable_manual_review_receipt',true);
   if(result.result==='needs_review'||
