@@ -220,7 +220,7 @@ export default function WhatsAppQueueSettings(){
             <span>התראות נכנסות: {greenWebhookSettings.notificationFlags?.incomingWebhook==='yes'?'פעילות':greenWebhookSettings.notificationFlags?.incomingWebhook==='no'?'כבויות':'לא ידוע'}</span>
             <span>סוד Webhook: {greenWebhookSettings.webhookTokenConfigured?'מוגדר':'לא מוגדר'}</span>
             <span>קטגוריות פעילות: {greenWebhookSettings.activeCategories??'לא ידוע'}</span>
-            <span>מרווח ספק נוכחי: {greenWebhookSettings.sendDelayMs===null?'לא ידוע':greenWebhookSettings.sendDelayMs+' מילישניות'}</span>
+            <span>השהיית Green API (בנפרד ממרווח התור): {greenWebhookSettings.sendDelayMs===null?'לא ידוע':greenWebhookSettings.sendDelayMs+' מילישניות'}</span>
           </div>
           {greenWebhookSettings.existingWebhookMustBePreserved&&<p className="text-amber-800 font-medium">קיימת כתובת Webhook! אסור להחליף אותה בלי לוודא שממשיכים לטפל בכל ההתראות שכבר מגיעות אליה.</p>}
           {greenWebhookSettings.endpointProtocol==='non_https_or_invalid'&&<p className="text-amber-800">כתובת Webhook קיימת אינה כתובת HTTPS תקינה — נדרש בירור.</p>}
