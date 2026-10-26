@@ -50,10 +50,20 @@ test('real stage classifies ordinary authenticated chat as no-op with ZERO entit
  assert.equal(result.verifiedProviderAndAccount,true);
  assert.equal(reads,0);assert.equal(writes,0);
  const ack=planFutureGreenWebhookAck(result);
- assert.equal(ack.decision,'safe_ack_candidate');
+ assert.equal(ack.decision,'manual_reconcile_candidate',
+  'Ordinary chat may still be needed by other existing consumers');
+ assert.equal(ack.reason,'ordinary_inbound_routing_not_verified');
  assert.equal(ack.providerAckNotPublished,true);
- assert.equal(ack.mayRespond200AfterProviderQa,true);
+ assert.equal(ack.mayRespond200AfterProviderQa,false);
  assert.equal(ack.providerHttpStatusNotChosen,true);
+});
+test('known plain chat can be considered ACK candidate ONLY after trusted separate routing assurance',()=>{
+ const result={stage:'invalid_selection',reason:'recognized_non_button_event',
+  verifiedProviderAndAccount:true,ordinaryInboundHandlingVerified:true};
+ assert.equal(planFutureGreenWebhookAck(result).decision,'safe_ack_candidate');
+ assert.equal(planFutureGreenWebhookAck(result).reason,'non_button_route_verified');
+ assert.equal(planFutureGreenWebhookAck({...result,
+  ordinaryInboundHandlingVerified:false}).mayRespond200AfterProviderQa,false);
 });
 test('authenticated but unsupported beta button is NOT considered safe text',()=>{
  const unknown={stage:'invalid_selection',reason:'unverified_green_button_shape',
