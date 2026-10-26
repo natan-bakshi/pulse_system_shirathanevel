@@ -4,7 +4,7 @@
 // fields strictly from verified provider payloads, never user-supplied JSON.
 import {authenticateWhatsAppProviderCallback} from './whatsappProviderWebhookAuth.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
-import {loadAssignmentOriginFromOutbox} from './whatsappInteractivePersistence.ts';
+import {assignmentOriginFromOutbox} from './whatsappInteractivePersistence.ts';
 import {parseWhatsAppPhone} from './whatsappPhone.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
 import {whatsappRevisionEligibility} from './supplierStatusPersistence.ts';
@@ -51,21 +51,21 @@ export async function preflightWhatsAppAssignmentResponse(input:{
  if(!db?.WhatsAppOutbox?.get||!db?.Supplier?.get||!db?.EventService?.get)
   return rejected('read_only_dependency_unavailable');
  try{
-  const [origin,supplier,service]=await Promise.all([
-   loadAssignmentOriginFromOutbox(db.WhatsAppOutbox,{
+  const [job,supplier,service]=await Promise.all([
+   db.WhatsAppOutbox.get(signed.outboxJobId),
+   db.Supplier.get(signed.supplierId),
+   db.EventService.get(signed.eventServiceId)
+  ]);
+  const origin=assignmentOriginFromOutbox(job,{
     companyId:signed.companyId,eventServiceId:signed.eventServiceId,
     supplierId:signed.supplierId,revision:signed.revision,
     outboxJobId:signed.outboxJobId,provider:signed.provider,
     senderAccountId:signed.senderAccountId,chatId:sender.chatId,
     providerMessageId:input.originalProviderMessageId
-   }),
-   db.Supplier.get(signed.supplierId),
-   db.EventService.get(signed.eventServiceId)
-  ]);
+   });
   if(!origin||origin.status!=='accepted')return rejected('unverified_origin');
   // A message from another campaign (invoice, event reminder, etc.) cannot
   // authorize supplier assignment transitions, even with a valid receipt.
-  const job=await db.WhatsAppOutbox.get(signed.outboxJobId);
   if(job?.source_type!=='assignment_new')return rejected('wrong_message_kind');
   if(!supplier||supplier.is_active===false||
    parseWhatsAppPhone(supplier.phone).chatId!==sender.chatId)
