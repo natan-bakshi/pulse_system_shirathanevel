@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {assignmentOriginFromOutbox,loadAssignmentOriginFromOutbox} from '../base44/shared/whatsappInteractivePersistence.ts';
-const m={companyId:'c',eventServiceId:'es',supplierId:'s',revision:'r',senderAccountId:'sender',provider:'green',outboxJobId:'job123',providerMessageId:'provider-id'};
-const job={id:'job123',event_service_id:'es',supplier_id:'s',status:'accepted',provider:'green',provider_message_id:'provider-id'};
+const m={companyId:'c',eventServiceId:'es',supplierId:'s',revision:'r',chatId:'972501234567@c.us',senderAccountId:'sender',provider:'green',outboxJobId:'job123',providerMessageId:'provider-id'};
+const job={id:'job123',event_service_id:'es',supplier_id:'s',chat_id:'972501234567@c.us',status:'accepted',provider:'green',provider_message_id:'provider-id'};
 test('accepted receipt is authoritative and matches job identity',()=>{
  assert.equal(assignmentOriginFromOutbox(job,m).providerMessageId,'provider-id');
- for(const update of [{status:'unknown'},{provider:'wasender'},{supplier_id:'other'},{provider_message_id:'wrong'}])
+ for(const update of [{status:'unknown'},{provider:'wasender'},{supplier_id:'other'},{chat_id:'972509999999@c.us'},{provider_message_id:'wrong'}])
   assert.equal(assignmentOriginFromOutbox({...job,...update},m),null);
 });
 test('bounded single-job lookup fails closed',async()=>{
