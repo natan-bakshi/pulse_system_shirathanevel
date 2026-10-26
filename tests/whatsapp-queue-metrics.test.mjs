@@ -209,6 +209,9 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
         if(name.endsWith('greenWebhookSettingsAudit.ts'))return {
           inspectGreenWebhookSettingsReadOnly:()=>{throw Error('Metrics must not contact Green API')}
         };
+        if(name.endsWith('greenUnknownCallbackQuarantine.ts'))return {
+          inspectUnknownGreenQuarantineReadOnly:()=>{throw Error('Metrics must not load unknown callback quarantine')}
+        };
         if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
       }
