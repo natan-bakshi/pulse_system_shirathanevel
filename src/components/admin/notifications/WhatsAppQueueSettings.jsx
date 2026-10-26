@@ -47,6 +47,7 @@ export default function WhatsAppQueueSettings(){
   const [metrics,setMetrics]=useState(null);
   const [sourceAudit,setSourceAudit]=useState(null);
   const [inboundAudit,setInboundAudit]=useState(null);
+  const [unknownCallbackAudit,setUnknownCallbackAudit]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
@@ -101,6 +102,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת רשומת תגובה נכשלה');
         setInboundDetail(res.data.inspection);
         setNotice('בדיקת רשומה הושלמה לקריאה בלבד. לא בוצע שינוי בנתונים.');
+        return;
+      }
+      if(action==='unknownCallbackAudit'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת אירועים לא מזוהים נכשלה');
+        setUnknownCallbackAudit(res.data.audit);
+        setNotice('נבדקו רשומות בירור אנונימיות בלבד, ללא שינוי שיבוץ או שליחת הודעה.');
         return;
       }
       if(action==='inboundAudit'){
@@ -201,6 +208,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>בדיקת תגובות WhatsApp (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('unknownCallbackAudit')}>בדיקת כפתורים לא מזוהים (קריאה בלבד)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות כפתורי שיבוץ (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדוק הגדרות Green API (קריאה אחת, ללא שינוי)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
@@ -243,6 +251,19 @@ export default function WhatsAppQueueSettings(){
             </li>)}
           </ul>
           <p className="text-xs text-gray-600">יש לאמת בנפרד קבלת הודעה אמיתית, קישור לשיבוץ, אימות ספק ומניעת כפילויות לפני אישור הפעלה. לא מוצגים מפתחות או מספרי טלפון.</p>
+        </div>
+      </details>}
+      {unknownCallbackAudit&&<details open className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="font-medium cursor-pointer">תגובות Green לא מזוהות — {unknownCallbackAudit.pendingReview||0} ממתינות לבירור במדגם</summary>
+        <div className="space-y-2 pt-3 text-xs">
+          <p className="text-amber-800 font-medium">זוהי רשומת בירור של פורמט שאינו נתמך, ולא אישור או דחיית ספק. אין טיפול אוטומטי חוזר ואין אפשרות לשנות כאן שיבוץ.</p>
+          <p className="text-gray-600">מוצגים לכל היותר 40 רישומים. אין שמירת תוכן הודעות, מספרי טלפון או פרטי כפתורים; טביעת הזיהוי אינה מאפשרת לשחזר את ההודעה. לכן גם אירוע שנשמר לבירור אינו נחשב ACK מוצלח לספק.</p>
+          {unknownCallbackAudit.sampleTruncated&&<p className="text-amber-800">המדגם מוגבל ל־40 הרשומות האחרונות.</p>}
+          {unknownCallbackAudit.list?.length?<ul className="space-y-1">
+            {unknownCallbackAudit.list.map((entry,index)=><li key={entry.reference+'-'+index} className="rounded border p-2">
+              <span>טביעת זיהוי: {entry.reference}</span> · <span>{entry.format==='unrecognized_interactive'?'תגובה אינטראקטיבית לא מוכרת':'הודעה נכנסת לא מזוהה'}</span> · <span>נרשם: {entry.receivedAt||'לא ידוע'}</span> · <span>דורש בירור ידני</span>
+            </li>)}
+          </ul>:<p className="text-gray-600">לא נמצאו רשומות בירור במדגם.</p>}
         </div>
       </details>}
       {inboundAudit&&<details className="rounded border p-3 text-sm" dir="rtl">
