@@ -148,6 +148,15 @@ test('reordered duplicate provider event and a different later click never modif
  assert.equal(f.counters.receiptCreates,1);
  assert.equal(JSON.parse(f.services['service-1'].supplier_statuses)[supplierId],'confirmed');
 });
+test('a button token from message A cannot apply to message B, even for same supplier and chat',async()=>{
+ const f=await fixture();
+ const forged=f.callback(1,'assignment_approve','F');
+ forged.messageData.templateButtonReplyMessage.stanzaId=f.rows['service-2'].provider_message_id;
+ const outcome=await f.run(forged);
+ assert.equal(outcome.status,'refused');
+ assert.equal(f.counters.supplierWrites,0);
+ assert.equal(f.counters.receiptCreates,0);
+});
 test('mismatched original provider stanzaId is never replaced by the newest assignment',async()=>{
  const f=await fixture();
  const wrong=f.callback(1,'assignment_approve','A');
