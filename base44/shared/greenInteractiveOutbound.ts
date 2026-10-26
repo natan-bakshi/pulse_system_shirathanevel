@@ -6,6 +6,7 @@
 // or sendInteractiveButtons (mixed reply + URL). Old sendButtons returns 403.
 import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
+import {buildOfficeWhatsAppInquiryLink,type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
 
 const PRIVATE_CHAT=/^[1-9][0-9]{7,14}@c\.us$/;
 const OFFICE=/^[1-9][0-9]{7,14}$/;
@@ -24,11 +25,14 @@ function textBody(job:any){
   throw fail('invalid_assignment_message_text');
  return text;
 }
-function officeUrl(digits:string){
+function officeUrl(digits:string,job:any,mode:OfficeContextMode){
  if(digits===''||digits===undefined)return '';
  if(typeof digits!=='string'||!OFFICE.test(digits))
   throw fail('invalid_office_number');
- return 'https://wa.me/'+digits;
+ return buildOfficeWhatsAppInquiryLink({
+  officeNumber:digits,outboxJobId:job.id,messageText:job.message_text,
+  contextMode:mode
+ });
 }
 function appendOfficeToText(text:string,url:string){
  const suffix=url?'\n\nליצירת קשר עם המשרד: '+url:'';
@@ -39,13 +43,17 @@ export async function previewGreenInteractiveAssignment(input:{
  job:any;frozenSnapshot?:string;signingSecret?:string;
  capability:'reply_only'|'mixed_url'|'unknown';
  rolloutEnabled:boolean;officeNumber?:string;officeLabel?:string;
+ officeContextMode?:OfficeContextMode;
  now?:number;subtle?:SubtleCrypto
 }):Promise<GreenOutboundPreview>{
  const job=input?.job;
  if(!job||job.source_type!=='assignment_new'||
   job.message_type!=='text'||job.requested_provider!=='green'||
   !PRIVATE_CHAT.test(job.chat_id||''))throw fail('ineligible_interactive_job');
- const text=textBody(job),url=officeUrl(input.officeNumber??'');
+ const text=textBody(job);
+ // Context is opt-in. The link opens an editable draft in the office chat,
+ // not a native quoted reply across chats or a supplier approval action.
+ const url=officeUrl(input.officeNumber??'',job,input.officeContextMode??'none');
  const fallback=(reason:string,includeOfficeLink:boolean):GreenOutboundPreview=>({
   method:'sendMessage',body:{chatId:job.chat_id,
    // An inactive feature MUST leave existing plain-text sends unchanged.
