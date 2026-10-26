@@ -62,6 +62,16 @@
 - [ ] תלויות שלא הוסרו: בדיקת חשבון Green/ACK אמיתי, שמירת אינטגרציות Webhook קיימות במקרה של URL יחיד, החלטת Direct/Edge לפי עלויות בפועל, אישור פריסה חיה בנפרד.
 - **מסמך ההחלטה המלא:** `docs/whatsapp-buttons-only-inbound-filter-2026-10-26.md`.
 
+### WA-OPT-01d — 26.10.2026: בדיקת תצורת Green API אמיתית, רק בלחיצה
+- [x] קיים קוד בדיקה על בסיס `GetSettings` הרשמי: קריאת GET **אחת בלבד לפי לחיצה של מנהל־העל**, ללא retries, ללא סריקת Base44, ללא `SetSettings` וללא שינוי ב־Green. `SetSettings` מאתחל את המופע ולכן אסור להשתמש בו לאבחון. מקור: https://green-api.com/en/docs/api/account/GetSettings/ וגם https://green-api.com/en/docs/api/account/SetSettings/
+- [x] הממשק מציג רק דגלי webhook נבחרים, אם קיימת כתובת, אם מוגדר סוד, אם `incomingWebhook` פעיל ואם יש סיכון להחליף כתובת קיימת. **URL, token, מספר WhatsApp ותגובת API גולמית אינם עוברים לדפדפן**.
+- [x] מצב תשלום: בלחיצה יש לקרוא ל־Green פעם אחת והפעלה אחת של פונקציית Base44, ולכן אין לקרוא לזה ״אפס קרדיטים״. בדיקות הפיתוח משתמשות ב־Mock בלבד: **0 בקשות Green חיות**.
+- [x] `greenWebhookHttpContract.ts` ממפה תוצאות ל־**קודי HTTP מוצעים בלבד**, על בסיס 200 ACK / non-200 retry בתיעוד Green. אין `Deno.serve` חדש ואין הודעת ACK אמיתית. Unknown Beta/DB failure/receipt לא ודאי אינם מקבלים 200.
+- [x] **662/662** בדיקות מקומיות עברו, Vite build ו־ESLint ממוקד תקינים.
+- [ ] מנהל־העל יפעיל בדיקת GetSettings לפי הצורך כדי לקבל מצב אמת של החשבון. לאחר מכן יש למפות מי צורך את כתובת ה־Webhook הקיימת, לאמת account beta והחזרת ACK אמיתית ולשמור על רציפות שירות בהחלפת כתובת.
+- [ ] נותר להגדיר קליטה עמידה גם ל־callback בעל פורמט חדש, לפני בחירה ב־HTTP 200 או סיכון retries במשך 24 שעות. לא להפעיל את המסלול החי בלי הוכחת idempotency ואישור rollout.
+
+
 
 
 ## מקורות שנבדקו
