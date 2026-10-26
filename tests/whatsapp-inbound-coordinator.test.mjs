@@ -147,6 +147,81 @@ test('verified approve applies ONE status CAS then recalculates and closes recei
  assert.equal(f.stats.creates,1);
  assert.equal(f.control.lease_owner,'existing-whatsapp-worker');
 });
+test('duplicate provider webhook while receipt is still pending or processing is held, NEVER ACK-confirmed',async()=>{
+ for(const state of ['pending','processing','needs_review']){
+  const f=fixture(),event=await signedEvent();
+  const received={
+   provider:'green',senderAccountId:instance,providerEventId:event.providerEventId,
+   providerMessageId:event.originalProviderMessageId,companyId:'shirat_hanevel',
+   eventServiceId:'service-abc',supplierId:'supplier-abc',revision:'r2',
+   outboxJobId:'outbox-abc',action:'assignment_approve'
+  };
+  await registerVerifiedInboundReceipt(f.client,received);
+  f.records[0].state=state;
+  const reply=await call(f,event);
+  assert.equal(reply.status,'held',state);
+  assert.equal(reply.reason,'existing_receipt_not_finalized',state);
+  assert.equal(reply.terminalReceiptVerified,undefined);
+  assert.equal(f.stats.supplierWrites,0,state);
+  assert.equal(f.stats.creates,1,state);
+  assert.equal(f.stats.recalc,0,state);
+  assert.equal(f.records[0].state,state);
+ }
+});
+test('verified duplicate remains recognizable after reassigning supplier to a newer revision, without replay',async()=>{
+ const f=fixture(),event=await signedEvent();
+ assert.equal((await call(f,event)).status,'applied');
+ f.service.assignment_notification_intents=JSON.stringify([
+  ...JSON.parse(f.service.assignment_notification_intents),{
+   key:'assignment:service-abc:supplier-abc:r3:SUPPLIER_NEW_ASSIGNMENT',
+   supplier_id:'supplier-abc',revision:3,state:'accepted'
+  }
+ ]);
+ f.service.supplier_statuses='{"supplier-abc":"pending"}';
+ const duplicate=await call(f,event);
+ assert.equal(duplicate.status,'duplicate');
+ assert.equal(duplicate.terminalReceiptVerified,true);
+ assert.equal(duplicate.receiptState,'applied');
+ assert.equal(f.stats.creates,1);
+ assert.equal(f.stats.supplierWrites,1);
+});
+test('reused provider event ID with different signed action is a conflict, not an ACK or transition',async()=>{
+ const f=fixture(),one=await signedEvent('assignment_approve','same-provider-event');
+ await registerVerifiedInboundReceipt(f.client,{
+  provider:'green',senderAccountId:instance,providerEventId:one.providerEventId,
+  providerMessageId:one.originalProviderMessageId,companyId:'shirat_hanevel',
+  eventServiceId:'service-abc',supplierId:'supplier-abc',revision:'r2',
+  outboxJobId:'outbox-abc',action:'assignment_approve'
+ });
+ const different=await signedEvent('assignment_reject','same-provider-event');
+ const response=await call(f,different);
+ assert.equal(response.status,'refused');
+ assert.equal(response.reason,'receipt_registration_unverified');
+ assert.equal(f.stats.creates,1);
+ assert.equal(f.stats.supplierWrites,0);
+});
+test('receipt lookup outage after accepted supplier change does NOT turn replay into success',async()=>{
+ const f=fixture(),event=await signedEvent();
+ assert.equal((await call(f,event)).status,'applied');
+ const before=f.stats.supplierWrites;
+ f.client.asServiceRole.entities.WhatsAppInboundReceipt.filter=async()=>{
+  throw Error('temporary read failure');
+ };
+ const again=await call(f,event);
+ assert.equal(again.status,'held');
+ assert.equal(again.reason,'existing_receipt_lookup_unverified');
+ assert.equal(f.stats.supplierWrites,before);
+});
+test('different unrecorded Green event after supplier decision cannot be ACKed as old response',async()=>{
+ const f=fixture(),event=await signedEvent('assignment_approve','original-receipt');
+ assert.equal((await call(f,event)).status,'applied');
+ const different=await signedEvent('assignment_approve','another-provider-event');
+ const response=await call(f,different);
+ assert.equal(response.status,'refused');
+ assert.equal(response.reason,'assignment_not_pending');
+ assert.equal(f.stats.creates,1);
+ assert.equal(f.stats.supplierWrites,1);
+});
 test('competing dashboard rejection causes business-conflict terminal, not a WhatsApp overwrite',async()=>{
  const f=fixture(),event=await signedEvent();
  // Admission's get sees pending; supplier writer's later get sees confirmed.
