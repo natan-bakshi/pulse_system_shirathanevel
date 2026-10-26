@@ -1,0 +1,58 @@
+# PULSE / שירת הנבל — שדרוגי WhatsApp אופציונליים: קליטה חסכונית, זיהוי תגובות ופנייה למשרד
+**26.10.2026 | מערכת יחידה:** Base44 `687d1de6659eff83e9c034f7`; GitHub `natan-bakshi/pulse_system_shirathanevel`. לא מערכת Pulse האחרת.  
+**סטטוס:** מחקר, תכנון ובדיקות Mock בלבד. אין endpoint ציבורי חדש, אין שליחות חיות ואין אישור להפעיל כפתורים. הגנות נגד כפילויות/שיבושים מתועדפות מעל שיפורים קוסמטיים.
+
+## O1 — Webhook ש״ממתין״ בעלות/קרדיטים נמוכים (אופציונלי; לפני Rollout)
+**אפשרי:** Green API Webhook Endpoint הוא **Push**: Green יוזם POST כשמגיעה הודעה; אין צורך להריץ polling כל כמה שניות או worker מתמיד. חשבון Green מאפשר `incomingWebhook=yes` ואת דגלי `outgoingWebhook/stateWebhook/deviceWebhook` לפי צורך. **לא לשנות דגלים קיימים בלי למפות צרכנים קיימים.** הודעות רגילות עדיין עשויות להגיע כסוג incoming; נדרש סינון נוסף לפי `messageData.typeMessage`.
+
+**בחינת שלוש חלופות:**
+1. **Direct Base44 ingress** (פשוט לתפעול): endpoint מאומת, סינון מהיר של POST/JSON/GREEN Bearer + `typeMessage`, רק אירוע לחיצת כפתור ממשיך לאימות ו־DB; חסרון: אפילו בקשה שמסתיימת מיד עשויה לצרוך הרצה/קרדיטים או מגבלות Base44. **אסור לטעון שהריצה חינם ללא Credit Usage.**
+2. **Lightweight gateway חיצוני** כגון Edge/Function בעל מכסה חינמית מאומתת, מול Green API: מאמת סוד/גודל/צורה, מחזיר ACK **רק לאחר קליטה/דחייה בטוחה**, ומעביר ל־Base44 רק לחיצות; הודעות טקסט/מדיה/סטטוסים לא נכנסות ל־Base44. יתרון: פחות קריאות Base44; חסרון: תשתית נוספת, זמינות, מעקב, Rate Limits, אבטחה ועלות אפשרית אצל ספק ה־Edge. אם משתמשים במסנן בלבד בלי אחסון עמיד, יש לקבוע מה קורה אם Base44 לא זמין לפני ACK.
+3. **HTTP API polling** (ReceiveNotification + DeleteNotification): נותן FIFO לפי Green אבל דורש קריאות חוזרות גם בתור ריק ו־Delete בטוח; אופציה רק כגיבוי/במקרה של חסם ממשי ל־Webhook, לא ברירת מחדל חסכונית.
+
+**מדיניות ה־ACK:** GREEN API מציין חזרה של Webhook אחרי כ־1 דקה אם לא התקבל 200, עד 24 שעות. אין להחזיר 200 עבור אירוע עסקי שעלול ללכת לאיבוד: ACK אחרי רישום עמיד או דחייה בטוחה ומתועדת בלבד; אחרת צריך להחליט במפורש על החזרת שגיאה, דד־לטר והגנה מפני סופת ניסיונות/עלות. **לא להפעיל Endpoint ציבורי לפני QA של ACK אמיתי.**
+
+**מדידה נדרשת:** גודל `events` מכל הסוגים ליום, שיעור button clicks, קריאות Base44 שהתקבלו, עלויות Integration Credit בפועל (מד Base44 לפני/אחרי), עלות Edge חיצונית, עלות שמירת receipt, latency, שיעור retries ומצבי `needs_review`. אין התחייבות ל־0 קרדיטים; למזער גם תעבורה וגם צריכת Base44. אין Cron חדש עד שיימצא צורך. **מקטע הקוד הקיים:** `greenInteractiveHttpBoundary.ts`, `greenInteractiveHttpStaging.ts`, `whatsappInboundRateBudget.ts` — פנימיים ולא מפורסמים.
+
+## O2 — כפתורים עם זיהוי ההודעה המדויקת, ללא תלות בסדר (חובה לפני הפעלה)
+**אפשרי ונתמך בתיעוד Green API.** לכל הודעת שיבוץ יוצאת שומרים את `provider_message_id` האמיתי; בכל תגובת כפתור מסרבים להפעיל שינוי בלי `stanzaId` מקורי, `selectedId`, מזהה אירוע נכנס נפרד, חשבון שולח, chatId ספק, supplierId, eventServiceId, revision וחתימת action. **לא להתאים לפי כפתור ״מאשר״, זמן קבלת התגובה, ההודעה האחרונה או סדר האירועים.**
+
+**בדיקת Mock שבוצעה:** שלושה שיבוצים מאותו מספר ובאותו צ׳אט נענו בסדר B→C→A, כל סטטוס עודכן מול ה־EventService המתאים; callback כפול או לחיצה נוספת אחרי הכרעה לא משנים שיבוץ; stanzaId לא מוכר לא מתחלף בהודעה החדשה. `tests/whatsapp-interactive-out-of-order.test.mjs`. בוצעו גם מבחני cache/DB receipt/חתימת action קיימים. נדרש QA עם מזהי Green API אמיתיים, כולל סוגי `templateButtonsReplyMessage` ו־`buttonsResponseMessage`; דוגמת beta `interactiveButtonsReply` בדוקומנטציה דורשת אימות חשבון בפועל, כי הפורמט עשוי להשתנות.
+
+## O3 — הצ׳אט נשאר פתוח; הודעות חופשיות לא משנות שיבוץ
+**אפשרי — אין צורך בצ׳אט שרק הבוט כותב אליו.** ה־listener של אישור/דחייה מקבל **רק אירוע לחיצה בעל מזהה מקור וכפתור חתום**. טקסט (אפילו ״מאשר״/״דוחה״), הודעה מצוטטת רגילה, תמונה/קול/וידאו, מיקום, תגובה לא מוכרת או הודעת סטטוס מספק — לא מפעילים שינוי. אם שירותי WhatsApp אחרים במערכת מטפלים בהודעות חופשיות, יש למפות אותם ולמנוע הפעלה עקיפה של שינוי שיבוץ; לא לשנות את מנגנוני שירות הלקוחות.
+
+**בדיקת Mock שבוצעה:** `textMessage`, `quotedMessage`, `audioMessage`, `extendedTextMessage` נדחו *לפני כל DB lookup* במסלול השיבוץ, גם כשהתוכן ״מאשר״ ומצוטטת הודעת שיבוץ. `tests/whatsapp-interactive-out-of-order.test.mjs`.
+
+## O4 — ״פנייה למשרד״ עם הקשר להודעת השיבוץ (אופציונלי)
+**פתרון מומלץ:** כפתור URL נפתח ל־`https://wa.me/<office-number>?text=<encoded>`, עם טיוטת שאלה שהמשתמש יכול לערוך/לשלוח; אין שליחה אוטומטית בלחיצה. מקשרים אסמכתא יציבה (`outboxJobId`) + אפשרות לקטע קצר/מסונן מהודעת השיבוץ, במקום להעביר טקסט מלא המכיל טלפון, URL רגיש או מיילים.
+
+**מגבלה:** `quotedMessageId` של Green API נותן ציטוט **בהודעה שנשלחת על ידי API באותו צ׳אט**; אין דרך מבוססת־`wa.me` ליצור reply bubble אמיתי להודעה מצ׳אט אחר כשפותחים צ׳אט עם מספר משרד שונה. במקרה שהמשרד הוא אותו מספר/צ׳אט, אפשר להציע לספק Reply ידני בהודעת המקור; עדיין לא ניתן להבטיח שהתוכנה תתייחס לטקסט חופשי כפעולת שיבוץ. אין להציג קישור `wa.me` כציטוט Native.
+
+**הוכחת היתכנות בקוד (לא פעילה):** `whatsappOfficeInquiryLink.ts` מאפשר מצבים `none` (ברירת מחדל: שומר URL ישן), `reference` (אסמכתא בלבד), `excerpt` (אסמכתא + עד 120 תווים תוך סינון URL/מייל/מספר). `greenInteractiveOutbound.ts` מקבל `officeContextMode` **רק מתוך trusted backend config**, אינו משנה את ה־worker הקיים כשהפיצ׳ר כבוי. `tests/whatsapp-office-inquiry-link.test.mjs`: פירוק URL, escaping, היעדר leakage, קצר ומזוהה. מומלץ לבחור `reference` או `excerpt` רק לאחר אישור בעל מערכת, בדיקת תמיכת mixed buttons בחשבון, ודאגה שהמשרד מסוגל לחפש לפי האסמכתא.
+
+## סדר ביצוע ומדיניות שינוי
+- [x] מחקר מקורות רשמיים Green API ו־WhatsApp לקליטה, לחיצות ו־URL של צ׳אט.
+- [x] מימוש Mock לזיהוי כפתור מתוך הודעה מקורית, כולל 3 שיבוצים בסדר הפוך.
+- [x] בדיקת בידוד הודעות חופשיות, ללא DB ו־status transitions.
+- [x] בניית קוד אופציונלי לטקסט פנייה עם אסמכתא/תקציר ללא שינוי ברירת המחדל.
+- [ ] למדוד Credit Usage אמיתי של Base44 ל־Webhook direct מול proxy חיצוני ב־QA מורשה, בלי להריץ polling מאסיבי.
+- [ ] למפות הגדרות webhook קימות ב־Green API ו־Wasender לפני שינוי `incomingWebhook`/ביטול אירועים אחרים.
+- [ ] לאמת חשבון Green API ואת ה־mixed button + URL; לנסות שני מספרי QA מורשים אחרי אישור, ללא ספקים/לקוחות אמת.
+- [ ] לבדוק שבמערכת קיימת יכולת איתור מהיר למנהל באמצעות אסמכתת השיבוץ; אחרת להוסיף חיפוש מנהל read-only.
+- [ ] להחליט האם `reference` מספיק או להפעיל `excerpt` (עשוי לחשוף פרטי אירוע לא רצויים למספר המשרד המשותף בעתיד).
+- [ ] לקבוע ACK/retry אחרי דוגמה חיה, תקציב תעבורה וקרדיטים, ניטור ושחזור.
+- [ ] לא להפעיל את `interactive_outbound_live_enabled`, לא לפתוח Webhook ציבורי, לא לשנות תזמוני Watchdog/פייסינג/גיבויים לפני אישור מפורש ובדיקות.
+
+## מקורות שנבדקו
+- GREEN API: https://green-api.com/en/docs/api/receiving/technology-webhook-endpoint/
+- GREEN API HTTP polling: https://green-api.com/en/docs/api/receiving/technology-http-api/
+- GREEN API interactive selection: https://green-api.com/en/docs/api/receiving/notifications-format/selected-buttons/ButtonsResponseMessage/
+- GREEN API beta mixed buttons: https://green-api.com/en/docs/api/sending/SendInteractiveButtons/
+- GREEN API beta reply-only: https://green-api.com/en/docs/api/sending/SendInteractiveButtonsReply/
+- GREEN API beta incoming: https://green-api.com/en/docs/api/receiving/notifications-format/incoming-message/InteractiveButtonsReply/
+- GREEN API quoted outgoing: https://green-api.com/en/docs/api/sending/SendMessage/
+- WhatsApp official click-to-chat: https://faq.whatsapp.com/5913398998672934
+- Base44 pricing (credit quantities, **not per-endpoint billing proof**): https://base44.com/pricing
+
+**חיסכון:** אין שינוי חי ל־Webhook ואין Polling חדש; כל הבדיקות והקישורים נעשו עם Mock, לא על חשבון Green API או שליחות Base44. עלות Sandbox/Base44 בפועל לא אומתה.
