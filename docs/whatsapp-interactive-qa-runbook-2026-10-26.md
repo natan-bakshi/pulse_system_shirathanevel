@@ -86,6 +86,20 @@
 - [ ] **פעולה עתידית למנהל־העל:** להפעיל פעם אחת את הכפתור ״בדוק הגדרות Green API (קריאה אחת, ללא שינוי)״ אם נדרש מיפוי של החשבון. זו תהיה **קריאת Green API אמיתית אחת + קריאת Base44**, לא חלק מהבדיקות המקוריות.
 - [ ] **לפני פריסה:** להוכיח קבלת `200` בזמן הנדרש לפי Green, למפות כתובת webhook קיימת, להגדיר fallback עבור unknown Beta, ולמדוד Credit Usage, והכול בלי לקבוע ש־GetSettings מעיד על יכולת הכפתורים.
 
+## 10. תסריטי בירור לאירוע Green לא מזוהה — סשן 26.10.2026
+- [x] Callback אמין (Bearer/Account/Private Chat/Message ID/Timestamp) עם `typeMessage` חדש: רישום `WhatsAppInboundQuarantine` במצב `needs_review`, HMAC בלבד, אין Supplier CAS ואין HTTP ACK. התסריט רץ ב־Mock דרך `greenInteractiveHttpStaging.ts`.
+- [x] אותו Provider Event מגיע פעמיים, כולל שתי קריאות בו־זמנית: רשומה אחת בלבד; מחזירים `quarantined_unknown` עם `quarantineKind=stored|duplicate`, שתיהן ללא ACK חיובי או שליחה חוזרת.
+- [x] אותו Provider Event מגיע שוב עם Content שונה: `identity_conflict` מסווג כ־`quarantine_unavailable`; אין מסקנה על פעולה/ספק ואין רישום נוסף.
+- [x] SDK CREATE זורק timeout **אחרי שייתכן Commit**: Guard עמיד נותר, גם אחרי פקיעת lease; ממשיכים לבירור ידני, לא משחזרים יצירה אוטומטית.
+- [x] שגיאת DB בקריאה חוזרת/שחרור Guard: טיפול נכשל סגור ללא הודעה עסקית/200 ACK; נעילה קיימת לא מושמטת.
+- [x] חשבון Green שגוי, צ'אט קבוצתי, Sender Chat מזויף, Timestamp שפג/עתידי, מזהה אירוע לא תקין: אינם נשמרים ב־quarantine, ואינם מקבלים ACK.
+- [x] `unknownCallbackAudit` זמין רק למנהל־על, לכל היותר 40 רשומות עם projection; בדיקת `status` או `metrics` רגילה אינה טוענת quarantine; אין חשיפה של טקסט/טלפון/טוקן/מזהה ספק מלא.
+- [x] בדיקת `interactiveReadiness` כוללת חסימת הפעלה כאשר `unknown_guard_key` לא הוסדר, ותמיד מבהירה שחסר מנגנון התאוששות מ־Beta לא מוכר. אין endpoint חי.
+- [x] בדיקות כלליות: **673/673** Node עברו, Vite build ו־ESLint ממוקד תקינים, `git diff --check` נקי.
+- [ ] **חסם קריטי לפני Rollout:** HMAC metadata אינו גוף הודעה; אינו מאפשר לפענח בעתיד כפתור שלא זוהה ולא מתאים ל־200 ACK. יש לאמת חשבון Green אמיתי, לבחור עם בעל המערכת מסלול התאוששות ושמירה/פרטיות, ולוודא ניהול retries ועלויות בתוך 24 שעות.
+- **תכנון מפורט:** `docs/whatsapp-unknown-green-callback-quarantine-2026-10-26.md`.
+
+
 
 
 
