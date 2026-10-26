@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDispatchForProvider, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
+import {readSavedWhatsAppInteractivePolicy,saveWhatsAppInteractivePolicyDraft} from '../../shared/whatsappInteractiveSettingsStore.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
@@ -250,6 +251,23 @@ Deno.serve(async(req)=>{
     const body=await req.json().catch(()=>({}));
     const action=String(body.action||'status');
     const entity=client.asServiceRole.entities.WhatsAppQueueControl;
+    // Owner-only draft settings. They never activate interactive sends or webhook actions.
+    if(action==='interactiveGet'){
+      const current=await readSavedWhatsAppInteractivePolicy(client,body.provider);
+      return RESPONSE({success:true,...current,liveEnabled:false,noMessagesSent:true});
+    }
+    if(action==='interactiveSave'){
+      try{
+        const saved=await saveWhatsAppInteractivePolicyDraft(client,body);
+        return RESPONSE({success:true,...saved,liveEnabled:false,noMessagesSent:true});
+      }catch(error){
+        const code=Number((error as any)?.status)||500;
+        const status=[400,403,409].includes(code)?code:500;
+        return RESPONSE({success:false,error:status===500?'Interactive settings unavailable':
+          String((error as any)?.message||'Invalid interactive settings'),
+          liveEnabled:false,noMessagesSent:true},status);
+      }
+    }
     if(action==='configure'){
       const current=await readWhatsAppQueueControl(client);
       const wasender=validateInterval(body.wasenderIntervalMs);
