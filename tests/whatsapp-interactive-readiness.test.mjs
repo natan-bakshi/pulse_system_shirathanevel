@@ -20,6 +20,11 @@ test('all nominal settings STILL CANNOT claim provider QA, publish callback, or 
  assert.equal(report.protectedByDefault,true);
  assert.equal(report.liveSendConfigured,false);
  assert.equal(report.liveInboundEndpointAvailable,false);
+ assert.equal(report.inboundRoutingPolicy,'buttons_only_ignore_known_non_buttons');
+ assert.equal(report.knownNonButtonsIgnoredWithoutDatabase,true);
+ assert.equal(report.unsupportedButtonFormatsRequireReview,true);
+ assert.equal(report.officeContactOpensManualWhatsAppDraft,true);
+ assert.equal(report.inboundRoutingPolicyDoesNotEnableLiveWebhook,true);
  assert.equal(report.readinessNeverImpliesProviderDelivery,true);
  assert.equal(report.noProviderRequests,true);
  assert.equal(report.noBusinessWrites,true);
@@ -96,6 +101,8 @@ test('readiness UI invokes owner-only action on click and never opens a provider
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
  const endpoint=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
  assert.match(ui,/run\('interactiveReadiness'\)/);
+ assert.match(ui,/מדיניות קליטה שאושרה/);
+ assert.match(ui,/פורמט כפתור חדש ולא מזוהה/);
  assert.match(ui,/if\(action==='interactiveReadiness'\)/);
  assert.match(endpoint,/action==='interactiveReadiness'/);
  assert.doesNotMatch(endpoint,/interactive_outbound_live_enabled\s*:\s*true/);
