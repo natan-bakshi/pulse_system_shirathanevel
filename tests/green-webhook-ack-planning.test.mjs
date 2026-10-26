@@ -66,7 +66,10 @@ test('only demonstrably DURABLE terminal outcomes may qualify for an ACK candida
   {stage:'processed',result:'applied',reason:'applied'},
   {stage:'processed',result:'applied',reason:'already_applied'},
   {stage:'processed',result:'rejected',reason:'business_conflict'},
-  {stage:'processed',result:'duplicate',reason:'provider_event_already_recorded'},
+  {stage:'processed',result:'duplicate',reason:'provider_event_already_finalized',
+   terminalReceiptVerified:true,receiptState:'applied',resultCode:'applied'},
+  {stage:'processed',result:'duplicate',reason:'provider_event_already_finalized',
+   terminalReceiptVerified:true,receiptState:'rejected',resultCode:'business_conflict'},
   {stage:'processed',result:'needs_review',reason:'unknown_after_write'}
  ];
  for(const result of durable){
@@ -81,6 +84,14 @@ test('ambiguous, unverified and rate-limited outcomes NEVER silently ACK or repl
   {stage:'processed',result:'needs_review',reason:'receipt_finalization_unverified'},
   {stage:'processed',result:'needs_review',reason:'receipt_claim_unverified'},
   {stage:'processed',result:'held',reason:'concurrent_claim'},
+  {stage:'processed',result:'held',reason:'existing_receipt_not_finalized'},
+  {stage:'processed',result:'duplicate',reason:'provider_event_already_recorded'},
+  {stage:'processed',result:'duplicate',reason:'provider_event_already_finalized',
+   terminalReceiptVerified:false,receiptState:'applied',resultCode:'applied'},
+  {stage:'processed',result:'duplicate',reason:'provider_event_already_finalized',
+   terminalReceiptVerified:true,receiptState:'processing',resultCode:'applied'},
+  {stage:'processed',result:'duplicate',reason:'provider_event_already_finalized',
+   terminalReceiptVerified:true,receiptState:'applied',resultCode:'unknown_after_write'},
   {stage:'processed',result:'refused',reason:'receipt_registration_unverified'},
   {stage:'processed',result:'refused',reason:'outbox_lookup_unavailable'},
   {stage:'processed',result:'refused',reason:'unverified_button_binding'},
