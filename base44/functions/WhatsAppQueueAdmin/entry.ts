@@ -7,6 +7,7 @@ import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
+import {inspectOfficeAssignmentReference} from '../../shared/whatsappOfficeReferenceLookup.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
 const OWNER_EMAIL = 'natib8000@gmail.com';
@@ -328,6 +329,22 @@ Deno.serve(async(req)=>{
         return RESPONSE({success:true,readiness,noMessagesSent:true});
       }catch{return RESPONSE({success:false,error:'Interactive readiness check unavailable',
         noMessagesSent:true},503);}
+    }
+    if(action==='officeReferenceLookup'){
+      // Owner-only, operator-initiated exact Outbox ID lookup; never scan the
+      // message table, authorize a callback, send a message or mutate records.
+      try{
+        const lookup=await inspectOfficeAssignmentReference(client,body.reference);
+        return RESPONSE({success:true,lookup,noMessagesSent:true});
+      }catch(error){
+        const status=Number((error as any)?.status)||503;
+        const safe=[400,404,409,503].includes(status)?status:503;
+        return RESPONSE({success:false,error:({
+          400:'Invalid office reference',404:'Assignment reference not found',
+          409:'Assignment source is incomplete',
+          503:'Office reference lookup unavailable'
+        } as any)[safe],noMessagesSent:true},safe);
+      }
     }
     if(action==='inboundInspect'){
       // Owner-only, explicit, single-record, READ ONLY inspection.
