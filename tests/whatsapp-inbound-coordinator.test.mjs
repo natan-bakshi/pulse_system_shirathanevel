@@ -240,6 +240,28 @@ test('competing dashboard rejection causes business-conflict terminal, not a Wha
  assert.equal(f.records[0].state,'rejected');
  assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-abc'],'rejected');
 });
+test('durable business-conflict receipt is recognized on redelivery even if business status later appears pending',async()=>{
+ const f=fixture(),event=await signedEvent();
+ let reads=0;
+ const get=f.client.asServiceRole.entities.EventService.get;
+ f.client.asServiceRole.entities.EventService.get=async()=>{
+  reads++;
+  if(reads===2)f.service.supplier_statuses='{"supplier-abc":"rejected"}';
+  return get();
+ };
+ const one=await call(f,event);
+ assert.equal(one.status,'rejected');
+ assert.equal(one.reason,'business_conflict');
+ assert.equal(f.records[0].state,'rejected');
+ f.service.supplier_statuses='{"supplier-abc":"pending"}';
+ const replay=await call(f,event);
+ assert.equal(replay.status,'duplicate');
+ assert.equal(replay.receiptState,'rejected');
+ assert.equal(replay.resultCode,'business_conflict');
+ assert.equal(replay.terminalReceiptVerified,true);
+ assert.equal(f.stats.supplierWrites,0);
+ assert.equal(f.stats.creates,1);
+});
 test('ambiguous committed supplier CAS gets NEEDS_REVIEW and is NEVER tried twice',async()=>{
  const f=fixture(),event=await signedEvent();
  f.failure('after');
