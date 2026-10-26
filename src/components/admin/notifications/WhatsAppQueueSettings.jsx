@@ -47,6 +47,7 @@ export default function WhatsAppQueueSettings(){
   const [sourceAudit,setSourceAudit]=useState(null);
   const [inboundAudit,setInboundAudit]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
+  const [interactiveReadiness,setInteractiveReadiness]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
   const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
   const read=async()=>{
@@ -72,6 +73,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'חישוב מדדי התור נכשל');
         setMetrics(res.data.metrics);
         setNotice('מדידה היסטורית עודכנה ללא שליחת WhatsApp. זהו מדגם בלבד.');
+        return;
+      }
+      if(action==='interactiveReadiness'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת מוכנות כפתורים נכשלה');
+        setInteractiveReadiness(res.data.readiness);
+        setNotice('בדיקת מוכנות בוצעה לקריאה בלבד, ללא פנייה לספק WhatsApp.');
         return;
       }
       if(action==='inboundInspect'){
@@ -178,6 +185,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>בדיקת תגובות WhatsApp (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות כפתורי שיבוץ (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
@@ -185,6 +193,20 @@ export default function WhatsAppQueueSettings(){
       </div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+      {interactiveReadiness&&<details className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="font-medium cursor-pointer">מוכנות כפתורים — {interactiveReadiness.blockers?.length||0} תנאים עדיין לא הושלמו</summary>
+        <div className="pt-3 space-y-2">
+          <p className="text-amber-800 font-medium">הכפתורים אינם פעילים. אין אפשרות להפעיל אותם מהבדיקה הזו.</p>
+          <p className="text-xs text-gray-600">הבדיקה קוראת רק תצורה מקומית ומחזירה סימוני מוכנות. היא אינה מאמתת בפועל את התמיכה בחשבון Green API ואינה שולחת הודעות.</p>
+          {interactiveReadiness.unexpectedControlFlagEnabled&&<p role="alert" className="text-red-700 font-medium">דגל ההפעלה נשמר כפעיל באופן לא צפוי. מנגנון השליחה עדיין אינו מחובר בייצור; נדרש בירור לפני כל שינוי.</p>}
+          <ul className="space-y-1 text-xs">
+            {(interactiveReadiness.checks||[]).map(x=><li key={x.code}>
+              <strong className={x.passed?'text-green-700':'text-amber-800'}>{x.passed?'תקין':'לא הושלם'}</strong> · {x.label}
+            </li>)}
+          </ul>
+          <p className="text-xs text-gray-600">יש לאמת בנפרד קבלת הודעה אמיתית, קישור לשיבוץ, אימות ספק ומניעת כפילויות לפני אישור הפעלה. לא מוצגים מפתחות או מספרי טלפון.</p>
+        </div>
+      </details>}
       {inboundAudit&&<details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">תגובות כפתורים — בדיקת קליטה פנימית (לא פעיל בפרודקשן)</summary>
         <div className="pt-3 space-y-2">
