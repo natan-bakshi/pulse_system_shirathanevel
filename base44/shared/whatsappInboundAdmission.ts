@@ -70,12 +70,13 @@ export async function preflightWhatsAppAssignmentResponse(input:{
   if(!supplier||supplier.is_active===false||
    parseWhatsAppPhone(supplier.phone).chatId!==sender.chatId)
    return rejected('supplier_sender_mismatch');
-  if(!service||service.is_external===true||
-   !supplierAssigned(service.supplier_ids,signed.supplierId))
-   return rejected('supplier_not_assigned');
-  const rev=whatsappRevisionEligibility(service,signed.supplierId,signed.revision);
-  if(!rev.allowed)return rejected(rev.reason);
-  if(!supplierPending(service,signed.supplierId))return rejected('assignment_not_pending');
+  if(!service||service.is_external===true)return rejected('supplier_not_assigned');
+  // Once the signed original message, account and real supplier sender have
+  // been verified, construct the unique provider-event identity BEFORE
+  // checking today's business state. On a redelivery after a successful
+  // approve/reject, the supplier is no longer pending; only an EXISTING
+  // durable receipt with EXACTLY this identity may be classified as replay.
+  // No writes, retries or transitions are allowed on this branch.
   const receipt=normalizeInboundReceipt({
    companyId:signed.companyId,eventServiceId:signed.eventServiceId,
    supplierId:signed.supplierId,revision:signed.revision,
@@ -83,6 +84,14 @@ export async function preflightWhatsAppAssignmentResponse(input:{
    senderAccountId:signed.senderAccountId,providerEventId:input.providerEventId,
    providerMessageId:input.originalProviderMessageId,action:signed.action
   });
+  const historicalOnly=(reason:string)=>({admissible:false,reason,
+   verifiedReplayCandidate:receipt,noMessagesSent:true} as const);
+  if(!supplierAssigned(service.supplier_ids,signed.supplierId))
+   return historicalOnly('supplier_not_assigned');
+  const rev=whatsappRevisionEligibility(service,signed.supplierId,signed.revision);
+  if(!rev.allowed)return historicalOnly(rev.reason);
+  if(!supplierPending(service,signed.supplierId))
+   return historicalOnly('assignment_not_pending');
   return {admissible:true,reason:'verified_read_only',
    receipt,action:signed.action,expiresAt:signed.expiresAt,noMessagesSent:true,
    // Deliberately cannot apply without durable inbox claim and deployment gate.
