@@ -156,6 +156,46 @@ test('non-system owner cannot read or modify queue operations',async()=>{
    assert.equal(ctx.calls.length,0);
  }
 });
+test('owner office-reference lookup is exact, bounded, masked and performs no provider send',async()=>{
+ const row={...makeJob('outbox-ABC123','accepted'),
+  event_service_id:'service-ABC123',supplier_id:'supplier-ABC123',
+  source_type:'assignment_new',provider:'green',provider_message_id:'PRIVATE-PROVIDER-MESSAGE',
+  sender_account_id:'9903183013',chat_id:'972501234567@c.us',
+  assignment_revision:'r3',interactive_button_bindings_json:'PRIVATE-ACTION-TOKEN',
+  idempotency_key:'assignment:service-ABC123:supplier-ABC123:r3:SUPPLIER_NEW_ASSIGNMENT',
+  message_text:'PRIVATE-EVENT-MESSAGE'};
+ const service={id:'service-ABC123',event_id:'event-ABC123',service_name:'הרכב מוזיקלי',
+  supplier_ids:'["supplier-ABC123"]',supplier_statuses:'{"supplier-ABC123":"pending"}',
+  assignment_intent_mode:'durable_v1',
+  assignment_notification_intents:JSON.stringify([{
+   supplier_id:'supplier-ABC123',revision:3,state:'accepted',
+   key:'assignment:service-ABC123:supplier-ABC123:r3:SUPPLIER_NEW_ASSIGNMENT'
+  }])};
+ const ctx=context({jobs:[row],officeServices:[service],
+  officeEvents:[{id:'event-ABC123',event_name:'אירוע לדוגמה',event_date:'2027-06-14',client_phone:'PRIVATE-PHONE'}],
+  officeSuppliers:[{id:'supplier-ABC123',supplier_name:'נגן לדוגמה',phone:'0509999999'}]});
+ await ctx.invoke('status');
+ assert.deepEqual(ctx.officeReads,[],'normal status must not query office lookup');
+ const result=await ctx.invoke('officeReferenceLookup',{reference:row.id});
+ assert.equal(result.status,200);
+ assert.equal(result.body.lookup.reference,row.id);
+ assert.equal(result.body.lookup.eventName,'אירוע לדוגמה');
+ assert.equal(result.body.lookup.serviceName,'הרכב מוזיקלי');
+ assert.equal(result.body.lookup.supplierName,'נגן לדוגמה');
+ assert.equal(result.body.lookup.originState,'current_revision');
+ assert.equal(result.body.noMessagesSent,true);
+ assert.deepEqual(ctx.officeReads,['outbox','service','supplier','event']);
+ assert.equal(ctx.calls.length,0);
+ for(const hidden of ['PRIVATE-PROVIDER-MESSAGE','PRIVATE-ACTION-TOKEN','PRIVATE-EVENT-MESSAGE',
+  '0509999999','PRIVATE-PHONE','972501234567','9903183013'])
+  assert.equal(JSON.stringify(result.body).includes(hidden),false,hidden);
+ const invalid=await ctx.invoke('officeReferenceLookup',{reference:'outbox-ABC123 '});
+ assert.equal(invalid.status,400);
+ assert.equal(ctx.officeReads.length,4,'invalid reference must not touch DB');
+ const missing=await ctx.invoke('officeReferenceLookup',{reference:'missing-outbox'});
+ assert.equal(missing.status,404);
+ assert.equal(ctx.officeReads.length,5,'missing reference must not query related records');
+});
 test('interactive drafts are gated by system-owner auth and cannot dispatch WhatsApp',async()=>{
   const actor={role:'admin',email:'natib8000@gmail.com'};
   const ctx=context({actor});
