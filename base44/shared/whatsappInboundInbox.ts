@@ -80,7 +80,7 @@ async function takeCreateLease(client:any){
     inbound_create_until:control.inbound_create_until??null,
     inbound_guard_key:control.inbound_guard_key??null
    },{$set:{inbound_create_owner:owner,inbound_create_until:nowIso(current+LEASE_MS)}});
-   if(won?.updated===1)return {db,id:control.id,owner};
+   if(won?.updated===1)return {db,id:control.id,owner,guardValue:control.inbound_guard_key??null};
   }
   if(attempt<LOCK_ATTEMPTS-1)await new Promise(resolve=>setTimeout(resolve,25+attempt*5));
  }
@@ -118,7 +118,7 @@ export async function registerVerifiedInboundReceipt(client:any,raw:any){
    // Durable pre-CREATE fence. If any subsequent operation is ambiguous,
    // keep this field set, blocking future registrations until human review.
    const guarded=await lease.db.updateMany({
-    id:lease.id,inbound_create_owner:lease.owner,inbound_guard_key:null
+    id:lease.id,inbound_create_owner:lease.owner,inbound_guard_key:lease.guardValue
    },{$set:{inbound_guard_key:receipt.receiptKey}});
    if(guarded?.updated!==1)throw entityError('inbound_registration_lease_lost');
    guardKey=receipt.receiptKey;
