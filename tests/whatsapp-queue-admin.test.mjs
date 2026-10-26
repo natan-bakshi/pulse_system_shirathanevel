@@ -354,6 +354,23 @@ test('bulk cancel and archive cannot mutate active/in-flight jobs',async()=>{
  assert.equal(ctx.jobs[0].archived,true);
  assert.equal(ctx.jobs[1].archived,true);
 });
+test('manual admin retry refuses a frozen interactive assignment even after note or verifiedNotSent',async()=>{
+ for(const oldState of ['failed','unknown']){
+  const protectedJob={...makeJob('job-interactive',oldState),
+   requested_provider:'green',sender_account_id:'9903183013',
+   assignment_revision:'r4',interactive_button_bindings_json:'sealed-frozen-snapshot',
+   provider_message_id:oldState==='unknown'?'':'',attempt_count:1};
+  const ctx=context({jobs:[protectedJob]});
+  const result=await ctx.invoke('retry',{id:protectedJob.id,
+   note:'Verified with provider history: may not have sent',
+   verifiedNotSent:true});
+  assert.equal(result.status,409);
+  assert.match(result.body.error,/Interactive assignment retry requires provider reconciliation/);
+  assert.equal(protectedJob.status,oldState);
+  assert.equal(protectedJob.attempt_count,1);
+  assert.equal(ctx.calls.length,0);
+ }
+});
 test('definitely failed messages can be retried with reason, no silent duplicates',async()=>{
  const ctx=context({jobs:[makeJob('job-a','failed'),makeJob('job-b','accepted')]});
  let r=await ctx.invoke('retry',{id:'job-a',note:'Verified invalid number corrected'});
