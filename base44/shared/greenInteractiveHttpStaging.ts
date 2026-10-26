@@ -17,11 +17,7 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  client:any;rolloutAuthorized:boolean;accountCapabilityVerified:boolean;
  webhookSecret:string;actionSigningSecret:string;expectedInstanceId:string;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
- maxPerMinute?:number;now?:number;subtle?:SubtleCrypto;
- // Only a trusted, independently verified owner-approved routing decision;
- // never infer that plain-text messages are disposable merely because they
- // do not alter supplier assignments.
- ordinaryInboundHandlingVerified?:boolean
+ maxPerMinute?:number;now?:number;subtle?:SubtleCrypto
 }){
  const decoded=await decodeFutureGreenInteractiveHttpRequest(request,{
   rolloutAuthorized:opts?.rolloutAuthorized===true,
@@ -33,15 +29,20 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  const now=opts.now??Date.now();
  // Verify exact Green instance and recognized selection BEFORE any DB query.
  if(!parseGreenButtonSelection(decoded.rawCallback,opts.expectedInstanceId,now)){
-  // A verified ordinary text/media event is intentionally ignored BEFORE any
-  // DB or Base44 entity calls. Unknown button formats remain unverified; never
-  // pretend that a beta callback we cannot parse is a harmless text message.
-  const benign=isVerifiedGreenNonButtonEvent(decoded.rawCallback,opts.expectedInstanceId);
-  return {stage:'invalid_selection',
-   reason:benign?'recognized_non_button_event':'unverified_green_button_shape',
-   verifiedProviderAndAccount:benign,
-   ordinaryInboundHandlingVerified:opts.ordinaryInboundHandlingVerified===true,
-   providerCalls:0,businessWritesAuthorized:false};
+  // Owner-approved policy: ONLY an authenticated, account-matched Green
+  // button click enters the assignment engine. Known text/quoted/media,
+  // reactions and non-button provider notifications are ignored entirely in
+  // this ISOLATED future handler, without a DB query, queue job or WhatsApp
+  // action. Contact-office is a wa.me URL, not an inbound approval callback.
+  // Unknown beta types are NOT guessed to be manual messages: they remain
+  // unrecognized so a new button shape cannot be silently lost on rollout.
+  if(isVerifiedGreenNonButtonEvent(decoded.rawCallback,opts.expectedInstanceId))
+   return {stage:'ignored_non_button',reason:'owner_approved_buttons_only_filter',
+    verifiedProviderAndAccount:true,assignmentOnlyRoute:true,
+    noDatabaseCalls:true,providerCalls:0,businessWritesAuthorized:false};
+  return {stage:'invalid_selection',reason:'unverified_green_button_shape',
+   verifiedProviderAndAccount:false,providerCalls:0,
+   businessWritesAuthorized:false};
  }
  const budget=await reserveVerifiedGreenInboundBudget(opts.client,{
   authenticated:true,trustedRolloutEnabled:true,maxPerMinute:opts.maxPerMinute,now
