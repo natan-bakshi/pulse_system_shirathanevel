@@ -197,6 +197,9 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
         if(name.endsWith('whatsappInboundAudit.ts'))return {
           summarizeInboundWhatsAppReceipts:()=>{throw Error('Metrics must not touch inbound receipt audit')}
         };
+        if(name.endsWith('whatsappInboundInvestigation.ts'))return {
+          inspectInboundReceiptReadOnly:()=>{throw Error('Metrics must not touch receipt investigation')}
+        };
         if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
       }
