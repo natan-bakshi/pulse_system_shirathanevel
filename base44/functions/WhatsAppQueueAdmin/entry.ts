@@ -157,6 +157,12 @@ async function mutateOne(client:any,jobId:string,action:string,body:any,actor:an
     patch.status='cancelled';patch.completed_at=stamp;patch.last_error='Cancelled by system administrator before dispatch';
   }else if(action==='retry'){
     if(!EDITABLE_FAILED.has(prior))return {success:false,error:'Manual retry is restricted to failed/unknown messages',statusCode:409};
+    // A frozen button snapshot was signed against one exact provider message,
+    // sender account and assignment revision. Requeueing after any prior
+    // attempt may regenerate/replay the wrong action; verification is NOT
+    // provided by a free-text admin note. Require a separate audited review.
+    if(row.interactive_button_bindings_json||row.sender_account_id||row.assignment_revision)
+      return {success:false,error:'Interactive assignment retry requires provider reconciliation; do not resend this job',statusCode:409};
     if(prior==='unknown' && (body.verifiedNotSent!==true || note.length<12)){
       return {success:false,error:'Unknown delivery requires explicit provider verification and a written reason',statusCode:409};
     }
