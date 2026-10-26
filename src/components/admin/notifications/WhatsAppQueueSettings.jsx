@@ -206,6 +206,7 @@ export default function WhatsAppQueueSettings(){
         <summary className="font-medium cursor-pointer">מוכנות כפתורים — {interactiveReadiness.blockers?.length||0} תנאים עדיין לא הושלמו</summary>
         <div className="pt-3 space-y-2">
           <p className="text-amber-800 font-medium">הכפתורים אינם פעילים. אין אפשרות להפעיל אותם מהבדיקה הזו.</p>
+          <p className="text-xs text-gray-700">מדיניות קליטה שאושרה: רק לחיצה מזוהה על כפתורי אישור/דחייה תטופל כשיבוץ. הודעות ידניות, קוליות, תמונות ותגובות רגילות מסוננות ללא קריאות למסד. כפתור ״פנייה למשרד״ פותח טיוטת WhatsApp עם אסמכתא ואינו מאשר או דוחה שיבוץ. פורמט כפתור חדש ולא מזוהה ייבדק ולא יימחק אוטומטית. מדיניות זו אינה משנה חיבורי WhatsApp אחרים.</p>
           <p className="text-xs text-gray-600">הבדיקה קוראת רק תצורה מקומית ומחזירה סימוני מוכנות. היא אינה מאמתת בפועל את התמיכה בחשבון Green API ואינה שולחת הודעות.</p>
           {interactiveReadiness.unexpectedControlFlagEnabled&&<p role="alert" className="text-red-700 font-medium">דגל ההפעלה נשמר כפעיל באופן לא צפוי. מנגנון השליחה עדיין אינו מחובר בייצור; נדרש בירור לפני כל שינוי.</p>}
           <ul className="space-y-1 text-xs">
