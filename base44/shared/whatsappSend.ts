@@ -176,6 +176,12 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
       Array.isArray(interactivePreview.body?.buttons)&&
       interactivePreview.body.buttons.length>=1&&interactivePreview.body.buttons.length<=3;
     if(!valid)throw invalidInput('Invalid interactive WhatsApp transport preview');
+    // A signed button references the SENDING instance, not merely the current
+    // default provider. Switching Green accounts must not send the frozen
+    // action from a different WhatsApp number. Fail before any HTTP request.
+    if(!/^[0-9]{5,20}$/.test(String(job.sender_account_id||''))||
+      Deno.env.get('GREEN_API_INSTANCE_ID')!==job.sender_account_id)
+      throw invalidInput('Interactive sender account no longer matches instance');
     return callGreenApi(interactivePreview.method,interactivePreview.body);
   }
   return provider === 'wasender'
