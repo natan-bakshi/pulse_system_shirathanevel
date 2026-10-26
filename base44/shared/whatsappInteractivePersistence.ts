@@ -4,7 +4,7 @@ import {validateAssignmentMessageContext} from './whatsappInteractiveContext.ts'
 export function assignmentOriginFromOutbox(job:any,metadata:any){
  if(!job||!metadata||job.status!=='accepted'||!job.provider_message_id)return null;
  if(job.id!==metadata.outboxJobId||job.event_service_id!==metadata.eventServiceId||
-  job.supplier_id!==metadata.supplierId)return null;
+  job.supplier_id!==metadata.supplierId||job.chat_id!==metadata.chatId)return null;
  if(job.provider!==metadata.provider||job.provider_message_id!==metadata.providerMessageId)return null;
  try{return validateAssignmentMessageContext({...metadata,status:'accepted'});}catch{return null;}
 }
