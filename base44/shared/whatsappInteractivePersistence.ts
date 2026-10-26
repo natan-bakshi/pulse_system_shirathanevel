@@ -5,7 +5,11 @@ export function assignmentOriginFromOutbox(job:any,metadata:any){
  if(!job||!metadata||job.status!=='accepted'||!job.provider_message_id)return null;
  if(job.id!==metadata.outboxJobId||job.event_service_id!==metadata.eventServiceId||
   job.supplier_id!==metadata.supplierId||job.chat_id!==metadata.chatId)return null;
- if(job.provider!==metadata.provider||job.provider_message_id!==metadata.providerMessageId)return null;
+ // Never rely only on a callback's claimed sender account or revision. Both
+ // must have been snapshotted onto the original Outbox job BEFORE dispatch.
+ if(job.provider!==metadata.provider||job.provider_message_id!==metadata.providerMessageId||
+  job.sender_account_id!==metadata.senderAccountId||
+  job.assignment_revision!==metadata.revision)return null;
  try{return validateAssignmentMessageContext({...metadata,status:'accepted'});}catch{return null;}
 }
 export async function loadAssignmentOriginFromOutbox(entity:{get:(id:string)=>Promise<any>},metadata:any){
