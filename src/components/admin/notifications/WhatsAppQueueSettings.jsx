@@ -49,6 +49,7 @@ export default function WhatsAppQueueSettings(){
   const [inboundAudit,setInboundAudit]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
+  const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
   const [officeReference,setOfficeReference]=useState('');
   const [officeLookup,setOfficeLookup]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
@@ -82,6 +83,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'לא ניתן לאתר את אסמכתת השיבוץ');
         setOfficeLookup(res.data.lookup);
         setNotice('השיבוץ אותר לפי אסמכתא בלבד, ללא שליחת הודעות או שינוי נתונים.');
+        return;
+      }
+      if(action==='greenWebhookSettingsAudit'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת הגדרות Green API נכשלה');
+        setGreenWebhookSettings(res.data.settings);
+        setNotice('הגדרות Green נבדקו באמצעות קריאת API אחת בלבד. לא שונו הגדרות ולא נשלחו הודעות.');
         return;
       }
       if(action==='interactiveReadiness'){
@@ -195,6 +202,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>בדיקת תגובות WhatsApp (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות כפתורי שיבוץ (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדוק הגדרות Green API (קריאה אחת, ללא שינוי)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
@@ -202,6 +210,26 @@ export default function WhatsAppQueueSettings(){
       </div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+      {greenWebhookSettings&&<details open className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="cursor-pointer font-medium">מיפוי Green API הקיים — בדיקת GetSettings לקריאה בלבד</summary>
+        <div className="pt-3 space-y-2 text-xs">
+          <p className="text-gray-600">בדיקה יזומה אחת בלבד; לא משנה כתובת Webhook, מרווחי שליחה או סוגי התראות. אין כאן אישור שהכפתורים נתמכים בחשבון.</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            <span>Webhook מוגדר: {greenWebhookSettings.webhookConfigured?'כן':'לא'}</span>
+            <span>טכנולוגיית קליטה: {greenWebhookSettings.webhookDeliveryMode==='push_configured'?'Push':'Polling או ללא הגדרה'}</span>
+            <span>התראות נכנסות: {greenWebhookSettings.notificationFlags?.incomingWebhook==='yes'?'פעילות':greenWebhookSettings.notificationFlags?.incomingWebhook==='no'?'כבויות':'לא ידוע'}</span>
+            <span>סוד Webhook: {greenWebhookSettings.webhookTokenConfigured?'מוגדר':'לא מוגדר'}</span>
+            <span>קטגוריות פעילות: {greenWebhookSettings.activeCategories??'לא ידוע'}</span>
+            <span>מרווח ספק נוכחי: {greenWebhookSettings.sendDelayMs===null?'לא ידוע':greenWebhookSettings.sendDelayMs+' מילישניות'}</span>
+          </div>
+          {greenWebhookSettings.existingWebhookMustBePreserved&&<p className="text-amber-800 font-medium">קיימת כתובת Webhook! אסור להחליף אותה בלי לוודא שממשיכים לטפל בכל ההתראות שכבר מגיעות אליה.</p>}
+          {greenWebhookSettings.endpointProtocol==='non_https_or_invalid'&&<p className="text-amber-800">כתובת Webhook קיימת אינה כתובת HTTPS תקינה — נדרש בירור.</p>}
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(greenWebhookSettings.notificationFlags||{}).map(([key,value])=><span key={key} className="rounded border px-2 py-1">{key}: {value==='yes'?'כן':value==='no'?'לא':'לא ידוע'}</span>)}
+          </div>
+          <p className="text-gray-600">מפתחות, כתובות Webhook, מספרי טלפון ופרטי חשבון אינם מוצגים או מועברים לדפדפן. הבדיקה אינה שולחת הודעות WhatsApp ואינה בודקת קליטת כפתור אמיתית.</p>
+        </div>
+      </details>}
       {interactiveReadiness&&<details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">מוכנות כפתורים — {interactiveReadiness.blockers?.length||0} תנאים עדיין לא הושלמו</summary>
         <div className="pt-3 space-y-2">
