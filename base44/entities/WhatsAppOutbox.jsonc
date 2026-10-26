@@ -144,6 +144,14 @@
     "provider_message_id": {
       "type": "string"
     },
+    "sender_account_id": {
+      "type": "string",
+      "description": "Future interactive origin: immutable sending session identity; never infer from a reply or queue default"
+    },
+    "assignment_revision": {
+      "type": "string",
+      "description": "Future interactive origin: exact supplier assignment-intent revision frozen at enqueue"
+    },
     "attempt_count": {
       "type": "number",
       "default": 0
