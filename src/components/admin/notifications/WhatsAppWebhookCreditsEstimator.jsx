@@ -1,6 +1,5 @@
 import React,{useMemo,useState} from 'react';
 import {Input} from '@/components/ui/input';
-import {Label} from '@/components/ui/label';
 import {estimateGreenWebhookInvocationCredits} from '@/lib/whatsappWebhookCreditModel';
 
 // All math is client-only. This widget never calls a provider, Base44
