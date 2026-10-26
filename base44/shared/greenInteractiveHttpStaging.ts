@@ -17,7 +17,11 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  client:any;rolloutAuthorized:boolean;accountCapabilityVerified:boolean;
  webhookSecret:string;actionSigningSecret:string;expectedInstanceId:string;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
- maxPerMinute?:number;now?:number;subtle?:SubtleCrypto
+ maxPerMinute?:number;now?:number;subtle?:SubtleCrypto;
+ // Only a trusted, independently verified owner-approved routing decision;
+ // never infer that plain-text messages are disposable merely because they
+ // do not alter supplier assignments.
+ ordinaryInboundHandlingVerified?:boolean
 }){
  const decoded=await decodeFutureGreenInteractiveHttpRequest(request,{
   rolloutAuthorized:opts?.rolloutAuthorized===true,
@@ -36,6 +40,7 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
   return {stage:'invalid_selection',
    reason:benign?'recognized_non_button_event':'unverified_green_button_shape',
    verifiedProviderAndAccount:benign,
+   ordinaryInboundHandlingVerified:opts.ordinaryInboundHandlingVerified===true,
    providerCalls:0,businessWritesAuthorized:false};
  }
  const budget=await reserveVerifiedGreenInboundBudget(opts.client,{
