@@ -141,7 +141,9 @@ test('reordered duplicate provider event and a different later click never modif
  const first=f.callback(1,'assignment_approve','A');
  const firstResult=await f.run(first);
  assert.equal(firstResult.status,'applied',JSON.stringify(firstResult));
- assert.equal((await f.run(first)).status,'refused');
+ const repeated=await f.run(first);
+ assert.equal(repeated.status,'duplicate');
+ assert.equal(repeated.terminalReceiptVerified,true);
  const newClick=f.callback(1,'assignment_reject','X');
  assert.equal((await f.run(newClick)).status,'refused');
  assert.equal(f.counters.supplierWrites,1);
