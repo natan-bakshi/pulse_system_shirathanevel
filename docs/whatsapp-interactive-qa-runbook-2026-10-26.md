@@ -77,6 +77,16 @@
 - [ ] נדרש לאמת מה החשבון הספציפי של Green שולח עבור כפתורים ולוודא שלא משבשים webhookUrl/צרכנים קיימים. לבחון שני מספרי QA מורשים בלבד אחרי אישור נפרד, בלי שירותי אמת.
 - **מסמך ההחלטה:** `docs/whatsapp-buttons-only-inbound-filter-2026-10-26.md`.
 
+## 9. בדיקת Green GetSettings בקריאה אחת + מטריצת HTTP מדומה, 26.10.2026
+- [x] **GetSettings Mock בלבד:** 1 GET ל־`https://api.green-api.com/waInstance<ID>/getSettings/<TOKEN>`, ללא retry, ללא כתיבת Green/שינוי מרווחי שליחה. נבדקה הימצאות URL, האם incomingWebhook=yes, דגלי התראות, נוכחות סוד וגילוי כתובת HTTP שאינה HTTPS. מספר WhatsApp/WID, URL/נתיב Webhook, API token, `webhookUrlToken` ו־Raw Error לעולם אינם נחשפים בתוצאת הבדיקה.
+- [x] **בדיקות הרשאה:** רק owner במערכת שירת הנבל יכול להפעיל `greenWebhookSettingsAudit`; דוח `status`, `metrics` או `interactiveReadiness` אינו קורא ל־Green. קריאה יזומה תבוצע **רק לאחר לחיצה** ב־UI, ובקשות test נבדקו ב־Mocks.
+- [x] **המלצה אם יש URL קיים:** להציג חסימה תכנונית `existingWebhookMustBePreserved` גם אם כל שאר הדגלים נראים תקינים; אין להריץ `SetSettings`, שמאתחל את חשבון Green, בלי נוהל מעבר והבנת הצרכנים הקיימים.
+- [x] **HTTP ACK mock:** כל תוצאת `ignored_non_button` מאומתת או `applied`/דחייה או duplicate בעל receipt סופי מקבלת **המלצת** 200; כל תוצאה לא מזוהה/לא מאומתת, DB/Rate guard לא ודאי אינה 200. קודי HTTP לא פורסמו, לא התקבל webhook אמיתי ואין חסימת provider retries חיה.
+- [x] **662/662** בדיקות Node עברו יחד עם Vite build, ESLint ממוקד ו־`git diff --check`. אין הודעות בדיקה שנשלחו.
+- [ ] **פעולה עתידית למנהל־העל:** להפעיל פעם אחת את הכפתור ״בדוק הגדרות Green API (קריאה אחת, ללא שינוי)״ אם נדרש מיפוי של החשבון. זו תהיה **קריאת Green API אמיתית אחת + קריאת Base44**, לא חלק מהבדיקות המקוריות.
+- [ ] **לפני פריסה:** להוכיח קבלת `200` בזמן הנדרש לפי Green, למפות כתובת webhook קיימת, להגדיר fallback עבור unknown Beta, ולמדוד Credit Usage, והכול בלי לקבוע ש־GetSettings מעיד על יכולת הכפתורים.
+
+
 
 
 
