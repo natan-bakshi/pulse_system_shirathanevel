@@ -83,7 +83,8 @@ test('provider authentication and expected instance are mandatory before any fil
 });
 test('edge gate cannot fake ACK decision or business transition: it has no HTTP/network/DB capability',()=>{
  const src=fs.readFileSync('base44/shared/greenButtonsOnlyEdgeIngress.ts','utf8');
- assert.doesNotMatch(src,/\b(?:Deno\.serve|fetch\(|\.updateMany\(|\.create\(|\.filter\()/);
+ const code=src.split('\n').filter(line=>!line.trim().startsWith('//')).join('\n');
+ assert.doesNotMatch(code,/\b(?:Deno\.serve|fetch\(|\.updateMany\(|\.create\(|\.filter\()/);
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
  assert.doesNotMatch(ui,/planGreenButtonsOnlyEdgeIngress/);
  assert.equal(planFutureGreenWebhookAck({stage:'ignored_non_button',
