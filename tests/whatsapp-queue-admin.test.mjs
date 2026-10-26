@@ -354,6 +354,26 @@ test('bulk cancel and archive cannot mutate active/in-flight jobs',async()=>{
  assert.equal(ctx.jobs[0].archived,true);
  assert.equal(ctx.jobs[1].archived,true);
 });
+test('owner queue UI hides Retry for protected interactive records and never returns signed buttons',async()=>{
+ const protectedJob={...makeJob('job-protected','failed'),
+  sender_account_id:'9903183013',assignment_revision:'r4',
+  interactive_button_bindings_json:'PRIVATE-SIGNED-SNAPSHOT',
+  status:'failed'};
+ const ctx=context({jobs:[protectedJob]});
+ const listed=await ctx.invoke('list');
+ assert.equal(listed.status,200);
+ assert.equal(listed.body.rows[0].canRetry,false);
+ assert.equal(listed.body.rows[0].interactiveReviewRequired,true);
+ assert.equal(JSON.stringify(listed.body).includes('PRIVATE-SIGNED-SNAPSHOT'),false);
+ assert.equal(JSON.stringify(listed.body).includes('9903183013'),false);
+ const detailed=await ctx.invoke('get',{id:protectedJob.id});
+ assert.equal(detailed.body.message.canRetry,false);
+ assert.equal(JSON.stringify(detailed.body).includes('PRIVATE-SIGNED-SNAPSHOT'),false);
+ const projected=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
+ const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueMessages.jsx','utf8');
+ assert.match(projected,/canRetry:EDITABLE_FAILED\.has\(job\.status\)&&!interactiveReviewRequired/);
+ assert.match(ui,/row\.interactiveReviewRequired/);
+});
 test('manual admin retry refuses a frozen interactive assignment even after note or verifiedNotSent',async()=>{
  for(const oldState of ['failed','unknown']){
   const protectedJob={...makeJob('job-interactive',oldState),
