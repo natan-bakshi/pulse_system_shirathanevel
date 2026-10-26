@@ -3,6 +3,7 @@
 import { readWhatsAppQueueControl } from './whatsappOutbox.ts';
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { sendWhatsAppTransport } from './whatsappSend.ts';
+import {prepareGreenInteractiveWorkerCandidate} from './whatsappInteractiveWorkerBridge.ts';
 
 const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
 const LEASE_MS = 120_000;           // Longer than one worker, recovered by watchdog.
@@ -443,7 +444,33 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         await sleep(wait);continue;
       }
 
-      const job=options.job,attempt=Number(job.attempt_count||0)+1;
+      // Dormant owner-gated bridge. The production wrapper deliberately does
+      // NOT supply opts.interactiveConfig; the control schema defaults OFF.
+      // Ordinary WhatsApp jobs avoid every extra lookup and retain their
+      // exact transport, pacing, UNKNOWN and idempotency behavior.
+      let candidate:any={kind:'legacy',job:options.job,preview:null};
+      if(opts.interactiveConfig && control.interactive_outbound_live_enabled===true){
+        try{
+          candidate=await queueStage('interactive_pre_dispatch',()=>
+            prepareGreenInteractiveWorkerCandidate(client,options.job,provider,
+              control,opts.interactiveConfig));
+        }catch{
+          // No provider attempt has occurred. Quarantine ONLY this job;
+          // leave other suppliers/invoices free to drain normally.
+          const refused=await queueStage('interactive_pre_dispatch_hold',()=>
+            db.WhatsAppOutbox.updateMany({
+              id:options.job.id,status:options.job.status
+            },{$set:{status:'failed',error_code:0,
+              last_error:'Interactive preparation failed before provider dispatch; review required',
+              completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+          if(refused?.updated!==1){
+            lastError='Interactive job preparation not safely quarantined';break;
+          }
+          processed++;failed++;
+          continue;
+        }
+      }
+      const job=candidate.job,attempt=Number(job.attempt_count||0)+1;
       const startedAt=new Date().toISOString();
       // Split due→rate-limited eligibility from eligibility→worker claim.
       // Rate barrier is captured from BEFORE this message takes its slot.
@@ -452,7 +479,16 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       const dueAt=Math.min(Date.parse(startedAt),Math.max(asEpoch(job.created_date),asEpoch(job.available_at)));
       const prevDispatch=asEpoch(providerLastDispatchAt);
       const rateReadyAt=Math.max(dueAt,prevDispatch?prevDispatch+intervalMs:0);
-      const jobClaim=await queueStage('job_claim',()=>db.WhatsAppOutbox.updateMany({id:job.id,status:job.status},{$set:{
+      // The frozen account, revision and entire signed snapshot must still
+      // equal the verified pre-dispatch record when we claim the job.
+      const claimFilter:any={id:job.id,status:job.status};
+      if(candidate.kind==='interactive')Object.assign(claimFilter,{
+        attempt_count:job.attempt_count??null,
+        sender_account_id:job.sender_account_id,
+        assignment_revision:job.assignment_revision,
+        interactive_button_bindings_json:job.interactive_button_bindings_json
+      });
+      const jobClaim=await queueStage('job_claim',()=>db.WhatsAppOutbox.updateMany(claimFilter,{$set:{
         status:'sending',send_started_at:startedAt,attempt_count:attempt,lease_token:token,provider,
         worker_run_id:token,worker_wake_reason:wakeReason,job_claimed_at:startedAt,
         rate_ready_at:rateReadyAt?new Date(rateReadyAt).toISOString():startedAt,
@@ -466,7 +502,11 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         next_allowed_at:new Date(Date.now()+intervalMs).toISOString(),last_worker_at:startedAt
       }}));
       if(timeSlot?.updated!==1) {
-        await db.WhatsAppOutbox.updateMany({id:job.id,status:'sending',lease_token:token},{$set:{status:'queued',send_started_at:''}});
+        await db.WhatsAppOutbox.updateMany({id:job.id,status:'sending',lease_token:token},{$set:{
+          status:candidate.kind==='interactive'?job.status:'queued',
+          send_started_at:candidate.kind==='interactive'?job.send_started_at||'':'',
+          ...(candidate.kind==='interactive'?{attempt_count:job.attempt_count||0}:{})
+        }});
         lastError='Lost WhatsApp worker lease before dispatch';
         break;
       }
@@ -477,7 +517,11 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       let receipt:any=null,transportError:any=null;
       try{
         // This is the ONLY provider call. It is never retried by this worker.
-        receipt=await (opts.transport||sendWhatsAppTransport)(job,provider,client);
+        const dispatchJob=candidate.kind==='interactive'
+          ? {...job,status:'sending',provider,lease_token:token,
+             attempt_count:attempt,send_started_at:startedAt}:job;
+        receipt=await (opts.transport||sendWhatsAppTransport)(
+          dispatchJob,provider,client,candidate.preview);
         if(!String(receipt?.messageId||'').trim())
           throw Object.assign(new Error('Provider returned no verified message ID'),{
             deliveryUncertain:true,errorCode:502
