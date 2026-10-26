@@ -95,6 +95,14 @@
     },
     "enqueue_until": {
       "type": "string"
+    },
+    "interactive_assignment_green_policy_json": {
+      "type": "string",
+      "description": "System owner only: versioned, disabled interactive assignment draft for Green API"
+    },
+    "interactive_assignment_wasender_policy_json": {
+      "type": "string",
+      "description": "System owner only: versioned, disabled interactive assignment draft for WasenderAPI"
     }
   },
   "required": [
