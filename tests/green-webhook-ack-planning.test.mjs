@@ -15,11 +15,17 @@ const event=type=>({
 });
 test('only recognized ordinary message shapes from verified GREEN account are ignorable',()=>{
  for(const type of ['textMessage','extendedTextMessage','audioMessage','imageMessage',
-  'videoMessage','documentMessage','stickerMessage','locationMessage','contactMessage'])
+  'videoMessage','documentMessage','stickerMessage','locationMessage','contactMessage',
+  'contactsArrayMessage','quotedMessage','reactionMessage','groupInviteMessage',
+  'pollMessage','pollUpdateMessage','editedMessage','deletedMessage',
+  'productMessage','orderMessage'])
   assert.equal(isVerifiedGreenNonButtonEvent(event(type),account),true,type);
  for(const invalid of [
   {...event('textMessage'),instanceData:{idInstance:9900001111,typeInstance:'whatsapp'}},
-  {...event('textMessage'),typeWebhook:'outgoingMessageStatus'},
+  {...event('textMessage'),typeWebhook:'unknownWebhookType'},
+  {...event('listResponseMessage')},
+  {...event('textMessage'),messageData:{typeMessage:'textMessage',
+   listResponseMessage:{title:'unexpected interactive selection'}}},
   {...event('interactiveButtonsResponse')},
   {...event('templateButtonsReplyMessage')},
   {...event('textMessage'),messageData:{typeMessage:'textMessage',
@@ -45,25 +51,30 @@ test('real stage classifies ordinary authenticated chat as no-op with ZERO entit
   expectedInstanceId:account,claimOwner:'fake-test-worker',
   recalculateEventStatus:async()=>{throw Error('must not recalc')}
  });
- assert.equal(result.stage,'invalid_selection');
- assert.equal(result.reason,'recognized_non_button_event');
+ assert.equal(result.stage,'ignored_non_button');
+ assert.equal(result.reason,'owner_approved_buttons_only_filter');
  assert.equal(result.verifiedProviderAndAccount,true);
+ assert.equal(result.assignmentOnlyRoute,true);
+ assert.equal(result.noDatabaseCalls,true);
  assert.equal(reads,0);assert.equal(writes,0);
  const ack=planFutureGreenWebhookAck(result);
- assert.equal(ack.decision,'manual_reconcile_candidate',
-  'Ordinary chat may still be needed by other existing consumers');
- assert.equal(ack.reason,'ordinary_inbound_routing_not_verified');
+ assert.equal(ack.decision,'safe_ack_candidate');
+ assert.equal(ack.reason,'known_non_button_filtered');
  assert.equal(ack.providerAckNotPublished,true);
- assert.equal(ack.mayRespond200AfterProviderQa,false);
+ assert.equal(ack.mayRespond200AfterProviderQa,true);
  assert.equal(ack.providerHttpStatusNotChosen,true);
 });
-test('known plain chat can be considered ACK candidate ONLY after trusted separate routing assurance',()=>{
- const result={stage:'invalid_selection',reason:'recognized_non_button_event',
-  verifiedProviderAndAccount:true,ordinaryInboundHandlingVerified:true};
+test('ACK candidate requires verified isolated assignment filter, never webhook JSON assertion',()=>{
+ const result={stage:'ignored_non_button',reason:'owner_approved_buttons_only_filter',
+  verifiedProviderAndAccount:true,assignmentOnlyRoute:true,noDatabaseCalls:true};
  assert.equal(planFutureGreenWebhookAck(result).decision,'safe_ack_candidate');
- assert.equal(planFutureGreenWebhookAck(result).reason,'non_button_route_verified');
- assert.equal(planFutureGreenWebhookAck({...result,
-  ordinaryInboundHandlingVerified:false}).mayRespond200AfterProviderQa,false);
+ assert.equal(planFutureGreenWebhookAck(result).reason,'known_non_button_filtered');
+ for(const patch of [
+  {verifiedProviderAndAccount:false},
+  {assignmentOnlyRoute:false},
+  {noDatabaseCalls:false},
+  {reason:'unverified_green_button_shape'}
+ ])assert.equal(planFutureGreenWebhookAck({...result,...patch}).mayRespond200AfterProviderQa,false);
 });
 test('authenticated but unsupported beta button is NOT considered safe text',()=>{
  const unknown={stage:'invalid_selection',reason:'unverified_green_button_shape',
