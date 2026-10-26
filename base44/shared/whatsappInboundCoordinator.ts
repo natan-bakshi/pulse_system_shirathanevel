@@ -6,7 +6,7 @@
 // A committed write with lost response NEVER triggers a repeat mutation.
 import {preflightWhatsAppAssignmentResponse} from './whatsappInboundAdmission.ts';
 import {registerVerifiedInboundReceipt,claimPendingInboundReceipt,
- finishInboundReceipt} from './whatsappInboundInbox.ts';
+ finishInboundReceipt,inspectVerifiedInboundReplay} from './whatsappInboundInbox.ts';
 import {persistAuthorizedSupplierStatus} from './supplierStatusPersistence.ts';
 
 const preflightRefused=(reason:string)=>({status:'refused',reason,
@@ -26,15 +26,45 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
  // receipt, sender account, registered supplier and current intent checks.
  const admission=await preflightWhatsAppAssignmentResponse(
   input.providerEvent,input.client?.asServiceRole);
- if(!admission.admissible)
+ if(!admission.admissible){
+  // Only a credential-verified, HMAC-bound original provider message and
+  // authenticated supplier may produce this candidate. A changed assignment
+  // is NOT sufficient proof of duplicate: check the exact durable receipt.
+  // One projected read ONLY on these historical/retry paths, not every new
+  // callback. There is never another business CAS from this branch.
+  if(admission.verifiedReplayCandidate){
+   try{
+    const prior=await inspectVerifiedInboundReplay(
+     input.client,admission.verifiedReplayCandidate);
+    if(prior.kind==='finalized')
+     return {status:'duplicate',reason:'provider_event_already_finalized',
+      terminalReceiptVerified:true,receiptState:prior.receiptState,
+      resultCode:prior.resultCode,
+      providerCalls:0,supplierWritesAuthorized:false};
+    if(prior.kind==='not_terminal')
+     return {status:'held',reason:'existing_receipt_not_finalized',
+      providerCalls:0,supplierWritesAuthorized:false};
+    if(prior.kind==='identity_conflict'||prior.kind==='unverifiable')
+     return {status:'held',reason:'existing_receipt_needs_reconciliation',
+      providerCalls:0,supplierWritesAuthorized:false};
+   }catch{
+    return {status:'held',reason:'existing_receipt_lookup_unverified',
+     providerCalls:0,supplierWritesAuthorized:false};
+   }
+  }
   return preflightRefused(admission.reason);
+ }
  const record=admission.receipt;
  let registered;
  try{registered=await registerVerifiedInboundReceipt(input.client,record);}
  catch{return preflightRefused('receipt_registration_unverified');}
- if(registered.kind==='duplicate')
-  return {status:'duplicate',reason:'provider_event_already_recorded',
+ if(registered.kind==='duplicate'){
+  // A verified receipt can exist while still pending/processing or under
+  // manual review. Merely having a row must NEVER look like a completed ACK.
+  // No replay, no claim, no supplier write on any duplicate path.
+  return {status:'held',reason:'existing_receipt_not_finalized',
    providerCalls:0,supplierWritesAuthorized:false};
+ }
  if(!registered.processAllowed)
   return {status:'held',reason:'receipt_not_newly_pending',
    providerCalls:0,supplierWritesAuthorized:false};
