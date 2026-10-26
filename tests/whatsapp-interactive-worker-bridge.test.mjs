@@ -203,12 +203,13 @@ test('explicit test-only double gate freezes signed account+revision BEFORE ONE 
   interactiveConfig:opts(),transport:async()=>{throw Error('must not send twice')}
  })).reason,'empty');
 });
-test('unknown beta capability and old legacy assignment always use original plain send',async()=>{
+test('unknown beta capability is blocked; legacy assignment without durable journal still uses original plain send',async()=>{
  for(const setup of [
   {configure:optsBase=>({...optsBase,capability:'unknown'}),key:'v2'},
   {configure:optsBase=>optsBase,key:'legacy'}
  ]){
   const x=fixture();x.control.interactive_outbound_live_enabled=true;
+  if(setup.key==='legacy')x.service.assignment_intent_mode='';
   const j=x.add('assignment_new',{
    ...(setup.key==='legacy'?{idempotency_key:'assignment:service-123:supplier-123:2026-10-25T10:00Z:SUPPLIER_NEW_ASSIGNMENT'}:{})
   });
