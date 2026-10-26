@@ -107,7 +107,9 @@ test('unsupported beta button / list selection / disguised button key NEVER sile
   assert.equal(ack.mayRespond200AfterProviderQa,false);
   // Unknown Beta formats now attempt a bounded durable review route;
   // the trapped/absent DB cannot make a supplier transition or ACK.
-  assert.ok(counts.reads>=0);
+  assert.ok(counts.reads>=1,
+   'unknown Beta shape attempts durable admission, not silent dropping');
+  assert.equal(result.providerCalls,0);
   assert.equal(counts.writes,0);
  }
 });
