@@ -12,6 +12,31 @@ const ASSIGNMENT_ID=/^[A-Za-z0-9_-]{3,128}$/;
 const POLICY_ACTIONS=new Set(['assignment_approve','assignment_reject']);
 const MAX_JSON=8192;
 const MAX_BINDINGS=2;
+const SNAPSHOT_MAC=/^[A-Za-z0-9_-]{43}$/;
+const encoder=new TextEncoder();
+const snapshotContext='shirat-wa-frozen-button-snapshot:v1:';
+async function macKey(secret:string,subtle:SubtleCrypto){
+ if(typeof secret!=='string'||secret.length<32||secret.length>512)invalid('signing_secret');
+ return subtle.importKey('raw',encoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
+}
+function urlBase64(bytes:Uint8Array){
+ let raw='';for(const b of bytes)raw+=String.fromCharCode(b);
+ return btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+export async function verifyFutureButtonSnapshotMac(raw:string,secret:string,
+ subtle:SubtleCrypto=crypto.subtle):Promise<boolean>{
+ try{
+  if(typeof raw!=='string'||raw.length>MAX_JSON)return false;
+  const snapshot=JSON.parse(raw);
+  if(!snapshot||!SNAPSHOT_MAC.test(snapshot.snapshotMac))return false;
+  const {snapshotMac,...unsigned}=snapshot;
+  const parsed=atob(snapshotMac.replace(/-/g,'+').replace(/_/g,'/')+'=');
+  if(parsed.length!==32)return false;
+  const sig=Uint8Array.from(parsed,x=>x.charCodeAt(0));
+  return await subtle.verify('HMAC',await macKey(secret,subtle),sig,
+    encoder.encode(snapshotContext+JSON.stringify(unsigned)));
+ }catch{return false;}
+}
 function invalid(message:string):never{throw Error('Invalid interactive button snapshot: '+message);}
 function newButtonId(){
  const bytes=crypto.getRandomValues(new Uint8Array(16));
@@ -38,6 +63,7 @@ function parseSnapshot(raw:any,expectedJob:any){
    data.eventServiceId!==origin.eventServiceId||data.supplierId!==origin.supplierId||
    data.chatId!==origin.chatId||data.provider!==origin.provider||
    data.senderAccountId!==origin.senderAccountId||data.revision!==origin.revision||
+   typeof data.snapshotMac!=='string'||!SNAPSHOT_MAC.test(data.snapshotMac)||
    !Array.isArray(data.buttons)||data.buttons.length<1||data.buttons.length>MAX_BINDINGS)return null;
   const ids=new Set(),actions=new Set();
   for(const button of data.buttons){
@@ -83,12 +109,19 @@ export async function createFutureInteractiveButtonSnapshot(input:{
   buttons.push({buttonId:newButtonId(),action:button.action,
    label:button.label,actionToken});
  }
- const encoded=JSON.stringify({version:1,jobId:origin.jobId,
+ const unsigned={version:1,jobId:origin.jobId,
   eventServiceId:origin.eventServiceId,supplierId:origin.supplierId,chatId:origin.chatId,
   provider:origin.provider,senderAccountId:origin.senderAccountId,
-  revision:origin.revision,buttons});
- if(encoded.length>MAX_JSON)invalid('oversized');
- return encoded;
+  revision:origin.revision,buttons};
+ // Whole-snapshot HMAC covers labels/order and the action-token scope.
+ // Changing a label, deleting a button or reordering cannot silently alter
+ // what the provider will display after an unknown result or worker restart.
+ const encoded=JSON.stringify(unsigned);
+ const mac=await subtle.sign('HMAC',await macKey(input.signingSecret,subtle),
+   encoder.encode(snapshotContext+encoded));
+ const frozen=JSON.stringify({...unsigned,snapshotMac:urlBase64(new Uint8Array(mac))});
+ if(frozen.length>MAX_JSON)invalid('oversized');
+ return frozen;
 }
 export function resolveSignedActionForGreenButton(job:any,click:{
  buttonId:string;provider:string;senderAccountId:string;
