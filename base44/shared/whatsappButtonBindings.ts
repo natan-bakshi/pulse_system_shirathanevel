@@ -4,7 +4,7 @@
 // on the OUTBOUND job before the FIRST provider attempt. Never regenerate on
 // retry/UNKNOWN: a callback must always resolve to the original exact job.
 // This module does not modify Outbox or send any message.
-import {createSignedWhatsAppAction} from './whatsappSignedAction.ts';
+import {createSignedWhatsAppAction,verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {validateWhatsAppInteractivePolicy} from './whatsappInteractivePolicy.ts';
 
 const BUTTON_ID=/^wa1_[A-Za-z0-9_-]{22}$/;
@@ -86,7 +86,9 @@ export async function createFutureInteractiveButtonSnapshot(input:{
  const origin=originSnapshot(job);
  if(job.interactive_button_bindings_json){
   const saved=parseSnapshot(job.interactive_button_bindings_json,job);
-  if(!saved)invalid('corrupt_existing_snapshot');
+  if(!saved||!(await verifyFutureButtonSnapshotMac(
+   job.interactive_button_bindings_json,input.signingSecret,subtle)))
+   invalid('corrupt_existing_snapshot');
   // Immutable persisted binding must be used after any worker restart.
   return job.interactive_button_bindings_json;
  }
@@ -135,4 +137,21 @@ export function resolveSignedActionForGreenButton(job:any,click:{
  if(!saved)return null;
  const match=saved.buttons.find((button:any)=>button.buttonId===click.buttonId);
  return match?.actionToken||null;
+}
+// Future authenticated inbound adapter MUST use this async variant. The
+// legacy sync lookup is only structural, not sufficient to authorize action.
+export async function resolveVerifiedGreenActionForButton(job:any,click:{
+ buttonId:string;provider:string;senderAccountId:string;
+ originalProviderMessageId:string;senderChatId:string
+},secret:string,subtle:SubtleCrypto=crypto.subtle,now=Date.now()):Promise<string|null>{
+ const candidate=resolveSignedActionForGreenButton(job,click);
+ if(!candidate||!(await verifyFutureButtonSnapshotMac(
+   job.interactive_button_bindings_json,secret,subtle)))return null;
+ const bound=await verifySignedWhatsAppAction({token:candidate,secret,now},subtle);
+ if(!bound||bound.companyId!=='shirat_hanevel'||bound.provider!=='green'||
+  bound.senderAccountId!==job.sender_account_id||
+  bound.outboxJobId!==job.id||bound.eventServiceId!==job.event_service_id||
+  bound.supplierId!==job.supplier_id||bound.revision!==job.assignment_revision)
+  return null;
+ return candidate;
 }
