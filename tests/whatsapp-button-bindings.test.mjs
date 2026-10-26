@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
-import {createFutureInteractiveButtonSnapshot,resolveSignedActionForGreenButton} from '../base44/shared/whatsappButtonBindings.ts';
+import {createFutureInteractiveButtonSnapshot,resolveSignedActionForGreenButton,resolveVerifiedGreenActionForButton,verifyFutureButtonSnapshotMac} from '../base44/shared/whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from '../base44/shared/whatsappSignedAction.ts';
 const now=Date.parse('2026-10-26T12:00:00Z');
 const secret='server-secret-for-interactive-button-tests-123456789';
@@ -50,6 +50,25 @@ test('short Green button IDs map to server-signed allowlisted actions; office UR
  assert.equal(selected,data.buttons[0].actionToken);
  const wrong=resolveSignedActionForGreenButton(job,click('wa1_nonexistent0000000000'));
  assert.equal(wrong,null);
+});
+test('full-snapshot MAC binds frozen button labels/order and rejects tampered or wrong-key lookup',async()=>{
+ const raw=await create();
+ const data=JSON.parse(raw),job=accepted(raw),buttonId=data.buttons[0].buttonId;
+ assert.equal(await verifyFutureButtonSnapshotMac(raw,secret,webcrypto.subtle),true);
+ assert.equal(await verifyFutureButtonSnapshotMac(raw,'wrong-secret-for-tests-01234567890123456789',webcrypto.subtle),false);
+ const resolved=await resolveVerifiedGreenActionForButton(job,click(buttonId),secret,webcrypto.subtle,now+1000);
+ assert.equal(resolved,data.buttons[0].actionToken);
+ for(const change of [
+  {buttons:data.buttons.map(b=>({...b,label:'Altered text'}))},
+  {buttons:[...data.buttons].reverse()},
+  {buttons:data.buttons.map(b=>({...b,action:b.action==='assignment_approve'?'assignment_reject':'assignment_approve'}))},
+  {eventServiceId:'service-other'}
+ ]){
+  const changed=JSON.stringify({...data,...change});
+  assert.equal(await verifyFutureButtonSnapshotMac(changed,secret,webcrypto.subtle),false);
+  assert.equal(await resolveVerifiedGreenActionForButton(
+    {...job,interactive_button_bindings_json:changed},click(buttonId),secret,webcrypto.subtle,now+1000),null);
+ }
 });
 test('frozen binding returns identical bytes on worker restart; no regenerated action IDs',async()=>{
  const first=await create();
