@@ -91,7 +91,8 @@ export async function previewGreenInteractiveAssignment(input:{
  if(input.capability==='mixed_url'&&url){
   if(typeof input.officeLabel!=='string'||!input.officeLabel.trim()||
    input.officeLabel.trim()!==input.officeLabel||
-   input.officeLabel.length>25)throw fail('invalid_office_button_label');
+   input.officeLabel.length>25||/[\r\n\u0000-\u001f\u007f]/.test(input.officeLabel))
+   throw fail('invalid_office_button_label');
   return {method:'sendInteractiveButtons',body:{
    chatId:job.chat_id,body:text,buttons:[
     ...buttons.map(b=>({...b,type:'reply'})),
