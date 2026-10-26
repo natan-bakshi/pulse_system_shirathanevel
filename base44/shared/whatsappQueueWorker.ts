@@ -4,6 +4,7 @@ import { readWhatsAppQueueControl } from './whatsappOutbox.ts';
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { sendWhatsAppTransport } from './whatsappSend.ts';
 import {prepareGreenInteractiveWorkerCandidate} from './whatsappInteractiveWorkerBridge.ts';
+import {readAssignmentIntents} from './assignmentIntent.ts';
 
 const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
 const LEASE_MS = 120_000;           // Longer than one worker, recovered by watchdog.
@@ -274,6 +275,17 @@ async function isStillRelevant(client:any,job:any):Promise<boolean> {
     const statuses=typeof svc.supplier_statuses==='string' ? JSON.parse(svc.supplier_statuses||'{}') : svc.supplier_statuses||{};
     if(!Array.isArray(ids)||!ids.includes(job.supplier_id))return false;
     if(statuses[job.supplier_id] && statuses[job.supplier_id]!=='pending')return false;
+    // A supplier may be rejected and later re-assigned while an OLD queued
+    // notification is still waiting (quiet hours, rate limit, or outage).
+    // Checking only 'pending' would send that superseded original job AND
+    // the new revision. Inspect only this supplier's latest durable intent;
+    // a different supplier's later revision must not invalidate this one.
+    if(svc.assignment_intent_mode==='durable_v1'){
+      const intents=readAssignmentIntents(svc.assignment_notification_intents||'[]');
+      const latest=[...intents].reverse().find(i=>i.supplier_id===job.supplier_id);
+      if(latest && (job.idempotency_key!==latest.key||
+        !['requested','queued','accepted'].includes(latest.state)))return false;
+    }
     const event=svc.event_id?await client.asServiceRole.entities.Event.get(svc.event_id):null;
     if(!event || ['cancelled','completed'].includes(event.status))return false;
     return true;
