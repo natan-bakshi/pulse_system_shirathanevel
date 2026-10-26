@@ -1,7 +1,7 @@
 // Pure, fail-closed context helpers. No network calls and no business mutations.
 // The outbound job owns a frozen assignment revision and sender identity.
 export type AssignmentMessageContext = {
- companyId:string;eventServiceId:string;supplierId:string;revision:string;
+ companyId:string;eventServiceId:string;supplierId:string;revision:string;chatId:string;
  provider:'green'|'wasender';senderAccountId:string;outboxJobId:string;
  providerMessageId:string;status:'accepted'|'queued'|'unknown'|'failed'|'cancelled';
 };
@@ -11,16 +11,20 @@ export function validateAssignmentMessageContext(raw:any):AssignmentMessageConte
  for(const k of ['companyId','eventServiceId','supplierId','revision','senderAccountId','outboxJobId']){
   if(!id(raw[k]))throw Error('Invalid assignment context: '+k);
  }
+ // Provider quoting is only safe in the exact original private chat. Green API
+ // may return HTTP 200 for an invalid quote while NOT delivering the message.
+ if(typeof raw.chatId!=='string'||!/^[1-9][0-9]{7,14}@c\.us$/.test(raw.chatId))
+  throw Error('Invalid assignment chat identity');
  if(!['green','wasender'].includes(raw.provider))throw Error('Invalid assignment provider');
  if(!['accepted','queued','unknown','failed','cancelled'].includes(raw.status))throw Error('Invalid assignment receipt state');
  if(raw.status==='accepted'&&!id(raw.providerMessageId))throw Error('Accepted message requires provider receipt');
  if(raw.status!=='accepted'&&raw.providerMessageId)throw Error('Unverified message cannot own quote receipt');
  return {companyId:raw.companyId,eventServiceId:raw.eventServiceId,supplierId:raw.supplierId,
-  revision:raw.revision,provider:raw.provider,senderAccountId:raw.senderAccountId,
+  revision:raw.revision,chatId:raw.chatId,provider:raw.provider,senderAccountId:raw.senderAccountId,
   outboxJobId:raw.outboxJobId,providerMessageId:raw.providerMessageId||'',status:raw.status};
 }
 export function resolveAssignmentQuote(original:AssignmentMessageContext|null|undefined,reply:{
- companyId:string;eventServiceId:string;supplierId:string;revision:string;
+ companyId:string;eventServiceId:string;supplierId:string;revision:string;chatId:string;
  provider:'green'|'wasender';senderAccountId:string
 }):{quoteMessageId:string|null;reason:string}{
  if(!original)return {quoteMessageId:null,reason:'missing_origin'};
@@ -30,6 +34,7 @@ export function resolveAssignmentQuote(original:AssignmentMessageContext|null|un
  if(o.companyId!==reply.companyId||o.eventServiceId!==reply.eventServiceId||o.supplierId!==reply.supplierId)
   return {quoteMessageId:null,reason:'assignment_mismatch'};
  if(o.revision!==reply.revision)return {quoteMessageId:null,reason:'stale_revision'};
+ if(o.chatId!==reply.chatId)return {quoteMessageId:null,reason:'chat_mismatch'};
  if(o.provider!==reply.provider||o.senderAccountId!==reply.senderAccountId)
   return {quoteMessageId:null,reason:'sender_mismatch'};
  return {quoteMessageId:o.providerMessageId,reason:'matched'};
