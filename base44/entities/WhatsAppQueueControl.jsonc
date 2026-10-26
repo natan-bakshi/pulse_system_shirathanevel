@@ -120,6 +120,14 @@
     "inbound_guard_key": {
       "type": "string",
       "description": "Durable registration-in-progress fence: if not cleared, ALL new inbound registrations must halt for human reconciliation"
+    },
+    "inbound_rate_window_started_at": {
+      "type": "string",
+      "description": "Future authenticated Green callback rate window (not active until approved endpoint rollout)"
+    },
+    "inbound_rate_count": {
+      "type": "number",
+      "description": "Future global callback count for current rate window; never used by the outbound worker"
     }
   },
   "required": [
