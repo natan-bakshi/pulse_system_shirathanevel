@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
-import {createFutureInteractiveButtonSnapshot,resolveSignedActionForGreenButton} from '../base44/shared/whatsappButtonBindings.ts';
+import {createFutureInteractiveButtonSnapshot,resolveVerifiedGreenActionForButton} from '../base44/shared/whatsappButtonBindings.ts';
 import {parseGreenButtonSelection} from '../base44/shared/greenInteractiveCallback.ts';
 import {preflightWhatsAppAssignmentResponse} from '../base44/shared/whatsappInboundAdmission.ts';
 import {registerVerifiedInboundReceipt,claimPendingInboundReceipt,finishInboundReceipt} from '../base44/shared/whatsappInboundInbox.ts';
@@ -102,7 +102,7 @@ function greenEvent(buttonId,eventId){
 async function admit(f,buttonId,eventId){
  const clicked=parseGreenButtonSelection(greenEvent(buttonId,eventId),INSTANCE,now);
  assert.ok(clicked,'Green provider adapter must recognize the click');
- const token=resolveSignedActionForGreenButton(f.job,clicked);
+ const token=await resolveVerifiedGreenActionForButton(f.job,clicked,SIGN,webcrypto.subtle,now+1000);
  assert.ok(token,'Short button ID must bind to frozen original Outbox');
  const response=await preflightWhatsAppAssignmentResponse({
   ...clicked,headers:{Authorization:'Bearer '+WEBHOOK},webhookSecret:WEBHOOK,
