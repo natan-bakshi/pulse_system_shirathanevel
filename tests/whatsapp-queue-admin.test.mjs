@@ -166,7 +166,7 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(response.body.audit.expiredProcessing,1);
  assert.equal(response.body.audit.totals.needs_review,1);
  assert.equal(ctx.inboundProjections.length,1);
- assert.deepEqual(ctx.inboundProjections[0],['id','state','claim_until','provider']);
+ assert.deepEqual(Array.from(ctx.inboundProjections[0]),['id','state','claim_until','provider']);
  assert.equal(JSON.stringify(response.body).includes('secret-message'),false);
  assert.equal(JSON.stringify(response.body).includes('private-key'),false);
  assert.equal(JSON.stringify(response.body).includes('private'),false);
