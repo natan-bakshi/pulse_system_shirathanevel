@@ -37,6 +37,11 @@ export function resolveAssignmentQuote(original:AssignmentMessageContext|null|un
  if(o.chatId!==reply.chatId)return {quoteMessageId:null,reason:'chat_mismatch'};
  if(o.provider!==reply.provider||o.senderAccountId!==reply.senderAccountId)
   return {quoteMessageId:null,reason:'sender_mismatch'};
+ // Wasender's replyTo expects the positive integer msgId from its OWN send
+ // receipt, not a WhatsApp stanza ID or an arbitrary string. Fail to no-quote.
+ if(o.provider==='wasender' && (!/^[1-9][0-9]*$/.test(o.providerMessageId)||
+  !Number.isSafeInteger(Number(o.providerMessageId))))
+  return {quoteMessageId:null,reason:'unsupported_provider_receipt'};
  return {quoteMessageId:o.providerMessageId,reason:'matched'};
 }
 export function evaluateAssignmentResponse(input:{action:string;companyId:string;eventServiceId:string;
