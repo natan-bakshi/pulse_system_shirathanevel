@@ -14,6 +14,11 @@ const ORDINARY_MESSAGES=new Set([
 // A future/undocumented selection must NOT be discarded as plain chat.
 // Lists are also interactive selections, but are not approved assignment
 // actions and therefore must be investigated rather than auto-processed.
+const NON_BUTTON_NOTIFICATIONS=new Set([
+ 'outgoingMessageReceived','outgoingAPIMessageReceived','outgoingMessageStatus',
+ 'stateInstanceChanged','statusInstanceChanged','deviceInfo','incomingCall',
+ 'outgoingCall','incomingBlock','quotaExceeded','IncomingMessageStatus'
+]);
 const SELECTION_FIELDS=new Set([
  'buttonsResponseMessage','templateButtonReplyMessage',
  'interactiveButtonsResponse','interactiveButtonsReply',
@@ -21,15 +26,19 @@ const SELECTION_FIELDS=new Set([
  'selectedButtonId','selectedId'
 ]);
 export function isVerifiedGreenNonButtonEvent(raw:any,instance:string):boolean{
- return !!raw&&raw.typeWebhook==='incomingMessageReceived'&&
-  /^[0-9]{5,20}$/.test(instance||'')&&
-  String(raw.instanceData?.idInstance)===instance&&
-  raw.instanceData?.typeInstance==='whatsapp'&&
-  !!raw.messageData&&typeof raw.messageData==='object'&&
-  !Array.isArray(raw.messageData)&&
-  ORDINARY_MESSAGES.has(raw.messageData.typeMessage)&&
-  ![...SELECTION_FIELDS].some(key=>Object.prototype.hasOwnProperty.call(
-   raw.messageData,key));
+ if(!raw||typeof raw!=='object'||
+  !/^[0-9]{5,20}$/.test(instance||'')||
+  String(raw.instanceData?.idInstance)!==instance||
+  raw.instanceData?.typeInstance!=='whatsapp')return false;
+ // Other documented webhook types are not button-clicks. The assignment-only
+ // endpoint may ignore these, but a separate existing status/office route
+ // MUST NOT be disabled or reconfigured for this feature.
+ if(NON_BUTTON_NOTIFICATIONS.has(raw.typeWebhook))return true;
+ if(raw.typeWebhook!=='incomingMessageReceived')return false;
+ const body=raw.messageData;
+ return !!body&&typeof body==='object'&&!Array.isArray(body)&&
+  ORDINARY_MESSAGES.has(body.typeMessage)&&
+  ![...SELECTION_FIELDS].some(key=>Object.prototype.hasOwnProperty.call(body,key));
 }
 export type AckPlan={
  decision:'safe_ack_candidate'|'no_ack_candidate'|'manual_reconcile_candidate';
