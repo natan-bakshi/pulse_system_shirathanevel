@@ -23,6 +23,9 @@ export function summarizeWhatsAppInteractiveReadiness(input:{
  const verifiedRealCallbackProven=false;
  const receiptPersistenceVerifiedInProduction=false;
  const approvedOwnerRolloutRecord=false;
+ // A metadata-only marker cannot reconstruct a Beta button click; an
+ // explicit recovery/manual-contact protocol is still a hard rollout gate.
+ const unknownBetaRecoveryProven=false;
  const checked:Check[]=[
   check('queue_enabled','תור WhatsApp פעיל',c?.enabled===true),
   check('queue_unpaused','תור WhatsApp אינו מושהה',c?.paused!==true),
@@ -36,6 +39,11 @@ export function summarizeWhatsAppInteractiveReadiness(input:{
    input.draftConfigured&&!input.draftCorrupt),
   check('no_ambiguous_inbound_guard','אין חסימת קליטה הדורשת בירור ידני',
    !c?.inbound_guard_key),
+  check('no_ambiguous_unknown_quarantine_guard',
+   'אין רישום לא ודאי של תגובה לא מזוהה הדורש בירור',!c?.unknown_guard_key),
+  check('unknown_beta_recovery_proven',
+   'הוגדר נוהל מאומת לאי־אובדן תגובות בפורמט Green חדש',
+   unknownBetaRecoveryProven),
   check('beta_capability_verified','יכולת כפתורי Green נבדקה בחשבון אמיתי',
    betaAccountQaProven),
   check('real_callback_verified','נבדקה תגובה אמיתית עם מספר ומזהי הודעה מאומתים',
@@ -58,6 +66,10 @@ export function summarizeWhatsAppInteractiveReadiness(input:{
   inboundRoutingPolicy:'buttons_only_ignore_known_non_buttons',
   knownNonButtonsIgnoredWithoutDatabase:true,
   unsupportedButtonFormatsRequireReview:true,
+  unknownCallbackMetadataOnlyNoRawContent:true,
+  unknownCallbackCannotBeAutoAcked:true,
+  ownerOnlyUnknownQuarantineAuditAvailable:true,
+  unknownBetaRecoveryNotYetProven:!unknownBetaRecoveryProven,
   officeContactOpensManualWhatsAppDraft:true,
   inboundRoutingPolicyDoesNotEnableLiveWebhook:true,
   unexpectedControlFlagEnabled:c?.interactive_outbound_live_enabled===true,
