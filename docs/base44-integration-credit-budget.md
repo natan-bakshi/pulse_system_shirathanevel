@@ -109,6 +109,14 @@
 - **החלטת מדיניות:** `docs/whatsapp-buttons-only-inbound-filter-2026-10-26.md`.
 - [ ] לאמת תצורת Green בפועל לפני החלפת `webhookUrl`, ולחשב שיקולי עלות/בטיחות של שער חיצוני עם מד Credit Usage לפני פריסה.
 
+## WA-CREDIT-05 — מנגנון אבחון חד־פעמי של Green + תוכנית HTTP, 26.10.2026
+- [x] **אבחון Green רק לפי לחיצת בעל המערכת:** פעולה `greenWebhookSettingsAudit` ב־`WhatsAppQueueAdmin`; קריאת GET אחת ל־GetSettings הרשמי, ללא ניסיון חוזר, timeout מקסימלי של 6 שניות, לא מופעלת אוטומטית בביקור בדף, status, metrics או readiness. **עלות פוטנציאלית בזמן לחיצה:** קריאת פונקציית Base44 אחת + GET של ספק Green; מד Credit Usage בפועל טרם נבדק.
+- [x] תשובת GetSettings מסוננת בשרת לפני שחוזרת לדפדפן; אין URL, token, webhookUrlToken, WhatsApp WID או Raw Provider Error. רק flags, הימצאות Webhook ונתון ההשהיה של Green (בנפרד מהתור של Pulse). אם קיימת כתובת, מופיעה אזהרה לא להחליף אותה בלי שמירת הצרכנים הפעילים.
+- [x] סיווג HTTP מתוכנן ב־`greenWebhookHttpContract.ts`: 200 רק עבור non-button מאומת במסלול שיבוצים מבודד או תוצאת עסקה/קבלה שנשמרה; 4xx/5xx מוצעים אחרת. הטיפול עדיין **לא מפורסם** ואינו פונה לספק. נדרש תכנון retries ו־quarantine ל־Beta לא מוכר לפני Live.
+- [x] **662/662** בדיקות Mock + Build + Lint + diff check תקינים. בפיתוח בוצעו **0** בקשות GetSettings חיות, **0** שליחות WhatsApp, **0** קריאות עסקיות יזומות; עלות כלי Base44 sandbox אינה נמדדת ואינה נחשבת אפס.
+- [ ] לא להחליט Direct/Edge לפי אומדן קרדיטים בלבד; להשתמש בדוח החד־פעמי להבנת הגדרות החשבון, ואז למדוד שימוש בפועל על פי מכסות וסוגי האירועים — בלי SetSettings, בלי שינוי המרווח בין הודעות ובלי להפסיק את Watchdog.
+
+
 
 
 
