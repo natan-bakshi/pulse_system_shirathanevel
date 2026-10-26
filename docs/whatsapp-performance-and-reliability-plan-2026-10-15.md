@@ -502,3 +502,8 @@
 - Read-only sampled Outbox shows two historical scheduled_fanout UNKNOWN rows from 2026-10-21T06:41 UTC; no provider receipt recorded. Other fanout rows accepted. Do NOT automatically retry these: provider outcome may have committed. Human/provider lookup required.
 - Assignment collision fix has focused concurrency/timestamp tests already, but live post-publication assignment QA remains OPEN. International normalization tests cover Israel, US, UK, France, Germany, India, Spain and reject ambiguous local prefixes; no live foreign recipient verification.
 - Next: system-owner explicit sourceAudit for payment/task counts after publishing WA-P63/64, provider lookup of historical UNKNOWN, and authorized assignment and 16+ batch QA. Keep P0 open until live evidence is collected.
+
+### WA-I02a — 26.10.2026 — safe policy contract foundation
+- Added pure `base44/shared/whatsappInteractivePolicy.ts`: allowlisted actions `assignment_approve`, `assignment_reject`, `contact_office`, maximum three unique buttons, bounded safe labels, explicit enable/quote booleans and default OFF. No webhooks, UI, provider payloads, or production configuration activated.
+- `tests/whatsapp-interactive-policy.test.mjs`: default OFF, allowlist resolution and rejection of arbitrary actions/duplicate labels/unsafe labels. Full suite 439/439 pass. This is **partial WA-I02**, not a completed per-company policy persistence or authorization layer.
+- Next: WA-I01 capability verification per provider and company, WA-I02 persistence/RBAC, WA-I03 message origin model, then WA-I05/I06 verified inbound action service before any live buttons.
