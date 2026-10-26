@@ -111,6 +111,10 @@
     "inbound_create_until": {
       "type": "string",
       "description": "Bounded inbound registration mutex expiry; expired ownership is not proof of provider-event nonreceipt"
+    },
+    "inbound_guard_key": {
+      "type": "string",
+      "description": "Durable registration-in-progress fence: if not cleared, ALL new inbound registrations must halt for human reconciliation"
     }
   },
   "required": [
