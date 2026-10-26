@@ -456,6 +456,28 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         await sleep(wait);continue;
       }
 
+      // A previously frozen interactive message must never silently turn into
+      // a plain-text resend after rollback, misconfiguration or manual retry.
+      // Keep other invoice/reminder jobs moving, but require manual review for
+      // the affected assignment. No extra DB reads for ordinary messages.
+      const frozen=!!(options.job.interactive_button_bindings_json||
+        options.job.sender_account_id||options.job.assignment_revision);
+      if(frozen&&(!opts.interactiveConfig||
+        control.interactive_outbound_live_enabled!==true)){
+        const held=await queueStage('interactive_disabled_hold',()=>
+          db.WhatsAppOutbox.updateMany({
+            id:options.job.id,status:options.job.status,
+            attempt_count:options.job.attempt_count??null
+          },{$set:{status:'failed',error_code:0,
+            last_error:'Frozen interactive assignment needs manual review; rollout or trusted credentials unavailable',
+            completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+        if(held?.updated!==1){
+          lastError='Cannot safely quarantine frozen interactive assignment';
+          break;
+        }
+        processed++;failed++;
+        continue;
+      }
       // Dormant owner-gated bridge. The production wrapper deliberately does
       // NOT supply opts.interactiveConfig; the control schema defaults OFF.
       // Ordinary WhatsApp jobs avoid every extra lookup and retain their
