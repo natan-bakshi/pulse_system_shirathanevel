@@ -26,7 +26,7 @@ const blocked=(reason:string)=>Object.assign(new Error(reason),{code:reason});
 function strictRetryReceipt(job:any){
  return job?.status==='retry_wait'&&job?.error_code===429&&
   Number.isInteger(Number(job?.attempt_count))&&Number(job.attempt_count)>0&&
-  !job?.provider_message_id&&!job?.completed_at&&
+  !job?.provider_message_id&&
   job?.provider==='green'&&job?.requested_provider==='green'&&
   typeof job?.sender_account_id==='string'&&job.sender_account_id.length>0&&
   typeof job?.assignment_revision==='string'&&
