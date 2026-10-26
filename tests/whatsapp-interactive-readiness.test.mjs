@@ -23,6 +23,11 @@ test('all nominal settings STILL CANNOT claim provider QA, publish callback, or 
  assert.equal(report.inboundRoutingPolicy,'buttons_only_ignore_known_non_buttons');
  assert.equal(report.knownNonButtonsIgnoredWithoutDatabase,true);
  assert.equal(report.unsupportedButtonFormatsRequireReview,true);
+ assert.equal(report.unknownCallbackMetadataOnlyNoRawContent,true);
+ assert.equal(report.unknownCallbackCannotBeAutoAcked,true);
+ assert.equal(report.unknownBetaRecoveryNotYetProven,true);
+ assert.equal(report.ownerOnlyUnknownQuarantineAuditAvailable,true);
+ assert.ok(report.blockers.includes('unknown_beta_recovery_proven'));
  assert.equal(report.officeContactOpensManualWhatsAppDraft,true);
  assert.equal(report.inboundRoutingPolicyDoesNotEnableLiveWebhook,true);
  assert.equal(report.readinessNeverImpliesProviderDelivery,true);
@@ -37,13 +42,15 @@ test('missing secrets and disabled business intent flag are explicit blockers wi
  const report=summarizeWhatsAppInteractiveReadiness({
   ...flags(),assignmentIntentEnabled:false,greenTokenAvailable:false,
   actionSigningKeyAvailable:false,webhookCredentialAvailable:false,
-  draftConfigured:false,control:{...flags().control,inbound_guard_key:'PRIVATE_GUARD'}
+  draftConfigured:false,control:{...flags().control,inbound_guard_key:'PRIVATE_GUARD',
+   unknown_guard_key:'PRIVATE_UNKNOWN_GUARD'}
  });
  for(const key of ['green_api_token_present','signed_action_secret_present',
    'green_webhook_token_present','assignment_intent_v1','green_draft_valid',
-   'no_ambiguous_inbound_guard'])
+   'no_ambiguous_inbound_guard','no_ambiguous_unknown_quarantine_guard'])
   assert.ok(report.blockers.includes(key),key);
  assert.equal(JSON.stringify(report).includes('PRIVATE_GUARD'),false);
+ assert.equal(JSON.stringify(report).includes('PRIVATE_UNKNOWN_GUARD'),false);
 });
 test('unexpected control flag is reported as an alarm but never proves button availability',()=>{
  const report=summarizeWhatsAppInteractiveReadiness({
