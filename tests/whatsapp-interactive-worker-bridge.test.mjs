@@ -276,6 +276,39 @@ test('definite 429 retains EXACT signed button IDs on authorized later retry',as
  assert.deepEqual(sent[0].body.buttons,sent[1].body.buttons);
  assert.equal(j.status,'accepted');
 });
+test('rollback after a definite 429 quarantines frozen buttons instead of silently resending plain text',async()=>{
+ const x=fixture();x.control.interactive_outbound_live_enabled=true;
+ const job=x.add();let network=0;
+ const first=await drainWhatsAppOutbox(x.client,{
+  interactiveConfig:opts(),transport:async()=>{network++;throw {errorCode:429,deliveryUncertain:false};}
+ });
+ assert.equal(first.retried,1);
+ assert.equal(job.status,'retry_wait');
+ job.available_at=new Date(Date.now()-1000).toISOString();
+ x.control.interactive_outbound_live_enabled=false;
+ const invoice=x.add('invoice');
+ const subsequent=await drainWhatsAppOutbox(x.client,{
+  transport:async current=>{network++;assert.equal(current.source_type,'invoice');
+   return {messageId:'invoice-completed'};}
+ });
+ assert.equal(subsequent.failed,1);
+ assert.equal(subsequent.accepted,1);
+ assert.equal(network,2,'exactly one first 429 attempt plus one invoice, no fallback resend');
+ assert.equal(job.status,'failed');
+ assert.match(job.last_error,/Frozen interactive assignment needs manual review/);
+ assert.equal(invoice.status,'accepted');
+});
+test('preparation metadata with no trusted credentials is quarantined before any provider call',async()=>{
+ const x=fixture();const job=x.add();
+ job.assignment_revision='r4';
+ let network=0;
+ const r=await drainWhatsAppOutbox(x.client,{transport:async()=>{
+  network++;return {messageId:'must-not-send'};
+ }});
+ assert.equal(r.failed,1);
+ assert.equal(network,0);
+ assert.equal(job.status,'failed');
+});
 test('tampered snapshot after definite 429 quarantines, never calls provider again',async()=>{
  const x=fixture();x.control.interactive_outbound_live_enabled=true;
  const j=x.add();
