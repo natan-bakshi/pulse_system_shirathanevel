@@ -362,7 +362,7 @@ export default function WhatsAppQueueSettings(){
             <div className="flex-1 min-w-[220px] max-w-sm space-y-1">
               <Label htmlFor="wa-office-reference">אסמכתת הודעה</Label>
               <Input id="wa-office-reference" aria-label="אסמכתת הודעת שיבוץ"
-                value={officeReference} maxLength={128}
+                value={officeReference} maxLength={128} disabled={busy}
                 placeholder="מזהה ההודעה אחרי המילה אסמכתא"
                 onChange={event=>{setOfficeReference(event.target.value);setOfficeLookup(null);}}/>
             </div>
