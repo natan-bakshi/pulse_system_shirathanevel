@@ -195,6 +195,29 @@ test('single-chat QA cannot turn assignments for other suppliers into interactiv
  assert.equal(other.interactive_button_bindings_json,undefined);
  assert.equal(f.events.snapshotWrites,0);
 });
+test('same phone with different service or supplier never gets QA buttons',async()=>{
+ for(const field of ['event_service_id','supplier_id']){
+  const f=fixture();f.control.interactive_outbound_live_enabled=true;
+  const job=f.add('assignment_new');
+  const seen=[];
+  // Change the authorized scope, not the queued business record. The
+  // recipient matches, but a different service/supplier must be legacy.
+  const scope={...opts(),qaChatId:job.chat_id,
+   qaEventServiceId:'service-123',qaSupplierId:'supplier-123'};
+  if(field==='event_service_id')scope.qaEventServiceId='service-other';
+  else scope.qaSupplierId='supplier-other';
+  const result=await drainWhatsAppOutbox(f.client,{
+   interactiveConfig:scope,
+   transport:async(_job,_provider,_client,preview)=>{
+    seen.push(preview);return {messageId:'LEGACY-SCOPE-TEST'};
+   }
+  });
+  assert.equal(result.accepted,1);
+  assert.deepEqual(seen,[null]);
+  assert.equal(job.interactive_button_bindings_json,undefined);
+  assert.equal(f.events.snapshotWrites,0);
+ }
+});
 test('single-chat QA missing durable v2 intent is HELD before transport, never sent as plain text',async()=>{
  const f=fixture();f.control.interactive_outbound_live_enabled=true;
  f.service.assignment_intent_mode='legacy';
