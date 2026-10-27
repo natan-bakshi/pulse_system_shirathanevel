@@ -43,7 +43,7 @@ const createRequest=(header='Bearer '+WEBHOOK)=>new Request(
   idMessage:'synthetic-event-only',timestamp:Math.floor(Date.now()/1000),
   messageData:{typeMessage:'textMessage',
    textMessageData:{textMessage:'manual-only'}}})});
-const sdk=activeControl=>{
+const sdk=(activeControl,flag='true')=>{
  const counts={reads:0,flagReads:0,dbWrites:0};
  const client={asServiceRole:{entities:{WhatsAppQueueControl:{
   filter:async query=>{
@@ -52,7 +52,10 @@ const sdk=activeControl=>{
   }
  },AppSettings:{filter:async()=>{
   counts.flagReads++;
-  return [{setting_key:'assignment_intent_v1_enabled',setting_value:'true'}];
+  return flag===null?[]:flag==='duplicate'?[
+   {setting_key:'assignment_intent_v1_enabled',setting_value:'true'},
+   {setting_key:'assignment_intent_v1_enabled',setting_value:'true'}
+  ]:[{setting_key:'assignment_intent_v1_enabled',setting_value:flag}];
  }}}}};
  return {counts,client};
 };
@@ -132,6 +135,22 @@ test('HTTP QA endpoint is inert without every independent env approval: no DB or
   });
   assert.equal(result.httpStatus,404,key);
   assert.equal(db.counts.reads,0,key);
+ }
+});
+test('V2 migration OFF, absent or ambiguous always blocks inbound even with full QA secrets',async()=>{
+ for(const flag of ['false',null,'duplicate']){
+  const db=sdk(control,flag);
+  let staged=0;
+  const r=await handleGreenButtonQaWebhook(createRequest(),{
+   env:env(),makeClient:()=>db.client,
+   recalculateEventStatus:async()=>{throw Error('must not change status')},
+   stage:async()=>{staged++;throw Error('must not enter coordinator')}
+  });
+  assert.equal(r.httpStatus,404);
+  assert.equal(r.body.received,false);
+  assert.equal(db.counts.reads,1);
+  assert.equal(db.counts.flagReads,1);
+  assert.equal(staged,0);
  }
 });
 test('wrong Green bearer never reads DB or body and is not ACKed',async()=>{
