@@ -7,6 +7,7 @@ import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
+import {greenButtonQaSafeSummary} from '../../shared/greenButtonQaLaunch.ts';
 import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
@@ -324,6 +325,17 @@ Deno.serve(async(req)=>{
       ]);
       return RESPONSE({success:true,liveInboundEnabled:false,
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
+    }
+    if(action==='greenButtonQaReadiness'){
+      // Dedicated SHORT-path QA checklist: one control-row read, no Green API
+      // request, no phone number, bearer or signing key ever leaves backend.
+      try{
+        const control=await readWhatsAppQueueControl(client);
+        return RESPONSE({success:true,qa:greenButtonQaSafeSummary(control,
+          key=>Deno.env.get(key)),noMessagesSent:true});
+      }catch{return RESPONSE({success:false,
+        error:'בדיקת מוכנות לניסוי הכפתורים אינה זמינה',
+        noMessagesSent:true},503);}
     }
     if(action==='interactiveReadiness'){
       // On-demand owner-only, strictly read-only readiness checklist.
