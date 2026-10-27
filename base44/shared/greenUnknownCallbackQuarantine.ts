@@ -12,7 +12,8 @@
 // guard. A timed-out create leaves its guard for OWNER review; it NEVER
 // auto-clears when the lease expires. Does not block known-button receipts.
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
-import {canonicalGreenCallbackJson,encryptUnknownGreenRecovery} from './greenUnknownRecoveryEnvelope.ts';
+import {canonicalGreenCallbackJson,encryptUnknownGreenRecovery,
+ looksLikeUnknownInteractiveGreenMessage} from './greenUnknownRecoveryEnvelope.ts';
 
 const COMPANY='shirat_hanevel';
 const ID=/^[A-Za-z0-9_-]{5,180}$/;
@@ -97,8 +98,9 @@ function exact(row:any,data:any){
   row.provider_event_at===data.provider_event_at&&
   Number.isFinite(Date.parse(row.registered_at||''));
 }
-async function findOne(db:any,key:string){
- const rows=await db.filter({quarantine_key:key},'-created_date',2,0,VERIFY_FIELDS);
+async function findOne(db:any,key:string,verifyEncrypted=false){
+ const rows=await db.filter({quarantine_key:key},'-created_date',2,0,
+  verifyEncrypted?VERIFY_FIELDS:FIELDS);
  if(!Array.isArray(rows)||rows.length>1)
   throw denied('unknown_quarantine_duplicate_rows');
  return rows[0]||null;
@@ -158,14 +160,16 @@ export async function registerUnknownGreenCallbackQuarantine(client:any,raw:any,
   if(found){
    if(!exact(found,identity))
     throw denied('unknown_quarantine_identity_conflict');
-   encryptedRecoveryRecorded=found.recovery_status==='encrypted'&&
-    typeof found.recovery_ciphertext==='string'&&found.recovery_ciphertext.length>30;
+   // Metadata-only projection avoids retrieving private ciphertext on
+   // duplicate callbacks; presence is an indicator, NOT decrypt proof.
+   encryptedRecoveryRecorded=found.recovery_status==='encrypted';
    result={kind:'duplicate',id:found.id};
   }else{
    // Prepare and authenticate the optional envelope BEFORE taking the
    // irreversible pre-CREATE fence. If encryption fails, no CREATE or
    // persistent guard is needed. Metadata-only remains the default.
-   const envelope=opts.encryptedRecovery?
+   const envelope=opts.encryptedRecovery&&
+    looksLikeUnknownInteractiveGreenMessage(raw)?
     await encryptUnknownGreenRecovery(raw,identity,{
      ...opts.encryptedRecovery,now:opts.now??Date.now(),subtle:opts.subtle
     }):{};
@@ -182,7 +186,8 @@ export async function registerUnknownGreenCallbackQuarantine(client:any,raw:any,
    if(!exact(created,complete))throw denied('unknown_quarantine_create_unverified');
    // Do not consider a returned CREATE response as durability proof; reread
    // exact unique row before clearing the pre-create guard.
-   const persisted=await findOne(entities.WhatsAppInboundQuarantine,identity.quarantine_key);
+   const persisted=await findOne(entities.WhatsAppInboundQuarantine,
+    identity.quarantine_key,!!envelope.recovery_version);
    if(!persisted||persisted.id!==created.id||!exact(persisted,complete))
     throw denied('unknown_quarantine_persistence_unverified');
    encryptedRecoveryRecorded=!!envelope.recovery_version;
