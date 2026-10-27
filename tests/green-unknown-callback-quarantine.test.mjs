@@ -6,6 +6,9 @@ import {fingerprintUnknownGreenCallback,isEligibleUnknownGreenCallback,
  from '../base44/shared/greenUnknownCallbackQuarantine.ts';
 import {stageFutureGreenInteractiveHttpCallback}
  from '../base44/shared/greenInteractiveHttpStaging.ts';
+import {decryptUnknownGreenRecovery,encryptUnknownGreenRecovery,
+ canonicalGreenCallbackJson,UNKNOWN_RECOVERY_TTL_HOURS}
+ from '../base44/shared/greenUnknownRecoveryEnvelope.ts';
 import {planFutureGreenWebhookAck} from '../base44/shared/greenWebhookAckPlanning.ts';
 import {planFutureGreenWebhookHttpContract} from '../base44/shared/greenWebhookHttpContract.ts';
 const NOW=Date.parse('2026-10-26T12:00:00.000Z');
