@@ -20,6 +20,8 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[],unknownProjections=[],cleanupReads=[],cleanupWrites=[],officeReads=[],greenAudits=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
+   if(val&&typeof val==='object'&&('$lte' in val))
+    return typeof record[key]==='string'&&record[key]<=val.$lte;
    return record[key]===val;
  });
  const jobEntity={
