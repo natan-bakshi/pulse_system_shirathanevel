@@ -9,6 +9,7 @@ import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvesti
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
 import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
+import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
 import {inspectOfficeAssignmentReference} from '../../shared/whatsappOfficeReferenceLookup.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
@@ -343,6 +344,18 @@ Deno.serve(async(req)=>{
           unknownCallbackLiveHandlerEnabled:false});
       }catch{return RESPONSE({success:false,
         error:'בדיקת תגובות לא מזוהות אינה זמינה',noMessagesSent:true},503);}
+    }
+    if(action==='unknownRecoveryExpiryCleanup'){
+      // Destructive ONLY for already-expired optional ciphertext. Manual
+      // owner request, capped to 20 and CAS-verified. Never removes metadata,
+      // touches a supplier, or schedules a background poll. Physical erasure
+      // from Base44 backups remains unverified; response states that clearly.
+      try{
+        const cleanup=await scrubExpiredUnknownGreenRecoveryOnDemand(client);
+        return RESPONSE({success:true,cleanup,noMessagesSent:true,
+          unknownCallbackLiveHandlerEnabled:false});
+      }catch{return RESPONSE({success:false,
+        error:'ניקוי מידע מוצפן שפג תוקפו אינו זמין',noMessagesSent:true},503);}
     }
     if(action==='greenWebhookSettingsAudit'){
       // Explicit owner CLICK only. One provider GetSettings GET, zero DB reads,
