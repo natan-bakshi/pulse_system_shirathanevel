@@ -16,12 +16,13 @@ const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
 const SECRET_MIN=32;
 const exactActions=['assignment_approve','assignment_reject','contact_office'];
 const get=(env:(k:string)=>string|undefined,k:string)=>String(env(k)||'');
-export function trustedGreenButtonQaConfig(control:any,env:(key:string)=>string|undefined,
- durableAssignmentIntentEnabled=false):TrustedGreenInteractiveConfig|null{
+function trustedGreenButtonQaConfigForMode(control:any,
+ env:(key:string)=>string|undefined,durableAssignmentIntentEnabled:boolean,
+ requireSendEnabled:boolean):TrustedGreenInteractiveConfig|null{
  // No action when disabled, including no access to secrets and draft.
  if(durableAssignmentIntentEnabled!==true||
   control?.interactive_outbound_live_enabled!==true||
-  get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled'||
+  (requireSendEnabled&&get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled')||
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
   get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified'||
   get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')!=='approved')
@@ -64,13 +65,27 @@ export function trustedGreenButtonQaConfig(control:any,env:(key:string)=>string|
   qaChatId:target,qaEventServiceId:serviceId,qaSupplierId:supplierId
  };
 }
+export function trustedGreenButtonQaConfig(control:any,
+ env:(key:string)=>string|undefined,durableAssignmentIntentEnabled=false){
+ return trustedGreenButtonQaConfigForMode(control,env,
+  durableAssignmentIntentEnabled,true);
+}
+export function trustedGreenButtonQaInboundConfig(control:any,
+ env:(key:string)=>string|undefined,durableAssignmentIntentEnabled=false){
+ // Send-new may be OFF while old accepted interactive messages still need
+ // authenticated supplier responses; all other controls remain mandatory.
+ return trustedGreenButtonQaConfigForMode(control,env,
+  durableAssignmentIntentEnabled,false);
+}
 // Safe, sanitized readiness metadata for admin UI: no secrets or phone.
 // Not used to authorize sending or handling real callbacks.
 export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|undefined,
  assignmentIntentEnabled=false){
  const config=trustedGreenButtonQaConfig(control,env,assignmentIntentEnabled);
+ const inbound=trustedGreenButtonQaInboundConfig(control,env,assignmentIntentEnabled);
  const draft=parseSavedWhatsAppInteractivePolicy(control,'green');
  return {mode:'single_chat_qa',readyForQa:!!config&&assignmentIntentEnabled,
+  receivingExistingQaRepliesAvailable:!!inbound,
   creationActionConfigured:!!config&&
    ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))&&
    get(env,'GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled',
