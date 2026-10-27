@@ -20,7 +20,8 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
   throw fail('qa_enrollment_not_approved',403);
  const db=client?.asServiceRole?.entities;
  if(!db?.AppSettings?.filter||!db?.EventService?.get||
-  !db?.EventService?.updateMany||!db?.EventService?.update||
+  !db?.EventService?.filter||!db?.EventService?.updateMany||
+  !db?.EventService?.update||
   !db?.Supplier?.get||!db?.Event?.get||!db?.WhatsAppOutbox?.filter)
   throw fail('qa_enrollment_storage_unavailable',503);
  // Gate reads: only explicit owner action, never dashboard or worker run.
@@ -80,6 +81,14 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
  },'-created_date',2,0,['id','status']);
  if(!Array.isArray(previous)||previous.length!==0)
   throw fail('qa_previous_assignment_history_requires_review',409);
+ // Global V2 feature flag can drain ALL historical pending intents; prohibit
+ // a one-supplier pilot while ANY unrelated unsent V2 work is queued. This is
+ // one bounded lookup on explicit owner enrollment, never on normal sends.
+ const otherPending=await db.EventService.filter({
+  assignment_intents_pending:true
+ },'updated_date',2,0,['id']);
+ if(!Array.isArray(otherPending)||otherPending.length!==0)
+  throw fail('qa_other_v2_intents_pending_global_risk',409);
  const nextIds=[...ids,config.qaSupplierId];
  const nextStatuses={...statuses,[config.qaSupplierId]:'pending'};
  const plan=planAssignmentTransition(service,{
