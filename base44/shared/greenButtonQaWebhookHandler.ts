@@ -47,6 +47,8 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
     webhookSecret:bearer,actionSigningSecret:config.signingSecret,
     expectedInstanceId:config.senderAccountId,
     qaChatId:config.qaChatId,
+    qaEventServiceId:config.qaEventServiceId,
+    qaSupplierId:config.qaSupplierId,
     claimOwner:'qa-'+crypto.randomUUID(),
     now:opts.now,
     // This scope never stores encrypted callback bodies or interprets
