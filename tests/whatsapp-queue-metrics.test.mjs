@@ -225,6 +225,10 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
           inspectGreenButtonQaAssignmentReadOnly:()=>{
             throw Error('Metrics must never scan QA assignment entities')}
         };
+        if(name.endsWith('greenButtonQaEnrollment.ts'))return {
+          enrollOneGreenButtonQaAssignment:()=>{
+            throw Error('Metrics must never enroll a QA supplier')}
+        };
         if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
       }
