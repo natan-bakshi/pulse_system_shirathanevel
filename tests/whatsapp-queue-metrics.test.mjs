@@ -215,6 +215,9 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
         if(name.endsWith('greenUnknownRecoveryCleanup.ts'))return {
           scrubExpiredUnknownGreenRecoveryOnDemand:()=>{throw Error('Metrics must never redact recovery records')}
         };
+        if(name.endsWith('greenUnknownRecoveryReview.ts'))return {
+          inspectUnknownGreenRecoveryStructureReadOnly:()=>{throw Error('Metrics must never decrypt unknown callbacks')}
+        };
         if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit};
         throw Error('Unexpected module '+name);
       }
