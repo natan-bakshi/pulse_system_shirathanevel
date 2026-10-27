@@ -196,6 +196,7 @@ test('single-chat QA cannot turn assignments for other suppliers into interactiv
 });
 test('single-chat QA missing durable v2 intent is HELD before transport, never sent as plain text',async()=>{
  const f=fixture();f.control.interactive_outbound_live_enabled=true;
+ f.service.assignment_intent_mode='legacy';
  const job=f.add('assignment_new',{
   idempotency_key:'assignment:service-123:supplier-123:legacy-date:SUPPLIER_NEW_ASSIGNMENT'
  });
