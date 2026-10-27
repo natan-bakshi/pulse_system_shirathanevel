@@ -357,7 +357,9 @@ Deno.serve(async(req)=>{
           expectedInstanceId:Deno.env.get('GREEN_API_INSTANCE_ID'),
           fingerprintSecret:Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET'),
           encryptionKey:Deno.env.get('GREEN_UNKNOWN_RECOVERY_ENCRYPTION_KEY'),
-          keyId:Deno.env.get('GREEN_UNKNOWN_RECOVERY_KEY_ID')
+          keyId:Deno.env.get('GREEN_UNKNOWN_RECOVERY_KEY_ID'),
+          previousEncryptionKey:Deno.env.get('GREEN_UNKNOWN_RECOVERY_PREVIOUS_KEY'),
+          previousKeyId:Deno.env.get('GREEN_UNKNOWN_RECOVERY_PREVIOUS_KEY_ID')
         });
         return RESPONSE({success:true,review,noMessagesSent:true,
           unknownCallbackLiveHandlerEnabled:false});
