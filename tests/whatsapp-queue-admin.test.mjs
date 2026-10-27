@@ -8,6 +8,7 @@ import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts'
 import {summarizeInboundWhatsAppReceipts} from '../base44/shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../base44/shared/whatsappInboundInvestigation.ts';
 import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappInteractiveReadiness.ts';
+import {greenButtonQaSafeSummary} from '../base44/shared/greenButtonQaLaunch.ts';
 import {inspectOfficeAssignmentReference} from '../base44/shared/whatsappOfficeReferenceLookup.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../base44/shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../base44/shared/greenUnknownRecoveryCleanup.ts';
@@ -140,6 +141,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
            safeToReplaceWebhookUrl:false};
        }
      };
+     if(name.endsWith('greenButtonQaLaunch.ts'))return {greenButtonQaSafeSummary};
      if(name.endsWith('whatsappInteractiveReadiness.ts'))return {
        inspectGreenInteractiveReadinessReadOnly:async()=>summarizeWhatsAppInteractiveReadiness({
         control:record,selectedProvider:'green',assignmentIntentEnabled:false,
@@ -199,7 +201,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','greenButtonQaReadiness','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
