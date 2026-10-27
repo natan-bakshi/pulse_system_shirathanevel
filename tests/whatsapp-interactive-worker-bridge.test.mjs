@@ -182,7 +182,7 @@ test('single-chat QA cannot turn assignments for other suppliers into interactiv
  const seen=[];
  const result=await drainWhatsAppOutbox(f.client,{
   interactiveConfig:{...opts(),qaChatId:'972501234567@c.us',
-   qaEventServiceId:'service-123',qaSupplierId:'supplier-123'}
+   qaEventServiceId:'service-123',qaSupplierId:'supplier-123'},
   transport:async(job,provider,client,preview)=>{
    seen.push({provider,preview,job});
    return {messageId:'LEGACY-OFFLINE-ONLY'};
@@ -204,7 +204,7 @@ test('single-chat QA missing durable v2 intent is HELD before transport, never s
  let calls=0;
  const result=await drainWhatsAppOutbox(f.client,{
   interactiveConfig:{...opts(),qaChatId:job.chat_id,
-   qaEventServiceId:'service-123',qaSupplierId:'supplier-123'}
+   qaEventServiceId:'service-123',qaSupplierId:'supplier-123'},
   transport:async()=>{calls++;throw Error('QA must never send legacy plain text')}
  });
  assert.equal(calls,0);
@@ -218,7 +218,7 @@ test('single-chat QA freezes signed buttons ONLY for configured chat with one ex
  const job=f.add('assignment_new'),seen=[];
  const result=await drainWhatsAppOutbox(f.client,{
   interactiveConfig:{...opts(),qaChatId:job.chat_id,
-   qaEventServiceId:'service-123',qaSupplierId:'supplier-123'}
+   qaEventServiceId:'service-123',qaSupplierId:'supplier-123'},
   transport:async(dispatched,provider,client,preview)=>{
    seen.push({dispatched,provider,preview});
    return {messageId:'3EB0GREENQAOFFLINEONLY123456'};
