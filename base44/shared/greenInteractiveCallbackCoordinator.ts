@@ -23,6 +23,7 @@ export async function processFutureGreenButtonCallback(input:{
  expectedInstanceId:string;webhookSecret:string;actionSigningSecret:string;
  trustedRolloutEnabled:boolean;accountCapabilityVerified:boolean;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
+ qaEventServiceId?:string;qaSupplierId?:string;
  now?:number;subtle?:SubtleCrypto
 }){
  // Feature disabled => zero reads. Reject invalid size BEFORE parsing JSON.
@@ -52,6 +53,16 @@ export async function processFutureGreenButtonCallback(input:{
  if(!Array.isArray(jobs)||jobs.length!==1)
   return closed(jobs?.length>1?'ambiguous_original_message':'original_message_not_found');
  const original=jobs[0];
+ // Isolated QA may change only ONE specifically authorized supplier/service.
+ // This identity comes from trusted server settings, never the provider body.
+ // Reject before action parsing, receipt creation or EventService CAS.
+ if(input.qaEventServiceId!==undefined||input.qaSupplierId!==undefined){
+  if(!/^[A-Za-z0-9_-]{3,128}$/.test(input.qaEventServiceId||'')||
+   !/^[A-Za-z0-9_-]{3,128}$/.test(input.qaSupplierId||'')||
+   original.event_service_id!==input.qaEventServiceId||
+   original.supplier_id!==input.qaSupplierId)
+   return closed('qa_assignment_outside_scope');
+ }
  const token=await resolveVerifiedGreenActionForButton(
   original,click,input.actionSigningSecret,input.subtle??crypto.subtle,now);
  if(!token)return closed('unverified_button_binding');
