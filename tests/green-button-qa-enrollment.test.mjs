@@ -126,6 +126,26 @@ test('inactive rollout, wrong event or number, group supplier, prior send and st
   assert.equal(f.counts.provider,0);
  }
 });
+test('prior V2 intent WITHOUT any Outbox still prevents re-enrollment of the same supplier',async()=>{
+ const f=fixture();
+ f.rows.service.assignment_notification_intents=JSON.stringify([{
+  supplier_id:SUPPLIER,revision:1,
+  key:'assignment:'+SERVICE+':'+SUPPLIER+':r1:SUPPLIER_NEW_ASSIGNMENT',
+  state:'resolved'
+ }]);
+ await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)),
+  err=>err.code==='qa_previous_assignment_intent_requires_review');
+ assert.equal(f.counts.outbox,0);
+ assert.equal(f.counts.cas,0);
+ assert.equal(f.counts.wake,0);
+});
+test('corrupted previous journal stops enrollment before any CAS or provider access',async()=>{
+ const f=fixture();f.rows.service.assignment_notification_intents='{invalid';
+ await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)),
+  err=>err.code==='qa_intent_history_corrupt');
+ assert.equal(f.counts.cas,0);
+ assert.equal(f.counts.outbox,0);
+});
 test('uncertain commit fails closed and second click cannot repeat business CAS',async()=>{
  const f=fixture();f.setUncertain();
  await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)),
