@@ -230,6 +230,45 @@ test('owner unknown Green callback audit is projected, on-demand, masked and NEV
   'b'.repeat(64),'a'.repeat(64)])
   assert.equal(serialized.includes(hidden),false,hidden);
 });
+test('owner-triggered expiry scrub removes ONLY expired optional ciphertext and never runs on dashboard status',async()=>{
+ const rows=[
+  {id:'expired-1',provider:'green',company_id:'shirat_hanevel',
+   recovery_status:'encrypted',recovery_version:'aes256gcm-v1',
+   recovery_key_id:'v1-green-recovery',recovery_nonce:'AAAAAAAAAAAAAAAA',
+   recovery_ciphertext:'ABCDEFGHIJKLMNOPQRSTUVWXYZZZZZ',
+   recovery_expires_at:'2026-01-02T00:00:00Z',quarantine_key:'gq1_metadata_only'},
+  {id:'not-expired',provider:'green',company_id:'shirat_hanevel',
+   recovery_status:'encrypted',recovery_version:'aes256gcm-v1',
+   recovery_key_id:'v1-green-recovery',recovery_nonce:'BBBBBBBBBBBBBBBB',
+   recovery_ciphertext:'ABCDEFGHIJKLMNOPQRSTUVWXYZZZZZ',
+   recovery_expires_at:'2030-01-02T00:00:00Z'}
+ ];
+ const ctx=context({quarantineRows:rows});
+ await ctx.invoke('status');
+ await ctx.invoke('interactiveReadiness');
+ assert.equal(ctx.cleanupReads.length,0);
+ assert.equal(ctx.cleanupWrites.length,0);
+ const response=await ctx.invoke('unknownRecoveryExpiryCleanup');
+ assert.equal(response.status,200);
+ assert.equal(response.body.success,true);
+ assert.equal(response.body.cleanup.scrubbed,1);
+ assert.equal(response.body.cleanup.runOnlyOnOwnerClick,true);
+ assert.equal(response.body.cleanup.retentionAutomaticallyEnforced,false);
+ assert.equal(response.body.cleanup.backupPhysicalErasureNotVerified,true);
+ assert.equal(ctx.cleanupReads.length,1);
+ assert.equal(ctx.cleanupWrites.length,1);
+ assert.equal(rows[0].recovery_status,'erased');
+ assert.equal(rows[0].recovery_nonce,'');
+ assert.equal(rows[0].recovery_ciphertext,'');
+ assert.equal(rows[0].quarantine_key,'gq1_metadata_only');
+ assert.equal(rows[1].recovery_status,'encrypted');
+ assert.notEqual(rows[1].recovery_ciphertext,'');
+ assert.equal(ctx.calls.length,0);
+ assert.equal(ctx.officeReads.length,0);
+ const serialized=JSON.stringify(response.body);
+ for(const sensitive of ['expired-1','not-expired','ABCDEFGHIJKLMNOP','v1-green-recovery'])
+  assert.equal(serialized.includes(sensitive),false,sensitive);
+});
 test('owner-only Green GetSettings audit is opt-in one provider GET and zero DB/queue mutation',async()=>{
  const ctx=context();
  await ctx.invoke('status');
