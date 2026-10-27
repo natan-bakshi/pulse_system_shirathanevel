@@ -363,15 +363,21 @@ Deno.serve(async(req)=>{
       // Dedicated SHORT-path QA checklist: one control and one setting read;
       // no Green HTTP request, phone, bearer or signing key leaves backend.
       try{
-        const [control,flags]=await Promise.all([
+        const [control,flags,globalPending]=await Promise.all([
           readWhatsAppQueueControl(client),
           client.asServiceRole.entities.AppSettings.filter({
             setting_key:'assignment_intent_v1_enabled'
-          },'-created_date',2)
+          },'-created_date',2),
+          // This runs only on explicit owner click; bounded projection, no PII.
+          client.asServiceRole.entities.EventService.filter({
+            assignment_intents_pending:true
+          },'updated_date',2,0,['id'])
         ]);
         const durableEnabled=flags.length===1&&flags[0].setting_value==='true';
+        if(!Array.isArray(globalPending)||globalPending.length>2)
+          throw Error('Global V2 backlog query unavailable');
         return RESPONSE({success:true,qa:greenButtonQaSafeSummary(control,
-          key=>Deno.env.get(key),durableEnabled),noMessagesSent:true});
+          key=>Deno.env.get(key),durableEnabled,globalPending.length),noMessagesSent:true});
       }catch{return RESPONSE({success:false,
         error:'בדיקת מוכנות לניסוי הכפתורים אינה זמינה',
         noMessagesSent:true},503);}
