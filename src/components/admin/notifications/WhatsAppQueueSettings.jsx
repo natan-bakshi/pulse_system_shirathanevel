@@ -48,6 +48,7 @@ export default function WhatsAppQueueSettings(){
   const [sourceAudit,setSourceAudit]=useState(null);
   const [inboundAudit,setInboundAudit]=useState(null);
   const [unknownCallbackAudit,setUnknownCallbackAudit]=useState(null);
+  const [unknownRecoveryCleanup,setUnknownRecoveryCleanup]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
@@ -102,6 +103,13 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת רשומת תגובה נכשלה');
         setInboundDetail(res.data.inspection);
         setNotice('בדיקת רשומה הושלמה לקריאה בלבד. לא בוצע שינוי בנתונים.');
+        return;
+      }
+      if(action==='unknownRecoveryExpiryCleanup'){
+        if(!res.data?.success)throw Error(res.data?.error||'ניקוי מידע מוצפן נכשל');
+        setUnknownRecoveryCleanup(res.data.cleanup);
+        setUnknownCallbackAudit(null);
+        setNotice('נבדק ניקוי ממוקד של נתונים מוצפנים שתוקפם פג. יש לטעון את יומן הבירור מחדש.');
         return;
       }
       if(action==='unknownCallbackAudit'){
@@ -257,15 +265,21 @@ export default function WhatsAppQueueSettings(){
         <summary className="font-medium cursor-pointer">תגובות Green לא מזוהות — {unknownCallbackAudit.pendingReview||0} ממתינות לבירור במדגם</summary>
         <div className="space-y-2 pt-3 text-xs">
           <p className="text-amber-800 font-medium">זוהי רשומת בירור של פורמט שאינו נתמך, ולא אישור או דחיית ספק. אין טיפול אוטומטי חוזר ואין אפשרות לשנות כאן שיבוץ.</p>
-          <p className="text-gray-600">מוצגים לכל היותר 40 רישומים. אין שמירת תוכן הודעות, מספרי טלפון או פרטי כפתורים; טביעת הזיהוי אינה מאפשרת לשחזר את ההודעה. לכן גם אירוע שנשמר לבירור אינו נחשב ACK מוצלח לספק.</p>
+          <p className="text-gray-600">מוצגים לכל היותר 40 רישומים. כברירת מחדל נשמרות רק טביעות HMAC. אפשרות עתידית לשמירת מידע מינימלי מוצפן אינה מופעלת; אם תופעל לאחר אישור נפרד, התוכן לא ייחשף במסך הזה. לא מוצגים מספרי טלפון, תוכן הודעות, מפתחות או פרטי כפתורים. אפילו אירוע מוצפן אינו מאשר או דוחה ספק ואינו ACK מוצלח.</p>
           {unknownCallbackAudit.sampleTruncated&&<p className="text-amber-800">המדגם מוגבל ל־40 הרשומות האחרונות.</p>}
           {unknownCallbackAudit.list?.length?<ul className="space-y-1">
             {unknownCallbackAudit.list.map((entry,index)=><li key={entry.reference+'-'+index} className="rounded border p-2">
-              <span>טביעת זיהוי: {entry.reference}</span> · <span>{entry.format==='unrecognized_interactive'?'תגובה אינטראקטיבית לא מוכרת':'הודעה נכנסת לא מזוהה'}</span> · <span>נרשם: {entry.receivedAt||'לא ידוע'}</span> · <span>דורש בירור ידני</span>
+              <span>טביעת זיהוי: {entry.reference}</span> · <span>{entry.format==='unrecognized_interactive'?'תגובה אינטראקטיבית לא מוכרת':'הודעה נכנסת לא מזוהה'}</span> · <span>נרשם: {entry.receivedAt||'לא ידוע'}</span> · <span>דורש בירור ידני</span> · <span>{entry.encryptedRecoveryRecorded?'קיים מידע מוצפן, לשימוש מורשה בלבד':'טביעת זיהוי בלבד'}</span>
             </li>)}
           </ul>:<p className="text-gray-600">לא נמצאו רשומות בירור במדגם.</p>}
+          <p className="text-gray-600">ניקוי ידני של מידע מוצפן שפג תוקפו אינו מחליף מדיניות מחיקה אוטומטית מאושרת; אין הוכחת מחיקה מגיבויי Base44.</p>
+          <Button size="sm" variant="outline" disabled={busy}
+            onClick={()=>window.confirm('לנקות לכל היותר 20 רשומות מוצפנות שתוקפן פג? זו פעולה בלתי הפיכה בשדות ההצפנה של הרשומה הפעילה. רשומות HMAC נשארות, וגיבויים אינם נמחקים אוטומטית.')&&run('unknownRecoveryExpiryCleanup')}>
+            נקה מידע מוצפן שפג תוקפו (פעולה ידנית)
+          </Button>
         </div>
       </details>}
+      {unknownRecoveryCleanup&&<p className="text-xs rounded border p-2" dir="rtl">נבדקו {unknownRecoveryCleanup.scanned} רשומות. ניקוי מאומת של {unknownRecoveryCleanup.scrubbed} שדות הצפנה שפג תוקפם. תוצאות לא מאומתות: {unknownRecoveryCleanup.unverified}. {unknownRecoveryCleanup.incomplete?'ייתכן שנדרש בירור או ניקוי נוסף.':'הבדיקה הסתיימה.'} גיבויים אינם נחשבים מחוקים.</p>}
       {inboundAudit&&<details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">תגובות כפתורים — בדיקת קליטה פנימית (לא פעיל בפרודקשן)</summary>
         <div className="pt-3 space-y-2">
