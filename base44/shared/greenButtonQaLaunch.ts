@@ -33,14 +33,18 @@ export function trustedGreenButtonQaConfig(control:any,env:(key:string)=>string|
   signingSecret.length<SECRET_MIN||webhookSecret.length<24||
   token.length<24||signingSecret===webhookSecret||
   target===senderAccountId+'@c.us')return null;
- const draft=parseSavedWhatsAppInteractivePolicy(control,'green');
- if(!draft.configured||draft.corrupt||!draft.setting.officeNumber)
-  return null;
- // The UI and persistent policy intentionally stay disabled. Only a trusted,
- // explicit QA gate turns the immutable COPY enabled, not the stored draft.
- const policy=validateWhatsAppInteractivePolicy({
-  ...draft.setting.policy,enabled:true
- });
+ // Malformed draft must never crash the central queue worker. Even when an
+ // owner accidentally enables a QA flag, missing settings mean NO beta send.
+ let draft:any,policy:any;
+ try{
+  draft=parseSavedWhatsAppInteractivePolicy(control,'green');
+  if(!draft.configured||draft.corrupt||!draft.setting.officeNumber)
+   return null;
+  // Persistent policy remains disabled; only trusted QA code makes a COPY.
+  policy=validateWhatsAppInteractivePolicy({
+   ...draft.setting.policy,enabled:true
+  });
+ }catch{return null;}
  if(policy.buttons.length!==3||
   !exactActions.every(action=>
    policy.buttons.some(button=>button.action===action)))return null;
@@ -59,11 +63,25 @@ export function trustedGreenButtonQaConfig(control:any,env:(key:string)=>string|
 // Not used to authorize sending or handling real callbacks.
 export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|undefined){
  const config=trustedGreenButtonQaConfig(control,env);
+ const draft=parseSavedWhatsAppInteractivePolicy(control,'green');
  return {mode:'single_chat_qa',readyForQa:!!config,
+  checks:[
+   {key:'owner_queue_gate',ready:control?.interactive_outbound_live_enabled===true},
+   {key:'send_env_gate',ready:get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'},
+   {key:'inbound_env_gate',ready:get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'},
+   {key:'owner_env_gate',ready:get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'},
+   {key:'provider_beta_verified',ready:get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'},
+   {key:'one_qa_chat',ready:PRIVATE.test(get(env,'GREEN_BUTTONS_QA_ALLOWED_CHAT'))},
+   {key:'green_credentials',ready:INSTANCE.test(get(env,'GREEN_API_INSTANCE_ID'))&&
+     get(env,'GREEN_API_TOKEN').length>=24},
+   {key:'signing_secret',ready:get(env,'WHATSAPP_INTERACTIVE_SIGNING_SECRET').length>=32},
+   {key:'webhook_bearer',ready:get(env,'GREEN_API_WEBHOOK_TOKEN').length>=24},
+   {key:'office_draft_saved',ready:draft.configured&&!draft.corrupt&&
+     !!draft.setting.officeNumber&&draft.setting.policy.buttons.length===3}
+  ],
   liveButtonsSentByThisCheck:false,
   restrictedToOnePrivateChat:true,
   requiresGreenWebhookRoutingReview:true,
   realCallbackRoundTripProven:false,
-  noProviderCalls:true,
-  noMessageSends:true};
+  noProviderCalls:true,noMessageSends:true};
 }
