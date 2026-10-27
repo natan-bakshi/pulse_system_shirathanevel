@@ -4,8 +4,11 @@
 // that underlying database backups or exports have been cryptographically
 // erased. Live retention enforcement still needs independent owner approval.
 //
-// Oldest encrypted records first, at most 20 projected rows per click.
-// No raw callback data is read back to the owner. All writes use exact CAS;
+// Only EXPIRED encrypted records are queried (server-side date range),
+// ordered by expiration. This prevents a full first-page of not-yet-expired
+// rows from starving old records when clock, registration time or data order
+// differ. Max 20 per click; malformed missing-expiry rows require independent
+// anomaly audit and cannot be declared deleted. All writes use exact CAS;
 // uncertain writes are reported as unverified, NEVER as erased.
 const LIMIT=20;
 const COMPANY='shirat_hanevel';
@@ -23,8 +26,9 @@ export async function scrubExpiredUnknownGreenRecoveryOnDemand(client:any,opts:{
  const db=client?.asServiceRole?.entities?.WhatsAppInboundQuarantine;
  if(!db?.filter||!db?.updateMany||!db?.get)throw deny();
  const rows=await db.filter({
-  provider:'green',company_id:COMPANY,recovery_status:'encrypted'
- },'created_date',LIMIT,0,projected);
+  provider:'green',company_id:COMPANY,recovery_status:'encrypted',
+  recovery_expires_at:{$lte:new Date(now).toISOString()}
+ },'recovery_expires_at',LIMIT,0,projected);
  if(!Array.isArray(rows)||rows.length>LIMIT)throw deny();
  let scrubbed=0,expiredCandidates=0,unverified=0;
  for(const row of rows){
@@ -54,12 +58,17 @@ export async function scrubExpiredUnknownGreenRecoveryOnDemand(client:any,opts:{
   };
   try{
    // An UPDATE might commit despite the SDK throwing. Never retry it blindly.
-   await db.updateMany(matching,{$set:{
+   // A successful GET alone is NOT proof that our CAS actually matched.
+   const update=await db.updateMany(matching,{$set:{
     recovery_status:'erased',recovery_ciphertext:'',
     recovery_nonce:'',recovery_key_id:''
    }});
+   if(update?.updated!==1){unverified++;continue;}
    const verified=await db.get(row.id);
-   if(verified?.recovery_status==='erased'&&
+   if(verified?.id===row.id&&verified.provider==='green'&&
+    verified.company_id===COMPANY&&
+    verified.recovery_expires_at===row.recovery_expires_at&&
+    verified.recovery_status==='erased'&&
     verified.recovery_ciphertext===''&&verified.recovery_nonce===''&&
     verified.recovery_key_id==='')scrubbed++;
    else unverified++;
@@ -72,6 +81,8 @@ export async function scrubExpiredUnknownGreenRecoveryOnDemand(client:any,opts:{
   scanned:rows.length,expiredCandidates,scrubbed,
   unverified,incomplete:unverified>0||rows.length===LIMIT,
   moreMayRemain:rows.length===LIMIT,
+  expiryQueryServerFiltered:true,
+  malformedExpiryRequiresSeparateAudit:true,
   activeEntityFieldsScrubbedOnly:true,
   backupPhysicalErasureNotVerified:true,
   noProviderCalls:true,noMessagesSent:true,noSupplierWrites:true,
