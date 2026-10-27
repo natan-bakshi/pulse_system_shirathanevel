@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {trustedGreenButtonQaConfig,greenButtonQaSafeSummary}
+import {trustedGreenButtonQaConfig,trustedGreenButtonQaInboundConfig,
+ greenButtonQaSafeSummary}
  from '../base44/shared/greenButtonQaLaunch.ts';
 import {handleGreenButtonQaWebhook}
  from '../base44/shared/greenButtonQaWebhookHandler.ts';
@@ -123,7 +124,6 @@ test('incomplete/ambiguous office policy never enables signed beta transport',()
 });
 test('HTTP QA endpoint is inert without every independent env approval: no DB or provider',async()=>{
  for(const [key,value] of [
-  ['GREEN_BUTTONS_QA_SEND_ENABLED',''],
   ['GREEN_BUTTONS_QA_INBOUND_ENABLED',''],
   ['GREEN_BUTTONS_QA_ACCOUNT_VERIFIED',''],
   ['GREEN_BUTTONS_QA_OWNER_APPROVED','']
@@ -136,6 +136,31 @@ test('HTTP QA endpoint is inert without every independent env approval: no DB or
   assert.equal(result.httpStatus,404,key);
   assert.equal(db.counts.reads,0,key);
  }
+});
+test('rollback stops NEW button sends but inbound remains available for previously sent signed QA buttons',async()=>{
+ const stopped=env({GREEN_BUTTONS_QA_SEND_ENABLED:''});
+ assert.equal(trustedGreenButtonQaConfig(control,stopped,true),null);
+ const inbound=trustedGreenButtonQaInboundConfig(control,stopped,true);
+ assert.equal(inbound.enabled,true);
+ assert.equal(inbound.qaChatId,CHAT);
+ assert.equal(inbound.qaEventServiceId,'service-123');
+ assert.equal(inbound.qaSupplierId,'supplier-123');
+ assert.equal(greenButtonQaSafeSummary(control,stopped,true).readyForQa,false);
+ assert.equal(greenButtonQaSafeSummary(control,stopped,true).receivingExistingQaRepliesAvailable,true);
+ const db=sdk(control);let staged=0;
+ const response=await handleGreenButtonQaWebhook(createRequest(),{
+  env:stopped,makeClient:()=>db.client,
+  recalculateEventStatus:async()=>null,
+  stage:async(_request,opts)=>{
+   staged++;
+   assert.equal(opts.qaChatId,CHAT);
+   return {stage:'processed',result:'applied',reason:'applied'};
+  }
+ });
+ assert.equal(staged,1);
+ assert.equal(response.httpStatus,200);
+ assert.equal(db.counts.reads,1);
+ assert.equal(db.counts.flagReads,1);
 });
 test('V2 migration OFF, absent or ambiguous always blocks inbound even with full QA secrets',async()=>{
  for(const flag of ['false',null,'duplicate']){
