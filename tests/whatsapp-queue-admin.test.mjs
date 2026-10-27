@@ -10,13 +10,14 @@ import {inspectInboundReceiptReadOnly} from '../base44/shared/whatsappInboundInv
 import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappInteractiveReadiness.ts';
 import {inspectOfficeAssignmentReference} from '../base44/shared/whatsappOfficeReferenceLookup.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../base44/shared/greenUnknownCallbackQuarantine.ts';
+import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../base44/shared/greenUnknownRecoveryCleanup.ts';
 import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions} from '../base44/shared/whatsappSourceAudit.ts';
 
 function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[],quarantineRows=[],officeServices=[],officeEvents=[],officeSuppliers=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
- const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[],unknownProjections=[],officeReads=[],greenAudits=[];
+ const syncs=[],calls=[],interactiveOps=[],listProjections=[],pendingProjections=[],inboundProjections=[],unknownProjections=[],cleanupReads=[],cleanupWrites=[],officeReads=[],greenAudits=[];
  const matches=(record,query)=>Object.entries(query||{}).every(([key,val])=>{
    if(val&&typeof val==='object'&&('$in' in val))return val.$in.includes(record[key]);
    return record[key]===val;
@@ -61,6 +62,19 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        unknownProjections.push(fields);
        return quarantineRows.slice(offset,offset+limit).map(row=>
         Object.fromEntries(fields.map(key=>[key,row[key]])));
+     },
+     filter:async(query,_sort,limit,offset,fields)=>{
+       cleanupReads.push(fields);
+       return quarantineRows.filter(row=>matches(row,query))
+        .slice(offset,offset+limit).map(row=>
+         Object.fromEntries(fields.map(key=>[key,row[key]])));
+     },
+     get:async id=>quarantineRows.find(row=>row.id===id)||null,
+     updateMany:async(query,{$set})=>{
+       cleanupWrites.push(Object.keys($set));
+       const items=quarantineRows.filter(row=>matches(row,query));
+       for(const row of items)Object.assign(row,$set);
+       return {updated:items.length};
      }
    }
  }}};
@@ -102,6 +116,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('whatsappInboundInvestigation.ts'))return {inspectInboundReceiptReadOnly};
      if(name.endsWith('whatsappOfficeReferenceLookup.ts'))return {inspectOfficeAssignmentReference};
      if(name.endsWith('greenUnknownCallbackQuarantine.ts'))return {inspectUnknownGreenQuarantineReadOnly};
+     if(name.endsWith('greenUnknownRecoveryCleanup.ts'))return {scrubExpiredUnknownGreenRecoveryOnDemand};
      if(name.endsWith('greenWebhookSettingsAudit.ts'))return {
        inspectGreenWebhookSettingsReadOnly:async options=>{
          greenAudits.push({...options});
@@ -126,7 +141,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      throw Error('Unexpected import: '+name);
    }
  });
- return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,inboundProjections,unknownProjections,officeReads,greenAudits,invoke:async(action,params={})=>await handler({
+ return {record,jobs,syncs,calls,interactiveOps,listProjections,pendingProjections,inboundProjections,unknownProjections,cleanupReads,cleanupWrites,officeReads,greenAudits,invoke:async(action,params={})=>await handler({
    method:'POST',json:async()=>({action,...params})
  })};
 }
@@ -173,7 +188,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
