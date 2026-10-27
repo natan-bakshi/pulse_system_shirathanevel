@@ -272,7 +272,7 @@ export default function WhatsAppQueueSettings(){
           <p className="font-medium text-amber-800">{qaReadiness.readyForQa?'תנאי התצורה לניסוי מוכנים, אך עדיין דרושות בדיקת ספק והוכחת קליטה חיה.':'הניסוי עדיין חסום; אין כפתורים פעילים ואין שינוי בשליחות הרגילות.'}</p>
           <ul className="space-y-1">
             {(qaReadiness.checks||[]).map(check=><li key={check.key}>
-              {check.ready?'✓':'○'} {({owner_queue_gate:'אישור הפעלה במנגנון התור',send_env_gate:'אישור שליחה ניסיונית בשרת',inbound_env_gate:'אישור קליטת תגובות בשרת',owner_env_gate:'אישור מנהל־העל בשרת',provider_beta_verified:'אימות יכולות הכפתורים בחשבון Green',one_qa_chat:'מספר בדיקה יחיד בשרת',green_credentials:'פרטי חיבור Green תקינים',signing_secret:'מפתח חתימת כפתורים',webhook_bearer:'סוד אימות Webhook',office_draft_saved:'טיוטת שלושה כפתורים ומספר משרד'})[check.key]||check.key}
+              {check.ready?'✓':'○'} {({durable_assignment_intent:'יומן שיבוצים עמיד V2 פעיל',owner_queue_gate:'אישור הפעלה במנגנון התור',send_env_gate:'אישור שליחה ניסיונית בשרת',inbound_env_gate:'אישור קליטת תגובות בשרת',owner_env_gate:'אישור מנהל־העל בשרת',provider_beta_verified:'אימות יכולות הכפתורים בחשבון Green',one_qa_chat:'מספר בדיקה יחיד בשרת',green_credentials:'פרטי חיבור Green תקינים',signing_secret:'מפתח חתימת כפתורים',webhook_bearer:'סוד אימות Webhook',office_draft_saved:'טיוטת שלושה כפתורים ומספר משרד'})[check.key]||check.key}
             </li>)}
           </ul>
           <p className="text-gray-600">גם כשהתצורה מוכנה, יש לוודא שכתובת ה־Webhook הקיימת וצרכני ההודעות האחרים נשמרים. אין אפשרות להפעיל את הניסוי דרך הבדיקה הזאת. כל שאר הספקים ממשיכים במסלול השליחה הרגיל.</p>
