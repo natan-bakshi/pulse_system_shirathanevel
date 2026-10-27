@@ -71,6 +71,9 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
  const config=trustedGreenButtonQaConfig(control,env,assignmentIntentEnabled);
  const draft=parseSavedWhatsAppInteractivePolicy(control,'green');
  return {mode:'single_chat_qa',readyForQa:!!config&&assignmentIntentEnabled,
+  creationActionConfigured:!!config&&
+   ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))&&
+   get(env,'GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled',
   checks:[
    {key:'durable_assignment_intent',ready:assignmentIntentEnabled===true},
    {key:'owner_queue_gate',ready:control?.interactive_outbound_live_enabled===true},
@@ -82,6 +85,7 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
    {key:'one_qa_assignment',ready:
      ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_SERVICE_ID'))&&
      ENTITY.test(get(env,'GREEN_BUTTONS_QA_SUPPLIER_ID'))},
+   {key:'qa_event_approved',ready:ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))},
    {key:'green_credentials',ready:INSTANCE.test(get(env,'GREEN_API_INSTANCE_ID'))&&
      get(env,'GREEN_API_TOKEN').length>=24},
    {key:'signing_secret',ready:get(env,'WHATSAPP_INTERACTIVE_SIGNING_SECRET').length>=32},
