@@ -50,7 +50,10 @@ function kindOf(typeMessage:unknown){
 export async function inspectUnknownGreenRecoveryStructureReadOnly(
  client:any,request:{id?:string;reference?:string},opts:{
  expectedInstanceId:string;fingerprintSecret:string;
- encryptionKey:string;keyId:string;now?:number
+ encryptionKey:string;keyId:string;now?:number;
+ // Optional previous key, retained only for unexpired (48h) ciphertext.
+ // Never fetch secrets based on user-supplied key identifiers.
+ previousEncryptionKey?:string;previousKeyId?:string
  }){
  if(!RECID.test(request?.id||'')||!TAIL.test(request?.reference||'')||
   typeof opts?.expectedInstanceId!=='string'||
@@ -69,8 +72,18 @@ export async function inspectUnknownGreenRecoveryStructureReadOnly(
   typeof row.registered_at!=='string'||
   !Number.isFinite(Date.parse(row.registered_at)))throw denied();
  try{
+  // Rotation supports at most two independently trusted server secrets.
+  // Select ONLY by the stored authenticated key id, never a client parameter.
+  // Duplicated IDs with conflicting secrets fail closed.
+  const candidates=[
+   {keyId:opts.keyId,encryptionKey:opts.encryptionKey},
+   {keyId:opts.previousKeyId,encryptionKey:opts.previousEncryptionKey}
+  ].filter(x=>typeof x.keyId==='string'&&
+   typeof x.encryptionKey==='string'&&x.keyId===row.recovery_key_id);
+  if(candidates.length!==1)throw denied();
   const recovered=await decryptUnknownGreenRecovery(row,{
-   encryptionKey:opts.encryptionKey,keyId:opts.keyId,now:opts.now
+   encryptionKey:candidates[0].encryptionKey,
+   keyId:candidates[0].keyId,now:opts.now
   });
   const identity=await fingerprintUnknownGreenCallback(recovered.callback,{
    expectedInstanceId:opts.expectedInstanceId,
