@@ -18,7 +18,11 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  client:any;rolloutAuthorized:boolean;accountCapabilityVerified:boolean;
  webhookSecret:string;actionSigningSecret:string;expectedInstanceId:string;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
- maxPerMinute?:number;now?:number;subtle?:SubtleCrypto
+ maxPerMinute?:number;now?:number;subtle?:SubtleCrypto;
+ // ONLY from trusted server configuration after owner retention/purge review.
+ // Undefined by default: zero recoverable payloads are stored.
+ encryptedUnknownRecovery?:{ownerRetentionApproved:boolean;
+  encryptionKey:string;keyId:string}
 }){
  const decoded=await decodeFutureGreenInteractiveHttpRequest(request,{
   rolloutAuthorized:opts?.rolloutAuthorized===true,
@@ -59,10 +63,12 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
     const recorded=await registerUnknownGreenCallbackQuarantine(
      opts.client,decoded.rawCallback,{
       expectedInstanceId:opts.expectedInstanceId,
-      fingerprintSecret:opts.actionSigningSecret,now,subtle:opts.subtle
+      fingerprintSecret:opts.actionSigningSecret,now,subtle:opts.subtle,
+      encryptedRecovery:opts.encryptedUnknownRecovery
      });
     return {stage:'quarantined_unknown',reason:'unknown_button_requires_manual_review',
      quarantineRecorded:true,quarantineKind:recorded.kind,
+     encryptedRecoveryRecorded:recorded.encryptedRecoveryRecorded,
      canAcknowledge:false,manualReviewRequired:true,
      providerCalls:0,businessWritesAuthorized:false};
    }catch{
