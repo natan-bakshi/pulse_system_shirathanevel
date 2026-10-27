@@ -25,7 +25,7 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
  };
  vm.runInNewContext(code,{
    exports:{},module:{exports:{}},console:{error:()=>{},warn:()=>{}},
-   Deno:{serve:fn=>handler=fn},Response:{json:(body,{status=200}={})=>({status,body})},
+   Deno:{serve:fn=>handler=fn,env:{get:()=>''}},Response:{json:(body,{status=200}={})=>({status,body})},
    require:name=>{
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(name.endsWith('/assignmentIntentReconciler.ts'))return {
@@ -39,6 +39,9 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      };
      if(name.endsWith('/agreementQueueReconciler.ts'))return {
        reconcileStalledAgreementEnqueues:async()=>({examined:0,linked:0,unverified:0,alerts:0,errors:0})
+     };
+     if(name.endsWith('/greenButtonQaLaunch.ts'))return {
+       trustedGreenButtonQaConfig:()=>null
      };
      if(name.endsWith('/whatsappQueueWorker.ts'))return {
        reconcileAcceptedWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
