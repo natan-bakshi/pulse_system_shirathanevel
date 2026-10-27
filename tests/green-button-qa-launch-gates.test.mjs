@@ -71,8 +71,10 @@ test('single chat QA is disabled by default and never activates from saved polic
  assert.equal(trustedGreenButtonQaConfig({
   ...control,interactive_assignment_green_policy_json:null
  },env()),null,'missing owner draft cannot activate beta sending');
- const report=greenButtonQaSafeSummary(control,env());
+ const report=greenButtonQaSafeSummary(control,env(),true);
  assert.equal(report.readyForQa,true);
+ assert.equal(greenButtonQaSafeSummary(control,env(),false).readyForQa,false,
+  'missing durable v2 assignment mode must not claim readiness');
  assert.equal(JSON.stringify(report).includes(CHAT),false);
  assert.equal(JSON.stringify(report).includes(SIGNING),false);
 });
