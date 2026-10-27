@@ -71,6 +71,9 @@ export default function WhatsAppQueueSettings(){
     return()=>{alive=false;};
   },[expanded]);
   async function run(action,params={}){
+    // Never leave a previously decrypted structural preview visible when a
+    // different owner review starts or fails: it would refer to the wrong row.
+    if(action==='unknownRecoveryStructureReview')setUnknownRecoveryReview(null);
     if(action==='configure'&&view&&!view.config.enabled&&form.enabled&&
       !window.confirm('הפעלת התור משנה את מסלול ה־WhatsApp לכל המערכת. ודא שאוטומציות הרקע ועובד התור פורסמו ונבדקו. להמשיך?'))return;
     setBusy(true);setError('');setNotice('');
