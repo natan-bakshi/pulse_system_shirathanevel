@@ -366,8 +366,11 @@ test('without explicit owner approval, invalid key and generic unknown shape can
   ...f.opts,encryptedUnknownRecovery:{
    ownerRetentionApproved:true,encryptionKey:key,keyId:'v1-green-recovery'}
  });
- assert.equal(result.stage,'quarantine_unavailable');
- assert.equal(f.rows.length,0,'do not encrypt ordinary unknown human chat');
+ assert.equal(result.stage,'quarantined_unknown');
+ assert.equal(result.encryptedRecoveryRecorded,false);
+ assert.equal(f.rows.length,1,'record only the HMAC of new plain-chat format');
+ assert.equal('recovery_ciphertext' in f.rows[0],false);
+ assert.equal(planFutureGreenWebhookHttpContract(result).plannedHttpStatus,503);
 });
 test('encrypted duplicate never rewrites nonce, extends retention or stores a second payload',async()=>{
  const f=fixture(),key=Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
