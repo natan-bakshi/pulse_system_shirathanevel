@@ -77,10 +77,13 @@ export async function inspectUnknownGreenRecoveryStructureReadOnly(
    fingerprintSecret:opts.fingerprintSecret,
    now:Date.parse(row.registered_at)
   });
-  // Integrity of the encrypted JSON alone isn't enough. Correlate it again
-  // against the ORIGINAL authenticated provider event and owner Quarantine.
+  // The original payload_mac HMAC covers the FULL Green envelope, while the
+  // encrypted recovery intentionally stores a MINIMAL subset. AES-GCM AAD
+  // already authenticates the stored full-payload MAC and quarantine key;
+  // recompute independent event identity/time/format from the minimal body.
+  // Comparing a recomputed minimal HMAC to the original full HMAC would fail
+  // for ordinary harmless senderName/provider metadata and is incorrect.
   if(identity.quarantine_key!==row.quarantine_key||
-   identity.payload_mac!==row.payload_mac||
    identity.provider_event_at!==row.provider_event_at||
    identity.format_code!==row.format_code)throw denied();
   const source=recovered.callback;
