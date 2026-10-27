@@ -8,6 +8,7 @@ import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudi
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
 import {greenButtonQaSafeSummary} from '../../shared/greenButtonQaLaunch.ts';
+import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
@@ -325,6 +326,20 @@ Deno.serve(async(req)=>{
       ]);
       return RESPONSE({success:true,liveInboundEnabled:false,
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
+    }
+    if(action==='greenButtonQaAssignmentPreflight'){
+      // Exact server-configured pilot service/supplier only. Owner click,
+      // max 3 bounded entity reads, no provider call or assignment writes.
+      try{
+        const preflight=await inspectGreenButtonQaAssignmentReadOnly(client,{
+          eventServiceId:Deno.env.get('GREEN_BUTTONS_QA_EVENT_SERVICE_ID'),
+          supplierId:Deno.env.get('GREEN_BUTTONS_QA_SUPPLIER_ID'),
+          chatId:Deno.env.get('GREEN_BUTTONS_QA_ALLOWED_CHAT')
+        });
+        return RESPONSE({success:true,preflight,noMessagesSent:true});
+      }catch{return RESPONSE({success:false,
+        error:'בדיקת שיבוץ הניסוי אינה זמינה. לא נשלחו הודעות.',
+        noMessagesSent:true},503);}
     }
     if(action==='greenButtonQaReadiness'){
       // Dedicated SHORT-path QA checklist: one control and one setting read;
