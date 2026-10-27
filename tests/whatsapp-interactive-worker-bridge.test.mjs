@@ -176,6 +176,43 @@ test('production wrapper now wires ONLY explicitly gated single-chat QA; control
  assert.match(fn,/\.\.\.\(qaConfig\?\{interactiveConfig:qaConfig\}:\{\}\)/);
  assert.doesNotMatch(fn,/interactiveConfig:opts\(\)/);
 });
+test('single-chat QA cannot turn assignments for other suppliers into interactive messages',async()=>{
+ const f=fixture();f.control.interactive_outbound_live_enabled=true;
+ const other=f.add('assignment_new',{chat_id:'972509999999@c.us'});
+ const seen=[];
+ const result=await drainWhatsAppOutbox(f.client,{
+  interactiveConfig:{...opts(),qaChatId:'972501234567@c.us'},
+  transport:async(job,provider,client,preview)=>{
+   seen.push({provider,preview,job});
+   return {messageId:'LEGACY-OFFLINE-ONLY'};
+  }
+ });
+ assert.equal(result.accepted,1);
+ assert.equal(seen.length,1);
+ assert.equal(seen[0].preview,null);
+ assert.equal(seen[0].job.chat_id,'972509999999@c.us');
+ assert.equal(other.interactive_button_bindings_json,undefined);
+ assert.equal(f.events.snapshotWrites,0);
+});
+test('single-chat QA freezes signed buttons ONLY for configured chat with one existing worker dispatch',async()=>{
+ const f=fixture();f.control.interactive_outbound_live_enabled=true;
+ const job=f.add('assignment_new'),seen=[];
+ const result=await drainWhatsAppOutbox(f.client,{
+  interactiveConfig:{...opts(),qaChatId:job.chat_id},
+  transport:async(dispatched,provider,client,preview)=>{
+   seen.push({dispatched,provider,preview});
+   return {messageId:'3EB0GREENQAOFFLINEONLY123456'};
+  }
+ });
+ assert.equal(result.accepted,1);
+ assert.equal(seen.length,1);
+ assert.equal(seen[0].preview.method,'sendInteractiveButtons');
+ assert.equal(seen[0].preview.body.buttons.length,3);
+ assert.equal(seen[0].preview.body.buttons[2].type,'url');
+ assert.equal(job.status,'accepted');
+ assert.equal(job.provider_message_id,'3EB0GREENQAOFFLINEONLY123456');
+ assert.equal(f.events.snapshotWrites,1);
+});
 test('explicit test-only double gate freezes signed account+revision BEFORE ONE provider request',async()=>{
  const x=fixture();x.control.interactive_outbound_live_enabled=true;
  const j=x.add(),seen=[];
