@@ -22,6 +22,8 @@ export function planFutureGreenWebhookHttpContract(result:any){
   if([400,401,404,405,413,415].includes(code)){
    status=code;reason='request_boundary_rejected';
   }else{status=401;reason='request_auth_or_parse_not_verified';}
+ }else if(result?.stage==='qa_sender_outside_scope'){
+  status=404;reason='single_chat_qa_outside_scope';
  }else if(result?.stage==='quarantined_unknown'){
   status=503;reason='unknown_button_metadata_review_not_recoverable';
  }else if(result?.stage==='quarantine_unavailable'){
