@@ -106,7 +106,7 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
   queueMaySendWhatsAppAutomatically:true,
   targetLimitedToOneSupplier:true,
   noDirectProviderCalls:true,
-  noSecondCAS:false,
+  oneConfirmedAssignmentCAS:true,
   noPersonalDataReturned:true
  };
 }
