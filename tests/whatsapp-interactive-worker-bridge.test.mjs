@@ -168,12 +168,13 @@ test('DEFAULT-OFF worker preserves exact legacy path and does not snapshot or ad
  assert.equal(seen[0].job.message_text,'נדרש אישור שיבוץ');
  assert.equal(j.status,'accepted');
 });
-test('current production wrapper supplies NO interactiveConfig and schema defaults OFF',()=>{
+test('production wrapper now wires ONLY explicitly gated single-chat QA; control defaults OFF',()=>{
  const fn=fs.readFileSync('base44/functions/processWhatsAppOutbox/entry.ts','utf8');
  const schema=JSON.parse(fs.readFileSync('base44/entities/WhatsAppQueueControl.jsonc','utf8'));
  assert.equal(schema.properties.interactive_outbound_live_enabled.default,false);
- assert.match(fn,/drainWhatsAppOutbox\(client,\{wakeReason,initialControl:controlRows\[0\]\}\)/);
- assert.doesNotMatch(fn,/interactiveConfig/);
+ assert.match(fn,/trustedGreenButtonQaConfig\(controlRows\[0\]/);
+ assert.match(fn,/\.\.\.\(qaConfig\?\{interactiveConfig:qaConfig\}:\{\}\)/);
+ assert.doesNotMatch(fn,/interactiveConfig:opts\(\)/);
 });
 test('explicit test-only double gate freezes signed account+revision BEFORE ONE provider request',async()=>{
  const x=fixture();x.control.interactive_outbound_live_enabled=true;
