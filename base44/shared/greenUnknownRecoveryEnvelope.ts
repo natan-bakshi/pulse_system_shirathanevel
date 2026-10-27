@@ -113,8 +113,7 @@ export async function encryptUnknownGreenRecovery(raw,data,opts){
   recovery_version:'aes256gcm-v1',recovery_status:'encrypted',
   recovery_key_id:opts.keyId,recovery_nonce:toB64Url(nonce),
   recovery_ciphertext:toB64Url(new Uint8Array(ciphertext)),
-  recovery_expires_at:expires,
-  encryptedRecoveryPresent:true
+  recovery_expires_at:expires
  };
 }
 // Private helper for a future owner-reviewed backend recovery worker, NEVER
