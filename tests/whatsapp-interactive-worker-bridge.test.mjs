@@ -194,6 +194,22 @@ test('single-chat QA cannot turn assignments for other suppliers into interactiv
  assert.equal(other.interactive_button_bindings_json,undefined);
  assert.equal(f.events.snapshotWrites,0);
 });
+test('single-chat QA missing durable v2 intent is HELD before transport, never sent as plain text',async()=>{
+ const f=fixture();f.control.interactive_outbound_live_enabled=true;
+ const job=f.add('assignment_new',{
+  idempotency_key:'assignment:service-123:supplier-123:legacy-date:SUPPLIER_NEW_ASSIGNMENT'
+ });
+ let calls=0;
+ const result=await drainWhatsAppOutbox(f.client,{
+  interactiveConfig:{...opts(),qaChatId:job.chat_id},
+  transport:async()=>{calls++;throw Error('QA must never send legacy plain text')}
+ });
+ assert.equal(calls,0);
+ assert.equal(result.accepted,0);
+ assert.equal(job.status,'failed');
+ assert.equal(job.attempt_count,0);
+ assert.equal(f.events.snapshotWrites,0);
+});
 test('single-chat QA freezes signed buttons ONLY for configured chat with one existing worker dispatch',async()=>{
  const f=fixture();f.control.interactive_outbound_live_enabled=true;
  const job=f.add('assignment_new'),seen=[];
