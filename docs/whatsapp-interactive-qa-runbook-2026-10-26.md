@@ -109,6 +109,15 @@
 - [x] כל **688/688** בדיקות Node, Vite build, ESLint ממוקד, `git diff --check` עברו בסבב הראשון; אין קריאות Green חיות או הודעות אמת.
 - [ ] **Go/No-Go עדיין חסום:** צריך הוכחת מחיקה אוטומטית/גיבויים, ניהול מפתחות/rotation, שחזור ידני מאובטח לפני הקשחת ACK אמיתי, בדיקת Green ו־Credit Usage. אף אירוע מוצפן לא מקבל ACK 200 אוטומטי.
 - **תוכנית:** `docs/whatsapp-unknown-green-recovery-encryption-2026-10-27.md`.
+## 12. RLS / פענוח בשרת / מניעת רעב בניקוי — 27.10.2026
+- [x] `WhatsAppInboundQuarantine` הוגדר ל־`read/create/update/delete=false` לכל SDK של משתמש. רק `asServiceRole` של Endpoint שעבר אימות מנהל־על מורשה להשתמש בו. **אין עדיין בדיקת הרשאות LIVE**; זו בדיקת Schema ומבחני API Mock.
+- [x] `unknownCallbackAudit` ממשיך להחזיר עד 40 מטא־דאטה, עם `reviewRecordId` אטום + טביעת 12 תווים ובדיקת מדגם תפוגה. אינו מחזיר AES cipher, טלפון או מזהי תגובה.
+- [x] בדיקת מבנה פרטנית דורשת התאמת `reviewRecordId` + HMAC suffix + חברה + provider + receipt state + expiry + AES/GCM + original HMAC event identity, ואז משיבה **booleans בלבד** על selectedId/stanza reference ומבנה כללי. שום כפתור לא מאושר/נדחה, ואין הודעה משודרת. מפתחות current/previous נבדקים בשרת ולא מופיעים בתשובה.
+- [x] תיקון Scrub: ב־`filter` המבוסס על `recovery_expires_at:{$lte:nowISO}` המידע מתמיין לפי מועד התפוגה. 30 רשומות לא־פגות בראש התור לא מונעות ניקוי של רשומה שפג תוקפה. `updated=0` או timeout נחשבים תוצאה לא־מאומתת, גם אם במקביל רשומה כבר נוקתה על ידי תהליך אחר.
+- [x] מקרים חריגים: תאריכי תפוגה פגומים אינם נמצאים בשאילתת התפוגה; יומן הבירור הקיים מציג התראה **במדגם בלבד**, ללא הבטחה שכל המסד נבדק. ניקוי אוטומטי/גיבויים עדיין חסומים.
+- [x] רגרסיה **699/699** בדיקות Mock, Build, ESLint ו־Diff clean.
+- [ ] QA אמיתי נדרש: משתמש שאינו מנהל־על לא מסוגל לקרוא/לכתוב Quarantine ישירות, אפשרות `asServiceRole` מבוקרת, ביצוע `$lte` בסביבת DB אמיתית, פורמט Green המקורי, ACK, מדידת קרדיטים ומחיקה ממאגרי גיבוי לפני פרסום.
+
 
 
 
