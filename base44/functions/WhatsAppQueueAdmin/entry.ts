@@ -327,8 +327,8 @@ Deno.serve(async(req)=>{
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
     }
     if(action==='greenButtonQaReadiness'){
-      // Dedicated SHORT-path QA checklist: one control-row read, no Green API
-      // request, no phone number, bearer or signing key ever leaves backend.
+      // Dedicated SHORT-path QA checklist: one control and one setting read;
+      // no Green HTTP request, phone, bearer or signing key leaves backend.
       try{
         const [control,flags]=await Promise.all([
           readWhatsAppQueueControl(client),
