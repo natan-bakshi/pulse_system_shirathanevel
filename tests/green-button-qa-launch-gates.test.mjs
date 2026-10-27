@@ -28,6 +28,8 @@ const secrets={
  GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'verified',
  GREEN_BUTTONS_QA_OWNER_APPROVED:'approved',
  GREEN_BUTTONS_QA_ALLOWED_CHAT:CHAT,
+ GREEN_BUTTONS_QA_EVENT_SERVICE_ID:'service-123',
+ GREEN_BUTTONS_QA_SUPPLIER_ID:'supplier-123',
  GREEN_API_INSTANCE_ID:INSTANCE,GREEN_API_TOKEN:ACCOUNT_TOKEN,
  GREEN_API_WEBHOOK_TOKEN:WEBHOOK,WHATSAPP_INTERACTIVE_SIGNING_SECRET:SIGNING
 };
@@ -61,6 +63,8 @@ test('single chat QA is disabled by default and never activates from saved polic
   GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'',
   GREEN_BUTTONS_QA_OWNER_APPROVED:'',
   GREEN_BUTTONS_QA_ALLOWED_CHAT:'',
+  GREEN_BUTTONS_QA_EVENT_SERVICE_ID:'',
+  GREEN_BUTTONS_QA_SUPPLIER_ID:'',
   WHATSAPP_INTERACTIVE_SIGNING_SECRET:'bad',
   GREEN_API_WEBHOOK_TOKEN:'',
   GREEN_API_INSTANCE_ID:'not_an_instance',
@@ -84,6 +88,8 @@ test('only trusted full suite yields two reply buttons and contact-office URL mo
  assert.equal(output.accountCapabilityVerified,true);
  assert.equal(output.capability,'mixed_url');
  assert.equal(output.qaChatId,CHAT);
+ assert.equal(output.qaEventServiceId,'service-123');
+ assert.equal(output.qaSupplierId,'supplier-123');
  assert.equal(output.officeNumber,'972551111111');
  assert.equal(output.officeLabel,'פנייה למשרד');
  assert.equal(output.officeContextMode,'reference');
@@ -156,6 +162,8 @@ test('one QA callback uses existing staging coordinator and returns 200 only on 
    calls++;
    assert.equal(options.expectedInstanceId,INSTANCE);
    assert.equal(options.qaChatId,CHAT);
+   assert.equal(options.qaEventServiceId,'service-123');
+   assert.equal(options.qaSupplierId,'supplier-123');
    assert.equal(options.webhookSecret,WEBHOOK);
    assert.equal(options.actionSigningSecret,SIGNING);
    assert.equal(options.encryptedUnknownRecovery,undefined);
