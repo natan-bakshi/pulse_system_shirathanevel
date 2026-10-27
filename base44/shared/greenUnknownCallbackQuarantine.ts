@@ -214,6 +214,11 @@ export function summarizeUnknownGreenQuarantine(rows:any[],limit=40){
   if(!row||row.provider!=='green'||row.company_id!==COMPANY||
    !/^gq1_[a-f0-9]{64}$/.test(row.quarantine_key||''))continue;
   output.push({
+   // Internal Base44 entity ID is an opaque lookup handle, not the Green
+   // provider event ID. Owner-only: used solely for one exact projected read
+   // during a separate user-requested structural review. No phone/chat ID.
+   reviewRecordId:typeof row.id==='string'&&
+    /^[a-zA-Z0-9_-]{3,128}$/.test(row.id)?row.id:null,
    reference:row.quarantine_key.slice(-12),state:row.state==='needs_review'
     ?'needs_review':'unverified',
    format:row.format_code==='unrecognized_interactive'
