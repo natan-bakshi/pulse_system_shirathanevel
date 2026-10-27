@@ -31,10 +31,13 @@ function context({actor={role:'admin'},enabled=true,paused=false,heartbeatFails=
  let handler;
  vm.runInNewContext(code,{
   module:{exports:{}},exports:{},console:{log:()=>{},error:()=>{}},
-  Deno:{serve:fn=>handler=fn},
+  Deno:{serve:fn=>handler=fn,env:{get:()=>''}},
   Response:{json:(body,{status=200}={})=>({body,status})},
   require:name=>{
     if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
+    if(name.endsWith('greenButtonQaLaunch.ts'))return {
+      trustedGreenButtonQaConfig:()=>null
+    };
     if(name.endsWith('whatsappQueueWorker.ts'))return {drainWhatsAppOutbox:async()=>{
       workerCalls.push('unexpected-dispatch');throw Error('No due messages');
     },reconcileCardSetupWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
