@@ -10,6 +10,7 @@ import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInt
 import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
+import {inspectUnknownGreenRecoveryStructureReadOnly} from '../../shared/greenUnknownRecoveryReview.ts';
 import {inspectOfficeAssignmentReference} from '../../shared/whatsappOfficeReferenceLookup.ts';
 import { summarizeWhatsAppSourceAudit, summarizePendingWhatsAppAudit, summarizePaymentReminderAudit, summarizeTaskWhatsAppAudit, findDuplicateAssignmentVersions } from '../../shared/whatsappSourceAudit.ts';
 
@@ -344,6 +345,25 @@ Deno.serve(async(req)=>{
           unknownCallbackLiveHandlerEnabled:false});
       }catch{return RESPONSE({success:false,
         error:'בדיקת תגובות לא מזוהות אינה זמינה',noMessagesSent:true},503);}
+    }
+    if(action==='unknownRecoveryStructureReview'){
+      // Explicit owner click, single exact record lookup, AES decryption
+      // IN SERVER MEMORY ONLY, and only safe structural booleans returned.
+      // No raw callback/chat/phone/token/stanza/selectedId reaches UI.
+      try{
+        const review=await inspectUnknownGreenRecoveryStructureReadOnly(client,{
+          id:body.id,reference:body.reference
+        },{
+          expectedInstanceId:Deno.env.get('GREEN_API_INSTANCE_ID'),
+          fingerprintSecret:Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET'),
+          encryptionKey:Deno.env.get('GREEN_UNKNOWN_RECOVERY_ENCRYPTION_KEY'),
+          keyId:Deno.env.get('GREEN_UNKNOWN_RECOVERY_KEY_ID')
+        });
+        return RESPONSE({success:true,review,noMessagesSent:true,
+          unknownCallbackLiveHandlerEnabled:false});
+      }catch{return RESPONSE({success:false,
+        error:'בדיקת המבנה המוצפן אינה זמינה או שהמידע פג תוקף',
+        noMessagesSent:true},503);}
     }
     if(action==='unknownRecoveryExpiryCleanup'){
       // Destructive ONLY for already-expired optional ciphertext. Manual
