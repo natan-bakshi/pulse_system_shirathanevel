@@ -9,6 +9,7 @@ import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvesti
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
 import {greenButtonQaSafeSummary} from '../../shared/greenButtonQaLaunch.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
+import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
 import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
@@ -326,6 +327,23 @@ Deno.serve(async(req)=>{
       ]);
       return RESPONSE({success:true,liveInboundEnabled:false,
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
+    }
+    if(action==='greenButtonQaEnroll'){
+      // ONE explicit, owner-clicked test service assignment only. May enqueue
+      // a real WhatsApp via existing EventService/Outbox workflows. All scope
+      // and rollout gates are server-controlled. Never dispatch directly.
+      try{
+        const result=await enrollOneGreenButtonQaAssignment(client,{
+          confirmation:body.confirmation,env:key=>Deno.env.get(key)
+        });
+        return RESPONSE({success:true,enrollment:result,
+          queueMaySendWhatsAppAutomatically:true});
+      }catch(error){
+        const code=Number((error as any)?.status)||409;
+        return RESPONSE({success:false,
+          error:'לא ניתן ליצור שיבוץ ניסוי בטוח; נדרש בירור הגדרות וגרסת שיבוץ',
+          noDirectProviderCalls:true},[403,409,423,503].includes(code)?code:503);
+      }
     }
     if(action==='greenButtonQaAssignmentPreflight'){
       // Exact server-configured pilot service/supplier only. Owner click,
