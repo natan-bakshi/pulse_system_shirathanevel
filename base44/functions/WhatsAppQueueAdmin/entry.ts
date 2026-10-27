@@ -330,9 +330,15 @@ Deno.serve(async(req)=>{
       // Dedicated SHORT-path QA checklist: one control-row read, no Green API
       // request, no phone number, bearer or signing key ever leaves backend.
       try{
-        const control=await readWhatsAppQueueControl(client);
+        const [control,flags]=await Promise.all([
+          readWhatsAppQueueControl(client),
+          client.asServiceRole.entities.AppSettings.filter({
+            setting_key:'assignment_intent_v1_enabled'
+          },'-created_date',2)
+        ]);
+        const durableEnabled=flags.length===1&&flags[0].setting_value==='true';
         return RESPONSE({success:true,qa:greenButtonQaSafeSummary(control,
-          key=>Deno.env.get(key)),noMessagesSent:true});
+          key=>Deno.env.get(key),durableEnabled),noMessagesSent:true});
       }catch{return RESPONSE({success:false,
         error:'בדיקת מוכנות לניסוי הכפתורים אינה זמינה',
         noMessagesSent:true},503);}
