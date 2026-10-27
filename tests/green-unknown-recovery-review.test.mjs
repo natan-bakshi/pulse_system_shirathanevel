@@ -129,6 +129,30 @@ test('wrong decryption key, expired period, key rotation without old key and tam
  f.row.payload_mac=original;
  assert.equal(f.counts.writes,0);
 });
+test('key rotation allows one matching previous key within 48h and never returns any key identifier',async()=>{
+ const f=await fixture();
+ const nextKey=Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
+  .toString('base64url');
+ const options={...f.opts,encryptionKey:nextKey,keyId:'v2-green-recovery',
+  previousEncryptionKey:KEY,previousKeyId:'v1-green-recovery'};
+ const result=await inspectUnknownGreenRecoveryStructureReadOnly(
+  f.client,f.request,options);
+ assert.equal(result.originalProviderIdentityReverified,true);
+ assert.equal(JSON.stringify(result).includes('v1-green-recovery'),false);
+ assert.equal(JSON.stringify(result).includes('v2-green-recovery'),false);
+ await assert.rejects(inspectUnknownGreenRecoveryStructureReadOnly(
+  f.client,f.request,{...options,previousKeyId:'v0-green-recovery'}),
+  err=>err.code==='green_recovery_review_unavailable');
+ await assert.rejects(inspectUnknownGreenRecoveryStructureReadOnly(
+  f.client,f.request,{...options,previousKeyId:options.keyId}),
+  err=>err.code==='green_recovery_review_unavailable');
+ await assert.rejects(inspectUnknownGreenRecoveryStructureReadOnly(
+  f.client,f.request,{...f.opts,
+   previousKeyId:f.opts.keyId,previousEncryptionKey:KEY}),
+  err=>err.code==='green_recovery_review_unavailable');
+ assert.equal(f.counts.writes,0);
+ assert.equal(f.counts.providers,0);
+});
 test('read-only owner triage helper has no outbound operations and cannot be used from direct webhook',()=>{
  const code=fs.readFileSync('base44/shared/greenUnknownRecoveryReview.ts','utf8')
   .split('\n').filter(x=>!x.trim().startsWith('//')).join('\n');
