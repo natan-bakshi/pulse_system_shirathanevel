@@ -80,16 +80,20 @@ export function trustedGreenButtonQaInboundConfig(control:any,
 // Safe, sanitized readiness metadata for admin UI: no secrets or phone.
 // Not used to authorize sending or handling real callbacks.
 export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|undefined,
- assignmentIntentEnabled=false){
+ assignmentIntentEnabled=false,otherPendingCount:null|number=null){
  const config=trustedGreenButtonQaConfig(control,env,assignmentIntentEnabled);
  const inbound=trustedGreenButtonQaInboundConfig(control,env,assignmentIntentEnabled);
  const draft=parseSavedWhatsAppInteractivePolicy(control,'green');
- return {mode:'single_chat_qa',readyForQa:!!config&&assignmentIntentEnabled,
+ return {mode:'single_chat_qa',readyForQa:!!config&&assignmentIntentEnabled&&
+  otherPendingCount===0,
   receivingExistingQaRepliesAvailable:!!inbound,
+  unrelatedV2PendingPresent:otherPendingCount===null?'not_checked':otherPendingCount>0,
+  unrelatedV2PendingAuditIsBounded:true,
   creationActionConfigured:!!config&&
    ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))&&
    get(env,'GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled',
   checks:[
+   {key:'qa_global_v2_backlog_clear',ready:otherPendingCount===0},
    {key:'durable_assignment_intent',ready:assignmentIntentEnabled===true},
    {key:'owner_queue_gate',ready:control?.interactive_outbound_live_enabled===true},
    {key:'send_env_gate',ready:get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'},
