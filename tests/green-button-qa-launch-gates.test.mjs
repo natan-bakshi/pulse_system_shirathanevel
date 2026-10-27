@@ -44,18 +44,21 @@ const createRequest=(header='Bearer '+WEBHOOK)=>new Request(
   messageData:{typeMessage:'textMessage',
    textMessageData:{textMessage:'manual-only'}}})});
 const sdk=activeControl=>{
- const counts={reads:0,dbWrites:0};
+ const counts={reads:0,flagReads:0,dbWrites:0};
  const client={asServiceRole:{entities:{WhatsAppQueueControl:{
   filter:async query=>{
    counts.reads++;
    return query.control_key==='global'?[structuredClone(activeControl)]:[];
   }
- }}}};
+ },AppSettings:{filter:async()=>{
+  counts.flagReads++;
+  return [{setting_key:'assignment_intent_v1_enabled',setting_value:'true'}];
+ }}}}};
  return {counts,client};
 };
 test('single chat QA is disabled by default and never activates from saved policy alone',()=>{
  const actual=trustedGreenButtonQaConfig({
-  ...control,interactive_outbound_live_enabled:false},env());
+  ...control,interactive_outbound_live_enabled:false},env(),true);
  assert.equal(actual,null);
  for(const [key,value] of Object.entries({
   GREEN_BUTTONS_QA_SEND_ENABLED:'',
@@ -70,20 +73,22 @@ test('single chat QA is disabled by default and never activates from saved polic
   GREEN_API_INSTANCE_ID:'not_an_instance',
   GREEN_API_TOKEN:'bad'
  })){
-  assert.equal(trustedGreenButtonQaConfig(control,env({[key]:value})),null,key);
+  assert.equal(trustedGreenButtonQaConfig(control,env({[key]:value}),true),null,key);
  }
  assert.equal(trustedGreenButtonQaConfig({
   ...control,interactive_assignment_green_policy_json:null
- },env()),null,'missing owner draft cannot activate beta sending');
+ },env(),true),null,'missing owner draft cannot activate beta sending');
  const report=greenButtonQaSafeSummary(control,env(),true);
  assert.equal(report.readyForQa,true);
+ assert.equal(trustedGreenButtonQaConfig(control,env()),null,
+  'even full Green secrets cannot turn on buttons while V2 flag is false');
  assert.equal(greenButtonQaSafeSummary(control,env(),false).readyForQa,false,
   'missing durable v2 assignment mode must not claim readiness');
  assert.equal(JSON.stringify(report).includes(CHAT),false);
  assert.equal(JSON.stringify(report).includes(SIGNING),false);
 });
 test('only trusted full suite yields two reply buttons and contact-office URL mode',()=>{
- const output=trustedGreenButtonQaConfig(control,env());
+ const output=trustedGreenButtonQaConfig(control,env(),true);
  assert.equal(output.enabled,true);
  assert.equal(output.accountCapabilityVerified,true);
  assert.equal(output.capability,'mixed_url');
@@ -111,7 +116,7 @@ test('incomplete/ambiguous office policy never enables signed beta transport',()
     {action:'assignment_approve',label:'מאשר'}]}
   })}
  ];
- for(const setting of bad)assert.equal(trustedGreenButtonQaConfig(setting,env()),null);
+ for(const setting of bad)assert.equal(trustedGreenButtonQaConfig(setting,env(),true),null);
 });
 test('HTTP QA endpoint is inert without every independent env approval: no DB or provider',async()=>{
  for(const [key,value] of [
