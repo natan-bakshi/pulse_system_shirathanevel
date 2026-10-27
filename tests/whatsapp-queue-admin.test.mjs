@@ -241,6 +241,65 @@ test('owner unknown Green callback audit is projected, on-demand, masked and NEV
   'b'.repeat(64),'a'.repeat(64)])
   assert.equal(serialized.includes(hidden),false,hidden);
 });
+test('owner reviewed recovery shows only safe structural hints and never decrypts in routine dashboard',async()=>{
+ const now=Date.now();
+ const callback={
+  typeWebhook:'incomingMessageReceived',
+  idMessage:'3EB0STRUCTURERECOVERYUNIT12345',
+  timestamp:Math.floor((now-1000)/1000),
+  instanceData:{idInstance:9903183013,typeInstance:'whatsapp'},
+  senderData:{chatId:'972501234567@c.us',sender:'972501234567@c.us',
+   senderName:'SECRET-SUPPLIER-DO-NOT-RETURN'},
+  messageData:{typeMessage:'futureInteractiveBetaReply',
+   betaReply:{selectedId:'SECRET-SELECTED-APPROVE',
+    stanzaId:'SECRET-ORIGINAL-OUTBOX-ID'}}
+ };
+ const identity=await fingerprintUnknownGreenCallback(callback,{
+  expectedInstanceId:'9903183013',
+  fingerprintSecret:UNIT_SIGNING_SECRET,now
+ });
+ const envelope=await encryptUnknownGreenRecovery(callback,identity,{
+  encryptionKey:UNIT_RECOVERY_KEY,keyId:'v1-green-recovery',
+  ownerRetentionApproved:true,now
+ });
+ const record={id:'review-row-01',...identity,...envelope,
+  registered_at:new Date(now).toISOString()};
+ const ctx=context({quarantineRows:[record]});
+ await ctx.invoke('status');
+ await ctx.invoke('interactiveReadiness');
+ assert.equal(ctx.unknownProjections.length,0);
+ assert.equal(ctx.cleanupReads.length,0);
+ const audit=await ctx.invoke('unknownCallbackAudit');
+ assert.equal(audit.status,200);
+ const row=audit.body.audit.list[0];
+ assert.equal(row.reviewRecordId,record.id);
+ assert.equal(row.reference,record.quarantine_key.slice(-12));
+ const review=await ctx.invoke('unknownRecoveryStructureReview',{
+  id:row.reviewRecordId,reference:row.reference
+ });
+ assert.equal(review.status,200);
+ assert.equal(review.body.success,true);
+ assert.equal(review.body.review.hasSelectionIdentifierHint,true);
+ assert.equal(review.body.review.hasOriginalMessageReferenceHint,true);
+ assert.equal(review.body.review.neverApproveOrRejectSupplier,true);
+ assert.equal(review.body.review.callbackReleasedToBrowser,false);
+ assert.equal(review.body.noMessagesSent,true);
+ assert.equal(review.body.unknownCallbackLiveHandlerEnabled,false);
+ assert.equal(ctx.cleanupWrites.length,0);
+ assert.equal(ctx.calls.length,0);
+ assert.equal(ctx.greenAudits.length,0);
+ const serialized=JSON.stringify(review.body);
+ for(const secret of ['SECRET-SUPPLIER-DO-NOT-RETURN',
+  'SECRET-SELECTED-APPROVE','SECRET-ORIGINAL-OUTBOX-ID',
+  '972501234567',record.id,record.recovery_ciphertext,
+  UNIT_RECOVERY_KEY,UNIT_SIGNING_SECRET])
+  assert.equal(serialized.includes(secret),false,secret);
+ const invalid=await ctx.invoke('unknownRecoveryStructureReview',{
+  id:record.id,reference:'f'.repeat(12)
+ });
+ assert.equal(invalid.status,503);
+ assert.equal(JSON.stringify(invalid.body).includes('972501234567'),false);
+});
 test('owner-triggered expiry scrub removes ONLY expired optional ciphertext and never runs on dashboard status',async()=>{
  const rows=[
   {id:'expired-1',provider:'green',company_id:'shirat_hanevel',
