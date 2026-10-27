@@ -399,7 +399,8 @@ test('encrypted quarantine entity is SERVICE ROLE ONLY: direct client RLS denies
    'admin-role client SDK must NEVER read encrypted personal callbacks directly');
  const owner=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
  assert.match(owner,/inspectUnknownGreenRecoveryStructureReadOnly\(client/);
- assert.match(owner,/isSystemOwner/);
+ assert.match(owner,/actor\.role!=='admin'/);
+ assert.match(owner,/OWNER_EMAIL/);
 });
 test('quarantine schema contains metadata ONLY and is not a public webhook handler',()=>{
  const schema=JSON.parse(fs.readFileSync(
