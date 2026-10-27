@@ -5,6 +5,8 @@ import {trustedGreenButtonQaConfig,greenButtonQaSafeSummary}
  from '../base44/shared/greenButtonQaLaunch.ts';
 import {handleGreenButtonQaWebhook}
  from '../base44/shared/greenButtonQaWebhookHandler.ts';
+import {stageFutureGreenInteractiveHttpCallback}
+ from '../base44/shared/greenInteractiveHttpStaging.ts';
 const INSTANCE='9903183013',ACCOUNT_TOKEN='GreenQaMockOnlyAccessToken-123456789',
  WEBHOOK='OnlyQaGreenWebhookBearer-123456789',
  SIGNING='OnlyQaSigningSecretSeparateFromGreenWebhook-123456789';
@@ -189,6 +191,32 @@ test('ambiguous writes, unknown button, DB failure and plain rejected actions ne
  });
  assert.equal(err.httpStatus,503);
  assert.equal(JSON.stringify(err).includes('INTERNAL SECRET'),false);
+});
+test('authenticated outside-QA phone is refused BEFORE even a single inbound DB read',async()=>{
+ let reads=0;
+ const raw={typeWebhook:'incomingMessageReceived',
+  idMessage:'QA_OUTSIDECHAT_PROVIDER_EVENT_12345',
+  instanceData:{idInstance:Number(INSTANCE),typeInstance:'whatsapp'},
+  timestamp:Math.floor(Date.now()/1000),
+  senderData:{chatId:'972509999999@c.us',sender:'972509999999@c.us'},
+  messageData:{typeMessage:'buttonsResponseMessage',
+   buttonsResponseMessage:{selectedButtonId:'wa1_ABCDEFGHIJKLMNOPQRSTUV',
+    stanzaId:'3EB0ORIGINALMESSAGE12345'}}};
+ const request=new Request('https://example.invalid/qa',{
+  method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+WEBHOOK},
+  body:JSON.stringify(raw)});
+ const client={asServiceRole:{entities:new Proxy({}, {
+  get:()=>{reads++;throw Error('Database forbidden for other chat')}
+ })}};
+ const outcome=await stageFutureGreenInteractiveHttpCallback(request,{
+  client,rolloutAuthorized:true,accountCapabilityVerified:true,
+  webhookSecret:WEBHOOK,actionSigningSecret:SIGNING,
+  expectedInstanceId:INSTANCE,qaChatId:CHAT,claimOwner:'qa-receiver',
+  recalculateEventStatus:async()=>{throw Error('never update')}
+ });
+ assert.equal(outcome.stage,'qa_sender_outside_scope');
+ assert.equal(reads,0);
+ assert.equal(outcome.businessWritesAuthorized,false);
 });
 test('QA handler does not modify existing provider settings, add cron or send a message',()=>{
  const src=fs.readFileSync('base44/shared/greenButtonQaWebhookHandler.ts','utf8');
