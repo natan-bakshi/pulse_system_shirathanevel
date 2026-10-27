@@ -30,14 +30,21 @@ function fixture(){
    whatsapp_enabled:true,is_active:true,contact_person:'PRIVATE_NAME'},
   event:{id:EVENT,status:'confirmed',event_name:'PRIVATE_EVENT'}};
  const counts={control:0,settings:0,services:0,suppliers:0,
-  events:0,outbox:0,cas:0,wake:0,provider:0};
- let flag='true',priorJobs=[],commitUncertain=false,wakeFails=false;
+  events:0,outbox:0,pendingReads:0,cas:0,wake:0,provider:0};
+ let flag='true',priorJobs=[],otherPending=[],commitUncertain=false,wakeFails=false;
  const client={asServiceRole:{entities:{
   WhatsAppQueueControl:{filter:async()=>{counts.control++;return [rows.control]}},
   AppSettings:{filter:async()=>{counts.settings++;return flag==='true'?
    [{setting_key:'assignment_intent_v1_enabled',setting_value:'true'}]:[]}},
   EventService:{
    get:async id=>{counts.services++;return id===SERVICE?rows.service:null;},
+   filter:async(query,sort,limit,_offset,fields)=>{
+    counts.pendingReads++;
+    assert.equal(query.assignment_intents_pending,true);
+    assert.equal(sort,'updated_date');assert.equal(limit,2);
+    assert.deepEqual(fields,['id']);
+    return otherPending.slice(0,limit);
+   },
    updateMany:async(query,change)=>{
     counts.cas++;
     if(query.id!==rows.service.id||
@@ -69,6 +76,7 @@ function fixture(){
  return {rows,counts,client,
   env:(override={})=>k=>({...envValues,...override})[k]??'',
   setFlag:v=>{flag=v},setPrior:v=>{priorJobs=v},
+  setPending:v=>{otherPending=v},
   setUncertain:()=>{commitUncertain=true},setWakeFail:()=>{wakeFails=true}};
 }
 const request=f=>({env:f.env(),confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'});
@@ -145,6 +153,14 @@ test('corrupted previous journal stops enrollment before any CAS or provider acc
   err=>err.code==='qa_intent_history_corrupt');
  assert.equal(f.counts.cas,0);
  assert.equal(f.counts.outbox,0);
+});
+test('unrelated pending global V2 intents block QA enrollment before new business write',async()=>{
+ const f=fixture();f.setPending([{id:'other-service-123'}]);
+ await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)),
+  err=>err.code==='qa_other_v2_intents_pending_global_risk');
+ assert.equal(f.counts.pendingReads,1);
+ assert.equal(f.counts.cas,0);
+ assert.equal(f.counts.wake,0);
 });
 test('uncertain commit fails closed and second click cannot repeat business CAS',async()=>{
  const f=fixture();f.setUncertain();
