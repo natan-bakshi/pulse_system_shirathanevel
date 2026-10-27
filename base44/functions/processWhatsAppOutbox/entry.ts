@@ -81,8 +81,23 @@ Deno.serve(async (req) => {
     // Single-chat GREEN beta QA. No secret or draft makes this active alone.
     // Requires owner-only queue control flag and FOUR independent server gates.
     // Missing gates preserve legacy sending and cannot activate buttons.
-    const qaConfig=trustedGreenButtonQaConfig(controlRows[0],
-      key=>Deno.env.get(key));
+    let qaConfig=null;
+    // Extra AppSettings read only when explicit QA gates are armed. Normal
+    // messages have ZERO new DB reads; absence/ambiguity fails closed.
+    if(controlRows[0].interactive_outbound_live_enabled===true&&
+      Deno.env.get('GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'&&
+      Deno.env.get('GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
+      Deno.env.get('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'&&
+      Deno.env.get('GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'){
+      try{
+        const flags=await client.asServiceRole.entities.AppSettings.filter({
+          setting_key:'assignment_intent_v1_enabled'
+        },'-created_date',2);
+        const durable=flags.length===1&&flags[0].setting_value==='true';
+        qaConfig=trustedGreenButtonQaConfig(controlRows[0],
+          key=>Deno.env.get(key),durable);
+      }catch{qaConfig=null;}
+    }
     const result=await drainWhatsAppOutbox(client,{wakeReason,
       initialControl:controlRows[0],
       ...(qaConfig?{interactiveConfig:qaConfig}:{})});
