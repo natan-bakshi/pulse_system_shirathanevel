@@ -49,6 +49,7 @@ export default function WhatsAppQueueSettings(){
   const [inboundAudit,setInboundAudit]=useState(null);
   const [unknownCallbackAudit,setUnknownCallbackAudit]=useState(null);
   const [unknownRecoveryCleanup,setUnknownRecoveryCleanup]=useState(null);
+  const [unknownRecoveryReview,setUnknownRecoveryReview]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
@@ -105,9 +106,16 @@ export default function WhatsAppQueueSettings(){
         setNotice('בדיקת רשומה הושלמה לקריאה בלבד. לא בוצע שינוי בנתונים.');
         return;
       }
+      if(action==='unknownRecoveryStructureReview'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת מבנה ההודעה המוצפנת אינה זמינה');
+        setUnknownRecoveryReview(res.data.review);
+        setNotice('מבנה הודעה מוצפנת אומת בשרת. לא הוצג תוכן אישי ולא השתנה שיבוץ.');
+        return;
+      }
       if(action==='unknownRecoveryExpiryCleanup'){
         if(!res.data?.success)throw Error(res.data?.error||'ניקוי מידע מוצפן נכשל');
         setUnknownRecoveryCleanup(res.data.cleanup);
+        setUnknownRecoveryReview(null);
         setUnknownCallbackAudit(null);
         setNotice('נבדק ניקוי ממוקד של נתונים מוצפנים שתוקפם פג. יש לטעון את יומן הבירור מחדש.');
         return;
@@ -115,6 +123,7 @@ export default function WhatsAppQueueSettings(){
       if(action==='unknownCallbackAudit'){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת אירועים לא מזוהים נכשלה');
         setUnknownCallbackAudit(res.data.audit);
+        setUnknownRecoveryReview(null);
         setNotice('נבדקו רשומות בירור אנונימיות בלבד, ללא שינוי שיבוץ או שליחת הודעה.');
         return;
       }
@@ -270,6 +279,8 @@ export default function WhatsAppQueueSettings(){
           {unknownCallbackAudit.list?.length?<ul className="space-y-1">
             {unknownCallbackAudit.list.map((entry,index)=><li key={entry.reference+'-'+index} className="rounded border p-2">
               <span>טביעת זיהוי: {entry.reference}</span> · <span>{entry.format==='unrecognized_interactive'?'תגובה אינטראקטיבית לא מוכרת':'הודעה נכנסת לא מזוהה'}</span> · <span>נרשם: {entry.receivedAt||'לא ידוע'}</span> · <span>דורש בירור ידני</span> · <span>{entry.encryptedRecoveryRecorded?'קיים מידע מוצפן, לשימוש מורשה בלבד':'טביעת זיהוי בלבד'}</span>
+              {entry.encryptedRecoveryRecorded&&entry.reviewRecordId&&entry.encryptedRecoveryExpiresAt&&Date.parse(entry.encryptedRecoveryExpiresAt)>Date.now()&&<Button size="sm" variant="outline" disabled={busy}
+                onClick={()=>run('unknownRecoveryStructureReview',{id:entry.reviewRecordId,reference:entry.reference})}>בדוק מבנה בלבד (ללא חשיפת תוכן)</Button>}
             </li>)}
           </ul>:<p className="text-gray-600">לא נמצאו רשומות בירור במדגם.</p>}
           <p className="text-gray-600">ניקוי ידני של מידע מוצפן שפג תוקפו אינו מחליף מדיניות מחיקה אוטומטית מאושרת; אין הוכחת מחיקה מגיבויי Base44.</p>
@@ -279,6 +290,11 @@ export default function WhatsAppQueueSettings(){
           </Button>
         </div>
       </details>}
+      {unknownRecoveryReview&&<section className="text-xs rounded border p-3 space-y-1" dir="rtl" aria-label="בירור מבנה תגובה מוצפנת">
+        <strong>בדיקת מבנה — אסמכתת HMAC {unknownRecoveryReview.reference}</strong>
+        <p>סוג מבנה: {unknownRecoveryReview.class==='list_like'?'בחירה מרשימה':unknownRecoveryReview.class==='interactive_like'?'תגובה אינטראקטיבית':'לא ידוע'}. מזהה בחירה נמצא: {unknownRecoveryReview.hasSelectionIdentifierHint?'כן':'לא'}. הפניה להודעת מקור נמצאה: {unknownRecoveryReview.hasOriginalMessageReferenceHint?'כן':'לא'}.</p>
+        <p className="text-amber-800">זו אבחנה טכנית בלבד, ללא שמות, מספרי טלפון, תוכן ההודעה או מזהי כפתורים. היא אינה מאשרת או דוחה שיבוץ ואינה מהווה אישור קליטה מול Green.</p>
+      </section>}
       {unknownRecoveryCleanup&&<p className="text-xs rounded border p-2" dir="rtl">נבדקו {unknownRecoveryCleanup.scanned} רשומות. ניקוי מאומת של {unknownRecoveryCleanup.scrubbed} שדות הצפנה שפג תוקפם. תוצאות לא מאומתות: {unknownRecoveryCleanup.unverified}. {unknownRecoveryCleanup.incomplete?'ייתכן שנדרש בירור או ניקוי נוסף.':'הבדיקה הסתיימה.'} גיבויים אינם נחשבים מחוקים.</p>}
       {inboundAudit&&<details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">תגובות כפתורים — בדיקת קליטה פנימית (לא פעיל בפרודקשן)</summary>
