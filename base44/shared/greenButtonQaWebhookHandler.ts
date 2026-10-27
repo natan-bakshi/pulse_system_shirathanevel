@@ -7,7 +7,7 @@
 import {authenticateWhatsAppProviderCallback}
  from './whatsappProviderWebhookAuth.ts';
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
-import {trustedGreenButtonQaConfig} from './greenButtonQaLaunch.ts';
+import {trustedGreenButtonQaInboundConfig} from './greenButtonQaLaunch.ts';
 import {stageFutureGreenInteractiveHttpCallback}
  from './greenInteractiveHttpStaging.ts';
 import {planFutureGreenWebhookHttpContract}
@@ -16,8 +16,10 @@ type Result={httpStatus:number;body:{received:boolean};noProviderCalls:true};
 const result=(httpStatus:number,received=false):Result=>({
  httpStatus,body:{received},noProviderCalls:true
 });
+// Inbound remains available when the owner disables NEW button sends.
+// The single-chat receiver still requires its own explicit enable gate,
+// the owner approval, provider proof, V2 intent and original message HMAC.
 const ready=(get:(s:string)=>string|undefined)=>
- get('GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'&&
  get('GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
  get('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'&&
  get('GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved';
@@ -44,7 +46,7 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
    setting_key:'assignment_intent_v1_enabled'
   },'-created_date',2);
   const durable=flags.length===1&&flags[0].setting_value==='true';
-  const config=trustedGreenButtonQaConfig(control,opts.env,durable);
+  const config=trustedGreenButtonQaInboundConfig(control,opts.env,durable);
   if(!config)return result(404);
   const processed=await (opts.stage??stageFutureGreenInteractiveHttpCallback)(
    request,{
