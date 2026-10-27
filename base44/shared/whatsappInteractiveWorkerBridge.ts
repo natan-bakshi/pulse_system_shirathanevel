@@ -107,6 +107,11 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
  // Never modify historical assignments or unrelated message templates.
  // The new durable revision is visible in the existing Outbox idempotency key.
  if(!V2_KEY.test(String(job.idempotency_key||''))){
+  // A QA supplier must never receive plain text when the administrator
+  // expects buttons. The legacy save UI does not create durable v2 intents;
+  // hold ONLY this targeted QA job until that workflow is verified.
+  if(config.qaChatId&&job.chat_id===config.qaChatId)
+   throw blocked('qa_requires_durable_assignment_intent');
   if(job.interactive_button_bindings_json||job.assignment_revision||job.sender_account_id)
    throw blocked('interactive_unrecognized_existing_origin');
   return legacy(job,'legacy_assignment_without_durable_intent');
