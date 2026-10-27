@@ -4,6 +4,7 @@ import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIn
 import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueReconciler.ts';
 import { reconcileStalledCardSetupEnqueues } from '../../shared/cardSetupQueueReconciler.ts';
 import { alertUnknownWhatsAppOutcomes } from '../../shared/whatsappUnknownReviewAlerts.ts';
+import {trustedGreenButtonQaConfig} from '../../shared/greenButtonQaLaunch.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
 // crash watchdog. Does not accept arbitrary message/recipient parameters.
@@ -77,7 +78,14 @@ Deno.serve(async (req) => {
       await client.asServiceRole.entities.WhatsAppQueueControl.update(
         controlRows[0].id,{last_invoked_at:new Date().toISOString()});
     }catch{console.error('[WhatsAppOutbox] invocation telemetry unavailable');}
-    const result=await drainWhatsAppOutbox(client,{wakeReason,initialControl:controlRows[0]});
+    // Single-chat GREEN beta QA. No secret or draft makes this active alone.
+    // Requires owner-only queue control flag and FOUR independent server gates.
+    // Missing gates preserve legacy sending and cannot activate buttons.
+    const qaConfig=trustedGreenButtonQaConfig(controlRows[0],
+      key=>Deno.env.get(key));
+    const result=await drainWhatsAppOutbox(client,{wakeReason,
+      initialControl:controlRows[0],
+      ...(qaConfig?{interactiveConfig:qaConfig}:{})});
     // A lost telemetry acknowledgement AFTER dispatch is not a send failure.
     try{
       await client.asServiceRole.entities.WhatsAppQueueControl.update(
