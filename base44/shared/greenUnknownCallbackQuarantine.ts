@@ -207,12 +207,23 @@ export async function registerUnknownGreenCallbackQuarantine(client:any,raw:any,
   supplierWritesAuthorized:false,noMessagesSent:true
  };
 }
-export function summarizeUnknownGreenQuarantine(rows:any[],limit=40){
- if(!Array.isArray(rows))throw denied('unknown_quarantine_audit_unavailable');
+export function summarizeUnknownGreenQuarantine(rows:any[],limit=40,now=Date.now()){
+ if(!Array.isArray(rows)||!Number.isSafeInteger(now)||now<0)
+  throw denied('unknown_quarantine_audit_unavailable');
  const output=[];
+ const retention={encryptedInSample:0,expiredInSample:0,
+  invalidExpiryInSample:0,expiringWithin12hInSample:0,
+  sampledOnly:true,allRecordsAudited:false,physicalBackupErasureNotVerified:true};
  for(const row of rows.slice(0,limit)){
   if(!row||row.provider!=='green'||row.company_id!==COMPANY||
    !/^gq1_[a-f0-9]{64}$/.test(row.quarantine_key||''))continue;
+  if(row.recovery_status==='encrypted'){
+   retention.encryptedInSample++;
+   const expiry=Date.parse(row.recovery_expires_at||'');
+   if(!Number.isFinite(expiry))retention.invalidExpiryInSample++;
+   else if(expiry<=now)retention.expiredInSample++;
+   else if(expiry<=now+12*3600000)retention.expiringWithin12hInSample++;
+  }
   output.push({
    // Internal Base44 entity ID is an opaque lookup handle, not the Green
    // provider event ID. Owner-only: used solely for one exact projected read
@@ -238,7 +249,7 @@ export function summarizeUnknownGreenQuarantine(rows:any[],limit=40){
  return {sampleCount:output.length,sampleTruncated:rows.length>=limit,
   pendingReview:output.filter(x=>x.state==='needs_review').length,
   noRawMessagesStored:true,unknownButtonsNeverAutoApproved:true,
-  list:output};
+  retentionSample:retention,list:output};
 }
 export async function inspectUnknownGreenQuarantineReadOnly(client:any){
  const db=client?.asServiceRole?.entities?.WhatsAppInboundQuarantine;
