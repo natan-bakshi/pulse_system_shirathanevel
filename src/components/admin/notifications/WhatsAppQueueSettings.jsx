@@ -53,6 +53,7 @@ export default function WhatsAppQueueSettings(){
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
   const [qaReadiness,setQaReadiness]=useState(null);
+  const [qaAssignmentPreflight,setQaAssignmentPreflight]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
   const [officeReference,setOfficeReference]=useState('');
   const [officeLookup,setOfficeLookup]=useState(null);
@@ -96,6 +97,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת הגדרות Green API נכשלה');
         setGreenWebhookSettings(res.data.settings);
         setNotice('הגדרות Green נבדקו באמצעות קריאת API אחת בלבד. לא שונו הגדרות ולא נשלחו הודעות.');
+        return;
+      }
+      if(action==='greenButtonQaAssignmentPreflight'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת שיבוץ הניסוי נכשלה');
+        setQaAssignmentPreflight(res.data.preflight);
+        setNotice('נבדקה התאמת שיבוץ לניסוי ללא שליחה וללא שינוי סטטוס.');
         return;
       }
       if(action==='greenButtonQaReadiness'){
@@ -237,6 +244,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>בדיקת תגובות WhatsApp (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('unknownCallbackAudit')}>בדיקת כפתורים לא מזוהים (קריאה בלבד)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaReadiness')}>מוכנות ניסוי כפתורים למספר אחד (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaAssignmentPreflight')}>בדיקת שיבוץ הניסוי (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות תוכנית הכפתורים המלאה (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדוק הגדרות Green API (קריאה אחת, ללא שינוי)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
@@ -276,6 +284,17 @@ export default function WhatsAppQueueSettings(){
             </li>)}
           </ul>
           <p className="text-gray-600">גם כשהתצורה מוכנה, יש לוודא שכתובת ה־Webhook הקיימת וצרכני ההודעות האחרים נשמרים. אין אפשרות להפעיל את הניסוי דרך הבדיקה הזאת. כל שאר הספקים ממשיכים במסלול השליחה הרגיל.</p>
+        </div>
+      </details>}
+      {qaAssignmentPreflight&&<details open className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="cursor-pointer font-medium">בדיקת שיבוץ הניסוי — {qaAssignmentPreflight.ready?'ניתן להתקדם לבדיקת ספק':'נדרשת הכנה נוספת'}</summary>
+        <div className="pt-3 text-xs space-y-2">
+          <p>בדיקה פרטנית בשרת בלבד, ללא חשיפת מספרים, פרטי ספק או מזהי אירוע. ללא שינוי בשיבוצים או שליחת WhatsApp.</p>
+          <ul className="space-y-1">{(qaAssignmentPreflight.checks||[]).map(c=><li key={c.code}>
+            {c.ready?'✓':'○'} {({qa_exact_scope_configured:'מזהה שירות, ספק ומספר מוגדרים בשרת',qa_service_and_supplier_exist:'השירות והספק קיימים',qa_service_not_external:'השירות שייך להפקה',qa_supplier_active_private_whatsapp:'הספק פעיל ומקבל הודעות אישיות',qa_number_matches_supplier:'מספר הבדיקה תואם את הספק',qa_supplier_assigned:'הספק משובץ בשירות הנבחר',qa_supplier_status_pending:'נדרש אישור שיבוץ',qa_durable_v2_intent_valid:'קיימת גרסת שיבוץ V2 חתימה',qa_single_fresh_queued_assignment:'ממתינה בתור הודעת שיבוץ אחת שטרם נשלחה',qa_no_prior_transport_attempt:'לא נעשה ניסיון שליחה קודם'})[c.code]||c.code}
+          </li>)}</ul>
+          {qaAssignmentPreflight.previouslyAttempted&&<p className="text-amber-800">קיים ניסיון שליחה קודם. אין לשלוח שוב ללא בירור כדי לא לייצר כפילויות.</p>}
+          {qaAssignmentPreflight.requiresNewDurableAssignment&&<p className="text-amber-800">נדרש יצירת שיבוץ חדש במסלול V2 מאושר. הפעולה אינה מבוצעת אוטומטית כאן.</p>}
         </div>
       </details>}
       {interactiveReadiness&&<details className="rounded border p-3 text-sm" dir="rtl">
