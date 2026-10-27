@@ -234,6 +234,27 @@ test('no endpoint enabled, bad header, oversized payload or unknown instance => 
   assert.equal(f.calls.creates,0);
  }
 });
+test('QA inbound scope rejects correct signed button for unrelated service/supplier before any receipt or EventService CAS',async()=>{
+ for(const override of [
+  {qaEventServiceId:'service-another',qaSupplierId:'supplier-abc'},
+  {qaEventServiceId:'service-abc',qaSupplierId:'supplier-another'}
+ ]){
+  const f=await setup();
+  const response=await call(f,rawFor(f.buttons[0].buttonId),override);
+  assert.equal(response.status,'refused');
+  assert.equal(response.reason,'qa_assignment_outside_scope');
+  assert.equal(f.calls.creates,0);
+  assert.equal(f.calls.writes,0);
+  assert.equal(f.calls.recalc,0);
+  assert.equal(f.calls.serviceReads,0);
+ }
+ const f=await setup();
+ const result=await call(f,rawFor(f.buttons[0].buttonId),{
+  qaEventServiceId:'service-abc',qaSupplierId:'supplier-abc'
+ });
+ assert.equal(result.status,'applied');
+ assert.equal(f.calls.writes,1);
+});
 test('wrong button, signature tampering, duplicate original receipt or wrong chat fails closed',async()=>{
  const cases=[
   async f=>rawFor('wa1_invalidInvalidInvalid12'),
