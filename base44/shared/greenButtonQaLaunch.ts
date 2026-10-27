@@ -89,7 +89,7 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
   receivingExistingQaRepliesAvailable:!!inbound,
   unrelatedV2PendingPresent:otherPendingCount===null?'not_checked':otherPendingCount>0,
   unrelatedV2PendingAuditIsBounded:true,
-  creationActionConfigured:!!config&&
+  creationActionConfigured:!!config&&otherPendingCount===0&&
    ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))&&
    get(env,'GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled',
   checks:[
