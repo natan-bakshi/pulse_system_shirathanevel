@@ -55,6 +55,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
    Event:{get:async id=>{officeReads.push('event');return officeEvents.find(x=>x.id===id)||null;}},
    Supplier:{get:async id=>{officeReads.push('supplier');return officeSuppliers.find(x=>x.id===id)||null;}}, 
    WhatsAppOutbox:jobEntity,
+   AppSettings:{filter:async()=>[]},
    InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}},
    PendingPushNotification:{filter:async(_q,_sort,limit,offset,fields)=>{pendingProjections.push(fields);return pendingRows.slice(offset,offset+limit);}},
    Payment:{list:async()=>[]},
