@@ -20,7 +20,7 @@ export type TrustedGreenInteractiveConfig={
  signingSecret:string;policy:any;officeNumber?:string;officeLabel?:string;
  officeContextMode?:OfficeContextMode;
  // Strict one-number QA fence. Only trusted server may fill this.
- qaChatId?:string;
+ qaChatId?:string;qaEventServiceId?:string;qaSupplierId?:string;
  subtle?:SubtleCrypto;now?:number
 };
 type Decision={kind:'legacy';reason:string;job:any;preview:null}|
@@ -96,8 +96,13 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
  if(config.qaChatId!==undefined){
   if(!/^[1-9][0-9]{7,14}@c\.us$/.test(config.qaChatId))
    throw blocked('invalid_qa_chat_scope');
-  if(job.chat_id!==config.qaChatId)
-   return legacy(job,'not_allowed_single_chat_qa');
+  if(!/^[A-Za-z0-9_-]{3,128}$/.test(config.qaEventServiceId||'')||
+    !/^[A-Za-z0-9_-]{3,128}$/.test(config.qaSupplierId||''))
+   throw blocked('invalid_qa_business_scope');
+  if(job.chat_id!==config.qaChatId||
+    job.event_service_id!==config.qaEventServiceId||
+    job.supplier_id!==config.qaSupplierId)
+   return legacy(job,'not_allowed_single_assignment_qa');
  }
  if(!['reply_only','mixed_url'].includes(config.capability)||
   !/^[0-9]{5,20}$/.test(config.senderAccountId||'')||
