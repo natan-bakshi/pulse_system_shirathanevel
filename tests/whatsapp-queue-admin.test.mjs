@@ -45,7 +45,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  const client={auth:{me:async()=>actor},asServiceRole:{entities:{
    WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch),
      filter:async()=>[record]},
-   EventService:{get:async id=>{
+   EventService:{filter:async()=>[],get:async id=>{
      officeReads.push('service');
      return officeServices.length?officeServices.find(x=>x.id===id)||null:{
        id:'service-123',supplier_statuses:'{"supplier-123":"confirmed"}',
