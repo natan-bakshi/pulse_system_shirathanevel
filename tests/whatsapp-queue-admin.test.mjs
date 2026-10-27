@@ -454,6 +454,24 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(ctx.calls.length,0);
 });
 
+test('single-chat QA owner readiness is separately opt-in and never exposes secrets or invokes Green',async()=>{
+ const ctx=context({state:{interactive_outbound_live_enabled:false}});
+ await ctx.invoke('status');
+ await ctx.invoke('interactiveReadiness');
+ assert.equal(ctx.greenAudits.length,0);
+ const r=await ctx.invoke('greenButtonQaReadiness');
+ assert.equal(r.status,200);
+ assert.equal(r.body.success,true);
+ assert.equal(r.body.qa.readyForQa,false);
+ assert.equal(r.body.qa.restrictedToOnePrivateChat,true);
+ assert.equal(r.body.qa.checks.find(x=>x.key==='owner_queue_gate').ready,false);
+ assert.equal(ctx.calls.length,0);
+ assert.equal(ctx.greenAudits.length,0);
+ const text=JSON.stringify(r.body);
+ assert.equal(text.includes(UNIT_SIGNING_SECRET),false);
+ assert.equal(text.includes(UNIT_RECOVERY_KEY),false);
+ assert.equal(text.includes('972501234567'),false);
+});
 test('interactiveReadiness is owner-only, explicitly on-demand and incapable of enabling a send',async()=>{
  const ctx=context();
  const status=await ctx.invoke('status');
