@@ -39,7 +39,12 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
  try{
   const client=opts.makeClient(request);
   const control=await readWhatsAppQueueControl(client);
-  const config=trustedGreenButtonQaConfig(control,opts.env);
+  if(control.interactive_outbound_live_enabled!==true)return result(404);
+  const flags=await client.asServiceRole.entities.AppSettings.filter({
+   setting_key:'assignment_intent_v1_enabled'
+  },'-created_date',2);
+  const durable=flags.length===1&&flags[0].setting_value==='true';
+  const config=trustedGreenButtonQaConfig(control,opts.env,durable);
   if(!config)return result(404);
   const processed=await (opts.stage??stageFutureGreenInteractiveHttpCallback)(
    request,{
