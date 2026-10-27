@@ -12,6 +12,7 @@
 // guard. A timed-out create leaves its guard for OWNER review; it NEVER
 // auto-clears when the lease expires. Does not block known-button receipts.
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
+import {canonicalGreenCallbackJson,encryptUnknownGreenRecovery} from './greenUnknownRecoveryEnvelope.ts';
 
 const COMPANY='shirat_hanevel';
 const ID=/^[A-Za-z0-9_-]{5,180}$/;
@@ -20,8 +21,13 @@ const INSTANCE=/^[0-9]{5,20}$/;
 const LEASE_MS=25000;
 const FIELDS=[
  'id','quarantine_key','payload_mac','provider','company_id','format_code',
- 'state','provider_event_at','registered_at','review_code'
+ 'state','provider_event_at','registered_at','review_code',
+ 'recovery_status','recovery_expires_at'
 ];
+// ONLY individual exact receipt verification can access ciphertext. The
+// owner audit uses FIELDS and never projects encrypted payload or nonce.
+const VERIFY_FIELDS=[...FIELDS,'recovery_version','recovery_key_id',
+ 'recovery_nonce','recovery_ciphertext'];
 const denied=(code:string)=>Object.assign(new Error(code),{code});
 const iso=(n:number)=>new Date(n).toISOString();
 const tagFormat=(value:unknown)=>{
@@ -69,7 +75,7 @@ export async function fingerprintUnknownGreenCallback(raw:any,opts:{
  const quarantineKey='gq1_'+await hmac(
   'shirat/unknown-event/v1\u0000'+opts.expectedInstanceId+'\u0000'+raw.idMessage);
  const payloadMac=await hmac(
-  'shirat/unknown-payload/v1\u0000'+JSON.stringify(raw));
+  'shirat/unknown-payload/v1\u0000'+canonicalGreenCallbackJson(raw));
  return {
   quarantine_key:quarantineKey,payload_mac:payloadMac,
   provider:'green',company_id:COMPANY,
@@ -79,6 +85,10 @@ export async function fingerprintUnknownGreenCallback(raw:any,opts:{
  };
 }
 function exact(row:any,data:any){
+ const encryptedFields=['recovery_version','recovery_status','recovery_key_id',
+  'recovery_nonce','recovery_ciphertext','recovery_expires_at'];
+ if(data.recovery_version&&encryptedFields.some(key=>row?.[key]!==data[key]))
+  return false;
  return !!row&&!!row.id&&row.quarantine_key===data.quarantine_key&&
   row.payload_mac===data.payload_mac&&row.provider==='green'&&
   row.company_id===COMPANY&&row.format_code===data.format_code&&
@@ -88,7 +98,7 @@ function exact(row:any,data:any){
   Number.isFinite(Date.parse(row.registered_at||''));
 }
 async function findOne(db:any,key:string){
- const rows=await db.filter({quarantine_key:key},'-created_date',2,0,FIELDS);
+ const rows=await db.filter({quarantine_key:key},'-created_date',2,0,VERIFY_FIELDS);
  if(!Array.isArray(rows)||rows.length>1)
   throw denied('unknown_quarantine_duplicate_rows');
  return rows[0]||null;
@@ -129,7 +139,10 @@ async function release(lease:any,guard:string|null){
 }
 export async function registerUnknownGreenCallbackQuarantine(client:any,raw:any,opts:{
  expectedInstanceId:string;fingerprintSecret:string;now?:number;
- subtle?:SubtleCrypto
+ subtle?:SubtleCrypto;
+ // Feature is OFF unless BOTH a trusted owner-approved policy and a dedicated
+ // server-side recovery secret are supplied. Never passed from provider body.
+ encryptedRecovery?:{ownerRetentionApproved:boolean;encryptionKey:string;keyId:string}
 }){
  const identity=await fingerprintUnknownGreenCallback(raw,opts);
  const entities=client?.asServiceRole?.entities;
@@ -139,28 +152,40 @@ export async function registerUnknownGreenCallbackQuarantine(client:any,raw:any,
   throw denied('unknown_quarantine_storage_unavailable');
  const lease=await reserve(client);
  let written=false,guard:string|null=null,result:any=null;
+ let encryptedRecoveryRecorded=false;
  try{
   const found=await findOne(entities.WhatsAppInboundQuarantine,identity.quarantine_key);
   if(found){
    if(!exact(found,identity))
     throw denied('unknown_quarantine_identity_conflict');
+   encryptedRecoveryRecorded=found.recovery_status==='encrypted'&&
+    typeof found.recovery_ciphertext==='string'&&found.recovery_ciphertext.length>30;
    result={kind:'duplicate',id:found.id};
   }else{
+   // Prepare and authenticate the optional envelope BEFORE taking the
+   // irreversible pre-CREATE fence. If encryption fails, no CREATE or
+   // persistent guard is needed. Metadata-only remains the default.
+   const envelope=opts.encryptedRecovery?
+    await encryptUnknownGreenRecovery(raw,identity,{
+     ...opts.encryptedRecovery,now:opts.now??Date.now(),subtle:opts.subtle
+    }):{};
    const q=await lease.db.updateMany({
     id:lease.id,unknown_create_owner:lease.owner,
     unknown_guard_key:lease.oldGuard
    },{$set:{unknown_guard_key:identity.quarantine_key}});
    if(q?.updated!==1)throw denied('unknown_quarantine_guard_unverified');
    guard=identity.quarantine_key;
+   const complete={...identity,...envelope};
    const created=await entities.WhatsAppInboundQuarantine.create({
-    ...identity,registered_at:iso(opts.now??Date.now())
+    ...complete,registered_at:iso(opts.now??Date.now())
    });
-   if(!exact(created,identity))throw denied('unknown_quarantine_create_unverified');
+   if(!exact(created,complete))throw denied('unknown_quarantine_create_unverified');
    // Do not consider a returned CREATE response as durability proof; reread
    // exact unique row before clearing the pre-create guard.
    const persisted=await findOne(entities.WhatsAppInboundQuarantine,identity.quarantine_key);
-   if(!persisted||persisted.id!==created.id||!exact(persisted,identity))
+   if(!persisted||persisted.id!==created.id||!exact(persisted,complete))
     throw denied('unknown_quarantine_persistence_unverified');
+   encryptedRecoveryRecorded=!!envelope.recovery_version;
    written=true;
    result={kind:'stored',id:created.id};
   }
@@ -173,7 +198,7 @@ export async function registerUnknownGreenCallbackQuarantine(client:any,raw:any,
   // Unknown future format may still contain an actionable button. No action
   // or HTTP ACK until owner investigates and provider shape is supported.
   state:'needs_review',manualReviewRequired:true,canAcknowledge:false,
-  terminalReceiptVerified:false,providerCalls:0,
+  encryptedRecoveryRecorded,terminalReceiptVerified:false,providerCalls:0,
   supplierWritesAuthorized:false,noMessagesSent:true
  };
 }
@@ -192,7 +217,12 @@ export function summarizeUnknownGreenQuarantine(rows:any[],limit=40){
     ?row.registered_at:null,
    eventAt:Number.isFinite(Date.parse(row.provider_event_at||''))
     ?row.provider_event_at:null,
-   mayChangeSupplier:false,bodyStored:false,manualReviewRequired:true
+   mayChangeSupplier:false,bodyStored:false,
+   encryptedRecoveryRecorded:row.recovery_status==='encrypted',
+   encryptedRecoveryExpiresAt:row.recovery_status==='encrypted'&&
+    Number.isFinite(Date.parse(row.recovery_expires_at||''))
+     ?row.recovery_expires_at:null,
+   manualReviewRequired:true
   });
  }
  return {sampleCount:output.length,sampleTruncated:rows.length>=limit,
