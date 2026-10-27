@@ -7,7 +7,7 @@
 // The calling HTTP function must authenticate SYSTEM OWNER before this helper.
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
 import {trustedGreenButtonQaConfig} from './greenButtonQaLaunch.ts';
-import {planAssignmentTransition} from './assignmentIntent.ts';
+import {planAssignmentTransition,readAssignmentIntents} from './assignmentIntent.ts';
 import {parseWhatsAppPhone} from './whatsappPhone.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,128}$/;
@@ -63,6 +63,15 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
   !statuses||Array.isArray(statuses)||typeof statuses!=='object'||
   !notes||Array.isArray(notes)||typeof notes!=='object')
   throw fail('qa_supplier_already_assigned_or_invalid',409);
+ // A previously requested assignment might have been resolved WITHOUT an
+ // Outbox (e.g. disabled template). It is still a previous business intent;
+ // re-enrolling would violate the one-shot QA scope despite no send history.
+ let previousIntents:any[];
+ try{previousIntents=readAssignmentIntents(
+  service.assignment_notification_intents||'[]');}
+ catch{throw fail('qa_intent_history_corrupt',409);}
+ if(previousIntents.some(entry=>entry.supplier_id===config.qaSupplierId))
+  throw fail('qa_previous_assignment_intent_requires_review',409);
  // Even if the assignment was removed and added again, do not create another
  // outward notification during a QA pilot: test with a FRESH service.
  const previous=await db.WhatsAppOutbox.filter({
