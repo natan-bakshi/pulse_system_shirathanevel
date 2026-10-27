@@ -26,6 +26,9 @@ export function summarizeWhatsAppInteractiveReadiness(input:{
  // A metadata-only marker cannot reconstruct a Beta button click; an
  // explicit recovery/manual-contact protocol is still a hard rollout gate.
  const unknownBetaRecoveryProven=false;
+ // AES-GCM helper is opt-in DORMANT only. No live public decryption path,
+ // automatic TTL purge or independently verified key rotation/backups yet.
+ const encryptedRecoveryRetentionLifecycleProven=false;
  const checked:Check[]=[
   check('queue_enabled','תור WhatsApp פעיל',c?.enabled===true),
   check('queue_unpaused','תור WhatsApp אינו מושהה',c?.paused!==true),
@@ -44,6 +47,9 @@ export function summarizeWhatsAppInteractiveReadiness(input:{
   check('unknown_beta_recovery_proven',
    'הוגדר נוהל מאומת לאי־אובדן תגובות בפורמט Green חדש',
    unknownBetaRecoveryProven),
+  check('encrypted_unknown_recovery_retention_verified',
+   'אושרו ניהול מפתחות, מחיקה אוטומטית וגיבויים לתוכן מוצפן זמני',
+   encryptedRecoveryRetentionLifecycleProven),
   check('beta_capability_verified','יכולת כפתורי Green נבדקה בחשבון אמיתי',
    betaAccountQaProven),
   check('real_callback_verified','נבדקה תגובה אמיתית עם מספר ומזהי הודעה מאומתים',
@@ -70,6 +76,10 @@ export function summarizeWhatsAppInteractiveReadiness(input:{
   unknownCallbackCannotBeAutoAcked:true,
   ownerOnlyUnknownQuarantineAuditAvailable:true,
   unknownBetaRecoveryNotYetProven:!unknownBetaRecoveryProven,
+  encryptedUnknownRecoveryLiveEnabled:false,
+  encryptedUnknownRecoveryDefaultsOff:true,
+  encryptedRecoveryRetentionLifecycleProven:false,
+  recoveryCleanupManualOnly:true,
   officeContactOpensManualWhatsAppDraft:true,
   inboundRoutingPolicyDoesNotEnableLiveWebhook:true,
   unexpectedControlFlagEnabled:c?.interactive_outbound_live_enabled===true,
