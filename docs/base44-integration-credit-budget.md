@@ -124,6 +124,16 @@
 - [ ] **עלות עסקית פתוחה:** במצב Beta לא מוכר המערכת אינה מאשרת Green 200, מכיוון שה־Callback עצמו לא נשמר לשחזור. ה־Provider עלול לשלוח את אותו Webhook שוב במשך כ־24 שעות; יש לתכנן התראה ומדיניות התאוששות מוקדמת כדי למנוע צריכת קרדיטים מיותרת **בלי למחוק אישורי ספקים**.
 - **קובץ תכנון:** `docs/whatsapp-unknown-green-callback-quarantine-2026-10-26.md`.
 
+## WA-CREDIT-07 — שכבת שחזור AES-GCM אופציונלית, ללא Polling (27.10.2026)
+- [x] נבדק תיעוד GREEN הרשמי: `ReceiveNotification` **אינו יכול לרוץ כאשר מוגדר Webhook URL מותאם**, ולכן אין מסלול Polling חינמי מקביל: https://green-api.com/en/docs/api/receiving/technology-http-api/ReceiveNotification/ . לא שונו כלל הגדרות ספק.
+- [x] נוסף קוד הצפנת AES‑256‑GCM **כבוי כברירת מחדל** ל־Callback אינטראקטיבי לא מוכר, באותה ישות Quarantine תחת CAS קיים, עם מפתח שרת ייעודי, מעטפת עד 12KiB, תוקף 48 שעות, זיהוי זיוף והגנה מפני הארכה בכפילות.
+- [x] Duplicate lookup משתמש ב־metadata-only projection; אין שליפת ciphertext נוספת לכל Retry, ואין יצירת Entity שנייה. הודעה ידנית מוכרת עדיין נעצרת ב־Edge או לפני DB בהתאם לבחירת הארכיטקטורה בעתיד.
+- [x] `unknownRecoveryExpiryCleanup` הוא פעולה יזומה של מנהל־העל בלבד, לא רקע: סריקת עד 20 רשומות + CAS רק עבור שדות הצפנה שפג תוקפם; אין שום כתיבה אם אין רשומות מתאימות. **לא אוכף retention אוטומטי ולכן השימוש החי עדיין חסום.**
+- [x] נבדקו **688/688** בדיקות Node (כולל 15 חדשות), build ו־lint. קריאות Green אמת/שליחות WhatsApp אמת = **0**; אין חיוב ספק יזום, אך עלות Sandbox Base44 בפועל אינה מדודה.
+- [ ] לפני הפעלה: הוכחת מנגנון מחיקה אוטומטי/גיבויים, ניהול מפתחות ועלויות, מדידת Credit Usage, אימות Green במציאות ואישור פריסה מבוקר. אין לפרוס Webhook/Edge או לשנות 7 שניות תור/Watchdog.
+- **מסמך החלטות:** `docs/whatsapp-unknown-green-recovery-encryption-2026-10-27.md`.
+
+
 
 
 
