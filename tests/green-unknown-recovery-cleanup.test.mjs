@@ -13,13 +13,21 @@ const row=(id,expiry=expired)=>({
  recovery_key_id:'v1-green-recovery',recovery_nonce:'AAAABBBBCCCCDDDDEEEE',
  recovery_ciphertext:'0123456789abcdef0123456789abcdef',recovery_expires_at:expiry
 });
-const match=(record,filter)=>Object.entries(filter).every(([k,v])=>record[k]===v);
+const match=(record,filter)=>Object.entries(filter).every(([k,v])=>
+ v&&typeof v==='object'&&'$lte' in v
+  ?typeof record[k]==='string'&&record[k]<=v.$lte:record[k]===v);
 function fixture(records,options={}){
  const counts={reads:0,writes:0,gets:0};
  const db={
-  filter:async(q,_sort,limit,_offset,fields)=>{
+  filter:async(q,sort,limit,_offset,fields)=>{
    counts.reads++;
-   return records.filter(r=>match(r,q)).slice(0,limit)
+   assert.equal(sort,'recovery_expires_at',
+    'expired oldest-first records must be selected server-side');
+   assert.ok(q.recovery_expires_at?.$lte,
+    'do not scan first page with not-yet-expired records');
+   return records.filter(r=>match(r,q))
+    .sort((a,b)=>a.recovery_expires_at.localeCompare(b.recovery_expires_at))
+    .slice(0,limit)
     .map(r=>Object.fromEntries(fields.map(k=>[k,r[k]])));
   },
   get:async id=>{counts.gets++;if(options.failRead)throw Error('read failure');
@@ -71,15 +79,29 @@ test('second owner click is idempotent and never writes an already-scrubbed reco
  assert.equal(second.scanned,0);
  assert.equal(f.counts.writes,1);
 });
-test('expired row with corrupt expiry or ciphertext is reported unresolved, not erased',async()=>{
+test('malformed expiry is deliberately excluded from expired-only query; bad ciphertext is unresolved',async()=>{
  const rows=[row('bad1','bad date'),row('bad2')];
  rows[1].recovery_ciphertext='';
  const f=fixture(rows);
  const result=await scrubExpiredUnknownGreenRecoveryOnDemand(f.client,{now:NOW});
- assert.equal(result.unverified,2);
+ assert.equal(result.scanned,1);
+ assert.equal(result.unverified,1);
  assert.equal(result.scrubbed,0);
  assert.equal(f.counts.writes,0);
  assert.equal(result.incomplete,true);
+ assert.equal(result.malformedExpiryRequiresSeparateAudit,true);
+});
+test('expired records are never starved by 30 older not-yet-expired records',async()=>{
+ const rows=Array.from({length:30},(_,i)=>row('future-'+i,future));
+ rows.push(row('expired-newer'));
+ const f=fixture(rows);
+ const report=await scrubExpiredUnknownGreenRecoveryOnDemand(f.client,{now:NOW});
+ assert.equal(report.scanned,1);
+ assert.equal(report.scrubbed,1);
+ assert.equal(report.expiryQueryServerFiltered,true);
+ assert.equal(f.counts.writes,1);
+ assert.equal(rows[30].recovery_status,'erased');
+ assert.equal(rows[0].recovery_status,'encrypted');
 });
 test('CAS fails closed on concurrent nonce changes, with no overwriting another worker',async()=>{
  const a=row('exp');
@@ -94,6 +116,20 @@ test('CAS fails closed on concurrent nonce changes, with no overwriting another 
  assert.equal(result.scrubbed,0);
  assert.equal(result.unverified,1);
  assert.equal(a.recovery_status,'encrypted');
+});
+test('zero updated rows never count as verified even if another worker scrubbed first',async()=>{
+ const f=fixture([row('expired')]);
+ f.db.updateMany=async()=>{
+  f.counts.writes++;
+  Object.assign(f.records[0],{recovery_status:'erased',
+   recovery_ciphertext:'',recovery_nonce:'',recovery_key_id:''});
+  return {updated:0};
+ };
+ const result=await scrubExpiredUnknownGreenRecoveryOnDemand(f.client,{now:NOW});
+ assert.equal(result.scrubbed,0);
+ assert.equal(result.unverified,1);
+ assert.equal(f.counts.gets,0);
+ assert.equal(f.counts.writes,1);
 });
 test('ambiguous timeout after commit is NOT reported as confirmed erasure, never retried',async()=>{
  const a=row('exp'),f=fixture([a],{failWrite:true});
