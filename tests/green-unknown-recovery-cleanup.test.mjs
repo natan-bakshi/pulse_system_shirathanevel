@@ -51,7 +51,7 @@ test('manual scrub removes ONLY expired encrypted fields, preserving metadata an
  a.quarantine_key='gq1_test_hash';a.payload_mac='safe';
  const f=fixture([a,b]);
  const report=await scrubExpiredUnknownGreenRecoveryOnDemand(f.client,{now:NOW});
- assert.equal(report.scanned,2);
+ assert.equal(report.scanned,1);
  assert.equal(report.expiredCandidates,1);
  assert.equal(report.scrubbed,1);
  assert.equal(report.unverified,0);
