@@ -19,7 +19,7 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  webhookSecret:string;actionSigningSecret:string;expectedInstanceId:string;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
  // Only trusted single-chat QA config may supply this, never webhook JSON.
- qaChatId?:string;
+ qaChatId?:string;qaEventServiceId?:string;qaSupplierId?:string;
  maxPerMinute?:number;now?:number;subtle?:SubtleCrypto;
  // ONLY from trusted server configuration after owner retention/purge review.
  // Undefined by default: zero recoverable payloads are stored.
@@ -105,6 +105,7 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
   actionSigningSecret:opts.actionSigningSecret,
   trustedRolloutEnabled:true,accountCapabilityVerified:true,
   claimOwner:opts.claimOwner,recalculateEventStatus:opts.recalculateEventStatus,
+  qaEventServiceId:opts.qaEventServiceId,qaSupplierId:opts.qaSupplierId,
   now,subtle:opts.subtle
  });
  return {stage:'processed',result:result.status,reason:result.reason,
