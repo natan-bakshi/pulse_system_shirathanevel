@@ -11,8 +11,13 @@ import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappIn
 import {inspectOfficeAssignmentReference} from '../base44/shared/whatsappOfficeReferenceLookup.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../base44/shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../base44/shared/greenUnknownRecoveryCleanup.ts';
+import {inspectUnknownGreenRecoveryStructureReadOnly} from '../base44/shared/greenUnknownRecoveryReview.ts';
+import {fingerprintUnknownGreenCallback} from '../base44/shared/greenUnknownCallbackQuarantine.ts';
+import {encryptUnknownGreenRecovery} from '../base44/shared/greenUnknownRecoveryEnvelope.ts';
 import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions} from '../base44/shared/whatsappSourceAudit.ts';
 
+const UNIT_RECOVERY_KEY=Buffer.alloc(32,31).toString('base64url');
+const UNIT_SIGNING_SECRET='synthetic-owner-admin-action-signing-secret-123456789';
 function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[],quarantineRows=[],officeServices=[],officeEvents=[],officeSuppliers=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
@@ -88,7 +93,10 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
    exports:{},module:{exports:{}},console:{error:()=>{},log:()=>{}},
    Deno:{serve:fn=>handler=fn,env:{get:key=>({
      GREEN_API_INSTANCE_ID:'9903183013',
-     GREEN_API_TOKEN:'SYNTHETIC-GREEN-ONLY-API-TOKEN-1234567890'
+     GREEN_API_TOKEN:'SYNTHETIC-GREEN-ONLY-API-TOKEN-1234567890',
+     WHATSAPP_INTERACTIVE_SIGNING_SECRET:UNIT_SIGNING_SECRET,
+     GREEN_UNKNOWN_RECOVERY_ENCRYPTION_KEY:UNIT_RECOVERY_KEY,
+     GREEN_UNKNOWN_RECOVERY_KEY_ID:'v1-green-recovery'
    })[key]}}, 
    Response:{json:(body,{status=200}={})=>({body,status})},
    require:name=>{
@@ -119,6 +127,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('whatsappOfficeReferenceLookup.ts'))return {inspectOfficeAssignmentReference};
      if(name.endsWith('greenUnknownCallbackQuarantine.ts'))return {inspectUnknownGreenQuarantineReadOnly};
      if(name.endsWith('greenUnknownRecoveryCleanup.ts'))return {scrubExpiredUnknownGreenRecoveryOnDemand};
+     if(name.endsWith('greenUnknownRecoveryReview.ts'))return {inspectUnknownGreenRecoveryStructureReadOnly};
      if(name.endsWith('greenWebhookSettingsAudit.ts'))return {
        inspectGreenWebhookSettingsReadOnly:async options=>{
          greenAudits.push({...options});
@@ -190,7 +199,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
