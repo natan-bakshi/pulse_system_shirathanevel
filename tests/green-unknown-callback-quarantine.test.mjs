@@ -248,6 +248,146 @@ test('owner audit is bounded on demand and exposes ONLY short fingerprints and s
   'PRIVATE-SUPPLIER-QUESTION','972501234567','gq1_','3EB0UNKNOWN'])
   assert.equal(serialized.includes(secret),false,secret);
 });
+test('canonical provider JSON ignores harmless nested key order changes on Green retries',async()=>{
+ const source=raw(),reordered={};
+ for(const key of Object.keys(source).reverse()){
+  const value=source[key];
+  reordered[key]=key==='messageData'
+   ?Object.fromEntries(Object.entries(value).reverse()):value;
+ }
+ assert.equal(canonicalGreenCallbackJson(source),canonicalGreenCallbackJson(reordered));
+ const f=fixture();
+ assert.equal((await stageFutureGreenInteractiveHttpCallback(
+  f.callback(source),f.opts)).stage,'quarantined_unknown');
+ const second=await stageFutureGreenInteractiveHttpCallback(f.callback(reordered),f.opts);
+ assert.equal(second.stage,'quarantined_unknown');
+ assert.equal(second.quarantineKind,'duplicate');
+ assert.equal(f.rows.length,1);
+ assert.equal(f.counts.quarantineCreates,1);
+});
+test('default OFF: unknown callback stores ONLY HMAC, no recovery material',async()=>{
+ const f=fixture();
+ const result=await stageFutureGreenInteractiveHttpCallback(f.callback(),f.opts);
+ assert.equal(result.encryptedRecoveryRecorded,false);
+ const stored=JSON.stringify(f.rows);
+ assert.equal(stored.includes('recovery_ciphertext'),false);
+ assert.equal(stored.includes('recovery_nonce'),false);
+ assert.equal(stored.includes('PRIVATE-SUPPLIER-QUESTION'),false);
+ assert.equal(f.counts.supplierWrites,0);
+});
+test('approved AES-256-GCM recovery round trip is possible privately, but NEVER auto ACKs or applies',async()=>{
+ const f=fixture(),keyBytes=crypto.getRandomValues(new Uint8Array(32));
+ const key=Buffer.from(keyBytes).toString('base64url');
+ const approval={ownerRetentionApproved:true,encryptionKey:key,keyId:'v1-green-recovery'};
+ const event=raw();
+ const first=await stageFutureGreenInteractiveHttpCallback(f.callback(event),{
+  ...f.opts,encryptedUnknownRecovery:approval
+ });
+ assert.equal(first.stage,'quarantined_unknown');
+ assert.equal(first.encryptedRecoveryRecorded,true);
+ assert.equal(first.canAcknowledge,false);
+ assert.equal(planFutureGreenWebhookHttpContract(first).plannedHttpStatus,503);
+ assert.equal(f.rows.length,1);
+ const row=f.rows[0];
+ assert.equal(row.recovery_status,'encrypted');
+ assert.equal(row.recovery_version,'aes256gcm-v1');
+ assert.equal(row.recovery_key_id,'v1-green-recovery');
+ assert.equal(UNKNOWN_RECOVERY_TTL_HOURS,48);
+ assert.equal(Date.parse(row.recovery_expires_at),NOW+48*3600000);
+ const serialized=JSON.stringify(row);
+ for(const secret of ['PRIVATE-SUPPLIER-QUESTION','PRIVATE-SUPPLIER-NAME',
+  'PRIVATE-ORIGINAL-STANZA','PRIVATE-BUTTON-ACTION','972501234567',key])
+  assert.equal(serialized.includes(secret),false,secret);
+ const result=await decryptUnknownGreenRecovery(row,{
+  encryptionKey:key,keyId:'v1-green-recovery',now:NOW+1000
+ });
+ assert.equal(result.recoveredForManualReviewOnly,true);
+ assert.equal(result.neverApplySupplierAutomatically,true);
+ assert.equal(result.providerVerificationStillRequired,true);
+ assert.equal(result.callback.messageData.futureInteractiveBetaReply.selectedId,
+  'PRIVATE-BUTTON-ACTION');
+ assert.equal(result.callback.senderData.chatId,'972501234567@c.us');
+ assert.equal(result.callback.senderData.senderName,undefined,
+  'unnecessary display name excluded BEFORE encryption');
+ assert.equal(f.counts.supplierWrites,0);
+ const report=await inspectUnknownGreenQuarantineReadOnly(f.client);
+ assert.equal(report.list[0].encryptedRecoveryRecorded,true);
+ assert.equal(report.list[0].encryptedRecoveryExpiresAt,row.recovery_expires_at);
+ assert.equal(JSON.stringify(report).includes('recovery_ciphertext'),false);
+ assert.equal(JSON.stringify(report).includes(row.recovery_nonce),false);
+ assert.equal(JSON.stringify(report).includes(row.recovery_ciphertext),false);
+ assert.equal(JSON.stringify(first).includes('recovery_ciphertext'),false);
+});
+test('AES-GCM recovery rejects wrong key, changed nonce, changed ciphertext, changed identity and expired access',async()=>{
+ const f=fixture(),key=Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
+  .toString('base64url');
+ await stageFutureGreenInteractiveHttpCallback(f.callback(),{
+  ...f.opts,encryptedUnknownRecovery:{
+   ownerRetentionApproved:true,encryptionKey:key,keyId:'v1-green-recovery'}
+ });
+ const row=f.rows[0];
+ const options={encryptionKey:key,keyId:'v1-green-recovery',now:NOW+1000};
+ const badKey=Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
+  .toString('base64url');
+ for(const [changed,opts] of [
+  [row,{...options,encryptionKey:badKey}],
+  [{...row,recovery_nonce:'AAAAAAAAAAAAAAAA'},options],
+  [{...row,recovery_ciphertext:'AAAAAAAAAAAAAAAAAAAAAA'},options],
+  [{...row,quarantine_key:'gq1_'+'f'.repeat(64)},options],
+  [{...row,payload_mac:'f'.repeat(64)},options],
+  [{...row,recovery_expires_at:new Date(NOW+49*3600000).toISOString()},options],
+  [row,{...options,now:NOW+48*3600000}],
+  [row,{...options,keyId:'v2-green-recovery'}]
+ ]){
+  await assert.rejects(decryptUnknownGreenRecovery(changed,opts),
+   err=>err.code==='encrypted_unknown_recovery_unavailable');
+ }
+});
+test('without explicit owner approval, invalid key and generic unknown shape cannot be encrypted or ACKed',async()=>{
+ const f=fixture();
+ const key=Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
+  .toString('base64url');
+ for(const config of [
+  {ownerRetentionApproved:false,encryptionKey:key,keyId:'v1-green-recovery'},
+  {ownerRetentionApproved:true,encryptionKey:'wrong-length',keyId:'v1-green-recovery'},
+  {ownerRetentionApproved:true,encryptionKey:key,keyId:'invalid-key-id'}
+ ]){
+  const result=await stageFutureGreenInteractiveHttpCallback(f.callback(),{
+   ...f.opts,encryptedUnknownRecovery:config
+  });
+  assert.equal(result.stage,'quarantine_unavailable');
+  assert.equal(f.rows.length,0);
+  assert.equal(f.control.unknown_guard_key,'');
+  assert.equal(planFutureGreenWebhookHttpContract(result).plannedHttpStatus,503);
+ }
+ const generic=raw();generic.messageData={typeMessage:'newOrdinaryUnknown',
+  newOrdinaryUnknown:{text:'PRIVATE-NORMAL-CHAT'}};
+ const result=await stageFutureGreenInteractiveHttpCallback(f.callback(generic),{
+  ...f.opts,encryptedUnknownRecovery:{
+   ownerRetentionApproved:true,encryptionKey:key,keyId:'v1-green-recovery'}
+ });
+ assert.equal(result.stage,'quarantine_unavailable');
+ assert.equal(f.rows.length,0,'do not encrypt ordinary unknown human chat');
+});
+test('encrypted duplicate never rewrites nonce, extends retention or stores a second payload',async()=>{
+ const f=fixture(),key=Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
+  .toString('base64url');
+ const approval={ownerRetentionApproved:true,encryptionKey:key,keyId:'v1-green-recovery'};
+ const first=await stageFutureGreenInteractiveHttpCallback(f.callback(),{
+  ...f.opts,encryptedUnknownRecovery:approval
+ });
+ const nonce=f.rows[0].recovery_nonce;
+ const expiry=f.rows[0].recovery_expires_at;
+ const second=await stageFutureGreenInteractiveHttpCallback(f.callback(),{
+  ...f.opts,now:NOW+3500000,encryptedUnknownRecovery:approval
+ });
+ assert.equal(first.quarantineKind,'stored');
+ assert.equal(second.quarantineKind,'duplicate');
+ assert.equal(second.encryptedRecoveryRecorded,true);
+ assert.equal(f.rows[0].recovery_nonce,nonce);
+ assert.equal(f.rows[0].recovery_expires_at,expiry);
+ assert.equal(f.counts.quarantineCreates,1);
+});
 test('quarantine schema contains metadata ONLY and is not a public webhook handler',()=>{
  const schema=JSON.parse(fs.readFileSync(
   'base44/entities/WhatsAppInboundQuarantine.jsonc','utf8'));
