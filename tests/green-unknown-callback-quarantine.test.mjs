@@ -391,6 +391,16 @@ test('encrypted duplicate never rewrites nonce, extends retention or stores a se
  assert.equal(f.rows[0].recovery_expires_at,expiry);
  assert.equal(f.counts.quarantineCreates,1);
 });
+test('encrypted quarantine entity is SERVICE ROLE ONLY: direct client RLS denies every operation',()=>{
+ const schema=JSON.parse(fs.readFileSync(
+  'base44/entities/WhatsAppInboundQuarantine.jsonc','utf8'));
+ for(const operation of ['read','create','update','delete'])
+  assert.equal(schema.rls[operation],false,
+   'admin-role client SDK must NEVER read encrypted personal callbacks directly');
+ const owner=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
+ assert.match(owner,/inspectUnknownGreenRecoveryStructureReadOnly\(client/);
+ assert.match(owner,/isSystemOwner/);
+});
 test('quarantine schema contains metadata ONLY and is not a public webhook handler',()=>{
  const schema=JSON.parse(fs.readFileSync(
   'base44/entities/WhatsAppInboundQuarantine.jsonc','utf8'));
