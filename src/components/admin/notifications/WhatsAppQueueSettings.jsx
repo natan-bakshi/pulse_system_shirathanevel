@@ -52,6 +52,7 @@ export default function WhatsAppQueueSettings(){
   const [unknownRecoveryReview,setUnknownRecoveryReview]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
+  const [qaReadiness,setQaReadiness]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
   const [officeReference,setOfficeReference]=useState('');
   const [officeLookup,setOfficeLookup]=useState(null);
@@ -95,6 +96,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת הגדרות Green API נכשלה');
         setGreenWebhookSettings(res.data.settings);
         setNotice('הגדרות Green נבדקו באמצעות קריאת API אחת בלבד. לא שונו הגדרות ולא נשלחו הודעות.');
+        return;
+      }
+      if(action==='greenButtonQaReadiness'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת מוכנות הניסוי נכשלה');
+        setQaReadiness(res.data.qa);
+        setNotice('נבדקו תנאי ניסוי כפתורים למספר אחד ללא שליחה וללא פנייה ל־Green API.');
         return;
       }
       if(action==='interactiveReadiness'){
@@ -229,7 +236,8 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>בדיקת תגובות WhatsApp (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('unknownCallbackAudit')}>בדיקת כפתורים לא מזוהים (קריאה בלבד)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות כפתורי שיבוץ (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaReadiness')}>מוכנות ניסוי כפתורים למספר אחד (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות תוכנית הכפתורים המלאה (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדוק הגדרות Green API (קריאה אחת, ללא שינוי)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
@@ -256,6 +264,18 @@ export default function WhatsAppQueueSettings(){
             {Object.entries(greenWebhookSettings.notificationFlags||{}).map(([key,value])=><span key={key} className="rounded border px-2 py-1">{key}: {value==='yes'?'כן':value==='no'?'לא':'לא ידוע'}</span>)}
           </div>
           <p className="text-gray-600">מפתחות, כתובות Webhook, מספרי טלפון ופרטי חשבון אינם מוצגים או מועברים לדפדפן. הבדיקה אינה שולחת הודעות WhatsApp ואינה בודקת קליטת כפתור אמיתית.</p>
+        </div>
+      </details>}
+      {qaReadiness&&<details open className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="font-medium cursor-pointer">ניסוי כפתורים למספר אחד — {qaReadiness.checks?.filter(x=>!x.ready).length||0} תנאים חסרים</summary>
+        <div className="space-y-2 pt-3 text-xs">
+          <p className="font-medium text-amber-800">{qaReadiness.readyForQa?'תנאי התצורה לניסוי מוכנים, אך עדיין דרושות בדיקת ספק והוכחת קליטה חיה.':'הניסוי עדיין חסום; אין כפתורים פעילים ואין שינוי בשליחות הרגילות.'}</p>
+          <ul className="space-y-1">
+            {(qaReadiness.checks||[]).map(check=><li key={check.key}>
+              {check.ready?'✓':'○'} {({owner_queue_gate:'אישור הפעלה במנגנון התור',send_env_gate:'אישור שליחה ניסיונית בשרת',inbound_env_gate:'אישור קליטת תגובות בשרת',owner_env_gate:'אישור מנהל־העל בשרת',provider_beta_verified:'אימות יכולות הכפתורים בחשבון Green',one_qa_chat:'מספר בדיקה יחיד בשרת',green_credentials:'פרטי חיבור Green תקינים',signing_secret:'מפתח חתימת כפתורים',webhook_bearer:'סוד אימות Webhook',office_draft_saved:'טיוטת שלושה כפתורים ומספר משרד'})[check.key]||check.key}
+            </li>)}
+          </ul>
+          <p className="text-gray-600">גם כשהתצורה מוכנה, יש לוודא שכתובת ה־Webhook הקיימת וצרכני ההודעות האחרים נשמרים. אין אפשרות להפעיל את הניסוי דרך הבדיקה הזאת. כל שאר הספקים ממשיכים במסלול השליחה הרגיל.</p>
         </div>
       </details>}
       {interactiveReadiness&&<details className="rounded border p-3 text-sm" dir="rtl">
