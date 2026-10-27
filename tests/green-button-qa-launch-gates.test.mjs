@@ -82,11 +82,13 @@ test('single chat QA is disabled by default and never activates from saved polic
  assert.equal(trustedGreenButtonQaConfig({
   ...control,interactive_assignment_green_policy_json:null
  },env(),true),null,'missing owner draft cannot activate beta sending');
- const report=greenButtonQaSafeSummary(control,env(),true);
+ const report=greenButtonQaSafeSummary(control,env(),true,0);
  assert.equal(report.readyForQa,true);
+ assert.equal(greenButtonQaSafeSummary(control,env(),true,2).readyForQa,false,
+  'unrelated global V2 work blocks pilot readiness');
  assert.equal(trustedGreenButtonQaConfig(control,env()),null,
   'even full Green secrets cannot turn on buttons while V2 flag is false');
- assert.equal(greenButtonQaSafeSummary(control,env(),false).readyForQa,false,
+ assert.equal(greenButtonQaSafeSummary(control,env(),false,0).readyForQa,false,
   'missing durable v2 assignment mode must not claim readiness');
  assert.equal(JSON.stringify(report).includes(CHAT),false);
  assert.equal(JSON.stringify(report).includes(SIGNING),false);
@@ -145,8 +147,8 @@ test('rollback stops NEW button sends but inbound remains available for previous
  assert.equal(inbound.qaChatId,CHAT);
  assert.equal(inbound.qaEventServiceId,'service-123');
  assert.equal(inbound.qaSupplierId,'supplier-123');
- assert.equal(greenButtonQaSafeSummary(control,stopped,true).readyForQa,false);
- assert.equal(greenButtonQaSafeSummary(control,stopped,true).receivingExistingQaRepliesAvailable,true);
+ assert.equal(greenButtonQaSafeSummary(control,stopped,true,0).readyForQa,false);
+ assert.equal(greenButtonQaSafeSummary(control,stopped,true,0).receivingExistingQaRepliesAvailable,true);
  const db=sdk(control);let staged=0;
  const response=await handleGreenButtonQaWebhook(createRequest(),{
   env:stopped,makeClient:()=>db.client,
