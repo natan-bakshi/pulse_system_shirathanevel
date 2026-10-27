@@ -11,6 +11,7 @@ import {validateWhatsAppInteractivePolicy}
 import type {TrustedGreenInteractiveConfig}
  from './whatsappInteractiveWorkerBridge.ts';
 const INSTANCE=/^[0-9]{5,20}$/;
+const ENTITY=/^[A-Za-z0-9_-]{3,128}$/;
 const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
 const SECRET_MIN=32;
 const exactActions=['assignment_approve','assignment_reject','contact_office'];
@@ -28,8 +29,11 @@ export function trustedGreenButtonQaConfig(control:any,env:(key:string)=>string|
  const signingSecret=get(env,'WHATSAPP_INTERACTIVE_SIGNING_SECRET');
  const webhookSecret=get(env,'GREEN_API_WEBHOOK_TOKEN');
  const target=get(env,'GREEN_BUTTONS_QA_ALLOWED_CHAT');
+ const serviceId=get(env,'GREEN_BUTTONS_QA_EVENT_SERVICE_ID');
+ const supplierId=get(env,'GREEN_BUTTONS_QA_SUPPLIER_ID');
  const token=get(env,'GREEN_API_TOKEN');
  if(!INSTANCE.test(senderAccountId)||!PRIVATE.test(target)||
+  !ENTITY.test(serviceId)||!ENTITY.test(supplierId)||
   signingSecret.length<SECRET_MIN||webhookSecret.length<24||
   token.length<24||signingSecret===webhookSecret||
   target===senderAccountId+'@c.us')return null;
@@ -56,7 +60,7 @@ export function trustedGreenButtonQaConfig(control:any,env:(key:string)=>string|
   policy,officeNumber,officeLabel:policy.buttons.find(
    button=>button.action==='contact_office')!.label,
   officeContextMode:'reference',
-  qaChatId:target
+  qaChatId:target,qaEventServiceId:serviceId,qaSupplierId:supplierId
  };
 }
 // Safe, sanitized readiness metadata for admin UI: no secrets or phone.
@@ -74,6 +78,9 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
    {key:'owner_env_gate',ready:get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'},
    {key:'provider_beta_verified',ready:get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'},
    {key:'one_qa_chat',ready:PRIVATE.test(get(env,'GREEN_BUTTONS_QA_ALLOWED_CHAT'))},
+   {key:'one_qa_assignment',ready:
+     ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_SERVICE_ID'))&&
+     ENTITY.test(get(env,'GREEN_BUTTONS_QA_SUPPLIER_ID'))},
    {key:'green_credentials',ready:INSTANCE.test(get(env,'GREEN_API_INSTANCE_ID'))&&
      get(env,'GREEN_API_TOKEN').length>=24},
    {key:'signing_secret',ready:get(env,'WHATSAPP_INTERACTIVE_SIGNING_SECRET').length>=32},
