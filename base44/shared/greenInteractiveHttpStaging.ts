@@ -18,6 +18,8 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  client:any;rolloutAuthorized:boolean;accountCapabilityVerified:boolean;
  webhookSecret:string;actionSigningSecret:string;expectedInstanceId:string;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
+ // Only trusted single-chat QA config may supply this, never webhook JSON.
+ qaChatId?:string;
  maxPerMinute?:number;now?:number;subtle?:SubtleCrypto;
  // ONLY from trusted server configuration after owner retention/purge review.
  // Undefined by default: zero recoverable payloads are stored.
@@ -32,6 +34,16 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  if(!decoded.ok)return {stage:'request_refused',reason:decoded.reason,
   validationHttpStatus:decoded.status,providerCalls:0,businessWritesAuthorized:false};
  const now=opts.now??Date.now();
+ // Single-chat QA must NEVER be able to apply actions for an unrelated
+ // supplier, even if their callback carries a plausible signed identifier.
+ // Return without DB/Outbox/receipt access. The provider's other messages
+ // must stay on its existing webhook/office route, not this QA function.
+ if(opts.qaChatId!==undefined){
+  if(!/^[1-9][0-9]{7,14}@c\.us$/.test(opts.qaChatId)||
+    decoded.rawCallback?.senderData?.chatId!==opts.qaChatId)
+   return {stage:'qa_sender_outside_scope',reason:'qa_sender_not_allowed',
+    providerCalls:0,businessWritesAuthorized:false};
+ }
  // Verify exact Green instance and recognized selection BEFORE any DB query.
  if(!parseGreenButtonSelection(decoded.rawCallback,opts.expectedInstanceId,now)){
   // Owner-approved policy: ONLY an authenticated, account-matched Green
