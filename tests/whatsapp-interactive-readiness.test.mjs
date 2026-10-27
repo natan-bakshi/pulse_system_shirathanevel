@@ -27,7 +27,12 @@ test('all nominal settings STILL CANNOT claim provider QA, publish callback, or 
  assert.equal(report.unknownCallbackCannotBeAutoAcked,true);
  assert.equal(report.unknownBetaRecoveryNotYetProven,true);
  assert.equal(report.ownerOnlyUnknownQuarantineAuditAvailable,true);
+ assert.equal(report.encryptedUnknownRecoveryLiveEnabled,false);
+ assert.equal(report.encryptedUnknownRecoveryDefaultsOff,true);
+ assert.equal(report.encryptedRecoveryRetentionLifecycleProven,false);
+ assert.equal(report.recoveryCleanupManualOnly,true);
  assert.ok(report.blockers.includes('unknown_beta_recovery_proven'));
+ assert.ok(report.blockers.includes('encrypted_unknown_recovery_retention_verified'));
  assert.equal(report.officeContactOpensManualWhatsAppDraft,true);
  assert.equal(report.inboundRoutingPolicyDoesNotEnableLiveWebhook,true);
  assert.equal(report.readinessNeverImpliesProviderDelivery,true);
