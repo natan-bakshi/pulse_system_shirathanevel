@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {fingerprintUnknownGreenCallback,isEligibleUnknownGreenCallback,
- registerUnknownGreenCallbackQuarantine,inspectUnknownGreenQuarantineReadOnly}
+ registerUnknownGreenCallbackQuarantine,inspectUnknownGreenQuarantineReadOnly,
+ summarizeUnknownGreenQuarantine}
  from '../base44/shared/greenUnknownCallbackQuarantine.ts';
 import {stageFutureGreenInteractiveHttpCallback}
  from '../base44/shared/greenInteractiveHttpStaging.ts';
@@ -390,6 +391,31 @@ test('encrypted duplicate never rewrites nonce, extends retention or stores a se
  assert.equal(f.rows[0].recovery_nonce,nonce);
  assert.equal(f.rows[0].recovery_expires_at,expiry);
  assert.equal(f.counts.quarantineCreates,1);
+});
+test('one existing 40-row owner audit projects retention anomalies WITHOUT extra DB requests',()=>{
+ const base={provider:'green',company_id:'shirat_hanevel',
+  quarantine_key:'gq1_'+'a'.repeat(64),state:'needs_review',
+  format_code:'unrecognized_interactive',
+  registered_at:new Date(NOW).toISOString()};
+ const records=[
+  {...base,id:'expired',recovery_status:'encrypted',
+   recovery_expires_at:new Date(NOW-1000).toISOString()},
+  {...base,id:'malformed',recovery_status:'encrypted',recovery_expires_at:'bad-date'},
+  {...base,id:'soon',recovery_status:'encrypted',
+   recovery_expires_at:new Date(NOW+3*3600000).toISOString()},
+  {...base,id:'future',recovery_status:'encrypted',
+   recovery_expires_at:new Date(NOW+36*3600000).toISOString()},
+  {...base,id:'metadata-only'}
+ ];
+ const result=summarizeUnknownGreenQuarantine(records,40,NOW);
+ assert.deepEqual(result.retentionSample,{
+  encryptedInSample:4,expiredInSample:1,
+  invalidExpiryInSample:1,expiringWithin12hInSample:1,
+  sampledOnly:true,allRecordsAudited:false,physicalBackupErasureNotVerified:true
+ });
+ assert.equal(result.sampleCount,5);
+ assert.equal(result.sampleTruncated,false);
+ assert.equal(JSON.stringify(result).includes('recovery_ciphertext'),false);
 });
 test('encrypted quarantine entity is SERVICE ROLE ONLY: direct client RLS denies every operation',()=>{
  const schema=JSON.parse(fs.readFileSync(
