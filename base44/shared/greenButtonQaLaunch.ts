@@ -61,11 +61,13 @@ export function trustedGreenButtonQaConfig(control:any,env:(key:string)=>string|
 }
 // Safe, sanitized readiness metadata for admin UI: no secrets or phone.
 // Not used to authorize sending or handling real callbacks.
-export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|undefined){
+export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|undefined,
+ assignmentIntentEnabled=false){
  const config=trustedGreenButtonQaConfig(control,env);
  const draft=parseSavedWhatsAppInteractivePolicy(control,'green');
- return {mode:'single_chat_qa',readyForQa:!!config,
+ return {mode:'single_chat_qa',readyForQa:!!config&&assignmentIntentEnabled,
   checks:[
+   {key:'durable_assignment_intent',ready:assignmentIntentEnabled===true},
    {key:'owner_queue_gate',ready:control?.interactive_outbound_live_enabled===true},
    {key:'send_env_gate',ready:get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'},
    {key:'inbound_env_gate',ready:get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'},
