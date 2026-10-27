@@ -47,6 +47,35 @@
     "review_code": {
       "type": "string",
       "description": "Allowlisted code only, no private content"
+    },
+    "recovery_version": {
+      "type": "string",
+      "description": "Optional future owner-approved encrypted recovery envelope version. Absent by default."
+    },
+    "recovery_status": {
+      "type": "string",
+      "enum": [
+        "encrypted",
+        "erased"
+      ],
+      "description": "Optional encryption state; no implication that the callback is processed or ACKed"
+    },
+    "recovery_key_id": {
+      "type": "string",
+      "description": "Opaque key version, never an actual secret; no key stored in entity"
+    },
+    "recovery_nonce": {
+      "type": "string",
+      "description": "96-bit random AES-GCM IV, authenticated against HMAC identity and expiration"
+    },
+    "recovery_ciphertext": {
+      "type": "string",
+      "description": "Optional AES-256-GCM encrypted minimal unknown interactive callback, never plaintext. Feature disabled until privacy and cleanup approval."
+    },
+    "recovery_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "After expiration, decryption is prohibited; physical deletion must be separately verified before LIVE"
     }
   },
   "required": [
