@@ -1,6 +1,7 @@
 import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import {isGreenButtonQaFixtureEvent} from '../../shared/greenButtonQaFixture.ts';
 
 /**
  * scheduleEventLifecycleNotifications
@@ -63,6 +64,8 @@ Deno.serve(async (req) => {
         if (!eventData) {
             return Response.json({ skipped: true, reason: 'Event not found' });
         }
+        if(isGreenButtonQaFixtureEvent(eventData))
+            return Response.json({skipped:true,reason:'qa_fixture_lifecycle_isolated'});
         currentStatus = eventData.status; // Read the saved state, not an older automation payload.
 
         // פועלים רק כשהאירוע 'confirmed' או 'in_progress' (סגור/משובץ).
