@@ -233,7 +233,8 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  assert.equal(replay.terminalReceiptVerified,true);
  assert.equal(f.stats.statusCAS,1);
  assert.equal(f.stats.providerCalls,1);
- assert.equal((await f.worker(true)).accepted,0,'no resend after receipt');
+ assert.equal((await f.worker(true)).reason,'empty','no resend after receipt');
+ assert.equal(f.stats.providerCalls,1);
  assert.equal(f.outbox.length,1);
 });
 test('rollback BEFORE any button snapshot holds that assignment, while unrelated WhatsApp still flows',async()=>{
