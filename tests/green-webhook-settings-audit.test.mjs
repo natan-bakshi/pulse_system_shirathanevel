@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {summarizeGreenWebhookSettings,inspectGreenWebhookSettingsReadOnly}
+import {summarizeGreenWebhookSettings,inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure}
  from '../base44/shared/greenWebhookSettingsAudit.ts';
 
 const SETTINGS={
@@ -123,6 +123,94 @@ test('missing webhook URL type and provider flag nonsense never become trusted p
  assert.equal(invalid.notificationFlags.outgoingWebhook,'unknown');
  assert.equal(invalid.incomingNotificationsEnabled,false);
  assert.equal(invalid.sendDelayMs,null);
+});
+test('sanitized codes distinguish Green auth, unreachable route, rate-limit and provider downtime with ONE GET',async()=>{
+ const cases=[
+  [401,'provider_auth_rejected'],[403,'provider_auth_rejected'],
+  [404,'provider_instance_not_found'],[429,'provider_rate_limited'],
+  [503,'provider_server_error'],[418,'provider_http_error']
+ ];
+ for(const [status,expected] of cases){
+  let calls=0;
+  await assert.rejects(inspectGreenWebhookSettingsReadOnly({
+   ...config,fetchFn:async()=>{calls++;return response({private:'NEVER_LEAK'},status);}
+  }),err=>{
+   const safe=summarizeGreenWebhookAuditFailure(err);
+   assert.equal(err.code,'green_settings_unavailable');
+   assert.equal(safe.diagnosticCode,expected);
+   assert.ok(safe.error.includes(expected));
+   assert.equal(safe.noMessagesSent,true);
+   assert.equal(safe.webhookSettingChangesMade,false);
+   assert.equal(JSON.stringify(safe).includes('NEVER_LEAK'),false);
+   return true;
+  });
+  assert.equal(calls,1,'No automatic retry for HTTP '+status);
+ }
+});
+test('network errors are classified safely and never return raw errors or credentials',async()=>{
+ let calls=0;
+ await assert.rejects(inspectGreenWebhookSettingsReadOnly({
+  ...config,fetchFn:async()=>{calls++;throw Error('SECRET-ORIGIN TOKEN SECRET');}
+ }),err=>{
+  const safe=summarizeGreenWebhookAuditFailure(err);
+  assert.equal(safe.diagnosticCode,'provider_connection_unavailable');
+  assert.equal(JSON.stringify(safe).includes('SECRET-ORIGIN'),false);
+  return true;
+ });
+ assert.equal(calls,1);
+ const unknown=summarizeGreenWebhookAuditFailure({diagnosticCode:'UNTRUSTED_SECRET_VALUE'});
+ assert.equal(unknown.diagnosticCode,'unexpected_failure');
+ assert.equal(JSON.stringify(unknown).includes('UNTRUSTED'),false);
+});
+test('owner read-only audit supports only verified Green instance apiUrl origin and blocks SSRF',async()=>{
+ let calls=0;
+ const data=await inspectGreenWebhookSettingsReadOnly({
+  ...config,apiBaseUrl:'https://7103.api.greenapi.com/',
+  fetchFn:async(url,init)=>{
+   calls++;
+   assert.ok(url.startsWith('https://7103.api.greenapi.com/waInstance9903183013/getSettings/'));
+   assert.equal(init.method,'GET');
+   return response();
+  }
+ });
+ assert.equal(data.providerReadCalls,1);
+ assert.equal(calls,1);
+ for(const bad of [
+  'http://7103.api.greenapi.com','https://7103.api.greenapi.com/secret',
+  'https://7103.api.greenapi.com.evil.example',
+  'https://api.green-api.com@evil.example',
+  'https://7103.api.greenapi.com:1234',
+  'https://7103.api.greenapi.com/?instance=1',
+  'https://localhost','file:///etc/passwd'
+ ]){
+  await assert.rejects(inspectGreenWebhookSettingsReadOnly({
+   ...config,apiBaseUrl:bad,fetchFn:async()=>{calls++;return response();}
+  }),err=>summarizeGreenWebhookAuditFailure(err).diagnosticCode==='invalid_api_host',bad);
+ }
+ assert.equal(calls,1,'invalid host must never initiate an HTTP request');
+});
+test('server abort is reported as provider_timeout and does not retry',async()=>{
+ let called=0;
+ await assert.rejects(inspectGreenWebhookSettingsReadOnly({
+  ...config,timeoutMs:500,
+  fetchFn:async(_url,init)=>{
+   called++;
+   return new Promise((resolve,reject)=>{
+    init.signal.addEventListener('abort',()=>reject(Error('PRIVATE-RAW-ABORT')),{once:true});
+   });
+  }
+ }),err=>{
+  assert.equal(summarizeGreenWebhookAuditFailure(err).diagnosticCode,'provider_timeout');
+  return true;
+ });
+ assert.equal(called,1);
+});
+test('owner action retains server-only credentials, no automatic calls and safe diagnostic response',()=>{
+ const backend=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
+ assert.match(backend,/apiBaseUrl:Deno\.env\.get\('GREEN_API_URL'\)/);
+ assert.match(backend,/summarizeGreenWebhookAuditFailure\(error\)/);
+ assert.match(backend,/action==='greenWebhookSettingsAudit'/);
+ assert.doesNotMatch(backend,/getSettings\/[\s\S]{0,100}SetSettings/);
 });
 test('UI only triggers provider GET on manual owner click, never dashboard refresh or settings render',()=>{
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
