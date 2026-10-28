@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
-import {assignmentWhatsAppKey,assignmentWhatsAppContext,renderAssignmentWhatsApp,cleanMissingAssignmentTime,supplierTargetChatId,addedSupplierIds} from '../base44/shared/assignmentWhatsApp.ts';
+import {assignmentWhatsAppKey,assignmentWhatsAppContext,renderAssignmentWhatsApp,cleanMissingAssignmentTime,supplierTargetChatId,supplierAssignmentTargetChatId,addedSupplierIds} from '../base44/shared/assignmentWhatsApp.ts';
 
 const tpl="שלום {{supplier_name}}, שובצת לשירות '{{service_name}}' באירוע של משפחת {{family_name}} בתאריך {{event_date}} בשעה {{event_time}}.\n📍 מיקום: {{event_location}}\n\n{{supplier_note}}\n\nנא אשר את השתתפותך במערכת Pulse.\n\nhttps://pulse-system.base44.app/SupplierCalendarDashboard";
 function env(overrides={}){
@@ -43,7 +43,7 @@ function env(overrides={}){
       if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true})};
       if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false})};
       if(path.endsWith('assignmentWhatsApp.ts'))return {
-        assignmentWhatsAppKey,assignmentWhatsAppContext,renderAssignmentWhatsApp,supplierTargetChatId
+        assignmentWhatsAppKey,assignmentWhatsAppContext,renderAssignmentWhatsApp,supplierTargetChatId,supplierAssignmentTargetChatId
       };
       throw Error('Unexpected import '+path);
     }
