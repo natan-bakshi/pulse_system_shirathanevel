@@ -47,7 +47,9 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
   ['cancelled','completed'].includes(event.status)||
   !supplier||supplier.id!==config.qaSupplierId||
   supplier.whatsapp_enabled===false||supplier.is_active===false||
-  supplier.preferred_channel==='group'||
+  // A group-preferring supplier is allowed ONLY for this explicit one-chat
+  // QA request. Both producers pin the private recipient by signed intent;
+  // the supplier's normal delivery preference is never modified.
   parseWhatsAppPhone(supplier.phone||'').chatId!==config.qaChatId)
   throw fail('qa_enrollment_target_mismatch',409);
  if(typeof service.updated_date!=='string'||
