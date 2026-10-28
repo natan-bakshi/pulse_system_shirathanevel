@@ -51,6 +51,10 @@ function requireBackend(client) {
 async function routeWhatsApp(client, entry) {
   const control=await readWhatsAppQueueControl(client);
   if(control.enabled) return enqueueWhatsApp(client, entry, control);
+  // Legacy direct-send fallback is NEVER permitted for a pilot assignment.
+  // A queue disable between intent reconciliation and enqueue must fail closed.
+  if(entry?.context?.qaButtonsRequired===true)
+    throw new Error('Pilot assignment requires durable WhatsApp queue');
   if(control.paused) throw new Error('WhatsApp is paused by the administrator');
   const provider=await resolveWhatsAppProvider(client);
   const receipt=await sendWhatsAppTransport({
@@ -162,6 +166,10 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
   }
   const text = sanitizeMessage(job.message_text);
   if (!text) throw invalidInput('Empty WhatsApp message');
+  // Last-resort transport fence: a pilot-marked assignment may NEVER be sent
+  // with sendMessage, even if an upstream worker path regresses in the future.
+  if(job.interactive_qa_required===true&&!interactivePreview)
+    throw invalidInput('Interactive-only QA assignment cannot send plain text');
   // Only the guarded worker can supply a pre-validated, frozen beta payload.
   // Ordinary messages always use the exact legacy sendMessage/sendWasender path.
   if(interactivePreview){
