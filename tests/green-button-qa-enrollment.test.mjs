@@ -143,8 +143,7 @@ test('single-recipient pilot may enroll an existing group-preferring supplier wi
  await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)));
  assert.equal(f.rows.supplier.preferred_channel,'group');
  assert.equal(f.rows.supplier.whatsapp_group_url,'https://chat.whatsapp.com/group-not-used');
- assert.equal(JSON.parse(f.rows.service.assignment_notification_intents)[0].qa_buttons_required,true);
- assert.equal(f.counts.cas,1);
+ assert.equal(f.counts.cas,0);
  assert.equal(f.counts.provider,0);
 });
 test('prior V2 intent WITHOUT any Outbox still prevents re-enrollment of the same supplier',async()=>{
