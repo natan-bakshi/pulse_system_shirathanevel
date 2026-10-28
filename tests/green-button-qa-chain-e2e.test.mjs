@@ -237,6 +237,37 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  assert.equal(f.stats.providerCalls,1);
  assert.equal(f.outbox.length,1);
 });
+test('the existing explicit assignment safeguard can enqueue first without losing pilot-only marker or creating duplicates',async()=>{
+ const f=fixture();
+ await f.enroll();
+ const context=assignmentWhatsAppContext(f.service,SUPPLIER);
+ assert.equal(context.qaButtonsRequired,true);
+ const first=await sendWhatsAppToChat(CHAT,'One synthetic assignment',f.client,context);
+ assert.equal(first.queued,true);
+ assert.equal(f.outbox[0].interactive_qa_required,true);
+ const settled=await f.reconcile();
+ assert.equal(settled.queued,1);
+ assert.equal(f.outbox.length,1,'existing sender and reconciler share one Outbox row');
+ assert.equal(JSON.parse(f.service.assignment_notification_intents)[0].outbox_id,
+  f.outbox[0].id);
+ const again=await f.reconcile();
+ assert.equal(again.processed,0);
+ assert.equal(f.stats.assignmentCAS,1);
+});
+test('pilot-marked target with a changed QA scope is held and is never converted into legacy text',async()=>{
+ const f=fixture();await f.enroll();await f.reconcile();
+ const authorized=trustedGreenButtonQaConfig(f.control,env,true);
+ let sent=0;
+ const result=await drainWhatsAppOutbox(f.client,{
+  interactiveConfig:{...authorized,qaSupplierId:'supplier-other'},
+  transport:async()=>{sent++;throw Error('no transport for mis-scoped target');}
+ });
+ assert.equal(result.failed,1);
+ assert.equal(sent,0);
+ assert.equal(f.outbox[0].status,'failed');
+ assert.equal(f.outbox[0].attempt_count,0);
+ assert.equal(f.outbox[0].interactive_button_bindings_json,undefined);
+});
 test('rollback BEFORE any button snapshot holds that assignment, while unrelated WhatsApp still flows',async()=>{
  const f=fixture();
  await f.enroll();
