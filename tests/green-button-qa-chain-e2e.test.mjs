@@ -52,7 +52,8 @@ function fixture(){
   assignment_intent_revision:0,assignment_notification_intents:'[]',is_external:false
  };
  const supplier={id:SUPPLIER,phone:'0501234567',is_active:true,whatsapp_enabled:true,
-  preferred_channel:'phone',contact_person:'SYNTHETIC'};
+  preferred_channel:'phone',contact_person:'SYNTHETIC',
+  quiet_hours_enabled:false,respect_shabbat:false};
  const event={id:EVENT,status:'confirmed',event_name:'SYNTHETIC',
   event_date:'2026-11-30',event_time:'10:00'};
  const outbox=[],receipts=[];
