@@ -479,7 +479,7 @@ test('Green webhook provisioning is owner-only, default blocked, and never accep
  });
  assert.equal(result.status,409);
  assert.equal(result.body.success,false);
- assert.equal(result.body.diagnosticCode,'owner_approval_required');
+ assert.equal(result.body.diagnosticCode,'qa_provisioning_unavailable');
  assert.equal(result.body.noMessagesSent,true);
  assert.equal(result.body.noAutomaticRetry,true);
  assert.equal(owner.calls.length,0);
