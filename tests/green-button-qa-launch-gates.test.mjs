@@ -121,7 +121,7 @@ test('forged account, wrong bearer and bad JSON never ACK or touch DB',async()=>
   [notification({bearer:'Bearer wrong-provider-token'}),401],
   [new Request('https://example.invalid/qa',{method:'POST',
    headers:{Authorization:'Bearer '+WEBHOOK,'content-type':'application/json'},
-   body:'{not valid json'}),400]
+   body:'{this is intentionally invalid JSON over twenty bytes'}),400]
  ]){
   let clientBuilt=0;
   const response=await handleGreenButtonQaWebhook(request,{
