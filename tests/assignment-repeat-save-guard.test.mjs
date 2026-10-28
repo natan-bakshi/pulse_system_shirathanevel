@@ -8,6 +8,7 @@ import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsA
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 import {pendingApprovalReminderSupplierIds} from '../base44/shared/assignmentReminderTiming.ts';
 import {toChatId} from '../base44/shared/whatsappSend.ts';
+import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
 
 const src=fs.readFileSync('base44/functions/handleEntityEvents/entry.ts','utf8');
 const compiled=esbuild.transformSync(src,{loader:'ts',format:'cjs',target:'es2022'}).code;
@@ -37,7 +38,7 @@ function fixture(){
  let handler;
  vm.runInNewContext(compiled,{
    exports:{},module:{exports:{}},console:{log:()=>{},error:()=>{},warn:()=>{}},
-   Deno:{serve:fn=>handler=fn},
+   Deno:{serve:fn=>handler=fn,env:{get:()=>''}},
    Response:{json:(body,{status=200}={})=>({body,status})},
    require:name=>{
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
@@ -56,6 +57,7 @@ function fixture(){
      if(name.endsWith('entityTriggerWhatsApp.ts'))return {entityTriggerWhatsAppContext};
      if(name.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed};
      if(name.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false})};
+     if(name.endsWith('greenButtonQaFixture.ts'))return {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload};
      throw Error('Unexpected dependency: '+name);
    }
  });
