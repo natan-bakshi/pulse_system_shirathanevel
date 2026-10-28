@@ -87,6 +87,13 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
  return {mode:'single_chat_qa',readyForQa:!!config&&assignmentIntentEnabled&&
   otherPendingCount===0,
   receivingExistingQaRepliesAvailable:!!inbound,
+  webhookProvisioningOwnerActionAvailable:
+   get(env,'GREEN_BUTTONS_QA_SETTINGS_WRITE_ENABLED')==='enabled'&&
+   get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'&&
+   get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'&&
+   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
+   get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled'&&
+   control?.interactive_outbound_live_enabled!==true,
   unrelatedV2PendingPresent:otherPendingCount===null?'not_checked':otherPendingCount>0,
   unrelatedV2PendingAuditIsBounded:true,
   creationActionConfigured:!!config&&otherPendingCount===0&&
