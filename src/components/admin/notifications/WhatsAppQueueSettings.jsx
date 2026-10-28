@@ -273,6 +273,7 @@ export default function WhatsAppQueueSettings(){
         <summary className="cursor-pointer font-medium">מיפוי Green API הקיים — בדיקת GetSettings לקריאה בלבד</summary>
         <div className="pt-3 space-y-2 text-xs">
           <p className="text-gray-600">בדיקה יזומה אחת בלבד; לא משנה כתובת Webhook, מרווחי שליחה או סוגי התראות. אין כאן אישור שהכפתורים נתמכים בחשבון.</p>
+          {greenWebhookSettings.universalHostFallbackUsed&&<p className="font-medium text-amber-800">החיבור לשרת המוגדר נכשל, אך קריאת ההגדרות הצליחה דרך השרת האוניברסלי הרשמי של Green. אין לשנות כתובת שליחת הודעות לפני אימות נפרד.</p>}
           <div className="flex flex-wrap gap-x-5 gap-y-1">
             <span>Webhook מוגדר: {greenWebhookSettings.webhookConfigured?'כן':'לא'}</span>
             <span>טכנולוגיית קליטה: {greenWebhookSettings.webhookDeliveryMode==='push_configured'?'Push':'Polling או ללא הגדרה'}</span>
