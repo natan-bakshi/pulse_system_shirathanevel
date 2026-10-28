@@ -294,7 +294,7 @@ test('PRODUCTION HTTP ADAPTER: original signed reply -> ACK 200 -> one supplier 
  assert.equal(f.receipts.length,1,'one durable receipt for one provider event');
  assert.equal(f.outbox.length,1,'no duplicate Outbox');
 });
-test('PRODUCTION HTTP ADAPTER also accepts provider's documented singular templateButtonReplyMessage sample',async()=>{
+test('PRODUCTION HTTP ADAPTER also accepts documented singular templateButtonReplyMessage sample',async()=>{
  const f=fixture();
  await f.enroll();await f.reconcile();
  assert.equal((await f.worker()).accepted,1);
