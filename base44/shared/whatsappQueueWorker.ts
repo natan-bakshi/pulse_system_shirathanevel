@@ -505,6 +505,21 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           continue;
         }
       }
+      // A marked QA job stays interactive-only even if a trusted scope has
+      // changed, so bridge fallback must never select the plain-text sender.
+      if(options.job.interactive_qa_required===true&&candidate.kind!=='interactive'){
+        const held=await queueStage('marked_qa_plaintext_hold',()=>
+          db.WhatsAppOutbox.updateMany({
+            id:options.job.id,status:options.job.status,
+            interactive_qa_required:true
+          },{$set:{status:'failed',error_code:0,
+            last_error:'QA assignment requires signed buttons; plain text prohibited',
+            completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+        if(held?.updated!==1){
+          lastError='Marked QA assignment could not be safely held';break;
+        }
+        processed++;failed++;continue;
+      }
       const job=candidate.job,attempt=Number(job.attempt_count||0)+1;
       const startedAt=new Date().toISOString();
       // Split due→rate-limited eligibility from eligibility→worker claim.
