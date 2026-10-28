@@ -83,7 +83,8 @@ export async function applyOneGreenButtonQaWebhookProvisioning(client:any,opts:{
  // Green has one webhookUrl per instance. Never overwrite a nonempty URL,
  // bearer ****** or other active notification type: these may belong to others.
  if(summary.webhookConfigured||summary.webhookTokenConfigured||
-  summary.notificationFlags?.incomingWebhook!=='no'||
+  !summary.notificationFlags||
+  !Object.values(summary.notificationFlags).every(flag=>flag==='no')||
   summary.activeCategories!==0||
   summary.providerReadCalls!==1)
   throw safeError('qa_existing_green_configuration_requires_review');
