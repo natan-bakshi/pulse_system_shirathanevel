@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
 import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { resolveNotificationDelay } from '../../shared/quietHours.ts';
-import { assignmentWhatsAppContext, renderAssignmentWhatsApp, supplierTargetChatId } from '../../shared/assignmentWhatsApp.ts';
+import { assignmentWhatsAppContext, renderAssignmentWhatsApp, supplierAssignmentTargetChatId, supplierTargetChatId } from '../../shared/assignmentWhatsApp.ts';
 
 // Reliable, explicit supplier-notification safeguard called *after* successful
 // EventService saves. It does not change assignments. Entity triggers may run
