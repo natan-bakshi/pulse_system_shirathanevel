@@ -8,6 +8,7 @@ import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudi
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
 import {greenButtonQaSafeSummary} from '../../shared/greenButtonQaLaunch.ts';
+import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
 import {inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure} from '../../shared/greenWebhookSettingsAudit.ts';
@@ -375,7 +376,8 @@ Deno.serve(async(req)=>{
             assignment_intents_pending:true
           },'updated_date',2,0,['id'])
         ]);
-        const durableEnabled=flags.length===1&&flags[0].setting_value==='true';
+        const durableEnabled=(flags.length===1&&flags[0].setting_value==='true')||
+          greenButtonQaScopedV2Enabled(key=>Deno.env.get(key));
         if(!Array.isArray(globalPending)||globalPending.length>2)
           throw Error('Global V2 backlog query unavailable');
         return RESPONSE({success:true,qa:greenButtonQaSafeSummary(control,
