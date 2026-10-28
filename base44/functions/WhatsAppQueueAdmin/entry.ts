@@ -10,7 +10,7 @@ import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInt
 import {greenButtonQaSafeSummary} from '../../shared/greenButtonQaLaunch.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
-import {inspectGreenWebhookSettingsReadOnly} from '../../shared/greenWebhookSettingsAudit.ts';
+import {inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure} from '../../shared/greenWebhookSettingsAudit.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
 import {inspectUnknownGreenRecoveryStructureReadOnly} from '../../shared/greenUnknownRecoveryReview.ts';
@@ -443,12 +443,17 @@ Deno.serve(async(req)=>{
       try{
         const settings=await inspectGreenWebhookSettingsReadOnly({
           instanceId:Deno.env.get('GREEN_API_INSTANCE_ID'),
-          apiToken:Deno.env.get('GREEN_API_TOKEN')
+          apiToken:Deno.env.get('GREEN_API_TOKEN'),
+          // Optional provider-issued apiUrl from Green console. Read-only,
+          // strict Green-origin validation: never user-supplied URL/SSRF.
+          apiBaseUrl:Deno.env.get('GREEN_API_URL'),timeoutMs:10000
         });
         return RESPONSE({success:true,settings,noMessagesSent:true});
-      }catch{return RESPONSE({success:false,
-        error:'בדיקת הגדרות Green API לקריאה בלבד אינה זמינה',
-        noMessagesSent:true},503);}
+      }catch(error){
+        // Fixed, sanitized reason only; no upstream URL, token, payload or
+        // raw network error is returned/logged. A retry is always owner-clicked.
+        return RESPONSE({success:false,...summarizeGreenWebhookAuditFailure(error)},503);
+      }
     }
     if(action==='officeReferenceLookup'){
       // Owner-only, operator-initiated exact Outbox ID lookup; never scan the
