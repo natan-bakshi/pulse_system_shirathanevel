@@ -44,8 +44,18 @@ export async function inspectGreenButtonQaAssignmentReadOnly(client:any,opts:{
   databaseReads:2,noProviderRequests:true,noWrites:true,noMessageSends:true,
   noPersonalDataReturned:true};
  const external=service.is_external!==true;
+ // A group-preferring supplier is eligible ONLY after the exact single-chat
+ // QA marker is durably saved. Normal unmarked group assignments remain group.
+ let markedPrivatePilot=false;
+ try{
+  markedPrivatePilot=service.assignment_intent_mode==='durable_v1'&&
+   readAssignmentIntents(service.assignment_notification_intents||'[]').some(i=>
+    i.supplier_id===supplierId&&i.qa_buttons_required===true&&
+    i.key==='assignment:'+serviceId+':'+supplierId+':r'+i.revision+
+     ':SUPPLIER_NEW_ASSIGNMENT');
+ }catch{}
  const active=supplier.is_active!==false&&supplier.whatsapp_enabled!==false&&
-   supplier.preferred_channel!=='group';
+  (supplier.preferred_channel!=='group'||markedPrivatePilot);
  let matched=false;
  try{matched=parseWhatsAppPhone(supplier.phone||'').chatId===chatId;}
  catch{}
