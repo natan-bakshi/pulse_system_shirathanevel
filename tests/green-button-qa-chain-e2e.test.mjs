@@ -39,7 +39,7 @@ const policy=JSON.stringify({
   {action:'assignment_reject',label:'דוחה'},
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
-function fixture({groupPreferred=false}={}){
+function fixture({groupPreferred=false,globalV2Enabled=true}={}){
  const now=Date.now();
  const control={
   id:'control-qa1',control_key:'global',enabled:true,paused:false,
@@ -136,7 +136,7 @@ function fixture({groupPreferred=false}={}){
   Service:{get:async()=>({id:'catalog-qa123',service_name:'Music'})},
   AppSettings:{filter:async query=>{
    if(query.setting_key==='assignment_intent_v1_enabled')
-    return [{setting_key:query.setting_key,setting_value:'true'}];
+    return globalV2Enabled?[{setting_key:query.setting_key,setting_value:'true'}]:[];
    if(query.setting_key==='whatsapp_default_provider')
     return [{setting_key:query.setting_key,setting_value:'green'}];
    throw Error('unexpected_settings_query');
@@ -278,6 +278,25 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  assert.equal((await f.worker(true)).reason,'empty','no resend after receipt');
  assert.equal(f.stats.providerCalls,1);
  assert.equal(f.outbox.length,1);
+});
+test('SCOPED V2 QA runs with the GLOBAL assignment-intent feature OFF: one event, one private click, zero normal rollout',async()=>{
+ const f=fixture({groupPreferred:true,globalV2Enabled:false});
+ const enrolled=await f.enroll();
+ assert.equal(enrolled.saved,true);
+ assert.equal(f.stats.assignmentCAS,1);
+ const queued=await f.reconcile();
+ assert.equal(queued.queued,1);
+ assert.equal(f.outbox.length,1);
+ assert.equal(f.outbox[0].chat_id,CHAT);
+ assert.equal(f.outbox[0].interactive_qa_required,true);
+ const sent=await f.worker();
+ assert.equal(sent.accepted,1);
+ assert.equal(f.stats.providerCalls,1);
+ const reply=await f.httpCallback('assignment_approve',{sendDisabled:true});
+ assert.equal(reply.httpStatus,200);
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(f.receipts[0].state,'applied');
+ assert.equal(f.supplier.preferred_channel,'group');
 });
 test('GROUP-PREFERRED SUPPLIER: either sender order creates ONE privately addressed signed button Outbox',async()=>{
  for(const order of ['reconciler_first','ensure_first']){
