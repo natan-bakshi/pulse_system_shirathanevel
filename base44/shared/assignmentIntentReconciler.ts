@@ -135,8 +135,14 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
         next.state='resolved';next.resolution='whatsapp_not_enabled_for_supplier';
         counters.processed++;continue;
       }
-      const chatId=supplierTargetChatId(supplier,toChatId);
-      const selectedGroup=String(supplier.preferred_channel||'')==='group';
+      // Only an exact, durable QA marker may override the usual group target.
+      // Pilot recipient must match the owner-pinned chat, service and supplier.
+      const pilot=intent.qa_buttons_required===true;
+      const chatId=pilot
+        ?supplierAssignmentTargetChatId(supplier,service,intent.supplier_id,
+          toChatId,options.qaEnv||((key:string)=>Deno.env.get(key)),true)
+        :supplierTargetChatId(supplier,toChatId);
+      const selectedGroup=!pilot&&String(supplier.preferred_channel||'')==='group';
       if(!chatId || (selectedGroup&&!/^[a-zA-Z0-9_-]+@g\.us$/.test(chatId))){
         counters.blocked++;next.last_error='Recipient WhatsApp target is missing or invalid';
         continue;
