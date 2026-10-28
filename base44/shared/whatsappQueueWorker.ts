@@ -460,7 +460,8 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // a plain-text resend after rollback, misconfiguration or manual retry.
       // Keep other invoice/reminder jobs moving, but require manual review for
       // the affected assignment. No extra DB reads for ordinary messages.
-      const frozen=!!(options.job.interactive_button_bindings_json||
+      const frozen=!!(options.job.interactive_qa_required===true||
+        options.job.interactive_button_bindings_json||
         options.job.sender_account_id||options.job.assignment_revision);
       if(frozen&&(!opts.interactiveConfig||
         control.interactive_outbound_live_enabled!==true)){
