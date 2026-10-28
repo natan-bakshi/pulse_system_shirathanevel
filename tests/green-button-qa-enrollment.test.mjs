@@ -115,14 +115,13 @@ test('single click atomically adds only the QA supplier with one V2 intent, no d
   err=>err.code==='qa_supplier_already_assigned_or_invalid');
  assert.equal(f.counts.cas,1);
 });
-test('inactive rollout, wrong event or number, group supplier, prior send and stale data never create QA assignment',async()=>{
+test('inactive rollout, wrong event or number, prior send and stale data never create QA assignment',async()=>{
  const cases=[
   f=>f.setFlag('false'),
   f=>{f.rows.event.status='completed'},
   f=>{f.rows.service.event_id='another-event'},
   f=>{f.rows.supplier.phone='0509999999'},
   f=>{f.rows.supplier.whatsapp_enabled=false},
-  f=>{f.rows.supplier.preferred_channel='group'},
   f=>{f.rows.control.paused=true},
   f=>{f.rows.control.unknown_guard_key='UNRESOLVED'},
   f=>{f.setPrior([{id:'prior-outbox',status:'accepted'}])},
@@ -136,15 +135,23 @@ test('inactive rollout, wrong event or number, group supplier, prior send and st
   assert.equal(f.counts.provider,0);
  }
 });
-test('pilot enrollment remains closed while the account normally prefers group delivery',async()=>{
+test('group-preferring supplier can enroll ONLY into the approved, private, marked QA assignment',async()=>{
  const f=fixture();
  f.rows.supplier.preferred_channel='group';
  f.rows.supplier.whatsapp_group_url='https://chat.whatsapp.com/group-not-used';
- await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)));
+ const enrolled=await enrollOneGreenButtonQaAssignment(f.client,request(f));
+ assert.equal(enrolled.saved,true);
  assert.equal(f.rows.supplier.preferred_channel,'group');
  assert.equal(f.rows.supplier.whatsapp_group_url,'https://chat.whatsapp.com/group-not-used');
- assert.equal(f.counts.cas,0);
+ assert.equal(f.counts.cas,1);
  assert.equal(f.counts.provider,0);
+ const journal=JSON.parse(f.rows.service.assignment_notification_intents);
+ assert.equal(journal.length,1);
+ assert.equal(journal[0].qa_buttons_required,true);
+ // A second approval cannot change or create another business assignment.
+ await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)),
+  err=>err.code==='qa_supplier_already_assigned_or_invalid');
+ assert.equal(f.counts.cas,1);
 });
 test('prior V2 intent WITHOUT any Outbox still prevents re-enrollment of the same supplier',async()=>{
  const f=fixture();
