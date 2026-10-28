@@ -105,6 +105,8 @@ test('single click atomically adds only the QA supplier with one V2 intent, no d
  assert.equal(intents.length,1);
  assert.equal(intents[0].key,'assignment:'+SERVICE+':'+SUPPLIER+':r1:SUPPLIER_NEW_ASSIGNMENT');
  assert.equal(intents[0].state,'requested');
+ assert.equal(intents[0].qa_buttons_required,true,
+  'pilot obligation must be durable in the SAME business CAS');
  const response=JSON.stringify(r);
  for(const secret of ['PRIVATE_NAME','PRIVATE_EVENT',CHAT,SERVICE,SUPPLIER,
   envValues.WHATSAPP_INTERACTIVE_SIGNING_SECRET])
