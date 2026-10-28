@@ -20,7 +20,7 @@ const failure=(diagnosticCode='unexpected_failure')=>
   code:'green_settings_unavailable',diagnosticCode
  });
 const PROVIDER_HOST=/^(?:[a-z0-9-]{2,32}\.)?api\.greenapi\.com$|^(?:[a-z0-9-]{2,32}\.)?api\.green-api\.com$/;
-function greenApiOrigin(value:unknown){
+export function greenApiOrigin(value:unknown){
  if(value===undefined||value===null||value==='')return 'https://api.green-api.com';
  if(typeof value!=='string'||value.length>140)throw failure('invalid_api_host');
  let url:URL;
