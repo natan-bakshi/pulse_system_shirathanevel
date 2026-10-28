@@ -196,7 +196,7 @@ function fixture(){
    senderData:{chatId:CHAT,sender:CHAT},
    messageData:{
     // Provider's documented mixed-button response (not a free-text message).
-    typeMessage:'templateButtonsReplyMessage',
+    typeMessage:options.singular?'templateButtonReplyMessage':'templateButtonsReplyMessage',
     templateButtonReplyMessage:{
      stanzaId:job.provider_message_id,selectedIndex:0,
      selectedId:button.buttonId,selectedDisplayText:'UNTRUSTED TEXT'
@@ -293,6 +293,20 @@ test('PRODUCTION HTTP ADAPTER: original signed reply -> ACK 200 -> one supplier 
  assert.equal(f.stats.providerCalls,1,'no additional provider send');
  assert.equal(f.receipts.length,1,'one durable receipt for one provider event');
  assert.equal(f.outbox.length,1,'no duplicate Outbox');
+});
+test('PRODUCTION HTTP ADAPTER also accepts provider's documented singular templateButtonReplyMessage sample',async()=>{
+ const f=fixture();
+ await f.enroll();await f.reconcile();
+ assert.equal((await f.worker()).accepted,1);
+ const applied=await f.httpCallback('assignment_reject',{
+  singular:true,eventId:'C0CD39BB261589D5C98412D255CD000C'
+ });
+ assert.equal(applied.httpStatus,200);
+ assert.equal(applied.body.received,true);
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(f.receipts.length,1);
+ assert.equal(f.receipts[0].state,'applied');
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'rejected');
 });
 test('the existing explicit assignment safeguard can enqueue first without losing pilot-only marker or creating duplicates',async()=>{
  const f=fixture();
