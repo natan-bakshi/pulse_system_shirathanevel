@@ -2,9 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {enrollOneGreenButtonQaAssignment} from '../base44/shared/greenButtonQaEnrollment.ts';
+import {GREEN_BUTTON_QA_EVENT_NAME,GREEN_BUTTON_QA_FAMILY_NAME,
+ GREEN_BUTTON_QA_SERVICE_NAME} from '../base44/shared/greenButtonQaFixture.ts';
 const CHAT='972501234567@c.us',SERVICE='service-abc',SUPPLIER='supplier-abc',EVENT='event-abc';
 const envValues={
  GREEN_BUTTONS_QA_CREATE_ENABLED:'enabled',GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:'enabled',
  GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'verified',
  GREEN_BUTTONS_QA_OWNER_APPROVED:'approved',GREEN_BUTTONS_QA_EVENT_ID:EVENT,
  GREEN_BUTTONS_QA_EVENT_SERVICE_ID:SERVICE,GREEN_BUTTONS_QA_SUPPLIER_ID:SUPPLIER,
@@ -23,12 +26,15 @@ function fixture(){
  const rows={control:{id:'control-abc',control_key:'global',enabled:true,paused:false,
    interactive_outbound_live_enabled:true,
    interactive_assignment_green_policy_json:JSON.stringify(policy)},
-  service:{id:SERVICE,event_id:EVENT,updated_date:'2026-10-27T12:01:00.000Z',
+  service:{id:SERVICE,event_id:EVENT,service_name:GREEN_BUTTON_QA_SERVICE_NAME,
+   updated_date:'2026-10-27T12:01:00.000Z',
    is_external:false,supplier_ids:'[]',supplier_statuses:'{}',supplier_notes:'{}',
    assignment_intent_revision:0,assignment_notification_intents:'[]'},
   supplier:{id:SUPPLIER,phone:'0501234567',preferred_channel:'phone',
    whatsapp_enabled:true,is_active:true,contact_person:'PRIVATE_NAME'},
-  event:{id:EVENT,status:'confirmed',event_name:'PRIVATE_EVENT'}};
+  event:{id:EVENT,status:'quote',event_name:GREEN_BUTTON_QA_EVENT_NAME,
+   family_name:GREEN_BUTTON_QA_FAMILY_NAME,event_type:'other',
+   whatsapp_buttons_qa_fixture:true}};
  const counts={control:0,settings:0,services:0,suppliers:0,
   events:0,outbox:0,pendingReads:0,cas:0,wake:0,provider:0};
  let flag='true',priorJobs=[],otherPending=[],commitUncertain=false,wakeFails=false;
