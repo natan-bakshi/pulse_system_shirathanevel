@@ -152,6 +152,10 @@
       "type": "string",
       "description": "Future interactive origin: exact supplier assignment-intent revision frozen at enqueue"
     },
+    "interactive_qa_required": {
+      "type": "boolean",
+      "description": "Persistent single-assignment pilot marker from atomic business intent; never downgrade marked jobs to plain text on rollback"
+    },
     "interactive_button_bindings_json": {
       "type": "string",
       "description": "Future immutable short provider button IDs mapped to server-signed actions; never generated again after a first provider attempt"
