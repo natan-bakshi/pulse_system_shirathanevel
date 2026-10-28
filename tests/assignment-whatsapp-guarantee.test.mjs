@@ -31,7 +31,8 @@ function env(overrides={}){
   let handler;
   vm.runInNewContext(js,{
     exports:{},module:{exports:{}},console:{error:()=>{},warn:()=>{}},
-    Deno:{serve:fn=>handler=fn},Response:{json:(data,{status=200}={})=>({status,data})},
+    Deno:{serve:fn=>handler=fn,env:{get:k=>overrides.qaEnv?.[k]||''}},
+    Response:{json:(data,{status=200}={})=>({status,data})},
     require:path=>{
       if(path.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
       if(path.endsWith('whatsappSend.ts'))return {toChatId:phone=>'972'+String(phone).slice(1)+'@c.us',
