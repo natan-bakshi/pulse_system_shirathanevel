@@ -122,41 +122,58 @@ export async function inspectGreenWebhookSettingsReadOnly(config:{
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),timeout);
  try{
-  // Exactly ONE official read-only GET; never SetSettings or retry.
-  const url=apiOrigin+'/waInstance'+instance+
+  // One read-only GET; at most one documented universal-host fallback
+  // after network failure on 7201. Never SetSettings, sends or polling.
+  const url=(origin:string)=>origin+'/waInstance'+instance+
    '/getSettings/'+encodeURIComponent(token);
-  let response:any;
-  try{
-   response=await fetchFn(url,{
-    method:'GET',signal:controller.signal,redirect:'error',
-    headers:{Accept:'application/json'},cache:'no-store'
+  let providerReadCalls=0;
+  const request=async(origin:string)=>{
+   providerReadCalls++;
+   return fetchFn(url(origin),{
+    method:'GET',signal:controller.signal,redirect:'manual',
+    // Never automatically follow redirects with an account token in the URL.
+    headers:{Accept:'application/json','Cache-Control':'no-store'}
    });
-  }catch{
-   throw failure(controller.signal.aborted?'provider_timeout':'provider_connection_unavailable');
+  };
+  let response:any;
+  try{response=await request(apiOrigin);}
+  catch{
+   if(controller.signal.aborted)throw failure('provider_timeout',providerReadCalls);
+   // Green's universal API host is used ONLY after a connection exception
+   // to 7201; never after HTTP rejection, 5xx or a malformed response.
+   if(apiOrigin!=='https://7201.api.green-api.com')
+    throw failure('provider_connection_unavailable',providerReadCalls);
+   try{response=await request('https://api.greenapi.com');}
+   catch{throw failure(controller.signal.aborted?'provider_timeout':
+    'provider_connection_unavailable_after_universal',providerReadCalls);}
   }
+  if(response?.type==='opaqueredirect'||
+    (Number(response?.status)>=300&&Number(response?.status)<400))
+   throw failure('provider_redirect_blocked',providerReadCalls);
   if(response?.status!==200||response?.ok!==true){
    const status=Number(response?.status);
    const reason=status===401||status===403?'provider_auth_rejected':
     status===404?'provider_instance_not_found':
     status===429?'provider_rate_limited':
     status>=500&&status<=599?'provider_server_error':'provider_http_error';
-   throw failure(reason);
+   throw failure(reason,providerReadCalls);
   }
   let declared:number;
   try{declared=Number(response.headers?.get?.('content-length')||0);}
-  catch{throw failure('provider_response_invalid');}
+  catch{throw failure('provider_response_invalid',providerReadCalls);}
   if(Number.isFinite(declared)&&declared>32768)
-   throw failure('provider_response_too_large');
+   throw failure('provider_response_too_large',providerReadCalls);
   let text:string;
   try{text=await response.text();}
-  catch{throw failure('provider_response_invalid');}
-  if(typeof text!=='string')throw failure('provider_response_invalid');
-  if(text.length>32768)throw failure('provider_response_too_large');
+  catch{throw failure('provider_response_invalid',providerReadCalls);}
+  if(typeof text!=='string')throw failure('provider_response_invalid',providerReadCalls);
+  if(text.length>32768)throw failure('provider_response_too_large',providerReadCalls);
   let payload:any;
-  try{payload=JSON.parse(text);}catch{throw failure('provider_response_invalid');}
+  try{payload=JSON.parse(text);}catch{throw failure('provider_response_invalid',providerReadCalls);}
   try{
    return {...summarizeGreenWebhookSettings(payload),
-    providerReadCalls:1,noBackgroundPolling:true};
-  }catch{throw failure('provider_response_invalid');}
+    providerReadCalls,universalHostFallbackUsed:providerReadCalls===2,
+    noBackgroundPolling:true};
+  }catch{throw failure('provider_response_invalid',providerReadCalls);}
  }finally{clearTimeout(timer);}
 }
