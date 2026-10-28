@@ -102,4 +102,22 @@
 - **הצעד הבא היחיד שמצריך בעלים:** פעם אחת ללחוץ ב־Pulse על `בדיקת חיבור Green (קריאה בלבד, ללא שליחה)`, ולשלוח סיכום הצלחה (Webhook configured/Incoming enabled/Token configured), או `diagnosticCode` אם נכשל. לאחר מכן בודקים **בלי להחליף** את הצרכן הקיים של webhook ומכינים יעד בדיקה יחיד מאושר לפני שליחה. סטטוס חי: **NO-GO** עד הוכחת יכולת ספק/קליטה.
 - **נקודת שחזור מאומתת לאחר בדיקות 749/749:** `6ae21c1f710471812b557f14` / Commit `c93d1c4df424d395f9bf9e8904579f1a6133e20b`. HEAD של GitHub תואם ועץ העבודה נקי. Base44 Secret עודכן בשרת, אך קליטת Webhook ושליחת כפתור חיה עדיין לא נבדקו.
 
-**השלב הבא:** בדיקת GetSettings אחת עם ה־apiUrl המדויק. לא נבצע עוד ניחוש שרתים או שליחה בטרם GO מאומת.
+## WA-I05w — 28.10.2026 — חיבור Green חי אומת, Webhook פנוי, קליטה הוקשחה והוכנה לאישור
+
+**תוצאת GetSettings אמיתית שהועברה ממנהל־העל:**
+- GetSettings הצליח עם **קריאת ספק אחת**, ללא שליחה או שינוי ב־Green.
+- `webhookUrl` **ריק**, `webhookUrlToken` **אינו מוגדר**, `incomingWebhook=no`, כל 11 קטגוריות ההתראות שנמדדו `no`, השהיית `delaySendMessagesMilliseconds=500`.
+- מסקנה: אין Webhook פעיל או התראות Push המוגדרות כרגע במופע; **לא צריך להחליף או לפצל Webhook קיים** בנקודת הזמן של הבדיקה. עם זאת, אין להסיק מכך שמערכות חיצוניות אינן קוראות חשבון Green דרך HTTP Polling; לא בוצע סריקה של שירותים אחרים.
+- נבחר **רק** `incomingWebhook=yes` לניסוי העתידי; יתר הקטגוריות נשארות כבויות, ואין לשנות את השהיית 500ms או ספק ברירת המחדל. `SetSettings` טרם הופעל. לפי התיעוד הרשמי שיטה זו מבצעת reboot למופע וההגדרות עשויות להיכנס לתוקף בתוך חמש דקות: https://green-api.com/en/docs/api/account/SetSettings/ .
+
+**חיבור Callback:** 
+- פונקציית `greenAssignmentButtonQaWebhook` קיימת בפרודקשן בנתיב `https://pulse-system.base44.app/api/apps/687d1de6659eff83e9c034f7/functions/greenAssignmentButtonQaWebhook`. `GET` ללא הרשאות הוחזר כ־HTTP **404 JSON `{"received":false}`**, בדיוק כפי שהקוד מחזיר כשה־QA כבוי. זה מאמת ניתוב לפונקציה *אבל לא* קליטת Callback חתום, עיבוד DB או ACK אמיתי מ־Green.
+- תוקנה סגירת פער P0: `WhatsAppQueueAdmin` כולל כעת `interactive_qa_required` בהשלכות רשימת הודעות, חוסם `Retry` בממשק ובשרת **גם עבור הודעת QA שנכשלה לפני יצירת snapshot/חתימה**. אין דרך לחדש שליחת QA בטעות באמצעות רשומת failed/unknown עם `attempt_count=0`.
+- לפני DB, `greenButtonQaWebhookHandler.ts` מפענח עד 32KiB מ־`Request.clone()` לאחר אימות Bearer, מוודא Green instance, ומחזיר **200 ללא קריאות DB** על התראות שאינן כפתורים (הודעות משרד ידניות) ועל Callback מפרטי צ'אט שאינו מספר ה־QA המאושר. אי־התאמה לחשבון Green, טוקן שגוי או JSON לא תקין מסורבים לפני DB. כפתור מהצ'אט הניסיוני ממשיך למסלול החתימה/Revision/Receipt הקיים. ללא Cron/Polling/שמירת תוכן הודעות.
+- נוצרו **שני Secrets חדשים ונפרדים** בצד שרת בלבד באמצעות מחולל קריפטוגרפי והוזנו ב־Base44: `WHATSAPP_INTERACTIVE_SIGNING_SECRET`, `GREEN_API_WEBHOOK_TOKEN`. שמותיהם אומתו ב־Secrets API (הערכים עצמם מוחזרים מוסתרים ולא נקראו או נחשפו). אין לשתף אותם בדפדפן או בהודעות. `GREEN_API_WEBHOOK_TOKEN` יותאם בעת אישור SetSettings ל־`webhookUrlToken` לפי `Bearer <token>` בהתאם לתיעוד Green. דגלי QA נשארים כבויים.
+- תוקנו והתווספו בדיקות רגרסיה עבור מסלול Retry קודם לחתימה, סינון ידני ללא DB, צ'אט מחוץ ל־QA, מניעת אישור על זיוף חשבון או Header וטיפול בגוף JSON שגוי. כל **753/753** בדיקות Node עברו, `npm run build`, ESLint ממוקד, TypeScript parsing ו־`git diff --check` עברו.
+- **מה לא בוצע:** אפס `SetSettings`, אפס שיבוצים אמיתיים, אפס הודעות WhatsApp, אפס קליטת לחיצות חיה, אפס החלפת Webhook; דגל `interactive_outbound_live_enabled` ו־V2 הגלובלי נותרו כבויים. צריכת קרדיטי Base44 בפועל אינה זמינה; הוצאה חיצונית בסשן זה: אפס קריאות API של Green (מלבד GetSettings שבוצע על ידי הבעלים קודם).
+- **חסם Go/No-Go:** לפני reboot של Green נדרש מספר WhatsApp פרטי מאושר לניסוי ואירוע+שירות+ספק ניסיוניים, אימות יכולת Beta לשלוח שני Reply ואחד URL, אימות חתימת קבלה ו־Webhook URL, ולאחר מכן אישור מפורש להחלת `SetSettings` על המופע הפעיל. עד אז אין הדלקת `incomingWebhook` כדי לא ליצור גל ניסיונות חוזרים בזמן ש־Receiver עדיין כבוי.
+- **הגדרת Green העתידית (לא בוצעה):** שינוי סלקטיבי של `webhookUrl`, `webhookUrlToken`, `incomingWebhook=yes` בלבד. להימנע מ־`outgoingWebhook`, `outgoingAPIMessageWebhook`, `stateWebhook` וכו' ומכל שינוי ל־`delaySendMessagesMilliseconds=500`. לאחר ההפעלה יש לבדוק עם GetSettings אחד ולראות Callback אמיתי אחד; כאשר מסיימים pilot, rollback בטוח שאינו מאבד לחיצות על הודעות שכבר נשלחו.
+
+**השלב הבא:** קבלת מספר WhatsApp פרטי שאושר לניסוי, ובניית שיבוץ בדיקה ייעודי לפני הפעלת Green. לא להפעיל שיבוץ/כפתורים ללא התנאים לעיל.
