@@ -136,7 +136,7 @@ test('inactive rollout, wrong event or number, group supplier, prior send and st
   assert.equal(f.counts.provider,0);
  }
 });
-test('single-recipient pilot may enroll an existing group-preferring supplier without editing their group preference',async()=>{
+test('pilot enrollment remains closed while the account normally prefers group delivery',async()=>{
  const f=fixture();
  f.rows.supplier.preferred_channel='group';
  f.rows.supplier.whatsapp_group_url='https://chat.whatsapp.com/group-not-used';
