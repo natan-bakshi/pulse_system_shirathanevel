@@ -1,4 +1,4 @@
-import { savedAssignmentIntentKey } from './assignmentIntent.ts';
+import { savedAssignmentIntentKey, readAssignmentIntents } from './assignmentIntent.ts';
 // Base44 entity event payloads can carry sub-millisecond UTC precision,
 // e.g. 2026-10-18T10:22:19.719051 while EventService.get returns the SAME
 // write as 2026-10-18T10:22:19.719000. Raw string identity created two
@@ -34,10 +34,19 @@ export function assignmentWhatsAppKey(service:any,supplierId:string,templateType
 // available_at timestamp, NOT a separate PendingPushNotification with a
 // different idempotency key (which could later duplicate the same request).
 export function assignmentWhatsAppContext(service:any,supplierId:string,templateType='SUPPLIER_NEW_ASSIGNMENT',delay:any=null){
+  const key=assignmentWhatsAppKey(service,supplierId,templateType);
+  // Explicit ensureAssignmentWhatsApp and the V2 reconciler may race. Both
+  // must propagate the same persisted pilot-only obligation from EventService
+  // to the SAME Outbox key; the first producer must not create a plain job.
+  const qaButtonsRequired=templateType==='SUPPLIER_NEW_ASSIGNMENT'&&
+    service?.assignment_intent_mode==='durable_v1'&&
+    readAssignmentIntents(service.assignment_notification_intents||'[]').some(
+      i=>i.supplier_id===supplierId&&i.key===key&&i.qa_buttons_required===true);
   return {
     sourceType:'assignment_new',sourceId:String(service?.id||''),
     eventServiceId:String(service?.id||''),supplierId:String(supplierId||''),
-    idempotencyKey:assignmentWhatsAppKey(service,supplierId,templateType),
+    idempotencyKey:key,
+    ...(qaButtonsRequired?{qaButtonsRequired:true}:{}),
     ...(delay?.shouldDelay && delay?.scheduledFor && Number.isFinite(new Date(delay.scheduledFor).getTime())
       ? {availableAt:new Date(delay.scheduledFor).toISOString()} : {})
   };
