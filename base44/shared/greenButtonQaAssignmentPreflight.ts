@@ -55,7 +55,7 @@ export async function inspectGreenButtonQaAssignmentReadOnly(client:any,opts:{
      ':SUPPLIER_NEW_ASSIGNMENT');
  }catch{}
  const active=supplier.is_active!==false&&supplier.whatsapp_enabled!==false&&
-  (supplier.preferred_channel!=='group'||markedPrivatePilot);
+  supplier.preferred_channel!=='group';
  let matched=false;
  try{matched=parseWhatsAppPhone(supplier.phone||'').chatId===chatId;}
  catch{}
