@@ -9,6 +9,9 @@ import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
 import {trustedGreenButtonQaConfig} from './greenButtonQaLaunch.ts';
 import {planAssignmentTransition,readAssignmentIntents} from './assignmentIntent.ts';
 import {parseWhatsAppPhone} from './whatsappPhone.ts';
+import {isGreenButtonQaFixtureEvent} from './greenButtonQaFixture.ts';
+import {greenButtonQaScopedV2Enabled,greenButtonQaScopedServiceMatches}
+ from './greenButtonQaScopedV2.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,128}$/;
 const fail=(code:string,status=409)=>Object.assign(new Error(code),{code,status});
@@ -30,7 +33,8 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
   db.AppSettings.filter({setting_key:'assignment_intent_v1_enabled'},
    '-created_date',2)
  ]);
- const durable=flags.length===1&&flags[0].setting_value==='true';
+ const durable=(flags.length===1&&flags[0].setting_value==='true')||
+  greenButtonQaScopedV2Enabled(opts.env,opts.env('GREEN_BUTTONS_QA_EVENT_SERVICE_ID')||'');
  const config=trustedGreenButtonQaConfig(control,opts.env,durable);
  const eventId=String(opts.env('GREEN_BUTTONS_QA_EVENT_ID')||'');
  if(!config||!ID.test(eventId)||control.enabled!==true||
@@ -43,7 +47,8 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
  ]);
  if(!service||service.id!==config.qaEventServiceId||
   service.event_id!==eventId||service.is_external===true||
-  !event||event.id!==eventId||
+  !greenButtonQaScopedServiceMatches(service,opts.env)||
+  !event||event.id!==eventId||!isGreenButtonQaFixtureEvent(event)||
   ['cancelled','completed'].includes(event.status)||
   !supplier||supplier.id!==config.qaSupplierId||
   supplier.whatsapp_enabled===false||supplier.is_active===false||
