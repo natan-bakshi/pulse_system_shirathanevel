@@ -5,6 +5,7 @@ import { sendWasenderTextToChat, sendWasenderDocumentToChat } from './wasenderSe
 import { enqueueWhatsApp, readWhatsAppQueueControl } from './whatsappOutbox.ts';
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { parseWhatsAppPhone } from './whatsappPhone.ts';
+import { greenApiOrigin } from './greenWebhookSettingsAudit.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -105,13 +106,21 @@ export async function sendWhatsAppFileUri(phone, fileUri, fileName, caption, cli
   });
 }
 
-async function callGreenApi(method, body) {
+async function callGreenApi(method, body, pilotOnly=false) {
   const instanceId = Deno.env.get('GREEN_API_INSTANCE_ID');
   const token = Deno.env.get('GREEN_API_TOKEN');
   if (!instanceId || !token) throw new Error('Green API credentials not configured');
+  // Normal Green messages keep the previously configured transport unchanged.
+  // Only the durable single-assignment beta pilot uses the optional Green
+  // instance origin. Invalid origins fail before any provider HTTP request.
+  let origin=GREEN_API_BASE;
+  if(pilotOnly){
+    try{origin=greenApiOrigin(Deno.env.get('GREEN_API_URL'));}
+    catch{throw invalidInput('Invalid Green pilot endpoint configuration');}
+  }
   let response;
   try {
-    response = await fetch(GREEN_API_BASE+'/waInstance'+instanceId+'/'+method+'/'+token, {
+    response = await fetch(origin+'/waInstance'+instanceId+'/'+method+'/'+token, {
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),
       signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     });
@@ -190,7 +199,8 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
     if(!/^[0-9]{5,20}$/.test(String(job.sender_account_id||''))||
       Deno.env.get('GREEN_API_INSTANCE_ID')!==job.sender_account_id)
       throw invalidInput('Interactive sender account no longer matches instance');
-    return callGreenApi(interactivePreview.method,interactivePreview.body);
+    return callGreenApi(interactivePreview.method,interactivePreview.body,
+      job.interactive_qa_required===true);
   }
   return provider === 'wasender'
     ? sendWasenderTextToChat(chatId,text)
