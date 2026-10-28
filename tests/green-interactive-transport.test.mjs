@@ -6,10 +6,11 @@ import {createFutureInteractiveButtonSnapshot} from '../base44/shared/whatsappBu
 import {previewGreenInteractiveAssignment} from '../base44/shared/greenInteractiveOutbound.ts';
 
 const savedDeno=globalThis.Deno,savedFetch=globalThis.fetch;
-globalThis.Deno={env:{get:field=>({
+const greenTestEnv={
  GREEN_API_INSTANCE_ID:'9903183013',
  GREEN_API_TOKEN:'not-a-real-test-token'
-})[field]||''}};
+};
+globalThis.Deno={env:{get:field=>greenTestEnv[field]||''}};
 test.after(()=>{
  if(savedDeno===undefined)delete globalThis.Deno;else globalThis.Deno=savedDeno;
  globalThis.fetch=savedFetch;
@@ -58,6 +59,52 @@ test('mocked Green beta transport performs ONE HTTP POST with frozen short butto
  assert.deepEqual(body.buttons.map(x=>x.buttonText),['מאשר','דוחה']);
  assert.equal(JSON.stringify(body).includes(signingSecret),false);
  assert.equal(JSON.stringify(body).includes('actionToken'),false);
+});
+test('ONE marked QA button send uses instance Green URL while normal text remains on historic endpoint',async()=>{
+ const {job,preview}=await prepared('mixed_url');
+ greenTestEnv.GREEN_API_URL='https://7201.api.green-api.com';
+ const requests=[];
+ globalThis.fetch=async(url,options)=>{
+  requests.push({url,method:options.method,body:JSON.parse(options.body)});
+  return {ok:true,status:200,json:async()=>({idMessage:'3EB0SYNTHETICPROVIDERRECEIPT'})};
+ };
+ try{
+  const response=await sendWhatsAppTransport({
+   ...job,interactive_qa_required:true
+  },'green',{},preview);
+  assert.equal(response.deliveryStatus,'accepted');
+  assert.equal(requests.length,1,'one Green beta send ONLY');
+  assert.equal(requests[0].method,'POST');
+  assert.equal(requests[0].url,
+   'https://7201.api.green-api.com/waInstance9903183013/sendInteractiveButtons/not-a-real-test-token');
+  assert.deepEqual(requests[0].body.buttons.map(x=>x.type),['reply','reply','url']);
+  requests.length=0;
+  await sendWhatsAppTransport({
+   chat_id:job.chat_id,message_type:'text',message_text:'legacy-safe'
+  },'green',{},null);
+  assert.equal(requests.length,1);
+  assert.equal(requests[0].url,
+   'https://api.green-api.com/waInstance9903183013/sendMessage/not-a-real-test-token',
+   'regular existing messages never silently change provider host');
+ }finally{delete greenTestEnv.GREEN_API_URL;}
+});
+test('invalid pilot URL blocks provider HTTP without affecting existing Green sends',async()=>{
+ const {job,preview}=await prepared('mixed_url');
+ let calls=0;globalThis.fetch=async(url)=>{
+  calls++;return {ok:true,status:200,json:async()=>({idMessage:'green-legacy'})};
+ };
+ greenTestEnv.GREEN_API_URL='https://7201.api.green-api.com.evil.invalid';
+ try{
+  await assert.rejects(sendWhatsAppTransport({
+   ...job,interactive_qa_required:true
+  },'green',{},preview),e=>e.errorCode===400&&e.deliveryUncertain===false);
+  assert.equal(calls,0,'unsafe host must fail BEFORE provider request');
+  const receipt=await sendWhatsAppTransport({
+   chat_id:job.chat_id,message_type:'text',message_text:'normal'
+  },'green',{},null);
+  assert.equal(receipt.messageId,'green-legacy');
+  assert.equal(calls,1,'existing traffic must still have its historic route');
+ }finally{delete greenTestEnv.GREEN_API_URL;}
 });
 test('account switch rejects before any HTTP or signed-token leakage',async()=>{
  const {job,preview}=await prepared();
