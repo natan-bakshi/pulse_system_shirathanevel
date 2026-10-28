@@ -1,6 +1,7 @@
 // Owner-triggered Green API GetSettings audit: READ ONLY, never SetSettings.
-// One GET only, no retries, no Base44 DB calls or message sends. Not invoked
-// by page render, queue status, readiness, schedule or any webhook.
+// One GET normally. Only a connection failure to the configured 7201 host
+// permits ONE explicit GET to Green's documented universal host. No background
+// calls, polling, DB operations, message sends or provider settings changes.
 // Green GetSettings returns webhookUrlToken/wid/URL; never include any of these,
 // provider credentials, raw errors or response payload in UI/logs.
 const INSTANCE=/^[0-9]{5,20}$/;
@@ -15,9 +16,9 @@ type Flag='yes'|'no'|'unknown';
 const flag=(value:unknown):Flag=>value==='yes'?'yes':value==='no'?'no':'unknown';
 // Only a fixed code is ever returned to the owner. Never bubble the provider
 // body, URL, token, WID, network exception or raw stack to UI/logs.
-const failure=(diagnosticCode='unexpected_failure')=>
+const failure=(diagnosticCode='unexpected_failure',providerReadCalls=0)=>
  Object.assign(new Error('Green settings inspection unavailable'),{
-  code:'green_settings_unavailable',diagnosticCode
+  code:'green_settings_unavailable',diagnosticCode,providerReadCalls
  });
 const PROVIDER_HOST=/^(?:[a-z0-9-]{2,32}\.)?api\.greenapi\.com$|^(?:[a-z0-9-]{2,32}\.)?api\.green-api\.com$/;
 export function greenApiOrigin(value:unknown){
@@ -36,6 +37,8 @@ const DIAGNOSTIC_MESSAGES:Record<string,string>={
  invalid_api_host:'כתובת שרת Green המוגדרת אינה כתובת HTTPS מאושרת. בדוק את apiUrl בחשבון.',
  provider_timeout:'שרת Green לא השיב בפרק הזמן שהוקצב. ייתכן שהוא איטי או לא זמין.',
  provider_connection_unavailable:'לא ניתן להתחבר לשרת Green מהמערכת. בדוק זמינות וכתובת apiUrl.',
+ provider_connection_unavailable_after_universal:'לא ניתן להתחבר משרת Pulse לכתובת Green הראשית או לשרת האוניברסלי. נדרשת בדיקת תקשורת בצד השרת.',
+ provider_redirect_blocked:'Green השיב בהפניה לכתובת אחרת; ההפניה נחסמה כדי לא להעביר את טוקן המופע לשרת שלא אומת.',
  provider_auth_rejected:'Green דחה את הזיהוי (HTTP 401/403). בדוק התאמה בין מזהה המופע לטוקן.',
  provider_instance_not_found:'Green לא מצא את הנתיב או המופע (HTTP 404). בדוק את apiUrl בחשבון ואת מזהה המופע.',
  provider_rate_limited:'Green הגביל זמנית את קצב הבקשות (HTTP 429).',
@@ -49,8 +52,11 @@ export function summarizeGreenWebhookAuditFailure(error:any){
  const candidate=String(error?.diagnosticCode||'');
  const diagnosticCode=Object.prototype.hasOwnProperty.call(DIAGNOSTIC_MESSAGES,candidate)
   ?candidate:'unexpected_failure';
+ const providerReadCalls=Number(error?.providerReadCalls);
  return {diagnosticCode,
   error:DIAGNOSTIC_MESSAGES[diagnosticCode]+' (קוד אבחון: '+diagnosticCode+')',
+  providerReadCalls:Number.isInteger(providerReadCalls)&&providerReadCalls>=0&&providerReadCalls<=2
+   ?providerReadCalls:0,
   noMessagesSent:true,webhookSettingChangesMade:false};
 }
 export function summarizeGreenWebhookSettings(settings:any){
