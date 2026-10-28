@@ -1,4 +1,6 @@
 import { readAssignmentIntents, ASSIGNMENT_INTENT_MODE } from './assignmentIntent.ts';
+import {greenButtonQaScopedV2Enabled,greenButtonQaScopedServiceMatches,
+ greenButtonQaScopedJournalMatches} from './greenButtonQaScopedV2.ts';
 import { renderAssignmentWhatsApp, supplierTargetChatId, supplierAssignmentTargetChatId } from './assignmentWhatsApp.ts';
 import { sendWhatsAppToChat, toChatId } from './whatsappSend.ts';
 import { resolveNotificationDelay } from './quietHours.ts';
@@ -20,8 +22,25 @@ export async function sweepPendingSupplierAssignmentIntents(client:any,opts:any=
   const db=client?.asServiceRole?.entities;
   if(!db)throw new Error('Backend service client required');
   const flag=await db.AppSettings.filter({setting_key:FLAG},'-created_date',2);
-  if(flag.length!==1||flag[0].setting_value!=='true')
-    return {success:true,reason:'feature_disabled',scanned:0};
+  const globallyEnabled=flag.length===1&&flag[0].setting_value==='true';
+  const qaEnv=opts.qaEnv||((key:string)=>typeof Deno!=='undefined'?Deno.env.get(key):undefined);
+  if(!globallyEnabled){
+    // The existing watchdog may rescue ONLY the explicitly pinned QA service.
+    // One exact GET while the temporary pilot gate is enabled. NO table scan.
+    if(!greenButtonQaScopedV2Enabled(qaEnv))
+      return {success:true,reason:'feature_disabled',scanned:0};
+    const serviceId=qaEnv('GREEN_BUTTONS_QA_EVENT_SERVICE_ID')||'';
+    const service=await db.EventService.get(serviceId).catch(()=>null);
+    if(!service||!greenButtonQaScopedServiceMatches(service,qaEnv)||
+       service.assignment_intents_pending!==true)
+      return {success:true,reason:'nothing_pending',scanned:1};
+    try{
+      const qa=await (opts.reconcile||processSupplierAssignmentIntents)(
+        client,serviceId,{limit:4,qaEnv});
+      return {success:qa.success===true,reason:qa.reason,
+        scanned:1,recovered:Number(qa.processed||0),blocked:Number(qa.blocked||0)};
+    }catch{return {success:false,reason:'needs_review',scanned:1,recovered:0,blocked:1};}
+  }
   const limit=Number.isInteger(opts.maxServices)&&opts.maxServices>0?
     Math.min(opts.maxServices,4):4;
   const due=await db.EventService.filter({assignment_intents_pending:true},'updated_date',limit);
@@ -55,7 +74,10 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
   const db=client?.asServiceRole?.entities;
   if(!db)throw new Error('Service-role backend client required');
   const flag=await db.AppSettings.filter({setting_key:FLAG},'-created_date',2);
-  if(flag.length!==1||flag[0].setting_value!=='true')
+  const globallyEnabled=flag.length===1&&flag[0].setting_value==='true';
+  const qaEnv=options.qaEnv||((key:string)=>typeof Deno!=='undefined'?Deno.env.get(key):undefined);
+  const scoped=!globallyEnabled&&greenButtonQaScopedV2Enabled(qaEnv,serviceId);
+  if(!globallyEnabled&&!scoped)
     return {success:false,reason:'feature_disabled',processed:0};
   if(!/^[a-zA-Z0-9_-]{3,100}$/.test(serviceId))
     throw new Error('Invalid EventService identifier');
@@ -65,6 +87,8 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
     return {success:true,reason:'nothing_pending',processed:0};
   const raw=String(service.assignment_notification_intents||'[]');
   const intents=readAssignmentIntents(raw);
+  if(scoped&&!greenButtonQaScopedJournalMatches(service,intents,qaEnv))
+    return {success:false,reason:'qa_scope_mismatch',processed:0};
   if(!intents.length)throw new Error('Pending intent flag with empty journal');
   const toProcess=intents.filter(x=>x.state==='requested').slice(0,
     Number.isInteger(options.limit)&&options.limit>0?Math.min(LIMIT,options.limit):LIMIT);
@@ -140,7 +164,7 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
       const pilot=intent.qa_buttons_required===true;
       const chatId=pilot
         ?supplierAssignmentTargetChatId(supplier,service,intent.supplier_id,
-          toChatId,options.qaEnv||((key:string)=>Deno.env.get(key)),true)
+          toChatId,qaEnv,true)
         :supplierTargetChatId(supplier,toChatId);
       const selectedGroup=!pilot&&String(supplier.preferred_channel||'')==='group';
       if(!chatId || (selectedGroup&&!/^[a-zA-Z0-9_-]+@g\.us$/.test(chatId))){
