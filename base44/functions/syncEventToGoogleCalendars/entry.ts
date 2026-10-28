@@ -1,4 +1,6 @@
 import { getClientContacts } from '../../shared/eventFields.js';
+import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload}
+ from '../../shared/greenButtonQaFixture.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 
@@ -412,6 +414,13 @@ Deno.serve(async (req) => {
     const providedChangedFields = body.changed_fields || body.changedFields;
     const changedFields = Array.isArray(providedChangedFields) ? providedChangedFields : inferChangedFields(body.data, body.old_data);
     const deletedEntityData = triggerAction === 'delete' ? body.data : null;
+
+    // Read request payload only. A narrow QA fixture must never access the
+    // paid calendar connector or create/delete any real calendar entries.
+    const qaEnv=key=>Deno.env.get(key);
+    if((entityName==='Event'&&isGreenButtonQaFixtureEventPayload(body.data,qaEnv,entityId))||
+      (entityName==='EventService'&&isGreenButtonQaFixtureServicePayload(body.data,qaEnv,entityId)))
+      return Response.json({skipped:true,reason:'qa_fixture_calendar_isolated'});
 
     if (!eventId && !eventServiceId) {
       console.warn('[GoogleCalendarSync] Skipping empty trigger payload', JSON.stringify({ entityName, triggerAction, entityId }));
