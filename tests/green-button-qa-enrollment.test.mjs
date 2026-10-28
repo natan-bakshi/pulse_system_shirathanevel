@@ -122,7 +122,7 @@ test('inactive rollout, wrong event or number, group supplier, prior send and st
   f=>{f.rows.service.event_id='another-event'},
   f=>{f.rows.supplier.phone='0509999999'},
   f=>{f.rows.supplier.whatsapp_enabled=false},
-  f=>{f.rows.supplier.preferred_channel='group';f.rows.supplier.phone='0509999999'}, 
+  f=>{f.rows.supplier.preferred_channel='group'},
   f=>{f.rows.control.paused=true},
   f=>{f.rows.control.unknown_guard_key='UNRESOLVED'},
   f=>{f.setPrior([{id:'prior-outbox',status:'accepted'}])},
