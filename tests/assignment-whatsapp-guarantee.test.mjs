@@ -96,6 +96,29 @@ test('explicit save guard generates one WhatsApp outbox job for a pending suppli
  assert.equal(x.sent[0].ctx.idempotencyKey,assignmentWhatsAppKey(x.svc,x.supplier.id));
  assert.equal(x.sent[0].ctx.sourceType,'assignment_new');
 });
+test('explicit safeguard routes a signed single-supplier QA intent to its private chat, never the group',async()=>{
+ const sid='supplier-abc123',eid='service-abc123';
+ const x=env({
+  supplier:{preferred_channel:'group',whatsapp_group_url:'120363402752568652@g.us'},
+  svc:{assignment_intent_mode:'durable_v1',
+   assignment_notification_intents:JSON.stringify([{
+    supplier_id:sid,revision:1,state:'requested',
+    key:'assignment:'+eid+':'+sid+':r1:SUPPLIER_NEW_ASSIGNMENT',
+    qa_buttons_required:true
+   }])},
+  qaEnv:{
+   GREEN_BUTTONS_QA_EVENT_SERVICE_ID:eid,
+   GREEN_BUTTONS_QA_SUPPLIER_ID:sid,
+   GREEN_BUTTONS_QA_ALLOWED_CHAT:'972521234567@c.us'
+  }
+ });
+ const response=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[sid]});
+ assert.equal(response.status,200);
+ assert.equal(x.sent.length,1);
+ assert.equal(x.sent[0].chatId,'972521234567@c.us');
+ assert.equal(x.sent[0].ctx.qaButtonsRequired,true);
+ assert.equal(x.supplier.preferred_channel,'group');
+});
 test('supplier using WhatsApp group receives the correct group chat target',async()=>{
  const x=env({supplier:{preferred_channel:'group',whatsapp_group_url:'120363402752568652@g.us'}});
  const r=await x.invoke({eventServiceId:x.svc.id,newSupplierIds:[x.supplier.id]});
