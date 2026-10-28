@@ -58,6 +58,9 @@ export async function applyOneGreenButtonQaWebhookProvisioning(client:any,opts:{
  const guard=greenButtonQaWebhookProvisioningGuard(
   opts.env,opts.confirmation,controlRows[0]);
  if(!guard.ready)throw safeError(guard.reason);
+ const timeout=opts.timeoutMs??10000;
+ if(!Number.isInteger(timeout)||timeout<500||timeout>15000)
+  throw safeError('qa_provisioning_timeout_invalid_no_write');
  // The singleton is provisioned by the system owner ahead of the write.
  // No on-demand create and no duplicate process can claim it twice.
  const lockRows=await db.AppSettings.filter({
@@ -106,9 +109,6 @@ export async function applyOneGreenButtonQaWebhookProvisioning(client:any,opts:{
  };
  // POST sent ONCE, no retry and no redirects (which could leak credentials).
  const fetchFn=opts.fetchFn||fetch;
- const timeout=opts.timeoutMs??10000;
- if(!Number.isInteger(timeout)||timeout<500||timeout>15000)
-  throw safeError('qa_provisioning_timeout_invalid_manual_review');
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),timeout);
  let accepted=false;
