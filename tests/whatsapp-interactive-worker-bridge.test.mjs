@@ -238,7 +238,7 @@ test('single-chat QA missing durable v2 intent is HELD before transport, never s
 });
 test('single-chat QA freezes signed buttons ONLY for configured chat with one existing worker dispatch',async()=>{
  const f=fixture();f.control.interactive_outbound_live_enabled=true;
- const job=f.add('assignment_new'),seen=[];
+ const job=f.add('assignment_new',{interactive_qa_required:true}),seen=[];
  const result=await drainWhatsAppOutbox(f.client,{
   interactiveConfig:{...opts(),qaChatId:job.chat_id,
    qaEventServiceId:'service-123',qaSupplierId:'supplier-123'},
