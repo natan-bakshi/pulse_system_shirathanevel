@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import {isGreenButtonQaFixtureServicePayload} from '../../shared/greenButtonQaFixture.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 
 /**
@@ -24,6 +25,10 @@ Deno.serve(async (req) => {
         if (data.is_external) {
             return Response.json({ success: true, skipped: true, reason: 'External services do not create assignments' });
         }
+        // Do not create a second Push notification for a single-chat QA
+        // assignment. The separate durable V2 WhatsApp producer still runs.
+        if(isGreenButtonQaFixtureServicePayload(data,key=>Deno.env.get(key),event?.entity_id))
+            return Response.json({success:true,skipped:true,reason:'qa_fixture_push_isolated'});
         
         console.log(`[AssignmentChange] Processing EventService change: ${event?.type}`);
         
