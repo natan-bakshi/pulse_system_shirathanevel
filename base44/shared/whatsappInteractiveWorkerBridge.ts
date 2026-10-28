@@ -103,6 +103,8 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
     job.event_service_id!==config.qaEventServiceId||
     job.supplier_id!==config.qaSupplierId)
    return legacy(job,'not_allowed_single_assignment_qa');
+  if(job.interactive_qa_required!==true)
+   throw blocked('qa_assignment_requires_persisted_enrollment_marker');
  }
  if(!['reply_only','mixed_url'].includes(config.capability)||
   !/^[0-9]{5,20}$/.test(config.senderAccountId||'')||
