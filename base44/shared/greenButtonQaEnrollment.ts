@@ -97,6 +97,10 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
  if(plan.intents.length!==1||
   plan.intents[0].supplier_id!==config.qaSupplierId||
   !plan.hasNewIntent)throw fail('qa_assignment_plan_invalid',409);
+ // Persist the pilot requirement IN THE SAME BUSINESS CAS as the assignment.
+ // This survives send-disable and a lost workflow wake, even before signing.
+ plan.intents[0].qa_buttons_required=true;
+ plan.patch.assignment_notification_intents=JSON.stringify([...previousIntents,...plan.intents]);
  // Atomic assignment change + durable intent, one CAS only. Ambiguous commit
  // is NOT retried; existing watchdog can rescue a genuinely saved intent.
  let updated:any;
