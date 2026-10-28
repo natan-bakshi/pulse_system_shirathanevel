@@ -9,6 +9,7 @@ import {sendWhatsAppToChat} from '../base44/shared/whatsappSend.ts';
 import {drainWhatsAppOutbox} from '../base44/shared/whatsappQueueWorker.ts';
 import {trustedGreenButtonQaConfig} from '../base44/shared/greenButtonQaLaunch.ts';
 import {stageFutureGreenInteractiveHttpCallback} from '../base44/shared/greenInteractiveHttpStaging.ts';
+import {handleGreenButtonQaWebhook} from '../base44/shared/greenButtonQaWebhookHandler.ts';
 
 const EVENT='event-qa123',SERVICE='service-qa123',SUPPLIER='supplier-qa123';
 const CHAT='972501234567@c.us',INSTANCE='9903183013';
@@ -183,8 +184,41 @@ function fixture(){
    }
   });
  }
+ async function httpCallback(action='assignment_approve',options={}){
+  const job=outbox[0],buttons=JSON.parse(job.interactive_button_bindings_json).buttons;
+  const button=buttons.find(item=>item.action===action);
+  assert.ok(button,'reply ID must come from the signed Outbox snapshot');
+  const raw={
+   typeWebhook:'incomingMessageReceived',
+   idMessage:options.eventId||'C0CD39BB261589D5C98412D255CD000B',
+   timestamp:Math.floor(Date.now()/1000),
+   instanceData:{idInstance:Number(INSTANCE),typeInstance:'whatsapp'},
+   senderData:{chatId:CHAT,sender:CHAT},
+   messageData:{
+    // Provider's documented mixed-button response (not a free-text message).
+    typeMessage:'templateButtonsReplyMessage',
+    templateButtonReplyMessage:{
+     stanzaId:job.provider_message_id,selectedIndex:0,
+     selectedId:button.buttonId,selectedDisplayText:'UNTRUSTED TEXT'
+    }
+   }
+  };
+  const request=new Request('https://synthetic.invalid/qa',{
+   method:'POST',headers:{
+    Authorization:'Bearer '+WEBHOOK,'content-type':'application/json'
+   },body:JSON.stringify(raw)
+  });
+  return handleGreenButtonQaWebhook(request,{
+   env:key=>options.sendDisabled&&key==='GREEN_BUTTONS_QA_SEND_ENABLED'
+    ?'':env(key),
+   makeClient:()=>client,
+   recalculateEventStatus:async(_client,eventId)=>{
+    assert.equal(eventId,EVENT);stats.callbackRecalcs++;
+   }
+  });
+ }
  return {client,service,supplier,event,control,outbox,receipts,stats,
-  enroll,reconcile,worker,callback};
+  enroll,reconcile,worker,callback,httpCallback};
 }
 test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green preview once -> callback -> durable receipt -> duplicate no-op',async()=>{
  const f=fixture();
@@ -236,6 +270,29 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  assert.equal((await f.worker(true)).reason,'empty','no resend after receipt');
  assert.equal(f.stats.providerCalls,1);
  assert.equal(f.outbox.length,1);
+});
+test('PRODUCTION HTTP ADAPTER: original signed reply -> ACK 200 -> one supplier transition, duplicate ACK, outbound send-off remains inbound-on',async()=>{
+ const f=fixture();
+ assert.equal((await f.enroll()).saved,true);
+ await f.reconcile();
+ const send=await f.worker();
+ assert.equal(send.accepted,1);
+ assert.equal(f.stats.providerCalls,1);
+ assert.equal(f.outbox[0].interactive_qa_required,true);
+ const result=await f.httpCallback('assignment_approve',{sendDisabled:true});
+ assert.equal(result.httpStatus,200);
+ assert.equal(result.body.received,true);
+ assert.equal(result.noProviderCalls,true);
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(f.receipts.length,1);
+ assert.equal(f.receipts[0].state,'applied');
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'confirmed');
+ const replay=await f.httpCallback('assignment_approve',{sendDisabled:true});
+ assert.equal(replay.httpStatus,200,'confirmed duplicate receipt should ACK');
+ assert.equal(f.stats.statusCAS,1,'duplicate event must not write supplier again');
+ assert.equal(f.stats.providerCalls,1,'no additional provider send');
+ assert.equal(f.receipts.length,1,'one durable receipt for one provider event');
+ assert.equal(f.outbox.length,1,'no duplicate Outbox');
 });
 test('the existing explicit assignment safeguard can enqueue first without losing pilot-only marker or creating duplicates',async()=>{
  const f=fixture();
