@@ -10,6 +10,8 @@ import {drainWhatsAppOutbox} from '../base44/shared/whatsappQueueWorker.ts';
 import {trustedGreenButtonQaConfig} from '../base44/shared/greenButtonQaLaunch.ts';
 import {stageFutureGreenInteractiveHttpCallback} from '../base44/shared/greenInteractiveHttpStaging.ts';
 import {handleGreenButtonQaWebhook} from '../base44/shared/greenButtonQaWebhookHandler.ts';
+import {GREEN_BUTTON_QA_EVENT_NAME,GREEN_BUTTON_QA_FAMILY_NAME,
+ GREEN_BUTTON_QA_SERVICE_NAME} from '../base44/shared/greenButtonQaFixture.ts';
 
 const EVENT='event-qa123',SERVICE='service-qa123',SUPPLIER='supplier-qa123';
 const CHAT='972501234567@c.us',INSTANCE='9903183013';
@@ -17,6 +19,7 @@ const WEBHOOK='green-offline-qa-webhook-secret-01234567890123';
 const SIGNING='green-offline-qa-buttons-signing-secret-01234567890123';
 const envValues={
  GREEN_BUTTONS_QA_CREATE_ENABLED:'enabled',GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:'enabled',
  GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'verified',
  GREEN_BUTTONS_QA_OWNER_APPROVED:'approved',GREEN_BUTTONS_QA_EVENT_ID:EVENT,
  GREEN_BUTTONS_QA_EVENT_SERVICE_ID:SERVICE,GREEN_BUTTONS_QA_SUPPLIER_ID:SUPPLIER,
@@ -48,7 +51,8 @@ function fixture({groupPreferred=false}={}){
   inbound_guard_key:'',inbound_create_owner:'',inbound_create_until:''
  };
  const service={
-  id:SERVICE,event_id:EVENT,service_id:'catalog-qa123',updated_date:new Date(now-1000).toISOString(),
+  id:SERVICE,event_id:EVENT,service_id:'catalog-qa123',
+  service_name:GREEN_BUTTON_QA_SERVICE_NAME,updated_date:new Date(now-1000).toISOString(),
   supplier_ids:'[]',supplier_statuses:'{}',supplier_notes:'{}',
   assignment_intent_revision:0,assignment_notification_intents:'[]',is_external:false
  };
@@ -57,7 +61,9 @@ function fixture({groupPreferred=false}={}){
   whatsapp_group_url:groupPreferred?'12345678901234567890@g.us':'',
   contact_person:'SYNTHETIC',
   quiet_hours_enabled:false,respect_shabbat:false};
- const event={id:EVENT,status:'confirmed',event_name:'SYNTHETIC',
+ const event={id:EVENT,status:'quote',event_name:GREEN_BUTTON_QA_EVENT_NAME,
+  family_name:GREEN_BUTTON_QA_FAMILY_NAME,event_type:'other',
+  whatsapp_buttons_qa_fixture:true,
   event_date:'2026-11-30',event_time:'10:00'};
  const outbox=[],receipts=[];
  const stats={assignmentCAS:0,statusCAS:0,wakes:0,creates:0,providerCalls:0,
