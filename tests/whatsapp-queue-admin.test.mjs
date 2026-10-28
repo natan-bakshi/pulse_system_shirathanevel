@@ -663,6 +663,30 @@ test('owner queue UI hides Retry for protected interactive records and never ret
  assert.match(projected,/canRetry:EDITABLE_FAILED\.has\(job\.status\)&&!interactiveReviewRequired/);
  assert.match(ui,/row\.interactiveReviewRequired/);
 });
+test('pre-snapshot pilot marker is always protected from UI and manual retry',async()=>{
+ for(const status of ['failed','unknown']){
+  const pilot={...makeJob('job-marked-'+status,status),
+   interactive_qa_required:true,attempt_count:0,
+   sender_account_id:'',assignment_revision:'',
+   interactive_button_bindings_json:''};
+  const ctx=context({jobs:[pilot]});
+  const listed=await ctx.invoke('list');
+  assert.equal(listed.status,200);
+  assert.equal(listed.body.rows[0].canRetry,false);
+  assert.equal(listed.body.rows[0].interactiveReviewRequired,true);
+  const detailed=await ctx.invoke('get',{id:pilot.id});
+  assert.equal(detailed.body.message.canRetry,false);
+  const retry=await ctx.invoke('retry',{id:pilot.id,
+   note:'Verified invalid sender configuration',verifiedNotSent:true});
+  assert.equal(retry.status,409);
+  assert.match(retry.body.error,/provider reconciliation/);
+  assert.equal(pilot.status,status);
+  assert.equal(pilot.manual_retry_count,undefined);
+  assert.equal(ctx.calls.length,0,'never send a pilot job via manual retry');
+  const projected=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
+  assert.match(projected,/LIST_FIELDS=\[[\s\S]*?'interactive_qa_required'\]/);
+ }
+});
 test('manual admin retry refuses a frozen interactive assignment even after note or verifiedNotSent',async()=>{
  for(const oldState of ['failed','unknown']){
   const protectedJob={...makeJob('job-interactive',oldState),
