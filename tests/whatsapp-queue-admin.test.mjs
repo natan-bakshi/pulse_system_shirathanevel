@@ -144,6 +144,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
            safeToReplaceWebhookUrl:false};
        }
      };
+     if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
      if(name.endsWith('greenButtonQaLaunch.ts'))return {greenButtonQaSafeSummary};
      if(name.endsWith('greenButtonQaAssignmentPreflight.ts'))return {
        inspectGreenButtonQaAssignmentReadOnly
