@@ -142,7 +142,8 @@ test('missing owner-specific gate, confirmation or QA scope means ZERO provider 
 test('pre-existing provider webhook or any active category blocks reboot and preserves one-shot',async()=>{
  for(const opts of [{existingWebhook:true},
   {providerSettings:{outgoingAPIMessageWebhook:'yes'}},
-  {providerSettings:{incomingWebhook:'unknown'}}]){
+  {providerSettings:{incomingWebhook:'unknown'}},
+  {providerSettings:{editedMessageWebhook:'unknown'}}]){
   const f=fixture(opts);
   await assert.rejects(applyOneGreenButtonQaWebhookProvisioning(f.client,{
    env:env(),confirmation:confirm,fetchFn:f.fetchFn
