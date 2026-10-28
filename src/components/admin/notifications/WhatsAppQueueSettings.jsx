@@ -76,6 +76,8 @@ export default function WhatsAppQueueSettings(){
     // Never leave a previously decrypted structural preview visible when a
     // different owner review starts or fails: it would refer to the wrong row.
     if(action==='unknownRecoveryStructureReview')setUnknownRecoveryReview(null);
+    // Never retain an older successful Green audit beside a newer failure.
+    if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings(null);
     if(action==='greenButtonQaEnroll'){
       if(!window.confirm('ליצור שיבוץ בדיקה חדש לספק היחיד שהוגדר בשרת? הפעולה מעדכנת שירות אירוע אמיתי ועלולה לשלוח הודעת WhatsApp אמיתית דרך התור. ודא שמדובר באירוע וספק ייעודיים לניסוי ושאימות Green הושלם. להמשיך?'))return;
       params={...params,confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'};
