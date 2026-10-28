@@ -5,6 +5,7 @@ import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueRe
 import { reconcileStalledCardSetupEnqueues } from '../../shared/cardSetupQueueReconciler.ts';
 import { alertUnknownWhatsAppOutcomes } from '../../shared/whatsappUnknownReviewAlerts.ts';
 import {trustedGreenButtonQaConfig} from '../../shared/greenButtonQaLaunch.ts';
+import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
 // crash watchdog. Does not accept arbitrary message/recipient parameters.
@@ -93,7 +94,8 @@ Deno.serve(async (req) => {
         const flags=await client.asServiceRole.entities.AppSettings.filter({
           setting_key:'assignment_intent_v1_enabled'
         },'-created_date',2);
-        const durable=flags.length===1&&flags[0].setting_value==='true';
+        const durable=(flags.length===1&&flags[0].setting_value==='true')||
+          greenButtonQaScopedV2Enabled(key=>Deno.env.get(key));
         qaConfig=trustedGreenButtonQaConfig(controlRows[0],
           key=>Deno.env.get(key),durable);
       }catch{qaConfig=null;}
