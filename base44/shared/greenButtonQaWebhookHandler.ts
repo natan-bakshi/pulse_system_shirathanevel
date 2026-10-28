@@ -12,6 +12,10 @@ import {stageFutureGreenInteractiveHttpCallback}
  from './greenInteractiveHttpStaging.ts';
 import {planFutureGreenWebhookHttpContract}
  from './greenWebhookHttpContract.ts';
+import {decodeFutureGreenInteractiveHttpRequest}
+ from './greenInteractiveHttpBoundary.ts';
+import {isVerifiedGreenNonButtonEvent}
+ from './greenWebhookAckPlanning.ts';
 type Result={httpStatus:number;body:{received:boolean};noProviderCalls:true};
 const result=(httpStatus:number,received=false):Result=>({
  httpStatus,body:{received},noProviderCalls:true
@@ -37,7 +41,37 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
  if(!authenticateWhatsAppProviderCallback({
   provider:'green',headers:request.headers,webhookSecret:bearer
  }))return result(401);
- // No DB reads until a trusted server flag + Green bearer passed.
+ // GREEN incomingWebhook delivers ordinary office chat from ALL senders.
+ // Authenticated, account-matched, KNOWN non-button messages must not trigger
+ // a database read or a retry storm. Stream decoding remains size-bounded.
+ // Keep the original Request intact for the signed QA coordinator below.
+ if(typeof request?.clone==='function'){
+  let boundary:any;
+  try{boundary=await decodeFutureGreenInteractiveHttpRequest(request.clone(),{
+    rolloutAuthorized:true,accountCapabilityVerified:true,webhookSecret:bearer
+  });}
+  catch{return result(400);}
+  if(!boundary.ok)return result(boundary.status);
+  const raw=boundary.rawCallback;
+  const instance=opts.env('GREEN_API_INSTANCE_ID')||'';
+  const instanceMatched=/^[0-9]{5,20}$/.test(instance)&&
+    String(raw?.instanceData?.idInstance)===instance&&
+    raw?.instanceData?.typeInstance==='whatsapp';
+  if(instanceMatched&&isVerifiedGreenNonButtonEvent(raw,instance))
+   return result(200,true);
+  const qaChat=opts.env('GREEN_BUTTONS_QA_ALLOWED_CHAT')||'';
+  const sender=raw?.senderData?.chatId;
+  // This endpoint serves exactly ONE owner-approved QA chat. No other
+  // message in the same Green account can mutate or await a QA receipt.
+  // ACK only authenticated, account-matched, private out-of-scope messages.
+  if(instanceMatched&&raw?.typeWebhook==='incomingMessageReceived'&&
+    /^[1-9][0-9]{7,14}@c\.us$/.test(qaChat)&&
+    typeof sender==='string'&&/^[1-9][0-9]{7,14}@c\.us$/.test(sender)&&
+    raw?.senderData?.sender===sender&&sender!==qaChat)
+   return result(200,true);
+  if(!instanceMatched)return result(422);
+ }
+ // No database access until verified scope and approved callback admission.
  try{
   const client=opts.makeClient(request);
   const control=await readWhatsAppQueueControl(client);
