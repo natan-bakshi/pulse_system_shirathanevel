@@ -34,6 +34,12 @@ test('legacy simple and template selection formats are accepted only with docume
   templateButtonReplyMessage:{selectedId:'wa1_template',stanzaId:'BAE53AFDD5F0C137',
    selectedDisplayText:'not an action'}}};
  assert.equal(parse(template).originalProviderMessageId,'BAE53AFDD5F0C137');
+ // Green official docs list plural in the parameter table but give a
+ // singular typeMessage in the actual webhook example. Both must work.
+ const singular={...template,messageData:{...template.messageData,
+  typeMessage:'templateButtonReplyMessage'}};
+ assert.equal(parse(singular).originalProviderMessageId,'BAE53AFDD5F0C137');
+ assert.equal(parse(singular).buttonId,'wa1_template');
 });
 test('wrong Green instance and invalid sender or group callback fail closed',()=>{
  const changes=[
