@@ -1,5 +1,5 @@
 import { readAssignmentIntents, ASSIGNMENT_INTENT_MODE } from './assignmentIntent.ts';
-import { renderAssignmentWhatsApp, supplierTargetChatId } from './assignmentWhatsApp.ts';
+import { renderAssignmentWhatsApp, supplierAssignmentTargetChatId } from './assignmentWhatsApp.ts';
 import { sendWhatsAppToChat, toChatId } from './whatsappSend.ts';
 import { resolveNotificationDelay } from './quietHours.ts';
 import { readWhatsAppQueueControl } from './whatsappOutbox.ts';
