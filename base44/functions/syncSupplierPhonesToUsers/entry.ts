@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
+import {isGreenButtonQaFixtureEvent} from '../../shared/greenButtonQaFixture.ts';
 import {
     SYNC_ENTITIES,
     isValidEntityId,
@@ -64,6 +65,8 @@ Deno.serve(async (req) => {
             if (!record) {
                 return Response.json({ skipped: true, reason: 'Entity not found' }, { status: 404 });
             }
+            if(entityName==='Event'&&isGreenButtonQaFixtureEvent(record))
+                return Response.json({skipped:true,reason:'qa_fixture_user_sync_isolated'});
 
             const result = await syncEntityRecordToUsers(serviceRole, entityName, record, SYNC_OPTIONS);
             console.log(`[SyncPhones] incremental ${entityName}: ${result.updatesCount} updates, ${result.conflictsCount} conflicts`);
