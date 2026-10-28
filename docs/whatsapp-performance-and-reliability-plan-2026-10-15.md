@@ -790,7 +790,7 @@
 - **PRODUCTION READ-ONLY STATE:** queue `enabled=true, paused=false`, interactive global flag `false`, V2 setting absent, zero pending V2 services in bounded projected query, app ready. No actual send, SetSettings, V2 toggle, webhook endpoint activation or supplier mutation in production. Real GetSettings success/empty webhook provided by owner remains authoritative and already documented.
 - **INTEGRATION CREDIT BUDGET:** no new Green HTTP calls/messages; Base44 Sandbox and bounded status read operations only, actual credit usage not measured. No polling/cron. Go-live owner action remains approval of ONE dedicated test WhatsApp target; no user phone inferred from Green console screenshot.
 - **NEXT:** Once a safe test recipient and dedicated EventService/supplier are approved, complete one real provider send/ACK check and save its verified callback metadata, then apply minimal incomingWebhook settings with explicit reboot approval. **NO-GO** until that point. No optional UI cleanup or encryption expansion.
-- **CHECKPOINT:** to be recorded after full validation and synchronization to GitHub.
+- **CHECKPOINT + DEPLOY VERIFIED:** `6ae228a964d6600629e5ae86` at `d4c4ac9592f6cfa8863b74e1b0633c990e373ae4`; Base44 production deployed `2026-10-28T16:54:26.324Z`. GitHub SHA matches, working tree clean, app status ready. A post-deploy unauthenticated GET to the QA webhook path returns 404 `{"received":false}` (fail closed). This is route/release proof only, **not** evidence of Green beta support or authenticated live webhook delivery.
 
 
 
