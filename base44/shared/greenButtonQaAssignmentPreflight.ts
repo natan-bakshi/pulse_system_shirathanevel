@@ -44,7 +44,9 @@ export async function inspectGreenButtonQaAssignmentReadOnly(client:any,opts:{
   databaseReads:2,noProviderRequests:true,noWrites:true,noMessageSends:true,
   noPersonalDataReturned:true};
  const external=service.is_external!==true;
- // Unmarked group preference remains a hard NO-GO for this owner-only pilot.
+ // A group-preferring supplier remains ordinary group traffic unless this
+ // exact EventService contains the current durable QA intent. Only then can
+ // the already-pinned private chat be reviewed for readiness.
  let markedPrivatePilot=false;
  try{
   markedPrivatePilot=service.assignment_intent_mode==='durable_v1'&&
@@ -54,7 +56,7 @@ export async function inspectGreenButtonQaAssignmentReadOnly(client:any,opts:{
      ':SUPPLIER_NEW_ASSIGNMENT');
  }catch{}
  const active=supplier.is_active!==false&&supplier.whatsapp_enabled!==false&&
-  supplier.preferred_channel!=='group';
+  (supplier.preferred_channel!=='group'||markedPrivatePilot);
  let matched=false;
  try{matched=parseWhatsAppPhone(supplier.phone||'').chatId===chatId;}
  catch{}
