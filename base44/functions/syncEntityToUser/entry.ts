@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { SYNC_ENTITIES, isValidEntityId, syncEntityRecordToUsers } from '../../shared/identitySync.ts';
+import {isGreenButtonQaFixtureEvent} from '../../shared/greenButtonQaFixture.ts';
 
 /**
  * סנכרון שינוי בישות עסקית (Supplier/Event) אל המשתמש התואם.
@@ -54,6 +55,8 @@ Deno.serve(async (req) => {
         if (!record) {
             return Response.json({ skipped: true, reason: 'Entity not found' }, { status: 404 });
         }
+        if(entityName==='Event'&&isGreenButtonQaFixtureEvent(record))
+            return Response.json({skipped:true,reason:'qa_fixture_user_sync_isolated'});
 
         const result = await syncEntityRecordToUsers(serviceRole, entityName, record, {
             overwritePhone: false,
