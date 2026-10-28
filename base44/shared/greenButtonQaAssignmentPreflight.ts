@@ -44,8 +44,7 @@ export async function inspectGreenButtonQaAssignmentReadOnly(client:any,opts:{
   databaseReads:2,noProviderRequests:true,noWrites:true,noMessageSends:true,
   noPersonalDataReturned:true};
  const external=service.is_external!==true;
- // A group-preferring supplier is eligible ONLY after the exact single-chat
- // QA marker is durably saved. Normal unmarked group assignments remain group.
+ // Unmarked group preference remains a hard NO-GO for this owner-only pilot.
  let markedPrivatePilot=false;
  try{
   markedPrivatePilot=service.assignment_intent_mode==='durable_v1'&&
