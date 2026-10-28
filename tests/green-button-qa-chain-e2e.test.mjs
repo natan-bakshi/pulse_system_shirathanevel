@@ -273,6 +273,42 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  assert.equal(f.stats.providerCalls,1);
  assert.equal(f.outbox.length,1);
 });
+test('GROUP-PREFERRED SUPPLIER: either sender order creates ONE privately addressed signed button Outbox',async()=>{
+ for(const order of ['reconciler_first','ensure_first']){
+  const f=fixture({groupPreferred:true});
+  assert.equal((await f.enroll()).saved,true,order);
+  assert.equal(f.supplier.preferred_channel,'group');
+  const privateChat=supplierAssignmentTargetChatId(
+   f.supplier,f.service,SUPPLIER,toChatId,env,true);
+  assert.equal(privateChat,CHAT);
+  const context=assignmentWhatsAppContext(f.service,SUPPLIER);
+  assert.equal(context.qaButtonsRequired,true);
+  if(order==='ensure_first'){
+   const a=await sendWhatsAppToChat(privateChat,'ONE synthetic QA assignment',f.client,context);
+   assert.equal(a.queued,true);
+  }
+  const processed=await f.reconcile();
+  assert.equal(processed.success,true);
+  if(order==='reconciler_first'){
+   const b=await sendWhatsAppToChat(privateChat,'ONE synthetic QA assignment',f.client,context);
+   assert.equal(b.deduplicated,true);
+  }
+  assert.equal(f.outbox.length,1,order);
+  assert.equal(f.outbox[0].chat_id,CHAT,'pilot must never target the group');
+  assert.equal(f.outbox[0].interactive_qa_required,true);
+  assert.equal(f.outbox[0].idempotency_key,context.idempotencyKey);
+  const sent=await f.worker();
+  assert.equal(sent.accepted,1,order);
+  assert.equal(f.stats.providerCalls,1);
+  const inbound=await f.httpCallback();
+  assert.equal(inbound.httpStatus,200);
+  assert.equal(f.stats.statusCAS,1);
+  assert.equal(f.receipts.length,1);
+  assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'confirmed');
+  assert.equal(f.supplier.preferred_channel,'group','business preference unchanged');
+  assert.equal(f.supplier.whatsapp_group_url,'12345678901234567890@g.us');
+ }
+});
 test('PRODUCTION HTTP ADAPTER: original signed reply -> ACK 200 -> one supplier transition, duplicate ACK, outbound send-off remains inbound-on',async()=>{
  const f=fixture();
  assert.equal((await f.enroll()).saved,true);
