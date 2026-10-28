@@ -122,7 +122,7 @@ test('inactive rollout, wrong event or number, group supplier, prior send and st
   f=>{f.rows.service.event_id='another-event'},
   f=>{f.rows.supplier.phone='0509999999'},
   f=>{f.rows.supplier.whatsapp_enabled=false},
-  f=>{f.rows.supplier.preferred_channel='group'},
+  f=>{f.rows.supplier.preferred_channel='group';f.rows.supplier.phone='0509999999'}, 
   f=>{f.rows.control.paused=true},
   f=>{f.rows.control.unknown_guard_key='UNRESOLVED'},
   f=>{f.setPrior([{id:'prior-outbox',status:'accepted'}])},
@@ -135,6 +135,18 @@ test('inactive rollout, wrong event or number, group supplier, prior send and st
   assert.equal(f.counts.wake,0);
   assert.equal(f.counts.provider,0);
  }
+});
+test('single-recipient pilot may enroll an existing group-preferring supplier without editing their group preference',async()=>{
+ const f=fixture();
+ f.rows.supplier.preferred_channel='group';
+ f.rows.supplier.whatsapp_group_url='https://chat.whatsapp.com/group-not-used';
+ const r=await enrollOneGreenButtonQaAssignment(f.client,request(f));
+ assert.equal(r.saved,true);
+ assert.equal(f.rows.supplier.preferred_channel,'group');
+ assert.equal(f.rows.supplier.whatsapp_group_url,'https://chat.whatsapp.com/group-not-used');
+ assert.equal(JSON.parse(f.rows.service.assignment_notification_intents)[0].qa_buttons_required,true);
+ assert.equal(f.counts.cas,1);
+ assert.equal(f.counts.provider,0);
 });
 test('prior V2 intent WITHOUT any Outbox still prevents re-enrollment of the same supplier',async()=>{
  const f=fixture();
