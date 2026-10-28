@@ -8,6 +8,7 @@ import {assignmentWhatsAppContext,assignmentWhatsAppKey,cleanMissingAssignmentTi
 import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 import {toChatId} from '../base44/shared/whatsappSend.ts';
+import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
 
 test('one optional reminder failure does not block assignment notices; repeated data is loaded once',async()=>{
  const src=fs.readFileSync('base44/functions/handleEntityEvents/entry.ts','utf8');
@@ -55,7 +56,7 @@ test('one optional reminder failure does not block assignment notices; repeated 
  let handler;const module={exports:{}};
  vm.runInNewContext(compiled,{
    exports:module.exports,module,console:{log:()=>{},warn:()=>{},error:()=>{}},
-   Deno:{serve:fn=>handler=fn},Response:{json:(data,options={})=>({body:data,status:options.status||200})},
+   Deno:{serve:fn=>handler=fn,env:{get:()=>''}},Response:{json:(data,options={})=>({body:data,status:options.status||200})},
    require:path=>{
      if(path.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(path.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
@@ -74,6 +75,7 @@ test('one optional reminder failure does not block assignment notices; repeated 
      if(path.endsWith('entityTriggerWhatsApp.ts'))return {entityTriggerWhatsAppContext};
      if(path.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed};
      if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false})};
+     if(path.endsWith('greenButtonQaFixture.ts'))return {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload};
      throw Error('Unexpected import '+path);
    }
  });
