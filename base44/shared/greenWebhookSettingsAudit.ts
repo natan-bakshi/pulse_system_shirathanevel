@@ -54,7 +54,8 @@ export function summarizeGreenWebhookAuditFailure(error:any){
   ?candidate:'unexpected_failure';
  const providerReadCalls=Number(error?.providerReadCalls);
  return {diagnosticCode,
-  error:DIAGNOSTIC_MESSAGES[diagnosticCode]+' (קוד אבחון: '+diagnosticCode+')',
+  error:DIAGNOSTIC_MESSAGES[diagnosticCode]+' (קוד אבחון: '+diagnosticCode+
+   '; קריאות לספק: '+(Number.isInteger(providerReadCalls)&&providerReadCalls>=0&&providerReadCalls<=2?providerReadCalls:0)+')',
   providerReadCalls:Number.isInteger(providerReadCalls)&&providerReadCalls>=0&&providerReadCalls<=2
    ?providerReadCalls:0,
   noMessagesSent:true,webhookSettingChangesMade:false};
