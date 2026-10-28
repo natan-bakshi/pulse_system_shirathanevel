@@ -6,6 +6,7 @@ import esbuild from 'esbuild';
 import {assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
 import {planAssignmentTransition} from '../base44/shared/assignmentIntent.ts';
 import {toChatId} from '../base44/shared/whatsappSend.ts';
+import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
 import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 
@@ -24,7 +25,7 @@ test('assignment trigger uses the same Outbox key while quiet, never a second Pe
  }}};
  vm.runInNewContext(compiled+'\nmodule.exports.__testTriggerWhatsApp=triggerWhatsApp;',{
    exports:module.exports,module,console:{log:()=>{},error:()=>{},warn:()=>{}},
-   Deno:{serve:()=>{}},Response:{json:(x)=>x},
+   Deno:{serve:()=>{},env:{get:()=>''}},Response:{json:(x)=>x},
    require:path=>{
      if(path.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(path.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
@@ -43,6 +44,7 @@ test('assignment trigger uses the same Outbox key while quiet, never a second Pe
      if(path.endsWith('entityTriggerWhatsApp.ts'))return {entityTriggerWhatsAppContext};
      if(path.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed};
      if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>delay};
+     if(path.endsWith('greenButtonQaFixture.ts'))return {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload};
      throw Error('Unexpected dependency '+path);
    }
  });
