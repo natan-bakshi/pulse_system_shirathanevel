@@ -12,7 +12,8 @@ function fixture(){
   supplier_statuses:JSON.stringify({[SUPPLIER]:'pending'}),
   assignment_intent_mode:'durable_v1',
   assignment_notification_intents:JSON.stringify([{
-   supplier_id:SUPPLIER,key:KEY,revision:7,state:'queued'
+   supplier_id:SUPPLIER,key:KEY,revision:7,state:'queued',
+   qa_buttons_required:true
   }])
  };
  const supplier={id:SUPPLIER,phone:'050-123-4567',is_active:true,
@@ -20,7 +21,8 @@ function fixture(){
   contact_person:'PRIVATE_SUPPLIER_NAME'};
  const job={id:'outbox-abc',idempotency_key:KEY,source_type:'assignment_new',
   event_service_id:SERVICE,supplier_id:SUPPLIER,chat_id:CHAT,
-  requested_provider:'green',status:'queued',attempt_count:0,
+  requested_provider:'green',status:'queued',interactive_qa_required:true,
+  attempt_count:0,
   send_started_at:'',provider_message_id:'',message_text:'PRIVATE_EVENT_MESSAGE'};
  let jobs=[job];
  const client={asServiceRole:{entities:{
@@ -62,6 +64,9 @@ test('only exact pending service+supplier+chat with one unsent durable job passe
 test('group-preferred supplier is ready only after the same service has a pinned QA intent',async()=>{
  const f=fixture();
  f.supplier.preferred_channel='group';
+ const journalBefore=JSON.parse(f.service.assignment_notification_intents);
+ journalBefore[0].qa_buttons_required=false;
+ f.service.assignment_notification_intents=JSON.stringify(journalBefore);
  const before=await inspectGreenButtonQaAssignmentReadOnly(f.client,opts);
  assert.equal(before.ready,false);
  assert.equal(f.counts.outbox,0);
@@ -74,10 +79,9 @@ test('group-preferred supplier is ready only after the same service has a pinned
  assert.equal(f.counts.outbox,1);
  assert.equal(f.supplier.preferred_channel,'group');
 });
-test('wrong phone, unmarked group preference or disabled supplier fails before querying WhatsAppOutbox',async()=>{
+test('wrong phone or disabled supplier fails before querying WhatsAppOutbox',async()=>{
  for(const change of [
   {phone:'0509999999'},
-  {preferred_channel:'group'},
   {whatsapp_enabled:false}
  ]){
   const f=fixture();
