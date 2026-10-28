@@ -261,7 +261,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaReadiness')}>מוכנות ניסוי כפתורים למספר אחד (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaAssignmentPreflight')}>בדיקת שיבוץ הניסוי (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות תוכנית הכפתורים המלאה (ללא שליחה)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדוק הגדרות Green API (קריאה אחת, ללא שינוי)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדיקת חיבור Green (קריאה בלבד, ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
@@ -272,7 +272,8 @@ export default function WhatsAppQueueSettings(){
       {greenWebhookSettings&&<details open className="rounded border p-3 text-sm" dir="rtl">
         <summary className="cursor-pointer font-medium">מיפוי Green API הקיים — בדיקת GetSettings לקריאה בלבד</summary>
         <div className="pt-3 space-y-2 text-xs">
-          <p className="text-gray-600">בדיקה יזומה אחת בלבד; לא משנה כתובת Webhook, מרווחי שליחה או סוגי התראות. אין כאן אישור שהכפתורים נתמכים בחשבון.</p>
+          <p className="text-gray-600">בדיקה יזומה בלחיצה בלבד: קריאת GET אחת, ובכשל רשת עשויה להתבצע קריאה נוספת לשרת הרשמי החלופי. אין שינוי בהגדרות או שליחת הודעות, ואין אישור שהכפתורים נתמכים בחשבון.</p>
+          <p className="text-gray-600">מספר קריאות ל־Green בבדיקה: {greenWebhookSettings.providerReadCalls??'לא ידוע'}</p>
           {greenWebhookSettings.universalHostFallbackUsed&&<p className="font-medium text-amber-800">החיבור לשרת המוגדר נכשל, אך קריאת ההגדרות הצליחה דרך השרת האוניברסלי הרשמי של Green. אין לשנות כתובת שליחת הודעות לפני אימות נפרד.</p>}
           <div className="flex flex-wrap gap-x-5 gap-y-1">
             <span>Webhook מוגדר: {greenWebhookSettings.webhookConfigured?'כן':'לא'}</span>
