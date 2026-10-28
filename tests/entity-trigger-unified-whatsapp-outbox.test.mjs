@@ -6,6 +6,7 @@ import esbuild from 'esbuild';
 import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
 import {assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTime} from '../base44/shared/assignmentWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
 import {sendWhatsAppToChat,toChatId} from '../base44/shared/whatsappSend.ts';
 
 const base={
@@ -70,7 +71,7 @@ function loadTrigger({now='2026-10-19T20:30:00Z',reply,statusCode='',sendError=n
  const answer=reply===undefined?{success:true,queued:true,status:'queued',jobId:'job-1'}:reply;
  vm.runInNewContext(compiled+'\nmodule.exports.triggerWhatsAppForTest=triggerWhatsApp;',{
    module,exports:module.exports,console:{log:()=>{},warn:()=>{},error:()=>{}},
-   Deno:{serve:()=>{}},Response:{json:v=>v},
+   Deno:{serve:()=>{},env:{get:()=>''}},Response:{json:v=>v},
    require:path=>{
      if(path.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(path.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
@@ -86,6 +87,7 @@ function loadTrigger({now='2026-10-19T20:30:00Z',reply,statusCode='',sendError=n
      if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false,scheduledFor:null})};
      if(path.endsWith('entityTriggerWhatsApp.ts'))return {entityTriggerWhatsAppContext:arg=>entityTriggerWhatsAppContext(arg,new Date(now))};
      if(path.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed};
+     if(path.endsWith('greenButtonQaFixture.ts'))return {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload};
      throw Error('Unexpected import '+path);
    }
  });
