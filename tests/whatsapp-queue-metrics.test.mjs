@@ -219,6 +219,9 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
           inspectUnknownGreenRecoveryStructureReadOnly:()=>{throw Error('Metrics must never decrypt unknown callbacks')}
         };
         if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
+        if(name.endsWith('greenButtonQaWebhookProvisioning.ts'))return {
+          applyOneGreenButtonQaWebhookProvisioning:async()=>{throw Error('No provider writes');}
+        };
         if(name.endsWith('greenButtonQaLaunch.ts'))return {
           greenButtonQaSafeSummary:()=>{throw Error('Metrics must never load QA readiness')}
         };
