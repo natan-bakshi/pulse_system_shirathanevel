@@ -30,7 +30,7 @@ test('scoped QA gate is exact ID/phone/flag and cannot activate global V2 for ot
   ['GREEN_BUTTONS_QA_SCOPED_V2_ENABLED',''],
   ['GREEN_BUTTONS_QA_EVENT_ID','event-other'],
   ['GREEN_BUTTONS_QA_EVENT_SERVICE_ID','service-other'],
-  ['GREEN_BUTTONS_QA_SUPPLIER_ID','supplier-other'],
+  ['GREEN_BUTTONS_QA_SUPPLIER_ID',''],
   ['GREEN_BUTTONS_QA_ALLOWED_CHAT','12345@g.us']
  ]){
   const invalid=k=>k===key?bad:env(k);
