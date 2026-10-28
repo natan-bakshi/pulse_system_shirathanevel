@@ -108,7 +108,14 @@ export async function enqueueWhatsApp(client: any, data: {
   if (!control.enabled) throw new Error('Central WhatsApp queue has not been activated');
   const context = data.context || {};
   const key = String(context.idempotencyKey || '').trim();
-  const entity = client.asServiceRole.entities.WhatsAppOutbox;
+  const qaButtonsRequired=context.qaButtonsRequired===true;
+  const origin=key.match(/^assignment:([A-Za-z0-9_-]{3,100}):([A-Za-z0-9_-]{3,100}):r[1-9][0-9]{0,12}:SUPPLIER_NEW_ASSIGNMENT$/);
+  // Only an exact durable assignment revision can be marked interactive-only.
+  if(qaButtonsRequired && (context.sourceType!=='assignment_new'||
+    !origin||context.eventServiceId!==origin[1]||
+    context.supplierId!==origin[2]||data.messageType!=='text'))
+    throw new Error('Invalid marked QA assignment origin');
+  const entity = client.asServiceRole.entities;
   if (key.length > 240) throw new Error('Invalid WhatsApp idempotency key');
   const createOrReturnExisting=async(latestControl:any=control)=>{
     // The queued message must not bypass a disable made between the caller's
@@ -132,6 +139,7 @@ export async function enqueueWhatsApp(client: any, data: {
     source_type: String(context.sourceType || 'system').slice(0, 64),
     source_id: String(context.sourceId || '').slice(0, 120),
     idempotency_key: key,
+    ...(qaButtonsRequired?{interactive_qa_required:true}:{}),
     in_app_notification_id: String(context.inAppNotificationId || ''),
     client_message_delivery_id: String(context.clientMessageDeliveryId || ''),
     card_setup_request_id: String(context.cardSetupRequestId || ''),
