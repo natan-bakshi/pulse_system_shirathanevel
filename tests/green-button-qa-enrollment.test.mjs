@@ -123,7 +123,7 @@ test('single click atomically adds only the QA supplier with one V2 intent, no d
 });
 test('inactive rollout, wrong event or number, prior send and stale data never create QA assignment',async()=>{
  const cases=[
-  f=>f.setFlag('false'),
+  f=>{f.rows.control.interactive_outbound_live_enabled=false},
   f=>{f.rows.event.status='completed'},
   f=>{f.rows.service.event_id='another-event'},
   f=>{f.rows.supplier.phone='0509999999'},
@@ -140,6 +140,16 @@ test('inactive rollout, wrong event or number, prior send and stale data never c
   assert.equal(f.counts.wake,0);
   assert.equal(f.counts.provider,0);
  }
+});
+test('global V2 and QA-scoped V2 both OFF prevent enrollment without writes',async()=>{
+ const f=fixture();f.setFlag('false');
+ await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,{
+  env:f.env({GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:''}),
+  confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'
+ }));
+ assert.equal(f.counts.cas,0);
+ assert.equal(f.counts.wake,0);
+ assert.equal(f.counts.provider,0);
 });
 test('group-preferring supplier can enroll ONLY into the approved, private, marked QA assignment',async()=>{
  const f=fixture();
