@@ -61,6 +61,78 @@ const sdk=(activeControl,flag='true')=>{
  }}}}};
  return {counts,client};
 };
+const notification=(opts={})=>{
+ const chat=opts.chat||CHAT;
+ const type=opts.type||'incomingMessageReceived';
+ const body={
+  typeWebhook:type,
+  instanceData:{idInstance:Number(opts.instance||INSTANCE),typeInstance:'whatsapp'},
+  idMessage:'synthetic-nonbutton-event-id-123456',
+  timestamp:Math.floor(Date.now()/1000),
+  senderData:{chatId:chat,sender:chat},
+  messageData:opts.messageData??{typeMessage:'textMessage',
+   textMessageData:{textMessage:'manual office content never persisted'}}
+ };
+ return new Request('https://example.invalid/qa',{method:'POST',
+  headers:{Authorization:opts.bearer||'Bearer '+WEBHOOK,
+   'content-type':'application/json'},
+  body:JSON.stringify(body)});
+};
+test('authenticated ordinary office chat and known status are ACKed with zero DB cost',async()=>{
+ for(const [type,chat] of [
+  ['textMessage',CHAT],['extendedTextMessage','972509999999@c.us'],
+  ['imageMessage','972509999999@c.us'],['statusInstanceChanged',CHAT]
+ ]){
+  const mock=sdk(control);let clientBuilt=0,staged=0;
+  const request=notification({
+   chat,type:type==='statusInstanceChanged'?type:'incomingMessageReceived',
+   messageData:{typeMessage:type,textMessageData:{textMessage:'manual'}}
+  });
+  const response=await handleGreenButtonQaWebhook(request,{
+   env:env(),makeClient:()=>{clientBuilt++;return mock.client;},
+   recalculateEventStatus:async()=>{throw Error('No mutation allowed');},
+   stage:async()=>{staged++;throw Error('Never stage ordinary chat');}
+  });
+  assert.equal(response.httpStatus,200,type);
+  assert.equal(response.body.received,true);
+  assert.equal(response.noProviderCalls,true);
+  assert.equal(clientBuilt,0);
+  assert.equal(staged,0);
+  assert.deepEqual(mock.counts,{reads:0,flagReads:0,dbWrites:0});
+ }
+});
+test('authenticated out-of-scope beta click is acknowledged without owner DB or supplier mutation',async()=>{
+ const mock=sdk(control);let built=0;
+ const response=await handleGreenButtonQaWebhook(notification({
+  chat:'972509999999@c.us',
+  messageData:{typeMessage:'interactiveButtonsResponse',
+   interactiveButtonsResponse:{selectedId:'wa1_SYNTHETIC_UNKNOWN',
+    stanzaId:'3EB0ORIGINAL_OUTSIDE_QA'}}
+ }),{env:env(),makeClient:()=>{built++;return mock.client;},
+  recalculateEventStatus:async()=>{throw Error('Never mutate foreign sender');},
+  stage:async()=>{throw Error('Never process foreign sender');}});
+ assert.equal(response.httpStatus,200);
+ assert.equal(built,0);
+ assert.deepEqual(mock.counts,{reads:0,flagReads:0,dbWrites:0});
+});
+test('forged account, wrong bearer and bad JSON never ACK or touch DB',async()=>{
+ for(const [request,expected] of [
+  [notification({instance:'9903183014'}),422],
+  [notification({bearer:'Bearer wrong-provider-token'}),401],
+  [new Request('https://example.invalid/qa',{method:'POST',
+   headers:{Authorization:'Bearer '+WEBHOOK,'content-type':'application/json'},
+   body:'{not valid json'}),400]
+ ]){
+  let clientBuilt=0;
+  const response=await handleGreenButtonQaWebhook(request,{
+   env:env(),makeClient:()=>{clientBuilt++;throw Error('No DB on bad input');},
+   recalculateEventStatus:async()=>{throw Error('No mutation');}
+  });
+  assert.equal(response.httpStatus,expected);
+  assert.equal(response.body.received,false);
+  assert.equal(clientBuilt,0);
+ }
+});
 test('single chat QA is disabled by default and never activates from saved policy alone',()=>{
  const actual=trustedGreenButtonQaConfig({
   ...control,interactive_outbound_live_enabled:false},env(),true);
