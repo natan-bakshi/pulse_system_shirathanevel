@@ -61,7 +61,8 @@ Deno.serve(async(req)=>{
         }
         const supplier=suppliers.get(supplierId);
         if(!supplier||supplier.whatsapp_enabled===false){result.skipped++;continue;}
-        const chatId=supplierTargetChatId(supplier,toChatId);
+        const chatId=supplierAssignmentTargetChatId(supplier,svc,supplierId,
+          toChatId,k=>Deno.env.get(k));
         if(!chatId){result.errors.push('Supplier '+supplierId+': WhatsApp destination missing');continue;}
         const text=renderAssignmentWhatsApp(textTemplate,event,svc,supplier,service?.service_name||'');
         if(!text){result.errors.push('Supplier '+supplierId+': WhatsApp content missing');continue;}
