@@ -77,7 +77,8 @@ export async function inspectGreenButtonQaAssignmentReadOnly(client:any,opts:{
    if(intent){
     versioned=intent.key==='assignment:'+serviceId+':'+supplierId+
       ':r'+intent.revision+':SUPPLIER_NEW_ASSIGNMENT';
-    eligibleIntent=versioned&&['requested','queued','accepted'].includes(intent.state);
+    eligibleIntent=versioned&&intent.qa_buttons_required===true&&
+      ['requested','queued','accepted'].includes(intent.state);
     if(eligibleIntent)key=intent.key;
    }
   }
@@ -92,14 +93,18 @@ export async function inspectGreenButtonQaAssignmentReadOnly(client:any,opts:{
   const jobs=await db.WhatsAppOutbox.filter({idempotency_key:key},
    '-created_date',2,0,['id','status','source_type','supplier_id',
     'event_service_id','chat_id','requested_provider','attempt_count',
-    'provider_message_id','send_started_at','interactive_button_bindings_json']);
+    'provider_message_id','send_started_at','interactive_button_bindings_json',
+    'interactive_qa_required']);
   matchingQueueCount=Array.isArray(jobs)?jobs.length:2;
   if(matchingQueueCount===1){
    const j=jobs[0];
    const match=j.source_type==='assignment_new'&&
     j.event_service_id===serviceId&&j.supplier_id===supplierId&&
     j.chat_id===chatId&&j.requested_provider==='green';
-   queuedUnsent=match&&j.status==='queued'&&
+   // A plain unsent job under the same durable business key is NOT a safe
+   // interactive pilot; the worker could otherwise send legacy text.
+   queuedUnsent=match&&j.interactive_qa_required===true&&
+    j.status==='queued'&&
     !Number(j.attempt_count||0)&&!j.send_started_at&&
     !j.provider_message_id&&!j.interactive_button_bindings_json;
    alreadyAttempted=match&&(['sending','accepted','unknown','failed',
