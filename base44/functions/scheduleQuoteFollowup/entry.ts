@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import {isGreenButtonQaFixtureEvent} from '../../shared/greenButtonQaFixture.ts';
 
 /**
  * scheduleQuoteFollowup
@@ -52,6 +53,9 @@ Deno.serve(async (req) => {
         if (!eventData) {
             return Response.json({ skipped: true, reason: 'Event not found' });
         }
+        // Avoid creating any future admin WhatsApp/Push reminder for QA.
+        if(isGreenButtonQaFixtureEvent(eventData))
+            return Response.json({skipped:true,reason:'qa_fixture_quote_followup_isolated'});
         if (currentStatus === null) currentStatus = eventData.status;
 
         // פועלים רק כשהאירוע בסטטוס 'quote'.
