@@ -469,6 +469,38 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(ctx.calls.length,0);
 });
 
+test('Green webhook provisioning is owner-only, default blocked, and never accepts provider URL or token from request body',async()=>{
+ const owner=context({state:{interactive_outbound_live_enabled:false}});
+ const result=await owner.invoke('greenButtonQaProvisionWebhook',{
+  confirmation:'I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS',
+  webhookUrl:'https://attacker.invalid/steal',
+  webhookUrlToken:'client-supplied-never-trusted',
+  incomingWebhook:'yes'
+ });
+ assert.equal(result.status,409);
+ assert.equal(result.body.success,false);
+ assert.equal(result.body.diagnosticCode,'owner_approval_required');
+ assert.equal(result.body.noMessagesSent,true);
+ assert.equal(result.body.noAutomaticRetry,true);
+ assert.equal(owner.calls.length,0);
+ const raw=JSON.stringify(result.body);
+ assert.equal(raw.includes('attacker.invalid'),false);
+ assert.equal(raw.includes('client-supplied-never-trusted'),false);
+ const forbidden=context({actor:{role:'admin',email:'not-owner@example.com'}});
+ const response=await forbidden.invoke('greenButtonQaProvisionWebhook',{
+  confirmation:'I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS'
+ });
+ assert.equal(response.status,403);
+});
+test('Green settings write UI is hidden until both owner readiness and read-only provider audit',()=>{
+ const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+ assert.match(jsx,/qaReadiness\?\.webhookProvisioningOwnerActionAvailable===true/);
+ assert.match(jsx,/greenWebhookSettings\.webhookConfigured===false/);
+ assert.match(jsx,/Object\.values\(greenWebhookSettings\.notificationFlags/);
+ assert.match(jsx,/window\.prompt\(/);
+ assert.match(jsx,/I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS/);
+ assert.match(jsx,/greenButtonQaProvisionWebhook/);
+});
 test('single-chat QA owner readiness is separately opt-in and never exposes secrets or invokes Green',async()=>{
  const ctx=context({state:{interactive_outbound_live_enabled:false}});
  await ctx.invoke('status');
