@@ -40,6 +40,7 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      if(name.endsWith('/agreementQueueReconciler.ts'))return {
        reconcileStalledAgreementEnqueues:async()=>({examined:0,linked:0,unverified:0,alerts:0,errors:0})
      };
+     if(name.endsWith('/greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
      if(name.endsWith('/greenButtonQaLaunch.ts'))return {
        trustedGreenButtonQaConfig:()=>null
      };
