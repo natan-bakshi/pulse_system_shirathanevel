@@ -36,6 +36,10 @@ export function parseGreenButtonSelection(raw:any,expectedInstanceId:string,
    original=body.buttonsResponseMessage?.stanzaId;
    break;
   case 'templateButtonsReplyMessage':
+  case 'templateButtonReplyMessage':
+   // Green's own documentation has both singular and plural typeMessage
+   // spelling across examples; the nested reply object is singular in both.
+   // Always require the original stanza and signed selectedId, never text.
    selected=body.templateButtonReplyMessage?.selectedId;
    original=body.templateButtonReplyMessage?.stanzaId;
    break;
