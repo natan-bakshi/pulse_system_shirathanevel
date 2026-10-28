@@ -30,8 +30,9 @@ test('single authorized Green GetSettings GET reveals only non-secret configurat
  });
  assert.equal(called,1);
  assert.equal(options.init.method,'GET');
- assert.equal(options.init.redirect,'error');
- assert.equal(options.init.cache,'no-store');
+ assert.equal(options.init.redirect,'manual','a redirect must never forward the account token');
+ assert.equal(options.init.headers['Cache-Control'],'no-store');
+ assert.equal(options.init.cache,undefined,'avoid runtime-specific RequestInit cache parsing');
  assert.equal(options.init.body,undefined);
  assert.ok(options.url.startsWith('https://api.green-api.com/waInstance9903183013/getSettings/'));
  assert.equal(report.webhookConfigured,true);
@@ -188,6 +189,71 @@ test('owner read-only audit supports only verified Green instance apiUrl origin 
   }),err=>summarizeGreenWebhookAuditFailure(err).diagnosticCode==='invalid_api_host',bad);
  }
  assert.equal(calls,1,'invalid host must never initiate an HTTP request');
+});
+test('7201 connection failure can use ONE documented universal-host GetSettings with no message send',async()=>{
+ let calls=0;
+ const report=await inspectGreenWebhookSettingsReadOnly({
+  ...config,apiBaseUrl:'https://7201.api.green-api.com',
+  fetchFn:async(url,init)=>{
+   calls++;
+   assert.equal(init.method,'GET');
+   assert.equal(init.redirect,'manual');
+   assert.equal(init.body,undefined);
+   if(calls===1){
+    assert.ok(url.startsWith('https://7201.api.green-api.com/waInstance'));
+    throw Error('SECRET-PROVIDER-NETWORK-TEXT');
+   }
+   assert.ok(url.startsWith('https://api.greenapi.com/waInstance'));
+   return response();
+  }
+ });
+ assert.equal(calls,2);
+ assert.equal(report.providerReadCalls,2);
+ assert.equal(report.universalHostFallbackUsed,true);
+ assert.equal(report.webhookConfigured,true);
+ assert.equal(report.noMessagesSent,true);
+ assert.equal(report.webhookSettingChangesMade,false);
+ assert.equal(JSON.stringify(report).includes('SECRET-PROVIDER'),false);
+});
+test('after two genuine connection failures audit returns a fixed safe reason and exact GET count',async()=>{
+ let calls=0;
+ await assert.rejects(inspectGreenWebhookSettingsReadOnly({
+  ...config,apiBaseUrl:'https://7201.api.green-api.com',
+  fetchFn:async(url)=>{
+   calls++;
+   throw new TypeError('PRIVATE TOKEN and URL must not be surfaced');
+  }
+ }),err=>{
+  const safe=summarizeGreenWebhookAuditFailure(err);
+  assert.equal(safe.diagnosticCode,'provider_connection_unavailable_after_universal');
+  assert.equal(safe.providerReadCalls,2);
+  assert.equal(JSON.stringify(safe).includes('PRIVATE TOKEN'),false);
+  assert.equal(safe.noMessagesSent,true);
+  return true;
+ });
+ assert.equal(calls,2,'at most two read-only attempts on the owner click');
+});
+test('a known HTTP rejection, redirect or malformed response cannot cause an automatic fallback',async()=>{
+ for(const [makeReply,expected] of [
+  [()=>response({},401),'provider_auth_rejected'],
+  [()=>response({},503),'provider_server_error'],
+  [()=>response({webhookUrl:{private:'x'}}),'provider_response_invalid'],
+  [()=>({ok:false,status:302,headers:{get:()=> 'https://evil.example/path?token=HIDDEN'}}),'provider_redirect_blocked'],
+  [()=>({ok:false,status:0,type:'opaqueredirect'}),'provider_redirect_blocked']
+ ]){
+  let calls=0;
+  await assert.rejects(inspectGreenWebhookSettingsReadOnly({
+   ...config,apiBaseUrl:'https://7201.api.green-api.com',
+   fetchFn:async()=>{calls++;return makeReply();}
+  }),err=>{
+   const safe=summarizeGreenWebhookAuditFailure(err);
+   assert.equal(safe.diagnosticCode,expected);
+   assert.equal(safe.providerReadCalls,1);
+   assert.equal(JSON.stringify(safe).includes('evil.example'),false);
+   return true;
+  });
+  assert.equal(calls,1,'never retry known upstream responses');
+ }
 });
 test('server abort is reported as provider_timeout and does not retry',async()=>{
  let called=0;
