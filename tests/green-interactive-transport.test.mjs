@@ -88,6 +88,34 @@ test('ONE marked QA button send uses instance Green URL while normal text remain
    'regular existing messages never silently change provider host');
  }finally{delete greenTestEnv.GREEN_API_URL;}
 });
+test('provider-issued instance host 7103 is honored only by marked mixed-button pilot',async()=>{
+ const {job,preview}=await prepared('mixed_url');
+ greenTestEnv.GREEN_API_URL='https://7103.api.greenapi.com';
+ const calls=[];
+ globalThis.fetch=async(url,options)=>{
+  calls.push({url,method:options.method,body:JSON.parse(options.body)});
+  return {ok:true,status:200,json:async()=>({idMessage:'synthetic-7103-receipt'})};
+ };
+ try{
+  const sent=await sendWhatsAppTransport({
+   ...job,interactive_qa_required:true
+  },'green',{},preview);
+  assert.equal(sent.messageId,'synthetic-7103-receipt');
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].method,'POST');
+  assert.equal(new URL(calls[0].url).origin,'https://7103.api.greenapi.com');
+  assert.ok(calls[0].url.includes('/sendInteractiveButtons/'));
+  assert.deepEqual(calls[0].body.buttons.map(b=>b.type),['reply','reply','url']);
+  assert.equal(calls[0].body.chatId,job.chat_id);
+  calls.length=0;
+  await sendWhatsAppTransport({
+   chat_id:job.chat_id,message_type:'text',message_text:'normal'
+  },'green',{},null);
+  assert.equal(calls.length,1);
+  assert.equal(new URL(calls[0].url).origin,'https://api.green-api.com');
+  assert.ok(calls[0].url.includes('/sendMessage/'));
+ }finally{delete greenTestEnv.GREEN_API_URL;}
+});
 test('invalid pilot URL blocks provider HTTP without affecting existing Green sends',async()=>{
  const {job,preview}=await prepared('mixed_url');
  let calls=0;globalThis.fetch=async(url)=>{
