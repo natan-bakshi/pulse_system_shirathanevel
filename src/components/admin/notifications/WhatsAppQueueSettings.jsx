@@ -78,6 +78,13 @@ export default function WhatsAppQueueSettings(){
     if(action==='unknownRecoveryStructureReview')setUnknownRecoveryReview(null);
     // Never retain an older successful Green audit beside a newer failure.
     if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings(null);
+    if(action==='greenButtonQaProvisionWebhook'){
+      // One owner approval, not a routine diagnostic. The backend additionally
+      // checks independent secrets, a fresh Green GET and a one-shot CAS.
+      const phrase=window.prompt('הפעולה תשנה את הגדרות Green API ותאתחל את המופע. ייתכן עיכוב זמני בשליחות. לאחר מכן נבדוק חיבור מחדש. להמשך הקלד בדיוק: מאשר אתחול Green');
+      if(phrase!=='מאשר אתחול Green')return;
+      params={...params,confirmation:'I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS'};
+    }
     if(action==='greenButtonQaEnroll'){
       if(!window.confirm('ליצור שיבוץ בדיקה חדש לספק היחיד שהוגדר בשרת? הפעולה מעדכנת שירות אירוע אמיתי ועלולה לשלוח הודעת WhatsApp אמיתית דרך התור. ודא שמדובר באירוע וספק ייעודיים לניסוי ושאימות Green הושלם. להמשיך?'))return;
       params={...params,confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'};
@@ -103,6 +110,17 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת הגדרות Green API נכשלה');
         setGreenWebhookSettings(res.data.settings);
         setNotice('הגדרות Green נבדקו באמצעות קריאת API אחת בלבד. לא שונו הגדרות ולא נשלחו הודעות.');
+        return;
+      }
+      if(action==='greenButtonQaProvisionWebhook'){
+        if(!res.data?.success){
+          setGreenWebhookSettings(null);
+          throw Error(res.data?.providerChangeMightHaveOccurred?
+            'תוצאת שינוי Green אינה ודאית. אין לנסות שוב! יש לבצע GetSettings לקריאה בלבד ולבדוק את המופע.':
+            'שינוי Green נחסם לפני ביצוע. בדוק את תנאי ההפעלה ואישור מנהל־העל.');
+        }
+        setGreenWebhookSettings(null);
+        setNotice('Green קיבל את בקשת הגדרת ה־Webhook. המופע מאותחל; יש לבדוק GetSettings אחרי האתחול, לפני כל הודעת ניסיון. עדיין לא נשלחו כפתורים.');
         return;
       }
       if(action==='greenButtonQaEnroll'){
@@ -289,6 +307,16 @@ export default function WhatsAppQueueSettings(){
             {Object.entries(greenWebhookSettings.notificationFlags||{}).map(([key,value])=><span key={key} className="rounded border px-2 py-1">{key}: {value==='yes'?'כן':value==='no'?'לא':'לא ידוע'}</span>)}
           </div>
           <p className="text-gray-600">מפתחות, כתובות Webhook, מספרי טלפון ופרטי חשבון אינם מוצגים או מועברים לדפדפן. הבדיקה אינה שולחת הודעות WhatsApp ואינה בודקת קליטת כפתור אמיתית.</p>
+          {qaReadiness?.webhookProvisioningOwnerActionAvailable===true&&
+            greenWebhookSettings.webhookConfigured===false&&
+            greenWebhookSettings.webhookTokenConfigured===false&&
+            greenWebhookSettings.notificationFlags?.incomingWebhook==='no'&&
+            Object.values(greenWebhookSettings.notificationFlags||{}).every(x=>x==='no')&&
+            greenWebhookSettings.providerReadCalls===1&&
+            <div className="border-t pt-3 space-y-2">
+              <p className="text-amber-800">פעולת מנהל־על חד־פעמית: משנה רק Webhook URL, סוד אימות וקליטת הודעות נכנסות. היא מאתחלת את מופע Green; לא תישלח הודעת ניסיון והפעולה לא תבוצע מחדש אוטומטית.</p>
+              <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaProvisionWebhook')}>אשר אתחול Green וחבר Webhook לניסוי</Button>
+            </div>}
         </div>
       </details>}
       {qaReadiness&&<details open className="rounded border p-3 text-sm" dir="rtl">
