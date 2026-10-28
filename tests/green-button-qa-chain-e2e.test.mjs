@@ -210,7 +210,7 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  const worker=await f.worker(true,(job,provider,preview)=>{
   sent.push({job,provider,preview});return {messageId:'3EB0QAORIGINAL123456789ABC'};
  });
- assert.equal(worker.accepted,1);
+ assert.equal(worker.accepted,1,JSON.stringify({worker,jobs:f.outbox,control:f.control,stats:f.stats}));
  assert.equal(f.stats.providerCalls,1);
  assert.equal(f.outbox[0].status,'accepted');
  assert.equal(sent[0].provider,'green');
@@ -252,7 +252,7 @@ test('rollback BEFORE any button snapshot holds that assignment, while unrelated
   assert.equal(preview,null);
   return {messageId:'synthetic-invoice-success'};
  });
- assert.equal(res.failed,1);
+ assert.equal(res.failed,1,JSON.stringify({res,jobs:f.outbox,control:f.control,stats:f.stats}));
  assert.equal(res.accepted,1);
  assert.deepEqual(sent,['invoice']);
  assert.equal(f.outbox[0].status,'failed');
