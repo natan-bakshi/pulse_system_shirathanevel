@@ -92,6 +92,26 @@ test('wrong phone or disabled supplier fails before querying WhatsAppOutbox',asy
   assert.equal(f.counts.writes,0);
  }
 });
+test('a plain unmarked Outbox row is never considered safe for an interactive pilot',async()=>{
+ const f=fixture();
+ f.job.interactive_qa_required=false;
+ const r=await inspectGreenButtonQaAssignmentReadOnly(f.client,opts);
+ assert.equal(r.ready,false);
+ assert.equal(r.matchingQueueCount,'one');
+ assert.equal(r.checks.find(c=>c.code==='qa_single_fresh_queued_assignment').ready,false);
+ assert.equal(f.counts.writes,0);
+ assert.equal(f.counts.green,0);
+});
+test('no durable QA marker blocks preflight even when an Outbox job falsely claims QA',async()=>{
+ const f=fixture();
+ const journal=JSON.parse(f.service.assignment_notification_intents);
+ delete journal[0].qa_buttons_required;
+ f.service.assignment_notification_intents=JSON.stringify(journal);
+ const r=await inspectGreenButtonQaAssignmentReadOnly(f.client,opts);
+ assert.equal(r.ready,false);
+ assert.equal(f.counts.outbox,0);
+ assert.equal(r.checks.find(c=>c.code==='qa_durable_v2_intent_valid').ready,false);
+});
 test('reopened status, missing assignment, missing journal or malformed intent cannot launch',async()=>{
  for(const mutate of [
   f=>{f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'rejected'})},
