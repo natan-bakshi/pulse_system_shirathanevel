@@ -446,7 +446,9 @@ Deno.serve(async(req)=>{
           apiToken:Deno.env.get('GREEN_API_TOKEN'),
           // Optional provider-issued apiUrl from Green console. Read-only,
           // strict Green-origin validation: never user-supplied URL/SSRF.
-          apiBaseUrl:Deno.env.get('GREEN_API_URL'),timeoutMs:10000
+          // One owner click, one GET normally; a failed connection to the
+          // configured 7201 host may use ONE Green universal-host read-only GET.
+          apiBaseUrl:Deno.env.get('GREEN_API_URL'),timeoutMs:15000
         });
         return RESPONSE({success:true,settings,noMessagesSent:true});
       }catch(error){
