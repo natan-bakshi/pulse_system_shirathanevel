@@ -140,8 +140,7 @@ test('single-recipient pilot may enroll an existing group-preferring supplier wi
  const f=fixture();
  f.rows.supplier.preferred_channel='group';
  f.rows.supplier.whatsapp_group_url='https://chat.whatsapp.com/group-not-used';
- const r=await enrollOneGreenButtonQaAssignment(f.client,request(f));
- assert.equal(r.saved,true);
+ await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)));
  assert.equal(f.rows.supplier.preferred_channel,'group');
  assert.equal(f.rows.supplier.whatsapp_group_url,'https://chat.whatsapp.com/group-not-used');
  assert.equal(JSON.parse(f.rows.service.assignment_notification_intents)[0].qa_buttons_required,true);
