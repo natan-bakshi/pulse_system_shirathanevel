@@ -106,6 +106,26 @@ export function renderAssignmentWhatsApp(template:string,event:any,service:any,s
     .replace(/~\s*~/g,'').replace(/\n\s*\n\s*\n/g,'\n\n').trim();
   return cleanMissingAssignmentTime(rendered,Boolean(time));
 }
+// A durable single-recipient QA intent targets the verified personal phone
+// even if the supplier ordinarily prefers a WhatsApp group. This NEVER edits
+// the permanent preference and fails closed on mismatched server-only scope.
+export function supplierAssignmentTargetChatId(supplier:any,service:any,
+ supplierId:string,toChatId:(phone:string)=>string,
+ qaEnv:(name:string)=>string|undefined,qaIntentRequired=false):string{
+ const context=assignmentWhatsAppContext(service,supplierId);
+ if(qaIntentRequired&&context.qaButtonsRequired!==true)
+  throw new Error('pilot_notification_intent_marker_mismatch');
+ if(context.qaButtonsRequired!==true)
+  return supplierTargetChatId(supplier,toChatId);
+ const privateChat=toChatId(String(supplier?.phone||''));
+ if(!/^[1-9][0-9]{7,14}@c\.us$/.test(privateChat)||
+  supplier?.id!==supplierId||
+  service?.id!==qaEnv('GREEN_BUTTONS_QA_EVENT_SERVICE_ID')||
+  supplierId!==qaEnv('GREEN_BUTTONS_QA_SUPPLIER_ID')||
+  privateChat!==qaEnv('GREEN_BUTTONS_QA_ALLOWED_CHAT'))
+  throw new Error('qa_direct_recipient_scope_mismatch');
+ return privateChat;
+}
 export function supplierTargetChatId(supplier:any,toChatId:(phone:string)=>string){
   const preferred=String(supplier?.preferred_channel||'phone');
   const groupRaw=String(supplier?.whatsapp_group_url||'').trim();
