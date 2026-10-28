@@ -115,7 +115,7 @@ export async function enqueueWhatsApp(client: any, data: {
     !origin||context.eventServiceId!==origin[1]||
     context.supplierId!==origin[2]||data.messageType!=='text'))
     throw new Error('Invalid marked QA assignment origin');
-  const entity = client.asServiceRole.entities;
+  const entity = client.asServiceRole.entities.WhatsAppOutbox;
   if (key.length > 240) throw new Error('Invalid WhatsApp idempotency key');
   const createOrReturnExisting=async(latestControl:any=control)=>{
     // The queued message must not bypass a disable made between the caller's
