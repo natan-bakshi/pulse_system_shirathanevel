@@ -8,6 +8,7 @@ import {authenticateWhatsAppProviderCallback}
  from './whatsappProviderWebhookAuth.ts';
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
 import {trustedGreenButtonQaInboundConfig} from './greenButtonQaLaunch.ts';
+import {greenButtonQaScopedV2Enabled} from './greenButtonQaScopedV2.ts';
 import {stageFutureGreenInteractiveHttpCallback}
  from './greenInteractiveHttpStaging.ts';
 import {planFutureGreenWebhookHttpContract}
@@ -79,7 +80,8 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
   const flags=await client.asServiceRole.entities.AppSettings.filter({
    setting_key:'assignment_intent_v1_enabled'
   },'-created_date',2);
-  const durable=flags.length===1&&flags[0].setting_value==='true';
+  const durable=(flags.length===1&&flags[0].setting_value==='true')||
+   greenButtonQaScopedV2Enabled(opts.env);
   const config=trustedGreenButtonQaInboundConfig(control,opts.env,durable);
   if(!config)return result(404);
   const processed=await (opts.stage??stageFutureGreenInteractiveHttpCallback)(
