@@ -35,6 +35,7 @@ function context({actor={role:'admin'},enabled=true,paused=false,heartbeatFails=
   Response:{json:(body,{status=200}={})=>({body,status})},
   require:name=>{
     if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
+    if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
     if(name.endsWith('greenButtonQaLaunch.ts'))return {
       trustedGreenButtonQaConfig:()=>null
     };
