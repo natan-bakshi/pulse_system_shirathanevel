@@ -151,6 +151,7 @@ export async function processSupplierAssignmentIntents(client:any,serviceId:stri
         sourceType:'assignment_new',
         sourceId:String(service.id),eventServiceId:String(service.id),
         supplierId:intent.supplier_id,idempotencyKey:intent.key,
+        qaButtonsRequired:intent.qa_buttons_required===true,
         ...(delay.shouldDelay && delay.scheduledFor &&
           Number.isFinite(new Date(delay.scheduledFor).getTime())
           ?{availableAt:new Date(delay.scheduledFor).toISOString()}:{})
