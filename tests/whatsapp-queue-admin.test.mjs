@@ -145,6 +145,11 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        }
      };
      if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
+     if(name.endsWith('greenButtonQaWebhookProvisioning.ts'))return {
+       applyOneGreenButtonQaWebhookProvisioning:async()=>{
+         throw Object.assign(Error('Disabled in unit tests'),{code:'owner_approval_required'});
+       }
+     };
      if(name.endsWith('greenButtonQaLaunch.ts'))return {greenButtonQaSafeSummary};
      if(name.endsWith('greenButtonQaAssignmentPreflight.ts'))return {
        inspectGreenButtonQaAssignmentReadOnly
