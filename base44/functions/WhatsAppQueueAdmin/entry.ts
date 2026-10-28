@@ -12,6 +12,7 @@ import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.t
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
 import {inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure} from '../../shared/greenWebhookSettingsAudit.ts';
+import {applyOneGreenButtonQaWebhookProvisioning} from '../../shared/greenButtonQaWebhookProvisioning.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
 import {inspectUnknownGreenRecoveryStructureReadOnly} from '../../shared/greenUnknownRecoveryReview.ts';
@@ -330,6 +331,26 @@ Deno.serve(async(req)=>{
       ]);
       return RESPONSE({success:true,liveInboundEnabled:false,
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
+    }
+    if(action==='greenButtonQaProvisionWebhook'){
+      // Explicit system-owner action, off by default behind an independent
+      // server secret and one-shot CAS. Green SetSettings reboots the instance.
+      // No arbitrary URL, provider credentials or token from the browser.
+      try{
+        const result=await applyOneGreenButtonQaWebhookProvisioning(client,{
+          env:key=>Deno.env.get(key),confirmation:body.confirmation
+        });
+        return RESPONSE({success:true,provisioning:result,noMessagesSent:true});
+      }catch(error){
+        const code=String((error as any)?.code||'qa_provisioning_unavailable');
+        const uncertain=code==='qa_provisioning_post_outcome_requires_review'||
+          code==='qa_provisioning_claim_uncertain_no_auto_retry';
+        return RESPONSE({success:false,diagnosticCode:/^qa_[a-z_]+$/.test(code)?code:
+          'qa_provisioning_unavailable',noMessagesSent:true,
+          noAutomaticRetry:true,providerChangeMightHaveOccurred:uncertain,
+          error:uncertain?'Green may have received the change. Do not retry; check GetSettings once.':
+            'Green webhook pilot provisioning blocked safely; review the QA gates.'},409);
+      }
     }
     if(action==='greenButtonQaEnroll'){
       // ONE explicit, owner-clicked test service assignment only. May enqueue
