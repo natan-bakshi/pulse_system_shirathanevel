@@ -42,8 +42,9 @@ const createRequest=(header='Bearer '+WEBHOOK)=>new Request(
   instanceData:{idInstance:Number(INSTANCE),typeInstance:'whatsapp'},
   senderData:{chatId:CHAT,sender:CHAT},
   idMessage:'synthetic-event-only',timestamp:Math.floor(Date.now()/1000),
-  messageData:{typeMessage:'textMessage',
-   textMessageData:{textMessage:'manual-only'}}})});
+  messageData:{typeMessage:'interactiveButtonsResponse',
+   interactiveButtonsResponse:{selectedId:'wa1_SYNTHETIC_BUTTON_ID',
+    stanzaId:'3EB0SYNTHETICORIGINAL123456'}}})});
 const sdk=(activeControl,flag='true')=>{
  const counts={reads:0,flagReads:0,dbWrites:0};
  const client={asServiceRole:{entities:{WhatsAppQueueControl:{
