@@ -1,4 +1,6 @@
 import { getClientContacts, getEventContacts } from '../../shared/eventFields.js';
+import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload}
+ from '../../shared/greenButtonQaFixture.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
@@ -55,6 +57,13 @@ Deno.serve(async (req) => {
         if (!entityName) {
             return Response.json({ skipped: true, reason: 'Missing entity name' });
         }
+        // A single owner-approved, customer-free fixture has ONE notification
+        // owner: the signed QA Outbox. Never emit unrelated Push/Email/WhatsApp
+        // or scheduled reminders from generic entity event automations.
+        const qaEnv=(key)=>Deno.env.get(key);
+        if ((entityName==='Event'&&isGreenButtonQaFixtureEventPayload(data,qaEnv,event.entity_id))||
+            (entityName==='EventService'&&isGreenButtonQaFixtureServicePayload(data,qaEnv,event.entity_id)))
+            return Response.json({skipped:true,reason:'qa_fixture_notifications_isolated'});
 
         const triggerType = event.type === 'create' ? 'entity_create' : 'entity_update';
         // console.log(`[HandleEntityEvents] Processing ${entityName} ${triggerType} (ID: ${event.entity_id})`);
