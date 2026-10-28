@@ -59,7 +59,22 @@ test('only exact pending service+supplier+chat with one unsent durable job passe
   'PRIVATE_SUPPLIER_NAME','PRIVATE_EVENT_MESSAGE','050-123-4567'])
   assert.equal(serialized.includes(secret),false,'no PII '+secret);
 });
-test('wrong phone or group supplier fails before querying WhatsAppOutbox',async()=>{
+test('group-preferred supplier is ready only after the same service has a pinned QA intent',async()=>{
+ const f=fixture();
+ f.supplier.preferred_channel='group';
+ const before=await inspectGreenButtonQaAssignmentReadOnly(f.client,opts);
+ assert.equal(before.ready,false);
+ assert.equal(f.counts.outbox,0);
+ const journal=JSON.parse(f.service.assignment_notification_intents);
+ journal[0].qa_buttons_required=true;
+ f.service.assignment_notification_intents=JSON.stringify(journal);
+ const after=await inspectGreenButtonQaAssignmentReadOnly(f.client,opts);
+ assert.equal(after.ready,true);
+ assert.equal(after.matchingQueueCount,'one');
+ assert.equal(f.counts.outbox,1);
+ assert.equal(f.supplier.preferred_channel,'group');
+});
+test('wrong phone, unmarked group preference or disabled supplier fails before querying WhatsAppOutbox',async()=>{
  for(const change of [
   {phone:'0509999999'},
   {preferred_channel:'group'},
