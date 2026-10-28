@@ -29,7 +29,7 @@ const LIST_FIELDS=['id','source_type','source_id','status','message_type',
   'provider','error_code','last_error','provider_message_id','manual_review_note',
   'manual_action','resolution','archived','manual_retry_count',
   // Two small metadata flags only; never project the signed JSON snapshot.
-  'sender_account_id','assignment_revision'];
+  'sender_account_id','assignment_revision','interactive_qa_required'];
 const TIMING_FIELDS=['created_date','available_at','send_started_at','completed_at',
   'job_claimed_at','rate_ready_at','prior_dispatch_at','configured_interval_ms',
   'transport_started_at','transport_finished_at','status','attempt_count',
@@ -53,8 +53,9 @@ function validateInterval(value:any):number {
   return value;
 }
 function renderJob(job:any,includeBody=false){
-  const interactiveReviewRequired=!!(job.sender_account_id||
-    job.assignment_revision||job.interactive_button_bindings_json);
+  // The durable QA marker exists before signing/snapshot creation.
+  const interactiveReviewRequired=!!(job.interactive_qa_required===true||
+    job.sender_account_id||job.assignment_revision||job.interactive_button_bindings_json);
   const chat=String(job.chat_id||'');
   const mask=chat.length>7?'•••'+chat.slice(-9):'•••';
   const result:any={
@@ -175,7 +176,8 @@ async function mutateOne(client:any,jobId:string,action:string,body:any,actor:an
     // sender account and assignment revision. Requeueing after any prior
     // attempt may regenerate/replay the wrong action; verification is NOT
     // provided by a free-text admin note. Require a separate audited review.
-    if(row.interactive_button_bindings_json||row.sender_account_id||row.assignment_revision)
+    if(row.interactive_qa_required===true||
+      row.interactive_button_bindings_json||row.sender_account_id||row.assignment_revision)
       return {success:false,error:'Interactive assignment retry requires provider reconciliation; do not resend this job',statusCode:409};
     if(prior==='unknown' && (body.verifiedNotSent!==true || note.length<12)){
       return {success:false,error:'Unknown delivery requires explicit provider verification and a written reason',statusCode:409};
