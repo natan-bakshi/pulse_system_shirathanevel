@@ -4,8 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {enrollOneGreenButtonQaAssignment} from '../base44/shared/greenButtonQaEnrollment.ts';
 import {processSupplierAssignmentIntents} from '../base44/shared/assignmentIntentReconciler.ts';
-import {assignmentWhatsAppContext} from '../base44/shared/assignmentWhatsApp.ts';
-import {sendWhatsAppToChat} from '../base44/shared/whatsappSend.ts';
+import {assignmentWhatsAppContext,supplierAssignmentTargetChatId} from '../base44/shared/assignmentWhatsApp.ts';
+import {sendWhatsAppToChat,toChatId} from '../base44/shared/whatsappSend.ts';
 import {drainWhatsAppOutbox} from '../base44/shared/whatsappQueueWorker.ts';
 import {trustedGreenButtonQaConfig} from '../base44/shared/greenButtonQaLaunch.ts';
 import {stageFutureGreenInteractiveHttpCallback} from '../base44/shared/greenInteractiveHttpStaging.ts';
@@ -36,7 +36,7 @@ const policy=JSON.stringify({
   {action:'assignment_reject',label:'דוחה'},
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
-function fixture(){
+function fixture({groupPreferred=false}={}){
  const now=Date.now();
  const control={
   id:'control-qa1',control_key:'global',enabled:true,paused:false,
@@ -53,7 +53,9 @@ function fixture(){
   assignment_intent_revision:0,assignment_notification_intents:'[]',is_external:false
  };
  const supplier={id:SUPPLIER,phone:'0501234567',is_active:true,whatsapp_enabled:true,
-  preferred_channel:'phone',contact_person:'SYNTHETIC',
+  preferred_channel:groupPreferred?'group':'phone',
+  whatsapp_group_url:groupPreferred?'12345678901234567890@g.us':'',
+  contact_person:'SYNTHETIC',
   quiet_hours_enabled:false,respect_shabbat:false};
  const event={id:EVENT,status:'confirmed',event_name:'SYNTHETIC',
   event_date:'2026-11-30',event_time:'10:00'};
