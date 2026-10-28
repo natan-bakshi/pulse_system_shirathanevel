@@ -161,6 +161,69 @@ test('supplier already confirmed or removed cancels old requests before dispatch
  const r2=await processSupplierAssignmentIntents(b.client,svcId,{enqueue:()=>{throw Error('Should not dispatch')}});
  assert.equal(r2.cancelled,1);assert.equal(b.jobs.length,0);
 });
+test('marked single-assignment QA overrides supplier group preference only for pinned private chat',async()=>{
+ const x=scenario({supplier:{
+  preferred_channel:'group',
+  whatsapp_group_url:'12345678901234567890@g.us'
+ }});
+ const intents=JSON.parse(x.service.assignment_notification_intents);
+ intents[0].qa_buttons_required=true;
+ x.service.assignment_notification_intents=JSON.stringify(intents);
+ const approved={
+  GREEN_BUTTONS_QA_EVENT_SERVICE_ID:svcId,
+  GREEN_BUTTONS_QA_SUPPLIER_ID:supplier1,
+  GREEN_BUTTONS_QA_ALLOWED_CHAT:'972501234567@c.us'
+ };
+ const r=await processSupplierAssignmentIntents(x.client,svcId,{
+  enqueue:x.enqueue,qaEnv:k=>approved[k]||''
+ });
+ assert.equal(r.success,true);
+ assert.equal(r.queued,1);
+ assert.equal(x.jobs.length,1);
+ assert.equal(x.jobs[0].chat_id,'972501234567@c.us');
+ assert.equal(x.jobs[0].idempotency_key,intents[0].key);
+ const again=await processSupplierAssignmentIntents(x.client,svcId,{
+  enqueue:x.enqueue,qaEnv:k=>approved[k]||''
+ });
+ assert.equal(again.reason,'nothing_pending');
+ assert.equal(x.jobs.length,1);
+});
+test('QA scope mismatch blocks Reconciler BEFORE inserting Outbox, then safe recovery adds exactly one',async()=>{
+ const x=scenario({supplier:{
+  preferred_channel:'group',whatsapp_group_url:'12345678901234567890@g.us'
+ }});
+ const intents=JSON.parse(x.service.assignment_notification_intents);
+ intents[0].qa_buttons_required=true;
+ x.service.assignment_notification_intents=JSON.stringify(intents);
+ const correct={
+  GREEN_BUTTONS_QA_EVENT_SERVICE_ID:svcId,
+  GREEN_BUTTONS_QA_SUPPLIER_ID:supplier1,
+  GREEN_BUTTONS_QA_ALLOWED_CHAT:'972501234567@c.us'
+ };
+ const invalid={...correct,GREEN_BUTTONS_QA_ALLOWED_CHAT:'972509999999@c.us'};
+ const failed=await processSupplierAssignmentIntents(x.client,svcId,{
+  enqueue:x.enqueue,qaEnv:k=>invalid[k]||''
+ });
+ assert.equal(failed.blocked,1);
+ assert.equal(x.jobs.length,0);
+ assert.equal(x.service.assignment_intents_pending,true);
+ assert.equal(JSON.parse(x.service.assignment_notification_intents)[0].state,'requested');
+ const recovered=await processSupplierAssignmentIntents(x.client,svcId,{
+  enqueue:x.enqueue,qaEnv:k=>correct[k]||''
+ });
+ assert.equal(recovered.queued,1);
+ assert.equal(x.jobs.length,1);
+ assert.equal(x.jobs[0].chat_id,'972501234567@c.us');
+});
+test('ordinary unmarked group assignment continues to target the existing group ID',async()=>{
+ const x=scenario({supplier:{
+  preferred_channel:'group',whatsapp_group_url:'12345678901234567890@g.us'
+ }});
+ const r=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:x.enqueue});
+ assert.equal(r.queued,1);
+ assert.equal(x.jobs.length,1);
+ assert.equal(x.jobs[0].chat_id,'12345678901234567890@g.us');
+});
 test('invalid configured group NEVER falls back to the private phone number',async()=>{
  const x=scenario({supplier:{preferred_channel:'group',whatsapp_group_url:'not-a-group-link'}});
  const r=await processSupplierAssignmentIntents(x.client,svcId,{enqueue:()=>{throw Error('No sends')}});
