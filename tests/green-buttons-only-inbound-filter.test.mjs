@@ -12,7 +12,8 @@ const PRIVATE='972501234567@c.us';
 const incoming=type=>({
  typeWebhook:'incomingMessageReceived',
  instanceData:{idInstance:Number(INSTANCE),typeInstance:'whatsapp'},
- idMessage:'3EB0FICTITIOUS12345678900000000',timestamp:1793016000,
+ idMessage:'3EB0FICTITIOUS12345678900000000',
+ timestamp:Math.floor(Date.now()/1000),
  senderData:{chatId:PRIVATE,sender:PRIVATE},
  messageData:{typeMessage:type,
   textMessageData:{textMessage:'מאשר'},
@@ -112,6 +113,14 @@ test('unsupported beta button / list selection / disguised button key NEVER sile
   assert.equal(result.providerCalls,0);
   assert.equal(counts.writes,0);
  }
+});
+test('expired unknown-beta callback is refused without a quarantine database lookup',async()=>{
+ const old=incoming('futureInteractiveButtonClick');
+ old.timestamp=Math.floor((Date.now()-49*3600000)/1000);
+ const {result,counts,ack}=await stage(old);
+ assert.equal(result.stage,'invalid_selection');
+ assert.equal(ack.mayRespond200AfterProviderQa,false);
+ assert.deepEqual(counts,{reads:0,writes:0,messages:0,recalcs:0});
 });
 test('free-text answer quoting the EXACT assignment is ignored, even if it says approve',async()=>{
  const raw=incoming('extendedTextMessage');
