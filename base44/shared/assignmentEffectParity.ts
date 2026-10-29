@@ -79,7 +79,7 @@ export function planAssignmentEffectParity(before:any,patch:any):AssignmentEffec
     effects.push({kind:'supplier_note_changed',supplierId});
   }
  }
- const currentNotes=patch.client_notes??before.client_notes;
+ const currentNotes=patch.client_notes??before.client_notes??'';
  const previousNotes=before.client_notes??'';
  if(typeof currentNotes!=='string'||currentNotes.length>MAX_TEXT)fail('client_notes');
  if(different(currentNotes,previousNotes))
