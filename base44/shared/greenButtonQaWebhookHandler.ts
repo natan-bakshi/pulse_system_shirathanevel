@@ -7,7 +7,8 @@
 import {authenticateWhatsAppProviderCallback}
  from './whatsappProviderWebhookAuth.ts';
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
-import {trustedGreenButtonQaInboundConfig} from './greenButtonQaLaunch.ts';
+import {trustedGreenButtonQaInboundConfig,greenButtonQaPassiveInboundReady}
+ from './greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from './greenButtonQaScopedV2.ts';
 import {stageFutureGreenInteractiveHttpCallback}
  from './greenInteractiveHttpStaging.ts';
@@ -21,13 +22,11 @@ type Result={httpStatus:number;body:{received:boolean};noProviderCalls:true};
 const result=(httpStatus:number,received=false):Result=>({
  httpStatus,body:{received},noProviderCalls:true
 });
-// Inbound remains available when the owner disables NEW button sends.
-// The single-chat receiver still requires its own explicit enable gate,
-// the owner approval, provider proof, V2 intent and original message HMAC.
-const ready=(get:(s:string)=>string|undefined)=>
- get('GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
- get('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'&&
- get('GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved';
+// Inbound remains available when sending NEW buttons is disabled.
+// Passive verified non-button ACKs can run before Beta support is proven;
+// matching signed button callbacks still require verified provider capability
+// plus the original durable Outbox/Revision/receipt authorization.
+const ready=greenButtonQaPassiveInboundReady;
 export async function handleGreenButtonQaWebhook(request:any,opts:{
  env:(key:string)=>string|undefined;
  makeClient:(request:any)=>any;
@@ -72,11 +71,17 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
    return result(200,true);
   if(!instanceMatched)return result(422);
  }
+ // The first live beta send has not been proven yet; never consume a
+ // potentially valid button click merely because the passive endpoint ACKs
+ // ordinary manual office messages. Fail closed without any DB access.
+ if(opts.env('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified')
+  return result(503);
  // No database access until verified scope and approved callback admission.
  try{
   const client=opts.makeClient(request);
   const control=await readWhatsAppQueueControl(client);
-  if(control.interactive_outbound_live_enabled!==true)return result(404);
+  // Receipt processing does NOT depend on new-send switch or queue control.
+  // This lets suppliers click old buttons safely during a send rollback.
   const flags=await client.asServiceRole.entities.AppSettings.filter({
    setting_key:'assignment_intent_v1_enabled'
   },'-created_date',2);
