@@ -96,7 +96,7 @@ export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm,
   );
 }
 
-export function SupplierAssignDialog({ open, onOpenChange, searchTerm, setSearchTerm, filteredSuppliers, formData, setFormData, onAssign }) {
+export function SupplierAssignDialog({ open, onOpenChange, searchTerm, setSearchTerm, filteredSuppliers, formData, setFormData, onAssign, isSaving=false }) {
   const declinedSuppliers = Array.isArray(formData.declinedSuppliers) ? formData.declinedSuppliers : [];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -141,7 +141,7 @@ export function SupplierAssignDialog({ open, onOpenChange, searchTerm, setSearch
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(""); }}>ביטול</Button>
-          <Button onClick={onAssign}>שמור</Button>
+          <Button onClick={onAssign} disabled={isSaving}>שמור</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
