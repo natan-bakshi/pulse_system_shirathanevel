@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {planAssignmentTransition,readAssignmentIntents,savedAssignmentIntentKey} from '../base44/shared/assignmentIntent.ts';
 import {planAssignmentEffectParity} from '../base44/shared/assignmentEffectParity.ts';
+import {planDurableAssignmentEffectJournal,readAssignmentEffectJournal}
+ from '../base44/shared/assignmentEffectJournal.ts';
 import {assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG} from '../base44/shared/assignmentSideEffectsLaunchGate.ts';
 
 const initial=()=>({
@@ -116,6 +118,7 @@ function server({actor='admin',flag=false,service=initial(),eventStatus='confirm
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(name.endsWith('assignmentIntent.ts'))return {planAssignmentTransition};
      if(name.endsWith('assignmentEffectParity.ts'))return {planAssignmentEffectParity};
+     if(name.endsWith('assignmentEffectJournal.ts'))return {planDurableAssignmentEffectJournal};
      if(name.endsWith('assignmentSideEffectsLaunchGate.ts'))return {
       SIDE_EFFECT_FLAG,
       ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED:simulateCompletedEffectBridge,
@@ -170,6 +173,13 @@ test('valid save atomically records changed assignment + notification intent but
  assert.equal(f.providerCalls,0);
  assert.equal(f.service.assignment_intent_revision,1);
  assert.equal(f.service.assignment_intents_pending,true);
+ assert.equal(f.service.assignment_effects_revision,1);
+ assert.equal(f.service.assignment_effects_pending,true);
+ const effectTasks=readAssignmentEffectJournal(f.service.assignment_effects_journal);
+ assert.equal(effectTasks.length,r.body.effectsPlanned);
+ assert.ok(effectTasks.some(t=>t.consumer==='supplier_assignment_push'));
+ assert.ok(effectTasks.some(t=>t.consumer==='supplier_pending_reminder'));
+ assert.ok(effectTasks.every(t=>t.state==='planned'));
  const stored=readAssignmentIntents(f.service.assignment_notification_intents);
  assert.equal(stored.length,1);
  assert.equal(stored[0].key,'assignment:service-aaa123:supplier-bbb234:r1:SUPPLIER_NEW_ASSIGNMENT');
