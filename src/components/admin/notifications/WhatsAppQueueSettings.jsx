@@ -98,6 +98,18 @@ export default function WhatsAppQueueSettings(){
       !window.confirm('הפעלת התור משנה את מסלול ה־WhatsApp לכל המערכת. ודא שאוטומציות הרקע ועובד התור פורסמו ונבדקו. להמשיך?'))return;
     setBusy(true);setError('');setNotice('');
     try{
+      if(action==='greenButtonQaEnroll'){
+        const prepared=await base44.functions.invoke('WhatsAppQueueAdmin',
+          {action:'greenButtonQaReadiness'});
+        if(!prepared.data?.success)throw Error('בדיקת תנאי הניסוי לא הושלמה');
+        setQaReadiness(prepared.data.qa);
+        if(!prepared.data.qa?.readyForQa){
+          setPilotFailure('qa_readiness_not_ready');
+          setPilotEnrollmentRequested(false);
+          setError('חסרים תנאי מוכנות. בדוק את הרשימה המפורטת בהמשך. לא שונה שיבוץ.');
+          return;
+        }
+      }
       const res=await base44.functions.invoke('WhatsAppQueueAdmin',{action,...params});
       if(action==='metrics'){
         if(!res.data?.success)throw Error(res.data?.error||'חישוב מדדי התור נכשל');
