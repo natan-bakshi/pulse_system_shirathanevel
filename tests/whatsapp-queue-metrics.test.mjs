@@ -203,6 +203,9 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
         if(name.endsWith('whatsappInteractiveReadiness.ts'))return {
           inspectGreenInteractiveReadinessReadOnly:()=>{throw Error('Metrics must not read interactive readiness')}
         };
+        if(name.endsWith('assignmentV2ReleaseReadiness.ts'))return {
+          inspectAssignmentV2ReleaseReadiness:()=>{throw Error('Metrics must not read V2 migration settings')}
+        };
         if(name.endsWith('whatsappOfficeReferenceLookup.ts'))return {
           inspectOfficeAssignmentReference:()=>{throw Error('Metrics must not perform office lookup')}
         };
