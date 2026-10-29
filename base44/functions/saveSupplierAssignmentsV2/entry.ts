@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { planAssignmentTransition } from '../../shared/assignmentIntent.ts';
+import { planAssignmentEffectParity } from '../../shared/assignmentEffectParity.ts';
+import { assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG } from '../../shared/assignmentSideEffectsLaunchGate.ts';
 
 // Phase 1 / OFF BY DEFAULT. The current assignment UI never invokes this.
 // No WhatsApp provider or Outbox call is made here: the atomic EventService row
@@ -34,12 +36,28 @@ Deno.serve(async(req)=>{
     if(!event||['cancelled','completed'].includes(event.status)){
       return Response.json({success:false,error:'Event is not eligible for new supplier assignments'},{status:409});
     }
-    let plan;
+    let plan,effects;
     try{
       plan=planAssignmentTransition(existing,body,new Date().toISOString());
+      // A CAS update with a later timestamp wake cannot recreate the original
+      // EventService changed_fields or old_data. Until all existing Push,
+      // reminders, custom notifications and calendar consumers are moved to
+      // a durable idempotent bridge, reject such business changes BEFORE CAS.
+      effects=planAssignmentEffectParity(existing,plan.patch);
     }catch(e){
       return Response.json({success:false,error:e instanceof Error?e.message:'Invalid assignment input'},{status:400});
     }
+    // Code-owned fail-closed gate: editing AppSettings alone NEVER activates
+    // an unimplemented side-effect bridge. No WhatsApp calls or DB writes.
+    const effectFlags=effects.required?await db.AppSettings.filter({
+      setting_key:SIDE_EFFECT_FLAG
+    },'-created_date',2):[];
+    const effectReadiness=assignmentSideEffectsLaunchGate(effects,effectFlags);
+    if(!effectReadiness.allowed)return Response.json({
+      success:false,saved:false,error:'The original assignment notifications and calendar effects are not migrated',
+      code:effectReadiness.reason,
+      missingConsumers:effectReadiness.missingConsumers
+    },{status:423});
     // CAS guards the complete business-save+intent write. If a competing
     // administrator edited this record, zero writes occur and client must
     // refresh instead of silently overwriting assignments.
@@ -71,7 +89,8 @@ Deno.serve(async(req)=>{
       // Persisted is NOT queued/delivered; downstream status is separate.
       notificationState:plan.intents.length?'requested':'no_new_request',
       revision:plan.revision,reconcilerRequired:plan.hasNewIntent,
-      wakeRequested,wakeFallbackRequired:plan.hasNewIntent&&!wakeRequested
+      wakeRequested,wakeFallbackRequired:plan.hasNewIntent&&!wakeRequested,
+      effectParityRequired:effects.required,effectBridgeState:effectReadiness.reason
     });
   }catch(error){
     console.error('[SaveSupplierAssignmentsV2] failed',error instanceof Error?error.name:'unknown');
