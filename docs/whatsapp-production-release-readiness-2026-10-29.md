@@ -24,6 +24,7 @@
 - [x] `adminUpdateSupplierStatus`: endpoint מנהל מאומת בשרת (role=admin), מתעלם מ־source/revision מהדפדפן, אינו שולח WhatsApp, מבצע עדכון סטטוס והערה אטומי וחשבונאות סטטוס אירוע ללא retry לפעולה עסקית שכבר בוצעה.
 - [x] שני מסכי מנהל קיימים `EventDetails.updateSupplierStatus` ו־`EventsBoard.handleSaveAssignment` משתמשים ב־endpoint במקום עדכון JSON ישיר, בלי לשנות את הכפתורים. מסך `SupplierDashboard` עדיין קורא ל־`updateSupplierStatus` הקיים.
 - [x] בדיקות הודעות E2E מדומות עם ה־HTTP adapter וה־Receipt האמיתיים: אישור ב־Pulse ואחריו דחיית WhatsApp מאוחרת נדחית בלי CAS נוסף, ודחייה/פתיחה מחדש ב־Pulse אינה מפעילה כפתור אישור ישן. אינן מחליפות בדיקת פרודקשן חי.
+- [x] **אימות מלא ופרסום:** 829/829 בדיקות Node עברו, בדיקות ESLint ממוקדות, Backend TS parse ובניית Vite עברו. checkpoint `6ae3913c881e03451b60c90c`, commit `2b040a75507f8cbc348390698058aee7ceeedec9`, פריסת Base44 אומתה ב־`2026-10-29T18:32:45.508Z` עם מצב `ready`, commit זהה ב־GitHub. בדיקות פרודקשן קריאה בלבד אחרי הפריסה: תור פעיל לא מושהה, אפס queued/retry_wait/sending, אפס Receipt pending/processing/needs_review ואפס EventService עם intent pending. לא נשלחה הודעת WhatsApp חדשה.
 - [ ] מסכי ניהול הוספת/הסרת ספקים שמשנים `supplier_statuses` ישירות (למשל `SupplierAssignmentDialog`, `ServicesCard` ו־`EventForm`) עדיין דורשים מעבר למסלול שיבוץ V2 מתאים לפני הכללתם בפרודקשן אינטראקטיבי. אין להפעיל כלל ספקים כל עוד יש מסלולים עוקפים.
 
 ## מדוע עדיין NO-GO לכפתורים בכל השיבוצים
