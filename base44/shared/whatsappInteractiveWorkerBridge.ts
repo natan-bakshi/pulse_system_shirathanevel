@@ -15,7 +15,10 @@ import {type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
 const V2_KEY=/^assignment:[A-Za-z0-9_-]{3,100}:[A-Za-z0-9_-]{3,100}:r[1-9][0-9]{0,12}:SUPPLIER_NEW_ASSIGNMENT$/;
 type GreenCapability='reply_only'|'mixed_url';
 export type TrustedGreenInteractiveConfig={
- enabled:true;accountCapabilityVerified:true;
+ enabled:true;accountCapabilityVerified:boolean;
+ // Only for the exact owner-approved single-message Beta experiment.
+ // Does not assert that Green supports the method until a real response.
+ qaBetaProbeApproved?:true;
  capability:GreenCapability;senderAccountId:string;
  signingSecret:string;policy:any;officeNumber?:string;officeLabel?:string;
  officeContextMode?:OfficeContextMode;
@@ -89,7 +92,8 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
  // Zero extra reads/credit-bearing calls when disabled or unconfigured.
  // A draft policy cannot enable this; production wrapper passes NO config.
  if(control?.interactive_outbound_live_enabled!==true||
-  config?.enabled!==true||config?.accountCapabilityVerified!==true)
+  config?.enabled!==true||
+  (config?.accountCapabilityVerified!==true&&config?.qaBetaProbeApproved!==true))
   return legacy(job,'interactive_feature_disabled');
  if(provider!=='green'||job?.source_type!=='assignment_new'||
   job?.message_type!=='text')return legacy(job,'not_green_supplier_assignment');
