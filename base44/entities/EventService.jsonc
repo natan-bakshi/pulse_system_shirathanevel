@@ -167,6 +167,20 @@
       "type": "number",
       "description": "\u05de\u05e1\u05e4\u05e8 \u05e1\u05e4\u05e7\u05d9\u05dd \u05de\u05d9\u05e0\u05d9\u05de\u05dc\u05d9 \u05dc\u05e9\u05d9\u05d1\u05d5\u05e5 (null = \u05d9\u05e8\u05e9 \u05de\u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc \u05e9\u05dc \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea)"
     },
+    "assignment_effects_revision": {
+      "type": "number",
+      "default": 0,
+      "description": "Staged business-effect generation; only used by guarded V2 save with durable side-effect parity"
+    },
+    "assignment_effects_journal": {
+      "type": "string",
+      "description": "Bounded append-only planned effect tasks with deterministic keys; no phone numbers, messages or provider tokens"
+    },
+    "assignment_effects_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "Staged work marker only; no active dispatch or cron reads it until migration is independently verified"
+    },
     "assignment_intent_mode": {
       "type": "string",
       "enum": [
