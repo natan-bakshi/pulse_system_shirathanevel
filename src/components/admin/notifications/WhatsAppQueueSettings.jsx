@@ -56,6 +56,7 @@ export default function WhatsAppQueueSettings(){
   const [qaAssignmentPreflight,setQaAssignmentPreflight]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
   const [pilotEnrollmentRequested,setPilotEnrollmentRequested]=useState(false);
+  const [pilotFailure,setPilotFailure]=useState('');
   const [officeReference,setOfficeReference]=useState('');
   const [officeLookup,setOfficeLookup]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
