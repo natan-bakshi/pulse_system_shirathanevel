@@ -915,18 +915,23 @@ export default function EventDetails() {
         supplierStatuses = {};
       }
 
-      // Admin buttons stay in Pulse, independently of WhatsApp. Use the
-      // authenticated shared CAS so an old signed message cannot overwrite
-      // a manager's decision or revive after reopening an assignment.
-      const response = await base44.functions.invoke('adminUpdateSupplierStatus', {
-        eventServiceId, supplierId, newStatus,
-        expectedStatus: supplierStatuses[supplierId] || 'pending'
-      });
-      if (response?.data?.success !== true)
-        throw new Error('Admin assignment status save was not confirmed');
+      // Keep the original EventService entity UPDATE workflow until its
+      // Push/reminder/calendar side effects are migrated with durable IDs.
+      // The guarded CAS endpoint exists for later rollout but is NOT active.
+      supplierStatuses[supplierId] = newStatus;
+      const updateData = { supplier_statuses: JSON.stringify(supplierStatuses) };
+      if (newStatus === 'rejected') {
+        let declined = [];
+        try { declined = JSON.parse(eventService.declined_suppliers || '[]'); } catch(e) { declined = []; }
+        if (!Array.isArray(declined)) declined = [];
+        if (!declined.some(d => d.supplier_id === supplierId)) {
+          declined.push({ supplier_id: supplierId, declined_date: new Date().toISOString(), reason: '' });
+          updateData.declined_suppliers = JSON.stringify(declined);
+        }
+      }
+      await base44.entities.EventService.update(eventServiceId, updateData);
+      await refreshEventStatus(eventId);
       await loadEventData();
-      if (response.data.eventStatusUpdated === false && response.data.saved === true)
-        alert('השיבוץ נשמר, אך נדרש רענון לבדיקת סטטוס האירוע.');
     } catch (error) {
       console.error("Failed to update supplier status:", error);
       alert("שגיאה בעדכון סטטוס הספק");
