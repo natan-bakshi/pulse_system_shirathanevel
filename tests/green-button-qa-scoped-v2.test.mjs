@@ -42,6 +42,17 @@ test('scoped QA gate is exact ID/phone/flag and cannot activate global V2 for ot
  assert.equal(greenButtonQaScopedJournalMatches(service,[...journal,...journal],env),false);
  assert.equal(greenButtonQaScopedJournalMatches(service,[{...journal[0],supplier_id:'another'}],env),false);
 });
+test('old signed QA service can be inbound-allowlisted but NEVER enters the NEW outbound scoped V2 island',()=>{
+ const old='qa-previous-service-123';
+ const secondEnv=k=>k==='GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID'?old:
+  k==='GREEN_BUTTONS_QA_EVENT_SERVICE_ID'?'qa-next-service-123':env(k);
+ assert.equal(greenButtonQaScopedV2Enabled(secondEnv,'qa-next-service-123'),true);
+ assert.equal(greenButtonQaScopedV2Enabled(secondEnv,old),false,
+  'inbound historical allowlist cannot create an outgoing V2 intent');
+ assert.equal(greenButtonQaScopedServiceMatches({...service,id:old},secondEnv),false);
+ assert.equal(greenButtonQaScopedJournalMatches({...service,id:old},journal,secondEnv),false);
+ assert.equal(greenButtonQaScopedServiceMatches({...service,id:'qa-next-service-123'},secondEnv),true);
+});
 test('global V2 off: only exact QA service can enter reconciler, with no DB scan',async()=>{
  let gets=0,queries=0;
  const client={asServiceRole:{entities:{
