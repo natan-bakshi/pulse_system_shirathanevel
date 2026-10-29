@@ -25,6 +25,8 @@ const control={id:'control-test',control_key:'global',enabled:true,paused:false,
 };
 const secrets={
  GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_CREATE_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED:'confirmed',
  GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',
  GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:'enabled',
  GREEN_BUTTONS_QA_EVENT_ID:'qa-event-123',
