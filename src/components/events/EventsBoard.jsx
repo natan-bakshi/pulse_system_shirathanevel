@@ -1,3 +1,4 @@
+import { refreshEventStatus } from '@/lib/eventStatus';
 import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -383,8 +384,7 @@ export default function EventsBoard() {
             eventServiceId: eventService.id,
             supplierId: supplier.id,
             supplierName: supplier.name,
-            currentStatus: supplier.status || 'pending',
-            initialStatus: supplier.status || 'pending',
+            currentStatus: supplier.status,
             currentNotes: supplier.notes,
             declineRecord,
             eventName,
@@ -397,31 +397,36 @@ export default function EventsBoard() {
         assignmentStatusSaveRef.current = true;
         setIsSaving(true);
         try {
-            // A single authenticated CAS changes the supplier status and its
-            // optional note. The initial status prevents stale admin edits
-            // from overriding a WhatsApp or supplier-dashboard decision.
-            const response = await base44.functions.invoke('adminUpdateSupplierStatus', {
-                eventServiceId: editingAssignment.eventServiceId,
-                supplierId: editingAssignment.supplierId,
-                newStatus: editingAssignment.currentStatus,
-                expectedStatus: editingAssignment.initialStatus,
-                supplierNote: editingAssignment.currentNotes || ''
+            // Preserve existing EventService UPDATE triggers: supplier Push,
+            // pending reminders and calendar synchronization. The admin CAS
+            // endpoint stays staged until those side effects are preserved.
+            const eventService = eventServices.find(es => es.id === editingAssignment.eventServiceId);
+            if (!eventService) return;
+            let supplierStatuses = {};
+            let supplierNotes = {};
+            try {
+                supplierStatuses = JSON.parse(eventService.supplier_statuses || '{}');
+                supplierNotes = JSON.parse(eventService.supplier_notes || '{}');
+            } catch (e) {
+                console.error('Error parsing supplier data:', e);
+            }
+            supplierStatuses[editingAssignment.supplierId] = editingAssignment.currentStatus;
+            supplierNotes[editingAssignment.supplierId] = editingAssignment.currentNotes;
+            await base44.entities.EventService.update(editingAssignment.eventServiceId, {
+                supplier_statuses: JSON.stringify(supplierStatuses),
+                supplier_notes: JSON.stringify(supplierNotes)
             });
-            if (response?.data?.success !== true)
-                throw new Error('Admin assignment update was not confirmed');
+            await refreshEventStatus(eventService.event_id);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
-            queryClient.invalidateQueries({ queryKey: ['events'] });
             setEditingAssignment(null);
-            if (response.data.eventStatusUpdated === false && response.data.saved === true)
-                alert('השיבוץ נשמר, אך נדרש רענון לבדיקת סטטוס האירוע.');
         } catch (error) {
             console.error('Failed to save assignment:', error);
-            alert('שמירת השיבוץ לא אומתה. אם השיבוץ השתנה במקביל, רענן את האירוע.');
+            alert('שגיאה בשמירת השיבוץ');
         } finally {
             assignmentStatusSaveRef.current = false;
             setIsSaving(false);
         }
-    }, [editingAssignment, queryClient]);
+    }, [editingAssignment, eventServices, queryClient]);
 
     const handleOpenServiceEdit = useCallback((eventServiceData, eventName, category) => {
         const service = allServices.find(s => s.id === eventServiceData.service_id);
