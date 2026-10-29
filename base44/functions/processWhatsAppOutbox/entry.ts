@@ -88,7 +88,10 @@ Deno.serve(async (req) => {
     if(controlRows[0].interactive_outbound_live_enabled===true&&
       Deno.env.get('GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'&&
       Deno.env.get('GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
-      Deno.env.get('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'&&
+      (Deno.env.get('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'||
+        (Deno.env.get('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='probe_authorized'&&
+         Deno.env.get('GREEN_BUTTONS_QA_BETA_PROBE_ENABLED')==='enabled'&&
+         Deno.env.get('GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'))&&
       Deno.env.get('GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'){
       try{
         const flags=await client.asServiceRole.entities.AppSettings.filter({
