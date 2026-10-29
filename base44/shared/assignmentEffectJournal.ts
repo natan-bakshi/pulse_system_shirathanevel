@@ -51,6 +51,8 @@ export function planDurableAssignmentEffectJournal(
  if(!service||!ID.test(String(service.id||''))||
   !Number.isFinite(Date.parse(stamp)))invalid('origin');
  const current=readAssignmentEffectJournal(service.assignment_effects_journal);
+ if(current.some(task=>!task.key.startsWith('assignment-effect:'+service.id+':')))
+  invalid('foreign_origin');
  const revision=Number(service.assignment_effects_revision||0);
  if(!Number.isSafeInteger(revision)||revision<0||
   revision>=Number.MAX_SAFE_INTEGER-1)invalid('revision');
