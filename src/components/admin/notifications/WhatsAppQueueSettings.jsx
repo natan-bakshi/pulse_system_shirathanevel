@@ -250,6 +250,9 @@ export default function WhatsAppQueueSettings(){
         const target=await base44.functions.invoke('WhatsAppQueueAdmin',
           {action:'greenButtonQaAssignmentPreflight'}).catch(()=>null);
         if(target?.data?.success)setQaAssignmentPreflight(target.data.preflight);
+        const uncertain=['qa_unknown','qa_enrollment_commit_uncertain_review',
+          'qa_enrollment_concurrent_or_uncertain'].includes(reason);
+        const beforeAttempt=/^qa_[a-z_]+$/.test(reason)&&!uncertain;
       }
       setError(e?.response?.data?.error||e?.message||'הפעולה נכשלה');
     }
