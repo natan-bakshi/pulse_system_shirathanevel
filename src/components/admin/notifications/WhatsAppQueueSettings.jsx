@@ -57,6 +57,7 @@ export default function WhatsAppQueueSettings(){
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
   const [pilotEnrollmentRequested,setPilotEnrollmentRequested]=useState(false);
   const [pilotFailure,setPilotFailure]=useState('');
+  const [pilotLiveResult,setPilotLiveResult]=useState(null);
   const [officeReference,setOfficeReference]=useState('');
   const [officeLookup,setOfficeLookup]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
@@ -140,6 +141,12 @@ export default function WhatsAppQueueSettings(){
         }
         setGreenWebhookSettings(null);
         setNotice('Green קיבל את בקשת הגדרת ה־Webhook. המופע מאותחל; יש לבדוק GetSettings אחרי האתחול, לפני כל הודעת ניסיון. עדיין לא נשלחו כפתורים.');
+        return;
+      }
+      if(action==='greenButtonQaLiveResult'){
+        if(!res.data?.success)throw Error('לא ניתן לבדוק את תוצאת הניסוי כעת');
+        setPilotLiveResult(res.data.result);
+        setNotice('תוצאת הניסוי נקראה מרשומות השיבוץ, ה־Outbox וה־Receipt בלבד. לא נשלחו הודעות.');
         return;
       }
       if(action==='greenButtonQaEnroll'){
@@ -305,10 +312,30 @@ export default function WhatsAppQueueSettings(){
       {view&&<div className="rounded-lg border-2 border-green-700 p-3 space-y-2" dir="rtl">
         <p className="font-semibold text-green-800">ניסוי כפתורי WhatsApp לנתן — הודעה אחת בלבד</p>
         <p className="text-sm text-gray-700">מסלול QA נפרד למספר האישי המאושר בלבד. שלושת הכפתורים: מאשר, דוחה ופנייה למשרד. השיבוץ הניסיוני יכול להישלח מיד דרך התור המרכזי.</p>
-        <Button type="button" disabled={busy||pilotEnrollmentRequested||!view.config?.enabled||view.config?.paused}
-          onClick={()=>run('greenButtonQaEnroll')}>
-          {pilotEnrollmentRequested?'הניסיון נבדק — בדוק את התוצאה לפני פעולה נוספת':'שלח הודעת כפתורים ניסיונית לנתן'}
+        {view.qaPilotNewSendsEnabled===true&&
+          <Button type="button" disabled={busy||pilotEnrollmentRequested||!view.config?.enabled||view.config?.paused}
+            onClick={()=>run('greenButtonQaEnroll')}>
+            {pilotEnrollmentRequested?'הניסיון נבדק — בדוק את התוצאה לפני פעולה נוספת':'שלח הודעת כפתורים ניסיונית לנתן'}
+          </Button>}
+        {view.qaPilotNewSendsEnabled!==true&&<p className="text-sm font-medium text-gray-700">
+          שליחת כפתורים חדשה כבויה. הודעות שכבר נשלחו עדיין יכולות לקבל תשובות.
+        </p>}
+        <Button type="button" variant="outline" disabled={busy}
+          onClick={()=>run('greenButtonQaLiveResult')}>
+          בדוק תוצאת ניסוי הכפתורים (ללא שליחה)
         </Button>
+        {pilotLiveResult&&<div role="status" className="rounded border p-3 space-y-1 text-sm">
+          <p className={pilotLiveResult.complete?'text-green-800 font-semibold':'text-amber-800 font-medium'}>
+            {pilotLiveResult.complete?'ניסוי חי הושלם בהצלחה — השיבוץ אושר במערכת':'הניסוי טרם אומת במלואו — נדרשת בדיקת הרשומות'}
+          </p>
+          <p>הודעה מקורית התקבלה אצל Green: {pilotLiveResult.originalMessageAccepted?'כן':'לא אומת'}</p>
+          <p>ניסיון שליחה יחיד: {pilotLiveResult.singleProviderAttempt?'כן':'לא אומת'}</p>
+          <p>אישור WhatsApp נקלט ונשמר: {pilotLiveResult.signedApprovalReceiptApplied?'כן':'לא אומת'}</p>
+          <p>סטטוס השיבוץ במערכת: {pilotLiveResult.supplierConfirmed?'מאושר':'לא אומת'}</p>
+          <p>ללא רשומות כפולות: {pilotLiveResult.uniqueOutboxAndReceipt?'כן':'לא אומת'}</p>
+          <p>שליחות חדשות כבויות: {pilotLiveResult.newSendsDisabled?'כן':'לא'}</p>
+          <p>קליטה של לחיצות קודמות זמינה: {pilotLiveResult.incomingRemainsEnabled?'כן':'לא'}</p>
+        </div>}
         {pilotFailure&&<p role="alert" className="text-sm text-red-800 font-medium">
           הניסיון נחסם לפני אישור שליחה. קוד אבחון בטוח: {pilotFailure}.
           פירוט תנאי המוכנות מופיע בהמשך המסך; אין ללחוץ שוב עד לבירור.
