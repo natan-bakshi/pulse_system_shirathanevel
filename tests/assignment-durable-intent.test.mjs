@@ -116,6 +116,7 @@ function server({actor='admin',flag=false,service=initial(),eventStatus='confirm
      if(name.endsWith('assignmentEffectParity.ts'))return {planAssignmentEffectParity};
      if(name.endsWith('assignmentSideEffectsLaunchGate.ts'))return {
       SIDE_EFFECT_FLAG,
+      ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED:simulateCompletedEffectBridge,
       assignmentSideEffectsLaunchGate:(effects,flags)=>simulateCompletedEffectBridge
        ?{allowed:true,reason:'test_bridge_simulated',missingConsumers:[]}
        :assignmentSideEffectsLaunchGate(effects,flags)
