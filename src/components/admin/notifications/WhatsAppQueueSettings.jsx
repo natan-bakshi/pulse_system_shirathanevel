@@ -140,6 +140,9 @@ export default function WhatsAppQueueSettings(){
             const audit=await base44.functions.invoke('WhatsAppQueueAdmin',
               {action:'greenButtonQaReadiness'});
             if(audit.data?.success)setQaReadiness(audit.data.qa);
+            const target=await base44.functions.invoke('WhatsAppQueueAdmin',
+              {action:'greenButtonQaAssignmentPreflight'});
+            if(target.data?.success)setQaAssignmentPreflight(target.data.preflight);
           }catch{}
           throw Error(res.data?.error||'יצירת שיבוץ הניסוי נכשלה');
         }
