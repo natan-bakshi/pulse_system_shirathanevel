@@ -6,10 +6,11 @@
 // This module does not modify Outbox or send any message.
 import {createSignedWhatsAppAction,verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {validateWhatsAppInteractivePolicy} from './whatsappInteractivePolicy.ts';
+import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 
 const BUTTON_ID=/^wa1_[A-Za-z0-9_-]{22}$/;
 const ASSIGNMENT_ID=/^[A-Za-z0-9_-]{3,128}$/;
-const POLICY_ACTIONS=new Set(['assignment_approve','assignment_reject']);
+const POLICY_ACTIONS=new Set(allowedInboundActionIds('assignment'));
 const MAX_JSON=8192;
 const MAX_BINDINGS=2;
 const SNAPSHOT_MAC=/^[A-Za-z0-9_-]{43}$/;
