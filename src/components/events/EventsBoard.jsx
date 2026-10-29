@@ -1,4 +1,3 @@
-import { refreshEventStatus } from '@/lib/eventStatus';
 import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -32,6 +31,7 @@ export default function EventsBoard() {
     const [editingService, setEditingService] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const savingServiceRef = React.useRef(false);
+    const assignmentStatusSaveRef = React.useRef(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [copiedId, setCopiedId] = useState(null); 
@@ -383,7 +383,8 @@ export default function EventsBoard() {
             eventServiceId: eventService.id,
             supplierId: supplier.id,
             supplierName: supplier.name,
-            currentStatus: supplier.status,
+            currentStatus: supplier.status || 'pending',
+            initialStatus: supplier.status || 'pending',
             currentNotes: supplier.notes,
             declineRecord,
             eventName,
@@ -392,42 +393,35 @@ export default function EventsBoard() {
     }, []);
 
     const handleSaveAssignment = useCallback(async () => {
-        if (!editingAssignment) return;
-
+        if (!editingAssignment || assignmentStatusSaveRef.current) return;
+        assignmentStatusSaveRef.current = true;
         setIsSaving(true);
         try {
-            const eventService = eventServices.find(es => es.id === editingAssignment.eventServiceId);
-            if (!eventService) return;
-
-            let supplierStatuses = {};
-            let supplierNotes = {};
-
-            try {
-                supplierStatuses = JSON.parse(eventService.supplier_statuses || '{}');
-                supplierNotes = JSON.parse(eventService.supplier_notes || '{}');
-            } catch (e) {
-                console.error('Error parsing supplier data:', e);
-            }
-
-            supplierStatuses[editingAssignment.supplierId] = editingAssignment.currentStatus;
-            supplierNotes[editingAssignment.supplierId] = editingAssignment.currentNotes;
-
-            await base44.entities.EventService.update(editingAssignment.eventServiceId, {
-                supplier_statuses: JSON.stringify(supplierStatuses),
-                supplier_notes: JSON.stringify(supplierNotes)
+            // A single authenticated CAS changes the supplier status and its
+            // optional note. The initial status prevents stale admin edits
+            // from overriding a WhatsApp or supplier-dashboard decision.
+            const response = await base44.functions.invoke('adminUpdateSupplierStatus', {
+                eventServiceId: editingAssignment.eventServiceId,
+                supplierId: editingAssignment.supplierId,
+                newStatus: editingAssignment.currentStatus,
+                expectedStatus: editingAssignment.initialStatus,
+                supplierNote: editingAssignment.currentNotes || ''
             });
-
-
-            await refreshEventStatus(eventService.event_id);
+            if (response?.data?.success !== true)
+                throw new Error('Admin assignment update was not confirmed');
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
+            queryClient.invalidateQueries({ queryKey: ['events'] });
             setEditingAssignment(null);
+            if (response.data.eventStatusUpdated === false && response.data.saved === true)
+                alert('השיבוץ נשמר, אך נדרש רענון לבדיקת סטטוס האירוע.');
         } catch (error) {
             console.error('Failed to save assignment:', error);
-            alert('שגיאה בשמירת השיבוץ');
+            alert('שמירת השיבוץ לא אומתה. אם השיבוץ השתנה במקביל, רענן את האירוע.');
         } finally {
+            assignmentStatusSaveRef.current = false;
             setIsSaving(false);
         }
-    }, [editingAssignment, eventServices, queryClient]);
+    }, [editingAssignment, queryClient]);
 
     const handleOpenServiceEdit = useCallback((eventServiceData, eventName, category) => {
         const service = allServices.find(s => s.id === eventServiceData.service_id);
