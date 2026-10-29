@@ -5,13 +5,14 @@
 // Official beta methods (2026-10): sendInteractiveButtonsReply (reply buttons)
 // or sendInteractiveButtons (mixed reply + URL). Old sendButtons returns 403.
 import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
+import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {buildOfficeWhatsAppInquiryLink,type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
 
 const PRIVATE_CHAT=/^[1-9][0-9]{7,14}@c\.us$/;
 const OFFICE=/^[1-9][0-9]{7,14}$/;
 const BUTTON=/^wa1_[A-Za-z0-9_-]{22}$/;
-const allowed=new Set(['assignment_approve','assignment_reject']);
+const allowed=new Set(allowedInboundActionIds('assignment'));
 const fail=(reason:string)=>Object.assign(new Error(reason),{code:reason});
 type Mode='reply_only'|'mixed_url'|'plain_fallback';
 export type GreenOutboundPreview={
