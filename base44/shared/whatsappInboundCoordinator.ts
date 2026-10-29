@@ -8,6 +8,7 @@ import {preflightWhatsAppAssignmentResponse} from './whatsappInboundAdmission.ts
 import {registerVerifiedInboundReceipt,claimPendingInboundReceipt,
  finishInboundReceipt,inspectVerifiedInboundReplay} from './whatsappInboundInbox.ts';
 import {persistAuthorizedSupplierStatus} from './supplierStatusPersistence.ts';
+import {assignmentDecisionForAction} from './whatsappInteractiveActionRegistry.ts';
 
 const preflightRefused=(reason:string)=>({status:'refused',reason,
  providerCalls:0,supplierWritesAuthorized:false});
@@ -130,7 +131,8 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
  let resultCode='unknown_after_write';
  let supplierWritesAuthorized=false;
  try{
-  const status=record.action==='assignment_approve'?'confirmed':'rejected';
+  const status=assignmentDecisionForAction(record.action);
+  if(!status)throw Object.assign(Error('Invalid inbound action'),{code:'invalid_assignment'});
   supplierWritesAuthorized=true;
   const changed=await persistAuthorizedSupplierStatus(
    input.client.asServiceRole,{
