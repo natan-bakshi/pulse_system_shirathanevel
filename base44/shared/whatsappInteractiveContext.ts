@@ -1,4 +1,5 @@
 // Pure, fail-closed context helpers. No network calls and no business mutations.
+import {assignmentDecisionForAction} from './whatsappInteractiveActionRegistry.ts';
 // The outbound job owns a frozen assignment revision and sender identity.
 export type AssignmentMessageContext = {
  companyId:string;eventServiceId:string;supplierId:string;revision:string;chatId:string;
@@ -47,11 +48,12 @@ export function resolveAssignmentQuote(original:AssignmentMessageContext|null|un
 export function evaluateAssignmentResponse(input:{action:string;companyId:string;eventServiceId:string;
  supplierId:string;revision:string;activeRevision:string;currentStatus:string;assigned:boolean;
  authenticatedSupplierId:string;authenticatedCompanyId:string}){
- if(!['assignment_approve','assignment_reject'].includes(input.action))return {allowed:false,reason:'unsupported_action'};
+ const targetStatus=assignmentDecisionForAction(input.action);
+ if(!targetStatus)return {allowed:false,reason:'unsupported_action'};
  if(!input.authenticatedSupplierId||input.authenticatedSupplierId!==input.supplierId||
   !input.authenticatedCompanyId||input.authenticatedCompanyId!==input.companyId)return {allowed:false,reason:'unauthorized'};
  if(!input.assigned)return {allowed:false,reason:'not_assigned'};
  if(!input.revision||input.revision!==input.activeRevision)return {allowed:false,reason:'stale_revision'};
  if(input.currentStatus!=='pending')return {allowed:false,reason:'not_pending'};
- return {allowed:true,reason:'eligible',targetStatus:input.action==='assignment_approve'?'confirmed':'rejected'};
+ return {allowed:true,reason:'eligible',targetStatus};
 }
