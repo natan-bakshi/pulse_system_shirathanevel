@@ -10,6 +10,7 @@ import {drainWhatsAppOutbox} from '../base44/shared/whatsappQueueWorker.ts';
 import {trustedGreenButtonQaConfig} from '../base44/shared/greenButtonQaLaunch.ts';
 import {stageFutureGreenInteractiveHttpCallback} from '../base44/shared/greenInteractiveHttpStaging.ts';
 import {handleGreenButtonQaWebhook} from '../base44/shared/greenButtonQaWebhookHandler.ts';
+import {persistAuthorizedSupplierStatus} from '../base44/shared/supplierStatusPersistence.ts';
 import {GREEN_BUTTON_QA_EVENT_NAME,GREEN_BUTTON_QA_FAMILY_NAME,
  GREEN_BUTTON_QA_SERVICE_NAME} from '../base44/shared/greenButtonQaFixture.ts';
 
@@ -417,6 +418,47 @@ test('post-confirmation opposite button with a distinct Green event cannot rever
   assert.equal(f.stats.statusCAS,1);
   assert.equal(f.receipts.length,2);
  }
+});
+test('Pulse dashboard approval remains primary and a later signed Green rejection cannot change it',async()=>{
+ const f=fixture();
+ await f.enroll();await f.reconcile();
+ assert.equal((await f.worker()).accepted,1);
+ const saved=await persistAuthorizedSupplierStatus(f.client.asServiceRole,{
+  eventServiceId:SERVICE,supplierId:SUPPLIER,newStatus:'confirmed',source:'dashboard'
+ });
+ assert.equal(saved.kind,'changed');
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(JSON.parse(f.service.assignment_notification_intents)[0].state,'resolved');
+ const late=await f.httpCallback('assignment_reject',{sendDisabled:true,
+  eventId:'C0CD39BB261589D5C98412D255CD00AA'});
+ assert.equal(late.httpStatus,200,'authenticated stale button terminal rejection is durable');
+ assert.equal(late.body.received,true);
+ assert.equal(f.stats.statusCAS,1,'no second business write after Pulse approval');
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'confirmed');
+ assert.equal(f.receipts.length,1);
+ assert.equal(f.receipts[0].state,'rejected');
+ assert.equal(f.receipts[0].result_code,'business_conflict');
+ assert.equal(f.stats.providerCalls,1);
+});
+test('reopening inside Pulse cannot revive previously signed WhatsApp buttons',async()=>{
+ const f=fixture();
+ await f.enroll();await f.reconcile();
+ assert.equal((await f.worker()).accepted,1);
+ await persistAuthorizedSupplierStatus(f.client.asServiceRole,{
+  eventServiceId:SERVICE,supplierId:SUPPLIER,newStatus:'rejected',source:'dashboard'
+ });
+ await persistAuthorizedSupplierStatus(f.client.asServiceRole,{
+  eventServiceId:SERVICE,supplierId:SUPPLIER,newStatus:'pending',source:'dashboard'
+ });
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'pending');
+ const old=await f.httpCallback('assignment_approve',{sendDisabled:true,
+  eventId:'C0CD39BB261589D5C98412D255CD00AB'});
+ assert.equal(old.httpStatus,200);
+ assert.equal(old.body.received,true);
+ assert.equal(f.stats.statusCAS,2,'only the in-app reject and reopen changed status');
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'pending');
+ assert.equal(f.receipts[0].state,'rejected');
+ assert.equal(f.stats.providerCalls,1);
 });
 test('PRODUCTION HTTP ADAPTER also accepts documented singular templateButtonReplyMessage sample',async()=>{
  const f=fixture();
