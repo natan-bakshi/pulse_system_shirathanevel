@@ -3,6 +3,7 @@
 // identity verified from provider data and a durable inbound receipt claim.
 // Never write signing keys to Outbox, client code, logs or user-visible settings.
 import {validateInteractiveActionBinding,type InteractiveActionBinding} from './whatsappInteractiveActionToken.ts';
+import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 
 const encoder=new TextEncoder();
 const MAX_TOKEN_LENGTH=2300;
@@ -37,7 +38,8 @@ function validatePayload(raw:any,now:number):Payload{
   issued>now+MAX_ISSUED_SKEW_MS||now-issued>MAX_LIFETIME_MS||
   expires<=issued||expires-issued>MAX_LIFETIME_MS)fail('lifetime');
  const binding=validateInteractiveActionBinding(raw,now);
- if(binding.action==='contact_office')fail('unsupported action for inbound mutation');
+ if(!allowedInboundActionIds('assignment').includes(binding.action))
+  fail('unsupported action for inbound mutation');
  return {...binding,audience:AUDIENCE,version:1,nonce:raw.nonce,
   issuedAt:new Date(issued).toISOString()};
 }
