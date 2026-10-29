@@ -12,7 +12,9 @@ import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.t
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
 import {inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure} from '../../shared/greenWebhookSettingsAudit.ts';
-import {applyOneGreenButtonQaWebhookProvisioning} from '../../shared/greenButtonQaWebhookProvisioning.ts';
+import {applyOneGreenButtonQaWebhookProvisioning,
+ GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL}
+ from '../../shared/greenButtonQaWebhookProvisioning.ts';
 import {inspectUnknownGreenQuarantineReadOnly} from '../../shared/greenUnknownCallbackQuarantine.ts';
 import {scrubExpiredUnknownGreenRecoveryOnDemand} from '../../shared/greenUnknownRecoveryCleanup.ts';
 import {inspectUnknownGreenRecoveryStructureReadOnly} from '../../shared/greenUnknownRecoveryReview.ts';
@@ -473,7 +475,12 @@ Deno.serve(async(req)=>{
           // strict Green-origin validation: never user-supplied URL/SSRF.
           // One owner click, one GET normally; a failed connection to the
           // configured 7201 host may use ONE Green universal-host read-only GET.
-          apiBaseUrl:Deno.env.get('GREEN_API_URL'),timeoutMs:15000
+          apiBaseUrl:Deno.env.get('GREEN_API_URL'),timeoutMs:15000,
+          expectedQaWebhook:{
+            url:GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL,
+            bearer:String(Deno.env.get('GREEN_API_WEBHOOK_TOKEN')||''),
+            originalDelayMs:500
+          }
         });
         const env=(key:string)=>Deno.env.get(key);
         // The owner can proceed from this ONE audit button: no second
