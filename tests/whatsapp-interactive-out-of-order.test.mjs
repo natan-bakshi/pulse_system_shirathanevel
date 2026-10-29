@@ -145,10 +145,18 @@ test('reordered duplicate provider event and a different later click never modif
  assert.equal(repeated.status,'duplicate');
  assert.equal(repeated.terminalReceiptVerified,true);
  const newClick=f.callback(1,'assignment_reject','X');
- assert.equal((await f.run(newClick)).status,'refused');
+ const late=await f.run(newClick);
+ assert.equal(late.status,'rejected');
+ assert.equal(late.reason,'business_conflict');
+ assert.equal(late.supplierWritesAuthorized,false);
  assert.equal(f.counters.supplierWrites,1);
- assert.equal(f.counters.receiptCreates,1);
+ assert.equal(f.counters.receiptCreates,2,
+  'separate provider event must have its own durable terminal receipt');
+ assert.equal(f.receipts[1].state,'rejected');
  assert.equal(JSON.parse(f.services['service-1'].supplier_statuses)[supplierId],'confirmed');
+ assert.equal((await f.run(newClick)).status,'duplicate');
+ assert.equal(f.counters.supplierWrites,1);
+ assert.equal(f.counters.receiptCreates,2);
 });
 test('a button token from message A cannot apply to message B, even for same supplier and chat',async()=>{
  const f=await fixture();
