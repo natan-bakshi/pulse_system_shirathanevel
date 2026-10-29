@@ -29,8 +29,10 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
  try{decoded=JSON.parse(raw);}catch{invalid('json');}
  if(!Array.isArray(decoded)||decoded.length>MAX_TASKS)invalid('shape');
  const seen=new Set<string>(),out:AssignmentEffectTask[]=[];
+ const fields=new Set(['key','revision','consumer','subjectId','state','createdAt','effectKind']);
  for(const item of decoded){
   if(!item||typeof item!=='object'||Array.isArray(item)||
+   Object.keys(item).some(key=>!fields.has(key))||
    !KEY.test(item.key||'')||
    !Number.isSafeInteger(item.revision)||item.revision<1||
    !CONSUMERS.has(item.consumer)||!ID.test(item.subjectId||'')||
@@ -56,6 +58,7 @@ export function planDurableAssignmentEffectJournal(
  const revision=Number(service.assignment_effects_revision||0);
  if(!Number.isSafeInteger(revision)||revision<0||
   revision>=Number.MAX_SAFE_INTEGER-1)invalid('revision');
+ if(current.some(task=>task.revision>revision))invalid('future_revision');
  if(!parity.required)
   return {patch:{},tasks:[],revision,hasNewTasks:false,requiredConsumers:[]};
  const next=revision+1;
