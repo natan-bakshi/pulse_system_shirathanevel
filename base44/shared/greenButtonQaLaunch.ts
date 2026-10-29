@@ -38,12 +38,18 @@ export function greenButtonQaPassiveInboundReady(
 function trustedGreenButtonQaConfigForMode(control:any,
  env:(key:string)=>string|undefined,durableAssignmentIntentEnabled:boolean,
  requireSendEnabled:boolean):TrustedGreenInteractiveConfig|null{
- // No action when disabled, including no access to secrets and draft.
+ // A single owner-approved Beta PROBE may precede real provider verification.
+ // This is NOT capability proof, never enables any other service/chat and
+ // remains fenced by independent SEND, inbound, owner, control and V2 gates.
+ const betaProof=get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified';
+ const betaProbe=get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='probe_authorized'&&
+  get(env,'GREEN_BUTTONS_QA_BETA_PROBE_ENABLED')==='enabled'&&
+  get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled';
  if(durableAssignmentIntentEnabled!==true||
   (requireSendEnabled&&control?.interactive_outbound_live_enabled!==true)||
   (requireSendEnabled&&get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled')||
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
-  get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified'||
+  (!betaProof&&!betaProbe)||
   get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')!=='approved')
   return null;
  const senderAccountId=get(env,'GREEN_API_INSTANCE_ID');
@@ -76,7 +82,8 @@ function trustedGreenButtonQaConfigForMode(control:any,
  const officeNumber=draft.setting.officeNumber;
  if(!/^[1-9][0-9]{7,14}$/.test(officeNumber))return null;
  return {
-  enabled:true,accountCapabilityVerified:true,capability:'mixed_url',
+  enabled:true,accountCapabilityVerified:betaProof,
+  ...(betaProbe?{qaBetaProbeApproved:true as const}:{}),capability:'mixed_url',
   senderAccountId,signingSecret,
   policy,officeNumber,officeLabel:policy.buttons.find(
    button=>button.action==='contact_office')!.label,
@@ -124,6 +131,9 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
    {key:'inbound_env_gate',ready:get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'},
    {key:'owner_env_gate',ready:get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'},
    {key:'provider_beta_verified',ready:get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'},
+   {key:'one_message_beta_probe_approved',ready:
+     get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='probe_authorized'&&
+     get(env,'GREEN_BUTTONS_QA_BETA_PROBE_ENABLED')==='enabled'}, 
    {key:'one_qa_chat',ready:PRIVATE.test(get(env,'GREEN_BUTTONS_QA_ALLOWED_CHAT'))},
    {key:'one_qa_assignment',ready:
      ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_SERVICE_ID'))&&
