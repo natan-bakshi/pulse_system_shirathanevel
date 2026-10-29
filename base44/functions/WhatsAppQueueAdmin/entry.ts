@@ -368,7 +368,8 @@ Deno.serve(async(req)=>{
         const code=Number((error as any)?.status)||409;
         return RESPONSE({success:false,
           error:'יצירת שיבוץ הניסוי נחסמה בבדיקת בטיחות; אין הודעת ניסיון בתור',
-          diagnosticCode:String((error as any)?.code||'qa_unknown'),
+          diagnosticCode:/^qa_[a-z_]+$/.test(String((error as any)?.code||''))?
+            String((error as any)?.code):'qa_unknown',
           noDirectProviderCalls:true},[403,409,423,503].includes(code)?code:503);
       }
     }
