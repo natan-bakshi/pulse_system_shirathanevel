@@ -6,6 +6,7 @@
 // require independently approved account capability, and explicitly gate rollout.
 // Base44 Outbox uses admin RLS; never expose this field or signed tokens in UI.
 import {readAssignmentIntents} from './assignmentIntent.ts';
+import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
 import {createFutureInteractiveButtonSnapshot,verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
@@ -61,7 +62,7 @@ async function signedButtonsMatch(raw:any,job:any,secret:string,subtle:SubtleCry
   !Array.isArray(data.buttons)||!data.buttons.length||data.buttons.length>2)return false;
  const actions=new Set<string>(),ids=new Set<string>();
  for(const button of data.buttons){
-  if(!button||!['assignment_approve','assignment_reject'].includes(button.action)||
+  if(!button||!allowedInboundActionIds('assignment').includes(button.action)||
    actions.has(button.action)||typeof button.buttonId!=='string'||
    !/^wa1_[A-Za-z0-9_-]{22}$/.test(button.buttonId)||ids.has(button.buttonId)||
    typeof button.label!=='string'||button.label.length<1||button.label.length>20){
