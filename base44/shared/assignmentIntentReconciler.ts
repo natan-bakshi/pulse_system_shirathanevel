@@ -29,6 +29,11 @@ export async function sweepPendingSupplierAssignmentIntents(client:any,opts:any=
     // One exact GET while the temporary pilot gate is enabled. NO table scan.
     if(!greenButtonQaScopedV2Enabled(qaEnv))
       return {success:true,reason:'feature_disabled',scanned:0};
+    // No idle 5-minute QA service GET while waiting for the owner to finish
+    // provider provisioning. A pre-send rollout cannot enqueue anything.
+    if(qaEnv('GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled'&&
+       qaEnv('GREEN_BUTTONS_QA_CREATE_ENABLED')!=='enabled')
+      return {success:true,reason:'qa_transport_not_armed',scanned:0};
     const serviceId=qaEnv('GREEN_BUTTONS_QA_EVENT_SERVICE_ID')||'';
     const service=await db.EventService.get(serviceId).catch(()=>null);
     if(!service||!greenButtonQaScopedServiceMatches(service,qaEnv)||
