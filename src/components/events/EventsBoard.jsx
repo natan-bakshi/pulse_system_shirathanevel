@@ -32,6 +32,7 @@ export default function EventsBoard() {
     const [editingAssignment, setEditingAssignment] = useState(null);
     const [editingService, setEditingService] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const savingServiceRef = React.useRef(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [copiedId, setCopiedId] = useState(null); 
@@ -487,8 +488,8 @@ export default function EventsBoard() {
     }, [allServices]);
 
     const handleSaveService = useCallback(async () => {
-        if (!editingService) return;
-
+        if (!editingService || savingServiceRef.current) return;
+        savingServiceRef.current = true;
         setIsSaving(true);
         try {
             const currentEventService = eventServices.find(es => es.id === editingService.eventServiceId);
@@ -496,7 +497,6 @@ export default function EventsBoard() {
                 alert('השירות לא נמצא - ייתכן שהוא נמחק. הרשימה תתרענן.');
                 queryClient.invalidateQueries({ queryKey: ['eventServices'] });
                 setEditingService(null);
-                setIsSaving(false);
                 return;
             }
 
@@ -519,6 +519,7 @@ export default function EventsBoard() {
             console.error('Failed to save service:', error);
             alert('שגיאה בשמירת השירות');
         } finally {
+            savingServiceRef.current = false;
             setIsSaving(false);
         }
     }, [editingService, queryClient, eventServices]);
@@ -1009,7 +1010,7 @@ export default function EventsBoard() {
                     </div>
                 )}
             </div>
-            <DialogFooter><Button variant="outline" onClick={() => setEditingService(null)}>ביטול</Button><Button onClick={handleSaveService} className="bg-red-800 hover:bg-red-700">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}שמור שינויים</Button></DialogFooter>
+            <DialogFooter><Button variant="outline" onClick={() => setEditingService(null)}>ביטול</Button><Button onClick={handleSaveService} disabled={isSaving} className="bg-red-800 hover:bg-red-700">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}שמור שינויים</Button></DialogFooter>
         </DialogContent>
     </Dialog>
 )}
