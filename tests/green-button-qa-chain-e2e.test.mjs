@@ -39,7 +39,9 @@ const policy=JSON.stringify({
   {action:'assignment_reject',label:'דוחה'},
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
-function fixture({groupPreferred=false,globalV2Enabled=true}={}){
+function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false}={}){
+ const qaEnv=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
+  'probe_authorized':key==='GREEN_BUTTONS_QA_BETA_PROBE_ENABLED'? 'enabled':env(key):env;
  const now=Date.now();
  const control={
   id:'control-qa1',control_key:'global',enabled:true,paused:false,
@@ -149,7 +151,7 @@ function fixture({groupPreferred=false,globalV2Enabled=true}={}){
  const client={asServiceRole:{entities:db}};
  async function enroll(){
   return enrollOneGreenButtonQaAssignment(client,{
-   env,confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'
+   env:qaEnv,confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'
   });
  }
  async function reconcile(){
@@ -158,7 +160,7 @@ function fixture({groupPreferred=false,globalV2Enabled=true}={}){
  async function worker(interactive=true,onTransport=null){
   return drainWhatsAppOutbox(client,{
    maxRuntimeMs:10000,
-   ...(interactive?{interactiveConfig:trustedGreenButtonQaConfig(control,env,true)}:{}),
+   ...(interactive?{interactiveConfig:trustedGreenButtonQaConfig(control,qaEnv,true)}:{}),
    transport:async(job,provider,_client,preview)=>{
     stats.providerCalls++;
     if(onTransport)return onTransport(job,provider,preview);
@@ -218,14 +220,14 @@ function fixture({groupPreferred=false,globalV2Enabled=true}={}){
   });
   return handleGreenButtonQaWebhook(request,{
    env:key=>options.sendDisabled&&key==='GREEN_BUTTONS_QA_SEND_ENABLED'
-    ?'':env(key),
+    ?'':qaEnv(key),
    makeClient:()=>client,
    recalculateEventStatus:async(_client,eventId)=>{
     assert.equal(eventId,EVENT);stats.callbackRecalcs++;
    }
   });
  }
- return {client,service,supplier,event,control,outbox,receipts,stats,
+ return {client,service,supplier,event,control,outbox,receipts,stats,qaEnv,
   enroll,reconcile,worker,callback,httpCallback};
 }
 test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green preview once -> callback -> durable receipt -> duplicate no-op',async()=>{
