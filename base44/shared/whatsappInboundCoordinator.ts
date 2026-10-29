@@ -29,6 +29,7 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
  // receipt, sender account, registered supplier and current intent checks.
  const admission=await preflightWhatsAppAssignmentResponse(
   input.providerEvent,input.client?.asServiceRole);
+ let safeLateActionReceipt:any=null;
  if(!admission.admissible){
   // Only a credential-verified, HMAC-bound original provider message and
   // authenticated supplier may produce this candidate. A changed assignment
@@ -50,14 +51,24 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
     if(prior.kind==='identity_conflict'||prior.kind==='unverifiable')
      return {status:'held',reason:'existing_receipt_needs_reconciliation',
       providerCalls:0,supplierWritesAuthorized:false};
+    // The original signed provider message was verified, but the supplier
+    // already resolved THIS revision. A NEW distinct provider event must
+    // become a terminal rejected receipt instead of triggering Green retries.
+    // No supplier CAS is authorized on this branch.
+    if(prior.kind==='not_found'&&
+       'verifiedTerminalRejectionCandidate' in admission&&
+       admission.verifiedTerminalRejectionCandidate===true)
+      safeLateActionReceipt=admission.verifiedReplayCandidate;
    }catch{
     return {status:'held',reason:'existing_receipt_lookup_unverified',
      providerCalls:0,supplierWritesAuthorized:false};
    }
   }
-  return preflightRefused(admission.reason);
+  if(!safeLateActionReceipt)return preflightRefused(admission.reason);
  }
- const record=admission.receipt;
+ const record=safeLateActionReceipt||
+  ('receipt' in admission?admission.receipt:null);
+ if(!record)return preflightRefused('receipt_identity_unavailable');
  let registered;
  try{registered=await registerVerifiedInboundReceipt(input.client,record);}
  catch{return preflightRefused('receipt_registration_unverified');}
@@ -95,6 +106,22 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
  if(!claim?.claimed)
   return {status:'held',reason:claim?.reason||'receipt_claim_unverified',
    providerCalls:0,supplierWritesAuthorized:false};
+
+ if(safeLateActionReceipt){
+  // A verified but late, different button press is a durable *business*
+  // rejection, not a second decision. ACK only after terminal receipt CAS.
+  try{
+   const done=await finishInboundReceipt(input.client,{
+    receiptId:registered.id,receiptKey:registered.receiptKey,
+    claimOwner:input.claimOwner,outcome:'rejected',
+    resultCode:'business_conflict'
+   });
+   if(done?.finalized)return {status:'rejected',reason:'business_conflict',
+    providerCalls:0,supplierWritesAuthorized:false};
+  }catch{}
+  return {status:'needs_review',reason:'late_receipt_finalization_unverified',
+   providerCalls:0,supplierWritesAuthorized:false};
+ }
 
  // After CAS claim, all failures must be reflected on the receipt if safe.
  // Incomplete terminal writes remain 'processing', and expiry triggers
