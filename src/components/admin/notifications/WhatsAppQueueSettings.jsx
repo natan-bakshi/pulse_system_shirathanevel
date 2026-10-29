@@ -55,6 +55,7 @@ export default function WhatsAppQueueSettings(){
   const [qaReadiness,setQaReadiness]=useState(null);
   const [qaAssignmentPreflight,setQaAssignmentPreflight]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
+  const [pilotEnrollmentRequested,setPilotEnrollmentRequested]=useState(false);
   const [officeReference,setOfficeReference]=useState('');
   const [officeLookup,setOfficeLookup]=useState(null);
   const [refreshSignal,setRefreshSignal]=useState(0);
@@ -87,6 +88,9 @@ export default function WhatsAppQueueSettings(){
     }
     if(action==='greenButtonQaEnroll'){
       if(!window.confirm('ליצור שיבוץ בדיקה חדש לספק היחיד שהוגדר בשרת? הפעולה מעדכנת שירות אירוע אמיתי ועלולה לשלוח הודעת WhatsApp אמיתית דרך התור. ודא שמדובר באירוע וספק ייעודיים לניסוי ושאימות Green הושלם. להמשיך?'))return;
+      // Guard a second click during this page session; the backend CAS
+      // independently prevents accidental duplicate assignments.
+      setPilotEnrollmentRequested(true);
       params={...params,confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'};
     }
     if(action==='configure'&&view&&!view.config.enabled&&form.enabled&&
@@ -255,6 +259,15 @@ export default function WhatsAppQueueSettings(){
         לפירוט לחץ על "בדיקת התאמה מקור ↔ תור" בהמשך.
         {view.duplicateAssignmentVersions.sampleTruncated && ' הנתונים מוגבלים ל־500 הרשומות האחרונות.'}
       </p>}
+      {view&&<div className="rounded-lg border-2 border-green-700 p-3 space-y-2" dir="rtl">
+        <p className="font-semibold text-green-800">ניסוי כפתורי WhatsApp לנתן — הודעה אחת בלבד</p>
+        <p className="text-sm text-gray-700">מסלול QA נפרד למספר האישי המאושר בלבד. שלושת הכפתורים: מאשר, דוחה ופנייה למשרד. השיבוץ הניסיוני יכול להישלח מיד דרך התור המרכזי.</p>
+        <Button type="button" disabled={busy||pilotEnrollmentRequested||!view.config?.enabled||view.config?.paused}
+          onClick={()=>run('greenButtonQaEnroll')}>
+          {pilotEnrollmentRequested?'ניסיון בוצע — אין ללחוץ שוב':'שלח הודעת כפתורים ניסיונית לנתן'}
+        </Button>
+        <p className="text-xs text-gray-600">השרת בודק מחדש התאמת ספק, מספר, אירוע, שיבוץ, הגדרות Green והיעדר ניסיונות קודמים לפני כל יצירה. אין שינוי בשיבוצים אחרים.</p>
+      </div>}
       <div className="flex flex-wrap gap-6">
         <label className="flex gap-2 items-center text-sm"><Switch checked={!!form.enabled} disabled={busy} onCheckedChange={enabled=>setForm(s=>({...s,enabled}))}/>הפעל תור מרכזי</label>
         <label className="flex gap-2 items-center text-sm"><Switch checked={!!form.paused} disabled={busy} onCheckedChange={paused=>setForm(s=>({...s,paused}))}/>השהה שליחות חדשות</label>
