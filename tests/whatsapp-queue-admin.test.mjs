@@ -158,6 +158,12 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('greenButtonQaEnrollment.ts'))return {
        enrollOneGreenButtonQaAssignment
      };
+     if(name.endsWith('greenButtonQaLiveResult.ts'))return {
+       inspectGreenButtonQaLiveResult:async()=>({success:true,result:{
+         status:'confirmed_success',complete:true,newSendsDisabled:true,
+         incomingRemainsEnabled:true,noProviderCalls:true,noWrites:true
+       }})
+     };
      if(name.endsWith('whatsappInteractiveReadiness.ts'))return {
        inspectGreenInteractiveReadinessReadOnly:async()=>summarizeWhatsAppInteractiveReadiness({
         control:record,selectedProvider:'green',assignmentIntentEnabled:false,
@@ -470,6 +476,19 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(ctx.calls.length,0);
 });
 
+test('one-click pilot result action is owner-only, read-only and never sends WhatsApp',async()=>{
+ const owner=context();
+ const r=await owner.invoke('greenButtonQaLiveResult');
+ assert.equal(r.status,200);
+ assert.equal(r.body.success,true);
+ assert.equal(r.body.result.complete,true);
+ assert.equal(r.body.result.newSendsDisabled,true);
+ assert.equal(r.body.result.noProviderCalls,true);
+ assert.deepEqual(owner.calls,[]);
+ const outsider=context({actor:{role:'admin',email:'non-owner@example.com'}});
+ const rejected=await outsider.invoke('greenButtonQaLiveResult');
+ assert.equal(rejected.status,403);
+});
 test('Green webhook provisioning is owner-only, default blocked, and never accepts provider URL or token from request body',async()=>{
  const owner=context({state:{interactive_outbound_live_enabled:false}});
  const result=await owner.invoke('greenButtonQaProvisionWebhook',{
