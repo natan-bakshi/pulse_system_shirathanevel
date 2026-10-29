@@ -91,15 +91,16 @@ export function planAssignmentEffectParity(before:any,patch:any):AssignmentEffec
  if(minOld!==minNext)effects.push({kind:'minimum_changed'});
  const hasAssignments=effects.some(e=>e.kind==='supplier_assigned'||
   e.kind==='supplier_reopened');
+ const hasPendingAssignment=effects.some(e=>
+  (e.kind==='supplier_assigned'||e.kind==='supplier_reopened')&&
+  e.afterStatus==='pending');
  const suppliersChanged=effects.some(e=>e.supplierId!==undefined);
  const consumers=new Set<string>();
  if(effects.length)consumers.add('event_status_readiness');
  if(effects.length)consumers.add('entity_update_notifications');
  if(suppliersChanged)consumers.add('google_calendar_sync');
- if(hasAssignments){
-  consumers.add('supplier_assignment_push');
-  consumers.add('supplier_pending_reminder');
- }
+ if(hasAssignments)consumers.add('supplier_assignment_push');
+ if(hasPendingAssignment)consumers.add('supplier_pending_reminder');
  if(effects.some(e=>e.kind==='supplier_removed'))
   consumers.add('assignment_removed_notifications');
  if(effects.some(e=>e.kind==='supplier_status_changed'))
