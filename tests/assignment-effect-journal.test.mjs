@@ -34,6 +34,20 @@ test('durable side-effect tasks have versioned deterministic keys per consumer +
  assert.ok(journal.every(t=>t.state==='planned'));
  assert.equal(JSON.stringify(journal).includes('new"'),false,'supplier notes are not copied');
 });
+test('two suppliers added together receive different Push and reminder keys in one generation',()=>{
+ const s=base(),p={
+  supplier_ids:JSON.stringify(['supplier-ONE111','supplier-TWO222','supplier-THR333']),
+  supplier_statuses:JSON.stringify({'supplier-ONE111':'confirmed','supplier-TWO222':'pending','supplier-THR333':'pending'}),
+  supplier_notes:JSON.stringify({'supplier-ONE111':'unchanged'})
+ };
+ const result=planDurableAssignmentEffectJournal(s,p,time);
+ const push=result.tasks.filter(t=>t.consumer==='supplier_assignment_push');
+ const reminders=result.tasks.filter(t=>t.consumer==='supplier_pending_reminder');
+ assert.equal(push.length,2);assert.equal(reminders.length,2);
+ assert.equal(new Set(push.map(t=>t.key)).size,2);
+ assert.equal(new Set(reminders.map(t=>t.key)).size,2);
+ assert.equal(new Set(result.tasks.map(t=>t.key)).size,result.tasks.length);
+});
 test('replay planning on the same before snapshot produces the exact same immutable keys',()=>{
  const first=planDurableAssignmentEffectJournal(base(),patch(),time);
  const second=planDurableAssignmentEffectJournal(base(),patch(),time);
@@ -87,10 +101,15 @@ test('invalid journal, duplicate keys and identity mismatch fail closed before C
   [good,good],
   [{...good,key:good.key.replace(':r1:',':r2:')}],
   [{...good,state:'weird'}],
-  [{...good,subjectId:'bad@chat'}]
+  [{...good,subjectId:'bad@chat'}],
+  [{...good,customScript:'delete_all'}]
  ])assert.throws(()=>readAssignmentEffectJournal(JSON.stringify(bad)));
  const foreign=JSON.stringify([{...good,key:good.key.replace(s.id,'service-OTHER')}]);
  assert.throws(()=>planDurableAssignmentEffectJournal({
   ...s,assignment_effects_journal:foreign
  },p,time),/foreign_origin/);
+ const future=JSON.stringify([{...good,revision:2,key:good.key.replace(':r1:',':r2:')}]);
+ assert.throws(()=>planDurableAssignmentEffectJournal({
+  ...s,assignment_effects_revision:1,assignment_effects_journal:future
+ },p,time),/future_revision/);
 });
