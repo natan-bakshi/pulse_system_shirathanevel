@@ -44,6 +44,7 @@
 - [x] `assignmentEffectJournal.ts` מתכנן מפתחות ייחודיים לפי גרסה × צרכן × ספק, וה־V2 כולל את המשימות באותו CAS של השיבוץ **כשהגשר יופעל בעתיד**. שדות EventService אופציונליים הוספו, ללא רשומות חדשות או תור עבודה פעיל.
 - [x] **חסימת הפעלה קשיחה:** `ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED=false`; גם אם דגל V2 יופעל, שינוי הדורש תופעות־לוואי מוחזר 423 לפני כתיבה. אין אפשרות לפתוח את החסימה ע״י Secrets או AppSettings בלבד.
 - [x] כלי אבחון מנהל־על בלחיצה בלבד: `WhatsAppQueueAdmin.assignmentV2Readiness` ו־UI ב־`WhatsAppQueueSettings`; שתי קריאות AppSettings בלבד, אפס שיגור/עדכון שיבוץ, הצגת תנאים חסרים וצרכנים נדרשים.
+- [x] **בדיקות ופיתוח מקטע 30.10:** 865/865 בדיקות Node עברו; ESLint ממוקד ובניית Vite תקינים, כולל הרשאות אבחון מנהל, סגירת V2 ללא גשר, יצירת יומן משימות CAS סימולטיבית ובידוד ספקים. לא שונתה תצורת שליחת הודעות.
 - [ ] **השלב הבא P0:** מעבד idempotent של side-effect tasks עם CAS claim, תוצאה עמידה לכל נמען, כשל provider/DB לא ודאי ללא resend אוטומטי, והחלפת שלושת ה־workflows הישנים רק לאחר אימות E2E. פירוט: `docs/whatsapp-assignment-effect-migration-2026-10-30.md`.
 
 ## סדר ביצוע מחייב
