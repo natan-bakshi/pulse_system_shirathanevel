@@ -132,7 +132,13 @@ export default function WhatsAppQueueSettings(){
       }
       if(action==='greenButtonQaEnroll'){
         if(!res.data?.success){
-          setPilotFailure(res.data?.diagnosticCode||'qa_unknown');
+          const reason=res.data?.diagnosticCode||'qa_unknown';
+          setPilotFailure(reason);
+          try{
+            const audit=await base44.functions.invoke('WhatsAppQueueAdmin',
+              {action:'greenButtonQaReadiness'});
+            if(audit.data?.success)setQaReadiness(audit.data.qa);
+          }catch{}
           throw Error(res.data?.error||'יצירת שיבוץ הניסוי נכשלה');
         }
         setPilotFailure('');
