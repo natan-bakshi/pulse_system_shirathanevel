@@ -143,6 +143,12 @@ test('inactive rollout, wrong event or number, prior send and stale data never c
   assert.equal(f.counts.provider,0);
  }
 });
+test('service scope mismatch rejects before CAS with a specific code',async()=>{
+ const f=fixture();f.rows.service.event_id='another-event';
+ await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,request(f)),
+  err=>err.code==='qa_service_scope_mismatch');
+ assert.equal(f.counts.cas,0);
+});
 test('global V2 and QA-scoped V2 both OFF prevent enrollment without writes',async()=>{
  const f=fixture();f.setFlag('false');
  await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,{
