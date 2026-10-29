@@ -131,7 +131,11 @@ export default function WhatsAppQueueSettings(){
         return;
       }
       if(action==='greenButtonQaEnroll'){
-        if(!res.data?.success)throw Error(res.data?.error||'יצירת שיבוץ הניסוי נכשלה');
+        if(!res.data?.success){
+          setPilotFailure(res.data?.diagnosticCode||'qa_unknown');
+          throw Error(res.data?.error||'יצירת שיבוץ הניסוי נכשלה');
+        }
+        setPilotFailure('');
         setQaAssignmentPreflight(null);
         setQaReadiness(null);
         setNotice(res.data.enrollment?.wakeRequested?
