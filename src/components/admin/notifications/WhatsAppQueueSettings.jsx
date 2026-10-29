@@ -279,6 +279,10 @@ export default function WhatsAppQueueSettings(){
           onClick={()=>run('greenButtonQaEnroll')}>
           {pilotEnrollmentRequested?'ניסיון בוצע — אין ללחוץ שוב':'שלח הודעת כפתורים ניסיונית לנתן'}
         </Button>
+        {pilotFailure&&<p role="alert" className="text-sm text-red-800 font-medium">
+          הניסיון נחסם לפני אישור שליחה. קוד אבחון בטוח: {pilotFailure}.
+          פירוט תנאי המוכנות מופיע בהמשך המסך; אין ללחוץ שוב עד לבירור.
+        </p>}
         <p className="text-xs text-gray-600">השרת בודק מחדש התאמת ספק, מספר, אירוע, שיבוץ, הגדרות Green והיעדר ניסיונות קודמים לפני כל יצירה. אין שינוי בשיבוצים אחרים.</p>
       </div>}
       <div className="flex flex-wrap gap-6">
