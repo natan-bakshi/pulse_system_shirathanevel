@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { planAssignmentTransition } from '../../shared/assignmentIntent.ts';
 import { planAssignmentEffectParity } from '../../shared/assignmentEffectParity.ts';
-import { assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG } from '../../shared/assignmentSideEffectsLaunchGate.ts';
+import { assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG,
+ ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED } from '../../shared/assignmentSideEffectsLaunchGate.ts';
 
 // Phase 1 / OFF BY DEFAULT. The current assignment UI never invokes this.
 // No WhatsApp provider or Outbox call is made here: the atomic EventService row
@@ -49,7 +50,8 @@ Deno.serve(async(req)=>{
     }
     // Code-owned fail-closed gate: editing AppSettings alone NEVER activates
     // an unimplemented side-effect bridge. No WhatsApp calls or DB writes.
-    const effectFlags=effects.required?await db.AppSettings.filter({
+    const effectFlags=effects.required&&ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED?
+      await db.AppSettings.filter({
       setting_key:SIDE_EFFECT_FLAG
     },'-created_date',2):[];
     const effectReadiness=assignmentSideEffectsLaunchGate(effects,effectFlags);
