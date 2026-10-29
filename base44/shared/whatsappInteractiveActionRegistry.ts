@@ -11,7 +11,8 @@ export type InteractiveActionContract={
  targetStatus?:'confirmed'|'rejected'
 };
 export type InteractiveMessageContract={
- messageKind:string;sourceType:string;resourceType:string;maxButtons:number;
+ messageKind:string;sourceType:string;resourceType:string;
+ audience:'supplier'|'client'|'admin';maxButtons:number;
  actions:readonly InteractiveActionContract[]
 };
 export type InteractiveActionRegistry={
@@ -26,7 +27,8 @@ export function createInteractiveActionRegistry(specs:readonly InteractiveMessag
  const kinds=new Set<string>(),sources=new Set<string>();
  const messageKinds=specs.map(raw=>{
   if(!raw||!validId(raw.messageKind)||!validId(raw.sourceType)||
-   !validId(raw.resourceType)||kinds.has(raw.messageKind)||
+   !validId(raw.resourceType)||!['supplier','client','admin'].includes(raw.audience)||
+   kinds.has(raw.messageKind)||
    sources.has(raw.sourceType))fail('kind_or_origin');
   if(!Number.isSafeInteger(raw.maxButtons)||raw.maxButtons<1||raw.maxButtons>3||
    !Array.isArray(raw.actions)||!raw.actions.length||raw.actions.length>12)
@@ -52,7 +54,7 @@ export function createInteractiveActionRegistry(specs:readonly InteractiveMessag
    }) as InteractiveActionContract;
   });
   return Object.freeze({messageKind:raw.messageKind,sourceType:raw.sourceType,
-   resourceType:raw.resourceType,maxButtons:raw.maxButtons,
+   resourceType:raw.resourceType,audience:raw.audience,maxButtons:raw.maxButtons,
    actions:Object.freeze(definitions)}) as InteractiveMessageContract;
  });
  return Object.freeze({schemaVersion:1,messageKinds:Object.freeze(messageKinds)});
@@ -62,7 +64,7 @@ export function createInteractiveActionRegistry(specs:readonly InteractiveMessag
 // value. Assignment's v1 signed token, Outbox and webhook stay unchanged.
 export const REGISTERED_WHATSAPP_ACTIONS=createInteractiveActionRegistry([{
  messageKind:'assignment',sourceType:'assignment_new',
- resourceType:'event_service',maxButtons:3,
+ resourceType:'event_service',audience:'supplier',maxButtons:3,
  actions:[
   {action:'assignment_approve',delivery:'reply',
    handler:'supplier_status',targetStatus:'confirmed'},
