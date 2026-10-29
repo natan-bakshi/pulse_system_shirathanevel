@@ -134,6 +134,8 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success){
           const reason=res.data?.diagnosticCode||'qa_unknown';
           setPilotFailure(reason);
+          if(reason==='qa_interactive_config_not_ready')
+            setPilotEnrollmentRequested(false);
           try{
             const audit=await base44.functions.invoke('WhatsAppQueueAdmin',
               {action:'greenButtonQaReadiness'});
