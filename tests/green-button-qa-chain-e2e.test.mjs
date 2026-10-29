@@ -400,13 +400,22 @@ test('post-confirmation opposite button with a distinct Green event cannot rever
   assert.equal(f.stats.statusCAS,1);
   const opposite=await f.httpCallback(second,{sendDisabled:true,
    eventId:'C0CD39BB261589D5C98412D255CD000F'});
-  assert.notEqual(opposite.httpStatus,200,
-   'opposite action is stale even when the provider event is different');
+  assert.equal(opposite.httpStatus,200,
+   'verified late event is ACKed ONLY after a durable terminal rejection');
+  assert.equal(opposite.body.received,true);
   assert.equal(f.stats.statusCAS,1,'no second supplier mutation');
   assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],expected);
   assert.equal(f.stats.providerCalls,1);
   assert.equal(f.outbox.length,1);
   assert.equal(f.receipts.filter(x=>x.state==='applied').length,1);
+  assert.equal(f.receipts.filter(x=>x.state==='rejected').length,1);
+  assert.equal(f.receipts.find(x=>x.state==='rejected')?.result_code,
+   'business_conflict');
+  const replay=await f.httpCallback(second,{sendDisabled:true,
+   eventId:'C0CD39BB261589D5C98412D255CD000F'});
+  assert.equal(replay.httpStatus,200,'finalized rejection is also idempotent');
+  assert.equal(f.stats.statusCAS,1);
+  assert.equal(f.receipts.length,2);
  }
 });
 test('PRODUCTION HTTP ADAPTER also accepts documented singular templateButtonReplyMessage sample',async()=>{
