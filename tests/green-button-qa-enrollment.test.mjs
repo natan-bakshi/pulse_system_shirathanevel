@@ -8,6 +8,7 @@ const CHAT='972501234567@c.us',SERVICE='service-abc',SUPPLIER='supplier-abc',EVE
 const envValues={
  GREEN_BUTTONS_QA_CREATE_ENABLED:'enabled',GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
  GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED:'confirmed',
  GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'verified',
  GREEN_BUTTONS_QA_OWNER_APPROVED:'approved',GREEN_BUTTONS_QA_EVENT_ID:EVENT,
  GREEN_BUTTONS_QA_EVENT_SERVICE_ID:SERVICE,GREEN_BUTTONS_QA_SUPPLIER_ID:SUPPLIER,
@@ -90,7 +91,8 @@ test('requires owner confirmation and independent enable flag before any read',a
  const f=fixture();
  for(const opts of [
   {env:f.env(),confirmation:'wrong'},
-  {env:f.env({GREEN_BUTTONS_QA_CREATE_ENABLED:''}),confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'}
+  {env:f.env({GREEN_BUTTONS_QA_CREATE_ENABLED:''}),confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'},
+  {env:f.env({GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED:''}),confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'}
  ]){
   await assert.rejects(enrollOneGreenButtonQaAssignment(f.client,opts),
    err=>err.code==='qa_enrollment_not_approved');
