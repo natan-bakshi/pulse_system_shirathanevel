@@ -6,6 +6,7 @@
 // A SINGLE existing WhatsAppQueueControl row serializes CREATE and a durable
 // pre-CREATE guard stops all new registrations after ambiguous commits/crashes.
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
+import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {inboundReceiptDecision,inboundReceiptKey} from './whatsappInteractiveReceipt.ts';
 
 type Provider='green'|'wasender';
@@ -32,7 +33,7 @@ const randomToken=()=>crypto.randomUUID();
 export function normalizeInboundReceipt(input:any):VerifiedInboundReceipt & {receiptKey:string} {
  if(!input||typeof input!=='object'||Array.isArray(input))throw entityError('invalid_receipt',400);
  if(!['green','wasender'].includes(input.provider)||
-   !['assignment_approve','assignment_reject'].includes(input.action))
+   !allowedInboundActionIds('assignment').includes(input.action))
   throw entityError('unsupported_inbound_action',400);
  if(input.companyId!==COMPANY)throw entityError('invalid_company',403);
  for(const field of ['senderAccountId','providerEventId','providerMessageId','eventServiceId',
