@@ -232,6 +232,23 @@ test('a different signed Green event on an already approved revision gets its OW
  assert.equal(f.stats.creates,2);
  assert.equal(f.stats.supplierWrites,1);
 });
+test('ambiguous late receipt finalization does NOT ACK or replay supplier mutation',async()=>{
+ const f=fixture(),initial=await signedEvent('assignment_approve','first-green-event');
+ assert.equal((await call(f,initial)).status,'applied');
+ f.receiptError(true);
+ const late=await signedEvent('assignment_reject','second-green-event');
+ const result=await call(f,late);
+ assert.equal(result.status,'needs_review');
+ assert.equal(result.reason,'late_receipt_finalization_unverified');
+ assert.equal(result.supplierWritesAuthorized,false);
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(f.records.length,2);
+ assert.equal(f.records[1].state,'processing');
+ const repeat=await call(f,late);
+ assert.equal(repeat.status,'held');
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(f.stats.creates,2);
+});
 test('competing dashboard rejection causes business-conflict terminal, not a WhatsApp overwrite',async()=>{
  const f=fixture(),event=await signedEvent();
  // Admission's get sees pending; supplier writer's later get sees confirmed.
