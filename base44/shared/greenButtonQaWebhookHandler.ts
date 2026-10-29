@@ -74,8 +74,11 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
  // The first live beta send has not been proven yet; never consume a
  // potentially valid button click merely because the passive endpoint ACKs
  // ordinary manual office messages. Fail closed without any DB access.
- if(opts.env('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified')
-  return result(503);
+ const betaProof=opts.env('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified';
+ const betaPilot=opts.env('GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='probe_authorized'&&
+  opts.env('GREEN_BUTTONS_QA_BETA_PROBE_ENABLED')==='enabled'&&
+  greenButtonQaScopedV2Enabled(opts.env);
+ if(!betaProof&&!betaPilot)return result(503);
  // No database access until verified scope and approved callback admission.
  try{
   const client=opts.makeClient(request);
