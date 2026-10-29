@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Edit, Plus, Trash2, Save, Loader2, GripVertical, Minus, X, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, Info, HelpCircle, ArrowLeftRight, ArrowRight } from 'lucide-react';
+import { Edit, Plus, Trash2, Save, Loader2, GripVertical, X, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, HelpCircle, ArrowLeftRight } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
