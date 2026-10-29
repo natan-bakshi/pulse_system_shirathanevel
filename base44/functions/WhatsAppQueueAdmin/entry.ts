@@ -7,6 +7,7 @@ import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
+import {inspectAssignmentV2ReleaseReadiness} from '../../shared/assignmentV2ReleaseReadiness.ts';
 import {greenButtonQaSafeSummary,greenButtonQaPassiveInboundReady} from '../../shared/greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
@@ -327,6 +328,16 @@ Deno.serve(async(req)=>{
       return RESPONSE(await queueStatus(client));
     }
     if(action==='status')return RESPONSE(await queueStatus(client));
+    if(action==='assignmentV2Readiness'){
+      // Owner-clicked, two AppSettings reads only. No supplier/event queries,
+      // no provider calls, no writes, no UI toggle for any rollout flag.
+      try{
+        const readiness=await inspectAssignmentV2ReleaseReadiness(client);
+        return RESPONSE({success:true,readiness,noMessagesSent:true,noWrites:true});
+      }catch{return RESPONSE({success:false,
+        error:'בדיקת תאימות שיבוצים V2 אינה זמינה כרגע',
+        noMessagesSent:true,noWrites:true},503);}
+    }
     if(action==='greenButtonQaLiveResult'){
       // One explicit owner read: exact service, outbox and receipt projections.
       // Never scans other suppliers or contacts Green, never sends messages.
