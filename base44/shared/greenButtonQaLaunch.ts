@@ -128,6 +128,9 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
    {key:'durable_assignment_intent',ready:assignmentIntentEnabled===true},
    {key:'owner_queue_gate',ready:control?.interactive_outbound_live_enabled===true},
    {key:'send_env_gate',ready:get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'},
+   {key:'create_env_gate',ready:get(env,'GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled'},
+   {key:'post_reboot_settings_gate',ready:
+     get(env,'GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED')==='confirmed'},
    {key:'inbound_env_gate',ready:get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'},
    {key:'owner_env_gate',ready:get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'},
    {key:'provider_beta_verified',ready:get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'},
