@@ -48,6 +48,55 @@ test('dashboard and WhatsApp share CAS writer without modifying other suppliers'
  assert.equal(duplicate.kind,'unchanged');
  assert.equal(f.events.writes,1,'unchanged confirmation writes nothing');
 });
+test('in-app approval retires only that suppliers signed WhatsApp decision and preserves other pending work',async()=>{
+ const f=fixture();
+ f.service.assignment_intents_pending=true;
+ const result=await persistAuthorizedSupplierStatus(f.client,req({
+  newStatus:'confirmed',source:'dashboard'
+ }));
+ assert.equal(result.kind,'changed');
+ const entries=JSON.parse(f.service.assignment_notification_intents);
+ assert.equal(entries[0].state,'resolved');
+ assert.equal(entries[0].resolution,'dashboard_status_changed');
+ assert.equal(entries[1].state,'requested','other supplier must not be cancelled');
+ assert.equal(f.service.assignment_intents_pending,true);
+ assert.equal(f.events.writes,1,'business and signed-intent closure share one CAS');
+ assert.equal(whatsappRevisionEligibility(f.service,'supplier-aaa','r3').allowed,false);
+ assert.equal(whatsappRevisionEligibility(f.service,'supplier-bbb','r4').allowed,true);
+});
+test('in-app decline and later in-app reopening both remain possible but cannot revive old WhatsApp buttons',async()=>{
+ const f=fixture();
+ await persistAuthorizedSupplierStatus(f.client,req({newStatus:'rejected'}));
+ assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-aaa'],'rejected');
+ assert.equal(whatsappRevisionEligibility(f.service,'supplier-aaa','r3').allowed,false);
+ await persistAuthorizedSupplierStatus(f.client,req({newStatus:'pending'}));
+ assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-aaa'],'pending');
+ assert.equal(whatsappRevisionEligibility(f.service,'supplier-aaa','r3').allowed,false);
+ await assert.rejects(persistAuthorizedSupplierStatus(f.client,req({
+  source:'whatsapp',expectedRevision:'r3',newStatus:'confirmed'
+ })),e=>e.code==='assignment_intent_inactive');
+ assert.equal(f.events.writes,2,'only the two in-app decisions wrote business state');
+});
+test('dashboard can change a WhatsApp-confirmed assignment and safely reopen it',async()=>{
+ const f=fixture();
+ await persistAuthorizedSupplierStatus(f.client,req({
+  source:'whatsapp',expectedRevision:'r3',newStatus:'confirmed'
+ }));
+ await persistAuthorizedSupplierStatus(f.client,req({newStatus:'rejected'}));
+ await persistAuthorizedSupplierStatus(f.client,req({newStatus:'pending'}));
+ assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-aaa'],'pending');
+ assert.equal(whatsappRevisionEligibility(f.service,'supplier-aaa','r3').allowed,false);
+ assert.equal(f.events.writes,3);
+});
+test('a broken WhatsApp journal does not disable existing in-app status controls',async()=>{
+ const f=fixture();
+ f.service.assignment_notification_intents='{invalid';
+ const changed=await persistAuthorizedSupplierStatus(f.client,req({newStatus:'rejected'}));
+ assert.equal(changed.kind,'changed');
+ assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-aaa'],'rejected');
+ assert.equal(f.service.assignment_notification_intents,'{invalid');
+ assert.equal(f.events.writes,1);
+});
 test('supplier declines are recorded once and CAS protects concurrent decline history',async()=>{
  const f=fixture();
  f.mutateOnFirstCAS(row=>{row.declined_suppliers=JSON.stringify([{supplier_id:'supplier-bbb',reason:'existing'}]);});
