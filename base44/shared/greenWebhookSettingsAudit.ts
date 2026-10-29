@@ -106,7 +106,9 @@ export function summarizeGreenWebhookSettings(settings:any){
 export async function inspectGreenWebhookSettingsReadOnly(config:{
  instanceId?:string;apiToken?:string;apiBaseUrl?:string;
  fetchFn?:(url:string,init:any)=>Promise<any>;
- timeoutMs?:number
+ timeoutMs?:number;
+ // Expected values stay server-side; never echo raw Green URL or tokens.
+ expectedQaWebhook?:{url:string;bearer:string;originalDelayMs:number}
 }){
  const instance=config?.instanceId,token=config?.apiToken;
  if(typeof instance!=='string'||!INSTANCE.test(instance)||
@@ -172,7 +174,30 @@ export async function inspectGreenWebhookSettingsReadOnly(config:{
   let payload:any;
   try{payload=JSON.parse(text);}catch{throw failure('provider_response_invalid',providerReadCalls);}
   try{
-   return {...summarizeGreenWebhookSettings(payload),
+   const summary=summarizeGreenWebhookSettings(payload);
+   const expected=config.expectedQaWebhook;
+   // Green accepted SetSettings is NOT proof the webhook was applied.
+   // Confirm exact URL, exact credential, the one permitted incoming class,
+   // and unchanged 500-ms initial delay, using ONE owner-triggered GET.
+   // Only boolean results leave this function; neither raw string does.
+   const qaTarget=expected&&typeof expected.url==='string'&&
+    expected.url.startsWith('https://pulse-system.base44.app/api/apps/')&&
+    typeof expected.bearer==='string'&&expected.bearer.length>=24;
+   const qaUrlMatches=!!qaTarget&&payload.webhookUrl===expected!.url;
+   const qaTokenMatches=!!qaTarget&&payload.webhookUrlToken===expected!.bearer;
+   const qaOnlyIncoming=summary.notificationFlags.incomingWebhook==='yes'&&
+    Object.entries(summary.notificationFlags).every(([key,value])=>
+      key==='incomingWebhook'?value==='yes':value==='no');
+   const qaDelayUnchanged=!!qaTarget&&Number.isInteger(expected!.originalDelayMs)&&
+    summary.sendDelayMs===expected!.originalDelayMs;
+   const qaPostRebootReady=!!qaTarget&&qaUrlMatches&&qaTokenMatches&&
+    qaOnlyIncoming&&qaDelayUnchanged&&providerReadCalls===1;
+   return {...summary,
+    ...(expected?{qaWebhookTargetMatches:qaUrlMatches,
+      qaWebhookBearerMatches:qaTokenMatches,
+      qaOnlyIncomingCategory:qaOnlyIncoming,
+      qaGreenSendDelayUnchanged:qaDelayUnchanged,
+      qaPostRebootReady}:{}),
     providerReadCalls,universalHostFallbackUsed:providerReadCalls===2,
     noBackgroundPolling:true};
   }catch{throw failure('provider_response_invalid',providerReadCalls);}
