@@ -286,6 +286,10 @@ export default function WhatsAppQueueSettings(){
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={busy||!view} onClick={()=>run('configure',form)}><Save className="h-4 w-4 ml-2"/>שמור הגדרות</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}><RefreshCw className="h-4 w-4 ml-2"/>רענן</Button>
+      </div>
+      <details className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="font-medium cursor-pointer">כלי אבחון וניהול מתקדמים (לפתיחה לפי הצורך)</summary>
+        <div className="flex flex-wrap gap-2 mt-3">
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>אבחון ללא שליחה</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
@@ -299,7 +303,8 @@ export default function WhatsAppQueueSettings(){
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
         </Button>
-      </div>
+        </div>
+      </details>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
       {greenWebhookSettings&&<details open className="rounded border p-3 text-sm" dir="rtl">
