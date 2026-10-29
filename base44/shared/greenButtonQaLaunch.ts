@@ -111,7 +111,9 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
  const inbound=trustedGreenButtonQaInboundConfig(control,env,assignmentIntentEnabled);
  const draft=parseSavedWhatsAppInteractivePolicy(control,'green');
  return {mode:'single_chat_qa',readyForQa:!!config&&assignmentIntentEnabled&&
-  otherPendingCount===0,
+  otherPendingCount===0&&
+  get(env,'GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED')==='confirmed'&&
+  get(env,'GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled',
   receivingExistingQaRepliesAvailable:!!inbound,
   webhookProvisioningOwnerActionAvailable:
    greenButtonQaPassiveInboundReady(env)&&
