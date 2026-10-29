@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {summarizeGreenWebhookSettings,inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure}
  from '../base44/shared/greenWebhookSettingsAudit.ts';
+import {GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL}
+ from '../base44/shared/greenButtonQaWebhookProvisioning.ts';
 
 const SETTINGS={
  wid:'972500000000@c.us',webhookUrl:'https://PRIVATE.example.test/secret-path?token=TOP-SECRET',
@@ -58,6 +60,56 @@ test('single authorized Green GetSettings GET reveals only non-secret configurat
   'PRIVATE-CUSTOMER-NOTES','mockGreenOnlyToken-SENTINEL-123456789',
   '9903183013'
  ])assert.equal(serialized.includes(secret),false,secret);
+});
+test('post reboot GET verifies exact QA route, bearer, sole incoming category and original delay without returning secrets',async()=>{
+ const bearer='SYNTHETIC_PRIVATE_QA_BEARER_ONLY_123456789';
+ const flags=Object.fromEntries([
+  'incomingWebhook','outgoingWebhook','outgoingMessageWebhook',
+  'outgoingAPIMessageWebhook','stateWebhook','deviceWebhook',
+  'pollMessageWebhook','editedMessageWebhook','deletedMessageWebhook',
+  'incomingCallWebhook','incomingMessageStatusWebhook'
+ ].map(key=>[key,key==='incomingWebhook'?'yes':'no']));
+ const settings={...flags,
+  webhookUrl:GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL,
+  webhookUrlToken:bearer,delaySendMessagesMilliseconds:500};
+ const expectedQaWebhook={url:GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL,
+  bearer,originalDelayMs:500};
+ let calls=0;
+ const audit=async(s=[])=>{
+  calls++;
+  return inspectGreenWebhookSettingsReadOnly({
+   ...config,expectedQaWebhook,
+   fetchFn:async(_url,init)=>{
+    assert.equal(init.method,'GET');
+    assert.equal(init.body,undefined);
+    return response({...settings,...s[0]});
+   }
+  });
+ };
+ const ok=await audit();
+ assert.equal(ok.qaPostRebootReady,true);
+ assert.equal(ok.providerReadCalls,1);
+ assert.equal(ok.qaWebhookTargetMatches,true);
+ assert.equal(ok.qaWebhookBearerMatches,true);
+ assert.equal(ok.qaOnlyIncomingCategory,true);
+ assert.equal(ok.qaGreenSendDelayUnchanged,true);
+ const output=JSON.stringify(ok);
+ for(const sensitive of [bearer,GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL,
+  '9903183013','SYNTHETIC_PRIVATE'])assert.equal(output.includes(sensitive),false);
+ for(const patch of [
+  {webhookUrl:'https://other.invalid/hijacked'},
+  {webhookUrlToken:'other-private-token'},
+  {incomingWebhook:'no'},
+  {outgoingWebhook:'yes'},
+  {delaySendMessagesMilliseconds:7000}
+ ]){
+  const result=await audit([patch]);
+  assert.equal(result.qaPostRebootReady,false,
+   'a mismatched provider setting cannot green-light beta');
+  assert.equal(result.noMessagesSent,true);
+  assert.equal(result.webhookSettingChangesMade,false);
+ }
+ assert.equal(calls,6,'one GET for each explicitly invoked audit');
 });
 test('missing Green url represents polling or unconfigured, never falsely proves incoming capability',()=>{
  const report=summarizeGreenWebhookSettings({
