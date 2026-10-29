@@ -281,6 +281,32 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  assert.equal(f.stats.providerCalls,1);
  assert.equal(f.outbox.length,1);
 });
+test('ONE unverified GREEN Beta probe may send ONLY approved signed QA buttons and accept the matching signed receipt',async()=>{
+ const f=fixture({groupPreferred:true,globalV2Enabled:false,betaProbe:true});
+ const config=trustedGreenButtonQaConfig(f.control,f.qaEnv,true);
+ assert.ok(config);
+ assert.equal(config.accountCapabilityVerified,false,'provider beta is NOT proven before test');
+ assert.equal(config.qaBetaProbeApproved,true);
+ assert.equal((await f.enroll()).saved,true);
+ const queued=await f.reconcile();
+ assert.equal(queued.queued,1);
+ assert.equal(f.outbox.length,1);
+ assert.equal(f.outbox[0].chat_id,CHAT);
+ const sent=await f.worker();
+ assert.equal(sent.accepted,1);
+ assert.equal(f.stats.providerCalls,1,'one provider attempt, not multiple test sends');
+ const reply=await f.httpCallback('assignment_approve',{sendDisabled:true});
+ assert.equal(reply.httpStatus,200);
+ assert.equal(reply.body.received,true);
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(f.receipts.length,1);
+ assert.equal(f.receipts[0].state,'applied');
+ assert.equal(f.supplier.preferred_channel,'group');
+ const reread=await f.httpCallback('assignment_approve',{sendDisabled:true});
+ assert.equal(reread.httpStatus,200);
+ assert.equal(f.stats.statusCAS,1,'duplicate click cannot update supplier');
+ assert.equal(f.outbox.length,1);
+});
 test('SCOPED V2 QA runs with the GLOBAL assignment-intent feature OFF: one event, one private click, zero normal rollout',async()=>{
  const f=fixture({groupPreferred:true,globalV2Enabled:false});
  const enrolled=await f.enroll();
