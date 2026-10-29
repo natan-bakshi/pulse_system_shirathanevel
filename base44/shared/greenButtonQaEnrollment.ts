@@ -40,9 +40,11 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
   greenButtonQaScopedV2Enabled(opts.env,opts.env('GREEN_BUTTONS_QA_EVENT_SERVICE_ID')||'');
  const config=trustedGreenButtonQaConfig(control,opts.env,durable);
  const eventId=String(opts.env('GREEN_BUTTONS_QA_EVENT_ID')||'');
- if(!config||!ID.test(eventId)||control.enabled!==true||
-  control.paused===true||control.inbound_guard_key||control.unknown_guard_key)
-  throw fail('qa_enrollment_unavailable',423);
+ if(!config)throw fail('qa_interactive_config_not_ready',423);
+ if(!ID.test(eventId))throw fail('qa_event_id_not_configured',423);
+ if(control.enabled!==true||control.paused===true||
+  control.inbound_guard_key||control.unknown_guard_key)
+  throw fail('qa_queue_paused_or_guarded',423);
  const [service,supplier,event]=await Promise.all([
   db.EventService.get(config.qaEventServiceId),
   db.Supplier.get(config.qaSupplierId),
