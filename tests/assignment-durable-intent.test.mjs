@@ -78,8 +78,10 @@ function server({actor='admin',flag=false,service=initial(),eventStatus='confirm
  const cjs=esbuild.transformSync(bodySrc,{loader:'ts',format:'cjs',target:'es2022'}).code;
  let handler;
  let writes=0,providerCalls=0,wakes=0;
+ const settingsReads=[];
  const db={
   AppSettings:{filter:async(q)=>{
+   settingsReads.push(q.setting_key);
    if(q.setting_key==='assignment_intent_v1_enabled')
     return flag?[{setting_key:q.setting_key,setting_value:'true'}]:[];
    if(q.setting_key===SIDE_EFFECT_FLAG)
@@ -124,7 +126,7 @@ function server({actor='admin',flag=false,service=initial(),eventStatus='confirm
      throw Error('Unexpected import '+name);
    }
  });
- return {service,get writes(){return writes},get wakes(){return wakes},get providerCalls(){return providerCalls},
+ return {service,settingsReads,get writes(){return writes},get wakes(){return wakes},get providerCalls(){return providerCalls},
    call:body=>handler({method:'POST',json:async()=>body})};
 }
 test('new migration is OFF by default and does not touch assignments or WhatsApp',async()=>{
@@ -152,6 +154,8 @@ test('production code blocks V2 before CAS even if assignment migration flag is 
  assert.equal(f.writes,0);
  assert.equal(f.wakes,0);
  assert.equal(f.providerCalls,0);
+ assert.deepEqual(f.settingsReads,['assignment_intent_v1_enabled'],
+  'a code-blocked effect bridge must not incur a second settings read');
 });
 test('valid save atomically records changed assignment + notification intent but never sends',async()=>{
  const f=server({flag:true}),r=await f.call(input());
