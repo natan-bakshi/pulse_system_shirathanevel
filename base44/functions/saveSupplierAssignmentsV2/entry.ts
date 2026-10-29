@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { planAssignmentTransition } from '../../shared/assignmentIntent.ts';
 import { planAssignmentEffectParity } from '../../shared/assignmentEffectParity.ts';
+import { planDurableAssignmentEffectJournal } from '../../shared/assignmentEffectJournal.ts';
 import { assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG,
  ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED } from '../../shared/assignmentSideEffectsLaunchGate.ts';
 
@@ -37,14 +38,17 @@ Deno.serve(async(req)=>{
     if(!event||['cancelled','completed'].includes(event.status)){
       return Response.json({success:false,error:'Event is not eligible for new supplier assignments'},{status:409});
     }
-    let plan,effects;
+    let plan,effects,effectJournal;
     try{
-      plan=planAssignmentTransition(existing,body,new Date().toISOString());
+      const businessStamp=new Date().toISOString();
+      plan=planAssignmentTransition(existing,body,businessStamp);
       // A CAS update with a later timestamp wake cannot recreate the original
       // EventService changed_fields or old_data. Until all existing Push,
       // reminders, custom notifications and calendar consumers are moved to
       // a durable idempotent bridge, reject such business changes BEFORE CAS.
       effects=planAssignmentEffectParity(existing,plan.patch);
+      effectJournal=planDurableAssignmentEffectJournal(
+        existing,plan.patch,businessStamp,effects);
     }catch(e){
       return Response.json({success:false,error:e instanceof Error?e.message:'Invalid assignment input'},{status:400});
     }
@@ -60,6 +64,10 @@ Deno.serve(async(req)=>{
       code:effectReadiness.reason,
       missingConsumers:effectReadiness.missingConsumers
     },{status:423});
+    // Once a future independently verified bridge is implemented, the
+    // side-effect tasks and business status are ONE atomic CAS. Today the
+    // bridge code gate is OFF; these tasks cannot be written by an admin.
+    Object.assign(plan.patch,effectJournal.patch);
     // CAS guards the complete business-save+intent write. If a competing
     // administrator edited this record, zero writes occur and client must
     // refresh instead of silently overwriting assignments.
@@ -92,7 +100,9 @@ Deno.serve(async(req)=>{
       notificationState:plan.intents.length?'requested':'no_new_request',
       revision:plan.revision,reconcilerRequired:plan.hasNewIntent,
       wakeRequested,wakeFallbackRequired:plan.hasNewIntent&&!wakeRequested,
-      effectParityRequired:effects.required,effectBridgeState:effectReadiness.reason
+      effectParityRequired:effects.required,effectBridgeState:effectReadiness.reason,
+      effectsPlanned:effectJournal.tasks.length,
+      effectsPending:effectJournal.hasNewTasks
     });
   }catch(error){
     console.error('[SaveSupplierAssignmentsV2] failed',error instanceof Error?error.name:'unknown');
