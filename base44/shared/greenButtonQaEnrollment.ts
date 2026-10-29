@@ -18,8 +18,11 @@ const fail=(code:string,status=409)=>Object.assign(new Error(code),{code,status}
 export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
  env:(key:string)=>string|undefined;confirmation:string
 }){
+ // The owner must first verify the provider's post-reboot GetSettings.
+ // This is SETTINGS confirmation, not proof of Beta capability or callback.
  if(opts?.confirmation!=='I_APPROVE_ONE_QA_ASSIGNMENT'||
-  opts.env('GREEN_BUTTONS_QA_CREATE_ENABLED')!=='enabled')
+  opts.env('GREEN_BUTTONS_QA_CREATE_ENABLED')!=='enabled'||
+  opts.env('GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED')!=='confirmed')
   throw fail('qa_enrollment_not_approved',403);
  const db=client?.asServiceRole?.entities;
  if(!db?.AppSettings?.filter||!db?.EventService?.get||
