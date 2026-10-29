@@ -25,6 +25,16 @@ Deno.serve(async(req)=>{
     (body.supplierNote!==undefined&&
       (typeof body.supplierNote!=='string'||body.supplierNote.length>1500)))
    return Response.json({success:false,error:'Invalid assignment status update'},{status:400});
+  // This endpoint is deliberately staged. Direct EventService.update currently
+  // triggers supplier Push, pending reminders and Google-calendar workflows.
+  // Do not route admin UI here until all those side effects have an
+  // idempotent replacement. No secret editing or automatic enablement.
+  const flags=await client.asServiceRole.entities.AppSettings.filter({
+   setting_key:'admin_supplier_status_atomic_rollout_enabled'
+  },'-created_date',2,0,['setting_key','setting_value']);
+  if(!Array.isArray(flags)||flags.length!==1||flags[0].setting_value!=='true')
+   return Response.json({success:false,error:'Admin status migration is not enabled'},
+    {status:423});
   const saved=await persistAuthorizedSupplierStatus(client.asServiceRole,{
    eventServiceId,supplierId,newStatus,expectedStatus,source:'admin',
    ...(body.supplierNote!==undefined?{supplierNote:body.supplierNote}:{})
