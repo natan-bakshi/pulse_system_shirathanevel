@@ -11,6 +11,7 @@ import {greenButtonQaSafeSummary,greenButtonQaPassiveInboundReady} from '../../s
 import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
+import {inspectGreenButtonQaLiveResult} from '../../shared/greenButtonQaLiveResult.ts';
 import {inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure} from '../../shared/greenWebhookSettingsAudit.ts';
 import {applyOneGreenButtonQaWebhookProvisioning,
  GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL}
@@ -139,6 +140,9 @@ async function queueStatus(client:any){
     lastBatchCount:Number.isFinite(control.last_batch_count)?control.last_batch_count:null,
     lastBatchElapsedMs:Number.isFinite(control.last_batch_elapsed_ms)?control.last_batch_elapsed_ms:null,
     lastError:control.last_error||'',activeProvider:provider,
+    qaPilotNewSendsEnabled:control.interactive_outbound_live_enabled===true&&
+      Deno.env.get('GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'&&
+      Deno.env.get('GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled',
     currentIntervalMs:ms,
     latest:jobs.filter((x:any)=>x.archived!==true).slice(0,20).map((x:any)=>renderJob(x))
   };
@@ -323,6 +327,18 @@ Deno.serve(async(req)=>{
       return RESPONSE(await queueStatus(client));
     }
     if(action==='status')return RESPONSE(await queueStatus(client));
+    if(action==='greenButtonQaLiveResult'){
+      // One explicit owner read: exact service, outbox and receipt projections.
+      // Never scans other suppliers or contacts Green, never sends messages.
+      try{
+        const result=await inspectGreenButtonQaLiveResult(
+          client,key=>Deno.env.get(key));
+        return RESPONSE(result,result.success?200:409);
+      }catch{
+        return RESPONSE({success:false,reason:'qa_result_temporarily_unavailable',
+          noProviderCalls:true,noWrites:true,noMessagesSent:true},503);
+      }
+    }
     if(action==='inboundAudit'){
       // Explicit system-owner request only. The inbound feature is NOT active;
       // this never claims a receipt, updates a supplier or invokes transport.
