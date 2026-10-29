@@ -108,7 +108,9 @@ export default function WhatsAppQueueSettings(){
       }
       if(action==='greenWebhookSettingsAudit'){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת הגדרות Green API נכשלה');
-        setGreenWebhookSettings(res.data.settings);
+        setGreenWebhookSettings({...res.data.settings,
+          webhookProvisioningOwnerActionAvailable:
+            res.data.webhookProvisioningOwnerActionAvailable===true});
         setNotice('הגדרות Green נבדקו באמצעות קריאת API אחת בלבד. לא שונו הגדרות ולא נשלחו הודעות.');
         return;
       }
@@ -307,7 +309,7 @@ export default function WhatsAppQueueSettings(){
             {Object.entries(greenWebhookSettings.notificationFlags||{}).map(([key,value])=><span key={key} className="rounded border px-2 py-1">{key}: {value==='yes'?'כן':value==='no'?'לא':'לא ידוע'}</span>)}
           </div>
           <p className="text-gray-600">מפתחות, כתובות Webhook, מספרי טלפון ופרטי חשבון אינם מוצגים או מועברים לדפדפן. הבדיקה אינה שולחת הודעות WhatsApp ואינה בודקת קליטת כפתור אמיתית.</p>
-          {qaReadiness?.webhookProvisioningOwnerActionAvailable===true&&
+          {greenWebhookSettings.webhookProvisioningOwnerActionAvailable===true&&
             greenWebhookSettings.webhookConfigured===false&&
             greenWebhookSettings.webhookTokenConfigured===false&&
             greenWebhookSettings.notificationFlags?.incomingWebhook==='no'&&
