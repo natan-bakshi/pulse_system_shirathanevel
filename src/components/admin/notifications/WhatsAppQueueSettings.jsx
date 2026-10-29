@@ -374,15 +374,6 @@ export default function WhatsAppQueueSettings(){
           {qaAssignmentPreflight.requiresNewDurableAssignment&&<p className="text-amber-800">נדרש יצירת שיבוץ חדש במסלול V2 מאושר. הפעולה אינה מבוצעת אוטומטית כאן.</p>}
         </div>
       </details>}
-      {qaReadiness?.creationActionConfigured&&qaAssignmentPreflight?.configured&&
-        qaAssignmentPreflight.checks?.some(c=>c.code==='qa_service_and_supplier_exist'&&c.ready)&&
-        qaAssignmentPreflight.checks?.some(c=>c.code==='qa_number_matches_supplier'&&c.ready)&&
-        qaAssignmentPreflight.checks?.some(c=>c.code==='qa_supplier_assigned'&&!c.ready)&&
-        !qaAssignmentPreflight.previouslyAttempted&&<div className="rounded border p-3 space-y-2" dir="rtl">
-          <p className="text-sm font-semibold">יצירת שיבוץ ניסוי חדש — פעולה המשנה נתונים ועלולה לשלוח WhatsApp אמיתי</p>
-          <p className="text-xs text-amber-800">רק לאחר אישור אירוע בדיקה, ספק בדיקה ומספר פרטי מתאים, ואימות מסלול ה־Webhook. לא ניתן להפעיל עבור ספק שכבר משובץ.</p>
-          <Button disabled={busy} size="sm" variant="outline" onClick={()=>run('greenButtonQaEnroll')}>צור שיבוץ ניסיון ב־V2 (דורש אישור נוסף)</Button>
-        </div>}
       {interactiveReadiness&&<details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">מוכנות כפתורים — {interactiveReadiness.blockers?.length||0} תנאים עדיין לא הושלמו</summary>
         <div className="pt-3 space-y-2">
