@@ -10,12 +10,12 @@ import {
 const fixture=()=>createInteractiveActionRegistry([
  ...REGISTERED_WHATSAPP_ACTIONS.messageKinds,
  {messageKind:'supplier_reminder',sourceType:'supplier_reminder',
-  resourceType:'event_service',maxButtons:2,actions:[
+  resourceType:'event_service',audience:'supplier',maxButtons:2,actions:[
    {action:'reminder_acknowledge',delivery:'reply',handler:'not_implemented'},
    {action:'contact_office',delivery:'url',handler:'office_link'}
   ]},
  {messageKind:'client_invitation',sourceType:'client_invitation',
-  resourceType:'client_event',maxButtons:2,actions:[
+  resourceType:'client_event',audience:'client',maxButtons:2,actions:[
    {action:'invitation_attending',delivery:'reply',handler:'not_implemented'},
    {action:'invitation_not_attending',delivery:'reply',handler:'not_implemented'}
   ]}
@@ -69,11 +69,11 @@ test('registry rejects malformed, overlapping or executable action definitions',
  assert.throws(()=>createInteractiveActionRegistry([...kinds,kinds[0]]),/kind_or_origin/);
  assert.throws(()=>createInteractiveActionRegistry([{
   messageKind:'assignment',sourceType:'assignment_new',resourceType:'event_service',
-  maxButtons:4,actions:[{action:'assignment_approve',delivery:'reply',
+  audience:'supplier',maxButtons:4,actions:[{action:'assignment_approve',delivery:'reply',
    handler:'supplier_status',targetStatus:'confirmed'}]
  }]),/button_limits/);
  const base={messageKind:'client_invitation',sourceType:'client_invitation',
-  resourceType:'client_event',maxButtons:2};
+  resourceType:'client_event',audience:'client',maxButtons:2};
  for(const actions of [
   [{action:'run_js',delivery:'reply',handler:'eval'}],
   [{action:'evil',delivery:'reply',handler:'office_link'}],
