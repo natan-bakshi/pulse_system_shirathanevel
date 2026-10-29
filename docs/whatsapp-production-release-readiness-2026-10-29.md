@@ -13,6 +13,19 @@
 - נוסף מנעול `useRef` סינכרוני ואי־זמינות כפתור שמירה בזמן בקשה בארבעת המסכים: `SupplierAssignmentDialog`, `EventsBoard`, `ServicesCard`, `EventDetails` (כולל `SupplierAssignDialog`). זה מונע לחיצת שמירה כפולה *בתוך אותו מופע מסך*, אך אינו תחליף ל־CAS ו־idempotency בשרת.
 - לא נשלחה הודעה חדשה, לא נוצר שיבוץ חי, לא הוחלף ספק, לא שונו Secrets, התור או Green SetSettings בסשן הכנת השחרור.
 
+## החלטה מחייבת — WhatsApp בנוסף ל־Pulse, לעולם לא במקום (29.10.2026)
+- **כפתורי האישור/הדחייה מתוך דשבורד הספק נשארים תמיד פעילים** גם כשהספק Green אינו זמין, המספר לא מאומת או הודעת WhatsApp לא נשלחה. גם פעולות ניהול הסטטוס של המשרד בתוך Pulse נשמרות.
+- כל פעולה נכנסת מורשית מ־WhatsApp, מספק דרך דשבורד Pulse וממנהל דרך Pulse משתמשת באותו כותב CAS של `EventService.supplier_statuses`. UI קיים לא מומר לקישור WhatsApp, ו־Webhook לא מסמיך את עצמו כמשתמש מנהל/ספק.
+- החלטת ספק מתוך Pulse או שינוי סטטוס מאומת של מנהל בתוך Pulse *מסיימים אטומית* את גרסת כפתורי WhatsApp הקודמת של הספק, בלי למחוק Outbox או Receipt. פעולה ישנה שלא נענתה אינה יכולה לשנות החלטה חדשה, גם לאחר פתיחה מחדש; תהליך שיבוץ חדש חייב ליצור גרסת הודעה חדשה.
+- מנהל יכול להמשיך לשנות סטטוס `pending`/`confirmed`/`rejected`. שמירת הערת ספק בעריכת השיבוץ נשמרת באותו CAS. תיבת עריכה שנפתחה לפני שינוי סטטוס מתחרה מקבלת 409 ואינה דורסת החלטת ספק או WhatsApp.
+
+### הושלם בקוד, נבדק — מסלול סטטוסים משותף
+- [x] `supplierStatusPersistence.ts`: מקור `dashboard` קיים נשאר; נוסף מקור שרת מורשה `admin`, עם `expectedStatus` חובה, הערה אופציונלית, מסירת ערך `declined_by_supplier=false` בדחיית מנהל, והפיכת Intent נוכחי ל־`resolved` באותו CAS במקרה של החלטה מתוך Pulse. Intent של ספק אחר נשמר. אם יומן WhatsApp פגום, דשבורד עדיין יכול לעדכן סטטוס ולחיצה נכנסת אינה מורשית.
+- [x] `adminUpdateSupplierStatus`: endpoint מנהל מאומת בשרת (role=admin), מתעלם מ־source/revision מהדפדפן, אינו שולח WhatsApp, מבצע עדכון סטטוס והערה אטומי וחשבונאות סטטוס אירוע ללא retry לפעולה עסקית שכבר בוצעה.
+- [x] שני מסכי מנהל קיימים `EventDetails.updateSupplierStatus` ו־`EventsBoard.handleSaveAssignment` משתמשים ב־endpoint במקום עדכון JSON ישיר, בלי לשנות את הכפתורים. מסך `SupplierDashboard` עדיין קורא ל־`updateSupplierStatus` הקיים.
+- [x] בדיקות הודעות E2E מדומות עם ה־HTTP adapter וה־Receipt האמיתיים: אישור ב־Pulse ואחריו דחיית WhatsApp מאוחרת נדחית בלי CAS נוסף, ודחייה/פתיחה מחדש ב־Pulse אינה מפעילה כפתור אישור ישן. אינן מחליפות בדיקת פרודקשן חי.
+- [ ] מסכי ניהול הוספת/הסרת ספקים שמשנים `supplier_statuses` ישירות (למשל `SupplierAssignmentDialog`, `ServicesCard` ו־`EventForm`) עדיין דורשים מעבר למסלול שיבוץ V2 מתאים לפני הכללתם בפרודקשן אינטראקטיבי. אין להפעיל כלל ספקים כל עוד יש מסלולים עוקפים.
+
 ## מדוע עדיין NO-GO לכפתורים בכל השיבוצים
 1. **שמירה עסקית מפוצלת.** `saveSupplierAssignmentsV2` קיים ומבצע CAS על שיוך + Intent, אבל הוא כבוי מאחורי `assignment_intent_v1_enabled`. ממשקי שיבוץ אמיתיים כותבים עדיין ישירות דרך `EventService.update` וקוראים ל־`ensureAssignmentWhatsApp`. יש יותר ממסלול UI אחד: `SupplierAssignmentDialog`, `EventsBoard`, `ServicesCard`, `EventDetails`; יש לוודא גם `EventForm` וזרימות אחרות. אין להדליק V2 גלובלי ולסמוך על כך שכל המסכים עברו מסלול אטומי.
 2. **ה־worker סגור לניסוי אחד.** `trustedGreenButtonQaConfig` ו־`greenButtonQaScopedV2` מאפשרים כפתורים רק לשילוב QA קבוע של Event, EventService, Supplier ו־Chat. מסר שיבוץ רגיל אחר ממשיך לטקסט רגיל. אין מדיניות פרודקשן שמעניקה eligibility לפי חברה/ספק/שירות.
@@ -23,6 +36,7 @@
 ## סדר ביצוע מחייב
 - [x] רענון ראיות מהמסד, אימות שאין תור/Receipt תקועים, בידוד 4 `unknown` ללא retry.
 - [x] תיקון מניעת save כפול בארבעה מסכים, בדיקות Node + lint + build.
+- [x] שימור אישור/דחייה מתוך Pulse *בנוסף* לכפתורי WhatsApp: כותב CAS משותף למנהל/ספק/לחיצה מאומתת, חסימת פעולות ישנות לאחר החלטה במערכת, מניעת עריכת מנהל מיושנת, שמירת הערות. בדיקות כולל E2E מדומות, בלי הודעות חיות.
 - [ ] הגדרת מדיניות פרודקשן מאובטחת ונפרדת מ־QA: Green בלבד, חברה יחידה בתחילה, allowlist מצומצם של ספק ושירות, יעד `@c.us` מאומת, ואישור בעלים דרך UI ולא עריכת Secrets.
 - [ ] חיבור *כל* יצירות השיבוץ החדשות למסלול שמירת business+revision+intent אטומי במקום מסלולי `EventService.update` הישנים; העברת התראות/תזכורות קיימות ללא כפילויות וללא איטיות חריגה. שינויים ללא בקשת אישור חדשה נשארים ללא הודעת שיבוץ.
 - [ ] הוספת סמן production-interactive ל־Intent ול־Outbox, עם snapshot חתום לפני ניסיון ראשון, ולידציית יעד אישי והפרדת provider/account; לא להשתמש בסמן QA כאישור לפרודקשן.
