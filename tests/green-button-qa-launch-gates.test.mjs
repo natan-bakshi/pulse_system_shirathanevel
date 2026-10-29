@@ -26,6 +26,8 @@ const control={id:'control-test',control_key:'global',enabled:true,paused:false,
 const secrets={
  GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
  GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_EVENT_ID:'qa-event-123',
  GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'verified',
  GREEN_BUTTONS_QA_OWNER_APPROVED:'approved',
  GREEN_BUTTONS_QA_ALLOWED_CHAT:CHAT,
@@ -208,7 +210,7 @@ test('HTTP QA endpoint is inert without every independent env approval: no DB or
    env:env({[key]:value}),makeClient:()=>db.client,
    recalculateEventStatus:async()=>{throw Error('never called')}
   });
-  assert.equal(result.httpStatus,404,key);
+  assert.equal(result.httpStatus,key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?503:404,key);
   assert.equal(db.counts.reads,0,key);
  }
 });
@@ -222,7 +224,7 @@ test('rollback stops NEW button sends but inbound remains available for previous
  assert.equal(inbound.qaSupplierId,'supplier-123');
  assert.equal(greenButtonQaSafeSummary(control,stopped,true,0).readyForQa,false);
  assert.equal(greenButtonQaSafeSummary(control,stopped,true,0).receivingExistingQaRepliesAvailable,true);
- const db=sdk(control);let staged=0;
+ const db=sdk({...control,interactive_outbound_live_enabled:false});let staged=0;
  const response=await handleGreenButtonQaWebhook(createRequest(),{
   env:stopped,makeClient:()=>db.client,
   recalculateEventStatus:async()=>null,
@@ -237,19 +239,19 @@ test('rollback stops NEW button sends but inbound remains available for previous
  assert.equal(db.counts.reads,1);
  assert.equal(db.counts.flagReads,1);
 });
-test('V2 migration OFF, absent or ambiguous always blocks inbound even with full QA secrets',async()=>{
+test('V2 global OFF and scoped gate OFF prevents any inbound database read',async()=>{
  for(const flag of ['false',null,'duplicate']){
   const db=sdk(control,flag);
   let staged=0;
   const r=await handleGreenButtonQaWebhook(createRequest(),{
-   env:env(),makeClient:()=>db.client,
+   env:env({GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:''}),makeClient:()=>db.client,
    recalculateEventStatus:async()=>{throw Error('must not change status')},
    stage:async()=>{staged++;throw Error('must not enter coordinator')}
   });
   assert.equal(r.httpStatus,404);
   assert.equal(r.body.received,false);
-  assert.equal(db.counts.reads,1);
-  assert.equal(db.counts.flagReads,1);
+  assert.equal(db.counts.reads,0);
+  assert.equal(db.counts.flagReads,0);
   assert.equal(staged,0);
  }
 });
@@ -263,9 +265,8 @@ test('wrong Green bearer never reads DB or body and is not ACKed',async()=>{
  assert.equal(r.body.received,false);
  assert.equal(db.counts.reads,0);
 });
-test('missing owner control, no draft, or no owner approved number prevents callback',async()=>{
+test('missing policy draft prevents callback even with independently armed inbound',async()=>{
  for(const variant of [
-  {...control,interactive_outbound_live_enabled:false},
   {...control,interactive_assignment_green_policy_json:null}
  ]){
   const db=sdk(variant);
