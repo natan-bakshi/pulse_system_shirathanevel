@@ -240,7 +240,12 @@ export default function WhatsAppQueueSettings(){
       }else if(action==='configure'){
         apply(res.data);setRefreshSignal(n=>n+1);setNotice('הגדרות קצב השליחה לכל ספק נשמרו.');
       }else await read();
-    }catch(e){setError(e?.response?.data?.error||e?.message||'הפעולה נכשלה');}
+    }catch(e){
+      if(action==='greenButtonQaEnroll'){
+        setPilotFailure(e?.response?.data?.diagnosticCode||'qa_unknown');
+      }
+      setError(e?.response?.data?.error||e?.message||'הפעולה נכשלה');
+    }
     finally{setBusy(false);}
   }
   const totals=view?.totals||{};
