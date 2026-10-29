@@ -28,6 +28,10 @@
 - [x] **ביקורת טריגרים וסבב סופי:** נמצאו workflow התראות שיבוץ, EventService Notification Trigger ו־Google Sync שמבוססים על entity UPDATE. שינוי admin ל־CAS updateMany בלבד עלול לא להפעיל אותם, ולכן שוחזרו קריאות `EventService.update` המקוריות במשרד; המתאם החדש מוגן ב־AppSettings חסר (אומת שאין רשומת הפעלה) ומתעד 423. **830/830** בדיקות Node, Backend parse, ESLint ממוקד, Vite build ו־diff check עברו. המשך: תכנון של אירוע עסקי מתועד עם idempotency לכל Push/Calendar/Reminder לפני העברת מסכי המנהל ל־CAS.
 - [ ] מסכי ניהול הוספת/הסרת ספקים שמשנים `supplier_statuses` ישירות (למשל `SupplierAssignmentDialog`, `ServicesCard` ו־`EventForm`) עדיין דורשים מעבר למסלול שיבוץ V2 מתאים לפני הכללתם בפרודקשן אינטראקטיבי. אין להפעיל כלל ספקים כל עוד יש מסלולים עוקפים.
 
+## תשתית הרחבה עתידית (29.10.2026)
+- [x] הוקם מרשם מאובטח לכל סוג הודעה/פעולה/קהל יעד, עם חיבור לשכבות ה־v1 ולבדיקות. נבנו חוזי V2 לסוגי הודעות אחרים וטיוטות נפרדות לכל חברה/ספק/סוג הודעה. **לא נפתח מסלול שליחה או webhook חדש; אין handler פעיל ללקוח/תזכורת.** פרטים ורשימת תחנות הרחבה ב־`docs/whatsapp-interactive-extensibility-2026-10-29.md`.
+- [ ] חתימות/Admission/Receipt גנריים ל־V2 ומימוש handler ספציפי לכל פעולה עתידית יבוצעו רק לאחר שחרור P0 לשיבוצים; V2 המבני לבדו אינו הרשאת שינוי סטטוס.
+
 ## מדוע עדיין NO-GO לכפתורים בכל השיבוצים
 1. **שמירה עסקית מפוצלת.** `saveSupplierAssignmentsV2` קיים ומבצע CAS על שיוך + Intent, אבל הוא כבוי מאחורי `assignment_intent_v1_enabled`. ממשקי שיבוץ אמיתיים כותבים עדיין ישירות דרך `EventService.update` וקוראים ל־`ensureAssignmentWhatsApp`. יש יותר ממסלול UI אחד: `SupplierAssignmentDialog`, `EventsBoard`, `ServicesCard`, `EventDetails`; יש לוודא גם `EventForm` וזרימות אחרות. אין להדליק V2 גלובלי ולסמוך על כך שכל המסכים עברו מסלול אטומי.
 2. **ה־worker סגור לניסוי אחד.** `trustedGreenButtonQaConfig` ו־`greenButtonQaScopedV2` מאפשרים כפתורים רק לשילוב QA קבוע של Event, EventService, Supplier ו־Chat. מסר שיבוץ רגיל אחר ממשיך לטקסט רגיל. אין מדיניות פרודקשן שמעניקה eligibility לפי חברה/ספק/שירות.
