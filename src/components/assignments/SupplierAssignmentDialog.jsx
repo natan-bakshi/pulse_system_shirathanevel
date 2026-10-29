@@ -25,6 +25,7 @@ export default function SupplierAssignmentDialog({
 }) {
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
+  const savingAssignmentRef = React.useRef(false);
   const [supplierSearchInDialog, setSupplierSearchInDialog] = useState('');
   const [showNewSupplierDialog, setShowNewSupplierDialog] = useState(false);
   const [isSavingNewSupplier, setIsSavingNewSupplier] = useState(false);
@@ -71,8 +72,9 @@ export default function SupplierAssignmentDialog({
   }, [isOpen, eventServiceData, eventName, serviceName, allServices]);
 
   const handleSaveService = useCallback(async () => {
-    if (!editingService) return;
-
+    // A rapid second tap must not start a second assignment save / WhatsApp verification.
+    if (!editingService || savingAssignmentRef.current) return;
+    savingAssignmentRef.current = true;
     setIsSaving(true);
     try {
       const added=newAssignmentRecipients(eventServiceData.supplier_ids,editingService.supplierIds,
@@ -93,6 +95,7 @@ export default function SupplierAssignmentDialog({
       console.error('Failed to save service:', error);
       alert('שגיאה בשמירת השירות');
     } finally {
+      savingAssignmentRef.current = false;
       setIsSaving(false);
     }
   }, [editingService, eventServiceData, queryClient, onSaved, onClose]);
@@ -298,7 +301,7 @@ export default function SupplierAssignmentDialog({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>ביטול</Button>
-            <Button onClick={handleSaveService} className="bg-red-800 hover:bg-red-700">
+            <Button onClick={handleSaveService} disabled={isSaving} className="bg-red-800 hover:bg-red-700">
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
               שמור שינויים
             </Button>
