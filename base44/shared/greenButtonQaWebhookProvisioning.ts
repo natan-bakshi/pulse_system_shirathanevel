@@ -9,7 +9,8 @@ import {greenButtonQaPassiveInboundReady} from './greenButtonQaLaunch.ts';
 export const GREEN_BUTTON_QA_PROVISIONING_KEY=
  'green_buttons_qa_webhook_provisioning_once';
 const APP='687d1de6659eff83e9c034f7';
-const CALLBACK='https://pulse-system.base44.app/api/apps/'+APP+
+export const GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL=
+ 'https://pulse-system.base44.app/api/apps/'+APP+
  '/functions/greenAssignmentButtonQaWebhook';
 const INSTANCE=/^[0-9]{5,20}$/;
 const TOKEN=/^[A-Za-z0-9_-]{10,256}$/;
@@ -103,7 +104,7 @@ export async function applyOneGreenButtonQaWebhookProvisioning(client:any,opts:{
   '/waInstance'+get(opts.env,'GREEN_API_INSTANCE_ID')+
   '/setSettings/'+encodeURIComponent(get(opts.env,'GREEN_API_TOKEN'));
  const body={
-  webhookUrl:CALLBACK,
+  webhookUrl:GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL,
   webhookUrlToken:get(opts.env,'GREEN_API_WEBHOOK_TOKEN'),
   incomingWebhook:'yes'
  };
