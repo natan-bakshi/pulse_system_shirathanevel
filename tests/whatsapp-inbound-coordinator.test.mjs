@@ -185,6 +185,30 @@ test('verified duplicate remains recognizable after reassigning supplier to a ne
  assert.equal(f.stats.creates,1);
  assert.equal(f.stats.supplierWrites,1);
 });
+test('a verified OLD revision pressed after reassignment receives terminal rejection without altering new pending assignment',async()=>{
+ const f=fixture();
+ f.service.assignment_notification_intents=JSON.stringify([
+  ...JSON.parse(f.service.assignment_notification_intents),{
+   key:'assignment:service-abc:supplier-abc:r3:SUPPLIER_NEW_ASSIGNMENT',
+   supplier_id:'supplier-abc',revision:3,state:'accepted'
+  }
+ ]);
+ const old=await signedEvent('assignment_reject','old-revision-click');
+ const response=await call(f,old);
+ assert.equal(response.status,'rejected');
+ assert.equal(response.reason,'business_conflict');
+ assert.equal(response.supplierWritesAuthorized,false);
+ assert.equal(f.stats.supplierWrites,0);
+ assert.equal(f.records.length,1);
+ assert.equal(f.records[0].state,'rejected');
+ assert.equal(f.records[0].result_code,'business_conflict');
+ assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-abc'],'pending');
+ const replay=await call(f,old);
+ assert.equal(replay.status,'duplicate');
+ assert.equal(replay.receiptState,'rejected');
+ assert.equal(f.stats.supplierWrites,0);
+ assert.equal(f.records.length,1);
+});
 test('reused provider event ID with different signed action is a conflict, not an ACK or transition',async()=>{
  const f=fixture(),one=await signedEvent('assignment_approve','same-provider-event');
  await registerVerifiedInboundReceipt(f.client,{
