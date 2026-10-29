@@ -361,6 +361,26 @@ test('one QA callback uses existing staging coordinator and returns 200 only on 
  assert.equal(db.counts.reads,1);
  assert.equal(calls,1);
 });
+test('QA webhook forwards a previous exact QA service only as inbound-only scope (never changes sender scope)',async()=>{
+ const db=sdk(control);
+ let staged=0;
+ const output=await handleGreenButtonQaWebhook(createRequest(),{
+  env:env({GREEN_BUTTONS_QA_EVENT_SERVICE_ID:'service-current-qa',
+   GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID:'service-123'}),
+  makeClient:()=>db.client,recalculateEventStatus:async()=>null,
+  stage:async(_req,opts)=>{
+   staged++;
+   assert.equal(opts.qaEventServiceId,'service-current-qa');
+   assert.equal(opts.qaPreviousEventServiceId,'service-123');
+   assert.equal(opts.qaSupplierId,'supplier-123');
+   assert.equal(opts.qaChatId,CHAT);
+   return {stage:'processed',result:'rejected',reason:'business_conflict'};
+  }
+ });
+ assert.equal(output.httpStatus,200);
+ assert.equal(staged,1);
+ assert.equal(db.counts.reads,1);
+});
 test('ambiguous writes, unknown button, DB failure and plain rejected actions never get success ACK',async()=>{
  for(const outcome of [
   {stage:'processed',result:'held',reason:'existing_receipt_not_finalized'},
