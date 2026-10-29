@@ -367,7 +367,7 @@ Deno.serve(async(req)=>{
       }catch(error){
         const code=Number((error as any)?.status)||409;
         return RESPONSE({success:false,
-          error:'לא ניתן ליצור שיבוץ ניסוי בטוח; נדרש בירור הגדרות וגרסת שיבוץ',
+          error:'יצירת שיבוץ הניסוי נחסמה בבדיקת בטיחות; אין הודעת ניסיון בתור',
           noDirectProviderCalls:true},[403,409,423,503].includes(code)?code:503);
       }
     }
