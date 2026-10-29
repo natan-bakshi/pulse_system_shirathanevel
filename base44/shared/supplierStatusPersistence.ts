@@ -81,6 +81,29 @@ export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
    id:row.id,supplier_ids:row.supplier_ids??null,
    supplier_statuses:row.supplier_statuses??null
   };
+  // In-app approvals/rejections remain independent of WhatsApp availability.
+  // A dashboard decision atomically closes the supplier's previous signed
+  // button generation, including when an administrator reopens an assignment.
+  // Other suppliers' pending notifications remain untouched. Outbox retains
+  // the original provider acceptance and receipt history.
+  if(source==='dashboard'&&row.assignment_intent_mode===ASSIGNMENT_INTENT_MODE){
+   let journal:any[]|null=null;
+   try{journal=readAssignmentIntents(row.assignment_notification_intents||'[]');}
+   catch{/* Malformed WhatsApp metadata cannot disable dashboard decisions. */}
+   if(journal){
+    const index=journal.findLastIndex(i=>i.supplier_id===supplierId);
+    if(index>=0&&['requested','queued','accepted'].includes(journal[index].state)){
+     const next=journal.map((i,j)=>j===index?{
+      ...i,state:'resolved',resolution:'dashboard_status_changed'
+     }:i);
+     updateData.assignment_notification_intents=JSON.stringify(next);
+     updateData.assignment_intents_pending=next.some(i=>i.state==='requested');
+     filter.assignment_intent_mode=row.assignment_intent_mode;
+     filter.assignment_notification_intents=row.assignment_notification_intents??null;
+     filter.assignment_intents_pending=row.assignment_intents_pending??null;
+    }
+   }
+  }
   if(source==='whatsapp'){
    filter.assignment_intent_mode=row.assignment_intent_mode??null;
    filter.assignment_notification_intents=row.assignment_notification_intents??null;
