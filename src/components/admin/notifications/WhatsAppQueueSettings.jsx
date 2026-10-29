@@ -307,7 +307,7 @@ export default function WhatsAppQueueSettings(){
         <p className="text-sm text-gray-700">מסלול QA נפרד למספר האישי המאושר בלבד. שלושת הכפתורים: מאשר, דוחה ופנייה למשרד. השיבוץ הניסיוני יכול להישלח מיד דרך התור המרכזי.</p>
         <Button type="button" disabled={busy||pilotEnrollmentRequested||!view.config?.enabled||view.config?.paused}
           onClick={()=>run('greenButtonQaEnroll')}>
-          {pilotEnrollmentRequested?'ניסיון בוצע — אין ללחוץ שוב':'שלח הודעת כפתורים ניסיונית לנתן'}
+          {pilotEnrollmentRequested?'הניסיון נבדק — בדוק את התוצאה לפני פעולה נוספת':'שלח הודעת כפתורים ניסיונית לנתן'}
         </Button>
         {pilotFailure&&<p role="alert" className="text-sm text-red-800 font-medium">
           הניסיון נחסם לפני אישור שליחה. קוד אבחון בטוח: {pilotFailure}.
