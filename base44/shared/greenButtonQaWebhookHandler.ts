@@ -99,6 +99,9 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
     expectedInstanceId:config.senderAccountId,
     qaChatId:config.qaChatId,
     qaEventServiceId:config.qaEventServiceId,
+    ...(opts.env('GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID')?{
+      qaPreviousEventServiceId:opts.env('GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID')
+    }:{}),
     qaSupplierId:config.qaSupplierId,
     claimOwner:'qa-'+crypto.randomUUID(),
     now:opts.now,
