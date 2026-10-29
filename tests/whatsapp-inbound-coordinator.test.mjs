@@ -212,14 +212,24 @@ test('receipt lookup outage after accepted supplier change does NOT turn replay 
  assert.equal(again.reason,'existing_receipt_lookup_unverified');
  assert.equal(f.stats.supplierWrites,before);
 });
-test('different unrecorded Green event after supplier decision cannot be ACKed as old response',async()=>{
+test('a different signed Green event on an already approved revision gets its OWN rejected receipt, never another supplier CAS',async()=>{
  const f=fixture(),event=await signedEvent('assignment_approve','original-receipt');
  assert.equal((await call(f,event)).status,'applied');
  const different=await signedEvent('assignment_approve','another-provider-event');
  const response=await call(f,different);
- assert.equal(response.status,'refused');
- assert.equal(response.reason,'assignment_not_pending');
- assert.equal(f.stats.creates,1);
+ assert.equal(response.status,'rejected');
+ assert.equal(response.reason,'business_conflict');
+ assert.equal(response.supplierWritesAuthorized,false);
+ assert.equal(f.stats.creates,2,'a distinct authenticated provider event gets its own receipt');
+ assert.equal(f.records[0].state,'applied');
+ assert.equal(f.records[1].state,'rejected');
+ assert.equal(f.records[1].result_code,'business_conflict');
+ assert.equal(f.stats.supplierWrites,1);
+ const replay=await call(f,different);
+ assert.equal(replay.status,'duplicate');
+ assert.equal(replay.receiptState,'rejected');
+ assert.equal(replay.resultCode,'business_conflict');
+ assert.equal(f.stats.creates,2);
  assert.equal(f.stats.supplierWrites,1);
 });
 test('competing dashboard rejection causes business-conflict terminal, not a WhatsApp overwrite',async()=>{
