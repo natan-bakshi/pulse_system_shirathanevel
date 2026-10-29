@@ -4,11 +4,24 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 const code=esbuild.transformSync(fs.readFileSync('base44/functions/processWhatsAppOutbox/entry.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
-function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryFailAt=''}={}){
- let handler;const control={id:'global',control_key:'global',enabled,paused};const updates=[];let dispatched=0;let sweeps=0;const wakeReasons=[];
+function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryFailAt='',
+  betaProbe=false,probeEnvOverrides={}}={}){
+ let handler;const control={id:'global',control_key:'global',enabled,paused,
+  interactive_outbound_live_enabled:betaProbe};
+ const updates=[];let dispatched=0;let sweeps=0;const wakeReasons=[];
+ let qaConfigUsed=0,qaSettingsReads=0;
+ const qaEnv=betaProbe?{
+  GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
+  GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',
+  GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'probe_authorized',
+  GREEN_BUTTONS_QA_BETA_PROBE_ENABLED:'enabled',
+  GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:'enabled',
+  GREEN_BUTTONS_QA_OWNER_APPROVED:'approved'
+ }:{};
  const client={
    auth:{me:async()=>role?{role}:null},
    asServiceRole:{entities:{
+     AppSettings:{filter:async()=>{qaSettingsReads++;return[]}},
      WhatsAppQueueControl:{
        filter:async()=>[control],
        update:async(_id,patch)=>{
@@ -25,7 +38,7 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
  };
  vm.runInNewContext(code,{
    exports:{},module:{exports:{}},console:{error:()=>{},warn:()=>{}},
-   Deno:{serve:fn=>handler=fn,env:{get:()=>''}},Response:{json:(body,{status=200}={})=>({status,body})},
+   Deno:{serve:fn=>handler=fn,env:{get:key=>({...qaEnv,...probeEnvOverrides})[key]||''}},Response:{json:(body,{status=200}={})=>({status,body})},
    require:name=>{
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(name.endsWith('/assignmentIntentReconciler.ts'))return {
@@ -40,21 +53,30 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      if(name.endsWith('/agreementQueueReconciler.ts'))return {
        reconcileStalledAgreementEnqueues:async()=>({examined:0,linked:0,unverified:0,alerts:0,errors:0})
      };
-     if(name.endsWith('/greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
+     if(name.endsWith('/greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>betaProbe};
      if(name.endsWith('/greenButtonQaLaunch.ts'))return {
-       trustedGreenButtonQaConfig:()=>null
+       trustedGreenButtonQaConfig:()=>betaProbe?{
+        enabled:true,accountCapabilityVerified:false,qaBetaProbeApproved:true,
+        qaChatId:'972501234567@c.us',qaEventServiceId:'qa-test-service',
+        qaSupplierId:'qa-test-supplier'
+       }:null
      };
      if(name.endsWith('/whatsappQueueWorker.ts'))return {
        reconcileAcceptedWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
        reconcileAgreementWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
        reconcileCardSetupWhatsAppMirrors:async()=>({examined:0,repaired:0,failed:0}),
-       drainWhatsAppOutbox:async(_client,opts)=>{dispatched++;wakeReasons.push(opts?.wakeReason);return {success:true,reason:'processed',accepted:1}}
+       drainWhatsAppOutbox:async(_client,opts)=>{
+        dispatched++;if(opts?.interactiveConfig)qaConfigUsed++;
+        wakeReasons.push(opts?.wakeReason);
+        return {success:true,reason:'processed',accepted:1}
+       }
      };
      throw Error('Unexpected worker import: '+name);
    }
  });
  return {call:(payload={})=>handler({method:'POST',json:async()=>payload}),updates,wakeReasons,
-   get dispatched(){return dispatched;},get sweeps(){return sweeps;}};
+   get dispatched(){return dispatched;},get sweeps(){return sweeps;},
+   get qaConfigUsed(){return qaConfigUsed;},get qaSettingsReads(){return qaSettingsReads;}};
 }
 test('workflow wake reasons are attributed only as telemetry and unknown inputs are sanitized',async()=>{
  for(const reason of ['outbox_create','continue','watchdog']){
