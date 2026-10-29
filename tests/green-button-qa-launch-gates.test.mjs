@@ -203,6 +203,27 @@ test('single chat QA is disabled by default and never activates from saved polic
  assert.equal(JSON.stringify(report).includes(CHAT),false);
  assert.equal(JSON.stringify(report).includes(SIGNING),false);
 });
+test('first Green Beta attempt is explicitly owner-approved but NEVER misreported as verified capability',()=>{
+ const probe=env({GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'probe_authorized',
+  GREEN_BUTTONS_QA_BETA_PROBE_ENABLED:'enabled'});
+ const cfg=trustedGreenButtonQaConfig(control,probe,true);
+ assert.ok(cfg);
+ assert.equal(cfg.accountCapabilityVerified,false);
+ assert.equal(cfg.qaBetaProbeApproved,true);
+ assert.equal(cfg.qaEventServiceId,'service-123');
+ assert.equal(cfg.qaSupplierId,'supplier-123');
+ const summary=greenButtonQaSafeSummary(control,probe,true,0);
+ assert.equal(summary.checks.find(x=>x.key==='provider_beta_verified').ready,false);
+ assert.equal(summary.checks.find(x=>x.key==='one_message_beta_probe_approved').ready,true);
+ assert.equal(trustedGreenButtonQaConfig(control,
+  env({GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'probe_authorized'}),true),null);
+ assert.equal(trustedGreenButtonQaConfig(control,
+  env({GREEN_BUTTONS_QA_BETA_PROBE_ENABLED:'enabled'}),true).accountCapabilityVerified,true);
+ assert.equal(trustedGreenButtonQaConfig(control,
+  env({GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'probe_authorized',
+   GREEN_BUTTONS_QA_BETA_PROBE_ENABLED:'enabled',
+   GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:''}),true),null);
+});
 test('only trusted full suite yields two reply buttons and contact-office URL mode',()=>{
  const output=trustedGreenButtonQaConfig(control,env(),true);
  assert.equal(output.enabled,true);
