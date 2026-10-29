@@ -493,6 +493,19 @@ test('Green webhook provisioning is owner-only, default blocked, and never accep
  });
  assert.equal(response.status,403);
 });
+test('one prominent, owner-guarded QA send action replaces the multi-diagnostic enrollment dance',()=>{
+ const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+ assert.match(jsx,/שלח הודעת כפתורים ניסיונית לנתן/);
+ assert.match(jsx,/onClick=\{\(\)=>run\('greenButtonQaEnroll'\)\}/);
+ assert.match(jsx,/pilotEnrollmentRequested/);
+ assert.match(jsx,/כלי אבחון וניהול מתקדמים/);
+ assert.doesNotMatch(jsx,/צור שיבוץ ניסיון ב־V2 \(דורש אישור נוסף\)/);
+ const enrollment=fs.readFileSync('base44/shared/greenButtonQaEnrollment.ts','utf8');
+ assert.match(enrollment,/GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED/);
+ assert.match(enrollment,/GREEN_BUTTONS_QA_CREATE_ENABLED/);
+ assert.match(enrollment,/qa_previous_assignment_intent_requires_review/);
+ assert.match(enrollment,/qa_previous_assignment_history_requires_review/);
+});
 test('Green settings write UI is hidden until both owner readiness and read-only provider audit',()=>{
  const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
  assert.match(jsx,/greenWebhookSettings\.webhookProvisioningOwnerActionAvailable===true/);
