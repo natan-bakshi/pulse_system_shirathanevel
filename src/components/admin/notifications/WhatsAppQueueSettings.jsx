@@ -243,6 +243,9 @@ export default function WhatsAppQueueSettings(){
     }catch(e){
       if(action==='greenButtonQaEnroll'){
         setPilotFailure(e?.response?.data?.diagnosticCode||'qa_unknown');
+        const diagnostic=await base44.functions.invoke('WhatsAppQueueAdmin',
+          {action:'greenButtonQaReadiness'}).catch(()=>null);
+        if(diagnostic?.data?.success)setQaReadiness(diagnostic.data.qa);
       }
       setError(e?.response?.data?.error||e?.message||'הפעולה נכשלה');
     }
