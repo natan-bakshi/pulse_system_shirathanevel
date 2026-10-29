@@ -78,6 +78,26 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
    get dispatched(){return dispatched;},get sweeps(){return sweeps;},
    get qaConfigUsed(){return qaConfigUsed;},get qaSettingsReads(){return qaSettingsReads;}};
 }
+test('real worker wrapper passes interactive config for explicitly approved ONE Beta probe, not ordinary traffic',async()=>{
+ const f=fixture({betaProbe:true});
+ const r=await f.call({wakeReason:'outbox_create'});
+ assert.equal(r.status,200);
+ assert.equal(f.qaConfigUsed,1);
+ assert.equal(f.qaSettingsReads,1);
+ const blocked=fixture({betaProbe:true,probeEnvOverrides:{
+  GREEN_BUTTONS_QA_BETA_PROBE_ENABLED:''
+ }});
+ const missing=await blocked.call({wakeReason:'outbox_create'});
+ assert.equal(missing.status,200);
+ assert.equal(blocked.qaConfigUsed,0);
+ assert.equal(blocked.qaSettingsReads,0);
+ const noAccount=fixture({betaProbe:true,probeEnvOverrides:{
+  GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'unverified'
+ }});
+ await noAccount.call({wakeReason:'outbox_create'});
+ assert.equal(noAccount.qaConfigUsed,0);
+ assert.equal(noAccount.qaSettingsReads,0);
+});
 test('workflow wake reasons are attributed only as telemetry and unknown inputs are sanitized',async()=>{
  for(const reason of ['outbox_create','continue','watchdog']){
    const f=fixture();
