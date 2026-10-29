@@ -6,7 +6,7 @@ import esbuild from 'esbuild';
 import {persistAuthorizedSupplierStatus,whatsappRevisionEligibility}
  from '../base44/shared/supplierStatusPersistence.ts';
 
-const makeFixture=()=>{
+const makeFixture=({rolloutEnabled=true}={})=>{
  const supplierId='supplier-abc',serviceId='service-abc';
  const state={
   id:serviceId,event_id:'event-abc',supplier_ids:JSON.stringify([supplierId]),
@@ -22,9 +22,14 @@ const makeFixture=()=>{
  let actor={role:'admin',email:'admin@example.com'};
  const stats={writes:0,eventCalculations:0,providerCalls:0};
  let eventFailure=false;
+ let enabled=rolloutEnabled;
  const equals=(row,q)=>Object.entries(q).every(([k,v])=>
   (row[k]??null)===(v??null));
  const client={auth:{me:async()=>actor},asServiceRole:{entities:{
+  AppSettings:{filter:async(query)=>{
+   assert.equal(query.setting_key,'admin_supplier_status_atomic_rollout_enabled');
+   return enabled?[{setting_value:'true'}]:[];
+  }},
   EventService:{
    get:async id=>id===serviceId?structuredClone(state):null,
    updateMany:async(q,p)=>{
@@ -61,6 +66,7 @@ const makeFixture=()=>{
  return {supplierId,serviceId,state,stats,
   setActor:v=>{actor=v;},
   failEvent:()=>{eventFailure=true;},
+  setRollout:v=>{enabled=v;}, 
   call:(b,method='POST')=>handler({method,json:async()=>b}),
   req:(patch={})=>({
    eventServiceId:serviceId,supplierId,newStatus:'confirmed',
@@ -125,14 +131,22 @@ test('after committed admin status CAS, failed event recalculation reports saved
  assert.equal(r.body.eventStatusUpdated,false);
  assert.equal(f.stats.writes,1);assert.equal(f.stats.eventCalculations,1);
 });
-test('Pulse admin UI uses the guarded CAS endpoint and supplier UI retains its existing controls',()=>{
+test('no settings flag means staged admin CAS endpoint performs zero writes',async()=>{
+ const f=makeFixture({rolloutEnabled:false});
+ const denied=await f.call(f.req());
+ assert.equal(denied.status,423);
+ assert.equal(f.stats.writes,0);
+ assert.equal(f.stats.providerCalls,0);
+});
+test('existing admin EventService update workflows are preserved while CAS migration remains staged',()=>{
  const event=fs.readFileSync('src/pages/EventDetails.jsx','utf8');
  const board=fs.readFileSync('src/components/events/EventsBoard.jsx','utf8');
  const supplier=fs.readFileSync('src/pages/SupplierDashboard.jsx','utf8');
- assert.match(event,/base44\.functions\.invoke\('adminUpdateSupplierStatus'/);
- assert.match(board,/base44\.functions\.invoke\('adminUpdateSupplierStatus'/);
- assert.match(board,/initialStatus: supplier\.status \|\| 'pending'/);
- assert.match(board,/supplierNote: editingAssignment\.currentNotes \|\| ''/);
+ assert.match(event,/base44\.entities\.EventService\.update\(eventServiceId, updateData\)/);
+ assert.match(board,/base44\.entities\.EventService\.update\(editingAssignment\.eventServiceId/);
+ assert.match(board,/await refreshEventStatus\(eventService\.event_id\)/);
+ assert.doesNotMatch(event,/functions\.invoke\('adminUpdateSupplierStatus'/);
+ assert.doesNotMatch(board,/functions\.invoke\('adminUpdateSupplierStatus'/);
  assert.match(supplier,/base44\.functions\.invoke\('updateSupplierStatus'/);
  assert.match(supplier,/handleStatusChange\(event\.eventServiceId, 'confirmed'\)/);
  assert.match(supplier,/handleStatusChange\(event\.eventServiceId, 'rejected'\)/);
