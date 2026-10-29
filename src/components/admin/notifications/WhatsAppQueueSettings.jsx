@@ -308,6 +308,17 @@ export default function WhatsAppQueueSettings(){
           <div className="flex flex-wrap gap-2">
             {Object.entries(greenWebhookSettings.notificationFlags||{}).map(([key,value])=><span key={key} className="rounded border px-2 py-1">{key}: {value==='yes'?'כן':value==='no'?'לא':'לא ידוע'}</span>)}
           </div>
+          {greenWebhookSettings.webhookConfigured&&
+            <p role="status" className={greenWebhookSettings.qaPostRebootReady===true?
+              'font-semibold text-green-700':'font-medium text-amber-800'}>
+              בדיקת Green לאחר האתחול: {greenWebhookSettings.qaPostRebootReady===true?
+                'הגדרות ה־Webhook תואמות במדויק למסלול הניסוי. עדיין נדרש ניסוי קליטת כפתור אמיתי.':
+                'עדיין אין אישור שכל הגדרות ה־Webhook תואמות. אין להפעיל שליחת כפתורים.'}
+              {' '}יעד: {greenWebhookSettings.qaWebhookTargetMatches?'תקין':'לא אומת'};
+              {' '}אימות: {greenWebhookSettings.qaWebhookBearerMatches?'תקין':'לא אומת'};
+              {' '}התראות: {greenWebhookSettings.qaOnlyIncomingCategory?'תקינות':'לא אומתו'};
+              {' '}השהיה קודמת: {greenWebhookSettings.qaGreenSendDelayUnchanged?'נשמרה':'לא אומתה'}.
+            </p>}
           <p className="text-gray-600">מפתחות, כתובות Webhook, מספרי טלפון ופרטי חשבון אינם מוצגים או מועברים לדפדפן. הבדיקה אינה שולחת הודעות WhatsApp ואינה בודקת קליטת כפתור אמיתית.</p>
           {greenWebhookSettings.webhookProvisioningOwnerActionAvailable===true&&
             greenWebhookSettings.webhookConfigured===false&&
