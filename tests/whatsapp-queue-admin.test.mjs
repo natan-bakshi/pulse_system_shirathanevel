@@ -203,6 +203,8 @@ test('queue status flags only same-business-version assignment duplicates withou
  assert.equal(r.body.duplicateAssignmentVersions.count,2,
    'Two microsecond collisions qualify; independent saves remain separate');
  assert.equal(r.body.duplicateAssignmentVersions.providerAcceptanceIsNotDelivery,true);
+ assert.equal(r.body.qaPilotNewSendsEnabled,false,
+   'QA must not be suggested for sending with default-off server flags');
  assert.equal(ctx.listProjections.length,1,'Reuse existing projected status read');
  assert.equal(ctx.listProjections[0].includes('idempotency_key'),true);
  assert.equal(ctx.listProjections[0].includes('event_service_id'),true);
@@ -476,6 +478,16 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(ctx.calls.length,0);
 });
 
+test('completed pilot UI hides a second send, shows on-demand read-only result, no polling',()=>{
+ const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+ assert.match(jsx,/view\.qaPilotNewSendsEnabled===true/);
+ assert.match(jsx,/view\.qaPilotNewSendsEnabled!==true/);
+ assert.match(jsx,/onClick=\{\(\)=>run\('greenButtonQaLiveResult'\)\}/);
+ assert.match(jsx,/pilotLiveResult\.complete/);
+ assert.match(jsx,/signedApprovalReceiptApplied/);
+ assert.match(jsx,/uniqueOutboxAndReceipt/);
+ assert.doesNotMatch(jsx,/setInterval\([^)]*greenButtonQaLiveResult/);
+});
 test('one-click pilot result action is owner-only, read-only and never sends WhatsApp',async()=>{
  const owner=context();
  const r=await owner.invoke('greenButtonQaLiveResult');
