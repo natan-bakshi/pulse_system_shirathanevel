@@ -52,16 +52,17 @@ export async function enrollOneGreenButtonQaAssignment(client:any,opts:{
  ]);
  if(!service||service.id!==config.qaEventServiceId||
   service.event_id!==eventId||service.is_external===true||
-  !greenButtonQaScopedServiceMatches(service,opts.env)||
-  !event||event.id!==eventId||!isGreenButtonQaFixtureEvent(event)||
-  ['cancelled','completed'].includes(event.status)||
-  !supplier||supplier.id!==config.qaSupplierId||
-  supplier.whatsapp_enabled===false||supplier.is_active===false||
-  // A group-preferring supplier is allowed ONLY for this explicit one-chat
-  // QA request. Both producers pin the private recipient by signed intent;
-  // the supplier's normal delivery preference is never modified.
-  parseWhatsAppPhone(supplier.phone||'').chatId!==config.qaChatId)
-  throw fail('qa_enrollment_target_mismatch',409);
+  !greenButtonQaScopedServiceMatches(service,opts.env))
+  throw fail('qa_service_scope_mismatch',409);
+ if(!event||event.id!==eventId||!isGreenButtonQaFixtureEvent(event)||
+  ['cancelled','completed'].includes(event.status))
+  throw fail('qa_event_fixture_mismatch',409);
+ if(!supplier||supplier.id!==config.qaSupplierId||
+  supplier.whatsapp_enabled===false||supplier.is_active===false)
+  throw fail('qa_supplier_scope_mismatch',409);
+ // Never modify the supplier's usual group delivery preference.
+ if(parseWhatsAppPhone(supplier.phone||'').chatId!==config.qaChatId)
+  throw fail('qa_supplier_phone_mismatch',409);
  if(typeof service.updated_date!=='string'||
   !Number.isFinite(Date.parse(service.updated_date)))
   throw fail('qa_enrollment_version_missing',409);
