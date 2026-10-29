@@ -1,6 +1,7 @@
 // Opaque action binding for a future authenticated provider webhook. This
 // contract intentionally does not sign tokens; server-side secret verification
 // and durable single-use inbox must be implemented before activation.
+import {getInteractiveActionContract} from './whatsappInteractiveActionRegistry.ts';
 export type InteractiveActionBinding={companyId:string;eventServiceId:string;supplierId:string;
  revision:string;outboxJobId:string;provider:'green'|'wasender';senderAccountId:string;
  action:'assignment_approve'|'assignment_reject'|'contact_office';expiresAt:string};
@@ -11,7 +12,7 @@ export function validateInteractiveActionBinding(input:any,now=Date.now()):Inter
   if(!valid(input[k]))throw Error('Invalid action binding '+k);
  }
  if(!['green','wasender'].includes(input.provider))throw Error('Invalid action provider');
- if(!['assignment_approve','assignment_reject','contact_office'].includes(input.action))throw Error('Invalid action');
+ if(!getInteractiveActionContract('assignment',input.action))throw Error('Invalid action');
  const expiry=Date.parse(input.expiresAt);
  if(!Number.isFinite(expiry)||expiry<=now||expiry-now>30*86400000)throw Error('Expired or excessive action lifetime');
  return {companyId:input.companyId,eventServiceId:input.eventServiceId,supplierId:input.supplierId,
