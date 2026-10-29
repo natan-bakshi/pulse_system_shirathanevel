@@ -116,6 +116,8 @@ export default function ServicesCard({
   const [showNewSupplierDialog, setShowNewSupplierDialog] = useState(null);
   const queryClient = useQueryClient();
   const [showLocalSupplierDialog, setShowLocalSupplierDialog] = useState(false);
+  const localAssignmentSavingRef = React.useRef(false);
+  const [localAssignmentSaving, setLocalAssignmentSaving] = useState(false);
   const [localSelectedService, setLocalSelectedService] = useState(null);
   const [localSupplierFormData, setLocalSupplierFormData] = useState({ supplierIds: [], notes: {} });
   const [localSupplierSearchTerm, setLocalSupplierSearchTerm] = useState("");
@@ -263,8 +265,9 @@ export default function ServicesCard({
   };
 
   const handleAssignLocalSuppliers = async () => {
-    if (!localSelectedService || localSelectedService.is_external) return;
-    
+    if (!localSelectedService || localSelectedService.is_external || localAssignmentSavingRef.current) return;
+    localAssignmentSavingRef.current = true;
+    setLocalAssignmentSaving(true);
     try {
       let existingStatuses = {};
       try { existingStatuses = JSON.parse(localSelectedService.supplier_statuses || '{}'); } catch(e) {}
@@ -293,6 +296,9 @@ export default function ServicesCard({
     } catch (error) {
       console.error("Failed to assign suppliers:", error);
       alert("שגיאה בשיבוץ הספקים");
+    } finally {
+      localAssignmentSavingRef.current = false;
+      setLocalAssignmentSaving(false);
     }
   };
 
@@ -1695,7 +1701,7 @@ const handleCopyTransport = (service, serviceDetails) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowLocalSupplierDialog(false); setLocalSupplierSearchTerm(""); }}>ביטול</Button>
-            <Button onClick={handleAssignLocalSuppliers}>שמור</Button>
+            <Button onClick={handleAssignLocalSuppliers} disabled={localAssignmentSaving}>שמור</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
