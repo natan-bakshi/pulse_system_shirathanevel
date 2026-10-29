@@ -5,7 +5,7 @@
 // trigger retry. The single Green instance WILL reboot on SetSettings.
 import {greenApiOrigin,inspectGreenWebhookSettingsReadOnly}
  from './greenWebhookSettingsAudit.ts';
-import {greenButtonQaScopedV2Enabled} from './greenButtonQaScopedV2.ts';
+import {greenButtonQaPassiveInboundReady} from './greenButtonQaLaunch.ts';
 export const GREEN_BUTTON_QA_PROVISIONING_KEY=
  'green_buttons_qa_webhook_provisioning_once';
 const APP='687d1de6659eff83e9c034f7';
@@ -23,8 +23,7 @@ export function greenButtonQaWebhookProvisioningGuard(
   get(env,'GREEN_BUTTONS_QA_SETTINGS_WRITE_ENABLED')!=='enabled'||
   get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')!=='approved')
   return {ready:false,reason:'owner_approval_required'};
- if(!greenButtonQaScopedV2Enabled(env)||
-  get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled')
+ if(!greenButtonQaPassiveInboundReady(env))
   return {ready:false,reason:'qa_receiver_not_armed'};
  if(get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'||
   control?.interactive_outbound_live_enabled===true)
