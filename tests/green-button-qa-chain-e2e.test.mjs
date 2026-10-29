@@ -386,6 +386,29 @@ test('PRODUCTION HTTP ADAPTER: original signed reply -> ACK 200 -> one supplier 
  assert.equal(f.receipts.length,1,'one durable receipt for one provider event');
  assert.equal(f.outbox.length,1,'no duplicate Outbox');
 });
+test('post-confirmation opposite button with a distinct Green event cannot reverse the supplier state',async()=>{
+ for(const [first,second,expected] of [
+  ['assignment_approve','assignment_reject','confirmed'],
+  ['assignment_reject','assignment_approve','rejected']
+ ]){
+  const f=fixture({globalV2Enabled:false,betaProbe:true});
+  await f.enroll();await f.reconcile();
+  assert.equal((await f.worker()).accepted,1);
+  const one=await f.httpCallback(first,{sendDisabled:true,
+   eventId:'C0CD39BB261589D5C98412D255CD000E'});
+  assert.equal(one.httpStatus,200);
+  assert.equal(f.stats.statusCAS,1);
+  const opposite=await f.httpCallback(second,{sendDisabled:true,
+   eventId:'C0CD39BB261589D5C98412D255CD000F'});
+  assert.notEqual(opposite.httpStatus,200,
+   'opposite action is stale even when the provider event is different');
+  assert.equal(f.stats.statusCAS,1,'no second supplier mutation');
+  assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],expected);
+  assert.equal(f.stats.providerCalls,1);
+  assert.equal(f.outbox.length,1);
+  assert.equal(f.receipts.filter(x=>x.state==='applied').length,1);
+ }
+});
 test('PRODUCTION HTTP ADAPTER also accepts documented singular templateButtonReplyMessage sample',async()=>{
  const f=fixture();
  await f.enroll();await f.reconcile();
