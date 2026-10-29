@@ -89,7 +89,10 @@ export async function preflightWhatsAppAssignmentResponse(input:{
    // A signed, current-revision button on a resolved assignment may be
    // durably rejected and ACKed, NEVER applied as a new business decision.
    // All provider/origin/supplier checks above must have succeeded first.
-   verifiedTerminalRejectionCandidate:reason==='assignment_not_pending',
+   verifiedTerminalRejectionCandidate:[
+    'assignment_not_pending','stale_assignment_revision',
+    'assignment_intent_inactive','supplier_not_assigned'
+   ].includes(reason),
    noMessagesSent:true} as const);
   if(!supplierAssigned(service.supplier_ids,signed.supplierId))
    return historicalOnly('supplier_not_assigned');
