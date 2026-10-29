@@ -8,6 +8,7 @@ import {summarizeWhatsAppOutbox} from '../base44/shared/whatsappQueueMetrics.ts'
 import {summarizeInboundWhatsAppReceipts} from '../base44/shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../base44/shared/whatsappInboundInvestigation.ts';
 import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappInteractiveReadiness.ts';
+import {inspectAssignmentV2ReleaseReadiness} from '../base44/shared/assignmentV2ReleaseReadiness.ts';
 import {greenButtonQaSafeSummary} from '../base44/shared/greenButtonQaLaunch.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../base44/shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../base44/shared/greenButtonQaEnrollment.ts';
@@ -172,6 +173,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
         draftConfigured:false,draftCorrupt:false
        })
      };
+     if(name.endsWith('assignmentV2ReleaseReadiness.ts'))return {inspectAssignmentV2ReleaseReadiness};
      if(name.endsWith('whatsappSourceAudit.ts'))return {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaymentReminderAudit,summarizeTaskWhatsAppAudit,findDuplicateAssignmentVersions};
      throw Error('Unexpected import: '+name);
    }
@@ -183,6 +185,20 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
 const config={enabled:true,paused:false,wasenderIntervalMs:2500,greenIntervalMs:180,maxMessagesPerRun:16};
 const makeJob=(id,status='queued')=>({id,status,chat_id:'972501234567@c.us',message_type:'text',message_text:'Hello',source_type:'assignment_new',available_at:new Date().toISOString(),created_date:new Date().toISOString(),attempt_count:0,archived:false});
 
+test('owner can inspect assignment V2 compatibility without sending, writing or scanning supplier rows',async()=>{
+ const ctx=context();
+ const r=await ctx.invoke('assignmentV2Readiness');
+ assert.equal(r.status,200);
+ assert.equal(r.body.success,true);
+ assert.equal(r.body.readiness.readyForProduction,false);
+ assert.equal(r.body.readiness.businessSaveReady,false);
+ assert.equal(r.body.readiness.currentMode,'legacy_business_update');
+ assert.equal(r.body.noWrites,true);
+ assert.equal(r.body.noMessagesSent,true);
+ assert.equal(ctx.calls.length,0);
+ assert.equal(ctx.listProjections.length,0);
+ assert.equal(ctx.officeReads.length,0);
+});
 test('queue status flags only same-business-version assignment duplicates without extra DB reads',async()=>{
  const make=(id,service,supplier,time)=>({
   ...makeJob(id,'accepted'),
@@ -225,7 +241,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','greenButtonQaReadiness','greenButtonQaAssignmentPreflight','greenButtonQaEnroll','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','greenButtonQaReadiness','greenButtonQaAssignmentPreflight','greenButtonQaEnroll','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview','assignmentV2Readiness']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
