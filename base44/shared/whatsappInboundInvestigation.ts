@@ -3,6 +3,7 @@
 // It performs bounded existing-entity GETs, never reclaims or retries events.
 // No customer message, sender phone, provider payload or signed token exposed.
 import {whatsappRevisionEligibility} from './supplierStatusPersistence.ts';
+import {assignmentDecisionForAction} from './whatsappInteractiveActionRegistry.ts';
 
 const ALLOWED_STATES=new Set(['pending','processing','applied','rejected','needs_review']);
 const ALLOWED_RESULT=new Set([
@@ -32,8 +33,7 @@ function currentSupplierStatus(service:any,id:string){
 export function summarizeInboundReceiptInvestigation(row:any,service:any,control:any,now=Date.now()){
  if(!row||!idOk(row.id))throw Error('invalid_inbound_receipt');
  const state=safeState(row.state);
- const expected=row.action==='assignment_approve'?'confirmed':
-  row.action==='assignment_reject'?'rejected':'unknown';
+ const expected=assignmentDecisionForAction(row.action)||'unknown';
  const current=currentSupplierStatus(service,row.supplier_id);
  const epoch=Date.parse(row.claim_until||'');
  const expiry=state==='processing'&&(!Number.isFinite(epoch)||epoch<=now);
