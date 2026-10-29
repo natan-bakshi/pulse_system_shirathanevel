@@ -16,12 +16,31 @@ const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
 const SECRET_MIN=32;
 const exactActions=['assignment_approve','assignment_reject','contact_office'];
 const get=(env:(k:string)=>string|undefined,k:string)=>String(env(k)||'');
+// Passive receiver may ACK known ordinary Green events BEFORE the first
+// beta button proof. No supplier mutation or button acceptance in this mode.
+// Distinct from the send gate and from proof of provider beta support.
+export function greenButtonQaPassiveInboundReady(
+ env:(key:string)=>string|undefined):boolean{
+ const signing=get(env,'WHATSAPP_INTERACTIVE_SIGNING_SECRET');
+ const bearer=get(env,'GREEN_API_WEBHOOK_TOKEN');
+ const id=get(env,'GREEN_API_INSTANCE_ID');
+ const token=get(env,'GREEN_API_TOKEN');
+ return get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'&&
+  get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
+  get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'&&
+  INSTANCE.test(id)&&token.length>=24&&
+  ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))&&
+  ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_SERVICE_ID'))&&
+  ENTITY.test(get(env,'GREEN_BUTTONS_QA_SUPPLIER_ID'))&&
+  PRIVATE.test(get(env,'GREEN_BUTTONS_QA_ALLOWED_CHAT'))&&
+  signing.length>=SECRET_MIN&&bearer.length>=24&&signing!==bearer;
+}
 function trustedGreenButtonQaConfigForMode(control:any,
  env:(key:string)=>string|undefined,durableAssignmentIntentEnabled:boolean,
  requireSendEnabled:boolean):TrustedGreenInteractiveConfig|null{
  // No action when disabled, including no access to secrets and draft.
  if(durableAssignmentIntentEnabled!==true||
-  control?.interactive_outbound_live_enabled!==true||
+  (requireSendEnabled&&control?.interactive_outbound_live_enabled!==true)||
   (requireSendEnabled&&get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled')||
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
   get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified'||
@@ -88,10 +107,8 @@ export function greenButtonQaSafeSummary(control:any,env:(key:string)=>string|un
   otherPendingCount===0,
   receivingExistingQaRepliesAvailable:!!inbound,
   webhookProvisioningOwnerActionAvailable:
+   greenButtonQaPassiveInboundReady(env)&&
    get(env,'GREEN_BUTTONS_QA_SETTINGS_WRITE_ENABLED')==='enabled'&&
-   get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'&&
-   get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'&&
-   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
    get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled'&&
    control?.interactive_outbound_live_enabled!==true,
   unrelatedV2PendingPresent:otherPendingCount===null?'not_checked':otherPendingCount>0,
