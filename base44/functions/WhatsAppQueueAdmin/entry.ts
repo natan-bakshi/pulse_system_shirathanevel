@@ -366,6 +366,7 @@ Deno.serve(async(req)=>{
           queueMaySendWhatsAppAutomatically:true});
       }catch(error){
         const code=Number((error as any)?.status)||409;
+        const qaReason=String((error as any)?.code||'');
         return RESPONSE({success:false,
           error:'יצירת שיבוץ הניסוי נחסמה בבדיקת בטיחות; אין הודעת ניסיון בתור',
           diagnosticCode:/^qa_[a-z_]+$/.test(String((error as any)?.code||''))?
