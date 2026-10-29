@@ -150,7 +150,8 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
          throw Object.assign(Error('Disabled in unit tests'),{code:'owner_approval_required'});
        }
      };
-     if(name.endsWith('greenButtonQaLaunch.ts'))return {greenButtonQaSafeSummary};
+     if(name.endsWith('greenButtonQaLaunch.ts'))return {greenButtonQaSafeSummary,
+       greenButtonQaPassiveInboundReady:()=>false};
      if(name.endsWith('greenButtonQaAssignmentPreflight.ts'))return {
        inspectGreenButtonQaAssignmentReadOnly
      };
@@ -494,7 +495,7 @@ test('Green webhook provisioning is owner-only, default blocked, and never accep
 });
 test('Green settings write UI is hidden until both owner readiness and read-only provider audit',()=>{
  const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
- assert.match(jsx,/qaReadiness\?\.webhookProvisioningOwnerActionAvailable===true/);
+ assert.match(jsx,/greenWebhookSettings\.webhookProvisioningOwnerActionAvailable===true/);
  assert.match(jsx,/greenWebhookSettings\.webhookConfigured===false/);
  assert.match(jsx,/Object\.values\(greenWebhookSettings\.notificationFlags/);
  assert.match(jsx,/window\.prompt\(/);
