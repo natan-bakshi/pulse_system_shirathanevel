@@ -14,7 +14,7 @@ import {processVerifiedWhatsAppAssignmentResponse} from './whatsappInboundCoordi
 const allowedFields=[
  'id','status','source_type','provider','requested_provider','provider_message_id',
  'sender_account_id','assignment_revision','event_service_id','supplier_id',
- 'chat_id','interactive_button_bindings_json'
+ 'chat_id','interactive_button_bindings_json','interactive_qa_required'
 ] as const;
 const closed=(reason:string)=>({status:'refused',reason,
  providerCalls:0,supplierWritesAuthorized:false});
@@ -23,7 +23,7 @@ export async function processFutureGreenButtonCallback(input:{
  expectedInstanceId:string;webhookSecret:string;actionSigningSecret:string;
  trustedRolloutEnabled:boolean;accountCapabilityVerified:boolean;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
- qaEventServiceId?:string;qaSupplierId?:string;
+ qaEventServiceId?:string;qaPreviousEventServiceId?:string;qaSupplierId?:string;
  now?:number;subtle?:SubtleCrypto
 }){
  // Feature disabled => zero reads. Reject invalid size BEFORE parsing JSON.
@@ -56,11 +56,18 @@ export async function processFutureGreenButtonCallback(input:{
  // Isolated QA may change only ONE specifically authorized supplier/service.
  // This identity comes from trusted server settings, never the provider body.
  // Reject before action parsing, receipt creation or EventService CAS.
- if(input.qaEventServiceId!==undefined||input.qaSupplierId!==undefined){
-  if(!/^[A-Za-z0-9_-]{3,128}$/.test(input.qaEventServiceId||'')||
-   !/^[A-Za-z0-9_-]{3,128}$/.test(input.qaSupplierId||'')||
-   original.event_service_id!==input.qaEventServiceId||
-   original.supplier_id!==input.qaSupplierId)
+ if(input.qaEventServiceId!==undefined||input.qaSupplierId!==undefined||
+  input.qaPreviousEventServiceId!==undefined){
+  const VALID_ID=/^[A-Za-z0-9_-]{3,128}$/;
+  const previous=input.qaPreviousEventServiceId;
+  const current=input.qaEventServiceId||'';
+  // The previous fixture is INBOUND ONLY, scoped to the same supplier,
+  // chat, provider account and signed original Outbox. Never broaden send.
+  if(!VALID_ID.test(current)||!VALID_ID.test(input.qaSupplierId||'')||
+   (previous!==undefined&&(!VALID_ID.test(previous)||previous===current))||
+   ![current,...(previous?[previous]:[])].includes(original.event_service_id)||
+   original.supplier_id!==input.qaSupplierId||
+   original.interactive_qa_required!==true)
    return closed('qa_assignment_outside_scope');
  }
  const token=await resolveVerifiedGreenActionForButton(
