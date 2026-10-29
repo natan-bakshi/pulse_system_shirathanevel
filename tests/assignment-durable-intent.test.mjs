@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {planAssignmentTransition,readAssignmentIntents,savedAssignmentIntentKey} from '../base44/shared/assignmentIntent.ts';
+import {planAssignmentEffectParity} from '../base44/shared/assignmentEffectParity.ts';
+import {assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG} from '../base44/shared/assignmentSideEffectsLaunchGate.ts';
 
 const initial=()=>({
  id:'service-aaa123',updated_date:'2026-10-17T06:00:00.000Z',
@@ -71,13 +73,19 @@ test('reject missing status/notes, invalid supplier IDs and corrupt intent histo
  assert.throws(()=>planAssignmentTransition({...s,assignment_notification_intents:'corrupt'},input(s),when),/Malformed/);
  assert.deepEqual(readAssignmentIntents('[]'),[]);
 });
-function server({actor='admin',flag=false,service=initial(),eventStatus='confirmed',wakeThrows=false}={}){
+function server({actor='admin',flag=false,service=initial(),eventStatus='confirmed',wakeThrows=false,simulateCompletedEffectBridge=true}={}){
  const bodySrc=fs.readFileSync('base44/functions/saveSupplierAssignmentsV2/entry.ts','utf8');
  const cjs=esbuild.transformSync(bodySrc,{loader:'ts',format:'cjs',target:'es2022'}).code;
  let handler;
  let writes=0,providerCalls=0,wakes=0;
  const db={
-  AppSettings:{filter:async()=>flag?[{setting_key:'assignment_intent_v1_enabled',setting_value:'true'}]:[]},
+  AppSettings:{filter:async(q)=>{
+   if(q.setting_key==='assignment_intent_v1_enabled')
+    return flag?[{setting_key:q.setting_key,setting_value:'true'}]:[];
+   if(q.setting_key===SIDE_EFFECT_FLAG)
+    return simulateCompletedEffectBridge?[{setting_key:q.setting_key,setting_value:'verified_v1'}]:[];
+   throw Error('Unexpected AppSettings access');
+  }},
   EventService:{
    get:async()=>({...service}),
    updateMany:async(query,update)=>{
@@ -105,6 +113,13 @@ function server({actor='admin',flag=false,service=initial(),eventStatus='confirm
    require:name=>{
      if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(name.endsWith('assignmentIntent.ts'))return {planAssignmentTransition};
+     if(name.endsWith('assignmentEffectParity.ts'))return {planAssignmentEffectParity};
+     if(name.endsWith('assignmentSideEffectsLaunchGate.ts'))return {
+      SIDE_EFFECT_FLAG,
+      assignmentSideEffectsLaunchGate:(effects,flags)=>simulateCompletedEffectBridge
+       ?{allowed:true,reason:'test_bridge_simulated',missingConsumers:[]}
+       :assignmentSideEffectsLaunchGate(effects,flags)
+     };
      throw Error('Unexpected import '+name);
    }
  });
@@ -123,6 +138,19 @@ test('only administrators may use the guarded save endpoint',async()=>{
   assert.equal(r.status,403);
   assert.equal(f.writes,0);
  }
+});
+test('production code blocks V2 before CAS even if assignment migration flag is on without effect bridge',async()=>{
+ const f=server({flag:true,simulateCompletedEffectBridge:false});
+ const r=await f.call(input());
+ assert.equal(r.status,423);
+ assert.equal(r.body.saved,false);
+ assert.equal(r.body.code,'durable_effect_bridge_not_implemented');
+ assert.ok(r.body.missingConsumers.includes('supplier_assignment_push'));
+ assert.ok(r.body.missingConsumers.includes('supplier_pending_reminder'));
+ assert.ok(r.body.missingConsumers.includes('google_calendar_sync'));
+ assert.equal(f.writes,0);
+ assert.equal(f.wakes,0);
+ assert.equal(f.providerCalls,0);
 });
 test('valid save atomically records changed assignment + notification intent but never sends',async()=>{
  const f=server({flag:true}),r=await f.call(input());
