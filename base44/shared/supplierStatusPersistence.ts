@@ -7,7 +7,7 @@
 import {supplierAssigned,supplierTransition} from './whatsappSupplierTransition.ts';
 import {readAssignmentIntents,ASSIGNMENT_INTENT_MODE} from './assignmentIntent.ts';
 
-export type SupplierStatusSource='dashboard'|'whatsapp';
+export type SupplierStatusSource='dashboard'|'whatsapp'|'admin';
 type SupplierStatus='pending'|'confirmed'|'rejected';
 const idOk=(value:unknown)=>typeof value==='string'&&
  /^[A-Za-z0-9_-]{3,128}$/.test(value);
@@ -52,12 +52,13 @@ export function whatsappRevisionEligibility(service:any,supplierId:string,revisi
 }
 export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
  eventServiceId:string;supplierId:string;newStatus:SupplierStatus;
- source:SupplierStatusSource;expectedRevision?:string
+ source:SupplierStatusSource;expectedRevision?:string;
+ expectedStatus?:SupplierStatus;supplierNote?:string
 }):Promise<{kind:'changed'|'unchanged';eventId:string;status:SupplierStatus}>{
  const {eventServiceId,supplierId,newStatus,source}=input;
  if(!idOk(eventServiceId)||!idOk(supplierId))throw issue('invalid_assignment',400);
  if(!['pending','confirmed','rejected'].includes(newStatus)||
-  !['dashboard','whatsapp'].includes(source))throw issue('invalid_supplier_status',400);
+  !['dashboard','whatsapp','admin'].includes(source))throw issue('invalid_supplier_status',400);
  if(source==='whatsapp'&&newStatus==='pending')
   throw issue('invalid_whatsapp_action',400);
  const entities=serviceClient?.entities;
@@ -73,20 +74,41 @@ export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
    if(!revision.allowed)throw issue(revision.reason,409);
   }
   const statuses=parseStatuses(row.supplier_statuses);
+  // An admin dialog must not overwrite a newer WhatsApp or supplier decision.
+  if(source==='admin'&&(!['pending','confirmed','rejected'].includes(String(input.expectedStatus||''))||
+     (statuses[supplierId]||'pending')!==input.expectedStatus))
+   throw issue('stale_admin_assignment_status',409);
   const transition=supplierTransition(statuses[supplierId],newStatus,source==='whatsapp');
   if(!transition.allowed)throw issue('stale_or_invalid_supplier_transition',409);
-  if(!transition.changed)return {kind:'unchanged',eventId:row.event_id,status:newStatus};
-  const updateData:any={supplier_statuses:JSON.stringify({...statuses,[supplierId]:newStatus})};
+  let notes:Record<string,string>|null=null;
+  let noteChanged=false;
+  if(source==='admin'&&input.supplierNote!==undefined){
+   if(typeof input.supplierNote!=='string'||input.supplierNote.length>1500)
+    throw issue('invalid_supplier_note',400);
+   try{notes=typeof row.supplier_notes==='string'?JSON.parse(row.supplier_notes||'{}'):
+    (row.supplier_notes??{});}catch{throw issue('invalid_supplier_notes_record',409);}
+   if(!notes||typeof notes!=='object'||Array.isArray(notes)||
+     Object.entries(notes).some(([k,v])=>!idOk(k)||typeof v!=='string'))
+    throw issue('invalid_supplier_notes_record',409);
+   noteChanged=(notes[supplierId]||'')!==input.supplierNote;
+  }
+  if(!transition.changed&&!noteChanged)return {kind:'unchanged',eventId:row.event_id,status:newStatus};
+  const updateData:any={
+   ...(transition.changed?{supplier_statuses:JSON.stringify({...statuses,[supplierId]:newStatus})}:{}),
+   ...(noteChanged?{supplier_notes:JSON.stringify({...(notes||{}),[supplierId]:input.supplierNote})}:{})
+  };
   const filter:any={
    id:row.id,supplier_ids:row.supplier_ids??null,
    supplier_statuses:row.supplier_statuses??null
   };
+  if(noteChanged)filter.supplier_notes=row.supplier_notes??null;
   // In-app approvals/rejections remain independent of WhatsApp availability.
   // A dashboard decision atomically closes the supplier's previous signed
   // button generation, including when an administrator reopens an assignment.
   // Other suppliers' pending notifications remain untouched. Outbox retains
   // the original provider acceptance and receipt history.
-  if(source==='dashboard'&&row.assignment_intent_mode===ASSIGNMENT_INTENT_MODE){
+  if(source!=='whatsapp'&&transition.changed&&
+    row.assignment_intent_mode===ASSIGNMENT_INTENT_MODE){
    let journal:any[]|null=null;
    try{journal=readAssignmentIntents(row.assignment_notification_intents||'[]');}
    catch{/* Malformed WhatsApp metadata cannot disable dashboard decisions. */}
@@ -108,12 +130,12 @@ export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
    filter.assignment_intent_mode=row.assignment_intent_mode??null;
    filter.assignment_notification_intents=row.assignment_notification_intents??null;
   }
-  if(newStatus==='rejected'){
+  if(newStatus==='rejected'&&transition.changed){
    const declined=declinedHistory(row.declined_suppliers);
    if(!declined.some(x=>x?.supplier_id===supplierId)){
     updateData.declined_suppliers=JSON.stringify([...declined,{
      supplier_id:supplierId,declined_date:new Date().toISOString(),
-     reason:'',declined_by_supplier:true
+     reason:'',declined_by_supplier:source!=='admin'
     }]);
     // Avoid dropping a concurrent change to decline history from a manager.
     filter.declined_suppliers=row.declined_suppliers??null;
