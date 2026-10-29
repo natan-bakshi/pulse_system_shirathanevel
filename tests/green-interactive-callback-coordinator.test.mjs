@@ -249,11 +249,49 @@ test('QA inbound scope rejects correct signed button for unrelated service/suppl
   assert.equal(f.calls.serviceReads,0);
  }
  const f=await setup();
+ f.job.interactive_qa_required=true;
  const result=await call(f,rawFor(f.buttons[0].buttonId),{
   qaEventServiceId:'service-abc',qaSupplierId:'supplier-abc'
  });
  assert.equal(result.status,'applied');
  assert.equal(f.calls.writes,1);
+});
+test('an older signed QA message stays inbound-eligible after switching send scope to a SECOND exact service',async()=>{
+ const opts={qaEventServiceId:'service-new-qa',
+  qaPreviousEventServiceId:'service-abc',qaSupplierId:'supplier-abc'};
+ const f=await setup();f.job.interactive_qa_required=true;
+ const result=await call(f,rawFor(f.buttons[0].buttonId),opts);
+ assert.equal(result.status,'applied');
+ assert.equal(f.calls.writes,1);
+ assert.equal(f.calls.creates,1);
+ const replay=await call(f,rawFor(f.buttons[0].buttonId),opts);
+ assert.equal(replay.status,'duplicate');
+ assert.equal(replay.terminalReceiptVerified,true);
+ assert.equal(f.calls.writes,1);
+ assert.equal(f.calls.creates,1);
+});
+test('two-service inbound allowlist rejects any other service, wrong supplier, malformed previous ID, and unmarked Outbox',async()=>{
+ for(const overrides of [
+  {qaEventServiceId:'service-new-qa',qaSupplierId:'supplier-abc'},
+  {qaEventServiceId:'service-new-qa',qaPreviousEventServiceId:'service-not-original',qaSupplierId:'supplier-abc'},
+  {qaEventServiceId:'service-new-qa',qaPreviousEventServiceId:'service-abc',qaSupplierId:'supplier-other'},
+  {qaEventServiceId:'service-new-qa',qaPreviousEventServiceId:'service-new-qa',qaSupplierId:'supplier-abc'},
+  {qaEventServiceId:'service-new-qa',qaPreviousEventServiceId:'bad id!',qaSupplierId:'supplier-abc'}
+ ]){
+  const f=await setup();f.job.interactive_qa_required=true;
+  const result=await call(f,rawFor(f.buttons[0].buttonId),overrides);
+  assert.equal(result.status,'refused');
+  assert.equal(result.reason,'qa_assignment_outside_scope');
+  assert.equal(f.calls.creates,0);
+  assert.equal(f.calls.writes,0);
+ }
+ const f=await setup();
+ const res=await call(f,rawFor(f.buttons[0].buttonId),{
+  qaEventServiceId:'service-new-qa',qaPreviousEventServiceId:'service-abc',qaSupplierId:'supplier-abc'
+ });
+ assert.equal(res.status,'refused','a non-QA message is never promoted to a historical QA approval');
+ assert.equal(f.calls.creates,0);
+ assert.equal(f.calls.writes,0);
 });
 test('wrong button, signature tampering, duplicate original receipt or wrong chat fails closed',async()=>{
  const cases=[
