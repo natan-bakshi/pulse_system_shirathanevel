@@ -1,9 +1,11 @@
 // Pure policy validation; no provider traffic or state mutations.
 import {getInteractiveMessageContract,validateInteractiveButtonLayout} from './whatsappInteractiveActionRegistry.ts';
 // A provider capability check is required separately before activating a policy.
+// v1 stays intentionally typed to the existing assignment actions. New
+// message kinds use registry-scoped V2 contracts rather than widening v1.
+export type WhatsAppAction='assignment_approve'|'assignment_reject'|'contact_office';
 export const WHATSAPP_ACTIONS = Object.freeze(
- getInteractiveMessageContract('assignment')!.actions.map(a=>a.action));
-export type WhatsAppAction = typeof WHATSAPP_ACTIONS[number];
+ getInteractiveMessageContract('assignment')!.actions.map(a=>a.action) as WhatsAppAction[]);
 export type WhatsAppButton = {action:WhatsAppAction;label:string};
 export type WhatsAppInteractivePolicy = {enabled:boolean;quoteAssignment:boolean;buttons:WhatsAppButton[]};
 export function validateWhatsAppInteractivePolicy(input:any):WhatsAppInteractivePolicy {
