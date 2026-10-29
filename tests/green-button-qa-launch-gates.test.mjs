@@ -135,6 +135,41 @@ test('forged account, wrong bearer and bad JSON never ACK or touch DB',async()=>
   assert.equal(clientBuilt,0);
  }
 });
+test('passive receiver BEFORE Beta verification ACKs authenticated manual messages but NEVER business buttons',async()=>{
+ const passive=env({GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'',
+  GREEN_BUTTONS_QA_SEND_ENABLED:''});
+ const mock=sdk({...control,interactive_outbound_live_enabled:false},null);
+ let built=0;
+ const options={
+  env:passive,
+  makeClient:()=>{built++;return mock.client;},
+  recalculateEventStatus:async()=>{throw Error('No provider proof, no supplier mutation');},
+  stage:async()=>{throw Error('No provider proof, no signed click processing');}
+ };
+ const ordinary=await handleGreenButtonQaWebhook(notification(),options);
+ assert.equal(ordinary.httpStatus,200);
+ assert.equal(ordinary.body.received,true);
+ const unverifiedClick=await handleGreenButtonQaWebhook(createRequest(),options);
+ assert.equal(unverifiedClick.httpStatus,503);
+ assert.equal(unverifiedClick.body.received,false);
+ assert.equal(built,0,'no database access before Beta verified');
+ assert.deepEqual(mock.counts,{reads:0,flagReads:0,dbWrites:0});
+ assert.equal(trustedGreenButtonQaInboundConfig(control,passive,true),null);
+});
+test('signed callbacks remain usable with outbound owner flag OFF and scoped V2 ON, global V2 OFF',async()=>{
+ const mock=sdk({...control,interactive_outbound_live_enabled:false},null);
+ let staged=0;
+ const response=await handleGreenButtonQaWebhook(createRequest(),{
+  env:env({GREEN_BUTTONS_QA_SEND_ENABLED:''}),
+  makeClient:()=>mock.client,
+  recalculateEventStatus:async()=>null,
+  stage:async()=>{staged++;return {stage:'processed',result:'applied',reason:'applied'};}
+ });
+ assert.equal(response.httpStatus,200);
+ assert.equal(response.body.received,true);
+ assert.equal(staged,1);
+ assert.deepEqual(mock.counts,{reads:1,flagReads:1,dbWrites:0});
+});
 test('single chat QA is disabled by default and never activates from saved policy alone',()=>{
  const actual=trustedGreenButtonQaConfig({
   ...control,interactive_outbound_live_enabled:false},env(),true);
