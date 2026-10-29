@@ -85,7 +85,12 @@ export async function preflightWhatsAppAssignmentResponse(input:{
    providerMessageId:input.originalProviderMessageId,action:signed.action
   });
   const historicalOnly=(reason:string)=>({admissible:false,reason,
-   verifiedReplayCandidate:receipt,noMessagesSent:true} as const);
+   verifiedReplayCandidate:receipt,
+   // A signed, current-revision button on a resolved assignment may be
+   // durably rejected and ACKed, NEVER applied as a new business decision.
+   // All provider/origin/supplier checks above must have succeeded first.
+   verifiedTerminalRejectionCandidate:reason==='assignment_not_pending',
+   noMessagesSent:true} as const);
   if(!supplierAssigned(service.supplier_ids,signed.supplierId))
    return historicalOnly('supplier_not_assigned');
   const rev=whatsappRevisionEligibility(service,signed.supplierId,signed.revision);
