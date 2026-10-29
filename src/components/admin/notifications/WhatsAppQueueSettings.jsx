@@ -252,7 +252,7 @@ export default function WhatsAppQueueSettings(){
         if(target?.data?.success)setQaAssignmentPreflight(target.data.preflight);
         const uncertain=['qa_unknown','qa_enrollment_commit_uncertain_review',
           'qa_enrollment_concurrent_or_uncertain'].includes(reason);
-        const beforeAttempt=/^qa_[a-z_]+$/.test(reason)&&!uncertain;
+        if(uncertain)setNotice('תוצאת השיבוץ אינה ודאית; יש לבדוק את יומן השיבוץ לפני פעולה נוספת.');
       }
       setError(e?.response?.data?.error||e?.message||'הפעולה נכשלה');
     }
