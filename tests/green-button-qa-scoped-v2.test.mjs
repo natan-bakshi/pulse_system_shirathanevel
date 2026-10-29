@@ -12,6 +12,7 @@ const SERVICE='qa-eventservice-123',EVENT='qa-event-123',SUPPLIER='qa-supplier-1
 const chat='972501234567@c.us';
 const values={
  GREEN_BUTTONS_QA_SCOPED_V2_ENABLED:'enabled',
+ GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
  GREEN_BUTTONS_QA_EVENT_ID:EVENT,
  GREEN_BUTTONS_QA_EVENT_SERVICE_ID:SERVICE,
  GREEN_BUTTONS_QA_SUPPLIER_ID:SUPPLIER,
@@ -56,6 +57,21 @@ test('global V2 off: only exact QA service can enter reconciler, with no DB scan
  assert.equal(result.reason,'feature_disabled');
  assert.equal(gets,0);
  assert.equal(queries,0);
+});
+test('idle pre-provisioning scoped V2 incurs ZERO extra EventService reads per watchdog',async()=>{
+ let settings=0,reads=0;
+ const client={asServiceRole:{entities:{
+  AppSettings:{filter:async()=>{settings++;return[]}},
+  EventService:{get:async()=>{reads++;throw Error('Idle QA read forbidden')}}
+ }}};
+ const envIdle=k=>k==='GREEN_BUTTONS_QA_SEND_ENABLED'||
+  k==='GREEN_BUTTONS_QA_CREATE_ENABLED'?'':env(k);
+ const response=await sweepPendingSupplierAssignmentIntents(client,{qaEnv:envIdle});
+ assert.equal(response.success,true);
+ assert.equal(response.reason,'qa_transport_not_armed');
+ assert.equal(response.scanned,0);
+ assert.equal(settings,1,'existing global V2 flag read only');
+ assert.equal(reads,0,'no per-five-minute QA read while waiting for owner');
 });
 test('existing watchdog QA fallback performs ONE exact GET only while scoped gate is active',async()=>{
  const calls={settings:0,gets:0,scans:0,worker:0};
