@@ -52,6 +52,7 @@ export default function WhatsAppQueueSettings(){
   const [unknownRecoveryReview,setUnknownRecoveryReview]=useState(null);
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
+  const [assignmentV2Readiness,setAssignmentV2Readiness]=useState(null);
   const [qaReadiness,setQaReadiness]=useState(null);
   const [qaAssignmentPreflight,setQaAssignmentPreflight]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
@@ -189,6 +190,13 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'בדיקת מוכנות כפתורים נכשלה');
         setInteractiveReadiness(res.data.readiness);
         setNotice('בדיקת מוכנות בוצעה לקריאה בלבד, ללא פנייה לספק WhatsApp.');
+        return;
+      }
+      if(action==='assignmentV2Readiness'){
+        setAssignmentV2Readiness(null);
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת תאימות שיבוצים נכשלה');
+        setAssignmentV2Readiness(res.data.readiness);
+        setNotice('תאימות תהליך השיבוצים נבדקה ללא שליחה, ללא שינוי שיבוצים וללא חיוב ספק.');
         return;
       }
       if(action==='inboundInspect'){
@@ -372,6 +380,7 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaReadiness')}>מוכנות ניסוי כפתורים למספר אחד (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaAssignmentPreflight')}>בדיקת שיבוץ הניסוי (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות תוכנית הכפתורים המלאה (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('assignmentV2Readiness')}>בדוק תאימות שיבוצים V2 לפרודקשן (קריאה בלבד)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדיקת חיבור Green (קריאה בלבד, ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
@@ -446,6 +455,17 @@ export default function WhatsAppQueueSettings(){
           </li>)}</ul>
           {qaAssignmentPreflight.previouslyAttempted&&<p className="text-amber-800">קיים ניסיון שליחה קודם. אין לשלוח שוב ללא בירור כדי לא לייצר כפילויות.</p>}
           {qaAssignmentPreflight.requiresNewDurableAssignment&&<p className="text-amber-800">נדרש יצירת שיבוץ חדש במסלול V2 מאושר. הפעולה אינה מבוצעת אוטומטית כאן.</p>}
+        </div>
+      </details>}
+      {assignmentV2Readiness&&<details open className="rounded border p-3 text-sm" dir="rtl">
+        <summary className="font-medium cursor-pointer">תאימות שיבוצים V2 — {assignmentV2Readiness.checks?.filter(x=>!x.ready).length||0} תנאים להשלמה</summary>
+        <div className="pt-3 space-y-2 text-xs">
+          <p className="font-medium text-amber-800">מסלול השיבוצים הקיים נשמר; כפתורים לשיבוצים אמיתיים עדיין לא הופעלו. הבדיקה אינה משנה הגדרות ואין צורך לערוך Secrets.</p>
+          <ul className="space-y-1">{(assignmentV2Readiness.checks||[]).map(check=><li key={check.code}>
+            {check.ready?'✓':'○'} {({assignment_intent_v1_feature_flag:'יומן השיבוצים האטומי מופעל',side_effect_bridge_implemented_in_code:'העברת התראות/תזכורות/יומן למנגנון עמיד הושלמה',side_effect_bridge_independently_verified:'אומת מנגנון תאימות ופעולות נלוות',legacy_workflow_parity_preserved_in_current_ui:'השיבוצים הקיימים עדיין משתמשים באוטומציות המקוריות',real_ui_paths_migrated:'כל מסכי השיבוצים חוברו לשמירה האטומית',live_green_buttons_generalized:'כפתורי Green לשיבוצים אמיתיים מאושרים',live_inbound_for_real_assignments:'קליטת לחיצות שיבוץ אמיתי מאומתת'})[check.code]||check.code}
+          </li>)}</ul>
+          <p className="text-gray-600">השירותים הנדרשים לפני מעבר: {(assignmentV2Readiness.requiredParityConsumers||[]).map(x=>({event_status_readiness:'סטטוס אירוע',entity_update_notifications:'התראות אירוע',supplier_assignment_push:'Push לספק',supplier_pending_reminder:'תזכורת לממתין',assignment_removed_notifications:'עדכון ביטול שיבוץ',assignment_status_notifications:'התראות שינוי סטטוס',google_calendar_sync:'יומן Google'})[x]||x).join(' · ')}.</p>
+          <p className="text-gray-600">אין אפשרות להפעיל תכונות חסומות מתוך האבחון; תוצאה תקינה של תצורה לבדה אינה אישור לשלוח כפתורים לכלל הספקים.</p>
         </div>
       </details>}
       {interactiveReadiness&&<details className="rounded border p-3 text-sm" dir="rtl">
