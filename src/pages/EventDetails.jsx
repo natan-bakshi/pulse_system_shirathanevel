@@ -88,6 +88,8 @@ export default function EventDetails() {
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
+  const assignmentSaveRef = React.useRef(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [selectedServiceForSupplier, setSelectedServiceForSupplier] = useState(null);
   const [supplierFormData, setSupplierFormData] = useState({ supplierIds: [], notes: {} });
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
@@ -1185,7 +1187,9 @@ export default function EventDetails() {
   }, [isAdmin, groupedServices, groupedExternalServices, reorderServicesMutation]);
 
   const handleAssignSuppliers = useCallback(async () => {
-    if (!selectedServiceForSupplier || selectedServiceForSupplier.is_external) return;
+    if (!selectedServiceForSupplier || selectedServiceForSupplier.is_external || assignmentSaveRef.current) return;
+    assignmentSaveRef.current = true;
+    setAssignmentSaving(true);
     try {
       const added=newAssignmentRecipients(selectedServiceForSupplier.supplier_ids,supplierFormData.supplierIds);
       await base44.entities.EventService.update(selectedServiceForSupplier.id, {
@@ -1226,6 +1230,9 @@ export default function EventDetails() {
     } catch (error) {
       console.error("Failed to assign suppliers:", error);
       alert("שגיאה בשיבוץ הספקים");
+    } finally {
+      assignmentSaveRef.current = false;
+      setAssignmentSaving(false);
     }
   }, [selectedServiceForSupplier, supplierFormData, allServices, eventId, loadEventData]);
 
@@ -2215,7 +2222,7 @@ export default function EventDetails() {
           <ClearingPaymentDialog open onOpenChange={setShowClearingDialog} event={event} balance={Math.max(0, Number(financials.balance) || 0)} totalPaid={Number(financials.totalPaid) || 0} settings={billingSettings} isAdmin={isAdmin} onStart={handleStartClearing} loading={isStartingClearing} initialMode={clearingMode} contacts={getEventContactList(event)} linkResult={paymentLinkResult} onResetLinkResult={() => setPaymentLinkResult(null)} />
         </React.Suspense>
       )}
-      <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} />
+      <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} isSaving={assignmentSaving} />
       <Dialog open={showNewServiceDialog} onOpenChange={(open) => { setShowNewServiceDialog(open); if (!open) setNewServiceTargetPackageId(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>יצירת שירות חדש</DialogTitle></DialogHeader>
