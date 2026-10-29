@@ -7,7 +7,7 @@ import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
-import {greenButtonQaSafeSummary} from '../../shared/greenButtonQaLaunch.ts';
+import {greenButtonQaSafeSummary,greenButtonQaPassiveInboundReady} from '../../shared/greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
@@ -475,7 +475,16 @@ Deno.serve(async(req)=>{
           // configured 7201 host may use ONE Green universal-host read-only GET.
           apiBaseUrl:Deno.env.get('GREEN_API_URL'),timeoutMs:15000
         });
-        return RESPONSE({success:true,settings,noMessagesSent:true});
+        const env=(key:string)=>Deno.env.get(key);
+        // The owner can proceed from this ONE audit button: no second
+        // readiness query, no extra DB read. The write action independently
+        // rechecks control, current provider settings and one-shot lock.
+        const webhookProvisioningOwnerActionAvailable=
+          greenButtonQaPassiveInboundReady(env)&&
+          env('GREEN_BUTTONS_QA_SETTINGS_WRITE_ENABLED')==='enabled'&&
+          env('GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled';
+        return RESPONSE({success:true,settings,
+          webhookProvisioningOwnerActionAvailable,noMessagesSent:true});
       }catch(error){
         // Fixed, sanitized reason only; no upstream URL, token, payload or
         // raw network error is returned/logged. A retry is always owner-clicked.
