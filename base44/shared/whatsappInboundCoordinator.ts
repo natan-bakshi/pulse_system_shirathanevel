@@ -128,7 +128,8 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
    const done=await finishInboundReceipt(input.client,{
     receiptId:registered.id,receiptKey:registered.receiptKey,
     claimOwner:input.claimOwner,outcome:'rejected',
-    resultCode:'business_conflict'
+    resultCode:'business_conflict',
+    feedbackSigningSecret:input.providerEvent.actionSigningSecret
    });
    if(done?.finalized){
     await feedbackAfterVerifiedTerminal(input.client,registered.id,
@@ -188,7 +189,8 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
  try{
   const done=await finishInboundReceipt(input.client,{
    receiptId:registered.id,receiptKey:registered.receiptKey,
-   claimOwner:input.claimOwner,outcome,resultCode
+   claimOwner:input.claimOwner,outcome,resultCode,
+   feedbackSigningSecret:input.providerEvent.actionSigningSecret
   });
   if(done?.finalized){
    if(outcome==='applied'||outcome==='rejected'||
