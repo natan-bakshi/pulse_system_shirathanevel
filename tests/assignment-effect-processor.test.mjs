@@ -67,6 +67,8 @@ const adapters=()=>Object.fromEntries([
 ].map(consumer=>[consumer,async({task})=>receipt(task)]));
 const defaultOptions=(overrides={})=>({
  adapters:adapters(),
+ verifyReceipt:async({task,receiptId})=>receiptId==='receipt-VERIFIED-12345'&&
+  task.key.startsWith('assignment-effect:'),
  preflight:async()=>({action:'run',reason:'latest_relevant_business_state'}),
  makeToken:token,now:tick,maxTasks:4,...overrides
 });
@@ -200,6 +202,23 @@ test('an unverified 2xx, mismatched source receipt or missing receipt never coun
   assert.equal(tasks(db).some(t=>t.state==='completed'),false);
  }
 });
+test('an adapter cannot declare success without independent durable receipt verification',async()=>{
+ for(const verifyReceipt of [async()=>false,async()=>{throw Error('Receipt storage unavailable')}]){
+  const db=fakeDatabase();let calls=0,verificationCalls=0;
+  const a=adapters();for(const key of Object.keys(a))a[key]=async({task})=>{
+   calls++;return receipt(task);
+  };
+  const r=await processStagedAssignmentEffectBatch(db.client,db.row.id,
+   defaultOptions({adapters:a,maxTasks:1,verifyReceipt:async input=>{
+    verificationCalls++;return verifyReceipt(input);
+   }}));
+  assert.equal(r.unknown,1);
+  assert.equal(r.completed,0);
+  assert.equal(calls,1);
+  assert.equal(verificationCalls,1);
+  assert.equal(tasks(db).find(t=>t.state==='unknown').receiptId,undefined);
+ }
+});
 test('a superseded assignment is cancelled before adapter IO, despite a successful CAS claim',async()=>{
  const db=fakeDatabase();let called=0;
  const a=adapters();for(const key of Object.keys(a))a[key]=async()=>{called++;throw Error('adapter should not run')};
@@ -229,6 +248,11 @@ test('preflight crashes or returns an unrecognized result; it never invokes the 
   assert.equal(r.unknown,1);
   assert.equal(called,0);
  }
+});
+test('missing independent receipt verifier blocks the processor before any CAS',async()=>{
+ const db=fakeDatabase();const opts=defaultOptions();delete opts.verifyReceipt;
+ await assert.rejects(processStagedAssignmentEffectBatch(db.client,db.row.id,opts));
+ assert.equal(db.reads,0);assert.equal(db.writes,0);
 });
 test('missing preflight is a hard error before all DB reads or claims',async()=>{
  const db=fakeDatabase();const opts=defaultOptions();delete opts.preflight;
