@@ -7,7 +7,10 @@ import {processSupplierAssignmentIntents} from '../base44/shared/assignmentInten
 import {assignmentWhatsAppContext,supplierAssignmentTargetChatId} from '../base44/shared/assignmentWhatsApp.ts';
 import {sendWhatsAppToChat,toChatId} from '../base44/shared/whatsappSend.ts';
 import {drainWhatsAppOutbox} from '../base44/shared/whatsappQueueWorker.ts';
-import {trustedGreenButtonQaConfig} from '../base44/shared/greenButtonQaLaunch.ts';
+import {trustedGreenButtonQaConfig,trustedGreenLegacyPilotConfig}
+ from '../base44/shared/greenButtonQaLaunch.ts';
+import {LEGACY_GREEN_PILOT_FIELD,pilotTarget,nextLegacyGreenPilotState,
+ signLegacyGreenPilotState} from '../base44/shared/legacyGreenPilotScope.ts';
 import {stageFutureGreenInteractiveHttpCallback} from '../base44/shared/greenInteractiveHttpStaging.ts';
 import {handleGreenButtonQaWebhook} from '../base44/shared/greenButtonQaWebhookHandler.ts';
 import {persistAuthorizedSupplierStatus} from '../base44/shared/supplierStatusPersistence.ts';
@@ -42,10 +45,8 @@ const policy=JSON.stringify({
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
 function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,legacyCanary=false}={}){
- const qaEnvOriginal=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
+ const qaEnv=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
   'probe_authorized':key==='GREEN_BUTTONS_QA_BETA_PROBE_ENABLED'? 'enabled':env(key):env;
- const qaEnv=key=>legacyCanary&&key==='GREEN_BUTTONS_LEGACY_CANARY_ENABLED'
-  ?'enabled':qaEnvOriginal(key);
  const now=Date.now();
  const control={
   id:'control-qa1',control_key:'global',enabled:true,paused:false,
@@ -161,10 +162,18 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
  async function reconcile(){
   return processSupplierAssignmentIntents(client,SERVICE);
  }
+ async function armLegacy(){
+  const at=Date.now();
+  const state=nextLegacyGreenPilotState(null,pilotTarget(SERVICE,SUPPLIER,CHAT,at),at);
+  control[LEGACY_GREEN_PILOT_FIELD]=await signLegacyGreenPilotState(state,SIGNING,at);
+ }
  async function worker(interactive=true,onTransport=null){
+  const config=interactive?(legacyCanary?
+    await trustedGreenLegacyPilotConfig(control,qaEnv,'outbound'):
+    trustedGreenButtonQaConfig(control,qaEnv,true)):null;
   return drainWhatsAppOutbox(client,{
    maxRuntimeMs:10000,
-   ...(interactive?{interactiveConfig:trustedGreenButtonQaConfig(control,qaEnv,true)}:{}),
+   ...(config?{interactiveConfig:config}:{}),
    transport:async(job,provider,_client,preview)=>{
     stats.providerCalls++;
     if(onTransport)return onTransport(job,provider,preview);
@@ -233,10 +242,11 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
   });
  }
  return {client,service,supplier,event,control,outbox,receipts,stats,qaEnv,
-  enroll,reconcile,worker,callback,httpCallback};
+  armLegacy,enroll,reconcile,worker,callback,httpCallback};
 }
 test('FAST PATH: existing assignment save and existing queue -> signed Green buttons -> supplier decision -> durable receipt -> duplicate ignored',async()=>{
  const f=fixture({globalV2Enabled:false,legacyCanary:true});
+ await f.armLegacy();
  // No V2 business save. This is the EXACT legacy EventService UPDATE data
  // that keeps existing Push, reminders, notifications and calendar workflows.
  f.service.supplier_ids=JSON.stringify([SUPPLIER]);
@@ -248,7 +258,7 @@ test('FAST PATH: existing assignment save and existing queue -> signed Green but
  assert.equal(f.outbox.length,1);
  assert.equal(f.outbox[0].idempotency_key,ctx.idempotencyKey);
  assert.equal(f.service.assignment_intent_mode,undefined);
- const config=trustedGreenButtonQaConfig(f.control,f.qaEnv,true);
+ const config=await trustedGreenLegacyPilotConfig(f.control,f.qaEnv,'outbound');
  assert.equal(config.legacyCanaryApproved,true);
  assert.equal(config.accountCapabilityVerified,true);
  const previews=[];
@@ -274,6 +284,7 @@ test('FAST PATH: existing assignment save and existing queue -> signed Green but
 });
 test('FAST PATH: a late legacy WhatsApp reject cannot overwrite Pulse approval; records a terminal conflict and ACKs',async()=>{
  const f=fixture({globalV2Enabled:false,legacyCanary:true});
+ await f.armLegacy();
  f.service.supplier_ids=JSON.stringify([SUPPLIER]);
  f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'pending'});
  f.service.updated_date=new Date(Date.now()-2000).toISOString();
