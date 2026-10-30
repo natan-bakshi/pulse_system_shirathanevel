@@ -113,16 +113,50 @@ export function trustedGreenButtonQaInboundConfig(control:any,
 // buttons, queue policy, and durable receipt processing. Scope is broadened
 // ONLY by the owner-controlled queue flag. Inbound stays available after OFF.
 export function trustedGreenAssignmentProductionConfig(control:any,
- env:(key:string)=>string|undefined,mode:'outbound'|'inbound'){
- const base=trustedGreenButtonQaConfigForMode(control,env,true,mode==='outbound');
- if(!base||base.accountCapabilityVerified!==true||
-  (mode==='outbound'&&control?.interactive_assignment_production_enabled!==true))
+ env:(key:string)=>string|undefined,mode:'outbound'|'inbound'):TrustedGreenInteractiveConfig|null{
+ // Production is NOT a single-chat QA experiment. Requiring QA event/chat/
+ // supplier pins here silently downgraded genuine new assignments to text
+ // after the owner switched on production. Keep every verified security gate
+ // but derive no production authorization from obsolete QA targeting secrets.
+ if(!control||control.enabled!==true||control.paused===true||
+  control.interactive_outbound_live_enabled!==true||
+  get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified'||
+  get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')!=='confirmed'||
+  get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
+  (mode==='outbound'&&(
+   get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled'||
+   control.interactive_assignment_production_enabled!==true))||
+  (mode==='inbound'&&
+   control.interactive_assignment_production_enabled!==true&&
+   control.interactive_assignment_production_ever_enabled!==true))
   return null;
- if(mode==='inbound'&&control?.interactive_assignment_production_enabled!==true&&
-  control?.interactive_assignment_production_ever_enabled!==true)return null;
- return {...base,legacyProductionApproved:true as const,
-  supplierPortalUrl:SUPPLIER_PORTAL_URL,supplierPortalLabel:'כניסה למערכת',
-  qaChatId:undefined,qaEventServiceId:undefined,qaSupplierId:undefined};
+ const senderAccountId=get(env,'GREEN_API_INSTANCE_ID');
+ const token=get(env,'GREEN_API_TOKEN');
+ const signingSecret=get(env,'WHATSAPP_INTERACTIVE_SIGNING_SECRET');
+ const webhookSecret=get(env,'GREEN_API_WEBHOOK_TOKEN');
+ if(!INSTANCE.test(senderAccountId)||token.length<24||
+  signingSecret.length<SECRET_MIN||webhookSecret.length<24||
+  webhookSecret===signingSecret)return null;
+ let policy:any,officeNumber='';
+ try{
+  const stored=parseSavedWhatsAppInteractivePolicy(control,'green');
+  if(!stored.configured||stored.corrupt||!stored.setting.officeNumber)return null;
+  officeNumber=stored.setting.officeNumber;
+  policy=validateWhatsAppInteractivePolicy({
+   ...stored.setting.policy,enabled:true
+  });
+ }catch{return null;}
+ if(!/^[1-9][0-9]{7,14}$/.test(officeNumber)||
+  policy.buttons.length!==3||
+  !exactActions.every(action=>policy.buttons.some((b:any)=>b.action===action)))
+  return null;
+ return {enabled:true,accountCapabilityVerified:true,
+  legacyProductionApproved:true,
+  capability:'mixed_url',senderAccountId,signingSecret,policy,
+  officeNumber,officeLabel:policy.buttons.find((b:any)=>
+   b.action==='contact_office')!.label,
+  officeContextMode:'reference',
+  supplierPortalUrl:SUPPLIER_PORTAL_URL,supplierPortalLabel:'כניסה למערכת'};
 }
 // A signed, explicitly owner-armed SINGLE REAL assignment replaces only
 // the targeting metadata for a narrow legacy pilot. All Green QA credentials,
