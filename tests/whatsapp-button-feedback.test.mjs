@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {createFutureInteractiveButtonSnapshot}
  from '../base44/shared/whatsappButtonBindings.ts';
+import {sendWhatsAppTransport} from '../base44/shared/whatsappSend.ts';
 import {inboundReceiptKey} from '../base44/shared/whatsappInteractiveReceipt.ts';
 import {
  planVerifiedButtonFeedback,enqueueVerifiedButtonFeedback,reconcileTerminalButtonFeedback
@@ -158,6 +159,19 @@ test('forged snapshot, changed recipient, wrong Green account and provider switc
   assert.equal(out.queued,false,patch);
   assert.equal(f.created.length,0,patch);
  }
+});
+test('transport refuses feedback from another Green sender, without any provider request',async()=>{
+ const f=await fixture();
+ const job={chat_id:'972501234567@c.us',message_type:'text',
+  message_text:'Synthetic feedback',source_type:'assignment_button_feedback',
+  sender_account_id:'9903183013'};
+ const old=globalThis.Deno;
+ globalThis.Deno={env:{get:key=>key==='GREEN_API_INSTANCE_ID'?'different-instance':'test'}};
+ try{
+  await assert.rejects(sendWhatsAppTransport(job,'green',f.client),/Original Green sender account unavailable/);
+  await assert.rejects(sendWhatsAppTransport(job,'wasender',f.client),/Original Green sender account unavailable/);
+ }finally{if(old===undefined)delete globalThis.Deno;else globalThis.Deno=old;}
+ assert.equal(f.created.length,0);
 });
 test('watchdog recovers only newly opted-in, terminal feedback and never scans historical ones',async()=>{
  const f=await fixture();
