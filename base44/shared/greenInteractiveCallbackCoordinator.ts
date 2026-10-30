@@ -71,7 +71,7 @@ export async function processFutureGreenButtonCallback(input:{
    ![current,...(previous?[previous]:[])].includes(original.event_service_id)||
    original.supplier_id!==input.qaSupplierId||
    (original.interactive_qa_required!==true&&
-    !(input.legacyCanaryApproved===true&&
+    !(input.legacyCanaryApproved===true&&original.event_service_id===current&&
       original.assignment_revision===legacyRevisionFromOutboxKey(original))))
    return closed('qa_assignment_outside_scope');
  }
