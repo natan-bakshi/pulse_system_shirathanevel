@@ -8,6 +8,7 @@ import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {buildOfficeWhatsAppInquiryLink,type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
+import {SUPPLIER_PORTAL_URL} from './supplierPortalLink.ts';
 
 const PRIVATE_CHAT=/^[1-9][0-9]{7,14}@c\.us$/;
 const OFFICE=/^[1-9][0-9]{7,14}$/;
@@ -45,6 +46,7 @@ export async function previewGreenInteractiveAssignment(input:{
  capability:'reply_only'|'mixed_url'|'unknown';
  rolloutEnabled:boolean;officeNumber?:string;officeLabel?:string;
  officeContextMode?:OfficeContextMode;
+ supplierPortalUrl?:string;supplierPortalLabel?:string;
  now?:number;subtle?:SubtleCrypto
 }):Promise<GreenOutboundPreview>{
  const job=input?.job;
@@ -99,14 +101,21 @@ export async function previewGreenInteractiveAssignment(input:{
   buttons.push({buttonId:b.buttonId,buttonText:b.label});
  }
  if(input.capability==='mixed_url'&&url){
-  if(typeof input.officeLabel!=='string'||!input.officeLabel.trim()||
-   input.officeLabel.trim()!==input.officeLabel||
-   input.officeLabel.length>25||/[\r\n\u0000-\u001f\u007f]/.test(input.officeLabel))
+  // Green allows at most THREE buttons. Production prefers a direct app URL
+  // button while keeping the existing office-chat link in the message body.
+  // The original QA pilot still has its proven office URL button.
+  const appLink=input.supplierPortalUrl;
+  const appButton=appLink===SUPPLIER_PORTAL_URL;
+  const urlLabel=appButton?input.supplierPortalLabel:input.officeLabel;
+  if(typeof urlLabel!=='string'||!urlLabel.trim()||
+   urlLabel.trim()!==urlLabel||
+   urlLabel.length>25||/[\r\n\u0000-\u001f\u007f]/.test(urlLabel))
    throw fail('invalid_office_button_label');
   return {method:'sendInteractiveButtons',body:{
-   chatId:job.chat_id,body:text,buttons:[
+   chatId:job.chat_id,body:appButton?appendOfficeToText(text,url):text,buttons:[
     ...buttons.map(b=>({...b,type:'reply'})),
-    {type:'url',buttonId:'contact_office',buttonText:input.officeLabel,url}
+    {type:'url',buttonId:appButton?'open_supplier_portal':'contact_office',
+     buttonText:urlLabel,url:appButton?SUPPLIER_PORTAL_URL:url}
    ]},kind:'interactive_mixed',fallbackReason:'',providerRequestsMade:0};
  }
  return {method:'sendInteractiveButtonsReply',body:{
