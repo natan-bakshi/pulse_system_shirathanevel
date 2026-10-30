@@ -5,6 +5,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
+import {readWhatsAppQueueControl} from '../../shared/whatsappOutbox.ts';
+import {resolveWhatsAppProvider} from '../../shared/whatsappProviderConfig.ts';
+import {productionAssignmentPrivateTarget} from '../../shared/supplierPortalLink.ts';
 import { assignmentWhatsAppKey, assignmentWhatsAppContext, cleanMissingAssignmentTime } from '../../shared/assignmentWhatsApp.ts';
 import { resolveNotificationDelay } from '../../shared/quietHours.ts';
 import { entityTriggerWhatsAppContext } from '../../shared/entityTriggerWhatsApp.ts';
@@ -901,7 +904,12 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     // dedupe key. That could produce two messages for one assignment.
     if(template.type==='SUPPLIER_NEW_ASSIGNMENT' && serviceObj?.id && supplierObj?.id){
         const delay=resolveNotificationDelay(supplierObj);
-        const receipt=await sendWhatsAppToChat(whatsappTarget.chatId,message,base44,
+        const control=await readWhatsAppQueueControl(base44);
+        const selected=control.interactive_assignment_production_enabled===true
+          ?await resolveWhatsAppProvider(base44):'disabled';
+        const target=productionAssignmentPrivateTarget(supplierObj,
+          whatsappTarget.chatId,control,selected,toChatId);
+        const receipt=await sendWhatsAppToChat(target.chatId,message,base44,
             assignmentWhatsAppContext(serviceObj,supplierObj.id,template.type,delay));
         if(!isWhatsAppEnqueueConfirmed(receipt)){
             throw new Error('Assignment WhatsApp outbox is not in a sendable state');
