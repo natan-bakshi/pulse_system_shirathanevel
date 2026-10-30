@@ -142,6 +142,13 @@ test('actual LEGACY EventService + existing Outbox key is upgraded at dispatch t
  assert.equal(decision.preview.body.buttons[2].buttonText,'כניסה למערכת');
  assert.equal(decision.preview.body.buttons[2].url,SUPPLIER_PORTAL_URL);
  assert.match(decision.preview.body.body,/https:\/\/wa\.me\/972551111111/);
+ // The OFFICE LINK must remain readable on one narrow mobile screen line.
+ // Never embed a long percent-encoded draft or a third-party shortener.
+ const officeLink=decision.preview.body.body.match(/https:\/\/wa\.me\/\d+/g)||[];
+ assert.deepEqual(officeLink,['https://wa.me/972551111111']);
+ assert.equal(officeLink[0].length,26);
+ assert.equal(decision.preview.body.body.includes('?text='),false);
+ assert.match(decision.preview.body.body,/לשיחה עם המשרד:\nhttps:\/\/wa\.me\/972551111111/);
  assert.equal(decision.preview.body.buttons.filter(b=>b.type==='reply').length,2);
  assert.ok(job.interactive_button_bindings_json);
  assert.equal(job.assignment_revision,'r1793345172138');
