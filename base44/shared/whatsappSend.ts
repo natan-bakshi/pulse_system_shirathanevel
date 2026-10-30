@@ -7,6 +7,7 @@ import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { parseWhatsAppPhone } from './whatsappPhone.ts';
 import { greenApiOrigin } from './greenWebhookSettingsAudit.ts';
 import {withSupplierPortalLink} from './supplierPortalLink.ts';
+import {verifiedSupplierNavigationTransport} from './greenSupplierNavigation.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -187,6 +188,24 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
   // with sendMessage, even if an upstream worker path regresses in the future.
   if(job.interactive_qa_required===true&&!interactivePreview)
     throw invalidInput('Interactive-only QA assignment cannot send plain text');
+  // URL-only supplier navigation is not a business action and needs no
+  // callback or new Outbox record. Independent transport checks forbid
+  // arbitrary destinations, recipients and URL query injection. A proven
+  // 400/403 rejection may fall back once to the original plain text; UNKNOWN
+  // provider responses must never trigger a second provider send.
+  if(interactivePreview?.kind==='interactive_navigation'){
+    if(!verifiedSupplierNavigationTransport(job,provider,interactivePreview))
+      throw invalidInput('Invalid supplier navigation buttons');
+    try{
+      return await callGreenApi('sendInteractiveButtons',interactivePreview.body);
+    }catch(error){
+      if(error?.deliveryUncertain!==true&&[400,403].includes(error?.errorCode)){
+        console.warn('[WhatsAppOutbox] Green URL buttons rejected before acceptance; reverting supplier notice to original text');
+        return callGreenApi('sendMessage',{chatId,message:text});
+      }
+      throw error;
+    }
+  }
   // Only the guarded worker can supply a pre-validated, frozen beta payload.
   // Ordinary messages always use the exact legacy sendMessage/sendWasender path.
   if(interactivePreview){
