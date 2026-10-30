@@ -101,6 +101,10 @@
       "default": false,
       "description": "Owner-reviewed future rollout safety fence. Default OFF; never set through draft WhatsApp settings or public queue admin."
     },
+    "interactive_legacy_assignment_pilot_json": {
+      "type": "string",
+      "description": "Owner-signed two-day single-scope Green assignment pilot; no provider credentials, no business edits or queue activation"
+    },
     "interactive_assignment_green_policy_json": {
       "type": "string",
       "description": "System owner only: versioned, disabled interactive assignment draft for Green API"
