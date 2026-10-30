@@ -1,7 +1,8 @@
 // Owner-triggered, read-only check of assignment V2 migration dependencies.
 // This is NOT a rollout control. It never queries suppliers or events, and
 // cannot mutate EventService, send messages or start the worker.
-import {assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG}
+import {assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG,
+ ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS}
  from './assignmentSideEffectsLaunchGate.ts';
 
 const FLAG='assignment_intent_v1_enabled';
@@ -31,6 +32,8 @@ export function summarizeAssignmentV2ReleaseReadiness(input:{
   currentMode:'legacy_business_update',
   noProviderCalls:true,noMessageSent:true,noWrites:true,
   requiredParityConsumers:DEPENDENCIES,
+  implementationProofs:Object.entries(ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS)
+   .map(([code,ready])=>({code,ready})),
   checks:[
    {code:'assignment_intent_v1_feature_flag',ready:durable},
    {code:'side_effect_bridge_implemented_in_code',
