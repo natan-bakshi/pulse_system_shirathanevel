@@ -18,6 +18,15 @@ Deno.serve(async (req) => {
         
         const payload = await req.json();
         const { event, data, old_data } = payload;
+        // A metadata-only wake from an already committed supplier CAS must
+        // reach the existing Calendar workflow, but MUST NOT generate another
+        // Push/WhatsApp/reminder or rescan supplier notification templates.
+        const changedFields=payload.changed_fields||event?.changed_fields;
+        if(Array.isArray(changedFields)&&changedFields.includes('calendar_sync_wake_at')&&
+          changedFields.every(f=>[
+            'calendar_sync_wake_at','updated_date','created_by_id','is_sample'
+          ].includes(f)))
+          return Response.json({success:true,skipped:true,reason:'calendar_only_wake'});
         
         if (!data) {
             return Response.json({ success: true, message: 'No data provided' });
