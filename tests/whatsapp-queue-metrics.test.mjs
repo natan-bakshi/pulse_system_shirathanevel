@@ -84,13 +84,13 @@ test('read-only latency diagnostics isolate five-minute scheduled fanout tails b
  assert.equal(JSON.stringify(m).includes('Private message'),false);
  assert.equal(m.providerAcceptanceIsNotDelivery,true);
 });
-test('admin latency panel groups sources from existing projected read and is collapsed by default',()=>{
+test('admin metrics remain owner-only, on-demand and collapsed under troubleshooting',()=>{
  const backend=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
  assert.match(backend,/const TIMING_FIELDS=[\s\S]*?'source_type'\]/);
- assert.match(ui,/Object.entries\(metrics.bySource\|\|\{\}\)/);
- assert.match(ui,/פירוט זמני התור לפי סוג הודעה/);
- assert.match(ui,/<details className="border rounded p-2">/);
+ assert.match(ui,/onClick=\{\(\)=>run\('metrics'\)\}/);
+ assert.match(ui,/metrics\.timings\?\.queueWait\?\.p50Ms/);
+ assert.match(ui,/אבחון תקלות וביצועים/);
 });
 test('invalid, reversed and absent dates do not count as real timing measurements',()=>{
   const s=readOutboxTiming(sample('a','unknown',{
