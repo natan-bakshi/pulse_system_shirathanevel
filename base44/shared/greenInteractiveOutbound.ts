@@ -41,6 +41,18 @@ function appendOfficeToText(text:string,url:string){
  if(text.length+suffix.length>4096)throw fail('fallback_message_too_long');
  return text+suffix;
 }
+// Production already uses its third native button for the Supplier Portal.
+// Keep the office link as a single short WhatsApp URL on its OWN line.
+// An encoded ?text= reference is 100+ characters, wraps awkwardly on phones
+// and is not a URL shortener. Do not use third-party redirectors or change
+// the original assignment/supplier identity to solve a presentation issue.
+function appendCompactOfficeToText(text:string,officeNumber:string){
+ const shortUrl=buildOfficeWhatsAppInquiryLink({officeNumber,contextMode:'none'});
+ const suffix='\n\n💬 לשיחה עם המשרד:\n'+shortUrl;
+ if(shortUrl.length>40||text.length+suffix.length>4096)
+  throw fail('compact_office_link_too_long');
+ return text+suffix;
+}
 export async function previewGreenInteractiveAssignment(input:{
  job:any;frozenSnapshot?:string;signingSecret?:string;
  capability:'reply_only'|'mixed_url'|'unknown';
@@ -112,7 +124,8 @@ export async function previewGreenInteractiveAssignment(input:{
    urlLabel.length>25||/[\r\n\u0000-\u001f\u007f]/.test(urlLabel))
    throw fail('invalid_office_button_label');
   return {method:'sendInteractiveButtons',body:{
-   chatId:job.chat_id,body:appButton?appendOfficeToText(text,url):text,buttons:[
+   chatId:job.chat_id,body:appButton?
+    appendCompactOfficeToText(text,input.officeNumber!):text,buttons:[
     ...buttons.map(b=>({...b,type:'reply'})),
     {type:'url',buttonId:appButton?'open_supplier_portal':'contact_office',
      buttonText:urlLabel,url:appButton?SUPPLIER_PORTAL_URL:url}
