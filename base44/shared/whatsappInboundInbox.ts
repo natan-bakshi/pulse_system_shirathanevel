@@ -6,6 +6,7 @@
 // A SINGLE existing WhatsAppQueueControl row serializes CREATE and a durable
 // pre-CREATE guard stops all new registrations after ambiguous commits/crashes.
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
+import {signTerminalButtonFeedbackProof} from './whatsappButtonFeedbackProof.ts';
 import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {inboundReceiptDecision,inboundReceiptKey} from './whatsappInteractiveReceipt.ts';
 
@@ -224,7 +225,8 @@ export async function claimPendingInboundReceipt(client:any,params:{
 }
 export async function finishInboundReceipt(client:any,params:{
  receiptId:string;receiptKey:string;claimOwner:string;
- outcome:'applied'|'rejected'|'needs_review';resultCode:string;now?:number
+ outcome:'applied'|'rejected'|'needs_review';resultCode:string;now?:number;
+ feedbackSigningSecret?:string
 }){
  assertOwner(params.claimOwner);
  if(!ownId(params.receiptId,180)||!ownId(params.receiptKey,2000)||
@@ -240,14 +242,16 @@ export async function finishInboundReceipt(client:any,params:{
  if(row.state!=='processing'||row.claim_owner!==params.claimOwner||
   !Number.isFinite(until)||until<=now)
   return {finalized:false,reason:'claim_not_owned_or_expired'};
+ const finished=nowIso(now);
+ const proof=await signTerminalButtonFeedbackProof({
+  ...row,state:params.outcome,result_code:params.resultCode,completed_at:finished
+ },params.feedbackSigningSecret||'');
  const result=await db.updateMany({id:row.id,receipt_key:row.receipt_key,
   state:'processing',claim_owner:params.claimOwner,claim_until:row.claim_until},
-  {$set:{state:params.outcome,result_code:params.resultCode,completed_at:nowIso(now),
-   // Only newly terminal, source-authenticated Green outcomes opt in.
-   // No historical receipts are retroactively sent feedback.
-   feedback_required:row.provider==='green'&&
-    (params.outcome==='applied'||params.outcome==='rejected'||
-     (params.outcome==='needs_review'&&params.resultCode==='unknown_after_write')),
+  {$set:{state:params.outcome,result_code:params.resultCode,completed_at:finished,
+   // HMAC and terminal state commit atomically, so client-side admin edits
+   // cannot manufacture source-verified reply messages.
+   feedback_proof:proof||'',feedback_required:!!proof,
    claim_owner:'',claim_until:''}});
  return result?.updated===1?{finalized:true,state:params.outcome}:
   {finalized:false,reason:'concurrent_finalization'};
