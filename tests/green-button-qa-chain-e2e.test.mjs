@@ -41,7 +41,7 @@ const policy=JSON.stringify({
   {action:'assignment_reject',label:'דוחה'},
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
-function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false}={}){
+function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,legacyCanary=false}={}){
  const qaEnv=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
   'probe_authorized':key==='GREEN_BUTTONS_QA_BETA_PROBE_ENABLED'? 'enabled':env(key):env;
  const now=Date.now();
