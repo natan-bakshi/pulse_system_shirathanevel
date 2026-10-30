@@ -9,10 +9,22 @@ import {registerVerifiedInboundReceipt,claimPendingInboundReceipt,
  finishInboundReceipt,inspectVerifiedInboundReplay} from './whatsappInboundInbox.ts';
 import {persistAuthorizedSupplierStatus} from './supplierStatusPersistence.ts';
 import {wakeExistingCalendarSyncAfterSupplierDecision} from './calendarSyncStatusWake.ts';
+import {enqueueVerifiedButtonFeedback} from './whatsappButtonFeedback.ts';
 import {assignmentDecisionForAction} from './whatsappInteractiveActionRegistry.ts';
 
 const preflightRefused=(reason:string)=>({status:'refused',reason,
  providerCalls:0,supplierWritesAuthorized:false});
+async function feedbackAfterVerifiedTerminal(client:any,receiptId:string,secret:string){
+ try{
+  const outcome=await enqueueVerifiedButtonFeedback(client,receiptId,secret);
+  if(!outcome.queued&&outcome.reason!=='feedback_already_linked')
+   console.warn('[WhatsAppInbound] Button feedback pending reconciliation');
+ }catch{
+  // An acknowledged business decision must never be replayed or turned into
+  // a provider error because its supplementary feedback enqueue failed.
+  console.warn('[WhatsAppInbound] Button feedback requires reconciliation');
+ }
+}
 export type InboundOutcome='refused'|'duplicate'|'held'|'applied'|'rejected'|'needs_review';
 type InboundResult={status:InboundOutcome;reason:string;providerCalls:0;
  supplierWritesAuthorized:boolean;terminalReceiptVerified?:boolean;
@@ -118,8 +130,12 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
     claimOwner:input.claimOwner,outcome:'rejected',
     resultCode:'business_conflict'
    });
-   if(done?.finalized)return {status:'rejected',reason:'business_conflict',
-    providerCalls:0,supplierWritesAuthorized:false};
+   if(done?.finalized){
+    await feedbackAfterVerifiedTerminal(input.client,registered.id,
+     input.providerEvent.actionSigningSecret);
+    return {status:'rejected',reason:'business_conflict',
+     providerCalls:0,supplierWritesAuthorized:false};
+   }
   }catch{}
   return {status:'needs_review',reason:'late_receipt_finalization_unverified',
    providerCalls:0,supplierWritesAuthorized:false};
@@ -174,8 +190,12 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
    receiptId:registered.id,receiptKey:registered.receiptKey,
    claimOwner:input.claimOwner,outcome,resultCode
   });
-  if(done?.finalized)
+  if(done?.finalized){
+   if(outcome==='applied'||outcome==='rejected')
+    await feedbackAfterVerifiedTerminal(input.client,registered.id,
+     input.providerEvent.actionSigningSecret);
    return {status:outcome,reason:resultCode,providerCalls:0,supplierWritesAuthorized};
+  }
  }catch{}
  // Business state may have changed even when this audit write did not.
  // No automated callback retry is allowed to write it a second time.
