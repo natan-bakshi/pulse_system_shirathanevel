@@ -5,6 +5,8 @@ import {createFutureInteractiveButtonSnapshot}
  from '../base44/shared/whatsappButtonBindings.ts';
 import {sendWhatsAppTransport} from '../base44/shared/whatsappSend.ts';
 import {inboundReceiptKey} from '../base44/shared/whatsappInteractiveReceipt.ts';
+import {signTerminalButtonFeedbackProof,verifyTerminalButtonFeedbackProof}
+ from '../base44/shared/whatsappButtonFeedbackProof.ts';
 import {
  planVerifiedButtonFeedback,enqueueVerifiedButtonFeedback,reconcileTerminalButtonFeedback
 } from '../base44/shared/whatsappButtonFeedback.ts';
@@ -40,6 +42,7 @@ async function fixture(receiptPatch={},extra={}){
   action:'assignment_approve',state:'applied',result_code:'applied',
   completed_at:new Date().toISOString(),feedback_required:true,
   feedback_outbox_id:null,...receiptPatch};
+ receipt.feedback_proof=await signTerminalButtonFeedbackProof(receipt,secret,webcrypto.subtle);
  const supplier={id:original.supplier_id,phone:'0501234567',is_active:true};
  const control={id:'control-global',control_key:'global',
   enabled:true,paused:false,enqueue_owner:'',enqueue_until:''};
@@ -147,6 +150,23 @@ test('link ACK lost after successful enqueue recovers by EXISTING idempotency ke
  assert.equal(second.queued,true);
  assert.equal(f.created.length,1);
  assert.equal(f.receipt.feedback_outbox_id,f.created[0].id);
+});
+test('admin mutation of a finalized receipt cannot forge server terminal proof or enqueue feedback',async()=>{
+ const f=await fixture();
+ assert.equal(await verifyTerminalButtonFeedbackProof(f.receipt,secret),true);
+ for(const tamper of [
+  row=>row.result_code='business_conflict',
+  row=>row.provider_event_id='fake-provider-event',
+  row=>row.action='assignment_reject',
+  row=>row.supplier_id='supplier-other123',
+  row=>row.feedback_proof='fb1_'+ 'a'.repeat(43)
+ ]){
+  const g=await fixture();tamper(g.receipt);
+  assert.equal(await verifyTerminalButtonFeedbackProof(g.receipt,secret),false);
+  const outcome=await enqueueVerifiedButtonFeedback(g.client,g.receipt.id,secret);
+  assert.equal(outcome.queued,false);
+  assert.equal(g.created.length,0);
+ }
 });
 test('forged snapshot, changed recipient, wrong Green account and provider switch cannot queue',async()=>{
  for(const patch of ['forged_mac','changed_supplier','wrong_account','switched_provider']){
