@@ -66,7 +66,9 @@ const adapters=()=>Object.fromEntries([
  'assignment_removed_notifications','assignment_status_notifications'
 ].map(consumer=>[consumer,async({task})=>receipt(task)]));
 const defaultOptions=(overrides={})=>({
- adapters:adapters(),makeToken:token,now:tick,maxTasks:4,...overrides
+ adapters:adapters(),
+ preflight:async()=>({action:'run',reason:'latest_relevant_business_state'}),
+ makeToken:token,now:tick,maxTasks:4,...overrides
 });
 const tasks=ctx=>readAssignmentEffectJournal(ctx.row.assignment_effects_journal);
 
@@ -197,6 +199,41 @@ test('an unverified 2xx, mismatched source receipt or missing receipt never coun
   assert.equal(result.completed,0);
   assert.equal(tasks(db).some(t=>t.state==='completed'),false);
  }
+});
+test('a superseded assignment is cancelled before adapter IO, despite a successful CAS claim',async()=>{
+ const db=fakeDatabase();let called=0;
+ const a=adapters();for(const key of Object.keys(a))a[key]=async()=>{called++;throw Error('adapter should not run')};
+ const r=await processStagedAssignmentEffectBatch(db.client,db.row.id,
+  defaultOptions({adapters:a,maxTasks:1,
+   preflight:async()=>({action:'cancel',reason:'superseded'})}));
+ assert.equal(r.cancelled,1);
+ assert.equal(called,0);
+ assert.equal(tasks(db).find(t=>t.state==='cancelled').resultCode,'superseded');
+});
+test('missing business context leads to manual review with zero external calls',async()=>{
+ const db=fakeDatabase();let called=0;
+ const a=adapters();for(const key of Object.keys(a))a[key]=async()=>{called++;return null};
+ const r=await processStagedAssignmentEffectBatch(db.client,db.row.id,
+  defaultOptions({adapters:a,maxTasks:1,
+   preflight:async()=>({action:'review',reason:'consumer_not_ready'})}));
+ assert.equal(r.manualReview,1);
+ assert.equal(called,0);
+ assert.equal(tasks(db).find(t=>t.state==='manual_review')?.resultCode,'consumer_not_ready');
+});
+test('preflight crashes or returns an unrecognized result; it never invokes the adapter',async()=>{
+ for(const preflight of [async()=>{throw Error('DB unavailable')},async()=>({action:'evil'})]){
+  const db=fakeDatabase();let called=0;
+  const a=adapters();for(const name of Object.keys(a))a[name]=async()=>{called++;return null};
+  const r=await processStagedAssignmentEffectBatch(db.client,db.row.id,
+   defaultOptions({adapters:a,maxTasks:1,preflight}));
+  assert.equal(r.unknown,1);
+  assert.equal(called,0);
+ }
+});
+test('missing preflight is a hard error before all DB reads or claims',async()=>{
+ const db=fakeDatabase();const opts=defaultOptions();delete opts.preflight;
+ await assert.rejects(processStagedAssignmentEffectBatch(db.client,db.row.id,opts));
+ assert.equal(db.reads,0);assert.equal(db.writes,0);
 });
 test('unsupported consumer stops without claims, writes or external sends',async()=>{
  const db=fakeDatabase();
