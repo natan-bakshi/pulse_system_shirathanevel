@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {planDurableAssignmentEffectJournal,readAssignmentEffectJournal}
  from '../base44/shared/assignmentEffectJournal.ts';
+import {inspectAssignmentEffectEligibility}
+ from '../base44/shared/assignmentEffectEligibility.ts';
 import {
  claimNextStagedAssignmentEffect,finalizeStagedAssignmentEffect,
  processStagedAssignmentEffectBatch
@@ -9,7 +11,7 @@ import {
 
 const epoch=Date.parse('2026-10-30T05:00:00.000Z');
 const source=()=>({
- id:'service-SAFE123',supplier_ids:'[]',supplier_statuses:'{}',
+ id:'service-SAFE123',event_id:'event-SAFE123',supplier_ids:'[]',supplier_statuses:'{}',
  supplier_notes:'{}',min_suppliers:1
 });
 const transition=()=>({
@@ -218,6 +220,22 @@ test('an adapter cannot declare success without independent durable receipt veri
   assert.equal(verificationCalls,1);
   assert.equal(tasks(db).find(t=>t.state==='unknown').receiptId,undefined);
  }
+});
+test('actual business eligibility in the worker blocks a reminder after confirmation through Pulse',async()=>{
+ const db=fakeDatabase();
+ const reminder=tasks(db).find(t=>t.consumer==='supplier_pending_reminder');
+ db.row.assignment_effects_journal=JSON.stringify([reminder]);
+ db.row.supplier_statuses=JSON.stringify({'supplier-FIRST1':'confirmed','supplier-NEXT22':'pending'});
+ let calls=0;
+ const a=adapters();a.supplier_pending_reminder=async()=>{calls++;throw Error('No reminder should be scheduled')};
+ const r=await processStagedAssignmentEffectBatch(db.client,db.row.id,
+  defaultOptions({maxTasks:1,adapters:a,
+   preflight:async(task)=>inspectAssignmentEffectEligibility(task,
+    clone(db.row),{id:db.row.event_id,status:'closed',event_date:'2026-11-15'},epoch)}));
+ assert.equal(r.cancelled,1);
+ assert.equal(calls,0);
+ assert.equal(tasks(db)[0].state,'cancelled');
+ assert.equal(db.row.assignment_effects_pending,false);
 });
 test('a superseded assignment is cancelled before adapter IO, despite a successful CAS claim',async()=>{
  const db=fakeDatabase();let called=0;
