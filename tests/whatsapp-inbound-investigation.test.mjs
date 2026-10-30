@@ -92,8 +92,8 @@ test('inspect is one read of receipt, control, service; no writes and proper inp
 test('UI only offers owner read-only investigation on demand with no replay button',()=>{
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
  const api=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
- assert.match(ui,/onClick=\{\(\)=>run\('inboundInspect',\{id:x\.id\}\)\}/);
- assert.match(ui,/בדוק רשומה \(ללא שינוי\)/);
+ assert.match(ui,/onClick=\{\(\)=>run\('inboundInspect',\{id:entry\.id\}\)\}/);
+ assert.match(ui,/פרטי תגובה/);
  assert.match(api,/action==='inboundInspect'/);
  assert.doesNotMatch(ui,/run\('inboundResolve'/);
  assert.doesNotMatch(ui,/run\('inboundRetry'/);
