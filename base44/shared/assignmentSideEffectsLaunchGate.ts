@@ -9,7 +9,28 @@ import type {AssignmentEffectParity} from './assignmentEffectParity.ts';
 // implement + E2E-test durable fan-out, unique idempotency for EACH side effect,
 // safe UNKNOWN reconciliation, workflow parity and recovery under concurrent
 // edits. A configuration flag by itself is never evidence of these properties.
-export const ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED=false as boolean;
+// Each proof is an independent CODE-REVIEWED prerequisite. Do not mark a
+// consumer ready just because a pure planner or mock processor test passes.
+// EventService journal fields currently permit admin writes; before rollout,
+// the server must own and cryptographically validate task provenance, or
+// enforce service-role-only journal writes with an independently proven RLS.
+export const ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS=Object.freeze({
+ journal_server_provenance:false,
+ per_recipient_template_fanout:false,
+ durable_push_receipts:false,
+ pending_reminder_receipts:false,
+ supplier_status_and_removal_notifications:false,
+ google_calendar_idempotent_upsert:false,
+ custom_notification_template_parity:false,
+ event_status_recalculation_receipts:false,
+ watchdog_and_unknown_outcome_review:false,
+ end_to_end_legacy_workflow_parity:false
+});
+// No single AppSettings toggle, provider setting or unchecked Boolean can
+// activate a partial migration. Verified consumer implementations must be
+// independently tested before their own code-owned proof is changed.
+export const ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED=
+ Object.values(ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS).every(value=>value===true);
 export const SIDE_EFFECT_FLAG='assignment_effects_bridge_live_v1';
 export function assignmentSideEffectsLaunchGate(effects:AssignmentEffectParity,
  settings:any[]):{allowed:boolean;reason:string;missingConsumers:readonly string[]}{
