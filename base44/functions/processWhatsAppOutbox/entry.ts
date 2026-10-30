@@ -4,6 +4,7 @@ import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIn
 import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueReconciler.ts';
 import { reconcileStalledCardSetupEnqueues } from '../../shared/cardSetupQueueReconciler.ts';
 import { alertUnknownWhatsAppOutcomes } from '../../shared/whatsappUnknownReviewAlerts.ts';
+import {reconcileTerminalButtonFeedback} from '../../shared/whatsappButtonFeedback.ts';
 import {trustedGreenButtonQaConfig,
  trustedGreenLegacyPilotConfig,trustedGreenAssignmentProductionConfig} from '../../shared/greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
@@ -69,6 +70,11 @@ Deno.serve(async (req) => {
       // Run even when there are no queued sends, without a new Cron job.
       try{await alertUnknownWhatsAppOutcomes(client,{limit:8});}
       catch(error){console.error('[WhatsAppOutbox] unknown-result owner alerts unavailable');}
+      // Restore feedback enqueue after a lost DB ACK without another button
+      // mutation or a second cron. Source HMAC and terminal receipt required.
+      try{await reconcileTerminalButtonFeedback(client,
+        Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'',4);}
+      catch{console.error('[WhatsAppOutbox] bounded button feedback recovery unavailable');}
     }
     const work=await client.asServiceRole.entities.WhatsAppOutbox.filter({
       status:{$in:['queued','retry_wait','sending']}
