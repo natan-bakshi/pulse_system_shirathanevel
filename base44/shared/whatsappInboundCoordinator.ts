@@ -8,6 +8,7 @@ import {preflightWhatsAppAssignmentResponse} from './whatsappInboundAdmission.ts
 import {registerVerifiedInboundReceipt,claimPendingInboundReceipt,
  finishInboundReceipt,inspectVerifiedInboundReplay} from './whatsappInboundInbox.ts';
 import {persistAuthorizedSupplierStatus} from './supplierStatusPersistence.ts';
+import {wakeExistingCalendarSyncAfterSupplierDecision} from './calendarSyncStatusWake.ts';
 import {assignmentDecisionForAction} from './whatsappInteractiveActionRegistry.ts';
 
 const preflightRefused=(reason:string)=>({status:'refused',reason,
@@ -141,8 +142,16 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
    });
   // The business CAS may have committed. A subsequent failure to recalculate
   // readiness must NEVER cause the supplier CAS to be run again.
-  if(changed.kind==='changed')
+  if(changed.kind==='changed'){
    await input.recalculateEventStatus(changed.eventId);
+   // WhatsApp CAS does not fire the previous EventService UPDATE trigger.
+   // Retain the existing Calendar pipeline; no direct Google call is made
+   // inside the provider's callback. Calendar failures cannot replay CAS.
+   const wake=await wakeExistingCalendarSyncAfterSupplierDecision(
+    input.client.asServiceRole,record.eventServiceId);
+   if(!wake.requested)
+    console.warn('[WhatsAppInbound] Calendar wake outcome uncertain');
+  }
   outcome='applied';resultCode=changed.kind==='unchanged'?'already_applied':'applied';
  }catch(error){
   // Only strictly known validation/concurrency rejection is safe to conclude
