@@ -166,7 +166,7 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
   return processSupplierAssignmentIntents(client,SERVICE);
  }
  async function armLegacy(){
-  const at=Date.now();
+  const at=now;
   const state=nextLegacyGreenPilotState(null,pilotTarget(SERVICE,SUPPLIER,CHAT,at),at);
   control[LEGACY_GREEN_PILOT_FIELD]=await signLegacyGreenPilotState(state,SIGNING,at);
  }
@@ -285,6 +285,29 @@ test('FAST PATH: existing assignment save and existing queue -> signed Green but
  assert.equal(replay.httpStatus,200);
  assert.equal(f.stats.statusCAS,1);
  assert.equal(f.stats.providerCalls,1);
+});
+test('FAST PATH: signing a pilot never converts an already queued original text into an interactive message',async()=>{
+ const f=fixture({globalV2Enabled:false,legacyCanary:true,
+  legacyDifferentQaChat:true});
+ f.service.supplier_ids=JSON.stringify([SUPPLIER]);
+ f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'pending'});
+ f.service.updated_date=new Date(Date.now()-1000).toISOString();
+ assert.equal((await sendWhatsAppToChat(CHAT,'הודעה שכבר ממתינה',f.client,
+  assignmentWhatsAppContext(f.service,SUPPLIER))).queued,true);
+ // A job queued before the owner signs the pilot stays in its original format.
+ await f.armLegacy();
+ f.control[LEGACY_GREEN_PILOT_FIELD]=await signLegacyGreenPilotState(
+  nextLegacyGreenPilotState(null,pilotTarget(SERVICE,SUPPLIER,CHAT,
+   Date.parse(f.outbox[0].created_date)+1000),Date.parse(f.outbox[0].created_date)+1000),
+   Date.parse(f.outbox[0].created_date)+1000),SIGNING,
+   Date.parse(f.outbox[0].created_date)+1000);
+ const seen=[];
+ const result=await f.worker(true,(_job,_provider,preview)=>{
+  seen.push(preview);return {messageId:'3EB0PRIORORIGINALONLY123456789'};
+ });
+ assert.equal(result.accepted,1);
+ assert.deepEqual(seen,[null]);
+ assert.equal(f.outbox[0].interactive_button_bindings_json,undefined);
 });
 test('FAST PATH: stale business generation sends the original text instead of losing the assignment',async()=>{
  const f=fixture({globalV2Enabled:false,legacyCanary:true,
