@@ -44,9 +44,12 @@ const policy=JSON.stringify({
   {action:'assignment_reject',label:'דוחה'},
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
-function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,legacyCanary=false}={}){
- const qaEnv=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
+function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,legacyCanary=false,
+ legacyDifferentQaChat=false}={}){
+ const qaEnvOriginal=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
   'probe_authorized':key==='GREEN_BUTTONS_QA_BETA_PROBE_ENABLED'? 'enabled':env(key):env;
+ const qaEnv=key=>legacyDifferentQaChat&&key==='GREEN_BUTTONS_QA_ALLOWED_CHAT'
+  ?'972509999999@c.us':qaEnvOriginal(key);
  const now=Date.now();
  const control={
   id:'control-qa1',control_key:'global',enabled:true,paused:false,
@@ -245,7 +248,8 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
   armLegacy,enroll,reconcile,worker,callback,httpCallback};
 }
 test('FAST PATH: existing assignment save and existing queue -> signed Green buttons -> supplier decision -> durable receipt -> duplicate ignored',async()=>{
- const f=fixture({globalV2Enabled:false,legacyCanary:true});
+ const f=fixture({globalV2Enabled:false,legacyCanary:true,
+  legacyDifferentQaChat:true});
  await f.armLegacy();
  // No V2 business save. This is the EXACT legacy EventService UPDATE data
  // that keeps existing Push, reminders, notifications and calendar workflows.
@@ -282,8 +286,30 @@ test('FAST PATH: existing assignment save and existing queue -> signed Green but
  assert.equal(f.stats.statusCAS,1);
  assert.equal(f.stats.providerCalls,1);
 });
+test('FAST PATH: stale business generation sends the original text instead of losing the assignment',async()=>{
+ const f=fixture({globalV2Enabled:false,legacyCanary:true,
+  legacyDifferentQaChat:true});
+ await f.armLegacy();
+ f.service.supplier_ids=JSON.stringify([SUPPLIER]);
+ f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'pending'});
+ f.service.updated_date=new Date(Date.now()-3000).toISOString();
+ assert.equal((await sendWhatsAppToChat(CHAT,'שיבוץ רגיל שנשמר',f.client,
+  assignmentWhatsAppContext(f.service,SUPPLIER))).queued,true);
+ // A normal legacy EventService.update after enqueue changes the generation.
+ f.service.updated_date=new Date(Date.now()-1000).toISOString();
+ const previews=[];
+ const dispatched=await f.worker(true,(_j,_p,preview)=>{
+  previews.push(preview);return {messageId:'3EB0PLAINLEGACY123456789'};
+ });
+ assert.equal(dispatched.accepted,1);
+ assert.equal(previews.length,1);
+ assert.equal(previews[0],null,'missing pilot eligibility must preserve legacy text');
+ assert.equal(f.stats.providerCalls,1);
+ assert.equal(f.outbox[0].interactive_button_bindings_json,undefined);
+});
 test('FAST PATH: a late legacy WhatsApp reject cannot overwrite Pulse approval; records a terminal conflict and ACKs',async()=>{
- const f=fixture({globalV2Enabled:false,legacyCanary:true});
+ const f=fixture({globalV2Enabled:false,legacyCanary:true,
+  legacyDifferentQaChat:true});
  await f.armLegacy();
  f.service.supplier_ids=JSON.stringify([SUPPLIER]);
  f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'pending'});
