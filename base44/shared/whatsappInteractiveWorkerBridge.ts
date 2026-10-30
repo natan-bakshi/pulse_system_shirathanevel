@@ -22,6 +22,7 @@ export type TrustedGreenInteractiveConfig={
  // Narrow legacy EventService.update overlay; exact pilot target is still
  // required below. Never set by untrusted Outbox or template metadata.
  legacyCanaryApproved?:true;
+ legacyPilotArmedAt?:string;
  capability:GreenCapability;senderAccountId:string;
  signingSecret:string;policy:any;officeNumber?:string;officeLabel?:string;
  officeContextMode?:OfficeContextMode;
@@ -127,6 +128,14 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   job.supplier_id===config.qaSupplierId&&
   job.interactive_qa_required!==true&&
   !V2_KEY.test(String(job.idempotency_key||''));
+ // A queued message created BEFORE the owner armed the pilot is already an
+ // ordinary text obligation. Do not silently change its transport format.
+ if(legacyCanary){
+  const armed=Date.parse(config.legacyPilotArmedAt||'');
+  const created=Date.parse(job.created_date||'');
+  if(!Number.isFinite(armed)||!Number.isFinite(created)||created<armed)
+   return legacy(job,'message_created_before_pilot_arm');
+ }
  if(!V2_KEY.test(String(job.idempotency_key||''))&&!legacyCanary){
   // A QA supplier must never receive plain text when the administrator
   // expects buttons. The legacy save UI does not create durable v2 intents;
