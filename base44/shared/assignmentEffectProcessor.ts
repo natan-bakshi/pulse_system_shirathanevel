@@ -26,6 +26,10 @@ export type EffectAdapter=(input:{
 export type EffectBatchOptions={
  // Required for every test harness; never use untrusted request data.
  adapters:Readonly<Record<string,EffectAdapter>>;
+ // Independent durable destination receipt lookup. The adapter's own
+ // 'verified' boolean is NOT sufficient evidence of completion.
+ verifyReceipt:(input:{task:Readonly<AssignmentEffectTask>;receiptId:string;
+  serviceId:string})=>Promise<boolean>;
  // Required independent fresh-business-state check, after claim, before IO.
  preflight:(task:Readonly<AssignmentEffectTask>,serviceId:string)=>Promise<EffectPreflightDisposition>;
  makeToken:()=>string;now?:()=>number;maxTasks?:number
@@ -69,7 +73,8 @@ const persist=async(db:EffectDb,serviceId:string,raw:string,
  }});
  return changed?.updated===1;
 };
-const taskFrozen=(t:AssignmentEffectTask)=>Object.freeze({...t});
+const taskFrozen=(t:AssignmentEffectTask)=>Object.freeze({...t,
+ ...(t.changedFields?{changedFields:Object.freeze([...t.changedFields])}:{})});
 export async function claimNextStagedAssignmentEffect(
  client:any,serviceId:string,adapters:Readonly<Record<string,EffectAdapter>>,
  claimToken:string,nowMs:number
@@ -213,7 +218,8 @@ export async function processStagedAssignmentEffectBatch(
  client:any,serviceId:string,options:EffectBatchOptions
 ){
  if(!options||typeof options.makeToken!=='function'||
-  typeof options.preflight!=='function'||!options.adapters||
+  typeof options.preflight!=='function'||
+  typeof options.verifyReceipt!=='function'||!options.adapters||
   typeof options.adapters!=='object')throw Error('Missing trusted effect adapters or preflight');
  const now=options.now||Date.now;
  const limit=typeof options.maxTasks==='number'&&
@@ -252,6 +258,14 @@ export async function processStagedAssignmentEffectBatch(
      task:claim.task,idempotencyKey:claim.task.key,serviceId
     });
     disposition=normalizeAdapterResult(claim.task,result);
+    if(disposition.state==='completed'){
+     // A provider ACK alone is not proof of durable, task-bound delivery
+     // receipt. A separate backend lookup must verify the stored source.
+     const verified=await options.verifyReceipt({task:claim.task,
+      receiptId:disposition.receiptId!,serviceId});
+     if(verified!==true)
+      disposition={state:'unknown',resultCode:'receipt_verification_unknown'};
+    }
    }else disposition={state:'unknown',resultCode:'preflight_uncertain'};
   }catch{
    disposition={state:'unknown',resultCode:'execution_exception_unknown'};
