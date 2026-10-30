@@ -56,6 +56,7 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      if(name.endsWith('/greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>betaProbe};
      if(name.endsWith('/greenButtonQaLaunch.ts'))return {
        trustedGreenLegacyPilotConfig:async()=>null,
+       trustedGreenAssignmentProductionConfig:()=>null,
        trustedGreenButtonQaConfig:()=>betaProbe?{
         enabled:true,accountCapabilityVerified:false,qaBetaProbeApproved:true,
         qaChatId:'972501234567@c.us',qaEventServiceId:'qa-test-service',
