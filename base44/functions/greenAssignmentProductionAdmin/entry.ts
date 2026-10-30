@@ -2,7 +2,7 @@
 // assignment delivery. Never creates a notification or changes a supplier.
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.38';
 import {readWhatsAppQueueControl} from '../../shared/whatsappOutbox.ts';
-import {trustedGreenButtonQaConfig,trustedGreenAssignmentProductionConfig} from '../../shared/greenButtonQaLaunch.ts';
+import {trustedGreenAssignmentProductionConfig} from '../../shared/greenButtonQaLaunch.ts';
 import {resolveWhatsAppProvider} from '../../shared/whatsappProviderConfig.ts';
 const OWNER='natib8000@gmail.com';
 Deno.serve(async req=>{
@@ -54,9 +54,13 @@ Deno.serve(async req=>{
    if(control.enabled!==true||control.paused===true||
     control.interactive_outbound_live_enabled!==true)
     return Response.json({success:false,error:'WhatsApp queue cannot send interactive messages'},{status:409});
-   const config=trustedGreenButtonQaConfig(control,k=>Deno.env.get(k),true);
-   if(!config||config.accountCapabilityVerified!==true||
-      Deno.env.get('GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled')
+   // Reuse production readiness, not the single-recipient QA pins.
+   // Caller is owner-authenticated and must still satisfy every Green
+   // credential, callback, signature and switch guard.
+   const probe={...control,interactive_assignment_production_enabled:true};
+   const config=trustedGreenAssignmentProductionConfig(probe,
+     k=>Deno.env.get(k),'outbound');
+   if(!config||config.accountCapabilityVerified!==true)
     return Response.json({success:false,error:'Verified Green interactive sending and callback are not ready'},{status:409});
    if(await resolveWhatsAppProvider(client)!=='green')
     return Response.json({success:false,error:'Green is not the active provider'},{status:409});
