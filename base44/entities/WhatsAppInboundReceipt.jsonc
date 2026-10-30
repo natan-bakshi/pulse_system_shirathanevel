@@ -67,6 +67,19 @@
       "type": "string",
       "format": "date-time"
     },
+    "feedback_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Only newly finalized verified outcomes request one WhatsApp feedback; old receipts are never replayed"
+    },
+    "feedback_outbox_id": {
+      "type": "string",
+      "description": "Linked existing WhatsAppOutbox job ID for once-only button feedback"
+    },
+    "feedback_queued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "completed_at": {
       "type": "string",
       "format": "date-time"
