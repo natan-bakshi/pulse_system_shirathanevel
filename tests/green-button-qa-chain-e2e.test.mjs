@@ -295,12 +295,11 @@ test('FAST PATH: signing a pilot never converts an already queued original text 
  assert.equal((await sendWhatsAppToChat(CHAT,'הודעה שכבר ממתינה',f.client,
   assignmentWhatsAppContext(f.service,SUPPLIER))).queued,true);
  // A job queued before the owner signs the pilot stays in its original format.
- await f.armLegacy();
+ const armedAfterJob=Date.parse(f.outbox[0].created_date)+1000;
+ const scope=nextLegacyGreenPilotState(null,
+  pilotTarget(SERVICE,SUPPLIER,CHAT,armedAfterJob),armedAfterJob);
  f.control[LEGACY_GREEN_PILOT_FIELD]=await signLegacyGreenPilotState(
-  nextLegacyGreenPilotState(null,pilotTarget(SERVICE,SUPPLIER,CHAT,
-   Date.parse(f.outbox[0].created_date)+1000),Date.parse(f.outbox[0].created_date)+1000),
-   Date.parse(f.outbox[0].created_date)+1000),SIGNING,
-   Date.parse(f.outbox[0].created_date)+1000);
+  scope,SIGNING,armedAfterJob);
  const seen=[];
  const result=await f.worker(true,(_job,_provider,preview)=>{
   seen.push(preview);return {messageId:'3EB0PRIORORIGINALONLY123456789'};
