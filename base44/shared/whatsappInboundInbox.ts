@@ -246,7 +246,8 @@ export async function finishInboundReceipt(client:any,params:{
    // Only newly terminal, source-authenticated Green outcomes opt in.
    // No historical receipts are retroactively sent feedback.
    feedback_required:row.provider==='green'&&
-    (params.outcome==='applied'||params.outcome==='rejected'),
+    (params.outcome==='applied'||params.outcome==='rejected'||
+     (params.outcome==='needs_review'&&params.resultCode==='unknown_after_write')),
    claim_owner:'',claim_until:''}});
  return result?.updated===1?{finalized:true,state:params.outcome}:
   {finalized:false,reason:'concurrent_finalization'};
