@@ -109,13 +109,12 @@ test('read-only readiness uses three on-demand settings/control queries and neve
   if(previous===undefined)delete globalThis.Deno;else globalThis.Deno=previous;
  }
 });
-test('readiness UI invokes owner-only action on click and never opens a provider QA request',()=>{
+test('retired QA readiness is not shown in live operations, while backend remains safe for historic receipts',()=>{
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
  const endpoint=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
- assert.match(ui,/run\('interactiveReadiness'\)/);
- assert.match(ui,/מדיניות קליטה שאושרה/);
- assert.match(ui,/פורמט כפתור חדש ולא מזוהה/);
- assert.match(ui,/if\(action==='interactiveReadiness'\)/);
+ assert.doesNotMatch(ui,/run\('interactiveReadiness'\)/);
+ assert.doesNotMatch(ui,/מדיניות קליטה שאושרה|פורמט כפתור חדש ולא מזוהה/);
+ assert.match(ui,/בדיקת מוכנות הכפתורים/);
  assert.match(endpoint,/action==='interactiveReadiness'/);
  assert.doesNotMatch(endpoint,/interactive_outbound_live_enabled\s*:\s*true/);
 });
