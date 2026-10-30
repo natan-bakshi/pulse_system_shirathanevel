@@ -26,7 +26,7 @@ test('existing authenticated owner backend continues managing the same stores th
    'existing protected backend writes must remain service-role only');
  assert.match(admin,/actor\.role!=='admin'/);
  assert.match(admin,/OWNER_EMAIL/);
- assert.match(ownerSwitch,/actor\.role!=='admin'/);
+ assert.match(ownerSwitch,/actor\?\.role!=='admin'/);
  assert.match(ownerSwitch,/OWNER/);
  const files=fs.readdirSync('src',{recursive:true}).filter(x=>
   /\.(jsx|js|tsx|ts)$/.test(x));
