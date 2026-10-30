@@ -272,6 +272,37 @@ test('FAST PATH: existing assignment save and existing queue -> signed Green but
  assert.equal(f.stats.statusCAS,1);
  assert.equal(f.stats.providerCalls,1);
 });
+test('FAST PATH: a late legacy WhatsApp reject cannot overwrite Pulse approval; records a terminal conflict and ACKs',async()=>{
+ const f=fixture({globalV2Enabled:false,legacyCanary:true});
+ f.service.supplier_ids=JSON.stringify([SUPPLIER]);
+ f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'pending'});
+ f.service.updated_date=new Date(Date.now()-2000).toISOString();
+ const requested=await sendWhatsAppToChat(CHAT,'שיבוץ קיים בתור',f.client,
+  assignmentWhatsAppContext(f.service,SUPPLIER));
+ assert.equal(requested.queued,true);
+ assert.equal((await f.worker()).accepted,1);
+ assert.equal(f.stats.providerCalls,1);
+ // Existing Pulse management UI uses EventService.update; a later status
+ // change advances updated_date, hence the signed original is forever stale.
+ f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'confirmed'});
+ f.service.updated_date=new Date(Date.parse(f.service.updated_date)+2000).toISOString();
+ const result=await f.httpCallback('assignment_reject',{
+  eventId:'C0CD39BB261589D5C98412D255CD00C9'
+ });
+ assert.equal(result.httpStatus,200,JSON.stringify(result));
+ assert.equal(result.body.received,true);
+ assert.equal(f.stats.statusCAS,0,'business decision already made in Pulse');
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'confirmed');
+ assert.equal(f.receipts.length,1);
+ assert.equal(f.receipts[0].state,'rejected');
+ assert.equal(f.receipts[0].result_code,'business_conflict');
+ const duplicate=await f.httpCallback('assignment_reject',{
+  eventId:'C0CD39BB261589D5C98412D255CD00C9'
+ });
+ assert.equal(duplicate.httpStatus,200);
+ assert.equal(f.stats.statusCAS,0);
+ assert.equal(f.stats.providerCalls,1);
+});
 test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green preview once -> callback -> durable receipt -> duplicate no-op',async()=>{
  const f=fixture();
  assert.equal((await f.enroll()).saved,true);
