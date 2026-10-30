@@ -20,7 +20,9 @@ const invalid=(reason:string):never=>{throw Error('Invalid assignment effect jou
 export type AssignmentEffectTask={
  key:string;revision:number;consumer:string;subjectId:string;
  state:'planned'|'claimed'|'completed'|'unknown'|'manual_review'|'cancelled';
- createdAt:string;effectKind:string
+ createdAt:string;effectKind:string;
+ // Set only after an atomic CAS claim. Never reset for blind retry.
+ claimToken?:string;claimedAt?:string;finishedAt?:string;resultCode?:string
 };
 export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
  if(raw===null||raw===undefined||raw==='')return [];
@@ -29,7 +31,8 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
  try{decoded=JSON.parse(raw);}catch{invalid('json');}
  if(!Array.isArray(decoded)||decoded.length>MAX_TASKS)invalid('shape');
  const seen=new Set<string>(),out:AssignmentEffectTask[]=[];
- const fields=new Set(['key','revision','consumer','subjectId','state','createdAt','effectKind']);
+ const fields=new Set(['key','revision','consumer','subjectId','state','createdAt','effectKind',
+  'claimToken','claimedAt','finishedAt','resultCode']);
  for(const item of decoded){
   if(!item||typeof item!=='object'||Array.isArray(item)||
    Object.keys(item).some(key=>!fields.has(key))||
@@ -42,6 +45,22 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
    seen.has(item.key))invalid('task');
   const expectedTail=':r'+item.revision+':'+item.consumer+':'+item.subjectId;
   if(!item.key.endsWith(expectedTail))invalid('identity_mismatch');
+  const hasClaim=item.claimToken!==undefined||item.claimedAt!==undefined;
+  const hasFinal=item.finishedAt!==undefined||item.resultCode!==undefined;
+  const isIso=(x:unknown)=>typeof x==='string'&&
+   Number.isFinite(Date.parse(x))&&new Date(x).toISOString()===x;
+  if(item.state==='planned'){
+   if(hasClaim||hasFinal)invalid('planned_task_has_claim_or_result');
+  }else{
+   if(!hasClaim||!isIso(item.claimedAt)||
+    typeof item.claimToken!=='string'||
+    !/^[A-Za-z0-9_-]{12,100}$/.test(item.claimToken))invalid('missing_claim');
+   if(item.state==='claimed'){
+    if(hasFinal)invalid('claimed_task_finalized');
+   }else if(!isIso(item.finishedAt)||
+    typeof item.resultCode!=='string'||
+    !/^[a-z_]{3,64}$/.test(item.resultCode))invalid('missing_terminal_result');
+  }
   seen.add(item.key);out.push(item as AssignmentEffectTask);
  }
  return out;
