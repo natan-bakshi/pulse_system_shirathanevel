@@ -98,6 +98,10 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
   // second settings read or Outbox lookup; genuine signed pilot callbacks
   // must never be silently ACKed as irrelevant office messages.
   if(extraPrivateSender&&!legacy)return result(200,true);
+  // Without a verified production history or the dedicated QA receiver,
+  // no assignment kind is eligible. Save the old V2 flag read and never
+  // reach a supplier record or callback claim for out-of-scope traffic.
+  if(!legacy&&!greenButtonQaPassiveInboundReady(opts.env))return result(404);
   const flags=legacy?[]:await client.asServiceRole.entities.AppSettings.filter({
    setting_key:'assignment_intent_v1_enabled'
   },'-created_date',2);
