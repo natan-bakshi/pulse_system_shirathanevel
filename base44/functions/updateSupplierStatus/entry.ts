@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
 import { persistAuthorizedSupplierStatus } from '../../shared/supplierStatusPersistence.ts';
+import { wakeExistingCalendarSyncAfterSupplierDecision } from '../../shared/calendarSyncStatusWake.ts';
 
 // Existing supplier dashboard endpoint. Never accepts a channel/source selector
 // from a client; WhatsApp calls will require separate authenticated admission.
@@ -35,7 +36,16 @@ Deno.serve(async(req)=>{
       eventServiceId,supplierId:matchingSupplier.id,newStatus,source:'dashboard'
     });
     const eventStatus=await recalculateEventStatus(base44.asServiceRole,saved.eventId);
+    // updateMany is intentionally retained for concurrency safety but does
+    // not dispatch the entity UPDATE workflows. Reuse the existing Calendar
+    // workflow through a harmless EventService metadata update only.
+    const calendarWake=saved.kind==='changed'
+      ?await wakeExistingCalendarSyncAfterSupplierDecision(base44.asServiceRole,eventServiceId)
+      :{requested:false,reason:'unchanged_supplier_decision'};
+    if(saved.kind==='changed'&&!calendarWake.requested)
+      console.warn('[updateSupplierStatus] Existing Google Calendar sync wake uncertain');
     return Response.json({
+      calendarSyncRequested:calendarWake.requested,
       success:true,status:newStatus,eventId:saved.eventId,
       newStatus:eventStatus.newStatus,...(saved.kind==='unchanged'?{unchanged:true}:{})
     });
