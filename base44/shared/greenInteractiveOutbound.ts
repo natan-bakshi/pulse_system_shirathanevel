@@ -8,7 +8,7 @@ import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {buildOfficeWhatsAppInquiryLink,type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
-import {SUPPLIER_PORTAL_URL} from './supplierPortalLink.ts';
+import {SUPPLIER_PORTAL_URL,withSupplierPortalLink} from './supplierPortalLink.ts';
 
 const PRIVATE_CHAT=/^[1-9][0-9]{7,14}@c\.us$/;
 const OFFICE=/^[1-9][0-9]{7,14}$/;
@@ -39,18 +39,6 @@ function officeUrl(digits:string,job:any,mode:OfficeContextMode){
 function appendOfficeToText(text:string,url:string){
  const suffix=url?'\n\nליצירת קשר עם המשרד: '+url:'';
  if(text.length+suffix.length>4096)throw fail('fallback_message_too_long');
- return text+suffix;
-}
-// Production already uses its third native button for the Supplier Portal.
-// Keep the office link as a single short WhatsApp URL on its OWN line.
-// An encoded ?text= reference is 100+ characters, wraps awkwardly on phones
-// and is not a URL shortener. Do not use third-party redirectors or change
-// the original assignment/supplier identity to solve a presentation issue.
-function appendCompactOfficeToText(text:string,officeNumber:string){
- const shortUrl=buildOfficeWhatsAppInquiryLink({officeNumber,contextMode:'none'});
- const suffix='\n\n💬 לשיחה עם המשרד:\n'+shortUrl;
- if(shortUrl.length>40||text.length+suffix.length>4096)
-  throw fail('compact_office_link_too_long');
  return text+suffix;
 }
 export async function previewGreenInteractiveAssignment(input:{
@@ -123,8 +111,11 @@ export async function previewGreenInteractiveAssignment(input:{
    urlLabel.trim()!==urlLabel||
    urlLabel.length>25||/[\r\n\u0000-\u001f\u007f]/.test(urlLabel))
    throw fail('invalid_office_button_label');
+  const body=input.supplierPortalUrl===SUPPLIER_PORTAL_URL
+   ?withSupplierPortalLink(text,job.supplier_id):text;
+  if(body.length>4096)throw fail('supplier_portal_message_too_long');
   return {method:'sendInteractiveButtons',body:{
-   chatId:job.chat_id,body:text,buttons:[
+   chatId:job.chat_id,body,buttons:[
     ...buttons.map(b=>({...b,type:'reply'})),
     {type:'url',buttonId:'contact_office',buttonText:urlLabel,url}
    ]},kind:'interactive_mixed',fallbackReason:'',providerRequestsMade:0};
