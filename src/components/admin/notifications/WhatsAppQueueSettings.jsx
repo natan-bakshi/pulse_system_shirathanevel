@@ -53,6 +53,8 @@ export default function WhatsAppQueueSettings(){
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
   const [assignmentV2Readiness,setAssignmentV2Readiness]=useState(null);
+  const [legacyPilotScope,setLegacyPilotScope]=useState({eventServiceId:'',supplierId:''});
+  const [legacyPilotInfo,setLegacyPilotInfo]=useState(null);
   const [qaReadiness,setQaReadiness]=useState(null);
   const [qaAssignmentPreflight,setQaAssignmentPreflight]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
@@ -273,6 +275,33 @@ export default function WhatsAppQueueSettings(){
     }
     finally{setBusy(false);}
   }
+  async function manageLegacyPilot(action){
+    if(busy)return;
+    if(action==='arm'){
+      if(!/^[A-Za-z0-9_-]{3,100}$/.test(legacyPilotScope.eventServiceId)||
+         !/^[A-Za-z0-9_-]{3,100}$/.test(legacyPilotScope.supplierId)){
+        setError('יש להזין מזהה שירות אירוע ומזהה ספק תקינים.');return;
+      }
+      if(!window.confirm('להכין כפתורי WhatsApp לשיבוץ אחד בלבד? ההכנה לא שולחת הודעה ולא משנה שיבוץ. רק הודעת שיבוץ חדשה שתיווצר אחר כך עבור ספק זה עשויה להישלח עם כפתורים, אם כל תנאי Green מאומתים.'))return;
+    }
+    if(action==='stop'&&!window.confirm('לעצור יצירת הודעות כפתורים חדשות בפיילוט? תגובות להודעות שכבר נשלחו יישארו פעילות עד סוף תוקפן.'))return;
+    setBusy(true);setError('');setNotice('');
+    try{
+      const result=await base44.functions.invoke('legacyGreenPilotAdmin',{
+        action,
+        ...(action==='arm'?{...legacyPilotScope,
+          confirmation:'I_APPROVE_ONE_REAL_ASSIGNMENT_BUTTON_PILOT'}:{})
+      });
+      if(result.data?.success!==true)throw Error(result.data?.error||'פעולת הפיילוט לא אומתה');
+      setLegacyPilotInfo(result.data);
+      if(action==='arm')setNotice('הפיילוט הוגדר עבור שיבוץ וספק אחד. לא נשלחה הודעה ולא שונה שיבוץ.');
+      else if(action==='stop')setNotice('השליחה האינטראקטיבית בפיילוט נעצרה. תגובות קודמות נשמרו.');
+      else setNotice('מצב הפיילוט נבדק ללא שליחה.');
+    }catch(e){
+      setLegacyPilotInfo(null);
+      setError(e?.response?.data?.error||e?.message||'לא ניתן לעדכן את מצב הפיילוט');
+    }finally{setBusy(false);}
+  }
   const totals=view?.totals||{};
   return <details id="whatsapp-queue" open={expanded}
     onToggle={event=>setExpanded(event.currentTarget.open)}
@@ -371,6 +400,27 @@ export default function WhatsAppQueueSettings(){
       </div>
       <details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">כלי אבחון וניהול מתקדמים (לפתיחה לפי הצורך)</summary>
+        <div className="mt-3 mb-3 space-y-2 rounded-lg border p-3">
+          <p className="font-semibold">פיילוט כפתורי WhatsApp בשיבוץ אמיתי אחד</p>
+          <p className="text-xs text-gray-600">מסלול מהיר: שומר על טופס השיבוץ, Push, תזכורות ויומן כפי שהם. אין צורך לערוך Secrets. ההגדרה עצמה אינה שולחת הודעה; כפתורים נשלחים רק בהודעת שיבוץ חדשה שמתאימה בדיוק לספק ולשירות שנבחרו, וכאשר Green מאומת ופעיל.</p>
+          <div className="flex flex-wrap gap-2">
+            <Input className="max-w-[250px]" aria-label="מזהה שירות אירוע לפיילוט" placeholder="מזהה שירות אירוע"
+              value={legacyPilotScope.eventServiceId} onChange={e=>setLegacyPilotScope(s=>({...s,eventServiceId:e.target.value.trim()}))}/>
+            <Input className="max-w-[250px]" aria-label="מזהה ספק לפיילוט" placeholder="מזהה ספק"
+              value={legacyPilotScope.supplierId} onChange={e=>setLegacyPilotScope(s=>({...s,supplierId:e.target.value.trim()}))}/>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageLegacyPilot('status')}>בדוק מצב הפיילוט</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageLegacyPilot('arm')}>הכן כפתורים לשיבוץ שנבחר</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageLegacyPilot('stop')}>עצור כפתורים חדשים</Button>
+          </div>
+          {legacyPilotInfo&&<p role="status" className="text-xs">
+            מצב: {legacyPilotInfo.active?'פיילוט לשיבוץ אחד פעיל':'אין שליחת כפתורים חדשה'}.
+            {legacyPilotInfo.expiresAt&&' תוקף: '+new Date(legacyPilotInfo.expiresAt).toLocaleString('he-IL')}.
+            הפעולה לא שולחת הודעות.
+          </p>}
+          <p className="text-xs text-amber-800">אין ללחוץ על ״הכן״ עבור שיבוץ שכבר נשלחה עליו הודעה רגילה — אי אפשר לשנות כפתורים בהודעה שכבר התקבלה. בדיקת קבלה חיה תבוצע רק בהודעת שיבוץ חדשה.</p>
+        </div>
         <div className="flex flex-wrap gap-2 mt-3">
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>אבחון ללא שליחה</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
