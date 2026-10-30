@@ -10,11 +10,13 @@ import {authenticateWhatsAppProviderCallback} from './whatsappProviderWebhookAut
 import {parseGreenButtonSelection} from './greenInteractiveCallback.ts';
 import {resolveVerifiedGreenActionForButton} from './whatsappButtonBindings.ts';
 import {processVerifiedWhatsAppAssignmentResponse} from './whatsappInboundCoordinator.ts';
+import {legacyRevisionFromOutboxKey} from './legacyAssignmentButtonScope.ts';
 
 const allowedFields=[
  'id','status','source_type','provider','requested_provider','provider_message_id',
  'sender_account_id','assignment_revision','event_service_id','supplier_id',
- 'chat_id','interactive_button_bindings_json','interactive_qa_required'
+ 'chat_id','interactive_button_bindings_json','interactive_qa_required',
+ 'idempotency_key'
 ] as const;
 const closed=(reason:string)=>({status:'refused',reason,
  providerCalls:0,supplierWritesAuthorized:false});
@@ -24,6 +26,7 @@ export async function processFutureGreenButtonCallback(input:{
  trustedRolloutEnabled:boolean;accountCapabilityVerified:boolean;
  claimOwner:string;recalculateEventStatus:(eventId:string)=>Promise<any>;
  qaEventServiceId?:string;qaPreviousEventServiceId?:string;qaSupplierId?:string;
+ legacyCanaryApproved?:true;
  now?:number;subtle?:SubtleCrypto
 }){
  // Feature disabled => zero reads. Reject invalid size BEFORE parsing JSON.
@@ -67,7 +70,9 @@ export async function processFutureGreenButtonCallback(input:{
    (previous!==undefined&&(!VALID_ID.test(previous)||previous===current))||
    ![current,...(previous?[previous]:[])].includes(original.event_service_id)||
    original.supplier_id!==input.qaSupplierId||
-   original.interactive_qa_required!==true)
+   (original.interactive_qa_required!==true&&
+    !(input.legacyCanaryApproved===true&&
+      original.assignment_revision===legacyRevisionFromOutboxKey(original))))
    return closed('qa_assignment_outside_scope');
  }
  const token=await resolveVerifiedGreenActionForButton(
