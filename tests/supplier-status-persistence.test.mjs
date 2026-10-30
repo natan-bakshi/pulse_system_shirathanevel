@@ -206,6 +206,9 @@ test('dashboard endpoint binds signed-in supplier and ignores client-forged What
    if(name.endsWith('eventReadiness.ts'))return {
     recalculateEventStatus:async()=>({newStatus:'confirmed'})
    };
+   if(name.endsWith('calendarSyncStatusWake.ts'))return {
+    wakeExistingCalendarSyncAfterSupplierDecision:async()=>({requested:true,reason:'existing_calendar_workflow_woken'})
+   };
    if(name.endsWith('supplierStatusPersistence.ts'))return {
     persistAuthorizedSupplierStatus:async(_service,payload)=>{
      state.writes++;state.source=payload.source;
