@@ -173,7 +173,9 @@ export function trustedGreenAssignmentProductionConfig(control:any,
   capability:'mixed_url',senderAccountId,signingSecret,policy,
   officeNumber,officeLabel:policy.buttons.find((b:any)=>
    b.action==='contact_office')!.label,
-  officeContextMode:'reference',
+  // The native third button now hides the LONG wa.me prefilled draft; the
+  // plain portal address stays in the original assignment message.
+  officeContextMode:'excerpt',
   supplierPortalUrl:SUPPLIER_PORTAL_URL,supplierPortalLabel:'כניסה למערכת'};
 }
 // A signed, explicitly owner-armed SINGLE REAL assignment replaces only
