@@ -53,6 +53,7 @@ export default function WhatsAppQueueSettings(){
   const [inboundDetail,setInboundDetail]=useState(null);
   const [interactiveReadiness,setInteractiveReadiness]=useState(null);
   const [assignmentV2Readiness,setAssignmentV2Readiness]=useState(null);
+  const [productionButtons,setProductionButtons]=useState(null);
   const [legacyPilotScope,setLegacyPilotScope]=useState({eventServiceId:'',supplierId:''});
   const [legacyPilotInfo,setLegacyPilotInfo]=useState(null);
   const [qaReadiness,setQaReadiness]=useState(null);
@@ -275,6 +276,22 @@ export default function WhatsAppQueueSettings(){
     }
     finally{setBusy(false);}
   }
+  async function manageProductionButtons(action){
+    if(busy)return;
+    if(action==='enable'&&!window.confirm('להפעיל כפתורי אישור/דחייה ופנייה למשרד בכל הודעות השיבוץ החדשות שנשלחות ב-Green? הודעות שכבר נשלחו לא ישתנו. ניתן לעצור מיד, ותשובות ישנות עדיין ייקלטו.'))return;
+    setBusy(true);setError('');setNotice('');
+    try{
+      const res=await base44.functions.invoke('greenAssignmentProductionAdmin',{
+        action,...(action==='enable'?{confirmation:'ENABLE_GREEN_ASSIGNMENT_BUTTONS_FOR_ALL_NEW_ASSIGNMENTS'}:{})
+      });
+      if(!res.data?.success)throw Error(res.data?.error||'הפעלת הכפתורים לא הצליחה');
+      setProductionButtons(res.data);
+      setNotice(action==='enable'?'כפתורי WhatsApp הופעלו להודעות שיבוץ חדשות ב-Green.':
+        action==='disable'?'כפתורים חדשים נעצרו. תגובות להודעות שכבר נשלחו עדיין נקלטות.':
+        'מצב הכפתורים עודכן.');
+    }catch(e){setError(e?.response?.data?.error||e?.message||'לא ניתן לעדכן כפתורים');}
+    finally{setBusy(false);}
+  }
   async function manageLegacyPilot(action){
     if(busy)return;
     if(action==='arm'){
@@ -397,6 +414,16 @@ export default function WhatsAppQueueSettings(){
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={busy||!view} onClick={()=>run('configure',form)}><Save className="h-4 w-4 ml-2"/>שמור הגדרות</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}><RefreshCw className="h-4 w-4 ml-2"/>רענן</Button>
+      </div>
+      <div className="rounded-lg border p-3 space-y-2">
+        <p className="font-semibold">כפתורי שיבוץ WhatsApp — פרודקשן</p>
+        <p className="text-sm text-gray-700">הודעות שיבוץ חדשות דרך Green יכילו אישור, דחייה ופנייה למשרד. אישורים קיימים בתוך Pulse נשמרים ללא שינוי. Wasender והודעות אחרות נשארים במסלול הרגיל.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageProductionButtons('status')}>בדוק מצב</Button>
+          <Button size="sm" disabled={busy||productionButtons?.enabled===true} onClick={()=>manageProductionButtons('enable')}>הפעל כפתורים בפרודקשן</Button>
+          <Button size="sm" variant="outline" disabled={busy||productionButtons?.enabled===false} onClick={()=>manageProductionButtons('disable')}>עצור כפתורים חדשים</Button>
+        </div>
+        {productionButtons&&<p role="status" className="text-sm font-medium">{productionButtons.enabled?'הכפתורים פעילים להודעות חדשות':'כפתורים חדשים אינם פעילים'} — תגובות להודעות שנשלחו בעבר נשמרות.</p>}
       </div>
       <details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">כלי אבחון וניהול מתקדמים (לפתיחה לפי הצורך)</summary>
