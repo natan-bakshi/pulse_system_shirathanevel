@@ -126,7 +126,7 @@ export default function WhatsAppQueueSettings(){
  }
  const totals=view?.totals||{},queued=count(totals.queued)+count(totals.retry_wait);
  const failures=count(totals.failed)+count(totals.unknown);
- const queueStatus=!view?'לא נטען':!view.config.enabled?'כבוי':view.config.paused?'מושהה':view.workerBusy?'עובד':queued?'יש הודעות ממתינות':'מוכן';
+ const queueStatus=!view?'לא נטען':!view.config.enabled?'כבוי':view.config.paused?'מושהה':view.workerBusy?'שולח הודעות':queued?'ממתינות הודעות':'התור ריק';
  const buttonStatus=!view?'לא נטען':!view.interactiveButtonsEnabled?'כבויים':view.activeProvider!=='green'?'Green אינו פעיל':'פעילים';
  const dirty=!!view&&JSON.stringify(form)!==JSON.stringify(view.config);
  return <details id="whatsapp-queue" open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}
@@ -152,6 +152,8 @@ export default function WhatsAppQueueSettings(){
     {view&&<div className="text-xs text-gray-600 flex flex-wrap gap-3">
      <span>אושרו אצל ספק השליחה: {count(totals.accepted)}</span>
      <span>עבודה אחרונה: {showDate(view.lastWorkerAt)}</span>
+     <span>מוכנות כעת: {count(view.dueReadyCount)} · מתוזמנות לעתיד: {count(view.scheduledForFutureCount)}</span>
+     {view.dueReadyCount>0&&view.nextAllowedInMs>0&&<span>מרווח שליחה שנותר: {(view.nextAllowedInMs/1000).toFixed(1)} שניות</span>}
      {view.watchdogLate&&<span className="text-amber-800">התאוששות התור מתעכבת</span>}
      {view.lastError&&<span className="text-red-700">שגיאה: {view.lastError}</span>}
     </div>}
