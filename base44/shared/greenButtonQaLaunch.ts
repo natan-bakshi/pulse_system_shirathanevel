@@ -10,6 +10,7 @@ import {validateWhatsAppInteractivePolicy}
  from './whatsappInteractivePolicy.ts';
 import type {TrustedGreenInteractiveConfig}
  from './whatsappInteractiveWorkerBridge.ts';
+import {SUPPLIER_PORTAL_URL} from './supplierPortalLink.ts';
 import {
  LEGACY_GREEN_PILOT_FIELD,verifyLegacyGreenPilotState,
  outboundLegacyPilotTarget,inboundLegacyPilotTarget
@@ -120,6 +121,7 @@ export function trustedGreenAssignmentProductionConfig(control:any,
  if(mode==='inbound'&&control?.interactive_assignment_production_enabled!==true&&
   control?.interactive_assignment_production_ever_enabled!==true)return null;
  return {...base,legacyProductionApproved:true as const,
+  supplierPortalUrl:SUPPLIER_PORTAL_URL,supplierPortalLabel:'כניסה למערכת',
   qaChatId:undefined,qaEventServiceId:undefined,qaSupplierId:undefined};
 }
 // A signed, explicitly owner-armed SINGLE REAL assignment replaces only
