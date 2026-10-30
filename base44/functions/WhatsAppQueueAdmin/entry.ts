@@ -147,9 +147,6 @@ async function queueStatus(client:any){
     lastBatchCount:Number.isFinite(control.last_batch_count)?control.last_batch_count:null,
     lastBatchElapsedMs:Number.isFinite(control.last_batch_elapsed_ms)?control.last_batch_elapsed_ms:null,
     lastError:control.last_error||'',activeProvider:provider,
-    qaPilotNewSendsEnabled:control.interactive_outbound_live_enabled===true&&
-      Deno.env.get('GREEN_BUTTONS_QA_SEND_ENABLED')==='enabled'&&
-      Deno.env.get('GREEN_BUTTONS_QA_CREATE_ENABLED')==='enabled',
     currentIntervalMs:ms,
     latest:jobs.filter((x:any)=>x.archived!==true).slice(0,20).map((x:any)=>renderJob(x))
   };
@@ -299,7 +296,10 @@ Deno.serve(async(req)=>{
         error:'מסלול הניסוי הישן הוסר. הכפתורים מנוהלים בממשק הפרודקשן.',
         noMessagesSent:true,noSettingsWritten:true,noAutomaticRetry:true},410);
     const entity=client.asServiceRole.entities.WhatsAppQueueControl;
-    // Owner-only draft settings. They never activate interactive sends or webhook actions.
+    // Actual Green button copy + office number used by new production sends.
+    // The persisted policy.enabled remains false: the separate owner production
+    // switch alone authorizes sending. Do not relabel these as an inactive QA
+    // draft or allow edits to enable a rollout implicitly.
     if(action==='interactiveGet'){
       const current=await readSavedWhatsAppInteractivePolicy(client,body.provider);
       return RESPONSE({success:true,...current,liveEnabled:false,noMessagesSent:true});
@@ -365,14 +365,17 @@ Deno.serve(async(req)=>{
       }
     }
     if(action==='inboundAudit'){
-      // Explicit system-owner request only. The inbound feature is NOT active;
-      // this never claims a receipt, updates a supplier or invokes transport.
+      // Explicit system-owner request only. Production signed button replies
+      // are already LIVE; this is merely a bounded read of their receipt log.
+      // It never claims a receipt, updates a supplier or invokes transport.
       const [control,rows]=await Promise.all([
         readWhatsAppQueueControl(client),
         client.asServiceRole.entities.WhatsAppInboundReceipt.list('-created_date',100,0,
           ['id','state','claim_until','provider'])
       ]);
-      return RESPONSE({success:true,liveInboundEnabled:false,
+      return RESPONSE({success:true,
+        liveInboundEnabled:control.interactive_assignment_production_enabled===true||
+          control.interactive_assignment_production_ever_enabled===true,
         audit:summarizeInboundWhatsAppReceipts(rows,control,Date.now())});
     }
     if(action==='greenButtonQaProvisionWebhook'){
