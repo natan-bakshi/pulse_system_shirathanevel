@@ -99,8 +99,10 @@ test('one CAS claim precedes each adapter call; tasks become completed only with
  assert.ok(first.claimedAt&&first.finishedAt);
  const again=await processStagedAssignmentEffectBatch(db.client,db.row.id,
   defaultOptions({adapters:consumerAdapters}));
- assert.equal(again.completed,4);
- assert.equal(new Set(seen).size,8,'bounded batch continues to remaining unique tasks');
+ assert.equal(again.completed,3);
+ assert.equal(new Set(seen).size,7,'bounded batch continues to all seven unique tasks');
+ assert.equal(db.row.assignment_effects_pending,false);
+ assert.equal(tasks(db).every(t=>t.state==='completed'),true);
 });
 test('two concurrent workers never execute the same task or overwrite the CAS claim',async()=>{
  const db=fakeDatabase(),seen=[],a=adapters(),barrier=[];
