@@ -1,6 +1,6 @@
 // Button feedback uses the EXISTING central WhatsApp Outbox. No direct
 // provider calls, no new workflow, and no second supplier business mutation.
-// Only a terminal receipt created from an authenticated Green button is eligible.
+// Only a durably finalized receipt from an authenticated Green button is eligible.
 // Historical receipts without feedback_required are intentionally not replayed.
 import {enqueueWhatsApp,readWhatsAppQueueControl} from './whatsappOutbox.ts';
 import {resolveWhatsAppProvider} from './whatsappProviderConfig.ts';
@@ -19,6 +19,7 @@ const declined='השיבוץ נדחה בהצלחה וההחלטה נרשמה ב�
 const approved='השיבוץ אושר בהצלחה וההחלטה נרשמה במערכת. תודה! לשינוי נוסף יש להיכנס למערכת Pulse או לפנות למשרד.';
 const conflict='לא ניתן לקבל את הלחיצה: פרטי השיבוץ כבר השתנו במערכת. יש לבדוק את המצב העדכני ב־Pulse. שינוי נוסף מתבצע מתוך המערכת או דרך המשרד.';
 const failed='הבקשה לא עודכנה במערכת. נא לבדוק את מצב השיבוץ ב־Pulse או לפנות למשרד.';
+const uncertain='לא ניתן לאמת כרגע אם ההחלטה על השיבוץ נרשמה. נא לבדוק את המצב העדכני במערכת Pulse או לפנות למשרד לפני פעולה נוספת.';
 const reason=(code:string)=>({queued:false,reason:code,noProviderCalls:true});
 export function planVerifiedButtonFeedback(receipt:any){
  if(!receipt||receipt.feedback_required!==true||
@@ -34,7 +35,9 @@ export function planVerifiedButtonFeedback(receipt:any){
   message=receipt.action==='assignment_approve'?approved:declined;
  else if(receipt.state==='rejected'&&allowedRejections.has(receipt.result_code))
   message=receipt.result_code==='business_conflict'?conflict:failed;
- else return null; // UNKNOWN, needs_review, pending and forged status are silent.
+ else if(receipt.state==='needs_review'&&receipt.result_code==='unknown_after_write')
+  message=uncertain; // Never implies that a possibly committed CAS failed.
+ else return null; // Unfinalized or unsupported states are silent.
  return {idempotencyKey:'button-feedback:'+receipt.id,sourceId:receipt.id,
   message};
 }
@@ -155,7 +158,7 @@ export async function reconcileTerminalButtonFeedback(
  let rows:any[];
  try{rows=await db.filter({
   feedback_required:true,feedback_outbox_id:null,
-  state:{$in:['applied','rejected']}
+  state:{$in:['applied','rejected','needs_review']}
  },'completed_at',max,0,['id']);}
  catch{return {scanned:0,queued:0,reason:'receipt_scan_unavailable'};}
  let count=0;
