@@ -152,6 +152,10 @@
       "type": "string",
       "description": "Future interactive origin: exact supplier assignment-intent revision frozen at enqueue"
     },
+    "interactive_fallback_reason": {
+      "type": "string",
+      "description": "Sanitized code recording why an owner-enabled real assignment used legacy transport instead of buttons; no recipient or message content"
+    },
     "interactive_qa_required": {
       "type": "boolean",
       "description": "Persistent single-assignment pilot marker from atomic business intent; never downgrade marked jobs to plain text on rollback"
