@@ -21,6 +21,23 @@ const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
 const SECRET_MIN=32;
 const exactActions=['assignment_approve','assignment_reject','contact_office'];
 const get=(env:(k:string)=>string|undefined,k:string)=>String(env(k)||'');
+// Separate production passive admission: the old single-chat QA receiver
+// cannot be a prerequisite for real supplier replies after the QA fixture is
+// removed. This checks ONLY trusted environment credentials; the actual
+// business callback still requires durable original-message/supplier proof,
+// owner-enabled historical production state, signed action and receipt CAS.
+export function greenProductionPassiveInboundReady(
+ env:(key:string)=>string|undefined):boolean{
+ const signing=get(env,'WHATSAPP_INTERACTIVE_SIGNING_SECRET');
+ const bearer=get(env,'GREEN_API_WEBHOOK_TOKEN');
+ return get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'&&
+  get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
+  get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified'&&
+  INSTANCE.test(get(env,'GREEN_API_INSTANCE_ID'))&&
+  get(env,'GREEN_API_TOKEN').length>=24&&
+  signing.length>=SECRET_MIN&&bearer.length>=24&&
+  signing!==bearer;
+}
 // Passive receiver may ACK known ordinary Green events BEFORE the first
 // beta button proof. No supplier mutation or button acceptance in this mode.
 // Distinct from the send gate and from proof of provider beta support.
@@ -118,8 +135,9 @@ export function trustedGreenAssignmentProductionConfig(control:any,
  // supplier pins here silently downgraded genuine new assignments to text
  // after the owner switched on production. Keep every verified security gate
  // but derive no production authorization from obsolete QA targeting secrets.
- if(!control||control.enabled!==true||control.paused===true||
-  control.interactive_outbound_live_enabled!==true||
+ if(!control||(mode==='outbound'&&(
+  control.enabled!==true||control.paused===true||
+  control.interactive_outbound_live_enabled!==true))||
   get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified'||
   get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')!=='approved'||
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
