@@ -6,6 +6,7 @@
 // NO public inbound endpoint is registered and no provider sends occur here.
 import {supplierAssigned,supplierTransition} from './whatsappSupplierTransition.ts';
 import {readAssignmentIntents,ASSIGNMENT_INTENT_MODE} from './assignmentIntent.ts';
+import {legacyAssignmentRevisionEligibility} from './legacyAssignmentButtonScope.ts';
 
 export type SupplierStatusSource='dashboard'|'whatsapp'|'admin';
 type SupplierStatus='pending'|'confirmed'|'rejected';
@@ -34,7 +35,7 @@ function declinedHistory(value:unknown):any[]{
 }
 export function whatsappRevisionEligibility(service:any,supplierId:string,revision:string){
  if(service?.assignment_intent_mode!==ASSIGNMENT_INTENT_MODE)
-  return {allowed:false,reason:'durable_assignment_not_enabled'};
+  return legacyAssignmentRevisionEligibility(service,supplierId,revision);
  if(typeof revision!=='string'||!/^r[1-9][0-9]{0,12}$/.test(revision))
   return {allowed:false,reason:'invalid_assignment_revision'};
  let intents:any[];
@@ -129,6 +130,9 @@ export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
   if(source==='whatsapp'){
    filter.assignment_intent_mode=row.assignment_intent_mode??null;
    filter.assignment_notification_intents=row.assignment_notification_intents??null;
+   // Legacy canary buttons must match the exact business write generation.
+   if(row.assignment_intent_mode!==ASSIGNMENT_INTENT_MODE)
+    filter.updated_date=row.updated_date??null;
   }
   if(newStatus==='rejected'&&transition.changed){
    const declined=declinedHistory(row.declined_suppliers);
