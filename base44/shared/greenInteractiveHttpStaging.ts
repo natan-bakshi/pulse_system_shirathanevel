@@ -21,6 +21,7 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
  // Only trusted single-chat QA config may supply this, never webhook JSON.
  qaChatId?:string;qaEventServiceId?:string;qaPreviousEventServiceId?:string;
  qaSupplierId?:string;
+ legacyCanaryApproved?:true;
  maxPerMinute?:number;now?:number;subtle?:SubtleCrypto;
  // ONLY from trusted server configuration after owner retention/purge review.
  // Undefined by default: zero recoverable payloads are stored.
@@ -109,6 +110,7 @@ export async function stageFutureGreenInteractiveHttpCallback(request:any,opts:{
   qaEventServiceId:opts.qaEventServiceId,
   qaPreviousEventServiceId:opts.qaPreviousEventServiceId,
   qaSupplierId:opts.qaSupplierId,
+  legacyCanaryApproved:opts.legacyCanaryApproved,
   now,subtle:opts.subtle
  });
  return {stage:'processed',result:result.status,reason:result.reason,
