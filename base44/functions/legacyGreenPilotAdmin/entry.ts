@@ -27,6 +27,11 @@ Deno.serve(async(req)=>{
   const body=await req.json().catch(()=>({}));
   if(!['status','arm','stop'].includes(body.action))
    return reply({success:false,error:'Invalid pilot action'},400);
+  // Retire new single-service experiments in production. Do not disable
+  // status/stop, old signed origin verification, or historical inbound replies.
+  if(body.action==='arm')return reply({success:false,
+   error:'מסלול פיילוט ישן הוסר; השתמש בהגדרות הכפתורים בפרודקשן',
+   noMessagesSent:true,noSupplierWrites:true,noProviderRequests:true},410);
   const signingSecret=Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'';
   if(signingSecret.length<32)
    return reply({success:false,error:'Signing protection unavailable'},503);
