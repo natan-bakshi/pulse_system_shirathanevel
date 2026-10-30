@@ -16,12 +16,13 @@ function shortSafeExcerpt(message:string):string{
  const redacted=message
   .replace(/(?:https?:\/\/|www\.)\S+/gi,'[קישור הוסר]')
   .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[כתובת הוסרה]')
-  .replace(/(?:\+?\d[\d\s().-]{7,}\d)/g,'[טלפון הוסר]')
+  // Preserve human event dates (15.11.2026), not phone-like sequences.
+  .replace(/(?:\+?\d[\d\s().-]{7,}\d)/g,m=>
+    /^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}$/.test(m.trim())?m:'[טלפון הוסר]')
   .replace(/[\u0000-\u001f\u007f]+/g,' ')
   .replace(/\s+/g,' ').trim();
- // Quote a short human-readable portion only, never copy 4KB of an
- // assignment, payment link, verification link or signed URL.
- return [...redacted].slice(0,120).join('');
+ // Never echo the entire original template, signed URLs or phone numbers.
+ return [...redacted].slice(0,300).join('');
 }
 export function buildOfficeWhatsAppInquiryLink(input:{
  officeNumber:string;outboxJobId?:string;messageText?:string;
@@ -41,7 +42,20 @@ export function buildOfficeWhatsAppInquiryLink(input:{
  let text=intro+'\n'+'אסמכתא: '+input.outboxJobId;
  if(mode==='excerpt'){
   const excerpt=shortSafeExcerpt(input.messageText||'');
-  if(excerpt)text+='\nמתוך ההודעה: '+excerpt;
+  if(excerpt){
+   const lead='\nפרטי האירוע והשיבוץ: ';
+   const tail='\nהשאלה שלי: ';
+   // The URL is HIDDEN inside the native button, but WhatsApp still has a
+   // provider URL-size limit. Fit as much of the actual event message as the
+   // budget permits, without introducing a redirect, DB read or shortener.
+   const safe=[...excerpt];let lo=0,hi=safe.length;
+   while(lo<hi){
+    const mid=Math.ceil((lo+hi)/2);
+    if((base+'?text='+encodeURIComponent(text+lead+safe.slice(0,mid).join('')+tail)).length<=MAX_LINK)
+     lo=mid;else hi=mid-1;
+   }
+   if(lo>0)text+=lead+safe.slice(0,lo).join('');
+  }
  }
  text+='\nהשאלה שלי: ';
  const url=base+'?text='+encodeURIComponent(text);
