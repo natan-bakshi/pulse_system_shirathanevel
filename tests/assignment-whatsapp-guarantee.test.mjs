@@ -42,6 +42,10 @@ function env(overrides={}){
           return overrides.sendResponse||{queued:true,status:'queued',jobId:'outbox-'+sent.length};
         }};
       if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true})};
+      if(path.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
+      if(path.endsWith('supplierPortalLink.ts'))return {
+        productionAssignmentPrivateTarget:(_supplier,chat)=>({chatId:chat,reason:'normal_supplier_preference'})
+      };
       if(path.endsWith('quietHours.ts'))return {resolveNotificationDelay:()=>({shouldDelay:false})};
       if(path.endsWith('assignmentWhatsApp.ts'))return {
         assignmentWhatsAppKey,assignmentWhatsAppContext,renderAssignmentWhatsApp,supplierTargetChatId,supplierAssignmentTargetChatId
