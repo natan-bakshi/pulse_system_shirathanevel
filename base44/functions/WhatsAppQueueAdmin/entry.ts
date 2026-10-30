@@ -14,6 +14,7 @@ import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQa
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
 import {inspectGreenButtonQaLiveResult} from '../../shared/greenButtonQaLiveResult.ts';
 import {inspectGreenWebhookSettingsReadOnly,summarizeGreenWebhookAuditFailure} from '../../shared/greenWebhookSettingsAudit.ts';
+import {inspectGreenInstanceStateReadOnly} from '../../shared/greenInstanceStateAudit.ts';
 import {applyOneGreenButtonQaWebhookProvisioning,
  GREEN_BUTTON_QA_WEBHOOK_CALLBACK_URL}
  from '../../shared/greenButtonQaWebhookProvisioning.ts';
@@ -491,6 +492,23 @@ Deno.serve(async(req)=>{
           unknownCallbackLiveHandlerEnabled:false});
       }catch{return RESPONSE({success:false,
         error:'ניקוי מידע מוצפן שפג תוקפו אינו זמין',noMessagesSent:true},503);}
+    }
+    if(action==='greenInstanceStateAudit'){
+      // An owner-initiated check AFTER swapping the connected WhatsApp phone.
+      // No auto-polling, queue change, outgoing message, DB query or Green
+      // settings write. Exactly one GetStateInstance GET (no auto retry).
+      try{
+        const state=await inspectGreenInstanceStateReadOnly({
+          instanceId:Deno.env.get('GREEN_API_INSTANCE_ID'),
+          apiToken:Deno.env.get('GREEN_API_TOKEN'),
+          apiBaseUrl:Deno.env.get('GREEN_API_URL'),timeoutMs:12000
+        });
+        return RESPONSE({success:true,connection:state});
+      }catch{
+        return RESPONSE({success:false,
+         error:'לא ניתן לאמת כרגע את מצב מופע Green. לא שונו הגדרות או הודעות.',
+         noMessagesSent:true,noSettingsWritten:true},503);
+      }
     }
     if(action==='greenWebhookSettingsAudit'){
       // Explicit owner CLICK only. One provider GetSettings GET, zero DB reads,
