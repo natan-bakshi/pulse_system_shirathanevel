@@ -48,7 +48,8 @@ export function checkLegacyAssignmentButtonCandidate(input:{
   job.chat_id!==target.chatId||job.source_type!=='assignment_new'||
   job.message_type!=='text'||job.requested_provider!=='green')
   return refused('outside_exact_assignment_canary');
- if(service.assignment_intent_mode==='durable_v1')
+ if(service.assignment_intent_mode!==undefined&&
+  service.assignment_intent_mode!==null&&service.assignment_intent_mode!=='')
   return refused('durable_v2_has_separate_lifecycle');
  if(!supplierAssigned(service.supplier_ids,target.supplierId))
   return refused('supplier_not_assigned');
@@ -66,7 +67,8 @@ export function checkLegacyAssignmentButtonCandidate(input:{
 // is in flight, or a decline followed by reopen, always retires old buttons.
 export function legacyAssignmentRevisionEligibility(service:any,
  supplierId:string,revision:string){
- if(service?.assignment_intent_mode==='durable_v1')
+ if(service?.assignment_intent_mode!==undefined&&
+  service.assignment_intent_mode!==null&&service.assignment_intent_mode!=='')
   return {allowed:false,reason:'not_legacy_assignment'};
  if(!ID.test(supplierId||'')||!VALID_REVISION.test(revision||''))
   return {allowed:false,reason:'invalid_legacy_revision'};
