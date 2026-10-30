@@ -460,9 +460,14 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // a plain-text resend after rollback, misconfiguration or manual retry.
       // Keep other invoice/reminder jobs moving, but require manual review for
       // the affected assignment. No extra DB reads for ordinary messages.
-      const frozen=!!(options.job.interactive_qa_required===true||
+      const frozen=options.job.source_type==='assignment_new'&&!!(
+        options.job.interactive_qa_required===true||
         options.job.interactive_button_bindings_json||
         options.job.sender_account_id||options.job.assignment_revision);
+      // assignment_button_feedback pins the original Green SENDER ACCOUNT,
+      // but is an ordinary queued text acknowledgement, not a new frozen
+      // assignment with action buttons. The transport verifies that sender;
+      // never quarantine the feedback merely because it has an account ID.
       if(frozen&&(!opts.interactiveConfig||
         control.interactive_outbound_live_enabled!==true)){
         const held=await queueStage('interactive_disabled_hold',()=>
