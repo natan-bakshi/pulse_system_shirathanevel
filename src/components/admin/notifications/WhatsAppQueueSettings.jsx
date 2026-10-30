@@ -465,6 +465,12 @@ export default function WhatsAppQueueSettings(){
             {check.ready?'✓':'○'} {({assignment_intent_v1_feature_flag:'יומן השיבוצים האטומי מופעל',side_effect_bridge_implemented_in_code:'העברת התראות/תזכורות/יומן למנגנון עמיד הושלמה',side_effect_bridge_independently_verified:'אומת מנגנון תאימות ופעולות נלוות',legacy_workflow_parity_preserved_in_current_ui:'השיבוצים הקיימים עדיין משתמשים באוטומציות המקוריות',real_ui_paths_migrated:'כל מסכי השיבוצים חוברו לשמירה האטומית',live_green_buttons_generalized:'כפתורי Green לשיבוצים אמיתיים מאושרים',live_inbound_for_real_assignments:'קליטת לחיצות שיבוץ אמיתי מאומתת'})[check.code]||check.code}
           </li>)}</ul>
           <p className="text-gray-600">השירותים הנדרשים לפני מעבר: {(assignmentV2Readiness.requiredParityConsumers||[]).map(x=>({event_status_readiness:'סטטוס אירוע',entity_update_notifications:'התראות אירוע',supplier_assignment_push:'Push לספק',supplier_pending_reminder:'תזכורת לממתין',assignment_removed_notifications:'עדכון ביטול שיבוץ',assignment_status_notifications:'התראות שינוי סטטוס',google_calendar_sync:'יומן Google'})[x]||x).join(' · ')}.</p>
+          <details className="border rounded p-2">
+            <summary className="cursor-pointer font-medium">פירוט מימוש רכיבי התאימות — {assignmentV2Readiness.implementationProofs?.filter(x=>!x.ready).length||0} רכיבים שעדיין בפיתוח</summary>
+            <ul className="space-y-1 mt-2">{(assignmentV2Readiness.implementationProofs||[]).map(item=><li key={item.code}>
+              {item.ready?'✓':'○'} {({journal_server_provenance:'מקור מהימן ומוגן ליומן הפעולות',per_recipient_template_fanout:'פיצול התראות לכל נמען ללא כפילות',durable_push_receipts:'אסמכתאות Push עמידות',pending_reminder_receipts:'תזכורות ממתין עם אסמכתה',supplier_status_and_removal_notifications:'התראות שינוי וביטול שיבוץ',google_calendar_idempotent_upsert:'סנכרון Google ללא יצירת אירועים כפולים',custom_notification_template_parity:'תאימות לכל תבניות ההתראה הקיימות',event_status_recalculation_receipts:'חישוב סטטוס אירוע ואימות התוצאה',watchdog_and_unknown_outcome_review:'התאוששות וסקירת תוצאות לא ודאיות',end_to_end_legacy_workflow_parity:'בדיקת התאמה מקצה לקצה מול המנגנון הישן'})[item.code]||item.code}
+            </li>)}</ul>
+          </details>
           <p className="text-gray-600">אין אפשרות להפעיל תכונות חסומות מתוך האבחון; תוצאה תקינה של תצורה לבדה אינה אישור לשלוח כפתורים לכלל הספקים.</p>
         </div>
       </details>}
