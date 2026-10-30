@@ -3,10 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
-import {
- LEGACY_GREEN_PILOT_FIELD,LEGACY_GREEN_PILOT_CONFIRM,
- verifyLegacyGreenPilotState,inboundLegacyPilotTarget
-} from '../base44/shared/legacyGreenPilotScope.ts';
+import * as pilot from '../base44/shared/legacyGreenPilotScope.ts';
 
 const secret='signed-pilot-admin-backend-key-01234567890123456789';
 const envConfig={
@@ -24,7 +21,7 @@ function fixture({owner=true,provider='green',group=false,ready=true}={}){
  const svc={id:'service-111111',event_id:'event-111111',is_external:false};
  const supplier={id:'supplier-111111',phone:'0501234567',is_active:true,
   whatsapp_enabled:true,preferred_channel:group?'group':'phone'};
- const stats={writes:0,providerCalls:0,businessWrites:0,settingsReads:0};
+ const stats={writes:0,businessWrites:0,providerCalls:0,readControl:0};
  let actor=owner?{role:'admin',email:'natib8000@gmail.com'}:
   {role:'admin',email:'not-owner@example.test'};
  let envValues={...envConfig};
@@ -33,7 +30,7 @@ function fixture({owner=true,provider='green',group=false,ready=true}={}){
   WhatsAppQueueControl:{updateMany:async(q,p)=>{
    stats.writes++;
    if(q.id!==control.id||
-    (q[LEGACY_GREEN_PILOT_FIELD]??null)!==(control[LEGACY_GREEN_PILOT_FIELD]??null))
+    (q[pilot.LEGACY_GREEN_PILOT_FIELD]??null)!==(control[pilot.LEGACY_GREEN_PILOT_FIELD]??null))
     return {updated:0};
    Object.assign(control,p.$set);return {updated:1};
   }},
@@ -51,7 +48,7 @@ function fixture({owner=true,provider='green',group=false,ready=true}={}){
  const required={
   'npm:@base44/sdk@0.8.38':{createClientFromRequest:()=>client},
   '../../shared/whatsappOutbox.ts':{
-   readWhatsAppQueueControl:async()=>structuredClone(control)
+   readWhatsAppQueueControl:async()=>{stats.readControl++;return structuredClone(control);}
   },
   '../../shared/whatsappProviderConfig.ts':{
    resolveWhatsAppProvider:async()=>provider
@@ -59,24 +56,84 @@ function fixture({owner=true,provider='green',group=false,ready=true}={}){
   '../../shared/whatsappSend.ts':{
    toChatId:phone=>'972'+String(phone).slice(1)+'@c.us'
   },
-  '../../shared/legacyGreenPilotScope.ts':awaitImport()
+  '../../shared/legacyGreenPilotScope.ts':pilot
  };
- function awaitImport(){
-  // Only code under test provides signing policy; no UI values can forge it.
-  return namespace;
- }
  vm.runInNewContext(compiled,{
   require:name=>{
    if(!(name in required))throw Error('Unexpected backend dependency '+name);
    return required[name];
   },
   module:{exports:{}},exports:{},
-  Deno:{env:{get:key=>envValues[key]}},
+  Deno:{env:{get:key=>envValues[key]},serve:fn=>{handler=fn}},
   Response:{json:(body,{status=200}={})=>({body,status})},
   console:{error:()=>{}}
  });
- // Deno.serve must register the handler. A separate context below captures it.
- return {control,svc,supplier,stats,client,
-  get handler(){return handler;},setActor:v=>{actor=v;},
+ const call=(action,extra={},method='POST')=>handler({
+  method,json:async()=>({action,...extra})
+ });
+ return {control,svc,supplier,stats,client,call,
+  setActor:v=>{actor=v;},
   setEnv:(k,v)=>{envValues[k]=v}};
 }
+const identity=()=>({eventServiceId:'service-111111',
+ supplierId:'supplier-111111',confirmation:pilot.LEGACY_GREEN_PILOT_CONFIRM});
+test('only system owner can arm a single real assignment scope',async()=>{
+ const f=fixture({owner:false});
+ assert.equal((await f.call('arm',identity())).status,403);
+ f.setActor({role:'supplier',email:'natib8000@gmail.com'});
+ assert.equal((await f.call('arm',identity())).status,403);
+ f.setActor({role:'admin',email:'natib8000@gmail.com'});
+ assert.equal((await f.call('arm',{...identity(),confirmation:'untrusted'})).status,403);
+ assert.equal(f.stats.writes,0);
+ assert.equal(f.stats.businessWrites,0);
+});
+test('arm is a signed queue-control CAS only, never an assignment edit or WhatsApp send',async()=>{
+ const f=fixture();
+ const response=await f.call('arm',identity());
+ assert.equal(response.status,200,JSON.stringify(response.body));
+ assert.equal(response.body.active,true);
+ assert.equal(response.body.noMessagesSent,true);
+ assert.equal(response.body.noSupplierWrites,true);
+ assert.equal(f.stats.writes,1);
+ assert.equal(f.stats.businessWrites,0);
+ const signed=f.control[pilot.LEGACY_GREEN_PILOT_FIELD];
+ const decoded=await pilot.verifyLegacyGreenPilotState(signed,secret);
+ assert.equal(decoded.active,true);
+ assert.equal(decoded.current.eventServiceId,identity().eventServiceId);
+ assert.equal(decoded.current.supplierId,identity().supplierId);
+ assert.equal(decoded.current.chatId,'972501234567@c.us');
+ const read=await f.call('status');
+ assert.equal(read.status,200);
+ assert.equal(read.body.active,true);
+ assert.equal(f.stats.writes,1);
+});
+test('stop prevents new button sends but retains already issued signed inbound scope',async()=>{
+ const f=fixture();
+ assert.equal((await f.call('arm',identity())).status,200);
+ const stopped=await f.call('stop');
+ assert.equal(stopped.status,200);
+ assert.equal(stopped.body.active,false);
+ assert.equal(stopped.body.inboundHistoryPreserved,true);
+ const parsed=await pilot.verifyLegacyGreenPilotState(
+  f.control[pilot.LEGACY_GREEN_PILOT_FIELD],secret);
+ assert.equal(pilot.outboundLegacyPilotTarget(parsed),null);
+ assert.equal(pilot.inboundLegacyPilotTarget(parsed,'972501234567@c.us').supplierId,
+  'supplier-111111');
+ assert.equal(f.stats.businessWrites,0);
+});
+test('Green provider, private chat and verified capability are hard server-side gates',async()=>{
+ for(const options of [{provider:'wasender'},{group:true},{ready:false}]){
+  const f=fixture(options);
+  const response=await f.call('arm',identity());
+  assert.ok([409,423].includes(response.status),JSON.stringify(options));
+  assert.equal(f.stats.writes,0);
+ }
+});
+test('signed pilot is not reassigned to another service for same private phone before prior reply expiry',async()=>{
+ const f=fixture();
+ assert.equal((await f.call('arm',identity())).status,200);
+ f.svc.id='service-222222';
+ const rearm=await f.call('arm',{...identity(),eventServiceId:'service-222222'});
+ assert.equal(rearm.status,409);
+ assert.equal(f.stats.writes,1);
+});
