@@ -123,6 +123,11 @@ async function queueStatus(client:any){
       wasenderIntervalMs:wasenderMs,greenIntervalMs:greenMs,
       maxMessagesPerRun:Number(control.max_messages_per_run)||16
     },
+    // Reuse this already-read singleton to power the live WhatsApp buttons
+    // settings display. Avoid a separate production-control API request on
+    // every settings open, keeping owner dashboard fast and low-credit.
+    interactiveButtonsEnabled:control.interactive_assignment_production_enabled===true,
+    interactiveOutboundEnabled:control.interactive_outbound_live_enabled===true,
     totals,dueReadyCount,scheduledForFutureCount,
     duplicateAssignmentVersions:{
       count:findDuplicateAssignmentVersions(jobs,500).length,
