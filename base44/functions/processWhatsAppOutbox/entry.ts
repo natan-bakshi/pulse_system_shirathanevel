@@ -100,22 +100,27 @@ Deno.serve(async (req) => {
          Deno.env.get('GREEN_BUTTONS_QA_BETA_PROBE_ENABLED')==='enabled'&&
          Deno.env.get('GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'))&&
       Deno.env.get('GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'){
-      try{
-        const flags=await client.asServiceRole.entities.AppSettings.filter({
-          setting_key:'assignment_intent_v1_enabled'
-        },'-created_date',2);
-        const durable=(flags.length===1&&flags[0].setting_value==='true')||
-          greenButtonQaScopedV2Enabled(key=>Deno.env.get(key));
-        // ONE owner-signed assignment pilot can reuse the existing queue.
-        // All other messages stay unchanged; QA-only sends remain available
-        // whenever no real pilot is armed.
-        qaConfig=trustedGreenAssignmentProductionConfig(controlRows[0],
-          key=>Deno.env.get(key),'outbound')||
-          await trustedGreenLegacyPilotConfig(controlRows[0],
-          key=>Deno.env.get(key),'outbound')||
-          trustedGreenButtonQaConfig(controlRows[0],
-            key=>Deno.env.get(key),durable);
-      }catch{qaConfig=null;}
+      // Production is already owner-gated and VERIFIED. Do not make its
+      // availability depend on reading an unrelated single-QA V2 rollout
+      // flag. That extra read could fail and silently downgrade otherwise
+      // eligible real supplier assignments to the old plain-text transport.
+      qaConfig=trustedGreenAssignmentProductionConfig(controlRows[0],
+        key=>Deno.env.get(key),'outbound');
+      if(!qaConfig){
+        try{
+          const flags=await client.asServiceRole.entities.AppSettings.filter({
+            setting_key:'assignment_intent_v1_enabled'
+          },'-created_date',2);
+          const durable=(flags.length===1&&flags[0].setting_value==='true')||
+            greenButtonQaScopedV2Enabled(key=>Deno.env.get(key));
+          // Preserve existing exact-recipient QA and owner-armed pilot
+          // unchanged when broad production is OFF.
+          qaConfig=await trustedGreenLegacyPilotConfig(controlRows[0],
+            key=>Deno.env.get(key),'outbound')||
+            trustedGreenButtonQaConfig(controlRows[0],
+              key=>Deno.env.get(key),durable);
+        }catch{qaConfig=null;}
+      }
     }
     const result=await drainWhatsAppOutbox(client,{wakeReason,
       initialControl:controlRows[0],
