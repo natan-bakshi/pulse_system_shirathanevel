@@ -10,6 +10,10 @@ import {validateWhatsAppInteractivePolicy}
  from './whatsappInteractivePolicy.ts';
 import type {TrustedGreenInteractiveConfig}
  from './whatsappInteractiveWorkerBridge.ts';
+import {
+ LEGACY_GREEN_PILOT_FIELD,verifyLegacyGreenPilotState,
+ outboundLegacyPilotTarget,inboundLegacyPilotTarget
+} from './legacyGreenPilotScope.ts';
 const INSTANCE=/^[0-9]{5,20}$/;
 const ENTITY=/^[A-Za-z0-9_-]{3,128}$/;
 const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
@@ -27,8 +31,7 @@ export function greenButtonQaPassiveInboundReady(
  const token=get(env,'GREEN_API_TOKEN');
  return get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'&&
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
-  (get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'||
-   get(env,'GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled')&&
+  get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'&&
   INSTANCE.test(id)&&token.length>=24&&
   ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))&&
   ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_SERVICE_ID'))&&
@@ -42,12 +45,11 @@ function trustedGreenButtonQaConfigForMode(control:any,
  // A single owner-approved Beta PROBE may precede real provider verification.
  // This is NOT capability proof, never enables any other service/chat and
  // remains fenced by independent SEND, inbound, owner, control and V2 gates.
- const legacyCanary=get(env,'GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled';
  const betaProof=get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified';
  const betaProbe=get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='probe_authorized'&&
   get(env,'GREEN_BUTTONS_QA_BETA_PROBE_ENABLED')==='enabled'&&
   get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled';
- if((durableAssignmentIntentEnabled!==true&&!legacyCanary)||
+ if(durableAssignmentIntentEnabled!==true||
   (requireSendEnabled&&control?.interactive_outbound_live_enabled!==true)||
   (requireSendEnabled&&get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled')||
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
@@ -86,7 +88,7 @@ function trustedGreenButtonQaConfigForMode(control:any,
  return {
   enabled:true,accountCapabilityVerified:betaProof,
   ...(betaProbe?{qaBetaProbeApproved:true as const}:{}),
-  ...(legacyCanary&&betaProof?{legacyCanaryApproved:true as const}:{}),capability:'mixed_url',
+  capability:'mixed_url',
   senderAccountId,signingSecret,
   policy,officeNumber,officeLabel:policy.buttons.find(
    button=>button.action==='contact_office')!.label,
@@ -105,6 +107,27 @@ export function trustedGreenButtonQaInboundConfig(control:any,
  // authenticated supplier responses; all other controls remain mandatory.
  return trustedGreenButtonQaConfigForMode(control,env,
   durableAssignmentIntentEnabled,false);
+}
+// A signed, explicitly owner-armed SINGLE REAL assignment replaces only
+// the targeting metadata for a narrow legacy pilot. All Green QA credentials,
+// provider beta proof, owner send/inbound gates and URL policy remain unchanged.
+// The HMAC is checked on every worker/receiver invocation: normal admin RLS
+// cannot turn an arbitrary JSON row into a new WhatsApp authorization.
+export async function trustedGreenLegacyPilotConfig(control:any,
+ env:(key:string)=>string|undefined,
+ mode:'outbound'|'inbound',senderChatId='',now=Date.now()
+):Promise<TrustedGreenInteractiveConfig|null>{
+ const raw=control?.[LEGACY_GREEN_PILOT_FIELD];
+ if(!raw)return null;
+ const base=trustedGreenButtonQaConfigForMode(control,env,true,mode==='outbound');
+ if(!base||base.accountCapabilityVerified!==true)return null;
+ const previous=await verifyLegacyGreenPilotState(raw,base.signingSecret,now);
+ const target=mode==='outbound'?outboundLegacyPilotTarget(previous,now):
+  inboundLegacyPilotTarget(previous,senderChatId,now);
+ if(!target)return null;
+ return {...base,legacyCanaryApproved:true,
+  qaEventServiceId:target.eventServiceId,qaSupplierId:target.supplierId,
+  qaChatId:target.chatId};
 }
 // Safe, sanitized readiness metadata for admin UI: no secrets or phone.
 // Not used to authorize sending or handling real callbacks.
