@@ -212,8 +212,9 @@ export async function processStagedAssignmentEffectBatch(
  if(!options||typeof options.makeToken!=='function'||!options.adapters||
   typeof options.adapters!=='object')throw Error('Missing trusted effect adapters');
  const now=options.now||Date.now;
- const limit=Number.isSafeInteger(options.maxTasks)&&options.maxTasks!>0
-  ?Math.min(MAX_BATCH,options.maxTasks!):MAX_BATCH;
+ const limit=typeof options.maxTasks==='number'&&
+  Number.isSafeInteger(options.maxTasks)&&options.maxTasks>0
+  ?Math.min(MAX_BATCH,options.maxTasks):MAX_BATCH;
  const stats={success:true,processed:0,completed:0,unknown:0,cancelled:0,
   manualReview:0,quarantined:0,busy:false,reason:'no_pending_work'};
  for(let i=0;i<limit;i++){
