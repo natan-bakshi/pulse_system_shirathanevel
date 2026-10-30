@@ -66,11 +66,12 @@ function fixture(){
   setReleaseFailure:value=>releaseFailure=value,
   setFilterMode:mode=>filterMode=mode};
 }
-test('schema is admin-only; retains metadata but no secrets, phone or raw payload',()=>{
+test('schema allows admin read-only audit; server service role exclusively writes durable receipts',()=>{
  const schema=JSON.parse(fs.readFileSync('base44/entities/WhatsAppInboundReceipt.jsonc','utf8'));
  assert.equal(schema.name,'WhatsAppInboundReceipt');
- for(const a of ['read','create','update','delete'])
-  assert.equal(schema.rls[a].user_condition.role,'admin');
+ assert.equal(schema.rls.read.user_condition.role,'admin');
+ for(const a of ['create','update','delete'])
+  assert.equal(schema.rls[a],false);
  for(const name of ['raw_body','message_text','phone','secret','webhook_payload','token','signature'])
   assert.equal(Object.hasOwn(schema.properties,name),false);
  assert.deepEqual(schema.properties.state.enum,
