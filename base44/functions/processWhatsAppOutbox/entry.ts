@@ -4,7 +4,8 @@ import { sweepPendingSupplierAssignmentIntents } from '../../shared/assignmentIn
 import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueReconciler.ts';
 import { reconcileStalledCardSetupEnqueues } from '../../shared/cardSetupQueueReconciler.ts';
 import { alertUnknownWhatsAppOutcomes } from '../../shared/whatsappUnknownReviewAlerts.ts';
-import {trustedGreenButtonQaConfig} from '../../shared/greenButtonQaLaunch.ts';
+import {trustedGreenButtonQaConfig,
+ trustedGreenLegacyPilotConfig} from '../../shared/greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
@@ -98,10 +99,14 @@ Deno.serve(async (req) => {
           setting_key:'assignment_intent_v1_enabled'
         },'-created_date',2);
         const durable=(flags.length===1&&flags[0].setting_value==='true')||
-          greenButtonQaScopedV2Enabled(key=>Deno.env.get(key))||
-          Deno.env.get('GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled';
-        qaConfig=trustedGreenButtonQaConfig(controlRows[0],
-          key=>Deno.env.get(key),durable);
+          greenButtonQaScopedV2Enabled(key=>Deno.env.get(key));
+        // ONE owner-signed assignment pilot can reuse the existing queue.
+        // All other messages stay unchanged; QA-only sends remain available
+        // whenever no real pilot is armed.
+        qaConfig=await trustedGreenLegacyPilotConfig(controlRows[0],
+          key=>Deno.env.get(key),'outbound')||
+          trustedGreenButtonQaConfig(controlRows[0],
+            key=>Deno.env.get(key),durable);
       }catch{qaConfig=null;}
     }
     const result=await drainWhatsAppOutbox(client,{wakeReason,
