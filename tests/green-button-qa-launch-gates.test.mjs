@@ -297,7 +297,7 @@ test('rollback stops NEW button sends but inbound remains available for previous
  assert.equal(db.counts.reads,1);
  assert.equal(db.counts.flagReads,1);
 });
-test('V2 global OFF and scoped gate OFF prevents any inbound database read',async()=>{
+test('QA OFF still requires ONE bounded control read to distinguish previously enabled production replies, never supplier/business data',async()=>{
  for(const flag of ['false',null,'duplicate']){
   const db=sdk(control,flag);
   let staged=0;
@@ -308,8 +308,9 @@ test('V2 global OFF and scoped gate OFF prevents any inbound database read',asyn
   });
   assert.equal(r.httpStatus,404);
   assert.equal(r.body.received,false);
-  assert.equal(db.counts.reads,0);
-  assert.equal(db.counts.flagReads,0);
+  assert.equal(db.counts.reads,1,'trusted production history is stored on the existing singleton queue control');
+  assert.equal(db.counts.flagReads,0,'no unrelated V2 feature-flag scan');
+  assert.equal(db.counts.dbWrites,0);
   assert.equal(staged,0);
  }
 });
