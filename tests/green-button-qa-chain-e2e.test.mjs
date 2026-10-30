@@ -42,8 +42,10 @@ const policy=JSON.stringify({
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
 function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,legacyCanary=false}={}){
- const qaEnv=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
+ const qaEnvOriginal=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
   'probe_authorized':key==='GREEN_BUTTONS_QA_BETA_PROBE_ENABLED'? 'enabled':env(key):env;
+ const qaEnv=key=>legacyCanary&&key==='GREEN_BUTTONS_LEGACY_CANARY_ENABLED'
+  ?'enabled':qaEnvOriginal(key);
  const now=Date.now();
  const control={
   id:'control-qa1',control_key:'global',enabled:true,paused:false,
@@ -191,6 +193,7 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
    webhookSecret:WEBHOOK,actionSigningSecret:SIGNING,
    expectedInstanceId:INSTANCE,claimOwner:'qa-mock-test-owner',
    qaChatId:CHAT,qaEventServiceId:SERVICE,qaSupplierId:SUPPLIER,
+   ...(legacyCanary?{legacyCanaryApproved:true}:{}),
    recalculateEventStatus:async(eventId)=>{
     assert.equal(eventId,EVENT);stats.callbackRecalcs++;
    }
@@ -232,6 +235,43 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
  return {client,service,supplier,event,control,outbox,receipts,stats,qaEnv,
   enroll,reconcile,worker,callback,httpCallback};
 }
+test('FAST PATH: existing assignment save and existing queue -> signed Green buttons -> supplier decision -> durable receipt -> duplicate ignored',async()=>{
+ const f=fixture({globalV2Enabled:false,legacyCanary:true});
+ // No V2 business save. This is the EXACT legacy EventService UPDATE data
+ // that keeps existing Push, reminders, notifications and calendar workflows.
+ f.service.supplier_ids=JSON.stringify([SUPPLIER]);
+ f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'pending'});
+ f.service.updated_date=new Date(Date.now()-1000).toISOString();
+ const ctx=assignmentWhatsAppContext(f.service,SUPPLIER);
+ const queued=await sendWhatsAppToChat(CHAT,'שיבוץ חדש — נדרש אישור',f.client,ctx);
+ assert.equal(queued.queued,true);
+ assert.equal(f.outbox.length,1);
+ assert.equal(f.outbox[0].idempotency_key,ctx.idempotencyKey);
+ assert.equal(f.service.assignment_intent_mode,undefined);
+ const config=trustedGreenButtonQaConfig(f.control,f.qaEnv,true);
+ assert.equal(config.legacyCanaryApproved,true);
+ assert.equal(config.accountCapabilityVerified,true);
+ const previews=[];
+ const sent=await f.worker(true,(_job,_provider,payload)=>{
+  previews.push(payload);return {messageId:'3EB0LEGACYORIGINAL123456789ABC'};
+ });
+ assert.equal(sent.accepted,1,JSON.stringify(sent));
+ assert.equal(f.stats.providerCalls,1);
+ assert.equal(previews[0].method,'sendInteractiveButtons');
+ assert.equal(f.outbox[0].status,'accepted');
+ assert.match(f.outbox[0].assignment_revision,/^r[0-9]{13}$/);
+ const applied=await f.httpCallback('assignment_approve');
+ assert.equal(applied.httpStatus,200);
+ assert.equal(applied.body.received,true);
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(f.receipts.length,1);
+ assert.equal(f.receipts[0].state,'applied');
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'confirmed');
+ const replay=await f.httpCallback('assignment_approve');
+ assert.equal(replay.httpStatus,200);
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(f.stats.providerCalls,1);
+});
 test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green preview once -> callback -> durable receipt -> duplicate no-op',async()=>{
  const f=fixture();
  assert.equal((await f.enroll()).saved,true);
