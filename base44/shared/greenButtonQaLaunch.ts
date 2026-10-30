@@ -108,6 +108,20 @@ export function trustedGreenButtonQaInboundConfig(control:any,
  return trustedGreenButtonQaConfigForMode(control,env,
   durableAssignmentIntentEnabled,false);
 }
+// Production setup reuses the already verified Green credentials, signed
+// buttons, queue policy, and durable receipt processing. Scope is broadened
+// ONLY by the owner-controlled queue flag. Inbound stays available after OFF.
+export function trustedGreenAssignmentProductionConfig(control:any,
+ env:(key:string)=>string|undefined,mode:'outbound'|'inbound'){
+ const base=trustedGreenButtonQaConfigForMode(control,env,true,mode==='outbound');
+ if(!base||base.accountCapabilityVerified!==true||
+  (mode==='outbound'&&control?.interactive_assignment_production_enabled!==true))
+  return null;
+ if(mode==='inbound'&&control?.interactive_assignment_production_enabled!==true&&
+  control?.interactive_assignment_production_ever_enabled!==true)return null;
+ return {...base,legacyProductionApproved:true as const,
+  qaChatId:undefined,qaEventServiceId:undefined,qaSupplierId:undefined};
+}
 // A signed, explicitly owner-armed SINGLE REAL assignment replaces only
 // the targeting metadata for a narrow legacy pilot. All Green QA credentials,
 // provider beta proof, owner send/inbound gates and URL policy remain unchanged.
