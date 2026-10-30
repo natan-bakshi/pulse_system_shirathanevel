@@ -34,7 +34,7 @@ const preview=(patch={},cfg=config(),ctl=control(),provider='green')=>
 test('every supported real supplier notice has TWO native URL buttons without extra queue/database operations',()=>{
  for(const type of [
   'event_reminder','supplier_pending_reminder',
-  'scheduled_template','manual_trigger','notification'
+  'scheduled_template','manual_trigger'
  ]){
   assert.equal(isSupplierNavigationSource(type),true);
   const rendered=preview({source_type:type});
@@ -71,6 +71,7 @@ test('changing office number later affects FUTURE messages with no short-link se
 test('document, groups, Wasender, non-supplier/admin messages and off-switch remain exactly legacy',()=>{
  const others=[
   {source_type:'client_payment_reminder'},
+  {source_type:'notification'}, // generic multi-audience source has no recipient proof
   {source_type:'admin_missing_assignment'},
   {source_type:'assignment_button_feedback'},
   {source_type:'assignment_new'},
