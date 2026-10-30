@@ -191,7 +191,8 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
    claimOwner:input.claimOwner,outcome,resultCode
   });
   if(done?.finalized){
-   if(outcome==='applied'||outcome==='rejected')
+   if(outcome==='applied'||outcome==='rejected'||
+      (outcome==='needs_review'&&resultCode==='unknown_after_write'))
     await feedbackAfterVerifiedTerminal(input.client,registered.id,
      input.providerEvent.actionSigningSecret);
    return {status:outcome,reason:resultCode,providerCalls:0,supplierWritesAuthorized};
