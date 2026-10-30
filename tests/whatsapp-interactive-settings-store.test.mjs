@@ -109,12 +109,14 @@ test('reject unsupported scope, early live activation, invalid phone, labels and
   assert.equal(f.getWrites(),0);
   assert.equal(f.control.interactive_assignment_green_policy_json,undefined);
 });
-test('admin UI exposes a draft editor only; WhatsApp queue status remains separate',()=>{
-  const source=fs.readFileSync('src/components/admin/notifications/WhatsAppInteractiveDraftSettings.jsx','utf8');
+test('production UI edits the ACTUAL saved office/label policy without re-enabling QA draft screen',()=>{
+  const source=fs.readFileSync('src/components/admin/notifications/WhatsAppLiveButtonSettings.jsx','utf8');
   const parent=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
-  assert.match(parent,/<WhatsAppInteractiveDraftSettings\s*\/>/);
+  assert.match(parent,/<WhatsAppLiveButtonSettings active=/);
+  assert.doesNotMatch(parent,/<WhatsAppInteractiveDraftSettings\s*\/>/);
   assert.match(source,/action:'interactiveGet'/);
   assert.match(source,/action:'interactiveSave'/);
   assert.match(source,/enabled:false/);
+  assert.match(source,/officeNumber/);
   assert.doesNotMatch(source,/action:'kick'|action:'retry'|action:'configure'/);
 });
