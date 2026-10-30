@@ -98,7 +98,8 @@ Deno.serve(async (req) => {
           setting_key:'assignment_intent_v1_enabled'
         },'-created_date',2);
         const durable=(flags.length===1&&flags[0].setting_value==='true')||
-          greenButtonQaScopedV2Enabled(key=>Deno.env.get(key));
+          greenButtonQaScopedV2Enabled(key=>Deno.env.get(key))||
+          Deno.env.get('GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled';
         qaConfig=trustedGreenButtonQaConfig(controlRows[0],
           key=>Deno.env.get(key),durable);
       }catch{qaConfig=null;}
