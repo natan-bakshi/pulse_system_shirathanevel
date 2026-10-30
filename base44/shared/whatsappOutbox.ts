@@ -131,7 +131,14 @@ export async function enqueueWhatsApp(client: any, data: {
     }
     // Read provider only when creating a NEW job. Repeated supplier-trigger
     // attempts with the same idempotency key must not query settings again.
-    const requestedProvider=await enqueueStage('provider_config',()=>resolveWhatsAppProvider(client));
+    // Only a backend-verified terminal Green button receipt may pin its
+    // feedback to the ORIGINAL provider/account. Other queue producers keep
+    // using the existing selected-provider lookup unchanged.
+    const verifiedFeedback=context.sourceType==='assignment_button_feedback'&&
+      /^[A-Za-z0-9_-]{3,160}$/.test(String(context.sourceId||''))&&
+      /^[0-9]{5,20}$/.test(String(context.feedbackSenderAccountId||''));
+    const requestedProvider=verifiedFeedback?'green':
+      await enqueueStage('provider_config',()=>resolveWhatsAppProvider(client));
     const record = await enqueueStage('outbox_create',()=>entity.create({
     chat_id: data.chatId, message_type: data.messageType,
     message_text: data.messageText || '', document_url: data.documentUrl || '',
@@ -146,6 +153,7 @@ export async function enqueueWhatsApp(client: any, data: {
     event_service_id: String(context.eventServiceId || ''),
     supplier_id: String(context.supplierId || ''),
     requested_provider: requestedProvider,
+    ...(verifiedFeedback?{sender_account_id:context.feedbackSenderAccountId}:{}),
     expires_at:String(context.expiresAt || ''),
     status: 'queued', available_at: context.availableAt && Number.isFinite(Date.parse(context.availableAt))
       ? new Date(context.availableAt).toISOString() : new Date().toISOString(), attempt_count: 0, max_attempts: 3
