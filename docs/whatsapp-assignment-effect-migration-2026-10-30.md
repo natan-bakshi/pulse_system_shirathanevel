@@ -15,6 +15,13 @@
 5. בדיקת מנהל־על לפי לחיצה, `WhatsAppQueueAdmin.assignmentV2Readiness`, צורפה ל־`WhatsAppQueueSettings.jsx` תחת כלי האבחון המתקדמים. היא בודקת רק שתי הגדרות שרת עם projections, אינה פונה ל־Green, אינה סורקת ספקים או שיבוצים, אינה משנה DB ואינה מאפשרת הפעלה. מציגה את שבע התלויות ושערי GO/NO-GO.
 6. בדיקות נוספו ל־`tests/assignment-effect-parity.test.mjs`, `tests/assignment-effect-journal.test.mjs`, `tests/assignment-v2-release-readiness.test.mjs`; ועודכנו בדיקות שמירת V2 ו־`WhatsAppQueueAdmin`. הן מדמות תור/טריגרים בלי לשלוח הודעות.
 
+## המשך ביצוע — מעבד staging שנבנה ב־30.10.2026
+- [x] `assignmentEffectProcessor.ts`: עיבוד bounded batch (עד 4 משימות), נעילת CAS לפני ביצוע, אימות תביעה, תוצאות `completed/unknown/manual_review/cancelled`, quarantine לתביעה בת 5 דקות ללא resend, read-back כשהתשובה של עדכון המסד אבדה. אין endpoint, automation או Cron שמייבא אותו.
+- [x] `assignmentEffectEligibility.ts`: בדיקת רלוונטיות מבוססת Event+EventService עכשוויים; עצירת תזכורת ישנה אחרי אישור/דחייה מתוך Pulse, סינון דור שיבוץ ישן גם לאחר פתיחה מחדש, הגנה על ביטול אירוע ותאריכים ישנים. תבניות כלליות שנדרשות ל־old_data עדיין נשלחות לבירור ולא לביצוע.
+- [x] מתאם עתידי חייב לספק גם `preflight` וגם מאמת destination receipt עצמאי. תוצאת ספק או `verified:true` מהמתאם לבדם לא מאשרים הצלחה. יומן המשימה שומר סטטוס קודם/חדש ושמות שדות בלבד; ללא תוכן או פרטים אישיים.
+- [x] עשר הוכחות מימוש קשיחות בקוד `ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS`; כולן כבויות. כפתור אבחון מנהל־על כולל רשימה מפורטת מתקפלת של ההוכחות. השלב הבא: אימות מקור היומן ברמת השרת, fanout לכל template×recipient×channel, ואז מתאמים ממשיים כולל Google Calendar.
+- [x] **897/897** בדיקות Node עברו, ESLint מסך ניהול ובניית Vite תקינים. פירוט בדיקות, מנגנון ומשימות: `docs/whatsapp-assignment-effect-processor-2026-10-30.md`.
+
 ## לא בוצע — שער בטיחות
 - לא חובר עדיין מעבד שמבצע `planned` משימות. לא נעשה claim או ניסיון שליחה. **אסור לשנות את הקבוע `ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED` ל־true** עד שהצרכנים הבאים ימומשו וייבדקו.
 - גשר התראות חייב לפצל תבניות למקבלי הודעות עם מפתחות אידמפוטנטיות נפרדים ולשמור סטטוס `accepted/unknown` בלי replay עיוור. משימת `entity_update_notifications` כללית אינה הוכחה שכל התבניות הגיעו.
@@ -35,4 +42,4 @@
 - ציון `businessSaveReady=false` באבחון הוא מצב נכון עד השלמת מעבד הפעולות, ואינו תקלה בתור ההודעות.
 - אין הודעות WhatsApp חדשות, אין ניסוי חדש, אין ספק שהוסר ואין שיבוץ ששונה במקטע זה.
 
-**המשך מדויק:** לממש per-recipient side-effect dispatcher בשכבה הפנימית עם claim CAS, idempotency ביעד, תוצאות אי־ודאות ושחזור, ולהעביר אחת־אחת את התלויות מתוך `onAssignmentChange`, `handleEntityEvents` ו־Google Calendar. אין לפתוח את הפעלת הכפתורים לפני השלמת ההעברה.
+**המשך מדויק:** `claim CAS` ומנגנון `unknown` כעת קיימים בסביבת staging ונבדקו, אך עדיין לא מבצעים התראות. יש להשלים מקור יומן מוגן ע״י השרת, per-recipient fanout עם idempotency ביעד, אסמכתאות בנות־אימות, ולאחר מכן להעביר אחת־אחת את התלויות מתוך `onAssignmentChange`, `handleEntityEvents` ו־Google Calendar. אין לפתוח כפתורים כלליים לפני שכל אלה הושלמו.
