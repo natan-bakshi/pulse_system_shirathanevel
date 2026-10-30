@@ -97,11 +97,12 @@ export function pilotTarget(eventServiceId:string,supplierId:string,chatId:strin
 // scopes and never return expired scopes as newly activated destinations.
 export function nextLegacyGreenPilotState(current:LegacyPilotPayload|null,
  target:PilotTarget|null,now=Date.now()):LegacyPilotPayload{
- const previous=[...(current?.current?[current.current]:[]),
-  ...(current?.previous||[])].filter(t=>Date.parse(t.expiresAt)>now&&
-  (!target||!(t.eventServiceId===target.eventServiceId&&
-   t.supplierId===target.supplierId&&t.chatId===target.chatId))).slice(0,3);
  const next=target||current?.current||null;
+ const candidates=[...(target&&current?.current?[current.current]:[]),
+  ...(current?.previous||[])];
+ const previous=candidates.filter(t=>Date.parse(t.expiresAt)>now&&
+  !(next&&t.eventServiceId===next.eventServiceId&&
+   t.supplierId===next.supplierId&&t.chatId===next.chatId)).slice(0,3);
  return canonicalPayload({version:1,active:!!target,current:next,previous},now);
 }
 export const outboundLegacyPilotTarget=(p:LegacyPilotPayload|null,now=Date.now())=>
