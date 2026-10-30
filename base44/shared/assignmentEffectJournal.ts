@@ -21,6 +21,9 @@ export type AssignmentEffectTask={
  key:string;revision:number;consumer:string;subjectId:string;
  state:'planned'|'claimed'|'completed'|'unknown'|'manual_review'|'cancelled';
  createdAt:string;effectKind:string;
+ // Immutable, bounded business metadata needed after later edits. No names,
+ // phones, free-text notes, event fields or content leave the origin row.
+ beforeStatus?:string;afterStatus?:string;changedFields?:readonly string[];
  // Set only after an atomic CAS claim. Never reset for blind retry.
  claimToken?:string;claimedAt?:string;finishedAt?:string;resultCode?:string;
  // Only an internal, verified durable receipt ID, never credentials or payload.
@@ -34,7 +37,11 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
  if(!Array.isArray(decoded)||decoded.length>MAX_TASKS)invalid('shape');
  const seen=new Set<string>(),out:AssignmentEffectTask[]=[];
  const fields=new Set(['key','revision','consumer','subjectId','state','createdAt','effectKind',
-  'claimToken','claimedAt','finishedAt','resultCode','receiptId']);
+  'claimToken','claimedAt','finishedAt','resultCode','receiptId',
+  'beforeStatus','afterStatus','changedFields']);
+ const statuses=new Set(['pending','confirmed','rejected','cancelled']);
+ const fieldsAllowed=new Set(['supplier_ids','supplier_statuses','supplier_notes',
+  'client_notes','min_suppliers']);
  for(const item of decoded){
   if(!item||typeof item!=='object'||Array.isArray(item)||
    Object.keys(item).some(key=>!fields.has(key))||
@@ -47,6 +54,13 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
    seen.has(item.key))invalid('task');
   const expectedTail=':r'+item.revision+':'+item.consumer+':'+item.subjectId;
   if(!item.key.endsWith(expectedTail))invalid('identity_mismatch');
+  if((item.beforeStatus!==undefined&&!statuses.has(item.beforeStatus))||
+   (item.afterStatus!==undefined&&!statuses.has(item.afterStatus))||
+   (item.changedFields!==undefined&&(
+    !Array.isArray(item.changedFields)||item.changedFields.length>5||
+    item.changedFields.some((f:any)=>!fieldsAllowed.has(f))||
+    new Set(item.changedFields).size!==item.changedFields.length)))
+    invalid('business_snapshot');
   const hasClaim=item.claimToken!==undefined||item.claimedAt!==undefined;
   const hasFinal=item.finishedAt!==undefined||item.resultCode!==undefined||
    item.receiptId!==undefined;
@@ -93,24 +107,29 @@ export function planDurableAssignmentEffectJournal(
  const next=revision+1;
  const draft:Omit<AssignmentEffectTask,'key'|'revision'|'state'|'createdAt'>[]=[];
  // Every side effect has a stable business generation and target.
- const put=(consumer:string,subjectId:string,effectKind:string)=>{
+ const put=(consumer:string,subjectId:string,effectKind:string,
+  details:Pick<AssignmentEffectTask,'beforeStatus'|'afterStatus'|'changedFields'>={})=>{
   if(!CONSUMERS.has(consumer)||!ID.test(subjectId))invalid('unexpected_consumer_or_subject');
   if(!draft.some(x=>x.consumer===consumer&&x.subjectId===subjectId))
-   draft.push({consumer,subjectId,effectKind});
+   draft.push({consumer,subjectId,effectKind,...details});
  };
  for(const e of parity.effects){
   if(!e.supplierId)continue;
   switch(e.kind){
    case 'supplier_assigned':
    case 'supplier_reopened':
-    put('supplier_assignment_push',e.supplierId,e.kind);
+    put('supplier_assignment_push',e.supplierId,e.kind,
+     {beforeStatus:e.beforeStatus,afterStatus:e.afterStatus});
     if(e.afterStatus==='pending')
-     put('supplier_pending_reminder',e.supplierId,e.kind);
+     put('supplier_pending_reminder',e.supplierId,e.kind,
+      {beforeStatus:e.beforeStatus,afterStatus:e.afterStatus});
     break;
    case 'supplier_removed':
-    put('assignment_removed_notifications',e.supplierId,e.kind);break;
+    put('assignment_removed_notifications',e.supplierId,e.kind,
+     {beforeStatus:e.beforeStatus});break;
    case 'supplier_status_changed':
-    put('assignment_status_notifications',e.supplierId,e.kind);break;
+    put('assignment_status_notifications',e.supplierId,e.kind,
+     {beforeStatus:e.beforeStatus,afterStatus:e.afterStatus});break;
   }
  }
  // One service event drives generic notifications and calendar/readiness.
@@ -119,12 +138,16 @@ export function planDurableAssignmentEffectJournal(
  for(const consumer of parity.requiredConsumers){
   if(['entity_update_notifications','google_calendar_sync',
    'event_status_readiness'].includes(consumer))
-   put(consumer,service.id,'service_change');
+   put(consumer,service.id,'service_change',
+    {changedFields:[...parity.changedFields]});
  }
  const tasks=draft.sort((a,b)=>a.consumer.localeCompare(b.consumer)||
-  a.subjectId.localeCompare(b.subjectId)).map(({consumer,subjectId,effectKind})=>({
+  a.subjectId.localeCompare(b.subjectId)).map(({consumer,subjectId,effectKind,
+  beforeStatus,afterStatus,changedFields})=>({
    key:'assignment-effect:'+service.id+':r'+next+':'+consumer+':'+subjectId,
    revision:next,consumer,subjectId,effectKind,state:'planned' as const,
+   ...(beforeStatus?{beforeStatus}:{}),...(afterStatus?{afterStatus}:{}),
+   ...(changedFields?{changedFields}:{}),
    createdAt:new Date(stamp).toISOString()
   }));
  if(!tasks.length||current.length+tasks.length>MAX_TASKS)invalid('capacity');
