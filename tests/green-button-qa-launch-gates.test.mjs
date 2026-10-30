@@ -105,7 +105,7 @@ test('authenticated ordinary office chat and known status are ACKed with zero DB
   assert.deepEqual(mock.counts,{reads:0,flagReads:0,dbWrites:0});
  }
 });
-test('authenticated out-of-scope beta click is acknowledged without owner DB or supplier mutation',async()=>{
+test('authenticated out-of-scope beta click uses only a bounded pilot-scope read and never mutates suppliers',async()=>{
  const mock=sdk(control);let built=0;
  const response=await handleGreenButtonQaWebhook(notification({
   chat:'972509999999@c.us',
@@ -116,8 +116,8 @@ test('authenticated out-of-scope beta click is acknowledged without owner DB or 
   recalculateEventStatus:async()=>{throw Error('Never mutate foreign sender');},
   stage:async()=>{throw Error('Never process foreign sender');}});
  assert.equal(response.httpStatus,200);
- assert.equal(built,0);
- assert.deepEqual(mock.counts,{reads:0,flagReads:0,dbWrites:0});
+ assert.equal(built,1,'one scoped control read is needed to exclude a signed real pilot');
+ assert.deepEqual(mock.counts,{reads:1,flagReads:0,dbWrites:0});
 });
 test('forged account, wrong bearer and bad JSON never ACK or touch DB',async()=>{
  for(const [request,expected] of [
