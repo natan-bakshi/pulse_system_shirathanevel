@@ -139,15 +139,33 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
  }
  let persistedJob:any;
  if(job.status==='queued'){
-  const result=await prepareFutureGreenAssignmentOutbox(client,{
-   outboxJobId:job.id,senderAccountId:config.senderAccountId,
-   signingSecret:config.signingSecret,policy:config.policy,
-   providerCapabilityVerified:true,rolloutAuthorized:true,
-   issuedAt:config.now,subtle:config.subtle,
-   ...(legacyCanary?{legacyCanaryScope:{
-    eventServiceId:config.qaEventServiceId!,supplierId:config.qaSupplierId!,
-    chatId:config.qaChatId!}}:{})
-  });
+  let result:any;
+  try{
+   result=await prepareFutureGreenAssignmentOutbox(client,{
+    outboxJobId:job.id,senderAccountId:config.senderAccountId,
+    signingSecret:config.signingSecret,policy:config.policy,
+    providerCapabilityVerified:true,rolloutAuthorized:true,
+    issuedAt:config.now,subtle:config.subtle,
+    ...(legacyCanary?{legacyCanaryScope:{
+     eventServiceId:config.qaEventServiceId!,supplierId:config.qaSupplierId!,
+     chatId:config.qaChatId!}}:{})
+   });
+  }catch(error){
+   // A normal assignment must NEVER be lost only because an optional pilot
+   // missed the narrow timestamp/status eligibility window. Before a single
+   // signed snapshot/transport attempt it is safe to keep its original text
+   // route; all actual DB/crypto/ambiguous-write failures still quarantine.
+   const reason=String((error as any)?.code||'');
+   if(legacyCanary&& !job.interactive_button_bindings_json&&
+    !job.assignment_revision&&!job.sender_account_id&&
+    ['legacy_canary_outbox_business_generation_mismatch',
+     'legacy_canary_supplier_not_pending',
+     'legacy_canary_supplier_not_assigned',
+     'legacy_canary_unverifiable_legacy_write_generation',
+     'legacy_canary_durable_v2_has_separate_lifecycle'].includes(reason))
+     return legacy(job,'optional_legacy_buttons_not_eligible_keep_original_text');
+   throw error;
+  }
   // One CAS + verified reread inside helper, no additional Outbox GET.
   persistedJob=result.persistedJob;
   if(!persistedJob||result.snapshot!==persistedJob.interactive_button_bindings_json)
