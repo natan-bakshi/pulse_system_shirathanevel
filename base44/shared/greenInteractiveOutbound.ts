@@ -113,22 +113,20 @@ export async function previewGreenInteractiveAssignment(input:{
   buttons.push({buttonId:b.buttonId,buttonText:b.label});
  }
  if(input.capability==='mixed_url'&&url){
-  // Green allows at most THREE buttons. Production prefers a direct app URL
-  // button while keeping the existing office-chat link in the message body.
-  // The original QA pilot still has its proven office URL button.
-  const appLink=input.supplierPortalUrl;
-  const appButton=appLink===SUPPLIER_PORTAL_URL;
-  const urlLabel=appButton?input.supplierPortalLabel:input.officeLabel;
+  // Three native buttons are already occupied by two signed decisions and
+  // one URL. For production, the owner's preference is the OFFICE URL button
+  // with the full short-event draft hidden behind its label. The supplier
+  // portal stays a direct text link already added by the existing producer.
+  // Older QA uses the identical URL-button path, with its own policy.
+  const urlLabel=input.officeLabel;
   if(typeof urlLabel!=='string'||!urlLabel.trim()||
    urlLabel.trim()!==urlLabel||
    urlLabel.length>25||/[\r\n\u0000-\u001f\u007f]/.test(urlLabel))
    throw fail('invalid_office_button_label');
   return {method:'sendInteractiveButtons',body:{
-   chatId:job.chat_id,body:appButton?
-    appendCompactOfficeToText(text,input.officeNumber!):text,buttons:[
+   chatId:job.chat_id,body:text,buttons:[
     ...buttons.map(b=>({...b,type:'reply'})),
-    {type:'url',buttonId:appButton?'open_supplier_portal':'contact_office',
-     buttonText:urlLabel,url:appButton?SUPPLIER_PORTAL_URL:url}
+    {type:'url',buttonId:'contact_office',buttonText:urlLabel,url}
    ]},kind:'interactive_mixed',fallbackReason:'',providerRequestsMade:0};
  }
  return {method:'sendInteractiveButtonsReply',body:{
