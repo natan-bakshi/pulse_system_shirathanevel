@@ -133,6 +133,11 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      if(name.endsWith('greenUnknownCallbackQuarantine.ts'))return {inspectUnknownGreenQuarantineReadOnly};
      if(name.endsWith('greenUnknownRecoveryCleanup.ts'))return {scrubExpiredUnknownGreenRecoveryOnDemand};
      if(name.endsWith('greenUnknownRecoveryReview.ts'))return {inspectUnknownGreenRecoveryStructureReadOnly};
+     if(name.endsWith('greenInstanceStateAudit.ts'))return {
+       inspectGreenInstanceStateReadOnly:async()=>({state:'authorized',authorized:true,
+         providerReadCalls:1,noMessagesSent:true,noSettingsWritten:true,
+         noBusinessDatabaseReads:true})
+     };
      if(name.endsWith('greenWebhookSettingsAudit.ts'))return {
        inspectGreenWebhookSettingsReadOnly:async options=>{
          greenAudits.push({...options});
@@ -241,7 +246,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','greenButtonQaReadiness','greenButtonQaAssignmentPreflight','greenButtonQaEnroll','officeReferenceLookup','greenWebhookSettingsAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview','assignmentV2Readiness']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','greenButtonQaReadiness','greenButtonQaAssignmentPreflight','greenButtonQaEnroll','officeReferenceLookup','greenWebhookSettingsAudit','greenInstanceStateAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview','assignmentV2Readiness']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
