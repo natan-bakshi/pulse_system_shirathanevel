@@ -5,7 +5,7 @@ import { reconcileStalledAgreementEnqueues } from '../../shared/agreementQueueRe
 import { reconcileStalledCardSetupEnqueues } from '../../shared/cardSetupQueueReconciler.ts';
 import { alertUnknownWhatsAppOutcomes } from '../../shared/whatsappUnknownReviewAlerts.ts';
 import {trustedGreenButtonQaConfig,
- trustedGreenLegacyPilotConfig} from '../../shared/greenButtonQaLaunch.ts';
+ trustedGreenLegacyPilotConfig,trustedGreenAssignmentProductionConfig} from '../../shared/greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 
 // Invoked by Outbox CREATE workflow, queue wake-up workflow and one 5-minute
@@ -103,7 +103,9 @@ Deno.serve(async (req) => {
         // ONE owner-signed assignment pilot can reuse the existing queue.
         // All other messages stay unchanged; QA-only sends remain available
         // whenever no real pilot is armed.
-        qaConfig=await trustedGreenLegacyPilotConfig(controlRows[0],
+        qaConfig=trustedGreenAssignmentProductionConfig(controlRows[0],
+          key=>Deno.env.get(key),'outbound')||
+          await trustedGreenLegacyPilotConfig(controlRows[0],
           key=>Deno.env.get(key),'outbound')||
           trustedGreenButtonQaConfig(controlRows[0],
             key=>Deno.env.get(key),durable);
