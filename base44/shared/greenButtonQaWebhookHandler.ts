@@ -7,8 +7,8 @@
 import {authenticateWhatsAppProviderCallback}
  from './whatsappProviderWebhookAuth.ts';
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
-import {trustedGreenButtonQaInboundConfig,greenButtonQaPassiveInboundReady}
- from './greenButtonQaLaunch.ts';
+import {trustedGreenButtonQaInboundConfig,greenButtonQaPassiveInboundReady,
+ trustedGreenLegacyPilotConfig} from './greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from './greenButtonQaScopedV2.ts';
 import {stageFutureGreenInteractiveHttpCallback}
  from './greenInteractiveHttpStaging.ts';
@@ -45,6 +45,9 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
  // Authenticated, account-matched, KNOWN non-button messages must not trigger
  // a database read or a retry storm. Stream decoding remains size-bounded.
  // Keep the original Request intact for the signed QA coordinator below.
+ // A verified non-QA private sender can be admitted ONLY if the owner-signed
+ // single-assignment pilot specifically names that private chat.
+ let extraPrivateSender='';
  if(typeof request?.clone==='function'){
   let boundary:any;
   try{boundary=await decodeFutureGreenInteractiveHttpRequest(request.clone(),{
@@ -68,7 +71,7 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
     /^[1-9][0-9]{7,14}@c\.us$/.test(qaChat)&&
     typeof sender==='string'&&/^[1-9][0-9]{7,14}@c\.us$/.test(sender)&&
     raw?.senderData?.sender===sender&&sender!==qaChat)
-   return result(200,true);
+   extraPrivateSender=sender;
   if(!instanceMatched)return result(422);
  }
  // The first live beta send has not been proven yet; never consume a
@@ -89,9 +92,14 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
    setting_key:'assignment_intent_v1_enabled'
   },'-created_date',2);
   const durable=(flags.length===1&&flags[0].setting_value==='true')||
-   greenButtonQaScopedV2Enabled(opts.env)||
-   opts.env('GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled';
-  const config=trustedGreenButtonQaInboundConfig(control,opts.env,durable);
+   greenButtonQaScopedV2Enabled(opts.env);
+  const legacy=await trustedGreenLegacyPilotConfig(control,opts.env,
+   'inbound',extraPrivateSender||opts.env('GREEN_BUTTONS_QA_ALLOWED_CHAT')||'',
+   opts.now??Date.now());
+  // Retain the prior behavior of ignoring other private senders, but never
+  // classify a signed pilot reply as an unrelated office message.
+  if(extraPrivateSender&&!legacy)return result(200,true);
+  const config=legacy||trustedGreenButtonQaInboundConfig(control,opts.env,durable);
   if(!config)return result(404);
   const processed=await (opts.stage??stageFutureGreenInteractiveHttpCallback)(
    request,{
@@ -100,7 +108,7 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
     expectedInstanceId:config.senderAccountId,
     qaChatId:config.qaChatId,
     qaEventServiceId:config.qaEventServiceId,
-    ...(opts.env('GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID')?{
+    ...(!legacy&&opts.env('GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID')?{
       qaPreviousEventServiceId:opts.env('GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID')
     }:{}),
     qaSupplierId:config.qaSupplierId,
