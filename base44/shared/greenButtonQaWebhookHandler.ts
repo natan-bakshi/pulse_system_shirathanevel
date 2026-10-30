@@ -8,6 +8,7 @@ import {authenticateWhatsAppProviderCallback}
  from './whatsappProviderWebhookAuth.ts';
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
 import {trustedGreenButtonQaInboundConfig,greenButtonQaPassiveInboundReady,
+ greenProductionPassiveInboundReady,
  trustedGreenLegacyPilotConfig,trustedGreenAssignmentProductionConfig} from './greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from './greenButtonQaScopedV2.ts';
 import {stageFutureGreenInteractiveHttpCallback}
@@ -26,7 +27,8 @@ const result=(httpStatus:number,received=false):Result=>({
 // Passive verified non-button ACKs can run before Beta support is proven;
 // matching signed button callbacks still require verified provider capability
 // plus the original durable Outbox/Revision/receipt authorization.
-const ready=greenButtonQaPassiveInboundReady;
+const ready=(env:(key:string)=>string|undefined)=>
+ greenButtonQaPassiveInboundReady(env)||greenProductionPassiveInboundReady(env);
 export async function handleGreenButtonQaWebhook(request:any,opts:{
  env:(key:string)=>string|undefined;
  makeClient:(request:any)=>any;
