@@ -23,13 +23,6 @@
 - Review Base44 RLS on WhatsAppInboundReceipt/Outbox, authenticated callback routing, CSRF/role gate, rate budgets, same Green account and callback account, secrets and tenant separation. Avoid changing RLS semantics before auditing production admin visibility.
 - Broaden only after separate handler tests for supplier reminder, clients, managers; keep status decisions inside Pulse available.
 
-## Previously planned P1 Next: automatic response after verified button presses
-- Reuse signed Green callback, existing terminal WhatsAppInboundReceipt, centralized WhatsAppOutbox and provider pacing. Send a unique feedback intent only after durable terminal receipt: approved, rejected, already handled in Pulse, expired/invalid, and changes allowed only from Pulse.
-- An ambiguous backend/provider result NEVER creates optimistic confirmation or blind resend. Repeated button clicks must not create repeated feedback. Ignore non-button manual WhatsApp messages.
-
-## P1 Security and operational readiness
-- Verify webhook authentication and instance, supplier-to-phone and tenant binding, Outbox source, HMAC token, receipt states, rate budget, RLS, callback ACK paths, and owner on/off switch. Preserve already sent responses while new buttons off.
-
 ## P2 Additional message kinds
 - Reuse whatsappInteractiveActionRegistry.ts, action binding V2 and draft settings. Each new message kind needs exact recipient, action handler, business origin, durable receipt and independent eligibility. Start with one type at a time, do not activate arbitrary actions from JSON.
 
