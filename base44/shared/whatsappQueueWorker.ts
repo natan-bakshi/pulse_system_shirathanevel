@@ -483,7 +483,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // NOT supply opts.interactiveConfig; the control schema defaults OFF.
       // Ordinary WhatsApp jobs avoid every extra lookup and retain their
       // exact transport, pacing, UNKNOWN and idempotency behavior.
-      let candidate:any={kind:'legacy',job:options.job,preview:null};
+      let candidate:any={kind:'legacy',reason:'trusted_interactive_config_unavailable',job:options.job,preview:null};
       if(opts.interactiveConfig && control.interactive_outbound_live_enabled===true){
         try{
           candidate=await queueStage('interactive_pre_dispatch',()=>
