@@ -1,4 +1,5 @@
 import { getClientContacts } from '../../shared/eventFields.js';
+import { googleCalendarPatchBody } from '../../shared/googleCalendarPatchBody.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 
@@ -134,7 +135,7 @@ async function upsertCalendarEvent(accessToken, calendarId, existingEventId, eve
   if (existingEventId) {
     const res = await fetch(`${baseUrl}/${existingEventId}`, {
       method: 'PATCH', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(eventBody)
+      body: JSON.stringify(googleCalendarPatchBody(eventBody))
     });
     if (res.ok) return { success: true, eventId: (await res.json()).id };
     if (res.status !== 404) {
