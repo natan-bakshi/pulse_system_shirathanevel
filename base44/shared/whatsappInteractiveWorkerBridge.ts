@@ -27,6 +27,7 @@ export type TrustedGreenInteractiveConfig={
  capability:GreenCapability;senderAccountId:string;
  signingSecret:string;policy:any;officeNumber?:string;officeLabel?:string;
  officeContextMode?:OfficeContextMode;
+ supplierPortalUrl?:string;supplierPortalLabel?:string;
  // Strict one-number QA fence. Only trusted server may fill this.
  qaChatId?:string;qaEventServiceId?:string;qaSupplierId?:string;
  subtle?:SubtleCrypto;now?:number
@@ -203,6 +204,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   signingSecret:config.signingSecret,capability:config.capability,
   rolloutEnabled:true,officeNumber:config.officeNumber,
   officeLabel:config.officeLabel,officeContextMode:config.officeContextMode,
+  supplierPortalUrl:config.supplierPortalUrl,supplierPortalLabel:config.supplierPortalLabel,
   now:config.now,subtle:config.subtle
  });
  if(!['interactive_reply','interactive_mixed'].includes(preview.kind))
