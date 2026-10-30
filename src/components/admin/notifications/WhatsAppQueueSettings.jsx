@@ -285,8 +285,17 @@ export default function WhatsAppQueueSettings(){
         action,...(action==='enable'?{confirmation:'ENABLE_GREEN_ASSIGNMENT_BUTTONS_FOR_ALL_NEW_ASSIGNMENTS'}:{})
       });
       if(!res.data?.success)throw Error(res.data?.error||'הפעלת הכפתורים לא הצליחה');
-      setProductionButtons(res.data);
-      setNotice(action==='enable'?'כפתורי WhatsApp הופעלו להודעות שיבוץ חדשות ב-Green.':
+      let verified=res.data;
+      // The owner switch only changes a flag. Read the worker's REAL gates;
+      // never report button delivery as ready on toggle success alone.
+      if(action!=='status'){
+        const diagnostic=await base44.functions.invoke('greenAssignmentProductionAdmin',{action:'status'}).catch(()=>null);
+        if(diagnostic?.data?.success)verified=diagnostic.data;
+      }
+      setProductionButtons(verified);
+      setNotice(action==='enable'?(verified.sendReady===true
+        ?'הוגדרה שליחת כפתורים לשיבוצים חדשים ב-Green. יש לבדוק שההודעה הבאה התקבלה עם כפתורים.'
+        :'המתג סומן כפעיל, אך תנאי השליחה אינם מוכנים. בדוק את החסמים להלן; לא אושרה שליחת כפתורים.'):
         action==='disable'?'כפתורים חדשים נעצרו. תגובות להודעות שכבר נשלחו עדיין נקלטות.':
         'מצב הכפתורים עודכן.');
     }catch(e){setError(e?.response?.data?.error||e?.message||'לא ניתן לעדכן כפתורים');}
@@ -417,13 +426,25 @@ export default function WhatsAppQueueSettings(){
       </div>
       <div className="rounded-lg border p-3 space-y-2">
         <p className="font-semibold">כפתורי שיבוץ WhatsApp — פרודקשן</p>
-        <p className="text-sm text-gray-700">הודעות שיבוץ חדשות דרך Green יכילו אישור, דחייה ופנייה למשרד. אישורים קיימים בתוך Pulse נשמרים ללא שינוי. Wasender והודעות אחרות נשארים במסלול הרגיל.</p>
+        <p className="text-sm text-gray-700">הודעות שיבוץ חדשות לספקים בצ'אט אישי ב־Green יכללו כפתורי אישור, דחייה וכניסה למערכת. פנייה למשרד תישאר כקישור לחיץ בגוף ההודעה (Green מאפשר לכל היותר שלושה כפתורים). כשהכפתורים פעילים, הודעת שיבוץ של ספק המעדיף קבוצה תישלח למספרו האישי בלבד; הודעות אחרות והעדפת הקבוצה עצמה לא ישתנו.</p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageProductionButtons('status')}>בדוק מצב</Button>
           <Button size="sm" disabled={busy||productionButtons?.enabled===true} onClick={()=>manageProductionButtons('enable')}>הפעל כפתורים בפרודקשן</Button>
           <Button size="sm" variant="outline" disabled={busy||productionButtons?.enabled===false} onClick={()=>manageProductionButtons('disable')}>עצור כפתורים חדשים</Button>
         </div>
-        {productionButtons&&<p role="status" className="text-sm font-medium">{productionButtons.enabled?'הכפתורים פעילים להודעות חדשות':'כפתורים חדשים אינם פעילים'} — תגובות להודעות שנשלחו בעבר נשמרות.</p>}
+        {productionButtons&&<div role="status" className="text-sm space-y-1">
+          <p className={productionButtons.enabled&&productionButtons.sendReady!==true?'font-medium text-amber-800':'font-medium'}>
+            {!productionButtons.enabled?'כפתורים חדשים כבויים; תגובות להודעות ישנות נשמרות.':
+              productionButtons.sendReady===true?'תנאי שליחת הכפתורים בשרת מאומתים; יש לאמת הודעה חדשה אצל הספק.':
+              'המתג פעיל אך שליחת הכפתורים אינה מוכנה. אין להסתמך על המתג כאישור.'}
+          </p>
+          {productionButtons.checks&&productionButtons.enabled&&!productionButtons.sendReady&&
+            <p>חסמים: {Object.entries(productionButtons.checks).filter(([,ok])=>!ok).map(([key])=>({
+              queue:'התור כבוי/מושהה',outboundOwnerSwitch:'כפתורים לא הופעלו',greenProvider:'Green אינו הספק הפעיל',
+              verifiedGreenInteractive:'חיבור הכפתורים וה־Webhook לא אומת במלואו'
+            })[key]||key).join(' · ')}</p>}
+          {productionButtons.recent?.sampled>0&&<p className="text-xs text-gray-600">מדגם הודעות השיבוץ שהתקבלו אצל Green: {productionButtons.recent.interactive} עם כפתורים, {productionButtons.recent.plain} בלי כפתורים, מתוכן {productionButtons.recent.group} לקבוצות. כולל הודעות שנשלחו לפני התיקון; אישור Green אינו הוכחת מסירה לנמען.</p>}
+        </div>}
       </div>
       <details className="rounded border p-3 text-sm" dir="rtl">
         <summary className="font-medium cursor-pointer">כלי אבחון וניהול מתקדמים (לפתיחה לפי הצורך)</summary>
