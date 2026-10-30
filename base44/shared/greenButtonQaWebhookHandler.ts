@@ -8,7 +8,7 @@ import {authenticateWhatsAppProviderCallback}
  from './whatsappProviderWebhookAuth.ts';
 import {readWhatsAppQueueControl} from './whatsappOutbox.ts';
 import {trustedGreenButtonQaInboundConfig,greenButtonQaPassiveInboundReady,
- trustedGreenLegacyPilotConfig} from './greenButtonQaLaunch.ts';
+ trustedGreenLegacyPilotConfig,trustedGreenAssignmentProductionConfig} from './greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from './greenButtonQaScopedV2.ts';
 import {stageFutureGreenInteractiveHttpCallback}
  from './greenInteractiveHttpStaging.ts';
@@ -88,7 +88,8 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
   const control=await readWhatsAppQueueControl(client);
   // Receipt processing does NOT depend on new-send switch or queue control.
   // This lets suppliers click old buttons safely during a send rollback.
-  const legacy=await trustedGreenLegacyPilotConfig(control,opts.env,
+  const production=trustedGreenAssignmentProductionConfig(control,opts.env,'inbound');
+  const legacy=production||await trustedGreenLegacyPilotConfig(control,opts.env,
    'inbound',extraPrivateSender||opts.env('GREEN_BUTTONS_QA_ALLOWED_CHAT')||'',
    opts.now??Date.now());
   // An unrelated sender costs only one bounded QueueControl read, not a
