@@ -414,6 +414,25 @@ test('owner-only Green GetSettings audit is opt-in one provider GET and zero DB/
  assert.equal(again.status,200);
  assert.equal(ctx.greenAudits.length,1,'owner status refresh MUST NOT call Green');
 });
+test('owner Green account change readiness uses only the explicit status action and never mutates queue',async()=>{
+ const ctx=context();
+ const original=JSON.stringify(ctx.record);
+ await ctx.invoke('status');
+ assert.equal(ctx.greenAudits.length,0);
+ const result=await ctx.invoke('greenInstanceStateAudit');
+ assert.equal(result.status,200);
+ assert.equal(result.body.success,true);
+ assert.equal(result.body.connection.state,'authorized');
+ assert.equal(result.body.connection.authorized,true);
+ assert.equal(result.body.connection.providerReadCalls,1);
+ assert.equal(result.body.connection.noMessagesSent,true);
+ assert.equal(result.body.connection.noSettingsWritten,true);
+ assert.equal(ctx.calls.length,0);
+ assert.equal(JSON.stringify(ctx.record),original);
+ const visible=JSON.stringify(result.body);
+ for(const sensitive of ['SYNTHETIC-GREEN-ONLY-API-TOKEN','9903183013'])
+  assert.equal(visible.includes(sensitive),false);
+});
 test('owner office-reference lookup is exact, bounded, masked and performs no provider send',async()=>{
  const row={...makeJob('outbox-ABC123','accepted'),
   event_service_id:'service-ABC123',supplier_id:'supplier-ABC123',
