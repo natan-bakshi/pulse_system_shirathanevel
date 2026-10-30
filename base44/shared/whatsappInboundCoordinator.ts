@@ -149,7 +149,8 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
   // as NOT applied. All provider/network/DB failures are ambiguous even when
   // a caller believes the operation failed before commit.
   const code=String((error as any)?.code||'');
-  const known=new Set(['stale_assignment_revision','assignment_intent_inactive',
+  const known=new Set(['stale_assignment_revision','stale_legacy_assignment',
+   'legacy_assignment_not_pending','assignment_intent_inactive',
    'assignment_intent_not_ready','stale_or_invalid_supplier_transition',
    'assignment_changed_concurrently','supplier_not_assigned',
    'external_service','invalid_assignment','invalid_supplier_status_record',
