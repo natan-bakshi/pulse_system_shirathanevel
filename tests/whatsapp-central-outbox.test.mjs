@@ -47,6 +47,41 @@ function fixture(overrides={}) {
  };
  return {jobs,control,client,notifications,agreements,cards,copies};
 }
+test('the ORIGINAL queue sends supplier reminders with two URL buttons in ONE transport call, without creating an extra job',async()=>{
+ const f=fixture({selectedProvider:'green',green_interval_ms:0,
+  interactive_outbound_live_enabled:true,
+  interactive_assignment_production_enabled:true});
+ const details={sourceType:'event_reminder',sourceId:'event-abc123',
+  supplierId:'supplier-abc123'};
+ const queued=await sendWhatsAppText('0501234567','תזכורת: אירוע מחר, הכותל המערבי',
+  f.client,details);
+ assert.equal(queued.queued,true);
+ assert.equal(f.jobs.length,1);
+ const config={enabled:true,accountCapabilityVerified:true,
+  legacyProductionApproved:true,capability:'mixed_url',
+  officeNumber:'972541234567',officeLabel:'פנייה למשרד',
+  supplierPortalLabel:'כניסה למערכת'};
+ const transports=[];
+ const result=await drainWhatsAppOutbox(f.client,{
+  interactiveConfig:config,maxRuntimeMs:9000,
+  transport:async(job,provider,_client,interactive)=>{
+   transports.push({job,provider,interactive});
+   return {messageId:'3EB0SUPPLIERREMINDER123456'};
+  }
+ });
+ assert.equal(result.accepted,1,JSON.stringify(result));
+ assert.equal(f.jobs.length,1,'never create a second navigation Outbox message');
+ assert.equal(transports.length,1,'exactly one provider call for the original notice');
+ assert.equal(transports[0].provider,'green');
+ assert.equal(transports[0].job.status,'sending');
+ assert.equal(transports[0].interactive?.kind,'interactive_navigation');
+ assert.deepEqual(transports[0].interactive.body.buttons.map(b=>b.buttonId),
+  ['open_supplier_portal','contact_office']);
+ assert.equal(f.jobs[0].status,'accepted');
+ assert.equal(f.jobs[0].interactive_button_bindings_json,undefined,
+  'URL-only reminders do not fabricate business action tokens');
+});
+
 test('first dispatch is immediate; delay applies only BETWEEN sends',()=>{
   const now=Date.parse('2026-10-12T12:00:00Z');
   assert.equal(delayUntilNextSend('',now,7),0);
