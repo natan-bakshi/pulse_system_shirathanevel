@@ -88,17 +88,18 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
   const control=await readWhatsAppQueueControl(client);
   // Receipt processing does NOT depend on new-send switch or queue control.
   // This lets suppliers click old buttons safely during a send rollback.
-  const flags=await client.asServiceRole.entities.AppSettings.filter({
+  const legacy=await trustedGreenLegacyPilotConfig(control,opts.env,
+   'inbound',extraPrivateSender||opts.env('GREEN_BUTTONS_QA_ALLOWED_CHAT')||'',
+   opts.now??Date.now());
+  // An unrelated sender costs only one bounded QueueControl read, not a
+  // second settings read or Outbox lookup; genuine signed pilot callbacks
+  // must never be silently ACKed as irrelevant office messages.
+  if(extraPrivateSender&&!legacy)return result(200,true);
+  const flags=legacy?[]:await client.asServiceRole.entities.AppSettings.filter({
    setting_key:'assignment_intent_v1_enabled'
   },'-created_date',2);
   const durable=(flags.length===1&&flags[0].setting_value==='true')||
    greenButtonQaScopedV2Enabled(opts.env);
-  const legacy=await trustedGreenLegacyPilotConfig(control,opts.env,
-   'inbound',extraPrivateSender||opts.env('GREEN_BUTTONS_QA_ALLOWED_CHAT')||'',
-   opts.now??Date.now());
-  // Retain the prior behavior of ignoring other private senders, but never
-  // classify a signed pilot reply as an unrelated office message.
-  if(extraPrivateSender&&!legacy)return result(200,true);
   const config=legacy||trustedGreenButtonQaInboundConfig(control,opts.env,durable);
   if(!config)return result(404);
   const processed=await (opts.stage??stageFutureGreenInteractiveHttpCallback)(
