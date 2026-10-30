@@ -100,6 +100,10 @@ test('positive approve/reject and business conflict produce distinct safe Hebrew
  const conflict=planVerifiedButtonFeedback({...receipt,state:'rejected',
   result_code:'business_conflict'});
  assert.match(conflict.message,/כבר השתנו/);
+ const uncertain=planVerifiedButtonFeedback({...receipt,state:'needs_review',
+  result_code:'unknown_after_write'});
+ assert.match(uncertain.message,/לא ניתן לאמת/);
+ assert.doesNotMatch(uncertain.message,/אושר בהצלחה|נדחה בהצלחה/);
  assert.equal(accept.idempotencyKey,reject.idempotencyKey);
 });
 test('unverified, ambiguous and historical receipts never create feedback',()=>{
@@ -110,7 +114,7 @@ test('unverified, ambiguous and historical receipts never create feedback',()=>{
   action:'assignment_approve',state:'applied',result_code:'applied'};
  for(const patch of [
   {feedback_required:false},{state:'processing'},{state:'needs_review',
-   result_code:'unknown_after_write'},{completed_at:''},
+   result_code:'not_terminal'},{completed_at:''},
   {state:'rejected',result_code:'unknown_after_write'},
   {company_id:'other_tenant'},{provider:'wasender'}
  ])assert.equal(planVerifiedButtonFeedback({...f,...patch}),null);
