@@ -5,12 +5,18 @@ import vm from 'node:vm';
 import esbuild from 'esbuild';
 const code=esbuild.transformSync(fs.readFileSync('base44/functions/processWhatsAppOutbox/entry.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
 function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryFailAt='',
-  betaProbe=false,probeEnvOverrides={}}={}){
+  betaProbe=false,production=false,qaFlagFail=false,probeEnvOverrides={}}={}){
  let handler;const control={id:'global',control_key:'global',enabled,paused,
-  interactive_outbound_live_enabled:betaProbe};
+  interactive_outbound_live_enabled:betaProbe||production,
+  interactive_assignment_production_enabled:production};
  const updates=[];let dispatched=0;let sweeps=0;const wakeReasons=[];
  let qaConfigUsed=0,qaSettingsReads=0;
- const qaEnv=betaProbe?{
+ const qaEnv=production?{
+  GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
+  GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',
+  GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'verified',
+  GREEN_BUTTONS_QA_OWNER_APPROVED:'approved'
+ }:betaProbe?{
   GREEN_BUTTONS_QA_SEND_ENABLED:'enabled',
   GREEN_BUTTONS_QA_INBOUND_ENABLED:'enabled',
   GREEN_BUTTONS_QA_ACCOUNT_VERIFIED:'probe_authorized',
@@ -21,7 +27,9 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
  const client={
    auth:{me:async()=>role?{role}:null},
    asServiceRole:{entities:{
-     AppSettings:{filter:async()=>{qaSettingsReads++;return[]}},
+     AppSettings:{filter:async()=>{
+      qaSettingsReads++;if(qaFlagFail)throw Error('QA-only setting unavailable');return [];
+     }},
      WhatsAppQueueControl:{
        filter:async()=>[control],
        update:async(_id,patch)=>{
@@ -59,7 +67,9 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      if(name.endsWith('/greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>betaProbe};
      if(name.endsWith('/greenButtonQaLaunch.ts'))return {
        trustedGreenLegacyPilotConfig:async()=>null,
-       trustedGreenAssignmentProductionConfig:()=>null,
+       trustedGreenAssignmentProductionConfig:()=>production?{
+        enabled:true,accountCapabilityVerified:true,legacyProductionApproved:true
+       }:null,
        trustedGreenButtonQaConfig:()=>betaProbe?{
         enabled:true,accountCapabilityVerified:false,qaBetaProbeApproved:true,
         qaChatId:'972501234567@c.us',qaEventServiceId:'qa-test-service',
@@ -102,6 +112,14 @@ test('real worker wrapper passes interactive config for explicitly approved ONE 
  await noAccount.call({wakeReason:'outbox_create'});
  assert.equal(noAccount.qaConfigUsed,0);
  assert.equal(noAccount.qaSettingsReads,0);
+});
+test('verified PRODUCTION does not depend on optional single-QA setting read before worker dispatch',async()=>{
+ const real=fixture({production:true,qaFlagFail:true});
+ const result=await real.call({wakeReason:'outbox_create'});
+ assert.equal(result.status,200);
+ assert.equal(real.qaConfigUsed,1,'send with owner-verified interactive production config');
+ assert.equal(real.qaSettingsReads,0,'do not read unrelated QA V2 flag');
+ assert.equal(real.dispatched,1);
 });
 test('workflow wake reasons are attributed only as telemetry and unknown inputs are sanitized',async()=>{
  for(const reason of ['outbox_create','continue','watchdog']){
