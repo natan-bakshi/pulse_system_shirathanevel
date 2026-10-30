@@ -159,7 +159,7 @@ export async function reconcileTerminalButtonFeedback(
  try{rows=await db.filter({
   feedback_required:true,feedback_outbox_id:null,
   state:{$in:['applied','rejected','needs_review']}
- },'completed_at',max,0,['id']);}
+ },'-completed_at',max,0,['id']);}
  catch{return {scanned:0,queued:0,reason:'receipt_scan_unavailable'};}
  let count=0;
  for(const row of rows||[]){
