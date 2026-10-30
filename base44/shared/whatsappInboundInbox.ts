@@ -243,6 +243,10 @@ export async function finishInboundReceipt(client:any,params:{
  const result=await db.updateMany({id:row.id,receipt_key:row.receipt_key,
   state:'processing',claim_owner:params.claimOwner,claim_until:row.claim_until},
   {$set:{state:params.outcome,result_code:params.resultCode,completed_at:nowIso(now),
+   // Only newly terminal, source-authenticated Green outcomes opt in.
+   // No historical receipts are retroactively sent feedback.
+   feedback_required:row.provider==='green'&&
+    (params.outcome==='applied'||params.outcome==='rejected'),
    claim_owner:'',claim_until:''}});
  return result?.updated===1?{finalized:true,state:params.outcome}:
   {finalized:false,reason:'concurrent_finalization'};
