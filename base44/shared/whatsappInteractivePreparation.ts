@@ -8,6 +8,8 @@
 import {readAssignmentIntents} from './assignmentIntent.ts';
 import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
+import {checkLegacyAssignmentButtonCandidate,
+ type LegacyAssignmentButtonScope} from './legacyAssignmentButtonScope.ts';
 import {createFutureInteractiveButtonSnapshot,verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 
@@ -18,6 +20,9 @@ const refused=(code:string,status=409)=>
 type Params={
  outboxJobId:string;senderAccountId:string;policy:any;signingSecret:string;
  providerCapabilityVerified:boolean;rolloutAuthorized:boolean;
+ // Opt-in ONLY from a separately trusted server-verified, exact single
+ // assignment+supplier+private chat pilot. Never derived from Outbox JSON.
+ legacyCanaryScope?:LegacyAssignmentButtonScope;
  issuedAt?:number;subtle?:SubtleCrypto
 };
 function parseStatuses(service:any){
@@ -101,13 +106,23 @@ export async function prepareFutureGreenAssignmentOutbox(client:any,input:Params
  const map=parseStatuses(service);
  if(!map||map[original.supplier_id]!=='pending')
   throw refused('supplier_not_pending');
- const currentIntent=latestSupplierRevision(service,original.supplier_id);
- // Outbox business idempotency is part of the signed origin. A stale queued
- // assignment whose supplier has since been re-opened cannot be signed as if
- // it belonged to the new revision. This is required BEFORE the snapshot CAS.
- if(original.idempotency_key!==currentIntent.key)
-  throw refused('assignment_intent_key_mismatch');
- const revision=currentIntent.revision;
+ let revision:string;
+ if(input.legacyCanaryScope){
+  // Fast-track: reuse the original EventService UPDATE business generation.
+  // No mutation of supplier assignment, original workflows or notification
+  // producer. A newer update invalidates this queued candidate.
+  const check=checkLegacyAssignmentButtonCandidate({
+   service,job:original,target:input.legacyCanaryScope
+  });
+  if(!check.allowed||!check.revision)
+   throw refused('legacy_canary_'+check.reason);
+  revision=check.revision;
+ }else{
+  const currentIntent=latestSupplierRevision(service,original.supplier_id);
+  if(original.idempotency_key!==currentIntent.key)
+   throw refused('assignment_intent_key_mismatch');
+  revision=currentIntent.revision;
+ }
  if(original.sender_account_id||original.assignment_revision){
   // Partial origin is not proof that a prior version was never dispatched.
   if(!original.interactive_button_bindings_json)
