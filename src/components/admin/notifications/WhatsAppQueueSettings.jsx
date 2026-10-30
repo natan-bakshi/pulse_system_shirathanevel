@@ -1,4 +1,4 @@
-import React, {useEffect,useState} from 'react';
+import React,{useEffect,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {Button} from '@/components/ui/button';
 import {Switch} from '@/components/ui/switch';
@@ -6,816 +6,342 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {RefreshCw,Save,Play,AlertTriangle} from 'lucide-react';
 import WhatsAppQueueMessages from './WhatsAppQueueMessages';
-import WhatsAppInteractiveDraftSettings from './WhatsAppInteractiveDraftSettings';
-import WhatsAppWebhookCreditsEstimator from './WhatsAppWebhookCreditsEstimator';
+import WhatsAppLiveButtonSettings from './WhatsAppLiveButtonSettings';
 
-const defaults={enabled:false,paused:false,wasenderIntervalMs:7000,greenIntervalMs:7000,maxMessagesPerRun:16};
-function IntervalEditor({name,which,ms,unit,onUnit,onMs,disabled}){
-  const factor=unit==='seconds'?1000:1;
-  return <div className="rounded-lg border p-3 space-y-2 min-w-[230px]">
-    <div className="font-semibold">{name}</div>
-    <div className="flex gap-2">
-      <Input aria-label={'מרווח '+name} type="number" min="0" max={300000/factor} step={unit==='seconds'?'0.001':'1'}
-        disabled={disabled} value={ms/factor} onChange={e=>{
-          const value=Number(e.target.value);
-          onMs(Number.isFinite(value)?Math.round(value*factor):0);
-        }}/>
-      <select aria-label={'יחידות '+name} className="border rounded-md px-2 text-sm" value={unit}
-        disabled={disabled} onChange={e=>onUnit(e.target.value)}>
-        <option value="seconds">שניות</option><option value="milliseconds">מילישניות</option>
-      </select>
-    </div>
-    {which==='wasender'&&ms<5000&&<p className="text-xs text-amber-700">
-      אם Account Protection מופעל ב־WasenderAPI, מרווח קצר מחמש שניות עלול לגרום להגבלת קצב.
-    </p>}
-    <p className="text-xs text-gray-500">0 = ללא השהיה, אך עדיין רק עובד תור אחד פועל.</p>
-  </div>;
+// Production operations only. Previous pilot receiver/records are preserved
+// server-side for valid historical replies, with no active QA controls here.
+const DEFAULT={enabled:false,paused:false,wasenderIntervalMs:7000,greenIntervalMs:7000,maxMessagesPerRun:16};
+const count=v=>Number(v)||0;
+const showDate=value=>value&&Number.isFinite(Date.parse(value))?new Date(value).toLocaleString('he-IL'):'לא זמין';
+const Header=({children})=><h3 className="font-semibold">{children}</h3>;
+function IntervalEditor({name,value,onChange,disabled}){
+ return <label className="block space-y-1 text-sm">
+  <span className="font-medium">{name} — מרווח בין הודעות (שניות)</span>
+  <Input aria-label={'מרווח '+name} type="number" min="0" max="300" step="0.1"
+   disabled={disabled} value={value/1000} onChange={e=>{
+    const number=Number(e.target.value);
+    if(Number.isFinite(number))onChange(Math.round(Math.max(0,Math.min(300,number))*1000));
+   }}/>
+ </label>;
 }
 export default function WhatsAppQueueSettings(){
-  const reviewDeepLink=typeof window!=='undefined' &&
-    new URLSearchParams(window.location.search).get('whatsappQueue')==='review';
-  const [expanded,setExpanded]=useState(reviewDeepLink);
-  // A collapsed settings panel must not run backend status/list queries.
-  // The existing review deep link still opens the queue and its message list.
-  const [messagesOpen,setMessagesOpen]=useState(reviewDeepLink);
-  useEffect(()=>{
-    if(reviewDeepLink)document.getElementById('whatsapp-queue')?.scrollIntoView({block:'start'});
-  },[reviewDeepLink]);
-  const [form,setForm]=useState(defaults),[view,setView]=useState(null);
-  const [units,setUnits]=useState({wasender:'seconds',green:'seconds'});
-  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
-  const [metrics,setMetrics]=useState(null);
-  const [sourceAudit,setSourceAudit]=useState(null);
-  const [inboundAudit,setInboundAudit]=useState(null);
-  const [unknownCallbackAudit,setUnknownCallbackAudit]=useState(null);
-  const [unknownRecoveryCleanup,setUnknownRecoveryCleanup]=useState(null);
-  const [unknownRecoveryReview,setUnknownRecoveryReview]=useState(null);
-  const [inboundDetail,setInboundDetail]=useState(null);
-  const [interactiveReadiness,setInteractiveReadiness]=useState(null);
-  const [assignmentV2Readiness,setAssignmentV2Readiness]=useState(null);
-  const [productionButtons,setProductionButtons]=useState(null);
-  const [legacyPilotScope,setLegacyPilotScope]=useState({eventServiceId:'',supplierId:''});
-  const [legacyPilotInfo,setLegacyPilotInfo]=useState(null);
-  const [qaReadiness,setQaReadiness]=useState(null);
-  const [qaAssignmentPreflight,setQaAssignmentPreflight]=useState(null);
-  const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
-  const [greenConnection,setGreenConnection]=useState(null);
-  const [pilotEnrollmentRequested,setPilotEnrollmentRequested]=useState(false);
-  const [pilotFailure,setPilotFailure]=useState('');
-  const [pilotLiveResult,setPilotLiveResult]=useState(null);
-  const [officeReference,setOfficeReference]=useState('');
-  const [officeLookup,setOfficeLookup]=useState(null);
-  const [refreshSignal,setRefreshSignal]=useState(0);
-  const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
-  const read=async()=>{
-    const res=await base44.functions.invoke('WhatsAppQueueAdmin',{action:'status'});
-    if(!res.data?.success)throw Error(res.data?.error||'קריאת התור נכשלה');
-    apply(res.data);setRefreshSignal(n=>n+1);
-  };
-  useEffect(()=>{
-    if(!expanded)return;
-    let alive=true;
-    base44.functions.invoke('WhatsAppQueueAdmin',{action:'status'})
-      .then(r=>{if(alive&&r.data?.success)apply(r.data);})
-      .catch(()=>{if(alive)setError('לא ניתן לטעון את תור WhatsApp. בדוק שהפונקציות פורסמו.');});
-    return()=>{alive=false;};
-  },[expanded]);
-  async function run(action,params={}){
-    // Never leave a previously decrypted structural preview visible when a
-    // different owner review starts or fails: it would refer to the wrong row.
-    if(action==='unknownRecoveryStructureReview')setUnknownRecoveryReview(null);
-    // Never retain an older successful Green audit beside a newer failure.
-    if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings(null);
-    if(action==='greenInstanceStateAudit')setGreenConnection(null);
-    if(action==='greenButtonQaProvisionWebhook'){
-      // One owner approval, not a routine diagnostic. The backend additionally
-      // checks independent secrets, a fresh Green GET and a one-shot CAS.
-      const phrase=window.prompt('הפעולה תשנה את הגדרות Green API ותאתחל את המופע. ייתכן עיכוב זמני בשליחות. לאחר מכן נבדוק חיבור מחדש. להמשך הקלד בדיוק: מאשר אתחול Green');
-      if(phrase!=='מאשר אתחול Green')return;
-      params={...params,confirmation:'I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS'};
-    }
-    if(action==='greenButtonQaEnroll'){
-      if(!window.confirm('ליצור שיבוץ בדיקה חדש לספק היחיד שהוגדר בשרת? הפעולה מעדכנת שירות אירוע אמיתי ועלולה לשלוח הודעת WhatsApp אמיתית דרך התור. ודא שמדובר באירוע וספק ייעודיים לניסוי ושאימות Green הושלם. להמשיך?'))return;
-      // Guard a second click during this page session; the backend CAS
-      // independently prevents accidental duplicate assignments.
-      setPilotEnrollmentRequested(true);
-      params={...params,confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT'};
-    }
-    if(action==='configure'&&view&&!view.config.enabled&&form.enabled&&
-      !window.confirm('הפעלת התור משנה את מסלול ה־WhatsApp לכל המערכת. ודא שאוטומציות הרקע ועובד התור פורסמו ונבדקו. להמשיך?'))return;
-    setBusy(true);setError('');setNotice('');
-    try{
-      if(action==='greenButtonQaEnroll'){
-        const prepared=await base44.functions.invoke('WhatsAppQueueAdmin',
-          {action:'greenButtonQaReadiness'});
-        if(!prepared.data?.success)throw Error('בדיקת תנאי הניסוי לא הושלמה');
-        setQaReadiness(prepared.data.qa);
-        if(!prepared.data.qa?.readyForQa){
-          setPilotFailure('qa_readiness_not_ready');
-          setPilotEnrollmentRequested(false);
-          setError('חסרים תנאי מוכנות. בדוק את הרשימה המפורטת בהמשך. לא שונה שיבוץ.');
-          return;
-        }
-      }
-      const res=await base44.functions.invoke('WhatsAppQueueAdmin',{action,...params});
-      if(action==='metrics'){
-        if(!res.data?.success)throw Error(res.data?.error||'חישוב מדדי התור נכשל');
-        setMetrics(res.data.metrics);
-        setNotice('מדידה היסטורית עודכנה ללא שליחת WhatsApp. זהו מדגם בלבד.');
-        return;
-      }
-      if(action==='officeReferenceLookup'){
-        if(!res.data?.success)throw Error(res.data?.error||'לא ניתן לאתר את אסמכתת השיבוץ');
-        setOfficeLookup(res.data.lookup);
-        setNotice('השיבוץ אותר לפי אסמכתא בלבד, ללא שליחת הודעות או שינוי נתונים.');
-        return;
-      }
-      if(action==='greenInstanceStateAudit'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת חיבור Green אינה זמינה');
-        setGreenConnection(res.data.connection);
-        setNotice('נבדק מצב המופע ב־Green בקריאה יזומה אחת, ללא שליחת הודעות או שינוי הגדרות.');
-        return;
-      }
-      if(action==='greenWebhookSettingsAudit'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת הגדרות Green API נכשלה');
-        setGreenWebhookSettings({...res.data.settings,
-          webhookProvisioningOwnerActionAvailable:
-            res.data.webhookProvisioningOwnerActionAvailable===true});
-        setNotice('הגדרות Green נבדקו באמצעות קריאת API אחת בלבד. לא שונו הגדרות ולא נשלחו הודעות.');
-        return;
-      }
-      if(action==='greenButtonQaProvisionWebhook'){
-        if(!res.data?.success){
-          setGreenWebhookSettings(null);
-          throw Error(res.data?.providerChangeMightHaveOccurred?
-            'תוצאת שינוי Green אינה ודאית. אין לנסות שוב! יש לבצע GetSettings לקריאה בלבד ולבדוק את המופע.':
-            'שינוי Green נחסם לפני ביצוע. בדוק את תנאי ההפעלה ואישור מנהל־העל.');
-        }
-        setGreenWebhookSettings(null);
-        setNotice('Green קיבל את בקשת הגדרת ה־Webhook. המופע מאותחל; יש לבדוק GetSettings אחרי האתחול, לפני כל הודעת ניסיון. עדיין לא נשלחו כפתורים.');
-        return;
-      }
-      if(action==='greenButtonQaLiveResult'){
-        if(!res.data?.success)throw Error('לא ניתן לבדוק את תוצאת הניסוי כעת');
-        setPilotLiveResult(res.data.result);
-        setNotice('תוצאת הניסוי נקראה מרשומות השיבוץ, ה־Outbox וה־Receipt בלבד. לא נשלחו הודעות.');
-        return;
-      }
-      if(action==='greenButtonQaEnroll'){
-        if(!res.data?.success){
-          const reason=res.data?.diagnosticCode||'qa_unknown';
-          setPilotFailure(reason);
-          if(reason==='qa_interactive_config_not_ready')
-            setPilotEnrollmentRequested(false);
-          try{
-            const audit=await base44.functions.invoke('WhatsAppQueueAdmin',
-              {action:'greenButtonQaReadiness'});
-            if(audit.data?.success)setQaReadiness(audit.data.qa);
-            const target=await base44.functions.invoke('WhatsAppQueueAdmin',
-              {action:'greenButtonQaAssignmentPreflight'});
-            if(target.data?.success)setQaAssignmentPreflight(target.data.preflight);
-          }catch{}
-          throw Error(res.data?.error||'יצירת שיבוץ הניסוי נכשלה');
-        }
-        setPilotFailure('');
-        setQaAssignmentPreflight(null);
-        setQaReadiness(null);
-        setNotice(res.data.enrollment?.wakeRequested?
-          'שיבוץ הניסוי נשמר עם יומן V2. המנגנון עשוי לשלוח כעת הודעת WhatsApp אמיתית. בצע בדיקת קבלה.':
-          'שיבוץ הניסוי נשמר, אך התראת ההפעלה לא אומתה. נדרש בירור יומן V2 ולא שליחה חוזרת.');
-        return;
-      }
-      if(action==='greenButtonQaAssignmentPreflight'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת שיבוץ הניסוי נכשלה');
-        setQaAssignmentPreflight(res.data.preflight);
-        setNotice('נבדקה התאמת שיבוץ לניסוי ללא שליחה וללא שינוי סטטוס.');
-        return;
-      }
-      if(action==='greenButtonQaReadiness'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת מוכנות הניסוי נכשלה');
-        setQaReadiness(res.data.qa);
-        setNotice('נבדקו תנאי ניסוי כפתורים למספר אחד ללא שליחה וללא פנייה ל־Green API.');
-        return;
-      }
-      if(action==='interactiveReadiness'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת מוכנות כפתורים נכשלה');
-        setInteractiveReadiness(res.data.readiness);
-        setNotice('בדיקת מוכנות בוצעה לקריאה בלבד, ללא פנייה לספק WhatsApp.');
-        return;
-      }
-      if(action==='assignmentV2Readiness'){
-        setAssignmentV2Readiness(null);
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת תאימות שיבוצים נכשלה');
-        setAssignmentV2Readiness(res.data.readiness);
-        setNotice('תאימות תהליך השיבוצים נבדקה ללא שליחה, ללא שינוי שיבוצים וללא חיוב ספק.');
-        return;
-      }
-      if(action==='inboundInspect'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת רשומת תגובה נכשלה');
-        setInboundDetail(res.data.inspection);
-        setNotice('בדיקת רשומה הושלמה לקריאה בלבד. לא בוצע שינוי בנתונים.');
-        return;
-      }
-      if(action==='unknownRecoveryStructureReview'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת מבנה ההודעה המוצפנת אינה זמינה');
-        setUnknownRecoveryReview(res.data.review);
-        setNotice('מבנה הודעה מוצפנת אומת בשרת. לא הוצג תוכן אישי ולא השתנה שיבוץ.');
-        return;
-      }
-      if(action==='unknownRecoveryExpiryCleanup'){
-        if(!res.data?.success)throw Error(res.data?.error||'ניקוי מידע מוצפן נכשל');
-        setUnknownRecoveryCleanup(res.data.cleanup);
-        setUnknownRecoveryReview(null);
-        setUnknownCallbackAudit(null);
-        setNotice('נבדק ניקוי ממוקד של נתונים מוצפנים שתוקפם פג. יש לטעון את יומן הבירור מחדש.');
-        return;
-      }
-      if(action==='unknownCallbackAudit'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת אירועים לא מזוהים נכשלה');
-        setUnknownCallbackAudit(res.data.audit);
-        setUnknownRecoveryReview(null);
-        setNotice('נבדקו רשומות בירור אנונימיות בלבד, ללא שינוי שיבוץ או שליחת הודעה.');
-        return;
-      }
-      if(action==='inboundAudit'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת תגובות הספקים נכשלה');
-        setInboundDetail(null);
-        setInboundAudit(res.data.audit);
-        setNotice('בדיקת תגובות נכנסות הסתיימה ללא שליחת הודעות או שינוי שיבוצים.');
-        return;
-      }
-      if(action==='sourceAudit'){
-        if(!res.data?.success)throw Error(res.data?.error||'בדיקת התאמה נכשלה');
-        setSourceAudit(res.data.audit);
-        setNotice('בדיקת מקור מול תור הסתיימה ללא שליחת הודעה. מדגם בלבד, ללא אימות מסירה.');
-        return;
-      }
-      if(action==='diagnose'){
-        const data=res.data||{};
-        const checks=(data.checks||[]).map(x=>x.step+': '+(x.ok?'תקין':'שגיאה ('+(x.kind||'unknown')+')')).join(' | ');
-        const msg='אבחון ללא שליחה: '+checks+(data.failedStep?' | שלב שנכשל: '+data.failedStep:'');
-        if(!data.success)setError(msg||'אבחון התור נכשל');else setNotice(msg||'בדיקת התור עברה בהצלחה');
-        return;
-      }
-      if(!res.data?.success)throw Error(res.data?.error||'הפעולה לא הצליחה');
-      if(action==='kick'){
-        const job=res.data.dispatch||{};
-        setNotice(job.reason==='disabled'?'התור כבוי':job.reason==='busy'?'עובד אחר פעיל':
-          job.reason==='blocked'?'עובד התור חסום; בדוק את השגיאה':'התקבלו אצל ספק: '+(job.accepted||0)+', תוצאות לא ידועות: '+(job.unknown||0));
-        await read();
-      }else if(action==='configure'){
-        apply(res.data);setRefreshSignal(n=>n+1);setNotice('הגדרות קצב השליחה לכל ספק נשמרו.');
-      }else await read();
-    }catch(e){
-      if(action==='greenButtonQaEnroll'){
-        const reason=e?.response?.data?.diagnosticCode||'qa_unknown';
-        setPilotFailure(reason);
-        const diagnostic=await base44.functions.invoke('WhatsAppQueueAdmin',
-          {action:'greenButtonQaReadiness'}).catch(()=>null);
-        if(diagnostic?.data?.success)setQaReadiness(diagnostic.data.qa);
-        const target=await base44.functions.invoke('WhatsAppQueueAdmin',
-          {action:'greenButtonQaAssignmentPreflight'}).catch(()=>null);
-        if(target?.data?.success)setQaAssignmentPreflight(target.data.preflight);
-        const uncertain=['qa_unknown','qa_enrollment_commit_uncertain_review',
-          'qa_enrollment_concurrent_or_uncertain'].includes(reason);
-        if(uncertain)setNotice('תוצאת השיבוץ אינה ודאית; יש לבדוק את יומן השיבוץ לפני פעולה נוספת.');
-      }
-      setError(e?.response?.data?.error||e?.message||'הפעולה נכשלה');
-    }
-    finally{setBusy(false);}
-  }
-  async function manageProductionButtons(action){
-    if(busy)return;
-    if(action==='enable'&&!window.confirm('להפעיל כפתורי אישור/דחייה ופנייה למשרד בכל הודעות השיבוץ החדשות שנשלחות ב-Green? הודעות שכבר נשלחו לא ישתנו. ניתן לעצור מיד, ותשובות ישנות עדיין ייקלטו.'))return;
-    setBusy(true);setError('');setNotice('');
-    try{
-      const res=await base44.functions.invoke('greenAssignmentProductionAdmin',{
-        action,...(action==='enable'?{confirmation:'ENABLE_GREEN_ASSIGNMENT_BUTTONS_FOR_ALL_NEW_ASSIGNMENTS'}:{})
-      });
-      if(!res.data?.success)throw Error(res.data?.error||'הפעלת הכפתורים לא הצליחה');
-      let verified=res.data;
-      // The owner switch only changes a flag. Read the worker's REAL gates;
-      // never report button delivery as ready on toggle success alone.
-      if(action!=='status'){
-        const diagnostic=await base44.functions.invoke('greenAssignmentProductionAdmin',{action:'status'}).catch(()=>null);
-        if(diagnostic?.data?.success)verified=diagnostic.data;
-      }
-      setProductionButtons(verified);
-      setNotice(action==='enable'?(verified.sendReady===true
-        ?'הוגדרה שליחת כפתורים לשיבוצים חדשים ב-Green. יש לבדוק שההודעה הבאה התקבלה עם כפתורים.'
-        :'המתג סומן כפעיל, אך תנאי השליחה אינם מוכנים. בדוק את החסמים להלן; לא אושרה שליחת כפתורים.'):
-        action==='disable'?'כפתורים חדשים נעצרו. תגובות להודעות שכבר נשלחו עדיין נקלטות.':
-        'מצב הכפתורים עודכן.');
-    }catch(e){setError(e?.response?.data?.error||e?.message||'לא ניתן לעדכן כפתורים');}
-    finally{setBusy(false);}
-  }
-  async function manageLegacyPilot(action){
-    if(busy)return;
-    if(action==='arm'){
-      if(!/^[A-Za-z0-9_-]{3,100}$/.test(legacyPilotScope.eventServiceId)||
-         !/^[A-Za-z0-9_-]{3,100}$/.test(legacyPilotScope.supplierId)){
-        setError('יש להזין מזהה שירות אירוע ומזהה ספק תקינים.');return;
-      }
-      if(!window.confirm('להכין כפתורי WhatsApp לשיבוץ אחד בלבד? ההכנה לא שולחת הודעה ולא משנה שיבוץ. רק הודעת שיבוץ חדשה שתיווצר אחר כך עבור ספק זה עשויה להישלח עם כפתורים, אם כל תנאי Green מאומתים.'))return;
-    }
-    if(action==='stop'&&!window.confirm('לעצור יצירת הודעות כפתורים חדשות בפיילוט? תגובות להודעות שכבר נשלחו יישארו פעילות עד סוף תוקפן.'))return;
-    setBusy(true);setError('');setNotice('');
-    try{
-      const result=await base44.functions.invoke('legacyGreenPilotAdmin',{
-        action,
-        ...(action==='arm'?{...legacyPilotScope,
-          confirmation:'I_APPROVE_ONE_REAL_ASSIGNMENT_BUTTON_PILOT'}:{})
-      });
-      if(result.data?.success!==true)throw Error(result.data?.error||'פעולת הפיילוט לא אומתה');
-      setLegacyPilotInfo(result.data);
-      if(action==='arm')setNotice('הפיילוט הוגדר עבור שיבוץ וספק אחד. לא נשלחה הודעה ולא שונה שיבוץ.');
-      else if(action==='stop')setNotice('השליחה האינטראקטיבית בפיילוט נעצרה. תגובות קודמות נשמרו.');
-      else setNotice('מצב הפיילוט נבדק ללא שליחה.');
-    }catch(e){
-      setLegacyPilotInfo(null);
-      setError(e?.response?.data?.error||e?.message||'לא ניתן לעדכן את מצב הפיילוט');
-    }finally{setBusy(false);}
-  }
-  const totals=view?.totals||{};
-  return <details id="whatsapp-queue" open={expanded}
-    onToggle={event=>setExpanded(event.currentTarget.open)}
-    className="rounded-lg border bg-white p-4" dir="rtl">
-    <summary className="cursor-pointer font-semibold text-base">תור WhatsApp מרכזי — קצב לכל ספק וניהול הודעות</summary>
-    <div className="mt-4 space-y-4">
-      <p className="text-sm text-gray-600">כל סוגי ההודעות עוברים באותו תור. הודעה ראשונה נשלחת מיד כשהתור פנוי; המרווח מוגדר לכל ספק בנפרד, בשניות או במילישניות.</p>
-      {!form.enabled&&<p role="alert" className="text-sm rounded border bg-amber-50 p-3 text-amber-800">
-        התור המרכזי כבוי. המסלול הישיר הישן נשאר פעיל עד להפעלה מבוקרת.
-      </p>}
-      {view&&<div className="flex flex-wrap gap-x-5 gap-y-2 rounded bg-gray-50 border p-3 text-sm">
-        <span>ספק: <strong>{view.activeProvider==='wasender'?'WasenderAPI':'Green API'}</strong></span>
-        <span>ממתינות: <strong>{(totals.queued||0)+(totals.retry_wait||0)}</strong></span>
-        <span>התקבלו אצל ספק: <strong>{totals.accepted||0}</strong></span>
-        <span>נכשלו: <strong>{totals.failed||0}</strong></span>
-        <span>לא ידוע: <strong>{totals.unknown||0}</strong></span>
-        <span>{view.workerBusy?'עובד התור פעיל':'עובד התור פנוי'}</span>
-        <span>מרווח פעיל: <strong>{view.currentIntervalMs}ms</strong></span>
-        <span>זמינות: <strong>{!view.config?.enabled?'התור כבוי':view.config?.paused?'התור מושהה':
-          view.workerBusy?'העובד מטפל בהודעות':(view.dueReadyCount||0)>0?
-            ((view.nextAllowedInMs||0)>0?'הודעות זמינות, בהמתנה למרווח הספק':'הודעות זמינות — העובד יכול לטפל בהן'):
-          (view.scheduledForFutureCount||0)>0?'כל הממתינות במדגם מתוזמנות לעתיד':
-          view.historyTruncated?'לא נמצאו הודעות זמינות במדגם':'התור ריק — ההודעה הבאה אינה ממתינה לתור קיים'}</strong></span>
-        <span>מוכנות כעת: <strong>{view.dueReadyCount||0}</strong> · מתוזמנות לעתיד: <strong>{view.scheduledForFutureCount||0}</strong></span>
-        {(view.dueReadyCount||0)>0&&(view.nextAllowedInMs||0)>0&&
-          <span>המתנת ספק נוכחי: {(view.nextAllowedInMs/1000).toFixed(2)} שניות</span>}
-        {view.lastWorkerAt&&<span>טיפול אחרון בהודעות: {new Date(view.lastWorkerAt).toLocaleString('he-IL')}</span>}
-        {view.lastWatchdogAt
-          ?<span className={view.watchdogLate?'text-red-700 font-semibold':''}>
-            בדיקת התאוששות מתוזמנת: {new Date(view.lastWatchdogAt).toLocaleString('he-IL')}
-            {view.watchdogLate?' · לא נצפתה בדיקה חדשה במשך מעל 15 דקות':''}
-          </span>
-          :<span className="text-amber-700">טרם התקבלה חותמת מעקב של בדיקת ההתאוששות (לא הוכחת תקלה)</span>}
-        {view.lastWorkerWakeReason&&<span>מקור התעוררות: <strong>{({outbox_create:'הודעה חדשה',continue:'המשך אצווה',watchdog:'בדיקת התאוששות',manual:'הפעלה ידנית',unattributed:'לא זוהה'})[view.lastWorkerWakeReason]||'לא זוהה'}</strong></span>}
-        {view.lastBatchCount!=null&&<span>ניסיונות בריצה האחרונה: <strong>{view.lastBatchCount}</strong></span>}
-        {view.lastBatchElapsedMs!=null&&<span>משך ריצה אחרונה: <strong>{(view.lastBatchElapsedMs/1000).toFixed(1)} שניות</strong></span>}
-        {view.lastError&&<span className="text-red-700">תקלה: {view.lastError}</span>}
-      </div>}
-      {view?.duplicateAssignmentVersions?.count>0 && <p role="status" className="text-sm border rounded p-3 text-amber-800">
-        זוהו {view.duplicateAssignmentVersions.count} זוגות או קבוצות של הודעות שיבוץ עם אותה גרסת עדכון עסקית במדגם.
-        אלה אירועים היסטוריים המחייבים בדיקת מקור מול תור; אין לשלוח מחדש או למחוק הודעות.
-        לפירוט לחץ על "בדיקת התאמה מקור ↔ תור" בהמשך.
-        {view.duplicateAssignmentVersions.sampleTruncated && ' הנתונים מוגבלים ל־500 הרשומות האחרונות.'}
-      </p>}
-      {view&&<div className="rounded-lg border-2 border-green-700 p-3 space-y-2" dir="rtl">
-        <p className="font-semibold text-green-800">ניסוי כפתורי WhatsApp לנתן — הודעה אחת בלבד</p>
-        <p className="text-sm text-gray-700">מסלול QA נפרד למספר האישי המאושר בלבד. שלושת הכפתורים: מאשר, דוחה ופנייה למשרד. השיבוץ הניסיוני יכול להישלח מיד דרך התור המרכזי.</p>
-        {view.qaPilotNewSendsEnabled===true&&
-          <Button type="button" disabled={busy||pilotEnrollmentRequested||!view.config?.enabled||view.config?.paused}
-            onClick={()=>run('greenButtonQaEnroll')}>
-            {pilotEnrollmentRequested?'הניסיון נבדק — בדוק את התוצאה לפני פעולה נוספת':'שלח הודעת כפתורים ניסיונית לנתן'}
-          </Button>}
-        {view.qaPilotNewSendsEnabled!==true&&<p className="text-sm font-medium text-gray-700">
-          שליחת כפתורים חדשה כבויה. הודעות שכבר נשלחו עדיין יכולות לקבל תשובות.
-        </p>}
-        <Button type="button" variant="outline" disabled={busy}
-          onClick={()=>run('greenButtonQaLiveResult')}>
-          בדוק תוצאת ניסוי הכפתורים (ללא שליחה)
-        </Button>
-        {pilotLiveResult&&<div role="status" className="rounded border p-3 space-y-1 text-sm">
-          <p className={pilotLiveResult.complete?'text-green-800 font-semibold':'text-amber-800 font-medium'}>
-            {pilotLiveResult.complete?'ניסוי חי הושלם בהצלחה — השיבוץ אושר במערכת':'הניסוי טרם אומת במלואו — נדרשת בדיקת הרשומות'}
-          </p>
-          <p>הודעה מקורית התקבלה אצל Green: {pilotLiveResult.originalMessageAccepted?'כן':'לא אומת'}</p>
-          <p>ניסיון שליחה יחיד: {pilotLiveResult.singleProviderAttempt?'כן':'לא אומת'}</p>
-          <p>אישור WhatsApp נקלט ונשמר: {pilotLiveResult.signedApprovalReceiptApplied?'כן':'לא אומת'}</p>
-          <p>סטטוס השיבוץ במערכת: {pilotLiveResult.supplierConfirmed?'מאושר':'לא אומת'}</p>
-          <p>ללא רשומות כפולות: {pilotLiveResult.uniqueOutboxAndReceipt?'כן':'לא אומת'}</p>
-          <p>שליחות חדשות כבויות: {pilotLiveResult.newSendsDisabled?'כן':'לא'}</p>
-          <p>קליטה של לחיצות קודמות זמינה: {pilotLiveResult.incomingRemainsEnabled?'כן':'לא'}</p>
-        </div>}
-        {pilotFailure&&<p role="alert" className="text-sm text-red-800 font-medium">
-          הניסיון נחסם לפני אישור שליחה. קוד אבחון בטוח: {pilotFailure}.
-          פירוט תנאי המוכנות מופיע בהמשך המסך; אין ללחוץ שוב עד לבירור.
-        </p>}
-        <p className="text-xs text-gray-600">השרת בודק מחדש התאמת ספק, מספר, אירוע, שיבוץ, הגדרות Green והיעדר ניסיונות קודמים לפני כל יצירה. אין שינוי בשיבוצים אחרים.</p>
-      </div>}
-      <div className="flex flex-wrap gap-6">
-        <label className="flex gap-2 items-center text-sm"><Switch checked={!!form.enabled} disabled={busy} onCheckedChange={enabled=>setForm(s=>({...s,enabled}))}/>הפעל תור מרכזי</label>
-        <label className="flex gap-2 items-center text-sm"><Switch checked={!!form.paused} disabled={busy} onCheckedChange={paused=>setForm(s=>({...s,paused}))}/>השהה שליחות חדשות</label>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        {['wasender','green'].map(which=><IntervalEditor key={which} name={which==='wasender'?'WasenderAPI':'Green API'}
-          which={which} ms={form[which+'IntervalMs']??7000} unit={units[which]} disabled={busy}
-          onUnit={unit=>setUnits(s=>({...s,[which]:unit}))}
-          onMs={value=>setForm(s=>({...s,[which+'IntervalMs']:value}))}/>)}
-      </div>
-      <div className="space-y-1 max-w-xs">
-        <Label htmlFor="wa-queue-batch">הודעות מרביות בכל ריצת עובד</Label>
-        <Input id="wa-queue-batch" type="number" step="1" min="1" max="30" disabled={busy}
-          value={form.maxMessagesPerRun} onChange={e=>setForm(s=>({...s,maxMessagesPerRun:Number(e.target.value)}))}/>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" disabled={busy||!view} onClick={()=>run('configure',form)}><Save className="h-4 w-4 ml-2"/>שמור הגדרות</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}><RefreshCw className="h-4 w-4 ml-2"/>רענן</Button>
-      </div>
-      <div className="rounded-lg border p-3 space-y-2">
-        <p className="font-semibold">כפתורי שיבוץ WhatsApp — פרודקשן</p>
-        <p className="text-sm text-gray-700">הודעות שיבוץ חדשות לספקים בצ'אט אישי ב־Green יכללו כפתורי אישור, דחייה ופנייה למשרד עם טיוטת פנייה ואסמכתא. קישור הכניסה למערכת נשאר בגוף ההודעה. בתזכורות לספק בצ'אט אישי יופיעו כפתורי כניסה למערכת ופנייה למשרד. Green מאפשר לכל היותר שלושה כפתורים. כשהכפתורים פעילים, הודעת שיבוץ של ספק המעדיף קבוצה תישלח למספרו האישי בלבד; הודעות אחרות והעדפת הקבוצה עצמה לא ישתנו.</p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageProductionButtons('status')}>בדוק מצב</Button>
-          <Button size="sm" disabled={busy||productionButtons?.enabled===true} onClick={()=>manageProductionButtons('enable')}>הפעל כפתורים בפרודקשן</Button>
-          <Button size="sm" variant="outline" disabled={busy||productionButtons?.enabled===false} onClick={()=>manageProductionButtons('disable')}>עצור כפתורים חדשים</Button>
-        </div>
-        {productionButtons&&<div role="status" className="text-sm space-y-1">
-          <p className={productionButtons.enabled&&productionButtons.sendReady!==true?'font-medium text-amber-800':'font-medium'}>
-            {!productionButtons.enabled?'כפתורים חדשים כבויים; תגובות להודעות ישנות נשמרות.':
-              productionButtons.sendReady===true?'תנאי שליחת הכפתורים בשרת מאומתים; יש לאמת הודעה חדשה אצל הספק.':
-              'המתג פעיל אך שליחת הכפתורים אינה מוכנה. אין להסתמך על המתג כאישור.'}
-          </p>
-          {productionButtons.checks&&productionButtons.enabled&&!productionButtons.sendReady&&
-            <p>חסמים: {Object.entries(productionButtons.checks).filter(([,ok])=>!ok).map(([key])=>({
-              queue:'התור כבוי/מושהה',outboundOwnerSwitch:'כפתורים לא הופעלו',greenProvider:'Green אינו הספק הפעיל',
-              verifiedGreenInteractive:'חיבור הכפתורים וה־Webhook לא אומת במלואו'
-            })[key]||key).join(' · ')}</p>}
-          {productionButtons.recent?.sampled>0&&<p className="text-xs text-gray-600">מדגם הודעות השיבוץ שהתקבלו אצל Green: {productionButtons.recent.interactive} עם כפתורים, {productionButtons.recent.plain} בלי כפתורים, מתוכן {productionButtons.recent.group} לקבוצות. כולל הודעות שנשלחו לפני התיקון; אישור Green אינו הוכחת מסירה לנמען.</p>}
-        </div>}
-      </div>
-      <details className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="font-medium cursor-pointer">כלי אבחון וניהול מתקדמים (לפתיחה לפי הצורך)</summary>
-        <div className="mt-3 mb-3 space-y-2 rounded-lg border p-3">
-          <p className="font-semibold">פיילוט כפתורי WhatsApp בשיבוץ אמיתי אחד</p>
-          <p className="text-xs text-gray-600">מסלול מהיר: שומר על טופס השיבוץ, Push, תזכורות ויומן כפי שהם. אין צורך לערוך Secrets. ההגדרה עצמה אינה שולחת הודעה; כפתורים נשלחים רק בהודעת שיבוץ חדשה שמתאימה בדיוק לספק ולשירות שנבחרו, וכאשר Green מאומת ופעיל.</p>
-          <div className="flex flex-wrap gap-2">
-            <Input className="max-w-[250px]" aria-label="מזהה שירות אירוע לפיילוט" placeholder="מזהה שירות אירוע"
-              value={legacyPilotScope.eventServiceId} onChange={e=>setLegacyPilotScope(s=>({...s,eventServiceId:e.target.value.trim()}))}/>
-            <Input className="max-w-[250px]" aria-label="מזהה ספק לפיילוט" placeholder="מזהה ספק"
-              value={legacyPilotScope.supplierId} onChange={e=>setLegacyPilotScope(s=>({...s,supplierId:e.target.value.trim()}))}/>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageLegacyPilot('status')}>בדוק מצב הפיילוט</Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageLegacyPilot('arm')}>הכן כפתורים לשיבוץ שנבחר</Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageLegacyPilot('stop')}>עצור כפתורים חדשים</Button>
-          </div>
-          {legacyPilotInfo&&<p role="status" className="text-xs">
-            מצב: {legacyPilotInfo.active?'פיילוט לשיבוץ אחד פעיל':'אין שליחת כפתורים חדשה'}.
-            {legacyPilotInfo.expiresAt&&' תוקף: '+new Date(legacyPilotInfo.expiresAt).toLocaleString('he-IL')}.
-            הפעולה לא שולחת הודעות.
-          </p>}
-          <p className="text-xs text-amber-800">אין ללחוץ על ״הכן״ עבור שיבוץ שכבר נשלחה עליו הודעה רגילה — אי אפשר לשנות כפתורים בהודעה שכבר התקבלה. בדיקת קבלה חיה תבוצע רק בהודעת שיבוץ חדשה.</p>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-3">
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>אבחון ללא שליחה</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>מדידת ביצועי התור</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדיקת התאמה מקור ↔ תור (ללא שליחה)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>בדיקת תגובות WhatsApp (ללא שליחה)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('unknownCallbackAudit')}>בדיקת כפתורים לא מזוהים (קריאה בלבד)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaReadiness')}>מוכנות ניסוי כפתורים למספר אחד (ללא שליחה)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaAssignmentPreflight')}>בדיקת שיבוץ הניסוי (ללא שליחה)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות תוכנית הכפתורים המלאה (ללא שליחה)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('assignmentV2Readiness')}>בדוק תאימות שיבוצים V2 לפרודקשן (קריאה בלבד)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenInstanceStateAudit')}>בדוק מצב חיבור מספר WhatsApp ב־Green (ללא שליחה)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדיקת הגדרות Webhook ב־Green (קריאה בלבד)</Button>
-        <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
-          onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
-          <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
-        </Button>
-        </div>
-      </details>
-      {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
-      {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
-      {greenConnection&&<div role="status" className="rounded border p-3 text-sm space-y-1" dir="rtl">
-        <p className="font-medium">מצב החיבור של מופע Green: <span className={greenConnection.authorized?'text-green-800':'text-amber-800'}>{({authorized:'מחובר ומורשה',notAuthorized:'לא מחובר — נדרש קישור מספר',blocked:'החשבון חסום',suspended:'החשבון מוגבל זמנית',sleepMode:'מצב שינה — המתן להתאוששות',starting:'המופע באתחול'})[greenConnection.state]||'לא ידוע'}</span></p>
-        <p className="text-xs text-gray-600">זו בדיקת מצב המופע בלבד: אינה מזהה למנהל מהו המספר שחובר ואינה הוכחת מסירה או קליטת לחיצה. לאחר החלפת מספר בדוק גם את ה־Webhook. מספר המשרד המשמש בכפתור פנייה למשרד מוגדר בנפרד ואינו משתנה אוטומטית. הודעות ישנות עשויות להיות קשורות לחשבון הקודם. הבדיקה מתבצעת רק בלחיצה יזומה, ללא ניטור אוטומטי.</p>
-      </div>}
-      {greenWebhookSettings&&<details open className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="cursor-pointer font-medium">מיפוי Green API הקיים — בדיקת GetSettings לקריאה בלבד</summary>
-        <div className="pt-3 space-y-2 text-xs">
-          <p className="text-gray-600">בדיקה יזומה בלחיצה בלבד: קריאת GET אחת, ובכשל רשת עשויה להתבצע קריאה נוספת לשרת הרשמי החלופי. אין שינוי בהגדרות או שליחת הודעות, ואין אישור שהכפתורים נתמכים בחשבון.</p>
-          <p className="text-gray-600">מספר קריאות ל־Green בבדיקה: {greenWebhookSettings.providerReadCalls??'לא ידוע'}</p>
-          {greenWebhookSettings.universalHostFallbackUsed&&<p className="font-medium text-amber-800">החיבור לשרת המוגדר נכשל, אך קריאת ההגדרות הצליחה דרך השרת האוניברסלי הרשמי של Green. אין לשנות כתובת שליחת הודעות לפני אימות נפרד.</p>}
-          <div className="flex flex-wrap gap-x-5 gap-y-1">
-            <span>Webhook מוגדר: {greenWebhookSettings.webhookConfigured?'כן':'לא'}</span>
-            <span>טכנולוגיית קליטה: {greenWebhookSettings.webhookDeliveryMode==='push_configured'?'Push':'Polling או ללא הגדרה'}</span>
-            <span>התראות נכנסות: {greenWebhookSettings.notificationFlags?.incomingWebhook==='yes'?'פעילות':greenWebhookSettings.notificationFlags?.incomingWebhook==='no'?'כבויות':'לא ידוע'}</span>
-            <span>סוד Webhook: {greenWebhookSettings.webhookTokenConfigured?'מוגדר':'לא מוגדר'}</span>
-            <span>קטגוריות פעילות: {greenWebhookSettings.activeCategories??'לא ידוע'}</span>
-            <span>השהיית Green API (בנפרד ממרווח התור): {greenWebhookSettings.sendDelayMs===null?'לא ידוע':greenWebhookSettings.sendDelayMs+' מילישניות'}</span>
-          </div>
-          {greenWebhookSettings.existingWebhookMustBePreserved&&<p className="text-amber-800 font-medium">קיימת כתובת Webhook! אסור להחליף אותה בלי לוודא שממשיכים לטפל בכל ההתראות שכבר מגיעות אליה.</p>}
-          {greenWebhookSettings.endpointProtocol==='non_https_or_invalid'&&<p className="text-amber-800">כתובת Webhook קיימת אינה כתובת HTTPS תקינה — נדרש בירור.</p>}
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(greenWebhookSettings.notificationFlags||{}).map(([key,value])=><span key={key} className="rounded border px-2 py-1">{key}: {value==='yes'?'כן':value==='no'?'לא':'לא ידוע'}</span>)}
-          </div>
-          {greenWebhookSettings.webhookConfigured&&
-            <p role="status" className={greenWebhookSettings.qaPostRebootReady===true?
-              'font-semibold text-green-700':'font-medium text-amber-800'}>
-              בדיקת Green לאחר האתחול: {greenWebhookSettings.qaPostRebootReady===true?
-                'הגדרות ה־Webhook תואמות במדויק למסלול הניסוי. עדיין נדרש ניסוי קליטת כפתור אמיתי.':
-                'עדיין אין אישור שכל הגדרות ה־Webhook תואמות. אין להפעיל שליחת כפתורים.'}
-              {' '}יעד: {greenWebhookSettings.qaWebhookTargetMatches?'תקין':'לא אומת'};
-              {' '}אימות: {greenWebhookSettings.qaWebhookBearerMatches?'תקין':'לא אומת'};
-              {' '}התראות: {greenWebhookSettings.qaOnlyIncomingCategory?'תקינות':'לא אומתו'};
-              {' '}השהיה קודמת: {greenWebhookSettings.qaGreenSendDelayUnchanged?'נשמרה':'לא אומתה'}.
-            </p>}
-          <p className="text-gray-600">מפתחות, כתובות Webhook, מספרי טלפון ופרטי חשבון אינם מוצגים או מועברים לדפדפן. הבדיקה אינה שולחת הודעות WhatsApp ואינה בודקת קליטת כפתור אמיתית.</p>
-          {greenWebhookSettings.webhookProvisioningOwnerActionAvailable===true&&
-            greenWebhookSettings.webhookConfigured===false&&
-            greenWebhookSettings.webhookTokenConfigured===false&&
-            greenWebhookSettings.notificationFlags?.incomingWebhook==='no'&&
-            Object.values(greenWebhookSettings.notificationFlags||{}).every(x=>x==='no')&&
-            greenWebhookSettings.providerReadCalls===1&&
-            <div className="border-t pt-3 space-y-2">
-              <p className="text-amber-800">פעולת מנהל־על חד־פעמית: משנה רק Webhook URL, סוד אימות וקליטת הודעות נכנסות. היא מאתחלת את מופע Green; לא תישלח הודעת ניסיון והפעולה לא תבוצע מחדש אוטומטית.</p>
-              <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaProvisionWebhook')}>אשר אתחול Green וחבר Webhook לניסוי</Button>
-            </div>}
-        </div>
-      </details>}
-      {qaReadiness&&<details open className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="font-medium cursor-pointer">ניסוי כפתורים למספר אחד — {qaReadiness.checks?.filter(x=>!x.ready).length||0} תנאים חסרים</summary>
-        <div className="space-y-2 pt-3 text-xs">
-          <p className="font-medium text-amber-800">{qaReadiness.readyForQa?'תנאי התצורה לניסוי מוכנים, אך עדיין דרושות בדיקת ספק והוכחת קליטה חיה.':'הניסוי עדיין חסום; אין כפתורים פעילים ואין שינוי בשליחות הרגילות.'}</p>
-          <ul className="space-y-1">
-            {(qaReadiness.checks||[]).map(check=><li key={check.key}>
-              {check.ready?'✓':'○'} {({qa_global_v2_backlog_clear:'לא נמצאו שיבוצי V2 אחרים הממתינים לשליחה (מדגם מוגבל)',durable_assignment_intent:'יומן שיבוצים עמיד V2 פעיל',owner_queue_gate:'אישור הפעלה במנגנון התור',send_env_gate:'אישור שליחה ניסיונית בשרת',create_env_gate:'הרשאת יצירת שיבוץ ניסיון בשרת',post_reboot_settings_gate:'אימות תצורת Green לאחר האתחול',inbound_env_gate:'אישור קליטת תגובות בשרת',owner_env_gate:'אישור מנהל־העל בשרת',provider_beta_verified:'תמיכת Beta מאומתת (תאומת לאחר הודעה חיה)',one_message_beta_probe_approved:'אושר ניסיון Beta ראשון ומבודד',one_qa_chat:'מספר בדיקה יחיד בשרת',one_qa_assignment:'שירות אירוע וספק בודדים לניסוי',green_credentials:'פרטי חיבור Green תקינים',signing_secret:'מפתח חתימת כפתורים',webhook_bearer:'סוד אימות Webhook',office_draft_saved:'טיוטת שלושה כפתורים ומספר משרד'})[check.key]||check.key}
-            </li>)}
-          </ul>
-          <p className="text-gray-600">קליטת תגובות שכבר נשלחו: {qaReadiness.receivingExistingQaRepliesAvailable?'תצורת הקליטה זמינה':'תצורת הקליטה חסומה'}. לעצירת כפתורים חדשים בלי לאבד תשובות קיימות יש לבטל רק את GREEN_BUTTONS_QA_SEND_ENABLED ולשמור את מתג הקליטה פעיל לאחר בדיקת הניתוב.</p>
-          <p className="text-gray-600">גם כשהתצורה מוכנה, יש לוודא שכתובת ה־Webhook הקיימת וצרכני ההודעות האחרים נשמרים. אין אפשרות להפעיל את הניסוי דרך הבדיקה הזאת. כל שאר הספקים ממשיכים במסלול השליחה הרגיל.</p>
-        </div>
-      </details>}
-      {qaAssignmentPreflight&&<details open className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="cursor-pointer font-medium">בדיקת שיבוץ הניסוי — {qaAssignmentPreflight.ready?'ניתן להתקדם לבדיקת ספק':'נדרשת הכנה נוספת'}</summary>
-        <div className="pt-3 text-xs space-y-2">
-          <p>בדיקה פרטנית בשרת בלבד, ללא חשיפת מספרים, פרטי ספק או מזהי אירוע. ללא שינוי בשיבוצים או שליחת WhatsApp.</p>
-          <ul className="space-y-1">{(qaAssignmentPreflight.checks||[]).map(c=><li key={c.code}>
-            {c.ready?'✓':'○'} {({qa_exact_scope_configured:'מזהה שירות, ספק ומספר מוגדרים בשרת',qa_service_and_supplier_exist:'השירות והספק קיימים',qa_service_not_external:'השירות שייך להפקה',qa_supplier_active_private_whatsapp:'הספק פעיל ומקבל הודעות אישיות',qa_number_matches_supplier:'מספר הבדיקה תואם את הספק',qa_supplier_assigned:'הספק משובץ בשירות הנבחר',qa_supplier_status_pending:'נדרש אישור שיבוץ',qa_durable_v2_intent_valid:'קיימת גרסת שיבוץ V2 חתימה',qa_single_fresh_queued_assignment:'ממתינה בתור הודעת שיבוץ אחת שטרם נשלחה',qa_no_prior_transport_attempt:'לא נעשה ניסיון שליחה קודם'})[c.code]||c.code}
-          </li>)}</ul>
-          {qaAssignmentPreflight.previouslyAttempted&&<p className="text-amber-800">קיים ניסיון שליחה קודם. אין לשלוח שוב ללא בירור כדי לא לייצר כפילויות.</p>}
-          {qaAssignmentPreflight.requiresNewDurableAssignment&&<p className="text-amber-800">נדרש יצירת שיבוץ חדש במסלול V2 מאושר. הפעולה אינה מבוצעת אוטומטית כאן.</p>}
-        </div>
-      </details>}
-      {assignmentV2Readiness&&<details open className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="font-medium cursor-pointer">תאימות שיבוצים V2 — {assignmentV2Readiness.checks?.filter(x=>!x.ready).length||0} תנאים להשלמה</summary>
-        <div className="pt-3 space-y-2 text-xs">
-          <p className="font-medium text-amber-800">מסלול השיבוצים הקיים נשמר; כפתורים לשיבוצים אמיתיים עדיין לא הופעלו. הבדיקה אינה משנה הגדרות ואין צורך לערוך Secrets.</p>
-          <ul className="space-y-1">{(assignmentV2Readiness.checks||[]).map(check=><li key={check.code}>
-            {check.ready?'✓':'○'} {({assignment_intent_v1_feature_flag:'יומן השיבוצים האטומי מופעל',side_effect_bridge_implemented_in_code:'העברת התראות/תזכורות/יומן למנגנון עמיד הושלמה',side_effect_bridge_independently_verified:'אומת מנגנון תאימות ופעולות נלוות',legacy_workflow_parity_preserved_in_current_ui:'השיבוצים הקיימים עדיין משתמשים באוטומציות המקוריות',real_ui_paths_migrated:'כל מסכי השיבוצים חוברו לשמירה האטומית',live_green_buttons_generalized:'כפתורי Green לשיבוצים אמיתיים מאושרים',live_inbound_for_real_assignments:'קליטת לחיצות שיבוץ אמיתי מאומתת'})[check.code]||check.code}
-          </li>)}</ul>
-          <p className="text-gray-600">השירותים הנדרשים לפני מעבר: {(assignmentV2Readiness.requiredParityConsumers||[]).map(x=>({event_status_readiness:'סטטוס אירוע',entity_update_notifications:'התראות אירוע',supplier_assignment_push:'Push לספק',supplier_pending_reminder:'תזכורת לממתין',assignment_removed_notifications:'עדכון ביטול שיבוץ',assignment_status_notifications:'התראות שינוי סטטוס',google_calendar_sync:'יומן Google'})[x]||x).join(' · ')}.</p>
-          <details className="border rounded p-2">
-            <summary className="cursor-pointer font-medium">פירוט מימוש רכיבי התאימות — {assignmentV2Readiness.implementationProofs?.filter(x=>!x.ready).length||0} רכיבים שעדיין בפיתוח</summary>
-            <ul className="space-y-1 mt-2">{(assignmentV2Readiness.implementationProofs||[]).map(item=><li key={item.code}>
-              {item.ready?'✓':'○'} {({journal_server_provenance:'מקור מהימן ומוגן ליומן הפעולות',per_recipient_template_fanout:'פיצול התראות לכל נמען ללא כפילות',durable_push_receipts:'אסמכתאות Push עמידות',pending_reminder_receipts:'תזכורות ממתין עם אסמכתה',supplier_status_and_removal_notifications:'התראות שינוי וביטול שיבוץ',google_calendar_idempotent_upsert:'סנכרון Google ללא יצירת אירועים כפולים',custom_notification_template_parity:'תאימות לכל תבניות ההתראה הקיימות',event_status_recalculation_receipts:'חישוב סטטוס אירוע ואימות התוצאה',watchdog_and_unknown_outcome_review:'התאוששות וסקירת תוצאות לא ודאיות',end_to_end_legacy_workflow_parity:'בדיקת התאמה מקצה לקצה מול המנגנון הישן'})[item.code]||item.code}
-            </li>)}</ul>
-          </details>
-          <p className="text-gray-600">אין אפשרות להפעיל תכונות חסומות מתוך האבחון; תוצאה תקינה של תצורה לבדה אינה אישור לשלוח כפתורים לכלל הספקים.</p>
-        </div>
-      </details>}
-      {interactiveReadiness&&<details className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="font-medium cursor-pointer">מוכנות כפתורים — {interactiveReadiness.blockers?.length||0} תנאים עדיין לא הושלמו</summary>
-        <div className="pt-3 space-y-2">
-          <p className="text-amber-800 font-medium">הכפתורים אינם פעילים. אין אפשרות להפעיל אותם מהבדיקה הזו.</p>
-          <p className="text-xs text-gray-700">מדיניות קליטה שאושרה: רק לחיצה מזוהה על כפתורי אישור/דחייה תטופל כשיבוץ. הודעות ידניות, קוליות, תמונות ותגובות רגילות מסוננות ללא קריאות למסד. כפתור ״פנייה למשרד״ פותח טיוטת WhatsApp עם אסמכתא ואינו מאשר או דוחה שיבוץ. פורמט כפתור חדש ולא מזוהה ייבדק ולא יימחק אוטומטית. מדיניות זו אינה משנה חיבורי WhatsApp אחרים.</p>
-          <p className="text-xs text-gray-600">הבדיקה קוראת רק תצורה מקומית ומחזירה סימוני מוכנות. היא אינה מאמתת בפועל את התמיכה בחשבון Green API ואינה שולחת הודעות.</p>
-          {interactiveReadiness.unexpectedControlFlagEnabled&&<p role="alert" className="text-red-700 font-medium">דגל ההפעלה נשמר כפעיל באופן לא צפוי. מנגנון השליחה עדיין אינו מחובר בייצור; נדרש בירור לפני כל שינוי.</p>}
-          <ul className="space-y-1 text-xs">
-            {(interactiveReadiness.checks||[]).map(x=><li key={x.code}>
-              <strong className={x.passed?'text-green-700':'text-amber-800'}>{x.passed?'תקין':'לא הושלם'}</strong> · {x.label}
-            </li>)}
-          </ul>
-          <p className="text-xs text-gray-600">יש לאמת בנפרד קבלת הודעה אמיתית, קישור לשיבוץ, אימות ספק ומניעת כפילויות לפני אישור הפעלה. לא מוצגים מפתחות או מספרי טלפון.</p>
-        </div>
-      </details>}
-      {unknownCallbackAudit&&<details open className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="font-medium cursor-pointer">תגובות Green לא מזוהות — {unknownCallbackAudit.pendingReview||0} ממתינות לבירור במדגם</summary>
-        <div className="space-y-2 pt-3 text-xs">
-          <p className="text-amber-800 font-medium">זוהי רשומת בירור של פורמט שאינו נתמך, ולא אישור או דחיית ספק. אין טיפול אוטומטי חוזר ואין אפשרות לשנות כאן שיבוץ.</p>
-          <p className="text-gray-600">מוצגים לכל היותר 40 רישומים. כברירת מחדל נשמרות רק טביעות HMAC. אפשרות עתידית לשמירת מידע מינימלי מוצפן אינה מופעלת; אם תופעל לאחר אישור נפרד, התוכן לא ייחשף במסך הזה. לא מוצגים מספרי טלפון, תוכן הודעות, מפתחות או פרטי כפתורים. אפילו אירוע מוצפן אינו מאשר או דוחה ספק ואינו ACK מוצלח.</p>
-          {unknownCallbackAudit.sampleTruncated&&<p className="text-amber-800">המדגם מוגבל ל־40 הרשומות האחרונות.</p>}
-          {unknownCallbackAudit.retentionSample&&<p className="text-gray-700">במדגם הנוכחי: {unknownCallbackAudit.retentionSample.encryptedInSample||0} רשומות מוצפנות; {unknownCallbackAudit.retentionSample.expiredInSample||0} רשומות שתוקפן פג; {unknownCallbackAudit.retentionSample.invalidExpiryInSample||0} עם תאריך תפוגה לא תקין; {unknownCallbackAudit.retentionSample.expiringWithin12hInSample||0} יפוגו בתוך 12 שעות. זו אינה בדיקת כלל הרשומות.</p>}
-          {!!unknownCallbackAudit.retentionSample?.invalidExpiryInSample&&<p className="text-red-700">נמצאו תאריכי תפוגה לא תקינים במדגם. ניקוי אוטומטי לפי תאריך לא יכלול אותן; נדרש בירור מנהל לפני הפעלה חיה.</p>}
-          {unknownCallbackAudit.list?.length?<ul className="space-y-1">
-            {unknownCallbackAudit.list.map((entry,index)=><li key={entry.reference+'-'+index} className="rounded border p-2">
-              <span>טביעת זיהוי: {entry.reference}</span> · <span>{entry.format==='unrecognized_interactive'?'תגובה אינטראקטיבית לא מוכרת':'הודעה נכנסת לא מזוהה'}</span> · <span>נרשם: {entry.receivedAt||'לא ידוע'}</span> · <span>דורש בירור ידני</span> · <span>{entry.encryptedRecoveryRecorded?'קיים מידע מוצפן, לשימוש מורשה בלבד':'טביעת זיהוי בלבד'}</span>
-              {entry.encryptedRecoveryRecorded&&entry.reviewRecordId&&entry.encryptedRecoveryExpiresAt&&Date.parse(entry.encryptedRecoveryExpiresAt)>Date.now()&&<Button size="sm" variant="outline" disabled={busy}
-                onClick={()=>run('unknownRecoveryStructureReview',{id:entry.reviewRecordId,reference:entry.reference})}>בדוק מבנה בלבד (ללא חשיפת תוכן)</Button>}
-            </li>)}
-          </ul>:<p className="text-gray-600">לא נמצאו רשומות בירור במדגם.</p>}
-          <p className="text-gray-600">ניקוי ידני של מידע מוצפן שפג תוקפו אינו מחליף מדיניות מחיקה אוטומטית מאושרת; אין הוכחת מחיקה מגיבויי Base44.</p>
-          <Button size="sm" variant="outline" disabled={busy}
-            onClick={()=>window.confirm('לנקות לכל היותר 20 רשומות מוצפנות שתוקפן פג? זו פעולה בלתי הפיכה בשדות ההצפנה של הרשומה הפעילה. רשומות HMAC נשארות, וגיבויים אינם נמחקים אוטומטית.')&&run('unknownRecoveryExpiryCleanup')}>
-            נקה מידע מוצפן שפג תוקפו (פעולה ידנית)
-          </Button>
-        </div>
-      </details>}
-      {unknownRecoveryReview&&<section className="text-xs rounded border p-3 space-y-1" dir="rtl" aria-label="בירור מבנה תגובה מוצפנת">
-        <strong>בדיקת מבנה — אסמכתת HMAC {unknownRecoveryReview.reference}</strong>
-        <p>סוג מבנה: {unknownRecoveryReview.class==='list_like'?'בחירה מרשימה':unknownRecoveryReview.class==='interactive_like'?'תגובה אינטראקטיבית':'לא ידוע'}. מזהה בחירה נמצא: {unknownRecoveryReview.hasSelectionIdentifierHint?'כן':'לא'}. הפניה להודעת מקור נמצאה: {unknownRecoveryReview.hasOriginalMessageReferenceHint?'כן':'לא'}.</p>
-        <p className="text-amber-800">זו אבחנה טכנית בלבד, ללא שמות, מספרי טלפון, תוכן ההודעה או מזהי כפתורים. היא אינה מאשרת או דוחה שיבוץ ואינה מהווה אישור קליטה מול Green.</p>
-      </section>}
-      {unknownRecoveryCleanup&&<p className="text-xs rounded border p-2" dir="rtl">נבדקו {unknownRecoveryCleanup.scanned} רשומות שפג תוקפן. ניקוי מאומת של {unknownRecoveryCleanup.scrubbed} שדות הצפנה. תוצאות לא מאומתות: {unknownRecoveryCleanup.unverified}. {unknownRecoveryCleanup.incomplete?'ייתכן שנדרש בירור או ניקוי נוסף.':'המקבץ הנוכחי הושלם.'} שים לב: תאריכי תפוגה פגומים לא נכללים בסינון, וייתכנו רשומות נוספות מחוץ למדגם. גיבויים אינם נחשבים מחוקים.</p>}
-      {inboundAudit&&<details className="rounded border p-3 text-sm" dir="rtl">
-        <summary className="font-medium cursor-pointer">תגובות כפתורים — בדיקת קליטה פנימית (לא פעיל בפרודקשן)</summary>
-        <div className="pt-3 space-y-2">
-          <p className="text-xs text-gray-600">מדגם של עד 100 רשומות בלבד. הכפתורים עדיין כבויים; הבדיקה אינה שולחת הודעות ואינה משנה שיבוצים.</p>
-          {inboundAudit.registrationBlocked&&<p role="alert" className="text-amber-800 font-semibold">רישום תגובות חדשות חסום עקב תוצאת שמירה לא ודאית. נדרש בירור ידני. אין לנסות שליחה/טיפול חוזר אוטומטי.</p>}
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            <span>נקלטו במדגם: {inboundAudit.sampleCount||0}</span>
-            <span>ממתינות: {inboundAudit.totals?.pending||0}</span>
-            <span>בטיפול: {inboundAudit.totals?.processing||0}</span>
-            <span>בוצעו: {inboundAudit.totals?.applied||0}</span>
-            <span>נדחו: {inboundAudit.totals?.rejected||0}</span>
-            <span>דורשות בירור: {inboundAudit.totals?.needs_review||0}</span>
-            <span>נעילת טיפול שפגה: {inboundAudit.expiredProcessing||0}</span>
-          </div>
-          {inboundAudit.sampleTruncated&&<p className="text-xs text-amber-700">המדגם מוגבל ל־100 הרשומות האחרונות.</p>}
-          {!!inboundAudit.review?.length&&<ul className="text-xs list-disc list-inside space-y-1">
-            {inboundAudit.review.map(x=><li key={x.id} className="flex gap-2 items-center flex-wrap">
-              <span>{x.id} · {x.provider} · {x.reason==='expired_processing'?'נעילה שפגה — בירור ידני':'תוצאה לבדיקה'}</span>
-              <Button variant="outline" size="sm" disabled={busy}
-                onClick={()=>run('inboundInspect',{id:x.id})}>בדוק רשומה (ללא שינוי)</Button>
-            </li>)}
-          </ul>}
-          {inboundDetail&&<section className="border rounded p-3 text-xs space-y-2" aria-label="בירור רשומת WhatsApp">
-            <strong>בירור רשומה {inboundDetail.receiptId}</strong>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <span>ספק: {inboundDetail.provider}</span>
-              <span>מצב: {inboundDetail.state}</span>
-              <span>סטטוס שיבוץ נוכחי: {inboundDetail.currentStatus}</span>
-              <span>הסטטוס הצפוי: {inboundDetail.expectedStatus}</span>
-              <span>גרסת שיבוץ: {inboundDetail.currentRevision}</span>
-              <span>נעילה שפגה: {inboundDetail.expiredClaim?'כן':'לא'}</span>
-              <span>חסימת רישום: {inboundDetail.registrationBlocked?'כן':'לא'}</span>
-            </div>
-            {inboundDetail.stateMatchesExpected&&<p className="text-amber-800">מצב השיבוץ תואם לתגובה, אך אין בכך הוכחה שהתגובה הזו היא שביצעה את העדכון.</p>}
-            {inboundDetail.registrationBlocked&&<p className="text-amber-800">נדרשת בדיקה של רשומת ההגנה החוסמת קליטה חדשה. אין לשחרר נעילה אוטומטית.</p>}
-            <p className="text-amber-800">נדרש בירור ידני מול נתוני הספק והמסד. אין טיפול חוזר אוטומטי או שינוי שיבוץ מתוך בדיקה זו.</p>
-            <Button variant="outline" size="sm" onClick={()=>setInboundDetail(null)}>סגור פרטים</Button>
-          </section>}
-          <p className="text-xs text-gray-600">אין כאן פעולה לאישור, דחייה או שליחה מחדש. מצב ״בוצע״ מתייחס לרישום פעולה עסקית בלבד, לא למסירת הודעת WhatsApp.</p>
-        </div>
-      </details>}
-      {sourceAudit&&<section aria-label="בדיקת התאמה WhatsApp למקור" className="rounded-lg border p-3 space-y-2 text-sm">
-        <strong>התאמת מקור ↔ תור — {sourceAudit.sampledInApp} התראות ו־{sourceAudit.sampledOutbox} הודעות במדגם</strong>
-        <p className="text-xs text-gray-600">זו בדיקה לקריאה בלבד. הודעת WhatsApp ללא קישור ל־Outbox עשויה להיות ישנה או הודעת Push בלבד — אין בכך הוכחה לכשל. "התקבל אצל הספק" אינו אישור מסירה.</p>
-        {sourceAudit.businessReminders?.available?<details className="rounded border p-2" open>
-          <summary className="cursor-pointer font-medium">תזכורות עסקיות שטרם הגיעו לתור הספק — {sourceAudit.businessReminders.whatsappWaiting} הודעות WhatsApp במדגם</summary>
-          <p className="text-xs pt-2">ממתינות לתאריך או לתנאי: {sourceAudit.businessReminders.scheduledFuture} עתידיות; {sourceAudit.businessReminders.scheduledDue} הגיע מועדן. הגעת המועד אינה הוכחה לכשל — יש לבדוק גם את עובד התזכורות.</p>
-          <p className="text-xs">עם מזהה עסקי: {sourceAudit.businessReminders.withBusinessKey}; רשומות ותיקות ללא מזהה עסקי: {sourceAudit.businessReminders.legacyWithoutBusinessKey}. אלה אינן נשלחות שוב אוטומטית באבחון.</p>
-          {sourceAudit.businessReminders.sampleTruncated&&<p className="text-xs text-amber-700">הנתונים מוגבלים למדגם האחרון, ולא לכלל התזכורות.</p>}
-          <ul className="list-disc list-inside text-xs pt-1">{(sourceAudit.businessReminders.byTemplate||[]).map(x=><li key={x.templateType}>{x.templateType}: {x.count}</li>)}</ul>
-        </details>:<p className="text-xs text-amber-700">לא ניתן לקרוא כרגע את תזכורות המקור. זה אינו אומר שאין תזכורות ממתינות.</p>}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="rounded border p-2">כפילויות שיבוץ שאותרו במדגם: <strong>{sourceAudit.duplicateAssignments?.length||0}</strong></div>
-          <div className="rounded border p-2">אישור ספק בלי עדכון התראה: <strong>{sourceAudit.acceptedWithoutMirror?.length||0}</strong></div>
-          <div className="rounded border p-2">תוצאה לא ידועה מול סימון נשלח: <strong>{sourceAudit.unknownWithSentMirror?.length||0}</strong></div>
-          <div className="rounded border p-2">התראות מסומנות ללא קישור במדגם: <strong>{sourceAudit.unlinkedSentFlag?.length||0}</strong></div>
-        </div>
-        {[
-          ['שתי הודעות לאותו שיבוץ (אותו מועד עדכון)',sourceAudit.duplicateAssignments],
-          ['אישור ספק שאינו משתקף בהתראה',sourceAudit.acceptedWithoutMirror],
-          ['תוצאה לא ידועה אך ההודעה מסומנת כנשלחה',sourceAudit.unknownWithSentMirror],
-          ['דיווח היסטורי ללא קישור במדגם (לא הוכחת אובדן)',sourceAudit.unlinkedSentFlag]
-        ].map(([label,rows])=><details key={label} className="border rounded p-2">
-          <summary className="cursor-pointer font-medium">{label} — עד {rows?.length||0} פריטים</summary>
-          <ul className="list-disc list-inside pt-2 space-y-1 text-xs">
-            {(rows||[]).map((item,i)=><li key={item.inAppId||item.eventServiceId||i}>{item.jobIds?`שיבוץ ${item.eventServiceId} · ספק ${item.supplierId} · הודעות ${item.jobIds.join(', ')} · סטטוסים ${item.statuses?.join(', ')}`:`התראה ${item.inAppId} ${item.jobId?'· הודעה '+item.jobId:''} ${item.templateType?'· '+item.templateType:''}`}</li>)}
-          </ul>
-        </details>)}
-        <p className="text-xs text-amber-700">אין כאן לחצן שליחה מחדש. תוצאה לא ידועה מחייבת בדיקה אצל ספק WhatsApp כדי למנוע כפילויות.</p>
-      </section>}
-      {metrics&&<section aria-label="מדדי ביצועי WhatsApp" className="rounded-lg border p-3 space-y-2 text-sm">
-        <strong>מדדי ביצועי התור — {metrics.sampled} רשומות אחרונות, לא כלל ההיסטוריה</strong>
-        <p className="text-xs text-gray-500">נמדד מתוך חותמות זמן הקיימות ב־Outbox. המתנה מכוונת לשעות שקט אינה נחשבת לעיכוב תור. אישור API אינו אישור מסירה. מדידה מפורטת זמינה רק להודעות שנוצרו לאחר שדרוג מערכת המדדים.</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          {[
-            ['המתנה בתור לאחר מועד היעד',metrics.timings?.queueWait],
-            ['זמן טיפול לאחר תחילת ניסיון',metrics.timings?.providerProcessing],
-            ['סה״כ מרגע שההודעה הייתה מוכנה',metrics.timings?.afterDue]
-          ].map(([label,sample])=><div key={label} className="rounded border p-2">
-            <div className="font-medium">{label}</div>
-            <div>חציון: {sample?.p50Ms==null?'אין נתון':(sample.p50Ms/1000).toFixed(1)+' שניות'}</div>
-            <div>95%: {sample?.p95Ms==null?'אין נתון':(sample.p95Ms/1000).toFixed(1)+' שניות'}</div>
-            <div className="text-xs text-gray-500">מדגם תקין: {sample?.count||0}</div>
-          </div>)}
-        </div>
-        <details className="rounded border p-2">
-          <summary className="cursor-pointer font-medium">פירוט הסיבות לעיכוב — {metrics.detailedTimingCount||0} הודעות עם נתוני מדידה חדשים</summary>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-3">
-            {[
-              ['המתנה להודעות קודמות',metrics.timings?.backlogWait],
-              ['ויסות קצב הספק',metrics.timings?.pacingWait],
-              ['זמן עד שהעובד הגיע להודעה',metrics.timings?.workerLag],
-              ['עבודה בשרת לפני ניסיון השליחה',metrics.timings?.claimToTransport],
-              ['זמן פעולת השליחה (כולל הכנת קובץ)',metrics.timings?.transportDuration],
-              ['שמירת תוצאת השליחה במסד',metrics.timings?.persistence]
-            ].map(([label,item])=><div key={label} className="rounded border p-2">
-              <div className="font-medium">{label}</div>
-              <div>חציון: {item?.p50Ms==null?'טרם נמדד':(item.p50Ms/1000).toFixed(2)+' שניות'}</div>
-              <div>95%: {item?.p95Ms==null?'טרם נמדד':(item.p95Ms/1000).toFixed(2)+' שניות'}</div>
-              <div className="text-xs text-gray-500">רשומות: {item?.count||0}</div>
-            </div>)}
-          </div>
-          <p className="pt-2 text-xs text-gray-500">תחילת ניסיון ועד תוצאה כוללת גם כתיבת תוצאות. פעולת השליחה כוללת גם הכנת קישור חתום למסמך, ולכן אינה זמן רשת HTTP טהור.</p>
-          <p className="text-xs text-gray-500">מקורות התעוררות: {Object.entries(metrics.byWakeReason||{}).map(([reason,count])=>reason+': '+count).join(' · ')||'טרם נאסף מידע'}</p>
-        </details>
-        <p>ממתינות לאחר מועד היעד: <strong>{metrics.dueStillQueued}</strong> · עתידיות: <strong>{metrics.scheduledForFuture}</strong> · תוצאה לא ידועה: <strong>{metrics.unknownCount}</strong></p>
-        {!!metrics.missingAttemptTimestamp&&<p className="text-amber-700">ב־{metrics.missingAttemptTimestamp} רשומות חסרה חותמת תחילת ניסיון — מדדי זמני התור לגביהן אינם זמינים.</p>}
-        <table className="w-full text-right text-xs">
-          <thead><tr><th>ספק</th><th>ניסיונות במדגם</th><th>חציון המתנה בתור</th><th>חציון ריצה עד רישום תוצאה</th><th>פעולת שליחה בלבד</th></tr></thead>
-          <tbody>{Object.entries(metrics.byProvider||{}).map(([provider,item])=><tr key={provider} className="border-t">
-            <td>{provider==='wasender'?'WasenderAPI':provider==='green'?'Green API':provider}</td>
-            <td>{item.count}</td>
-            <td>{item.queueWait?.p50Ms==null?'חסר':(item.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</td>
-            <td>{item.providerProcessing?.p50Ms==null?'חסר':(item.providerProcessing.p50Ms/1000).toFixed(1)+' שניות'}</td>
-            <td>{item.transportDuration?.p50Ms==null?'טרם נמדד':(item.transportDuration.p50Ms/1000).toFixed(2)+' שניות'}</td>
-          </tr>)}</tbody>
-        </table>
-        <details className="border rounded p-2">
-          <summary className="cursor-pointer font-medium">פירוט זמני התור לפי סוג הודעה (מדגם היסטורי)</summary>
-          <p className="text-xs text-gray-600 py-2">
-            נמדד לאחר מועד היעד של ההודעה, ללא המתנה מכוונת לשעות שקט.
-            תוצאה של חמש דקות יכולה להעיד על התעוררות Watchdog מאוחרת — אך אינה מוכיחה לבדה מה גרם לה.
-            זמן פעולת הספק מחושב רק כשהיו חותמות Transport מפורטות.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs min-w-[580px]">
-              <thead><tr><th>סוג הודעה</th><th>ניסיונות</th><th>חציון המתנה בתור</th>
-                <th>95% מהזמן לאחר היעד</th><th>חציון פעולת ספק</th></tr></thead>
-              <tbody>{Object.entries(metrics.bySource||{})
-                .sort((a,b)=>b[1].count-a[1].count).slice(0,20).map(([source,item])=><tr key={source} className="border-t">
-                  <td>{source}</td><td>{item.count}</td>
-                  <td>{item.queueWait?.p50Ms==null?'אין נתון':(item.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</td>
-                  <td>{item.afterDue?.p95Ms==null?'אין נתון':(item.afterDue.p95Ms/1000).toFixed(1)+' שניות'}</td>
-                  <td>{item.transportDuration?.p50Ms==null?'לא נמדד':(item.transportDuration.p50Ms/1000).toFixed(2)+' שניות'}</td>
-                </tr>)}</tbody>
-            </table>
-          </div>
-        </details>
-      </section>}
-      <details className="border rounded p-3 text-sm" dir="rtl">
-        <summary className="cursor-pointer font-medium">איתור שיבוץ לפי אסמכתא מפנייה ב־WhatsApp (ללא שליחה)</summary>
-        <div className="pt-3 space-y-3">
-          <p className="text-xs text-gray-600">כשהספק פונה למשרד עם אסמכתת ההודעה, אפשר למצוא את האירוע והשירות המקוריים. החיפוש מוגבל לאסמכתא מדויקת אחת, ונשלח רק בלחיצה.</p>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="flex-1 min-w-[220px] max-w-sm space-y-1">
-              <Label htmlFor="wa-office-reference">אסמכתת הודעה</Label>
-              <Input id="wa-office-reference" aria-label="אסמכתת הודעת שיבוץ"
-                value={officeReference} maxLength={128} disabled={busy}
-                placeholder="מזהה ההודעה אחרי המילה אסמכתא"
-                onChange={event=>{setOfficeReference(event.target.value);setOfficeLookup(null);}}/>
-            </div>
-            <Button variant="outline" size="sm" disabled={busy||!/^[A-Za-z0-9_-]{3,128}$/.test(officeReference)}
-              onClick={()=>run('officeReferenceLookup',{reference:officeReference})}>
-              אתר הודעת שיבוץ
-            </Button>
-          </div>
-          {officeLookup&&<section role="status" className="border rounded p-3 space-y-2 text-xs" aria-label="פרטי הודעת שיבוץ לפי אסמכתא">
-            <strong>אסמכתא: {officeLookup.reference}</strong>
-            <div className="flex flex-wrap gap-x-5 gap-y-1">
-              <span>אירוע: {officeLookup.eventName||'לא זמין'}</span>
-              <span>תאריך: {officeLookup.eventDate||'לא זמין'}</span>
-              <span>שירות: {officeLookup.serviceName||'לא זמין'}</span>
-              <span>ספק: {officeLookup.supplierName||'לא זמין'}</span>
-              <span>סטטוס ספק נוכחי: {({pending:'ממתין',confirmed:'מאושר',rejected:'נדחה'})[officeLookup.supplierStatus]||'לא ידוע'}</span>
-              <span>מצב הודעת המקור: {officeLookup.messageStatus}</span>
-            </div>
-            {officeLookup.originState==='current_revision'
-              ?<p className="text-green-700">האסמכתא קשורה לגרסת השיבוץ האחרונה ביומן.</p>
-              :<p className="text-amber-800">לא אומתה גרסת שיבוץ עדכנית ({officeLookup.originState}). ייתכן שמדובר בהודעה ישנה או ברשומה היסטורית.</p>}
-            <p className="text-gray-600">אסמכתה וסטטוס אינם הוכחה למסירת הודעה, ללחיצה על כפתור או לזהות שולח הפנייה. אין כאן שינוי שיבוץ או ניסיון שליחה חוזר.</p>
-          </section>}
-        </div>
-      </details>
-      <div className="border-t pt-4"><WhatsAppWebhookCreditsEstimator /></div>
-      <div className="border-t pt-4"><WhatsAppInteractiveDraftSettings /></div>
-      <div className="border-t pt-4 space-y-3">
-        <Button type="button" size="sm" variant="outline" aria-expanded={messagesOpen}
-          aria-controls="whatsapp-queue-messages-panel" onClick={()=>setMessagesOpen(open=>!open)}>
-          {messagesOpen?'סגור רשימת הודעות':'פתח רשימת הודעות בתור'}
-        </Button>
-        {messagesOpen&&<div id="whatsapp-queue-messages-panel">
-          <WhatsAppQueueMessages refreshSignal={refreshSignal}/>
-        </div>}
-        {!messagesOpen&&<p className="text-xs text-gray-500">רשימת ההודעות נטענת רק בלחיצה — ללא בקשת נתונים מיותרת.</p>}
-      </div>
-      <p className="text-xs text-gray-500">הודעה שהתקבלה אצל ספק WhatsApp אינה בהכרח הודעה שנמסרה לנמען. במצב לא ידוע יש לאמת אצל הספק לפני שליחה מחדש.</p>
-      {(totals.unknown||0)>0&&<p className="text-sm text-amber-700 flex gap-2">
-        <AlertTriangle className="h-4 w-4"/>תוצאה לא ידועה אינה נשלחת שוב אוטומטית.</p>}
+ const reviewDeepLink=typeof window!=='undefined'&&
+  new URLSearchParams(window.location.search).get('whatsappQueue')==='review';
+ const [expanded,setExpanded]=useState(reviewDeepLink);
+ const [form,setForm]=useState(DEFAULT),[view,setView]=useState(null);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [messagesOpen,setMessagesOpen]=useState(reviewDeepLink),[refreshSignal,setRefreshSignal]=useState(0);
+ const [productionCheck,setProductionCheck]=useState(null);
+ const [greenConnection,setGreenConnection]=useState(null),[greenWebhookSettings,setGreenWebhookSettings]=useState(null);
+ const [officeReference,setOfficeReference]=useState(''),[officeLookup,setOfficeLookup]=useState(null);
+ const [metrics,setMetrics]=useState(null),[sourceAudit,setSourceAudit]=useState(null);
+ const [inboundAudit,setInboundAudit]=useState(null),[inboundDetail,setInboundDetail]=useState(null);
+ const [unknownCallbackAudit,setUnknownCallbackAudit]=useState(null);
+ const [unknownRecoveryReview,setUnknownRecoveryReview]=useState(null),[unknownRecoveryCleanup,setUnknownRecoveryCleanup]=useState(null);
+ const apply=data=>{setView(data);if(data?.config)setForm(data.config);};
+ async function read(){
+  const r=await base44.functions.invoke('WhatsAppQueueAdmin',{action:'status'});
+  if(!r.data?.success)throw Error(r.data?.error||'קריאת המצב נכשלה');
+  apply(r.data);setRefreshSignal(x=>x+1);
+ }
+ useEffect(()=>{
+  if(reviewDeepLink)document.getElementById('whatsapp-queue')?.scrollIntoView({block:'start'});
+ },[reviewDeepLink]);
+ useEffect(()=>{
+  if(!expanded)return;
+  let alive=true;
+  base44.functions.invoke('WhatsAppQueueAdmin',{action:'status'})
+   .then(r=>{if(alive&&r.data?.success)apply(r.data);else if(alive)setError('לא ניתן לטעון מצב WhatsApp');})
+   .catch(()=>{if(alive)setError('לא ניתן לטעון מצב WhatsApp');});
+  return()=>{alive=false;};
+ },[expanded]);
+ async function run(action,params={}){
+  if(busy)return;
+  setBusy(true);setError('');setNotice('');
+  if(action==='unknownRecoveryStructureReview')setUnknownRecoveryReview(null);
+  if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings(null);
+  if(action==='greenInstanceStateAudit')setGreenConnection(null);
+  try{
+   const r=await base44.functions.invoke('WhatsAppQueueAdmin',{action,...params});
+   const data=r.data||{};
+   if(!data.success)throw Error(data.error||'הפעולה נכשלה');
+   if(action==='status'){apply(data);setRefreshSignal(x=>x+1);}
+   else if(action==='configure'){
+    apply(data);setRefreshSignal(x=>x+1);setNotice('הגדרות השליחה נשמרו.');
+   }else if(action==='kick'){
+    await read();setNotice('עובד התור הופעל. הודעות ממתינות עשויות להישלח.');
+   }else if(action==='greenInstanceStateAudit')setGreenConnection(data.connection);
+   else if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings(data.settings);
+   else if(action==='officeReferenceLookup')setOfficeLookup(data.lookup);
+   else if(action==='metrics')setMetrics(data.metrics);
+   else if(action==='sourceAudit')setSourceAudit(data.audit);
+   else if(action==='inboundAudit'){setInboundAudit(data.audit);setInboundDetail(null);}
+   else if(action==='inboundInspect')setInboundDetail(data.inspection);
+   else if(action==='unknownCallbackAudit'){setUnknownCallbackAudit(data.audit);setUnknownRecoveryReview(null);}
+   else if(action==='unknownRecoveryStructureReview')setUnknownRecoveryReview(data.review);
+   else if(action==='unknownRecoveryExpiryCleanup')setUnknownRecoveryCleanup(data.cleanup);
+   else if(action==='diagnose'){
+    const issues=(data.checks||[]).filter(x=>!x.ok).map(x=>x.step);
+    if(!data.success||issues.length||data.failedStep)
+     setError('נמצאה בעיית תור: '+(issues.join(', ')||data.failedStep||'לא ידועה'));
+    else setNotice('התור תקין.');
+   }
+  }catch(e){setError(e?.response?.data?.error||e?.message||'הפעולה נכשלה');}
+  finally{setBusy(false);}
+ }
+ async function saveQueue(){
+  if(!view||busy)return;
+  if(view.config.enabled!==form.enabled&&!window.confirm(form.enabled?
+   'הפעלת התור מאפשרת שליחת הודעות WhatsApp ממתינות. להמשיך?':
+   'כיבוי התור עשוי להפעיל מסלול שליחה חלופי. להמשיך?'))return;
+  await run('configure',form);
+ }
+ async function toggleButtons(enable){
+  if(busy||!view||!window.confirm(enable?
+   'להפעיל כפתורי אישור, דחייה ופנייה למשרד בשיבוצים חדשים דרך Green?':
+   'לכבות כפתורים בשיבוצים חדשים? תגובות להודעות שכבר נשלחו ימשיכו להיקלט.'))return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   const r=await base44.functions.invoke('greenAssignmentProductionAdmin',{
+    action:enable?'enable':'disable',
+    ...(enable?{confirmation:'ENABLE_GREEN_ASSIGNMENT_BUTTONS_FOR_ALL_NEW_ASSIGNMENTS'}:{})
+   });
+   if(!r.data?.success)throw Error(r.data?.error||'העדכון נכשל');
+   setView(v=>({...v,interactiveButtonsEnabled:enable}));
+   setProductionCheck(null);
+   setNotice(enable?'כפתורים הופעלו להודעות חדשות.':'כפתורים חדשים כובו. תגובות ישנות נשמרות.');
+  }catch(e){setError(e?.response?.data?.error||e?.message||'עדכון הכפתורים נכשל');}
+  finally{setBusy(false);}
+ }
+ async function checkButtons(){
+  if(busy)return;
+  setBusy(true);setError('');
+  try{
+   const r=await base44.functions.invoke('greenAssignmentProductionAdmin',{action:'status'});
+   if(!r.data?.success)throw Error(r.data?.error||'הבדיקה נכשלה');
+   setProductionCheck(r.data);
+   setView(v=>v?{...v,interactiveButtonsEnabled:r.data.enabled}:v);
+  }catch(e){setError(e?.response?.data?.error||e?.message||'בדיקת הכפתורים נכשלה');}
+  finally{setBusy(false);}
+ }
+ const totals=view?.totals||{},queued=count(totals.queued)+count(totals.retry_wait);
+ const failures=count(totals.failed)+count(totals.unknown);
+ const queueStatus=!view?'לא נטען':!view.config.enabled?'כבוי':view.config.paused?'מושהה':view.workerBusy?'עובד':queued?'יש הודעות ממתינות':'מוכן';
+ const buttonStatus=!view?'לא נטען':!view.interactiveButtonsEnabled?'כבויים':view.activeProvider!=='green'?'Green אינו פעיל':'פעילים';
+ const dirty=!!view&&JSON.stringify(form)!==JSON.stringify(view.config);
+ return <details id="whatsapp-queue" open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}
+  className="rounded-lg border bg-white p-4" dir="rtl">
+  <summary className="cursor-pointer font-semibold text-base">WhatsApp — ניהול שליחה והודעות</summary>
+  <div className="pt-4 space-y-5">
+   {error&&<p role="alert" className="text-sm text-red-700 border rounded p-2">{error}</p>}
+   {notice&&<p role="status" className="text-sm text-green-800">{notice}</p>}
+   <section className="space-y-3" aria-label="מצב WhatsApp">
+    <div className="flex justify-between items-center gap-2">
+     <Header>מצב המערכת</Header>
+     <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}>
+      <RefreshCw className="h-4 w-4 ml-1"/>רענן מצב
+     </Button>
     </div>
-  </details>;
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+     {[['ספק שליחה',!view?'—':view.activeProvider==='wasender'?'WasenderAPI':'Green API'],
+       ['מצב תור',queueStatus],['ממתינות',queued],['דורשות טיפול',failures]].map(([label,value])=>
+      <div className="border rounded p-3" key={label}>
+       <p className="text-xs text-gray-500">{label}</p><strong>{value}</strong>
+      </div>)}
+    </div>
+    {view&&<div className="text-xs text-gray-600 flex flex-wrap gap-3">
+     <span>אושרו אצל ספק השליחה: {count(totals.accepted)}</span>
+     <span>עבודה אחרונה: {showDate(view.lastWorkerAt)}</span>
+     {view.watchdogLate&&<span className="text-amber-800">התאוששות התור מתעכבת</span>}
+     {view.lastError&&<span className="text-red-700">שגיאה: {view.lastError}</span>}
+    </div>}
+    {view?.duplicateAssignmentVersions?.count>0&&<p role="alert" className="text-xs text-amber-800">
+     נמצאו {view.duplicateAssignmentVersions.count} שיבוצים כפולים במדגם. ניתן לבדוק אותם בכלים המתקדמים בלי שליחה נוספת.
+    </p>}
+   </section>
+   <section className="border-t pt-4 space-y-3" aria-label="שליחה וקצב">
+    <Header>שליחה וקצב</Header>
+    <div className="flex flex-wrap gap-5 text-sm">
+     <label className="flex gap-2 items-center">
+      <Switch checked={!!form.enabled} disabled={busy||!view}
+       onCheckedChange={enabled=>setForm(p=>({...p,enabled}))}/>הפעל תור הודעות
+     </label>
+     <label className="flex gap-2 items-center">
+      <Switch checked={!!form.paused} disabled={busy||!view}
+       onCheckedChange={paused=>setForm(p=>({...p,paused}))}/>השהה שליחות חדשות
+     </label>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+     <IntervalEditor name="Green API" value={form.greenIntervalMs} disabled={busy||!view}
+      onChange={value=>setForm(p=>({...p,greenIntervalMs:value}))}/>
+     <IntervalEditor name="WasenderAPI" value={form.wasenderIntervalMs} disabled={busy||!view}
+      onChange={value=>setForm(p=>({...p,wasenderIntervalMs:value}))}/>
+    </div>
+    <details className="rounded border p-3 text-sm">
+     <summary className="cursor-pointer font-medium">מגבלת עומס לעובד התור</summary>
+     <div className="space-y-1 max-w-xs pt-3">
+      <Label htmlFor="wa-batch">מספר הודעות מרבי בריצה</Label>
+      <Input id="wa-batch" type="number" min="1" max="30" step="1"
+       value={form.maxMessagesPerRun} disabled={busy||!view}
+       onChange={e=>setForm(p=>({...p,maxMessagesPerRun:Number(e.target.value)}))}/>
+     </div>
+    </details>
+    <Button size="sm" disabled={busy||!dirty} onClick={saveQueue}>
+     <Save className="h-4 w-4 ml-1"/>שמור הגדרות שליחה
+    </Button>
+    {dirty&&<p className="text-xs text-amber-800">יש שינויים שלא נשמרו.</p>}
+   </section>
+   <section className="border-t pt-4 space-y-3" aria-label="כפתורי WhatsApp">
+    <div className="flex justify-between items-center"><Header>כפתורי WhatsApp לספקים</Header><strong className="text-sm">{buttonStatus}</strong></div>
+    <p className="text-sm text-gray-600">
+     שיבוצים: אישור, דחייה ופנייה למשרד; קישור ללוח הספק בגוף ההודעה.
+     תזכורות מתאימות: כפתורי כניסה למערכת ופנייה למשרד.
+    </p>
+    <Button size="sm" variant={view?.interactiveButtonsEnabled?'outline':'default'}
+     disabled={busy||!view} onClick={()=>toggleButtons(!view.interactiveButtonsEnabled)}>
+     {view?.interactiveButtonsEnabled?'כבה כפתורים בהודעות חדשות':'הפעל כפתורים בהודעות חדשות'}
+    </Button>
+    <WhatsAppLiveButtonSettings active={!!view?.interactiveButtonsEnabled}/>
+    <details className="rounded border p-3 text-sm">
+     <summary className="cursor-pointer font-medium">בדיקת מוכנות הכפתורים</summary>
+     <div className="pt-3 space-y-2">
+      <Button size="sm" variant="outline" disabled={busy} onClick={checkButtons}>בדוק מוכנות שליחה</Button>
+      {productionCheck&&<p className={productionCheck.sendReady?'text-green-800':'text-amber-800'}>
+       {productionCheck.sendReady?'הכפתורים מוכנים.':'חסרים תנאים להפעלת הכפתורים.'}
+       {!productionCheck.sendReady&&productionCheck.checks&&
+        ' '+Object.entries(productionCheck.checks).filter(([,ok])=>!ok)
+         .map(([key])=>({queue:'התור כבוי או מושהה',outboundOwnerSwitch:'כפתורים כבויים',
+          greenProvider:'Green אינו ספק השליחה',
+          verifiedGreenInteractive:'אימות Green אינו מוכן'})[key]||key).join(' · ')}
+      </p>}
+     </div>
+    </details>
+   </section>
+   <section className="border-t pt-4 space-y-2" aria-label="ניהול הודעות">
+    <div className="flex justify-between items-center gap-2">
+     <Header>הודעות ותקלות</Header>
+     <Button size="sm" variant="outline" aria-expanded={messagesOpen}
+      aria-controls="whatsapp-queue-messages-panel"
+      onClick={()=>setMessagesOpen(x=>!x)}>
+      {messagesOpen?'סגור רשימה':'פתח ניהול הודעות'}
+     </Button>
+    </div>
+    <p className="text-sm text-gray-600">צפייה בהודעות, ביטול הודעות ממתינות וטיפול בכשלים. ניסיון חוזר רק כשהמערכת מתירה זאת.</p>
+    {messagesOpen&&<div id="whatsapp-queue-messages-panel">
+     <WhatsAppQueueMessages refreshSignal={refreshSignal}/>
+    </div>}
+   </section>
+   <section className="border-t pt-4 space-y-2">
+    <details className="border rounded p-3 text-sm">
+     <summary className="cursor-pointer font-medium">איתור שיבוץ לפי אסמכתא שהתקבלה במשרד</summary>
+     <div className="pt-3 space-y-3">
+      <div className="flex flex-wrap items-end gap-2">
+       <div className="max-w-sm flex-1 min-w-[200px] space-y-1">
+        <Label htmlFor="wa-office-reference">אסמכתת ההודעה</Label>
+        <Input id="wa-office-reference" maxLength={128} value={officeReference}
+         disabled={busy} placeholder="הדבק אסמכתא"
+         onChange={e=>{setOfficeReference(e.target.value.trim());setOfficeLookup(null);}}/>
+       </div>
+       <Button size="sm" variant="outline" disabled={busy||!/^[A-Za-z0-9_-]{3,128}$/.test(officeReference)}
+        onClick={()=>run('officeReferenceLookup',{reference:officeReference})}>מצא שיבוץ</Button>
+      </div>
+      {officeLookup&&<div role="status" className="border rounded p-3 space-y-1">
+       <p><strong>אירוע:</strong> {officeLookup.eventName||'לא ידוע'}</p>
+       <p><strong>תאריך:</strong> {officeLookup.eventDate||'לא זמין'}</p>
+       <p><strong>שירות:</strong> {officeLookup.serviceName||'לא ידוע'}</p>
+       <p><strong>ספק:</strong> {officeLookup.supplierName||'לא ידוע'}</p>
+       <p><strong>מצב השיבוץ:</strong> {({pending:'ממתין',approved:'מאושר',rejected:'נדחה'})[officeLookup.supplierStatus]||'לא ידוע'}</p>
+       {officeLookup.originState!=='current_revision'&&<p className="text-amber-800">ייתכן שמדובר באסמכתא ישנה.</p>}
+      </div>}
+     </div>
+    </details>
+   </section>
+   <section className="border-t pt-4 space-y-3" aria-label="ניהול מתקדם">
+    <details className="rounded border p-3 text-sm">
+     <summary className="cursor-pointer font-medium">חיבור Green וקליטת תגובות</summary>
+     <div className="pt-3 space-y-3">
+      <div className="flex gap-2 flex-wrap">
+       <Button size="sm" variant="outline" disabled={busy}
+        onClick={()=>run('greenInstanceStateAudit')}>בדוק חיבור Green</Button>
+       <Button size="sm" variant="outline" disabled={busy}
+        onClick={()=>run('greenWebhookSettingsAudit')}>בדוק קליטת תגובות (Webhook)</Button>
+      </div>
+      {greenConnection&&<p>מצב Green: <strong>{({authorized:'מחובר',notAuthorized:'לא מחובר',
+       starting:'באתחול',sleepMode:'מצב שינה',blocked:'חסום',suspended:'מוגבל'})[greenConnection.state]||'לא ידוע'}</strong></p>}
+      {greenWebhookSettings&&<div role="status" className="rounded bg-gray-50 p-3 space-y-1">
+       <p>Webhook: {greenWebhookSettings.webhookConfigured?'מוגדר':'חסר'}</p>
+       <p>קליטת תגובות: {greenWebhookSettings.incomingNotificationsEnabled?'פעילה':'לא מאומתת'}</p>
+       <p>אימות Webhook: {greenWebhookSettings.webhookTokenConfigured?'מוגדר':'חסר'}</p>
+      </div>}
+      <p className="text-xs text-gray-600">הפעולות הן לקריאה בלבד, ללא שליחת הודעות או שינוי הגדרות.</p>
+     </div>
+    </details>
+    <details className="rounded border p-3 text-sm">
+     <summary className="cursor-pointer font-medium">אבחון תקלות וביצועים</summary>
+     <div className="pt-3 space-y-3">
+      <div className="flex flex-wrap gap-2">
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>בדוק תקינות התור</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>זמני שליחה</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדוק כפילויות ותזכורות</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>תגובות ספקים</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('unknownCallbackAudit')}>תגובות לא מזוהות</Button>
+      </div>
+      {metrics&&<div className="border rounded p-3 space-y-1">
+       <strong>ביצועי שליחה — {metrics.sampled||0} הודעות במדגם</strong>
+       <p>חציון המתנה: {metrics.timings?.queueWait?.p50Ms==null?'אין נתון':(metrics.timings.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</p>
+       <p>95% מהזמן לאחר מועד ההודעה: {metrics.timings?.afterDue?.p95Ms==null?'אין נתון':(metrics.timings.afterDue.p95Ms/1000).toFixed(1)+' שניות'}</p>
+      </div>}
+      {sourceAudit&&<div className="border rounded p-3 space-y-1">
+       <strong>התאמה בין הודעות למקור</strong>
+       <p>כפילויות שיבוץ במדגם: {sourceAudit.duplicateAssignments?.length||0}</p>
+       <p>תוצאות לא ידועות שסומנו כנשלחו: {sourceAudit.unknownWithSentMirror?.length||0}</p>
+       <p>תזכורות WhatsApp שממתינות במקור: {sourceAudit.businessReminders?.whatsappWaiting??'לא זמין'}</p>
+      </div>}
+      {inboundAudit&&<div className="border rounded p-3 space-y-2">
+       <strong>תגובות ספקים — {inboundAudit.sampleCount||0} במדגם</strong>
+       <p>בוצעו: {inboundAudit.totals?.applied||0} · נדחו: {inboundAudit.totals?.rejected||0} · דורשות בירור: {inboundAudit.totals?.needs_review||0}</p>
+       {inboundAudit.registrationBlocked&&<p className="text-amber-800">קליטת תגובות חסומה — נדרש בירור.</p>}
+       {(inboundAudit.review||[]).map(entry=><div key={entry.id} className="flex gap-2 items-center">
+        <span className="text-xs">{entry.id} · {entry.reason}</span>
+        <Button size="sm" variant="outline" disabled={busy}
+         onClick={()=>run('inboundInspect',{id:entry.id})}>פרטי תגובה</Button>
+       </div>)}
+       {inboundDetail&&<p className="text-xs">רשומה {inboundDetail.receiptId}: {inboundDetail.state}, שיבוץ {inboundDetail.currentStatus}</p>}
+      </div>}
+      {unknownCallbackAudit&&<div className="border rounded p-3 space-y-2">
+       <strong>תגובות לא מזוהות: {unknownCallbackAudit.pendingReview||0} ממתינות לבירור</strong>
+       {(unknownCallbackAudit.list||[]).map(entry=><div className="border-t pt-2" key={entry.reference}>
+        <p className="text-xs">{entry.reference} · {entry.format==='unrecognized_interactive'?'כפתור לא מזוהה':'אירוע לא מזוהה'}</p>
+        {entry.encryptedRecoveryRecorded&&entry.reviewRecordId&&
+         entry.encryptedRecoveryExpiresAt&&Date.parse(entry.encryptedRecoveryExpiresAt)>Date.now()&&
+         <Button variant="outline" size="sm" disabled={busy}
+          onClick={()=>run('unknownRecoveryStructureReview',{id:entry.reviewRecordId,reference:entry.reference})}>בדוק מבנה ללא תוכן אישי</Button>}
+       </div>)}
+       {unknownRecoveryReview&&<p className="text-xs">מבנה: {unknownRecoveryReview.class}</p>}
+       <details className="border rounded p-2">
+        <summary className="cursor-pointer text-xs">תחזוקת רשומות מוצפנות שפג תוקפן</summary>
+        <div className="pt-2 space-y-2">
+         <p className="text-xs text-gray-600">ניקוי שדות מוצפנים ברשומות שפג תוקפן בלבד. אינו משנה שיבוצים.</p>
+         <Button size="sm" variant="outline" disabled={busy}
+          onClick={()=>window.confirm('לנקות עד 20 רשומות מוצפנות שפג תוקפן? הפעולה בלתי הפיכה ברשומה הפעילה.')&&run('unknownRecoveryExpiryCleanup')}>נקה רשומות שפג תוקפן</Button>
+         {unknownRecoveryCleanup&&<p>נוקו: {unknownRecoveryCleanup.scrubbed||0}</p>}
+        </div>
+       </details>
+      </div>}
+     </div>
+    </details>
+    <details className="rounded border p-3 text-sm">
+     <summary className="cursor-pointer font-medium">הפעלה ידנית של עובד התור</summary>
+     <p className="text-xs text-gray-600 pt-2">לשימוש כשיש הודעות שממתינות. הפעולה יכולה לשלוח הודעות אמיתיות.</p>
+     <Button size="sm" variant="outline" disabled={busy||!view?.config?.enabled||view?.config?.paused}
+      onClick={()=>window.confirm('להפעיל עובד תור עכשיו? הודעות אמיתיות עשויות להישלח.')&&run('kick')}>
+      <Play className="h-4 w-4 ml-1"/>הפעל עובד תור
+     </Button>
+    </details>
+   </section>
+   {count(totals.unknown)>0&&<p className="text-sm text-amber-800 flex gap-2 items-center">
+    <AlertTriangle className="h-4 w-4"/>הודעות במצב לא ידוע אינן נשלחות שוב אוטומטית. נדרש אימות מול ספק השליחה.
+   </p>}
+  </div>
+ </details>;
 }
