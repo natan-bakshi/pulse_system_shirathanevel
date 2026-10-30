@@ -224,8 +224,10 @@ test('queue status flags only same-business-version assignment duplicates withou
  assert.equal(r.body.duplicateAssignmentVersions.count,2,
    'Two microsecond collisions qualify; independent saves remain separate');
  assert.equal(r.body.duplicateAssignmentVersions.providerAcceptanceIsNotDelivery,true);
- assert.equal(r.body.qaPilotNewSendsEnabled,false,
-   'QA must not be suggested for sending with default-off server flags');
+ assert.equal(Object.hasOwn(r.body,'qaPilotNewSendsEnabled'),false,
+   'retired QA send status must not pollute production queue response');
+ assert.equal(r.body.interactiveButtonsEnabled,false,
+   'live owner button switch is the only production status');
  assert.equal(ctx.listProjections.length,1,'Reuse existing projected status read');
  assert.equal(ctx.listProjections[0].includes('idempotency_key'),true);
  assert.equal(ctx.listProjections[0].includes('event_service_id'),true);
@@ -537,6 +539,17 @@ test('one-click pilot result action is owner-only, read-only and never sends Wha
  const outsider=context({actor:{role:'admin',email:'non-owner@example.com'}});
  const rejected=await outsider.invoke('greenButtonQaLiveResult');
  assert.equal(rejected.status,403);
+});
+test('retired single-target QA enrollment cannot modify assignments or enqueue a message',async()=>{
+ const ctx=context();
+ const response=await ctx.invoke('greenButtonQaEnroll',{
+  confirmation:'I_APPROVE_ONE_QA_ASSIGNMENT',eventServiceId:'service-123',supplierId:'supplier-123'
+ });
+ assert.equal(response.status,410);
+ assert.equal(response.body.diagnosticCode,'legacy_qa_retired');
+ assert.equal(response.body.noMessagesSent,true);
+ assert.equal(response.body.noSettingsWritten,true);
+ assert.deepEqual(ctx.calls,[]);
 });
 test('retired Green QA provisioning is permanently blocked, including to the system owner',async()=>{
  const owner=context({state:{interactive_outbound_live_enabled:false}});
