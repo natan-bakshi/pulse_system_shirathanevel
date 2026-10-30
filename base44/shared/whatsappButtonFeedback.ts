@@ -5,6 +5,7 @@
 import {enqueueWhatsApp,readWhatsAppQueueControl} from './whatsappOutbox.ts';
 import {resolveWhatsAppProvider} from './whatsappProviderConfig.ts';
 import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
+import {verifyTerminalButtonFeedbackProof} from './whatsappButtonFeedbackProof.ts';
 import {inboundReceiptKey} from './whatsappInteractiveReceipt.ts';
 import {parseWhatsAppPhone} from './whatsappPhone.ts';
 
@@ -76,6 +77,8 @@ export async function enqueueVerifiedButtonFeedback(
  catch{return reason('receipt_read_unavailable');}
  const planned=planVerifiedButtonFeedback(row);
  if(!planned)return reason('receipt_not_terminal_feedback');
+ if(!(await verifyTerminalButtonFeedbackProof(row,signingSecret)))
+  return reason('terminal_receipt_proof_unverified');
  if(row.feedback_outbox_id)return reason('feedback_already_linked');
  // After callback ACK loss, rereads of the exact original + supplier prevent
  // fabricated or unrelated receipts from being converted to outbound messages.
