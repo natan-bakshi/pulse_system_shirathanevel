@@ -175,6 +175,13 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
   }
   const text = sanitizeMessage(job.message_text);
   if (!text) throw invalidInput('Empty WhatsApp message');
+  // Feedback may only leave the same Green instance that owned the verified
+  // original assignment. It cannot silently switch to Wasender or another
+  // Green number if provider configuration changed before dispatch.
+  if(job.source_type==='assignment_button_feedback'&&
+    (provider!=='green'||!/^[0-9]{5,20}$/.test(String(job.sender_account_id||''))||
+     job.sender_account_id!==Deno.env.get('GREEN_API_INSTANCE_ID')))
+    throw invalidInput('Original Green sender account unavailable for feedback');
   // Last-resort transport fence: a pilot-marked assignment may NEVER be sent
   // with sendMessage, even if an upstream worker path regresses in the future.
   if(job.interactive_qa_required===true&&!interactivePreview)
