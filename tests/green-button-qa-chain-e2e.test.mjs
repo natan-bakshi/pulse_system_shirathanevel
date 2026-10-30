@@ -438,9 +438,10 @@ test('FULL PILOT: enrollment -> durable V2 -> Outbox once -> signed Green previe
  assert.equal(replay.terminalReceiptVerified,true);
  assert.equal(f.stats.statusCAS,1);
  assert.equal(f.stats.providerCalls,1);
- assert.equal((await f.worker(true)).reason,'empty','no resend after receipt');
- assert.equal(f.stats.providerCalls,1);
- assert.equal(f.outbox.length,1);
+ assert.equal((await f.worker(true)).accepted,1,'one separate terminal feedback message');
+ assert.equal(f.stats.providerCalls,2);
+ assert.equal(f.outbox.filter(x=>x.source_type==='assignment_new').length,1);
+ assert.equal(f.outbox.filter(x=>x.source_type==='assignment_button_feedback').length,1);
 });
 test('ONE unverified GREEN Beta probe may send ONLY approved signed QA buttons and accept the matching signed receipt',async()=>{
  const f=fixture({groupPreferred:true,globalV2Enabled:false,betaProbe:true});
@@ -466,7 +467,8 @@ test('ONE unverified GREEN Beta probe may send ONLY approved signed QA buttons a
  const reread=await f.httpCallback('assignment_approve',{sendDisabled:true});
  assert.equal(reread.httpStatus,200);
  assert.equal(f.stats.statusCAS,1,'duplicate click cannot update supplier');
- assert.equal(f.outbox.length,1);
+ assert.equal(f.outbox.filter(x=>x.source_type==='assignment_new').length,1);
+ assert.equal(f.outbox.filter(x=>x.source_type==='assignment_button_feedback').length,1);
 });
 test('SCOPED V2 QA runs with the GLOBAL assignment-intent feature OFF: one event, one private click, zero normal rollout',async()=>{
  const f=fixture({groupPreferred:true,globalV2Enabled:false});
@@ -544,7 +546,8 @@ test('PRODUCTION HTTP ADAPTER: original signed reply -> ACK 200 -> one supplier 
  assert.equal(f.stats.statusCAS,1,'duplicate event must not write supplier again');
  assert.equal(f.stats.providerCalls,1,'no additional provider send');
  assert.equal(f.receipts.length,1,'one durable receipt for one provider event');
- assert.equal(f.outbox.length,1,'no duplicate Outbox');
+ assert.equal(f.outbox.filter(x=>x.source_type==='assignment_new').length,1,'no duplicate assignment Outbox');
+ assert.equal(f.outbox.filter(x=>x.source_type==='assignment_button_feedback').length,1,'one distinct terminal feedback Outbox');
 });
 test('post-confirmation opposite button with a distinct Green event cannot reverse the supplier state',async()=>{
  for(const [first,second,expected] of [
@@ -566,7 +569,9 @@ test('post-confirmation opposite button with a distinct Green event cannot rever
   assert.equal(f.stats.statusCAS,1,'no second supplier mutation');
   assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],expected);
   assert.equal(f.stats.providerCalls,1);
-  assert.equal(f.outbox.length,1);
+  assert.equal(f.outbox.filter(x=>x.source_type==='assignment_new').length,1);
+  assert.equal(f.outbox.filter(x=>x.source_type==='assignment_button_feedback').length,2,
+   'each distinct, durably resolved button click receives its own feedback');
   assert.equal(f.receipts.filter(x=>x.state==='applied').length,1);
   assert.equal(f.receipts.filter(x=>x.state==='rejected').length,1);
   assert.equal(f.receipts.find(x=>x.state==='rejected')?.result_code,
