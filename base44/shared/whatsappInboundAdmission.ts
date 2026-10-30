@@ -91,6 +91,7 @@ export async function preflightWhatsAppAssignmentResponse(input:{
    // All provider/origin/supplier checks above must have succeeded first.
    verifiedTerminalRejectionCandidate:[
     'assignment_not_pending','stale_assignment_revision',
+    'stale_legacy_assignment','legacy_assignment_not_pending',
     'assignment_intent_inactive','supplier_not_assigned'
    ].includes(reason),
    noMessagesSent:true} as const);
