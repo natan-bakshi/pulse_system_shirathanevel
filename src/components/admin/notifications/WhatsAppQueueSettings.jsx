@@ -499,7 +499,7 @@ export default function WhatsAppQueueSettings(){
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
       {greenConnection&&<div role="status" className="rounded border p-3 text-sm space-y-1" dir="rtl">
         <p className="font-medium">מצב החיבור של מופע Green: <span className={greenConnection.authorized?'text-green-800':'text-amber-800'}>{({authorized:'מחובר ומורשה',notAuthorized:'לא מחובר — נדרש קישור מספר',blocked:'החשבון חסום',suspended:'החשבון מוגבל זמנית',sleepMode:'מצב שינה — המתן להתאוששות',starting:'המופע באתחול'})[greenConnection.state]||'לא ידוע'}</span></p>
-        <p className="text-xs text-gray-600">זו בדיקת חיבור המופע בלבד, לא הוכחת מסירה או קליטת לחיצה. לאחר החלפת מספר בדוק גם את ה־Webhook. הודעות ישנות עשויות להיות קשורות לחשבון הקודם. אין ניטור אוטומטי.</p>
+        <p className="text-xs text-gray-600">זו בדיקת מצב המופע בלבד: אינה מזהה למנהל מהו המספר שחובר ואינה הוכחת מסירה או קליטת לחיצה. לאחר החלפת מספר בדוק גם את ה־Webhook. מספר המשרד המשמש בכפתור פנייה למשרד מוגדר בנפרד ואינו משתנה אוטומטית. הודעות ישנות עשויות להיות קשורות לחשבון הקודם. הבדיקה מתבצעת רק בלחיצה יזומה, ללא ניטור אוטומטי.</p>
       </div>}
       {greenWebhookSettings&&<details open className="rounded border p-3 text-sm" dir="rtl">
         <summary className="cursor-pointer font-medium">מיפוי Green API הקיים — בדיקת GetSettings לקריאה בלבד</summary>
