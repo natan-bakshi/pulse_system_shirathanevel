@@ -1,4 +1,5 @@
 import { getClientContacts } from '../../shared/eventFields.js';
+import { googleCalendarPatchBody } from '../../shared/googleCalendarPatchBody.ts';
 import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload}
  from '../../shared/greenButtonQaFixture.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
@@ -351,7 +352,7 @@ async function upsertCalendarEvent(accessToken, calendarId, existingEventId, eve
     const res = await fetch(`${baseUrl}/${existingEventId}`, {
       method: 'PATCH',
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(eventBody)
+      body: JSON.stringify(googleCalendarPatchBody(eventBody))
     });
     if (res.ok) {
       const data = await res.json();
