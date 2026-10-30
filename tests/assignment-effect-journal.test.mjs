@@ -32,6 +32,9 @@ test('durable side-effect tasks have versioned deterministic keys per consumer +
  assert.ok(journal.some(t=>t.consumer==='entity_update_notifications'&&t.subjectId===s.id));
  assert.ok(journal.every(t=>t.key.startsWith('assignment-effect:'+s.id+':r1:')));
  assert.ok(journal.every(t=>t.state==='planned'));
+ assert.ok(journal.some(t=>t.consumer==='supplier_pending_reminder'&&t.afterStatus==='pending'));
+ assert.ok(journal.some(t=>t.consumer==='entity_update_notifications'&&
+  t.changedFields.includes('supplier_ids')));
  assert.equal(JSON.stringify(journal).includes('new"'),false,'supplier notes are not copied');
 });
 test('two suppliers added together receive different Push and reminder keys in one generation',()=>{
@@ -53,6 +56,17 @@ test('replay planning on the same before snapshot produces the exact same immuta
  const second=planDurableAssignmentEffectJournal(base(),patch(),time);
  assert.deepEqual(first,second);
  assert.ok(!JSON.stringify(first).includes('@c.us'));
+});
+test('status change preserves just immutable old/new status for subsequent delayed notification',()=>{
+ const s=base(),p={...patch(),supplier_ids:s.supplier_ids,
+  supplier_statuses:'{"supplier-ONE111":"rejected"}',
+  supplier_notes:s.supplier_notes};
+ const {tasks}=planDurableAssignmentEffectJournal(s,p,time);
+ const notification=tasks.find(t=>t.consumer==='assignment_status_notifications');
+ assert.equal(notification.beforeStatus,'confirmed');
+ assert.equal(notification.afterStatus,'rejected');
+ assert.equal(notification.subjectId,'supplier-ONE111');
+ assert.ok(!JSON.stringify(tasks).includes('unchanged'));
 });
 test('subsequent business generation adds new keys and retains earlier tasks, without dispatching',()=>{
  const s=base(),p=patch();
@@ -102,7 +116,10 @@ test('invalid journal, duplicate keys and identity mismatch fail closed before C
   [{...good,key:good.key.replace(':r1:',':r2:')}],
   [{...good,state:'weird'}],
   [{...good,subjectId:'bad@chat'}],
-  [{...good,customScript:'delete_all'}]
+  [{...good,customScript:'delete_all'}],
+  [{...good,afterStatus:'arbitrary'}],
+  [{...good,changedFields:['payment_card_number']}],
+  [{...good,changedFields:['supplier_ids','supplier_ids']}]
  ])assert.throws(()=>readAssignmentEffectJournal(JSON.stringify(bad)));
  const foreign=JSON.stringify([{...good,key:good.key.replace(s.id,'service-OTHER')}]);
  assert.throws(()=>planDurableAssignmentEffectJournal({
