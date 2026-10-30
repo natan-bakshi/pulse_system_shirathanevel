@@ -290,6 +290,14 @@ Deno.serve(async(req)=>{
     }
     const body=await req.json().catch(()=>({}));
     const action=String(body.action||'status');
+    // Retired production-era QA actions must not create new trial business
+    // assignments or reboot the LIVE Green webhook, even if obsolete owner
+    // secrets remain enabled. Keep old read-only forensic actions and signed
+    // inbound receipts available; this changes NO production sender/worker.
+    if(action==='greenButtonQaEnroll'||action==='greenButtonQaProvisionWebhook')
+      return RESPONSE({success:false,diagnosticCode:'legacy_qa_retired',
+        error:'מסלול הניסוי הישן הוסר. הכפתורים מנוהלים בממשק הפרודקשן.',
+        noMessagesSent:true,noSettingsWritten:true,noAutomaticRetry:true},410);
     const entity=client.asServiceRole.entities.WhatsAppQueueControl;
     // Owner-only draft settings. They never activate interactive sends or webhook actions.
     if(action==='interactiveGet'){
