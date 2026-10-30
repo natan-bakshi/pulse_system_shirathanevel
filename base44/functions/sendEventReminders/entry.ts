@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
                                             template_type: 'SUPPLIER_EVENT_REMINDER',
                                             is_sent: false,
                                             data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: supplier.phone,
-                                              idempotency_key:reminderKey,source_type:'event_reminder' })
+                                              idempotency_key:reminderKey,source_type:'event_reminder',related_supplier_id:supplierId })
                                         });
                                         whatsappQueued = true;
                                         queuedCount++;
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
                                 } else {
                                     // Send immediately
                                     try {
-                                        whatsAppResult = await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||'',idempotencyKey:reminderKey});
+                                        whatsAppResult = await sendWhatsAppText(supplier.phone, whatsappMessage, base44, {sourceType:'event_reminder',sourceId:event.id||'',idempotencyKey:reminderKey,supplierId});
                                         whatsappSent = whatsappEnqueueReceiptState(whatsAppResult)==='accepted';
                                     } catch (waError) {
                                         console.error('[EventReminders] WhatsApp send failed:', waError?.message || 'unknown');
@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
                                         template_type: 'ADMIN_EVENT_REMINDER',
                                         is_sent: false,
                                         data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: admin.phone,
-                                          idempotency_key:reminderKey,source_type:'event_reminder' })
+                                          idempotency_key:reminderKey,source_type:'event_reminder',related_supplier_id:supplierId })
                                     });
                                     queuedCount++;
                                     console.log(`[EventReminders] WhatsApp QUEUED for admin ${admin.full_name} until ${quietHoursEndTime.toISOString()}`);
