@@ -582,6 +582,10 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         ? classifyWhatsAppError(transportError,attempt,Number(job.max_attempts||3))
         : {status:'accepted',code:0,retryAt:'',reason:''};
       const patch={
+        ...(control.interactive_assignment_production_enabled===true&&
+           job.source_type==='assignment_new'&&provider==='green'
+           ?{interactive_fallback_reason:candidate.kind==='interactive'
+             ?'interactive_signed':String(candidate.reason||'legacy_fallback').slice(0,100)}:{}),
         status:outcome.status,
         provider_message_id:outcome.status==='accepted'?String(receipt.messageId):'',
         available_at:outcome.retryAt||job.available_at,
