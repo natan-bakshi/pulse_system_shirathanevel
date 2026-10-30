@@ -45,6 +45,11 @@ function fixture(){
      if(name.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
      if(name.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(name.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
+     if(name.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,interactive_assignment_production_enabled:false})};
+     if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
+     if(name.endsWith('supplierPortalLink.ts'))return {
+       productionAssignmentPrivateTarget:(_supplier,chat)=>({chatId:chat,reason:'normal_supplier_preference'})
+     };
      if(name.endsWith('whatsappSend.ts'))return {toChatId,sendWhatsAppToChat:async(chat,text,c,ctx)=>{
        requests.push({chat,text,ctx});return {success:true,queued:true,status:'queued',jobId:'synthetic-'+requests.length};
      }};
