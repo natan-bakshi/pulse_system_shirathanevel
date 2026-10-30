@@ -5,6 +5,7 @@
 // The existing assignment business path remains the only LIVE route.
 import {readAssignmentEffectJournal,type AssignmentEffectTask}
  from './assignmentEffectJournal.ts';
+import type {EffectPreflightDisposition} from './assignmentEffectEligibility.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,100}$/;
 const TOKEN=/^[A-Za-z0-9_-]{12,100}$/;
@@ -25,6 +26,8 @@ export type EffectAdapter=(input:{
 export type EffectBatchOptions={
  // Required for every test harness; never use untrusted request data.
  adapters:Readonly<Record<string,EffectAdapter>>;
+ // Required independent fresh-business-state check, after claim, before IO.
+ preflight:(task:Readonly<AssignmentEffectTask>,serviceId:string)=>Promise<EffectPreflightDisposition>;
  makeToken:()=>string;now?:()=>number;maxTasks?:number
 };
 type ClaimResult={
@@ -209,8 +212,9 @@ export async function finalizeStagedAssignmentEffect(
 export async function processStagedAssignmentEffectBatch(
  client:any,serviceId:string,options:EffectBatchOptions
 ){
- if(!options||typeof options.makeToken!=='function'||!options.adapters||
-  typeof options.adapters!=='object')throw Error('Missing trusted effect adapters');
+ if(!options||typeof options.makeToken!=='function'||
+  typeof options.preflight!=='function'||!options.adapters||
+  typeof options.adapters!=='object')throw Error('Missing trusted effect adapters or preflight');
  const now=options.now||Date.now;
  const limit=typeof options.maxTasks==='number'&&
   Number.isSafeInteger(options.maxTasks)&&options.maxTasks>0
@@ -231,14 +235,24 @@ export async function processStagedAssignmentEffectBatch(
    if(claim.status==='busy')stats.busy=true;
    break;
   }
-  // Explicit claim CAS confirmation precedes every adapter call.
-  // Any adapter failure is ambiguous, not evidence the action didn't start.
+  // Explicit claim CAS confirmation precedes every preflight and adapter.
+  // A fresh EventService + Event decision is mandatory; if the task has been
+  // superseded, do not contact any external provider or notification system.
   let disposition:ReturnType<typeof normalizeAdapterResult>;
   try{
-   const result=await options.adapters[claim.task.consumer]({
-    task:claim.task,idempotencyKey:claim.task.key,serviceId
-   });
-   disposition=normalizeAdapterResult(claim.task,result);
+   const check=await options.preflight(claim.task,serviceId);
+   if(check?.action==='cancel'&&
+    ['superseded','no_longer_applicable'].includes(check.reason))
+    disposition={state:'cancelled',resultCode:check.reason};
+   else if(check?.action==='review'&&
+    ['invalid_business_state','consumer_not_ready'].includes(check.reason))
+    disposition={state:'manual_review',resultCode:check.reason};
+   else if(check?.action==='run'){
+    const result=await options.adapters[claim.task.consumer]({
+     task:claim.task,idempotencyKey:claim.task.key,serviceId
+    });
+    disposition=normalizeAdapterResult(claim.task,result);
+   }else disposition={state:'unknown',resultCode:'preflight_uncertain'};
   }catch{
    disposition={state:'unknown',resultCode:'execution_exception_unknown'};
   }
