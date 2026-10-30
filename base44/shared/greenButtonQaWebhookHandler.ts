@@ -89,7 +89,8 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
    setting_key:'assignment_intent_v1_enabled'
   },'-created_date',2);
   const durable=(flags.length===1&&flags[0].setting_value==='true')||
-   greenButtonQaScopedV2Enabled(opts.env);
+   greenButtonQaScopedV2Enabled(opts.env)||
+   opts.env('GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled';
   const config=trustedGreenButtonQaInboundConfig(control,opts.env,durable);
   if(!config)return result(404);
   const processed=await (opts.stage??stageFutureGreenInteractiveHttpCallback)(
@@ -103,6 +104,7 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
       qaPreviousEventServiceId:opts.env('GREEN_BUTTONS_QA_PREVIOUS_EVENT_SERVICE_ID')
     }:{}),
     qaSupplierId:config.qaSupplierId,
+    legacyCanaryApproved:config.legacyCanaryApproved,
     claimOwner:'qa-'+crypto.randomUUID(),
     now:opts.now,
     // This scope never stores encrypted callback bodies or interprets
