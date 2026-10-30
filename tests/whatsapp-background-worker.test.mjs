@@ -44,6 +44,9 @@ function fixture({role='admin',enabled=true,paused=false,hasWork=true,telemetryF
      if(name.endsWith('/assignmentIntentReconciler.ts'))return {
        sweepPendingSupplierAssignmentIntents:async()=>{sweeps++;return {success:true,reason:'feature_disabled'}}
      };
+     if(name.endsWith('/whatsappButtonFeedback.ts'))return {
+       reconcileTerminalButtonFeedback:async()=>({scanned:0,queued:0,reason:'no_terminal_feedback'})
+     };
      if(name.endsWith('/whatsappUnknownReviewAlerts.ts'))return {
        alertUnknownWhatsAppOutcomes:async()=>({examined:0,created:0,noMessagesSent:true})
      };
