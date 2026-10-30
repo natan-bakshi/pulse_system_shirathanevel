@@ -4,6 +4,7 @@ import { readWhatsAppQueueControl } from './whatsappOutbox.ts';
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { sendWhatsAppTransport } from './whatsappSend.ts';
 import {prepareGreenInteractiveWorkerCandidate} from './whatsappInteractiveWorkerBridge.ts';
+import {previewGreenSupplierNavigation} from './greenSupplierNavigation.ts';
 import {readAssignmentIntents} from './assignmentIntent.ts';
 
 const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
@@ -510,6 +511,17 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           continue;
         }
       }
+      // URL-only supplier notices are an ADDITION to ordinary Green delivery.
+      // Their two URL buttons never mutate a business entity, carry a signed
+      // reply token, allocate a new job or add a database lookup. Other jobs
+      // still use precisely the original transport, queue and retry rules.
+      if(candidate.kind==='legacy'&&opts.interactiveConfig){
+        const navigation=previewGreenSupplierNavigation({
+          job:options.job,provider,control,config:opts.interactiveConfig
+        });
+        if(navigation)candidate={kind:'navigation',reason:'supplier_url_buttons',
+          job:options.job,preview:navigation};
+      }
       // A marked QA job stays interactive-only even if a trusted scope has
       // changed, so bridge fallback must never select the plain-text sender.
       if(options.job.interactive_qa_required===true&&candidate.kind!=='interactive'){
@@ -572,7 +584,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       let receipt:any=null,transportError:any=null;
       try{
         // This is the ONLY provider call. It is never retried by this worker.
-        const dispatchJob=candidate.kind==='interactive'
+        const dispatchJob=['interactive','navigation'].includes(candidate.kind)
           ? {...job,status:'sending',provider,lease_token:token,
              attempt_count:attempt,send_started_at:startedAt}:job;
         receipt=await (opts.transport||sendWhatsAppTransport)(
