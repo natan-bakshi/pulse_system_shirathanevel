@@ -132,7 +132,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
  const legacyProduction=config.legacyProductionApproved===true&&
   !V2_KEY.test(String(job.idempotency_key||''))&&
   job.interactive_qa_required!==true&&
-  /^[1-9][0-9]{7,14}@c\\.us$/.test(job.chat_id||'');
+  /^[1-9][0-9]{7,14}@c\.us$/.test(job.chat_id||'');
  // A queued message created BEFORE the owner armed the pilot is already an
  // ordinary text obligation. Do not silently change its transport format.
  if(legacyCanary){
