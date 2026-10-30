@@ -5,11 +5,15 @@ import {
 } from '../base44/shared/assignmentV2ReleaseReadiness.ts';
 import {
  ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED,
+ ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS,
  assignmentSideEffectsLaunchGate,SIDE_EFFECT_FLAG
 } from '../base44/shared/assignmentSideEffectsLaunchGate.ts';
 
 test('business side effects cannot be enabled by changing AppSettings until code-owned fanout exists',()=>{
  assert.equal(ASSIGNMENT_SIDE_EFFECT_BRIDGE_IMPLEMENTED,false);
+ assert.ok(Object.isFrozen(ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS));
+ assert.equal(Object.keys(ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS).length,10);
+ assert.ok(Object.values(ASSIGNMENT_SIDE_EFFECT_BRIDGE_PROOFS).some(v=>v===false));
  const required={required:true,effects:[],changedFields:[],
   requiredConsumers:['supplier_assignment_push','google_calendar_sync'],supplierCount:1};
  for(const settings of [[],[{setting_key:SIDE_EFFECT_FLAG,setting_value:'verified_v1'}]]){
@@ -38,6 +42,8 @@ test('release readiness exposes blockers but never claims general production rea
  assert.ok(r.checks.some(x=>x.code==='legacy_workflow_parity_preserved_in_current_ui'&&x.ready));
  assert.ok(r.checks.some(x=>x.code==='live_inbound_for_real_assignments'&&!x.ready));
  assert.ok(r.requiredParityConsumers.includes('supplier_pending_reminder'));
+ assert.equal(r.implementationProofs.length,10);
+ assert.ok(r.implementationProofs.every(x=>x.ready===false));
  const forged=summarizeAssignmentV2ReleaseReadiness({
   durableFlagRows:[{setting_key:'assignment_intent_v1_enabled',setting_value:'true'}],
   effectFlagRows:[{setting_key:SIDE_EFFECT_FLAG,setting_value:'verified_v1'}]
