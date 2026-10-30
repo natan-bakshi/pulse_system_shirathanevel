@@ -69,7 +69,8 @@ test('forecast is purely client-side, collapsed and never triggers an integratio
  const parent=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
  assert.match(ui,/estimateGreenWebhookInvocationCredits/);
  assert.match(ui,/<details className="rounded border p-3 text-sm"/);
- assert.match(parent,/<WhatsAppWebhookCreditsEstimator\s*\/>/);
+ assert.doesNotMatch(parent,/<WhatsAppWebhookCreditsEstimator\s*\/>/);
+ assert.match(parent,/ניהול שליחה והודעות/);
  assert.doesNotMatch(ui,/base44\.functions\.invoke|fetch\(|setInterval|WebSocket|localStorage/);
  assert.doesNotMatch(model,/base44\.functions\.invoke|fetch\(|setInterval|WebSocket/);
 });
