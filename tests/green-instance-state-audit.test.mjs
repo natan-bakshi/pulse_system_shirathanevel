@@ -73,6 +73,7 @@ test('on-demand backend action remains owner-authenticated; UI never uses a refr
  assert.match(backend,/action==='greenInstanceStateAudit'/);
  assert.match(backend,/inspectGreenInstanceStateReadOnly/);
  assert.match(ui,/run\('greenInstanceStateAudit'\)/);
- assert.match(ui,/greenConnection\.authorized/);
+ assert.match(ui,/greenConnection\.state/);
+ assert.match(ui,/onClick=\{\(\)=>run\('greenInstanceStateAudit'\)\}/);
  assert.doesNotMatch(ui,/setInterval\(|setTimeout\(/);
 });
