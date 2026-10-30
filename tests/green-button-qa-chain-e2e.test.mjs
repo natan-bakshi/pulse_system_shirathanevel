@@ -7,7 +7,8 @@ import {processSupplierAssignmentIntents} from '../base44/shared/assignmentInten
 import {assignmentWhatsAppContext,supplierAssignmentTargetChatId} from '../base44/shared/assignmentWhatsApp.ts';
 import {sendWhatsAppToChat,toChatId} from '../base44/shared/whatsappSend.ts';
 import {drainWhatsAppOutbox} from '../base44/shared/whatsappQueueWorker.ts';
-import {trustedGreenButtonQaConfig,trustedGreenLegacyPilotConfig}
+import {trustedGreenButtonQaConfig,trustedGreenLegacyPilotConfig,
+ trustedGreenAssignmentProductionConfig}
  from '../base44/shared/greenButtonQaLaunch.ts';
 import {LEGACY_GREEN_PILOT_FIELD,pilotTarget,nextLegacyGreenPilotState,
  signLegacyGreenPilotState} from '../base44/shared/legacyGreenPilotScope.ts';
@@ -45,7 +46,7 @@ const policy=JSON.stringify({
   {action:'contact_office',label:'פנייה למשרד'}]}
 });
 function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,legacyCanary=false,
- legacyDifferentQaChat=false}={}){
+ legacyDifferentQaChat=false,production=false}={}){
  const qaEnvOriginal=betaProbe?key=>key==='GREEN_BUTTONS_QA_ACCOUNT_VERIFIED'?
   'probe_authorized':key==='GREEN_BUTTONS_QA_BETA_PROBE_ENABLED'? 'enabled':env(key):env;
  const qaEnv=key=>legacyDifferentQaChat&&key==='GREEN_BUTTONS_QA_ALLOWED_CHAT'
@@ -54,6 +55,8 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
  const control={
   id:'control-qa1',control_key:'global',enabled:true,paused:false,
   interactive_outbound_live_enabled:true,
+  interactive_assignment_production_enabled:production,
+  interactive_assignment_production_ever_enabled:production,
   interactive_assignment_green_policy_json:policy,
   green_interval_ms:0,wasender_interval_ms:0,max_messages_per_run:16,
   min_interval_seconds:0,lease_owner:'',lease_until:'',enqueue_owner:'',
@@ -171,7 +174,8 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
   control[LEGACY_GREEN_PILOT_FIELD]=await signLegacyGreenPilotState(state,SIGNING,at);
  }
  async function worker(interactive=true,onTransport=null){
-  const config=interactive?(legacyCanary?
+  const config=interactive?(production?
+    trustedGreenAssignmentProductionConfig(control,qaEnv,'outbound'):legacyCanary?
     await trustedGreenLegacyPilotConfig(control,qaEnv,'outbound'):
     trustedGreenButtonQaConfig(control,qaEnv,true)):null;
   return drainWhatsAppOutbox(client,{
@@ -247,6 +251,31 @@ function fixture({groupPreferred=false,globalV2Enabled=true,betaProbe=false,lega
  return {client,service,supplier,event,control,outbox,receipts,stats,qaEnv,
   armLegacy,enroll,reconcile,worker,callback,httpCallback};
 }
+test('PRODUCTION: any ordinary Green private assignment gets signed buttons and durable callback without per-supplier enrollment',async()=>{
+ const f=fixture({globalV2Enabled:false,production:true,legacyDifferentQaChat:true});
+ f.service.supplier_ids=JSON.stringify([SUPPLIER]);
+ f.service.supplier_statuses=JSON.stringify({[SUPPLIER]:'pending'});
+ f.service.updated_date=new Date(Date.now()-1200).toISOString();
+ const queued=await sendWhatsAppToChat(CHAT,'שיבוץ רגיל בפרודקשן',f.client,
+  assignmentWhatsAppContext(f.service,SUPPLIER));
+ assert.equal(queued.queued,true);
+ const config=trustedGreenAssignmentProductionConfig(f.control,f.qaEnv,'outbound');
+ assert.equal(config.legacyProductionApproved,true);
+ assert.equal(config.qaChatId,undefined);
+ const previews=[];
+ const sent=await f.worker(true,(_j,_p,preview)=>{
+  previews.push(preview);return {messageId:'3EB0PRODUCTIONASSIGNMENT123'};
+ });
+ assert.equal(sent.accepted,1,JSON.stringify(sent));
+ assert.equal(f.stats.providerCalls,1);
+ assert.equal(previews[0].method,'sendInteractiveButtons');
+ const reply=await f.httpCallback('assignment_approve');
+ assert.equal(reply.httpStatus,200);
+ assert.equal(f.stats.statusCAS,1);
+ assert.equal(JSON.parse(f.service.supplier_statuses)[SUPPLIER],'confirmed');
+ assert.equal((await f.httpCallback('assignment_approve')).httpStatus,200);
+ assert.equal(f.stats.statusCAS,1);
+});
 test('FAST PATH: existing assignment save and existing queue -> signed Green buttons -> supplier decision -> durable receipt -> duplicate ignored',async()=>{
  const f=fixture({globalV2Enabled:false,legacyCanary:true,
   legacyDifferentQaChat:true});
