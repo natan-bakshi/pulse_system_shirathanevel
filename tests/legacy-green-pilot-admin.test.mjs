@@ -77,39 +77,34 @@ function fixture({owner=true,provider='green',group=false,ready=true}={}){
 }
 const identity=()=>({eventServiceId:'service-111111',
  supplierId:'supplier-111111',confirmation:pilot.LEGACY_GREEN_PILOT_CONFIRM});
-test('only system owner can arm a single real assignment scope',async()=>{
+test('legacy pilot arm is retired for owner and remains forbidden to non-owner',async()=>{
  const f=fixture({owner:false});
  assert.equal((await f.call('arm',identity())).status,403);
  f.setActor({role:'supplier',email:'natib8000@gmail.com'});
  assert.equal((await f.call('arm',identity())).status,403);
  f.setActor({role:'admin',email:'natib8000@gmail.com'});
- assert.equal((await f.call('arm',{...identity(),confirmation:'untrusted'})).status,403);
+ assert.equal((await f.call('arm',{...identity(),confirmation:'untrusted'})).status,410);
  assert.equal(f.stats.writes,0);
  assert.equal(f.stats.businessWrites,0);
 });
-test('arm is a signed queue-control CAS only, never an assignment edit or WhatsApp send',async()=>{
+test('retired pilot cannot create any new business action, queue change or provider send',async()=>{
  const f=fixture();
  const response=await f.call('arm',identity());
- assert.equal(response.status,200,JSON.stringify(response.body));
- assert.equal(response.body.active,true);
+ assert.equal(response.status,410);
  assert.equal(response.body.noMessagesSent,true);
  assert.equal(response.body.noSupplierWrites,true);
- assert.equal(f.stats.writes,1);
+ assert.equal(f.stats.writes,0);
  assert.equal(f.stats.businessWrites,0);
- const signed=f.control[pilot.LEGACY_GREEN_PILOT_FIELD];
- const decoded=await pilot.verifyLegacyGreenPilotState(signed,secret);
- assert.equal(decoded.active,true);
- assert.equal(decoded.current.eventServiceId,identity().eventServiceId);
- assert.equal(decoded.current.supplierId,identity().supplierId);
- assert.equal(decoded.current.chatId,'972501234567@c.us');
  const read=await f.call('status');
  assert.equal(read.status,200);
- assert.equal(read.body.active,true);
- assert.equal(f.stats.writes,1);
+ assert.equal(read.body.active,false);
 });
-test('stop prevents new button sends but retains already issued signed inbound scope',async()=>{
+test('stop still retains signed inbound scope for a historically armed pilot',async()=>{
  const f=fixture();
- assert.equal((await f.call('arm',identity())).status,200);
+ const now=Date.now();
+ f.control[pilot.LEGACY_GREEN_PILOT_FIELD]=await pilot.signLegacyGreenPilotState(
+  pilot.nextLegacyGreenPilotState(null,
+   pilot.pilotTarget(f.svc.id,f.supplier.id,'972501234567@c.us',now),now),secret,now);
  const stopped=await f.call('stop');
  assert.equal(stopped.status,200);
  assert.equal(stopped.body.active,false);
@@ -125,15 +120,18 @@ test('Green provider, private chat and verified capability are hard server-side 
  for(const options of [{provider:'wasender'},{group:true},{ready:false}]){
   const f=fixture(options);
   const response=await f.call('arm',identity());
-  assert.ok([409,423].includes(response.status),JSON.stringify(options));
+  assert.equal(response.status,410,JSON.stringify(options));
   assert.equal(f.stats.writes,0);
  }
 });
-test('signed pilot is not reassigned to another service for same private phone before prior reply expiry',async()=>{
+test('a historically signed pilot cannot be rearmed or switched to another supplier',async()=>{
  const f=fixture();
- assert.equal((await f.call('arm',identity())).status,200);
+ const now=Date.now();
+ f.control[pilot.LEGACY_GREEN_PILOT_FIELD]=await pilot.signLegacyGreenPilotState(
+  pilot.nextLegacyGreenPilotState(null,
+   pilot.pilotTarget(f.svc.id,f.supplier.id,'972501234567@c.us',now),now),secret,now);
  f.svc.id='service-222222';
  const rearm=await f.call('arm',{...identity(),eventServiceId:'service-222222'});
- assert.equal(rearm.status,409);
- assert.equal(f.stats.writes,1);
+ assert.equal(rearm.status,410);
+ assert.equal(f.stats.writes,0);
 });
