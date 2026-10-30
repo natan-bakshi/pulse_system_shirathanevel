@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { sendWhatsAppToChat, toChatId } from '../../shared/whatsappSend.ts';
 import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
+import {resolveWhatsAppProvider} from '../../shared/whatsappProviderConfig.ts';
+import {productionAssignmentPrivateTarget} from '../../shared/supplierPortalLink.ts';
 import { resolveNotificationDelay } from '../../shared/quietHours.ts';
 import { assignmentWhatsAppContext, renderAssignmentWhatsApp, supplierAssignmentTargetChatId } from '../../shared/assignmentWhatsApp.ts';
 
@@ -61,8 +63,13 @@ Deno.serve(async(req)=>{
         }
         const supplier=suppliers.get(supplierId);
         if(!supplier||supplier.whatsapp_enabled===false){result.skipped++;continue;}
-        const chatId=supplierAssignmentTargetChatId(supplier,svc,supplierId,
+        const preferredChat=supplierAssignmentTargetChatId(supplier,svc,supplierId,
           toChatId,k=>Deno.env.get(k));
+        const selected=control.interactive_assignment_production_enabled===true
+          ?await resolveWhatsAppProvider(client):'disabled';
+        const target=productionAssignmentPrivateTarget(supplier,preferredChat,control,
+          selected,toChatId);
+        const chatId=target.chatId;
         if(!chatId){result.errors.push('Supplier '+supplierId+': WhatsApp destination missing');continue;}
         const text=renderAssignmentWhatsApp(textTemplate,event,svc,supplier,service?.service_name||'');
         if(!text){result.errors.push('Supplier '+supplierId+': WhatsApp content missing');continue;}
