@@ -22,6 +22,7 @@ export type TrustedGreenInteractiveConfig={
  // Narrow legacy EventService.update overlay; exact pilot target is still
  // required below. Never set by untrusted Outbox or template metadata.
  legacyCanaryApproved?:true;
+ legacyProductionApproved?:true;
  legacyPilotArmedAt?:string;
  capability:GreenCapability;senderAccountId:string;
  signingSecret:string;policy:any;officeNumber?:string;officeLabel?:string;
@@ -128,6 +129,10 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   job.supplier_id===config.qaSupplierId&&
   job.interactive_qa_required!==true&&
   !V2_KEY.test(String(job.idempotency_key||''));
+ const legacyProduction=config.legacyProductionApproved===true&&
+  !V2_KEY.test(String(job.idempotency_key||''))&&
+  job.interactive_qa_required!==true&&
+  /^[1-9][0-9]{7,14}@c\\.us$/.test(job.chat_id||'');
  // A queued message created BEFORE the owner armed the pilot is already an
  // ordinary text obligation. Do not silently change its transport format.
  if(legacyCanary){
@@ -136,7 +141,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   if(!Number.isFinite(armed)||!Number.isFinite(created)||created<armed)
    return legacy(job,'message_created_before_pilot_arm');
  }
- if(!V2_KEY.test(String(job.idempotency_key||''))&&!legacyCanary){
+ if(!V2_KEY.test(String(job.idempotency_key||''))&&!legacyCanary&&!legacyProduction){
   // A QA supplier must never receive plain text when the administrator
   // expects buttons. The legacy save UI does not create durable v2 intents;
   // hold ONLY this targeted QA job until that workflow is verified.
@@ -155,9 +160,10 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
     signingSecret:config.signingSecret,policy:config.policy,
     providerCapabilityVerified:true,rolloutAuthorized:true,
     issuedAt:config.now,subtle:config.subtle,
-    ...(legacyCanary?{legacyCanaryScope:{
-     eventServiceId:config.qaEventServiceId!,supplierId:config.qaSupplierId!,
-     chatId:config.qaChatId!}}:{})
+    ...((legacyCanary||legacyProduction)?{legacyCanaryScope:{
+     eventServiceId:legacyProduction?job.event_service_id:config.qaEventServiceId!,
+     supplierId:legacyProduction?job.supplier_id:config.qaSupplierId!,
+     chatId:legacyProduction?job.chat_id:config.qaChatId!}}:{})
    });
   }catch(error){
    // A normal assignment must NEVER be lost only because an optional pilot
@@ -165,7 +171,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
    // signed snapshot/transport attempt it is safe to keep its original text
    // route; all actual DB/crypto/ambiguous-write failures still quarantine.
    const reason=String((error as any)?.code||'');
-   if(legacyCanary&& !job.interactive_button_bindings_json&&
+   if((legacyCanary||legacyProduction)&& !job.interactive_button_bindings_json&&
     !job.assignment_revision&&!job.sender_account_id&&
     ['legacy_canary_outbox_business_generation_mismatch',
      'legacy_canary_supplier_not_pending',
