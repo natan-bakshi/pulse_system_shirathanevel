@@ -126,6 +126,7 @@ export async function trustedGreenLegacyPilotConfig(control:any,
   inboundLegacyPilotTarget(previous,senderChatId,now);
  if(!target)return null;
  return {...base,legacyCanaryApproved:true,
+  legacyPilotArmedAt:target.createdAt,
   qaEventServiceId:target.eventServiceId,qaSupplierId:target.supplierId,
   qaChatId:target.chatId};
 }
