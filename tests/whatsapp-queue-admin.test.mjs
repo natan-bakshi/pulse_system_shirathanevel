@@ -538,7 +538,7 @@ test('one-click pilot result action is owner-only, read-only and never sends Wha
  const rejected=await outsider.invoke('greenButtonQaLiveResult');
  assert.equal(rejected.status,403);
 });
-test('Green webhook provisioning is owner-only, default blocked, and never accepts provider URL or token from request body',async()=>{
+test('retired Green QA provisioning is permanently blocked, including to the system owner',async()=>{
  const owner=context({state:{interactive_outbound_live_enabled:false}});
  const result=await owner.invoke('greenButtonQaProvisionWebhook',{
   confirmation:'I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS',
@@ -546,9 +546,9 @@ test('Green webhook provisioning is owner-only, default blocked, and never accep
   webhookUrlToken:'client-supplied-never-trusted',
   incomingWebhook:'yes'
  });
- assert.equal(result.status,409);
+ assert.equal(result.status,410);
  assert.equal(result.body.success,false);
- assert.equal(result.body.diagnosticCode,'qa_provisioning_unavailable');
+ assert.equal(result.body.diagnosticCode,'legacy_qa_retired');
  assert.equal(result.body.noMessagesSent,true);
  assert.equal(result.body.noAutomaticRetry,true);
  assert.equal(owner.calls.length,0);
