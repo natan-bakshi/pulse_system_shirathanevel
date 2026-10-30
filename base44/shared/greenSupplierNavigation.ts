@@ -2,6 +2,8 @@
 // No callback, no new Outbox row, no DB read, no scheduled worker and no
 // additional Base44 integration. The regular Green send is replaced with
 // ONE mixed-URL send in the already claimed central queue worker.
+// Generic 'notification' is deliberately excluded: related_supplier_id is
+// not sufficient proof of who receives all multi-audience InApp notifications.
 // All other message types, groups and Wasender retain ordinary text routing.
 import {buildOfficeWhatsAppInquiryLink} from './whatsappOfficeInquiryLink.ts';
 import {SUPPLIER_PORTAL_URL} from './supplierPortalLink.ts';
@@ -11,7 +13,7 @@ const IDENT=/^[A-Za-z0-9_-]{3,160}$/;
 const OFFICE=/^[1-9][0-9]{7,14}$/;
 const SOURCES=new Set([
  'event_reminder','supplier_pending_reminder','scheduled_template',
- 'manual_trigger','notification'
+ 'manual_trigger'
 ]);
 const PORTAL_TRAILER='\n\n📅 לצפייה בלוח האירועים שלך ב־Pulse:\n'+SUPPLIER_PORTAL_URL;
 export const isSupplierNavigationSource=(source:unknown):boolean=>
