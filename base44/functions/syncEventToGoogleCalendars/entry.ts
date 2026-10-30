@@ -80,7 +80,8 @@ function hasRelevantCalendarChange(entityName, triggerAction, changedFields) {
   ]);
   const eventServiceFields = new Set([
     'event_id', 'service_id', 'supplier_ids', 'supplier_statuses', 'supplier_notes',
-    'service_name', 'supplier_arrival_time', 'pickup_point', 'standing_time', 'on_site_contact_details'
+    'service_name', 'supplier_arrival_time', 'pickup_point', 'standing_time', 'on_site_contact_details',
+    'calendar_sync_wake_at'
   ]);
 
   const relevantFields = entityName === 'EventService' ? eventServiceFields : eventFields;
