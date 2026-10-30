@@ -59,6 +59,7 @@ export default function WhatsAppQueueSettings(){
   const [qaReadiness,setQaReadiness]=useState(null);
   const [qaAssignmentPreflight,setQaAssignmentPreflight]=useState(null);
   const [greenWebhookSettings,setGreenWebhookSettings]=useState(null);
+  const [greenConnection,setGreenConnection]=useState(null);
   const [pilotEnrollmentRequested,setPilotEnrollmentRequested]=useState(false);
   const [pilotFailure,setPilotFailure]=useState('');
   const [pilotLiveResult,setPilotLiveResult]=useState(null);
@@ -85,6 +86,7 @@ export default function WhatsAppQueueSettings(){
     if(action==='unknownRecoveryStructureReview')setUnknownRecoveryReview(null);
     // Never retain an older successful Green audit beside a newer failure.
     if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings(null);
+    if(action==='greenInstanceStateAudit')setGreenConnection(null);
     if(action==='greenButtonQaProvisionWebhook'){
       // One owner approval, not a routine diagnostic. The backend additionally
       // checks independent secrets, a fresh Green GET and a one-shot CAS.
@@ -126,6 +128,12 @@ export default function WhatsAppQueueSettings(){
         if(!res.data?.success)throw Error(res.data?.error||'לא ניתן לאתר את אסמכתת השיבוץ');
         setOfficeLookup(res.data.lookup);
         setNotice('השיבוץ אותר לפי אסמכתא בלבד, ללא שליחת הודעות או שינוי נתונים.');
+        return;
+      }
+      if(action==='greenInstanceStateAudit'){
+        if(!res.data?.success)throw Error(res.data?.error||'בדיקת חיבור Green אינה זמינה');
+        setGreenConnection(res.data.connection);
+        setNotice('נבדק מצב המופע ב־Green בקריאה יזומה אחת, ללא שליחת הודעות או שינוי הגדרות.');
         return;
       }
       if(action==='greenWebhookSettingsAudit'){
@@ -426,7 +434,7 @@ export default function WhatsAppQueueSettings(){
       </div>
       <div className="rounded-lg border p-3 space-y-2">
         <p className="font-semibold">כפתורי שיבוץ WhatsApp — פרודקשן</p>
-        <p className="text-sm text-gray-700">הודעות שיבוץ חדשות לספקים בצ'אט אישי ב־Green יכללו כפתורי אישור, דחייה וכניסה למערכת. פנייה למשרד תישאר כקישור לחיץ בגוף ההודעה (Green מאפשר לכל היותר שלושה כפתורים). כשהכפתורים פעילים, הודעת שיבוץ של ספק המעדיף קבוצה תישלח למספרו האישי בלבד; הודעות אחרות והעדפת הקבוצה עצמה לא ישתנו.</p>
+        <p className="text-sm text-gray-700">הודעות שיבוץ חדשות לספקים בצ'אט אישי ב־Green יכללו כפתורי אישור, דחייה ופנייה למשרד עם טיוטת פנייה ואסמכתא. קישור הכניסה למערכת נשאר בגוף ההודעה. בתזכורות לספק בצ'אט אישי יופיעו כפתורי כניסה למערכת ופנייה למשרד. Green מאפשר לכל היותר שלושה כפתורים. כשהכפתורים פעילים, הודעת שיבוץ של ספק המעדיף קבוצה תישלח למספרו האישי בלבד; הודעות אחרות והעדפת הקבוצה עצמה לא ישתנו.</p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled={busy} onClick={()=>manageProductionButtons('status')}>בדוק מצב</Button>
           <Button size="sm" disabled={busy||productionButtons?.enabled===true} onClick={()=>manageProductionButtons('enable')}>הפעל כפתורים בפרודקשן</Button>
@@ -479,7 +487,8 @@ export default function WhatsAppQueueSettings(){
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenButtonQaAssignmentPreflight')}>בדיקת שיבוץ הניסוי (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('interactiveReadiness')}>מוכנות תוכנית הכפתורים המלאה (ללא שליחה)</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('assignmentV2Readiness')}>בדוק תאימות שיבוצים V2 לפרודקשן (קריאה בלבד)</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדיקת חיבור Green (קריאה בלבד, ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenInstanceStateAudit')}>בדוק מצב חיבור מספר WhatsApp ב־Green (ללא שליחה)</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('greenWebhookSettingsAudit')}>בדיקת הגדרות Webhook ב־Green (קריאה בלבד)</Button>
         <Button size="sm" variant="outline" disabled={busy||!form.enabled||form.paused}
           onClick={()=>window.confirm('להפעיל עובד תור כעת? הפעולה עשויה לשלוח הודעות אמיתיות.')&&run('kick')}>
           <Play className="h-4 w-4 ml-2"/>הפעל עובד עכשיו
@@ -488,6 +497,10 @@ export default function WhatsAppQueueSettings(){
       </details>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+      {greenConnection&&<div role="status" className="rounded border p-3 text-sm space-y-1" dir="rtl">
+        <p className="font-medium">מצב החיבור של מופע Green: <span className={greenConnection.authorized?'text-green-800':'text-amber-800'}>{({authorized:'מחובר ומורשה',notAuthorized:'לא מחובר — נדרש קישור מספר',blocked:'החשבון חסום',suspended:'החשבון מוגבל זמנית',sleepMode:'מצב שינה — המתן להתאוששות',starting:'המופע באתחול'})[greenConnection.state]||'לא ידוע'}</span></p>
+        <p className="text-xs text-gray-600">זו בדיקת חיבור המופע בלבד, לא הוכחת מסירה או קליטת לחיצה. לאחר החלפת מספר בדוק גם את ה־Webhook. הודעות ישנות עשויות להיות קשורות לחשבון הקודם. אין ניטור אוטומטי.</p>
+      </div>}
       {greenWebhookSettings&&<details open className="rounded border p-3 text-sm" dir="rtl">
         <summary className="cursor-pointer font-medium">מיפוי Green API הקיים — בדיקת GetSettings לקריאה בלבד</summary>
         <div className="pt-3 space-y-2 text-xs">
