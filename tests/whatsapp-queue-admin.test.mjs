@@ -518,15 +518,12 @@ test('inboundAudit is explicit owner-only, read-only, bounded and never exposes 
  assert.equal(ctx.calls.length,0);
 });
 
-test('completed pilot UI hides a second send, shows on-demand read-only result, no polling',()=>{
+test('production UI has no pilot send/result controls; historical pilot backend remains available for old receipts',()=>{
  const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
- assert.match(jsx,/view\.qaPilotNewSendsEnabled===true/);
- assert.match(jsx,/view\.qaPilotNewSendsEnabled!==true/);
- assert.match(jsx,/onClick=\{\(\)=>run\('greenButtonQaLiveResult'\)\}/);
- assert.match(jsx,/pilotLiveResult\.complete/);
- assert.match(jsx,/signedApprovalReceiptApplied/);
- assert.match(jsx,/uniqueOutboxAndReceipt/);
- assert.doesNotMatch(jsx,/setInterval\([^)]*greenButtonQaLiveResult/);
+ assert.doesNotMatch(jsx,/greenButtonQaEnroll|greenButtonQaLiveResult|qaPilotNewSendsEnabled/);
+ assert.doesNotMatch(jsx,/pilotLiveResult|pilotEnrollmentRequested/);
+ assert.match(jsx,/כפתורי WhatsApp לספקים/);
+ assert.doesNotMatch(jsx,/setInterval\(/);
 });
 test('one-click pilot result action is owner-only, read-only and never sends WhatsApp',async()=>{
  const owner=context();
@@ -564,27 +561,22 @@ test('Green webhook provisioning is owner-only, default blocked, and never accep
  });
  assert.equal(response.status,403);
 });
-test('one prominent, owner-guarded QA send action replaces the multi-diagnostic enrollment dance',()=>{
+test('production operations remove all manual test-assignment actions without deleting signed historical verification',()=>{
  const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
- assert.match(jsx,/שלח הודעת כפתורים ניסיונית לנתן/);
- assert.match(jsx,/onClick=\{\(\)=>run\('greenButtonQaEnroll'\)\}/);
- assert.match(jsx,/pilotEnrollmentRequested/);
- assert.match(jsx,/כלי אבחון וניהול מתקדמים/);
- assert.doesNotMatch(jsx,/צור שיבוץ ניסיון ב־V2 \(דורש אישור נוסף\)/);
+ assert.doesNotMatch(jsx,/שלח הודעת כפתורים ניסיונית|greenButtonQaEnroll|manageLegacyPilot|legacyPilotScope/);
+ assert.doesNotMatch(jsx,/greenButtonQaProvisionWebhook/);
+ assert.match(jsx,/הודעות ותקלות/);
  const enrollment=fs.readFileSync('base44/shared/greenButtonQaEnrollment.ts','utf8');
  assert.match(enrollment,/GREEN_BUTTONS_QA_POST_REBOOT_SETTINGS_VERIFIED/);
  assert.match(enrollment,/GREEN_BUTTONS_QA_CREATE_ENABLED/);
  assert.match(enrollment,/qa_previous_assignment_intent_requires_review/);
- assert.match(enrollment,/qa_previous_assignment_history_requires_review/);
 });
-test('Green settings write UI is hidden until both owner readiness and read-only provider audit',()=>{
+test('production UI never exposes historical Green provisioning/reboot or a QA write action',()=>{
  const jsx=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
- assert.match(jsx,/greenWebhookSettings\.webhookProvisioningOwnerActionAvailable===true/);
- assert.match(jsx,/greenWebhookSettings\.webhookConfigured===false/);
- assert.match(jsx,/Object\.values\(greenWebhookSettings\.notificationFlags/);
- assert.match(jsx,/window\.prompt\(/);
- assert.match(jsx,/I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS/);
- assert.match(jsx,/greenButtonQaProvisionWebhook/);
+ assert.doesNotMatch(jsx,/greenButtonQaProvisionWebhook|I_APPROVE_ONE_GREEN_REBOOT_FOR_BUTTONS/);
+ assert.doesNotMatch(jsx,/window\.prompt\(/);
+ assert.match(jsx,/onClick=\{\(\)=>run\('greenWebhookSettingsAudit'\)\}/);
+ assert.match(jsx,/greenWebhookSettings\.webhookConfigured/);
 });
 test('single-chat QA owner readiness is separately opt-in and never exposes secrets or invokes Green',async()=>{
  const ctx=context({state:{interactive_outbound_live_enabled:false}});
