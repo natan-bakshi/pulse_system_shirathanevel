@@ -65,6 +65,19 @@ export function checkLegacyAssignmentButtonCandidate(input:{
 // Inbound MUST compare the same exact service write generation inside the
 // business CAS, not only at preflight. A manager's update while the message
 // is in flight, or a decline followed by reopen, always retires old buttons.
+// Read-only proof of a HISTORICAL accepted Outbox version, even after the
+// EventService has changed. The callback must independently authenticate
+// Green, source account, private sender, Outbox provider id and signed token.
+export function legacyRevisionFromOutboxKey(job:any):string|null{
+ if(!job||!ID.test(job.event_service_id||'')||
+  !ID.test(job.supplier_id||''))return null;
+ const prefix='assignment:'+job.event_service_id+':'+job.supplier_id+':';
+ const suffix=':SUPPLIER_NEW_ASSIGNMENT';
+ const key=job.idempotency_key;
+ if(typeof key!=='string'||!key.startsWith(prefix)||!key.endsWith(suffix))return null;
+ const date=key.slice(prefix.length,-suffix.length);
+ return legacyAssignmentGeneration({updated_date:date});
+}
 export function legacyAssignmentRevisionEligibility(service:any,
  supplierId:string,revision:string){
  if(service?.assignment_intent_mode!==undefined&&
