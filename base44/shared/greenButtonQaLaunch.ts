@@ -41,11 +41,12 @@ function trustedGreenButtonQaConfigForMode(control:any,
  // A single owner-approved Beta PROBE may precede real provider verification.
  // This is NOT capability proof, never enables any other service/chat and
  // remains fenced by independent SEND, inbound, owner, control and V2 gates.
+ const legacyCanary=get(env,'GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled';
  const betaProof=get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='verified';
  const betaProbe=get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')==='probe_authorized'&&
   get(env,'GREEN_BUTTONS_QA_BETA_PROBE_ENABLED')==='enabled'&&
   get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled';
- if(durableAssignmentIntentEnabled!==true||
+ if((durableAssignmentIntentEnabled!==true&&!legacyCanary)||
   (requireSendEnabled&&control?.interactive_outbound_live_enabled!==true)||
   (requireSendEnabled&&get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled')||
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
@@ -83,7 +84,8 @@ function trustedGreenButtonQaConfigForMode(control:any,
  if(!/^[1-9][0-9]{7,14}$/.test(officeNumber))return null;
  return {
   enabled:true,accountCapabilityVerified:betaProof,
-  ...(betaProbe?{qaBetaProbeApproved:true as const}:{}),capability:'mixed_url',
+  ...(betaProbe?{qaBetaProbeApproved:true as const}:{}),
+  ...(legacyCanary?{legacyCanaryApproved:true as const}:{}),capability:'mixed_url',
   senderAccountId,signingSecret,
   policy,officeNumber,officeLabel:policy.buttons.find(
    button=>button.action==='contact_office')!.label,
