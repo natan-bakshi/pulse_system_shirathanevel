@@ -6,6 +6,7 @@ import { enqueueWhatsApp, readWhatsAppQueueControl } from './whatsappOutbox.ts';
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { parseWhatsAppPhone } from './whatsappPhone.ts';
 import { greenApiOrigin } from './greenWebhookSettingsAudit.ts';
+import {withSupplierPortalLink} from './supplierPortalLink.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -70,14 +71,14 @@ export async function sendWhatsAppText(phone, message, client = null, context = 
   requireBackend(client);
   const chatId = toChatId(phone);
   if (!chatId) throw invalidInput('Invalid WhatsApp phone number');
-  const text = sanitizeMessage(message);
+  const text = sanitizeMessage(withSupplierPortalLink(message,context?.supplierId));
   if (!text) throw invalidInput('Empty WhatsApp message');
   return routeWhatsApp(client, { chatId, messageType: 'text', messageText: text, context });
 }
 
 export async function sendWhatsAppToChat(chatId, message, client = null, context = null) {
   requireBackend(client);
-  const text = sanitizeMessage(message);
+  const text = sanitizeMessage(withSupplierPortalLink(message,context?.supplierId));
   if (!text) throw invalidInput('Empty WhatsApp message');
   return routeWhatsApp(client, {
     chatId: validatedChatId(chatId), messageType: 'text', messageText: text, context
