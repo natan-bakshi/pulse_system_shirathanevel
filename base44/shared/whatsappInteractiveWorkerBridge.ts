@@ -19,6 +19,9 @@ export type TrustedGreenInteractiveConfig={
  // Only for the exact owner-approved single-message Beta experiment.
  // Does not assert that Green supports the method until a real response.
  qaBetaProbeApproved?:true;
+ // Narrow legacy EventService.update overlay; exact pilot target is still
+ // required below. Never set by untrusted Outbox or template metadata.
+ legacyCanaryApproved?:true;
  capability:GreenCapability;senderAccountId:string;
  signingSecret:string;policy:any;officeNumber?:string;officeLabel?:string;
  officeContextMode?:OfficeContextMode;
@@ -107,7 +110,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
     job.event_service_id!==config.qaEventServiceId||
     job.supplier_id!==config.qaSupplierId)
    return legacy(job,'not_allowed_single_assignment_qa');
-  if(job.interactive_qa_required!==true)
+  if(job.interactive_qa_required!==true&&config.legacyCanaryApproved!==true)
    throw blocked('qa_assignment_requires_persisted_enrollment_marker');
  }
  if(!['reply_only','mixed_url'].includes(config.capability)||
@@ -115,9 +118,16 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   typeof config.signingSecret!=='string'||config.signingSecret.length<32||
   config.policy?.enabled!==true)
   throw blocked('interactive_trusted_configuration_invalid');
- // Never modify historical assignments or unrelated message templates.
- // The new durable revision is visible in the existing Outbox idempotency key.
- if(!V2_KEY.test(String(job.idempotency_key||''))){
+ // Two mutually exclusive, exact-origin modes. V2 uses durable business
+ // intents; the limited legacy pilot retains ALL existing entity UPDATE
+ // workflows and verifies the original outbox business generation instead.
+ const legacyCanary=config.legacyCanaryApproved===true&&
+  !!config.qaChatId&&job.chat_id===config.qaChatId&&
+  job.event_service_id===config.qaEventServiceId&&
+  job.supplier_id===config.qaSupplierId&&
+  job.interactive_qa_required!==true&&
+  !V2_KEY.test(String(job.idempotency_key||''));
+ if(!V2_KEY.test(String(job.idempotency_key||''))&&!legacyCanary){
   // A QA supplier must never receive plain text when the administrator
   // expects buttons. The legacy save UI does not create durable v2 intents;
   // hold ONLY this targeted QA job until that workflow is verified.
@@ -133,7 +143,10 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
    outboxJobId:job.id,senderAccountId:config.senderAccountId,
    signingSecret:config.signingSecret,policy:config.policy,
    providerCapabilityVerified:true,rolloutAuthorized:true,
-   issuedAt:config.now,subtle:config.subtle
+   issuedAt:config.now,subtle:config.subtle,
+   ...(legacyCanary?{legacyCanaryScope:{
+    eventServiceId:config.qaEventServiceId!,supplierId:config.qaSupplierId!,
+    chatId:config.qaChatId!}}:{})
   });
   // One CAS + verified reread inside helper, no additional Outbox GET.
   persistedJob=result.persistedJob;
