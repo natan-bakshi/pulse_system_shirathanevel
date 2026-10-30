@@ -22,7 +22,9 @@ export type AssignmentEffectTask={
  state:'planned'|'claimed'|'completed'|'unknown'|'manual_review'|'cancelled';
  createdAt:string;effectKind:string;
  // Set only after an atomic CAS claim. Never reset for blind retry.
- claimToken?:string;claimedAt?:string;finishedAt?:string;resultCode?:string
+ claimToken?:string;claimedAt?:string;finishedAt?:string;resultCode?:string;
+ // Only an internal, verified durable receipt ID, never credentials or payload.
+ receiptId?:string
 };
 export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
  if(raw===null||raw===undefined||raw==='')return [];
@@ -32,7 +34,7 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
  if(!Array.isArray(decoded)||decoded.length>MAX_TASKS)invalid('shape');
  const seen=new Set<string>(),out:AssignmentEffectTask[]=[];
  const fields=new Set(['key','revision','consumer','subjectId','state','createdAt','effectKind',
-  'claimToken','claimedAt','finishedAt','resultCode']);
+  'claimToken','claimedAt','finishedAt','resultCode','receiptId']);
  for(const item of decoded){
   if(!item||typeof item!=='object'||Array.isArray(item)||
    Object.keys(item).some(key=>!fields.has(key))||
@@ -46,7 +48,8 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
   const expectedTail=':r'+item.revision+':'+item.consumer+':'+item.subjectId;
   if(!item.key.endsWith(expectedTail))invalid('identity_mismatch');
   const hasClaim=item.claimToken!==undefined||item.claimedAt!==undefined;
-  const hasFinal=item.finishedAt!==undefined||item.resultCode!==undefined;
+  const hasFinal=item.finishedAt!==undefined||item.resultCode!==undefined||
+   item.receiptId!==undefined;
   const isIso=(x:unknown)=>typeof x==='string'&&
    Number.isFinite(Date.parse(x))&&new Date(x).toISOString()===x;
   if(item.state==='planned'){
@@ -60,6 +63,13 @@ export function readAssignmentEffectJournal(raw:unknown):AssignmentEffectTask[]{
    }else if(!isIso(item.finishedAt)||
     typeof item.resultCode!=='string'||
     !/^[a-z_]{3,64}$/.test(item.resultCode))invalid('missing_terminal_result');
+   else if(item.state==='completed' &&
+    (item.resultCode!=='durable_receipt_verified'||
+     typeof item.receiptId!=='string'||
+     !/^[A-Za-z0-9:_-]{8,180}$/.test(item.receiptId)))
+    invalid('completion_requires_durable_receipt');
+   else if(item.state!=='completed'&&item.receiptId!==undefined)
+    invalid('noncompleted_receipt');
   }
   seen.add(item.key);out.push(item as AssignmentEffectTask);
  }
