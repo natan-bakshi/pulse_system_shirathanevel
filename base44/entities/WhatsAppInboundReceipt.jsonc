@@ -72,6 +72,10 @@
       "default": false,
       "description": "Only newly finalized verified outcomes request one WhatsApp feedback; old receipts are never replayed"
     },
+    "feedback_proof": {
+      "type": "string",
+      "description": "HMAC proof of authenticated terminal Green callback; prevents admin-manipulated receipt from authorizing feedback"
+    },
     "feedback_outbox_id": {
       "type": "string",
       "description": "Linked existing WhatsAppOutbox job ID for once-only button feedback"
