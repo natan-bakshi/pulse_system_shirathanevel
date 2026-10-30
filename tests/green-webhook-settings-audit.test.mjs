@@ -335,7 +335,8 @@ test('UI only triggers provider GET on manual owner click, never dashboard refre
  const admin=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
  const module=fs.readFileSync('base44/shared/greenWebhookSettingsAudit.ts','utf8');
  assert.match(ui,/onClick=\{\(\)=>run\('greenWebhookSettingsAudit'\)\}/);
- assert.match(ui,/בדיקת חיבור Green \(קריאה בלבד, ללא שליחה\)/);
+ assert.match(ui,/בדיקת הגדרות Webhook ב־Green \(קריאה בלבד\)/);
+ assert.match(ui,/בדוק מצב חיבור מספר WhatsApp ב־Green/);
  assert.doesNotMatch(ui,/בדוק הגדרות Green API \(קריאה אחת, ללא שינוי\)/);
  assert.match(ui,/action==='greenWebhookSettingsAudit'/);
  assert.match(admin,/action==='greenWebhookSettingsAudit'/);
