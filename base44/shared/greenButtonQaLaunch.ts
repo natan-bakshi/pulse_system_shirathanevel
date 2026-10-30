@@ -27,7 +27,8 @@ export function greenButtonQaPassiveInboundReady(
  const token=get(env,'GREEN_API_TOKEN');
  return get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')==='approved'&&
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')==='enabled'&&
-  get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'&&
+  (get(env,'GREEN_BUTTONS_QA_SCOPED_V2_ENABLED')==='enabled'||
+   get(env,'GREEN_BUTTONS_LEGACY_CANARY_ENABLED')==='enabled')&&
   INSTANCE.test(id)&&token.length>=24&&
   ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_ID'))&&
   ENTITY.test(get(env,'GREEN_BUTTONS_QA_EVENT_SERVICE_ID'))&&
@@ -85,7 +86,7 @@ function trustedGreenButtonQaConfigForMode(control:any,
  return {
   enabled:true,accountCapabilityVerified:betaProof,
   ...(betaProbe?{qaBetaProbeApproved:true as const}:{}),
-  ...(legacyCanary?{legacyCanaryApproved:true as const}:{}),capability:'mixed_url',
+  ...(legacyCanary&&betaProof?{legacyCanaryApproved:true as const}:{}),capability:'mixed_url',
   senderAccountId,signingSecret,
   policy,officeNumber,officeLabel:policy.buttons.find(
    button=>button.action==='contact_office')!.label,
