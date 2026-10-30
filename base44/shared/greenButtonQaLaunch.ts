@@ -121,7 +121,7 @@ export function trustedGreenAssignmentProductionConfig(control:any,
  if(!control||control.enabled!==true||control.paused===true||
   control.interactive_outbound_live_enabled!==true||
   get(env,'GREEN_BUTTONS_QA_ACCOUNT_VERIFIED')!=='verified'||
-  get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')!=='confirmed'||
+  get(env,'GREEN_BUTTONS_QA_OWNER_APPROVED')!=='approved'||
   get(env,'GREEN_BUTTONS_QA_INBOUND_ENABLED')!=='enabled'||
   (mode==='outbound'&&(
    get(env,'GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled'||
