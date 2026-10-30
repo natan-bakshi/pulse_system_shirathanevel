@@ -77,6 +77,15 @@ Deno.serve(async(req)=>{
    const chatId=toChatId(String(supplier.phone||''));
    if(!PRIVATE.test(chatId))
     return reply({success:false,error:'Supplier has no verified private WhatsApp destination'},409);
+   // The callback sees sender chat before it can select the original signed
+   // Outbox. Two simultaneous service scopes for the SAME sender would be
+   // ambiguous; require the older 48h pilot to expire before switching.
+   const existing=[...(previous?.current?[previous.current]:[]),
+    ...(previous?.previous||[])].filter(t=>Date.parse(t.expiresAt)>now);
+   if(existing.some(t=>t.chatId===chatId&&
+     (t.eventServiceId!==service.id||t.supplierId!==supplier.id)))
+    return reply({success:false,
+     error:'An earlier interactive assignment for this phone is still eligible for replies; use another supplier or wait for its expiry'},409);
    const next=nextLegacyGreenPilotState(previous,
     pilotTarget(service.id,supplier.id,chatId,now),now);
    const signed=await signLegacyGreenPilotState(next,signingSecret,now);
