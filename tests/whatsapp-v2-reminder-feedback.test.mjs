@@ -7,9 +7,17 @@ import {enqueueVerifiedV2ReminderAckFeedback}
  from '../base44/shared/whatsappV2ReminderFeedback.ts';
 import {sendWhatsAppTransport}
  from '../base44/shared/whatsappSend.ts';
+import {enqueueWhatsApp} from '../base44/shared/whatsappOutbox.ts';
+import {V2_REMINDER_ACK_FEEDBACK_TEXT} from '../base44/shared/whatsappV2ReminderAckProof.ts';
 
 const secret='v2-reminder-ack-feedback-signing-abcdefg-012345';
 const acct='9903183013';
+const oldDeno=globalThis.Deno;
+globalThis.Deno={env:{get:key=>({
+ GREEN_API_INSTANCE_ID:acct,WHATSAPP_INTERACTIVE_SIGNING_SECRET:secret,
+ GREEN_API_TOKEN:'offline-test-token-not-real'
+})[key]||''}};
+test.after(()=>{if(oldDeno===undefined)delete globalThis.Deno;else globalThis.Deno=oldDeno;});
 const ack=()=>({
  id:'job-reminder-456',company_id:'shirat_hanevel',
  source_type:'event_reminder',message_kind:'supplier_reminder',
@@ -131,6 +139,26 @@ test('transport refuses feedback from a changed instance BEFORE provider request
   if(prev===undefined)delete globalThis.Deno;
   else globalThis.Deno=prev;
  }
+});
+test('forged internal feedback context cannot pin Green or enqueue without original signed ACK proof',async()=>{
+ const f=await setup();
+ const prepare=(evidence,message=V2_REMINDER_ACK_FEEDBACK_TEXT)=>enqueueWhatsApp(f.client,{
+  chatId:f.source.chat_id,messageType:'text',messageText:message,
+  context:{
+   sourceType:'reminder_button_feedback',sourceId:f.source.id,
+   idempotencyKey:'reminder-ack-feedback:'+f.source.id,
+   supplierId:f.source.supplier_id,feedbackSenderAccountId:acct,
+   reminderAckEvidence:evidence
+  }
+ },f.control);
+ for(const [proof,text] of [
+  [null,V2_REMINDER_ACK_FEEDBACK_TEXT],
+  [{...f.source,reminder_acknowledgement_event_id:'OTHER_EVENT'},V2_REMINDER_ACK_FEEDBACK_TEXT],
+  [f.source,'תוכן זדוני במקום הודעת האישור הקבועה']
+ ]){
+  await assert.rejects(()=>prepare(proof,text),/Unverified supplier reminder feedback origin/);
+ }
+ assert.equal(f.stats.creates,0);
 });
 test('feedback uses existing queue only: no new cron, provider HTTP call or business transition',()=>{
  const src=fs.readFileSync('base44/shared/whatsappV2ReminderFeedback.ts','utf8');
