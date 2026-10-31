@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {withSupplierPortalLink,SUPPLIER_PORTAL_URL}
  from '../base44/shared/supplierPortalLink.ts';
+import {sendWhatsAppTransport} from '../base44/shared/whatsappSend.ts';
 import {
  defaultSupplierNavigationGreenPolicy,normalizeSupplierNavigationGreenPolicy,
  parseSupplierNavigationGreenPolicy,supplierNavigationButtonsForSource,
@@ -80,6 +81,35 @@ test('owner can choose portal-only, office-only, both or no buttons separately, 
  assert.match(link.searchParams.get('text'),/אסמכתא: outbox-12345/);
 });
 
+test('one-button owner layout is still ONE Green API request, no extra provider call',async()=>{
+ const settings=defaultSupplierNavigationGreenPolicy();
+ settings.sources.event_reminder={portal:true,office:false,portalLabel:'יומן ספק',officeLabel:''};
+ const ctl=control({[SUPPLIER_NAVIGATION_FIELD]:JSON.stringify(settings)});
+ const original=preview(ctl);
+ const priorDeno=globalThis.Deno,priorFetch=globalThis.fetch;
+ const calls=[];
+ globalThis.Deno={env:{get:key=>key==='GREEN_API_INSTANCE_ID'?'9903183013':
+  key==='GREEN_API_TOKEN'?'offline-green-token':''}};
+ globalThis.fetch=async(url,params)=>{
+  calls.push({url:String(url),body:JSON.parse(params.body)});
+  return new Response(JSON.stringify({idMessage:'3EB0ONEURLBUTTON12345'}),{
+   status:200,headers:{'Content-Type':'application/json'}
+  });
+ };
+ try{
+  const receipt=await sendWhatsAppTransport({...job(),status:'sending'},
+   'green',null,original);
+  assert.equal(receipt.messageId,'3EB0ONEURLBUTTON12345');
+  assert.equal(calls.length,1);
+  assert.match(calls[0].url,/sendInteractiveButtons/);
+  assert.equal(calls[0].body.buttons.length,1);
+  assert.equal(calls[0].body.buttons[0].buttonText,'יומן ספק');
+  assert.equal(calls[0].body.body,msg);
+ }finally{
+  if(priorDeno===undefined)delete globalThis.Deno;else globalThis.Deno=priorDeno;
+  globalThis.fetch=priorFetch;
+ }
+});
 test('final transport rejects forged one-button payloads and arbitrary external destinations',()=>{
  const p=defaultSupplierNavigationGreenPolicy();
  p.sources.event_reminder={portal:false,office:true,portalLabel:'',officeLabel:'למשרד'};
