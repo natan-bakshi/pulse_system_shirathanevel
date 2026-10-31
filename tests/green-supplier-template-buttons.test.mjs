@@ -12,6 +12,7 @@ import {captureSupplierButtonSnapshot,selectSupplierButtonSnapshot}
 import {previewGreenSupplierNavigation}
  from '../base44/shared/greenSupplierNavigation.ts';
 import {withSupplierPortalLink} from '../base44/shared/supplierPortalLink.ts';
+import {enqueueWhatsApp} from '../base44/shared/whatsappOutbox.ts';
 const ID_A='69817697d82b634ef3d7d4df';
 const ID_B='69817697d82b634ef3d7d4de';
 const ID_CLIENT='69817697d82b634ef3d7d4e4';
@@ -171,6 +172,38 @@ test('server rejects buttons for a real administrator/client template and keeps 
  assert.equal(count.templateReads,1);
  assert.equal(count.writes,0);
  assert.equal(row[SUPPLIER_TEMPLATE_NAVIGATION_FIELD],undefined);
+});
+test('real queued Outbox creation freezes the template buttons with zero extra template reads',async()=>{
+ const policy=defaultSupplierTemplateButtonPolicy();
+ policy.templates[ID_A]=portal;
+ const ctl={id:'control-key',control_key:'global',enabled:true,paused:false,
+  ...control(policy)};
+ let created=null,controlReads=0,templateReads=0,providerReads=0;
+ const client={asServiceRole:{entities:{
+  WhatsAppQueueControl:{filter:async()=>{controlReads++;return [ctl]}},
+  WhatsAppOutbox:{create:async(payload)=>{
+   created={id:'job-new',...payload};return created;
+  }},
+  NotificationTemplate:{list:async()=>{templateReads++;return eligible}},
+  AppSettings:{filter:async()=>{providerReads++;return [{
+   setting_key:'whatsapp_default_provider',setting_value:'green'
+  }]}}
+ }}};
+ const sent=await enqueueWhatsApp(client,{
+  chatId:'972501234567@c.us',messageType:'text',
+  messageText:'תזכורת לאירוע',
+  context:{...ctx(),sourceId:'event-123',idempotencyKey:''}
+ });
+ assert.equal(sent.status,'queued');
+ assert.equal(created.notification_template_id,ID_A);
+ assert.equal(JSON.parse(created.supplier_buttons_snapshot_json).buttons.portalLabel,'יומן');
+ assert.equal(created.source_id,'event-123');
+ assert.equal(created.supplier_id,'supplier-123');
+ assert.equal(created.source_type,'event_reminder');
+ assert.equal(created.requested_provider,'green');
+ assert.equal(templateReads,0,'no NotificationTemplate lookup for each message');
+ assert.equal(controlReads,1);
+ assert.equal(providerReads,1);
 });
 test('producer attribution is additive, real source IDs and idempotency keys unchanged',()=>{
  const outbox=fs.readFileSync('base44/shared/whatsappOutbox.ts','utf8');
