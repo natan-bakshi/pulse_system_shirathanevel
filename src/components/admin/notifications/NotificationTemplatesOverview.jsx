@@ -11,7 +11,8 @@ export default function NotificationTemplatesOverview({
   onEdit, 
   onDelete, 
   onToggleActive, 
-  onManualTrigger 
+  onManualTrigger,
+  onEditButtons
 }) {
   // קיבוץ לפי קטגוריה
   const groupedTemplates = templates.reduce((acc, t) => {
@@ -59,6 +60,7 @@ export default function NotificationTemplatesOverview({
                   onDelete={onDelete}
                   onToggleActive={onToggleActive}
                   onManualTrigger={onManualTrigger}
+                  onEditButtons={onEditButtons}
                 />
               ))}
             </div>
