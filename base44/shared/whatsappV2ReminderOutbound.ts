@@ -85,7 +85,7 @@ export async function prepareGreenV2ReminderWorkerCandidate(input:{
  }
  const replyLabel=isCustomSupplierButtons(selection)?selection.replyLabel:'קיבלתי';
  const nav=previewGreenSupplierNavigation({
-  job:fakeNavigationOrigin(job),provider,control,config
+  job:fakeNavigationOrigin(job),provider,control,config,allowReplyOnly:true
  });
  // Honor prior per-NotificationTemplate URL button selection. No reply
  // button when the owner selected "no buttons" for that template.
@@ -166,7 +166,7 @@ export async function verifyV2ReminderTransport(input:{
   !INSTANCE.test(job.sender_account_id||'')||
   preview?.kind!=='interactive_reminder_v2'||
   preview?.method!=='sendInteractiveButtons'||preview?.body?.chatId!==job.chat_id||
-  !Array.isArray(preview.body.buttons)||preview.body.buttons.length<2||
+  !Array.isArray(preview.body.buttons)||preview.body.buttons.length<1||
   preview.body.buttons.length>3||
   !input.verifyNavigation(job,'green',preview.navigation)||
   preview.body.body!==preview.navigation.body.body)return false;
