@@ -10,7 +10,7 @@ import {defaultSupplierTemplateButtonPolicy,
 import {captureSupplierButtonSnapshot,selectSupplierButtonSnapshot}
  from '../base44/shared/greenSupplierButtonSnapshot.ts';
 import {previewGreenSupplierNavigation,
- verifySupplierNavigationTransport}
+ verifiedSupplierNavigationTransport}
  from '../base44/shared/greenSupplierNavigation.ts';
 import {withSupplierPortalLink} from '../base44/shared/supplierPortalLink.ts';
 import {prepareGreenV2ReminderWorkerCandidate,verifyV2ReminderTransport}
@@ -69,7 +69,7 @@ const freeze=(setting,overrides={})=>{
 const preview=(record,ctl)=>previewGreenSupplierNavigation({
  job:record,control:ctl,provider:'green',config
 });
-const verify=(record,p)=>verifySupplierNavigationTransport(
+const verify=(record,p)=>verifiedSupplierNavigationTransport(
  {...record,status:'sending'},'green',p
 );
 
@@ -88,8 +88,7 @@ test('strict HTTPS validation permits safe real URLs and rejects smuggled/unsafe
  for(const url of invalid)assert.throws(()=>normalizePublicWhatsAppUrl(url),url);
  assert.throws(()=>normalizeCustomLinks([link('external','Website','https://ok.com'),
   link('office','Office'),link('office','Again')]));
- assert.throws(()=>normalizeCustomLinks([link('external','Bad','https://ok.com',
- )]));
+ assert.throws(()=>normalizeCustomLinks([link('external','Bad','http://ok.com')]));
 });
 test('custom three navigation buttons are frozen and exact URL/label tampering is rejected',()=>{
  const setting=navigation([
@@ -204,8 +203,7 @@ test('V1 template policy remains compatible and custom JSON cannot activate arbi
  const v2=navigation([link('supplier_dashboard','שיבוצים')]);
  for(const evil of [
   {...v2,templates:{[TEMPLATE]:{...v2.templates[TEMPLATE],action:'assignment_approve'}}},
-  {...v2,templates:{[TEMPLATE]:custom([link('external','X','https://ok.com',
-   )], 'קיבלתי', 'assignment_reject')}},
+  {...v2,templates:{[TEMPLATE]:{...custom([link('external','X','https://ok.com')],'קיבלתי'),action:'assignment_reject'}}},
   {...v2,templates:{[TEMPLATE]:{kind:'custom',replyLabel:'קיבלתי',links:[],
    handler:'change_assignment'}}},
   {...v2,schemaVersion:1}
@@ -249,7 +247,7 @@ test('custom reminder reply-only button uses existing signed ACK pipeline with e
   job:{...fixture.store,status:'sending',provider:'green'},
   provider:'green',preview:prepared.preview,signingSecret:SECRET,
   expectedSenderAccountId:INSTANCE,now,
-  verifyNavigation:verifySupplierNavigationTransport
+  verifyNavigation:verifiedSupplierNavigationTransport
  });
  assert.equal(valid,true);
  const bad=structuredClone(prepared.preview);
@@ -258,7 +256,7 @@ test('custom reminder reply-only button uses existing signed ACK pipeline with e
   job:{...fixture.store,status:'sending',provider:'green'},
   provider:'green',preview:bad,signingSecret:SECRET,
   expectedSenderAccountId:INSTANCE,now,
-  verifyNavigation:verifySupplierNavigationTransport
+  verifyNavigation:verifiedSupplierNavigationTransport
  }),false);
  const second=await fixture.prepare();
  assert.equal(second.preview.body.buttons[0].buttonId,
@@ -276,7 +274,7 @@ test('URL-only custom reminders never create an ACK receipt or extra Green provi
  assert.equal(verify(f.store,p),true);
  assert.doesNotMatch(fs.readFileSync(
   'base44/shared/greenSupplierCustomLinks.ts','utf8'),
-  /Deno\\.serve|fetch\\(|setInterval\\(|eval\\(|new Function\\(/);
+  /Deno\.serve|fetch\(|setInterval\(|eval\(|new Function\(/);
 });
 test('custom editor appears only within the existing owner template-buttons panel',()=>{
  const parent=fs.readFileSync('src/components/admin/notifications/WhatsAppTemplateButtonSettings.jsx','utf8');
@@ -289,5 +287,5 @@ test('custom editor appears only within the existing owner template-buttons pane
  assert.match(editor,/replyLabel/);
  assert.match(editor,/קישור חכם לאירוע/);
  assert.match(editor,/תצוגה|כך יופיעו הכפתורים/);
- assert.doesNotMatch(editor,/eval\\(|new Function\\(|functions\\.invoke|setInterval\\(/);
+ assert.doesNotMatch(editor,/eval\(|new Function\(|functions\.invoke|setInterval\(/);
 });
