@@ -2,6 +2,12 @@
 
 **Policy:** Keep working Pulse assignments, Push, reminders, calendar, queue and UI. Buttons are additional. Make only necessary fixes. Use targeted checkpoints and existing routes.
 
+## 2026-11-01 — Custom supplier-template buttons (CODE phase)
+- Added per-template custom buttons to Notifications: configurable labels, up to three buttons, public HTTPS URLs, event smart links only when event source is verified, office WhatsApp, phone call and reference copy. A signed acknowledgement reply may have a configurable caption; its existing owner rollout switch stays disabled unless explicitly enabled.
+- Old Green assignment approve/reject and V1 callback remain unchanged. Existing source-level settings and stored V1 template policies are backward compatible. V2 custom settings are frozen on enqueue and independently validated before the single provider request. No added cron, worker or per-send database lookup.
+- Supplier Pending Reminder uses EventService.id in its current producer, so it cannot use the event-details smart link until safe Event.id provenance is added. Customers, admins, groups, Wasender, cancellation and documents remain untouched. Native quote still unavailable for documented SendInteractiveButtons.
+- Scope/QA/next steps documented at `docs/whatsapp-custom-buttons-phase-2026-11-01.md`. Device validation remains pending; do not claim real delivery from unit tests.
+
 ## P0 Calendar sync — targeted repair implemented
 - Evidence: Google Calendar OAuth connector still active; admin/supplier sync settings true; original Event and EventService workflows active. Live function logs had repeated Google PATCH 400: Invalid start time. Workflows sometimes reported success although the backend function returned handled failures.
 - Root cause addressed: Google Calendar PATCH retains nested obsolete start/end date fields when changing all-day to timed and vice versa, producing invalid start. Both existing calendar functions now use a PATCH-only normalization helper. POST, IDs, titles, templates, account and event data remain unchanged.
