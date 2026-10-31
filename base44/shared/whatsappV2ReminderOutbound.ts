@@ -7,7 +7,9 @@
 import {createV2OpaqueButtonSnapshot,verifyV2OpaqueButtonSnapshot}
  from './whatsappV2OpaqueButtonBridge.ts';
 import {previewGreenSupplierNavigation} from './greenSupplierNavigation.ts';
-import {isSafeTemplateId} from './greenSupplierTemplateButtonsPolicy.ts';
+import {isSafeTemplateId,isCustomSupplierButtons}
+ from './greenSupplierTemplateButtonsPolicy.ts';
+import {selectSupplierButtonSnapshot} from './greenSupplierButtonSnapshot.ts';
 
 const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
 const ID=/^[A-Za-z0-9_-]{3,128}$/;
@@ -76,6 +78,12 @@ export async function prepareGreenV2ReminderWorkerCandidate(input:{
   (job.status==='retry_wait'&&job.error_code===429&&
    Number(job.attempt_count||0)>0&&!job.provider_message_id)))
   throw fail('signed_job_retry_requires_review');
+ const selection=selectSupplierButtonSnapshot(control,job);
+ if(isCustomSupplierButtons(selection)&&!selection.replyLabel){
+  if(existing)throw fail('signed_reply_no_longer_configured');
+  return null; // Custom URL-only means no recording of a response.
+ }
+ const replyLabel=isCustomSupplierButtons(selection)?selection.replyLabel:'קיבלתי';
  const nav=previewGreenSupplierNavigation({
   job:fakeNavigationOrigin(job),provider,control,config
  });
@@ -92,7 +100,7 @@ export async function prepareGreenV2ReminderWorkerCandidate(input:{
  if(!existing){
   frozen=await createV2OpaqueButtonSnapshot({
    job:{...job,...meta},actions:[{
-    action:'reminder_acknowledge',label:'קיבלתי'
+    action:'reminder_acknowledge',label:replyLabel
    }],signingSecret:config.signingSecret,now:input.now,subtle:input.subtle
   });
   let commit:any;
@@ -168,6 +176,10 @@ export async function verifyV2ReminderTransport(input:{
  });
  if(!signed||signed.buttons.length!==1||
   signed.buttons[0].action!=='reminder_acknowledge')return false;
+ const frozenSelection=selectSupplierButtonSnapshot(null,job);
+ const expectedLabel=isCustomSupplierButtons(frozenSelection)?
+  frozenSelection.replyLabel:'קיבלתי';
+ if(!expectedLabel||signed.buttons[0].label!==expectedLabel)return false;
  const reply=preview.body.buttons[0],original=signed.buttons[0];
  if(!reply||reply.type!=='reply'||reply.buttonId!==original.buttonId||
   reply.buttonText!==original.label)return false;
