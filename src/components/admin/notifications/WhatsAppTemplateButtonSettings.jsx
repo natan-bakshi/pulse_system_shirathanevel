@@ -39,10 +39,10 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
  const [expanded,setExpanded]=useState(!!focusTemplateId);
  useEffect(()=>{if(focusTemplateId)setExpanded(true);},[focusTemplateId]);
  useEffect(()=>{
-  if(!focusTemplateId||!draft)return;
+  if(!focusTemplateId||!stored)return;
   const el=document.getElementById('wa-template-'+focusTemplateId);
   if(el)el.scrollIntoView({block:'nearest',behavior:'smooth'});
- },[focusTemplateId,draft]);
+ },[focusTemplateId,stored]);
  const [editingLabels,setEditingLabels]=useState({});
  async function load(){
   if(busy)return;
