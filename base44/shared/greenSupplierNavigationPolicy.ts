@@ -18,7 +18,7 @@ export const SUPPLIER_NAVIGATION_FIELD='interactive_supplier_navigation_green_po
 const COMPANY='shirat_hanevel';
 const MAX_JSON=3072;
 const SOURCE=new Set<string>(GREEN_SUPPLIER_NAVIGATION_SOURCES);
-const LABEL=/^[^\u0000-\u001f\u007f]{0,25}$/u;
+const LABEL=/^[^\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]{0,25}$/u;
 function fail(message:string):never{throw Object.assign(
  new Error('Invalid supplier WhatsApp navigation: '+message),{status:400}
 );}
@@ -28,6 +28,7 @@ function buttons(raw:any):NavigationButtons{
   typeof raw.office!=='boolean'||typeof raw.portal!=='boolean'||
   typeof raw.officeLabel!=='string'||typeof raw.portalLabel!=='string'||
   !LABEL.test(raw.officeLabel)||!LABEL.test(raw.portalLabel)||
+  raw.officeLabel.length>25||raw.portalLabel.length>25||
   raw.officeLabel.trim()!==raw.officeLabel||
   raw.portalLabel.trim()!==raw.portalLabel)
   fail('button_configuration');
