@@ -9,6 +9,9 @@ import {buildOfficeWhatsAppInquiryLink} from './whatsappOfficeInquiryLink.ts';
 import {SUPPLIER_PORTAL_URL} from './supplierPortalLink.ts';
 import {GREEN_SUPPLIER_NAVIGATION_SOURCES} from './greenSupplierNavigationPolicy.ts';
 import {selectSupplierButtonSnapshot} from './greenSupplierButtonSnapshot.ts';
+import {isCustomSupplierButtons} from './greenSupplierTemplateButtonsPolicy.ts';
+import {customLinkDestination,verifyCustomLinkRows}
+ from './greenSupplierCustomLinks.ts';
 
 const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
 const IDENT=/^[A-Za-z0-9_-]{3,160}$/;
@@ -57,7 +60,22 @@ export function previewGreenSupplierNavigation(input:{
  // No new DB read: read the versioned owner policy from the queue control
  // that the worker already holds. Corrupt policies fail closed to old text.
  const policy=selectSupplierButtonSnapshot(control,job);
- if(!policy||(!policy.portal&&!policy.office))return null;
+ if(!policy)return null;
+ if(isCustomSupplierButtons(policy)){
+  const buttons:SupplierNavigationPreview['body']['buttons']=[];
+  for(const link of policy.links){
+   const destination=customLinkDestination(link,job,config.officeNumber);
+   if(!destination)return null; // Never send a wrong event or partial link set.
+   buttons.push({type:'url',buttonId:'custom_link_'+(buttons.length+1),
+    buttonText:link.label,url:destination});
+  }
+  const hasCalendar=policy.links.some(link=>link.kind==='supplier_calendar');
+  const body=hasCalendar?navigationTextBody(job.message_text):job.message_text;
+  if(typeof body!=='string'||!body.trim()||body.length>4096)return null;
+  return {method:'sendInteractiveButtons',kind:'interactive_navigation',
+   body:{chatId:job.chat_id,body,buttons},fallbackReason:'',providerRequestsMade:0};
+ }
+ if(!policy.portal&&!policy.office)return null;
  const body=policy.portal?navigationTextBody(job.message_text):job.message_text;
  if(typeof body!=='string'||!body.trim()||body.length>4096)return null;
  const officeLabel=policy.officeLabel||String(config.officeLabel||'פנייה למשרד');
@@ -94,7 +112,18 @@ export function verifiedSupplierNavigationTransport(job:any,provider:string,prev
   preview.method!=='sendInteractiveButtons'||
   preview.body?.chatId!==job.chat_id||
   !Array.isArray(preview.body?.buttons)||
-  preview.body.buttons.length<1||preview.body.buttons.length>2)return false;
+  preview.body.buttons.length<1||preview.body.buttons.length>3)return false;
+ const policy=selectSupplierButtonSnapshot(null,job);
+ if(isCustomSupplierButtons(policy)){
+  // Exact immutable settings and source identity; provider payload is NOT
+  // permitted to supply the link, type or text independently.
+  if(!job.supplier_buttons_snapshot_json)return false;
+  const hasCalendar=policy.links.some(link=>link.kind==='supplier_calendar');
+  const expectedBody=hasCalendar?navigationTextBody(job.message_text):job.message_text;
+  return expectedBody===preview.body.body&&
+   verifyCustomLinkRows(preview.body.buttons,policy.links,job);
+ }
+ if(preview.body.buttons.length>2)return false;
  const buttons=preview.body.buttons;
  const portal=buttons.find((b:any)=>b?.buttonId==='open_supplier_portal');
  const office=buttons.find((b:any)=>b?.buttonId==='contact_office');
