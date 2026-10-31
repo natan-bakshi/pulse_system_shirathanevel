@@ -24,7 +24,7 @@ import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaym
 
 const UNIT_RECOVERY_KEY=Buffer.alloc(32,31).toString('base64url');
 const UNIT_SIGNING_SECRET='synthetic-owner-admin-action-signing-secret-123456789';
-function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[],quarantineRows=[],officeServices=[],officeEvents=[],officeSuppliers=[],templates=[]}={}){
+function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[],quarantineRows=[],officeServices=[],officeEvents=[],officeSuppliers=[],templates=[],selectedProvider='wasender'}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
@@ -121,7 +121,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        providerIntervalMs,delayUntilNextSendMs,lastDispatchForProvider,
        syncWhatsAppStatus:async(_client,job,status)=>syncs.push({id:job.id,status})
      };
-     if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'wasender'};
+     if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=>selectedProvider};
      if(name.endsWith('whatsappInteractiveSettingsStore.ts'))return {
        readSavedWhatsAppInteractivePolicy:async(_client,provider)=>{
          interactiveOps.push({kind:'get',provider});
@@ -172,7 +172,12 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        }
      };
      if(name.endsWith('greenButtonQaLaunch.ts'))return {greenButtonQaSafeSummary,
-       greenButtonQaPassiveInboundReady:()=>false};
+       greenButtonQaPassiveInboundReady:()=>false,
+       trustedGreenAssignmentProductionConfig:(control,env,mode)=>
+        mode==='outbound'&&control.enabled===true&&control.paused!==true&&
+        control.interactive_assignment_production_enabled===true&&
+        control.interactive_outbound_live_enabled===true
+        ?{legacyProductionApproved:true,capability:'mixed_url'}:null};
      if(name.endsWith('greenButtonQaAssignmentPreflight.ts'))return {
        inspectGreenButtonQaAssignmentReadOnly
      };
