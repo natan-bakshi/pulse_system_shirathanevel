@@ -19,6 +19,10 @@ import {decodeFutureGreenInteractiveHttpRequest}
  from './greenInteractiveHttpBoundary.ts';
 import {isVerifiedGreenNonButtonEvent}
  from './greenWebhookAckPlanning.ts';
+import {parseGreenButtonSelection} from './greenInteractiveCallback.ts';
+import {admitAuthenticatedV2GreenReminder,recordVerifiedV2ReminderAcknowledgement}
+ from './whatsappV2ReminderInbound.ts';
+import {enqueueVerifiedV2ReminderAckFeedback} from './whatsappV2ReminderFeedback.ts';
 type Result={httpStatus:number;body:{received:boolean};noProviderCalls:true};
 const result=(httpStatus:number,received=false):Result=>({
  httpStatus,body:{received},noProviderCalls:true
@@ -50,7 +54,8 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
  // A verified non-QA private sender can be admitted ONLY if the owner-signed
  // single-assignment pilot specifically names that private chat.
  let extraPrivateSender='';
- if(typeof request?.clone==='function'){
+ let v2Callback:any=null,v2Bytes=0;
+ if(typeof request?.clone==='function'){ 
   let boundary:any;
   try{boundary=await decodeFutureGreenInteractiveHttpRequest(request.clone(),{
     rolloutAuthorized:true,accountCapabilityVerified:true,webhookSecret:bearer
@@ -64,6 +69,14 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
     raw?.instanceData?.typeInstance==='whatsapp';
   if(instanceMatched&&isVerifiedGreenNonButtonEvent(raw,instance))
    return result(200,true);
+  // Short V2 IDs are disjoint from live V1 wa1_ assignment buttons.
+  // Keep the one and only Green webhook URL, but NEVER execute V2 without
+  // a separately owner-enabled historical inbound flag (default false).
+  const selected=instanceMatched?parseGreenButtonSelection(
+   raw,instance,opts.now??Date.now()):null;
+  if(selected&&/^wa2_[A-Za-z0-9_-]{22}$/.test(selected.buttonId)){
+   v2Callback=raw;v2Bytes=boundary.callbackByteLength;
+  }
   const qaChat=opts.env('GREEN_BUTTONS_QA_ALLOWED_CHAT')||'';
   const sender=raw?.senderData?.chatId;
   // This endpoint serves exactly ONE owner-approved QA chat. No other
@@ -88,6 +101,40 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
  try{
   const client=opts.makeClient(request);
   const control=await readWhatsAppQueueControl(client);
+  if(v2Callback){
+   // A rollback of NEW V2 sends must never invalidate buttons already
+   // accepted by Green. Historical authorization is independent of sending.
+   if(control.interactive_reminder_v2_inbound_ever_enabled!==true||
+      !greenProductionPassiveInboundReady(opts.env))return result(503);
+   const signing=opts.env('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'';
+   const account=opts.env('GREEN_API_INSTANCE_ID')||'';
+   const admission=await admitAuthenticatedV2GreenReminder({
+    client,headers:request.headers,rawCallback:v2Callback,
+    callbackByteLength:v2Bytes,expectedInstanceId:account,
+    webhookSecret:bearer,signingSecret:signing,
+    rolloutAuthorized:true,providerCapabilityVerified:true,now:opts.now
+   });
+   if(admission.status!=='admitted')return result(422);
+   const committed=await recordVerifiedV2ReminderAcknowledgement({
+    client,admission:admission.admission,signingSecret:signing,now:opts.now
+   });
+   if(!['recorded','already_recorded','already_acknowledged'].includes(committed.status))
+    return result(503);
+   // Feedback goes through the SAME existing queue and is deduplicated
+   // per original Outbox job; there is no second provider HTTP request here.
+   const feedback=await enqueueVerifiedV2ReminderAckFeedback({
+    client,sourceOutboxId:admission.admission.outboxId,
+    signingSecret:signing,activeGreenInstanceId:account
+   });
+   if(feedback.queued)return result(200,true);
+   // If the WhatsApp sender number was replaced after the old message,
+   // refuse to send from a different number. Retrying cannot repair it.
+   if(feedback.reason==='origin_untrusted_or_sender_changed'){
+    console.warn('[WhatsAppV2] Historical reminder ACK recorded; sender changed, feedback requires manual review');
+    return result(200,true);
+   }
+   return result(503);
+  }
   // Receipt processing does NOT depend on new-send switch or queue control.
   // This lets suppliers click old buttons safely during a send rollback.
   const production=trustedGreenAssignmentProductionConfig(control,opts.env,'inbound');
