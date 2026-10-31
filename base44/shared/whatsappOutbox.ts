@@ -136,7 +136,7 @@ export async function enqueueWhatsApp(client: any, data: {
     // Only a backend-verified terminal Green button receipt may pin its
     // feedback to the ORIGINAL provider/account. Other queue producers keep
     // using the existing selected-provider lookup unchanged.
-    const verifiedFeedback=context.sourceType==='assignment_button_feedback'&&
+    const verifiedFeedback=['assignment_button_feedback','reminder_button_feedback'].includes(context.sourceType)&&
       /^[A-Za-z0-9_-]{3,160}$/.test(String(context.sourceId||''))&&
       /^[0-9]{5,20}$/.test(String(context.feedbackSenderAccountId||''));
     const requestedProvider=verifiedFeedback?'green':
