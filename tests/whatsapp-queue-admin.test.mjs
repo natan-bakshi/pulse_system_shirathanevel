@@ -498,6 +498,72 @@ test('per-NotificationTemplate buttons save only after owner auth and real suppl
  })).status,403);
  assert.equal(foreign.record.interactive_supplier_template_buttons_green_json,undefined);
 });
+test('owner can explicitly enable and disable live V2 reminder ACK buttons without sending, rewiring Green or losing inbound history',async()=>{
+ const ctx=context({selectedProvider:'green',state:{
+  enabled:true,paused:false,
+  interactive_outbound_live_enabled:true,
+  interactive_assignment_production_enabled:true
+ }});
+ const before={...ctx.record};
+ const initial=await ctx.invoke('reminderV2Get');
+ assert.equal(initial.status,200);
+ assert.equal(initial.body.enabled,false);
+ assert.equal(initial.body.ready,true);
+ assert.equal(initial.body.historicalInboundEnabled,false);
+ assert.equal(initial.body.noMessagesSent,true);
+ assert.equal((await ctx.invoke('reminderV2Enable')).status,403);
+ assert.equal(ctx.record.interactive_reminder_v2_outbound_enabled,undefined);
+ const enabled=await ctx.invoke('reminderV2Enable',{
+  confirmation:'ENABLE_GREEN_SUPPLIER_REMINDER_ACKNOWLEDGEMENT'
+ });
+ assert.equal(enabled.status,200,JSON.stringify(enabled.body));
+ assert.equal(enabled.body.enabled,true);
+ assert.equal(ctx.record.interactive_reminder_v2_outbound_enabled,true);
+ assert.equal(ctx.record.interactive_reminder_v2_inbound_ever_enabled,true);
+ assert.equal(ctx.calls.length,0);
+ assert.deepEqual(Object.keys(ctx.record).filter(k=>ctx.record[k]!==before[k]).sort(),
+  ['interactive_reminder_v2_inbound_ever_enabled',
+   'interactive_reminder_v2_outbound_enabled']);
+ assert.equal((await ctx.invoke('reminderV2Enable',{
+  confirmation:'ENABLE_GREEN_SUPPLIER_REMINDER_ACKNOWLEDGEMENT'
+ })).body.enabled,true);
+ const disabled=await ctx.invoke('reminderV2Disable');
+ assert.equal(disabled.status,200);
+ assert.equal(disabled.body.enabled,false);
+ assert.equal(disabled.body.historicalInboundEnabled,true,
+  'previously accepted V2 reminders continue to receive signed acknowledgements');
+ assert.equal(ctx.record.interactive_reminder_v2_outbound_enabled,false);
+ assert.equal(ctx.record.interactive_reminder_v2_inbound_ever_enabled,true);
+ assert.equal(ctx.calls.length,0);
+});
+test('V2 owner switch cannot activate while Wasender selected, queue paused or assignment Green signing unavailable',async()=>{
+ for(const issue of [
+  {selectedProvider:'wasender',state:{}},
+  {selectedProvider:'green',state:{paused:true}},
+  {selectedProvider:'green',state:{interactive_assignment_production_enabled:false}},
+  {selectedProvider:'green',state:{interactive_outbound_live_enabled:false}}
+ ]){
+  const ctx=context({selectedProvider:issue.selectedProvider,state:{
+   enabled:true,paused:false,
+   interactive_outbound_live_enabled:true,
+   interactive_assignment_production_enabled:true,...issue.state
+  }});
+  const result=await ctx.invoke('reminderV2Get');
+  assert.equal(result.status,200);
+  assert.equal(result.body.ready,false,JSON.stringify(issue));
+  const blocked=await ctx.invoke('reminderV2Enable',{
+   confirmation:'ENABLE_GREEN_SUPPLIER_REMINDER_ACKNOWLEDGEMENT'
+  });
+  assert.equal(blocked.status,409);
+  assert.equal(ctx.record.interactive_reminder_v2_outbound_enabled,undefined);
+ }
+ const foreign=context({actor:{role:'admin',email:'someone-else@example.com'},
+  selectedProvider:'green',state:{enabled:true}});
+ assert.equal((await foreign.invoke('reminderV2Get')).status,403);
+ assert.equal((await foreign.invoke('reminderV2Enable',{
+  confirmation:'ENABLE_GREEN_SUPPLIER_REMINDER_ACKNOWLEDGEMENT'
+ })).status,403);
+});
 test('owner Green account change readiness uses only the explicit status action and never mutates queue',async()=>{
  const ctx=context();
  const original=JSON.stringify(ctx.record);
