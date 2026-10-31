@@ -54,7 +54,7 @@ function normalizeButtons(value:any):NavigationButtons{
  return {portal:value.portal,office:value.office,
   portalLabel:value.portalLabel,officeLabel:value.officeLabel};
 }
-function normalizeCustomButtons(value:any):CustomSupplierTemplateButtons{
+export function normalizeCustomButtons(value:any):CustomSupplierTemplateButtons{
  if(!value||typeof value!=='object'||Array.isArray(value)||
   Object.keys(value).sort().join(',')!=='kind,links,replyLabel'||
   value.kind!=='custom'||typeof value.replyLabel!=='string'||
