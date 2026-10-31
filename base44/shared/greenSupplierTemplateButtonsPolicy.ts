@@ -6,17 +6,25 @@ import {normalizeSupplierNavigationGreenPolicy,
  supplierNavigationButtonsForSource,
  GREEN_SUPPLIER_NAVIGATION_SOURCES,
  type NavigationButtons} from './greenSupplierNavigationPolicy.ts';
+import {normalizeCustomLinks,type GreenCustomLink}
+ from './greenSupplierCustomLinks.ts';
 
 export const SUPPLIER_TEMPLATE_NAVIGATION_FIELD='interactive_supplier_template_buttons_green_json';
 const COMPANY='shirat_hanevel';
 const ID=/^[A-Za-z0-9_-]{12,64}$/;
 const LABEL=/^[^\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]{0,25}$/u;
 const MAX_KEYS=80;
-const MAX_JSON=12000;
-export type TemplateButtonPolicy={
- schemaVersion:1;companyId:typeof COMPANY;provider:'green';version:number;
- templates:Record<string,NavigationButtons>
+const MAX_JSON=24000;
+export type CustomSupplierTemplateButtons={
+ kind:'custom';links:GreenCustomLink[];replyLabel:string
 };
+export type SupplierTemplateButtons=NavigationButtons|CustomSupplierTemplateButtons;
+export type TemplateButtonPolicy={
+ schemaVersion:1|2;companyId:typeof COMPANY;provider:'green';version:number;
+ templates:Record<string,SupplierTemplateButtons>
+};
+export const isCustomSupplierButtons=(value:any):value is CustomSupplierTemplateButtons=>
+ value?.kind==='custom';
 const error=(reason:string,status=400)=>Object.assign(
  new Error('Supplier template button settings: '+reason),{status});
 export const isSafeTemplateId=(id:unknown):id is string=>
@@ -46,21 +54,37 @@ function normalizeButtons(value:any):NavigationButtons{
  return {portal:value.portal,office:value.office,
   portalLabel:value.portalLabel,officeLabel:value.officeLabel};
 }
+function normalizeCustomButtons(value:any):CustomSupplierTemplateButtons{
+ if(!value||typeof value!=='object'||Array.isArray(value)||
+  Object.keys(value).sort().join(',')!=='kind,links,replyLabel'||
+  value.kind!=='custom'||typeof value.replyLabel!=='string'||
+  !LABEL.test(value.replyLabel)||value.replyLabel!==value.replyLabel.trim())
+  throw error('invalid_custom_buttons');
+ const links=normalizeCustomLinks(value.links);
+ if(links.length+Number(!!value.replyLabel)>3)
+  throw error('max_three_buttons');
+ return {kind:'custom',links,replyLabel:value.replyLabel};
+}
 export function normalizeSupplierTemplateButtonPolicy(raw:any):TemplateButtonPolicy{
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
   Object.keys(raw).sort().join(',')!=='companyId,provider,schemaVersion,templates,version'||
-  raw.schemaVersion!==1||raw.companyId!==COMPANY||raw.provider!=='green'||
+  ![1,2].includes(raw.schemaVersion)||raw.companyId!==COMPANY||raw.provider!=='green'||
   !Number.isSafeInteger(raw.version)||raw.version<1||raw.version>2147483647||
   !raw.templates||typeof raw.templates!=='object'||Array.isArray(raw.templates)||
   Object.keys(raw.templates).length>MAX_KEYS)
   throw error('invalid_policy_scope');
- const templates:Record<string,NavigationButtons>={};
+ const templates:Record<string,SupplierTemplateButtons>={};
  for(const id of Object.keys(raw.templates).sort()){
   if(!isSafeTemplateId(id))throw error('invalid_template_id');
-  templates[id]=normalizeButtons(raw.templates[id]);
+  const choice=raw.templates[id];
+  if(isCustomSupplierButtons(choice)&&raw.schemaVersion!==2)
+   throw error('custom_buttons_require_v2');
+  templates[id]=isCustomSupplierButtons(choice)?normalizeCustomButtons(choice):
+   normalizeButtons(choice);
  }
  const result:TemplateButtonPolicy={
-  schemaVersion:1,companyId:COMPANY,provider:'green',version:raw.version,templates
+  schemaVersion:raw.schemaVersion,companyId:COMPANY,provider:'green',
+  version:raw.version,templates
  };
  if(JSON.stringify(result).length>MAX_JSON)throw error('oversized_policy');
  return result;
@@ -106,7 +130,7 @@ export async function saveSupplierTemplateButtonPolicy(client:any,input:any){
   input.expectedVersion!==prior.setting.version)
   throw error('version_conflict',409);
  const next=normalizeSupplierTemplateButtonPolicy({
-  schemaVersion:1,companyId:COMPANY,provider:'green',
+  schemaVersion:2,companyId:COMPANY,provider:'green',
   version:prior.setting.version+1,templates:input.templates
  });
  // Verify template identities against real current templates on owner SAVE
@@ -115,9 +139,19 @@ export async function saveSupplierTemplateButtonPolicy(client:any,input:any){
  if(Object.keys(next.templates).length){
   const all=await db.NotificationTemplate.list();
   if(!Array.isArray(all))throw error('template_registry_unavailable',503);
-  const eligible=new Set(all.filter(isSupportedSupplierButtonTemplate).map(x=>x.id));
-  if(Object.keys(next.templates).some(id=>!eligible.has(id)))
-   throw error('template_not_supplier_whatsapp_eligible',400);
+  const eligible=new Map(all.filter(isSupportedSupplierButtonTemplate).map(x=>[x.id,x]));
+  for(const [id,selection] of Object.entries(next.templates)){
+   const template=eligible.get(id);
+   if(!template)throw error('template_not_supplier_whatsapp_eligible',400);
+   if(isCustomSupplierButtons(selection)){
+    if(selection.replyLabel&&template.type!=='SUPPLIER_EVENT_REMINDER')
+     throw error('reply_requires_supplier_event_reminder');
+    if(selection.links.some(link=>link.kind==='event_details')&&
+     !(['SUPPLIER_EVENT_REMINDER','SUPPLIER_PENDING_REMINDER'].includes(template.type)||
+       template.trigger_type==='scheduled_check'))
+     throw error('smart_event_link_requires_event_source');
+   }
+  }
  }
  const before=control[SUPPLIER_TEMPLATE_NAVIGATION_FIELD]??null;
  const updated=await db.WhatsAppQueueControl.updateMany({
