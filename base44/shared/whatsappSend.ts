@@ -8,6 +8,7 @@ import { parseWhatsAppPhone } from './whatsappPhone.ts';
 import { greenApiOrigin } from './greenWebhookSettingsAudit.ts';
 import {withSupplierPortalLink} from './supplierPortalLink.ts';
 import {verifiedSupplierNavigationTransport} from './greenSupplierNavigation.ts';
+import {verifyV2ReminderTransport} from './whatsappV2ReminderOutbound.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -195,6 +196,29 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
   // arbitrary destinations, recipients and URL query injection. A proven
   // 400/403 rejection may fall back once to the original plain text; UNKNOWN
   // provider responses must never trigger a second provider send.
+  if(interactivePreview?.kind==='interactive_reminder_v2'){
+    // Signed reminder reply plus up to two existing, verified owner URL
+    // buttons. Never accept an arbitrary selected ID or forwarding URL.
+    const valid=await verifyV2ReminderTransport({
+      job,provider,preview:interactivePreview,
+      signingSecret:Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'',
+      expectedSenderAccountId:Deno.env.get('GREEN_API_INSTANCE_ID')||'',
+      verifyNavigation:verifiedSupplierNavigationTransport
+    });
+    if(!valid)throw invalidInput('Invalid signed reminder V2 transport');
+    try{
+      return await callGreenApi('sendInteractiveButtons',interactivePreview.body);
+    }catch(error){
+      // A definite 400/403 provider refusal proves no button message was
+      // accepted; preserve delivery as the original plain text ONCE.
+      // Unknown, network timeout or 5xx MUST NEVER be retried here.
+      if(error?.deliveryUncertain!==true&&[400,403].includes(error?.errorCode)){
+        console.warn('[WhatsAppOutbox] Signed reminder buttons definitively rejected; original text fallback once');
+        return callGreenApi('sendMessage',{chatId,message:text});
+      }
+      throw error;
+    }
+  }
   if(interactivePreview?.kind==='interactive_navigation'){
     if(!verifiedSupplierNavigationTransport(job,provider,interactivePreview))
       throw invalidInput('Invalid supplier navigation buttons');
