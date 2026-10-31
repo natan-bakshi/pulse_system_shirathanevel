@@ -58,6 +58,8 @@ async function routeWhatsApp(client, entry) {
   // A queue disable between intent reconciliation and enqueue must fail closed.
   if(entry?.context?.qaButtonsRequired===true)
     throw new Error('Pilot assignment requires durable WhatsApp queue');
+  if(entry?.context?.sourceType==='reminder_button_feedback')
+    throw new Error('Verified reminder feedback requires durable WhatsApp queue');
   if(control.paused) throw new Error('WhatsApp is paused by the administrator');
   const provider=await resolveWhatsAppProvider(client);
   const receipt=await sendWhatsAppTransport({
