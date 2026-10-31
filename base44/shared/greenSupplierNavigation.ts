@@ -91,20 +91,23 @@ export function verifiedSupplierNavigationTransport(job:any,provider:string,prev
   !PRIVATE.test(job.chat_id||'')||
   preview.kind!=='interactive_navigation'||
   preview.method!=='sendInteractiveButtons'||
-  preview.body?.chatId!==job.chat_id||
-  preview.body?.body!==navigationTextBody(job.message_text)||
   !Array.isArray(preview.body?.buttons)||
-  preview.body.buttons.length!==2)return false;
- const [portal,office]=preview.body.buttons;
- if(!portal||!office||portal.type!=='url'||office.type!=='url'||
-  portal.buttonId!=='open_supplier_portal'||
-  office.buttonId!=='contact_office'||
-  portal.url!==SUPPLIER_PORTAL_URL)return false;
- for(const b of [portal,office]){
-  if(typeof b.buttonText!=='string'||!b.buttonText||
+  preview.body.buttons.length<1||preview.body.buttons.length>2)return false;
+ const buttons=preview.body.buttons;
+ const portal=buttons.find((b:any)=>b?.buttonId==='open_supplier_portal');
+ const office=buttons.find((b:any)=>b?.buttonId==='contact_office');
+ if(buttons.length!==Number(!!portal)+Number(!!office)||
+  (portal&&office&&buttons[0]!==portal)||
+  preview.body?.body!==(portal?navigationTextBody(job.message_text):job.message_text))
+  return false;
+ for(const b of buttons){
+  if(!b||b.type!=='url'||
+   typeof b.buttonText!=='string'||!b.buttonText||
    b.buttonText.trim()!==b.buttonText||b.buttonText.length>25||
    /[\x00-\x1f\x7f]/.test(b.buttonText))return false;
  }
+ if(portal&&portal.url!==SUPPLIER_PORTAL_URL)return false;
+ if(!office)return !!portal;
  try{
   const link=new URL(office.url);
   if(link.protocol!=='https:'||link.host!=='wa.me'||
