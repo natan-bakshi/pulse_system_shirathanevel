@@ -34,7 +34,8 @@ export type SupplierNavigationPreview={
  method:'sendInteractiveButtons';kind:'interactive_navigation';
  body:{
   chatId:string;body:string;buttons:Array<{
-   type:'url';buttonId:string;buttonText:string;url:string
+   type:'url'|'copy'|'call';buttonId:string;buttonText:string;
+   url?:string;copyCode?:string;phoneNumber?:string
   }>
  };fallbackReason:'';providerRequestsMade:0
 };
@@ -62,14 +63,24 @@ export function previewGreenSupplierNavigation(input:{
  if(!policy)return null;
  if(isCustomSupplierButtons(policy)){
   if(policy.links.length===0&&(!input.allowReplyOnly||!policy.replyLabel))return null;
-  if(policy.links.some(link=>link.kind==='office')&&
+  if(policy.links.some(link=>['office','call_office'].includes(link.kind))&&
    !OFFICE.test(config.officeNumber||''))return null;
   const buttons:SupplierNavigationPreview['body']['buttons']=[];
   for(const link of policy.links){
+   const buttonId='custom_link_'+(buttons.length+1);
+   if(link.kind==='copy_reference'){
+    buttons.push({type:'copy',buttonId,buttonText:link.label,
+     copyCode:job.id});
+    continue;
+   }
+   if(link.kind==='call_office'){
+    buttons.push({type:'call',buttonId,buttonText:link.label,
+     phoneNumber:config.officeNumber});
+    continue;
+   }
    const destination=customLinkDestination(link,job,config.officeNumber);
    if(!destination)return null; // Never send a wrong event or partial link set.
-   buttons.push({type:'url',buttonId:'custom_link_'+(buttons.length+1),
-    buttonText:link.label,url:destination});
+   buttons.push({type:'url',buttonId,buttonText:link.label,url:destination});
   }
   const hasCalendar=policy.links.some(link=>link.kind==='supplier_calendar');
   const body=hasCalendar?navigationTextBody(job.message_text):job.message_text;
