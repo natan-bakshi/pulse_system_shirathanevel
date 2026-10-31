@@ -426,6 +426,35 @@ test('owner-only Green GetSettings audit is opt-in one provider GET and zero DB/
  assert.equal(again.status,200);
  assert.equal(ctx.greenAudits.length,1,'owner status refresh MUST NOT call Green');
 });
+test('owner supplier-notice buttons save per-source URL options without enabling callbacks or changing the queue',async()=>{
+ const ctx=context({state:{enabled:true,paused:false,interactive_assignment_production_enabled:true}});
+ const before={...ctx.record};
+ const read=await ctx.invoke('supplierNavigationGet');
+ assert.equal(read.status,200);
+ assert.equal(read.body.configured,false);
+ assert.deepEqual(Object.keys(read.body.setting.sources),[
+  'event_reminder','supplier_pending_reminder','scheduled_template','manual_trigger'
+ ]);
+ const sources=defaultSupplierNavigationGreenPolicy().sources;
+ sources.event_reminder.office=false;
+ const saved=await ctx.invoke('supplierNavigationSave',{expectedVersion:1,sources});
+ assert.equal(saved.status,200,JSON.stringify(saved.body));
+ assert.equal(saved.body.setting.version,2);
+ assert.equal(saved.body.setting.sources.event_reminder.office,false);
+ assert.equal(saved.body.noMessagesSent,true);
+ assert.equal(saved.body.noProviderCalls,true);
+ assert.deepEqual(Object.keys(ctx.record).filter(x=>ctx.record[x]!==before[x]),
+  ['interactive_supplier_navigation_green_policy_json']);
+ assert.equal(ctx.record.enabled,true);
+ assert.equal(ctx.record.paused,false);
+ assert.equal(ctx.record.interactive_assignment_production_enabled,true);
+ assert.equal(ctx.calls.length,0);
+ const retry=await ctx.invoke('supplierNavigationSave',{expectedVersion:1,sources});
+ assert.equal(retry.status,409,'stale edit cannot overwrite another owner tab');
+ const foreign=context({actor:{role:'admin',email:'external-owner@example.com'}});
+ assert.equal((await foreign.invoke('supplierNavigationGet')).status,403);
+ assert.equal((await foreign.invoke('supplierNavigationSave',{expectedVersion:1,sources})).status,403);
+});
 test('owner Green account change readiness uses only the explicit status action and never mutates queue',async()=>{
  const ctx=context();
  const original=JSON.stringify(ctx.record);
