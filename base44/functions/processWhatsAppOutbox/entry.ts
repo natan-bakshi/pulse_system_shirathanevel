@@ -122,9 +122,17 @@ Deno.serve(async (req) => {
         }catch{qaConfig=null;}
       }
     }
+    // Independent default-OFF owner switch for a first new V2 supplier
+    // reminder ACK. Reuse the SAME trusted Green production config and worker
+    // instead of another integration, cron, provider call or sender queue.
+    const v2ReminderConfig=qaConfig?.legacyProductionApproved===true&&
+      controlRows[0].interactive_reminder_v2_outbound_enabled===true&&
+      controlRows[0].interactive_reminder_v2_inbound_ever_enabled===true
+      ?qaConfig:null;
     const result=await drainWhatsAppOutbox(client,{wakeReason,
       initialControl:controlRows[0],
-      ...(qaConfig?{interactiveConfig:qaConfig}:{})});
+      ...(qaConfig?{interactiveConfig:qaConfig}:{}),
+      ...(v2ReminderConfig?{reminderV2Config:v2ReminderConfig}:{})});
     // A lost telemetry acknowledgement AFTER dispatch is not a send failure.
     try{
       await client.asServiceRole.entities.WhatsAppQueueControl.update(
