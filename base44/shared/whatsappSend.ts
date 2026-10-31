@@ -180,7 +180,7 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
   // Feedback may only leave the same Green instance that owned the verified
   // original assignment. It cannot silently switch to Wasender or another
   // Green number if provider configuration changed before dispatch.
-  if(job.source_type==='assignment_button_feedback'&&
+  if(['assignment_button_feedback','reminder_button_feedback'].includes(job.source_type)&&
     (provider!=='green'||!/^[0-9]{5,20}$/.test(String(job.sender_account_id||''))||
      job.sender_account_id!==Deno.env.get('GREEN_API_INSTANCE_ID')))
     throw invalidInput('Original Green sender account unavailable for feedback');
