@@ -195,7 +195,12 @@ test('staged V2 reminders cannot change live assignment engine, callback URL or 
  assert.match(module,/provider_message_id:a\.providerMessageId/);
  assert.match(module,/reminder_acknowledged_at:job\.reminder_acknowledged_at\?\?null/);
  const v1=fs.readFileSync('base44/shared/greenButtonQaWebhookHandler.ts','utf8');
- assert.doesNotMatch(v1,/whatsappV2ReminderInbound|wa2_/);
+ assert.match(v1,/if\(v2Callback\)/);
+ assert.match(v1,/interactive_reminder_v2_inbound_ever_enabled!==true/);
+ assert.match(v1,/recordVerifiedV2ReminderAcknowledgement/);
+ assert.match(v1,/enqueueVerifiedV2ReminderAckFeedback/);
+ assert.match(v1,/if\(feedback\.queued\)return result\(200,true\)/);
+ assert.doesNotMatch(v1,/Deno\.serve|sendWhatsAppTransport/);
  const worker=fs.readFileSync('base44/shared/whatsappQueueWorker.ts','utf8');
  assert.doesNotMatch(worker,/whatsappV2ReminderInbound|reminder_acknowledge/);
 });
