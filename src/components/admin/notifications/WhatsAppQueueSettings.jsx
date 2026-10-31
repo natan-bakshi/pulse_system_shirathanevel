@@ -7,6 +7,7 @@ import {Label} from '@/components/ui/label';
 import {RefreshCw,Save,Play,AlertTriangle} from 'lucide-react';
 import WhatsAppQueueMessages from './WhatsAppQueueMessages';
 import WhatsAppLiveButtonSettings from './WhatsAppLiveButtonSettings';
+import WhatsAppSupplierNoticeButtons from './WhatsAppSupplierNoticeButtons';
 
 // Production operations only. Previous pilot receiver/records are preserved
 // server-side for valid historical replies, with no active QA controls here.
@@ -204,6 +205,7 @@ export default function WhatsAppQueueSettings(){
      {view?.interactiveButtonsEnabled?'כבה כפתורים בהודעות חדשות':'הפעל כפתורים בהודעות חדשות'}
     </Button>
     <WhatsAppLiveButtonSettings active={!!view?.interactiveButtonsEnabled}/>
+    <WhatsAppSupplierNoticeButtons active={!!view?.interactiveButtonsEnabled}/>
     <details className="rounded border p-3 text-sm">
      <summary className="cursor-pointer font-medium">בדיקת מוכנות הכפתורים</summary>
      <div className="pt-3 space-y-2">
