@@ -11,6 +11,7 @@ import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappIn
 import {inspectAssignmentV2ReleaseReadiness} from '../base44/shared/assignmentV2ReleaseReadiness.ts';
 import {greenButtonQaSafeSummary} from '../base44/shared/greenButtonQaLaunch.ts';
 import {parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy,defaultSupplierNavigationGreenPolicy} from '../base44/shared/greenSupplierNavigationPolicy.ts';
+import {parseSupplierTemplateButtonPolicy,saveSupplierTemplateButtonPolicy} from '../base44/shared/greenSupplierTemplateButtonsPolicy.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../base44/shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../base44/shared/greenButtonQaEnrollment.ts';
 import {inspectOfficeAssignmentReference} from '../base44/shared/whatsappOfficeReferenceLookup.ts';
@@ -65,6 +66,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
    Event:{get:async id=>{officeReads.push('event');return officeEvents.find(x=>x.id===id)||null;}},
    Supplier:{get:async id=>{officeReads.push('supplier');return officeSuppliers.find(x=>x.id===id)||null;}}, 
    WhatsAppOutbox:jobEntity,
+   NotificationTemplate:{list:async()=>[]},
    AppSettings:{filter:async()=>[]},
    InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}},
    PendingPushNotification:{filter:async(_q,_sort,limit,offset,fields)=>{pendingProjections.push(fields);return pendingRows.slice(offset,offset+limit);}},
@@ -159,6 +161,9 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      };
      if(name.endsWith('greenSupplierNavigationPolicy.ts'))return {
        parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy
+     };
+     if(name.endsWith('greenSupplierTemplateButtonsPolicy.ts'))return {
+       parseSupplierTemplateButtonPolicy,saveSupplierTemplateButtonPolicy
      };
      if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
      if(name.endsWith('greenButtonQaWebhookProvisioning.ts'))return {
