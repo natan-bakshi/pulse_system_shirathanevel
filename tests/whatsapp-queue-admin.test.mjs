@@ -11,7 +11,7 @@ import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappIn
 import {inspectAssignmentV2ReleaseReadiness} from '../base44/shared/assignmentV2ReleaseReadiness.ts';
 import {greenButtonQaSafeSummary} from '../base44/shared/greenButtonQaLaunch.ts';
 import {parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy,defaultSupplierNavigationGreenPolicy} from '../base44/shared/greenSupplierNavigationPolicy.ts';
-import {parseSupplierTemplateButtonPolicy,saveSupplierTemplateButtonPolicy} from '../base44/shared/greenSupplierTemplateButtonsPolicy.ts';
+import {parseSupplierTemplateButtonPolicy,saveSupplierTemplateButtonPolicy,defaultSupplierTemplateButtonPolicy} from '../base44/shared/greenSupplierTemplateButtonsPolicy.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../base44/shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../base44/shared/greenButtonQaEnrollment.ts';
 import {inspectOfficeAssignmentReference} from '../base44/shared/whatsappOfficeReferenceLookup.ts';
@@ -24,7 +24,7 @@ import {summarizeWhatsAppSourceAudit,summarizePendingWhatsAppAudit,summarizePaym
 
 const UNIT_RECOVERY_KEY=Buffer.alloc(32,31).toString('base64url');
 const UNIT_SIGNING_SECRET='synthetic-owner-admin-action-signing-secret-123456789';
-function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[],quarantineRows=[],officeServices=[],officeEvents=[],officeSuppliers=[]}={}){
+function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs=[],notifications=[],pendingRows=[],inboundRows=[],quarantineRows=[],officeServices=[],officeEvents=[],officeSuppliers=[],templates=[]}={}){
  const record={id:'control',control_key:'global',enabled:false,paused:false,
    green_interval_ms:7000,wasender_interval_ms:7000,max_messages_per_run:16,
    lease_owner:'',lease_until:'',last_dispatched_at:'',last_worker_at:'',...state};
@@ -66,7 +66,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
    Event:{get:async id=>{officeReads.push('event');return officeEvents.find(x=>x.id===id)||null;}},
    Supplier:{get:async id=>{officeReads.push('supplier');return officeSuppliers.find(x=>x.id===id)||null;}}, 
    WhatsAppOutbox:jobEntity,
-   NotificationTemplate:{list:async()=>[]},
+   NotificationTemplate:{list:async()=>templates},
    AppSettings:{filter:async()=>[]},
    InAppNotification:{list:async(_sort,limit,offset,fields)=>{listProjections.push(fields);return notifications.slice(offset,offset+limit);}},
    PendingPushNotification:{filter:async(_q,_sort,limit,offset,fields)=>{pendingProjections.push(fields);return pendingRows.slice(offset,offset+limit);}},
