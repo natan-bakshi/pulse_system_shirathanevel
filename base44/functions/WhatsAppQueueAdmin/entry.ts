@@ -3,6 +3,7 @@ import { readWhatsAppQueueControl } from '../../shared/whatsappOutbox.ts';
 import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDispatchForProvider, syncWhatsAppStatus } from '../../shared/whatsappQueueWorker.ts';
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 import {readSavedWhatsAppInteractivePolicy,saveWhatsAppInteractivePolicyDraft} from '../../shared/whatsappInteractiveSettingsStore.ts';
+import {parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy} from '../../shared/greenSupplierNavigationPolicy.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
@@ -314,6 +315,26 @@ Deno.serve(async(req)=>{
         return RESPONSE({success:false,error:status===500?'Interactive settings unavailable':
           String((error as any)?.message||'Invalid interactive settings'),
           liveEnabled:false,noMessagesSent:true},status);
+      }
+    }
+    if(action==='supplierNavigationGet'){
+      // Existing four Green supplier notification sources only. Read-only
+      // owner operation; no provider call, assignment, queue or receipt write.
+      const control=await readWhatsAppQueueControl(client);
+      const policy=parseSupplierNavigationGreenPolicy(control);
+      return RESPONSE({success:true,...policy,noMessagesSent:true,noProviderCalls:true});
+    }
+    if(action==='supplierNavigationSave'){
+      // Update ONLY the navigation JSON field by CAS. The server rejects
+      // arbitrary sources/handlers and never flips rollout or queue switches.
+      try{
+        const result=await saveSupplierNavigationGreenPolicy(client,body);
+        return RESPONSE({success:true,...result,noMessagesSent:true,noProviderCalls:true});
+      }catch(error){
+        const code=Number((error as any)?.status)||500;
+        return RESPONSE({success:false,error:code===500?'Navigation settings unavailable':
+          String((error as any)?.message||'Invalid navigation settings'),
+          noMessagesSent:true,noProviderCalls:true},[400,409,503].includes(code)?code:503);
       }
     }
     if(action==='configure'){
