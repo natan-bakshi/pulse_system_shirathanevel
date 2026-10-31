@@ -74,6 +74,8 @@ function identityMatches(job:any,snapshot:any,accepted:boolean){
   snapshot.sourceType!==job.source_type||
   snapshot.senderAccountId!==job.sender_account_id||
   snapshot.chatId!==job.chat_id||
+  job.resource_id!==job.id||job.recipient_id!==job.supplier_id||
+  job.recipient_audience!=='supplier'||
   job.company_id!=='shirat_hanevel'||job.requested_provider!=='green'||
   (accepted&&(job.status!=='accepted'||job.provider!=='green'||
    !ID.test(job.provider_message_id||''))))return false;
@@ -190,6 +192,7 @@ export async function resolveAuthenticatedV2GreenButton(input:{
 }){
  const {job,click}=input;
  if(!click||click.provider!=='green'||
+  !ID.test(click.providerEventId||'')||
   click.senderAccountId!==job?.sender_account_id||
   click.senderChatId!==job?.chat_id||
   click.originalProviderMessageId!==job?.provider_message_id||
