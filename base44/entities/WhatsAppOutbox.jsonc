@@ -172,6 +172,46 @@
       "type": "string",
       "description": "Future immutable short provider button IDs mapped to server-signed actions; never generated again after a first provider attempt"
     },
+    "company_id": {
+      "type": "string",
+      "description": "Optional V2 action provenance; existing assignment V1 untouched"
+    },
+    "message_kind": {
+      "type": "string",
+      "description": "Optional V2 message-kind identity"
+    },
+    "resource_type": {
+      "type": "string",
+      "description": "Optional V2 action resource type"
+    },
+    "resource_id": {
+      "type": "string",
+      "description": "Optional V2 immutable resource ID"
+    },
+    "recipient_audience": {
+      "type": "string",
+      "description": "Optional V2 audience binding"
+    },
+    "recipient_id": {
+      "type": "string",
+      "description": "Optional V2 exact recipient identity"
+    },
+    "revision": {
+      "type": "string",
+      "description": "Optional V2 action-specific revision; does not replace assignment_revision"
+    },
+    "interactive_v2_button_bindings_json": {
+      "type": "string",
+      "description": "Future V2 HMAC-frozen short-button snapshot; never exposed to client"
+    },
+    "reminder_acknowledged_at": {
+      "type": "string",
+      "description": "Once-only signed V2 supplier reminder acknowledgement, only after verified callback and CAS"
+    },
+    "reminder_acknowledgement_event_id": {
+      "type": "string",
+      "description": "Original authenticated Green button callback ID after once-only supplier reminder acknowledgement"
+    },
     "attempt_count": {
       "type": "number",
       "default": 0
