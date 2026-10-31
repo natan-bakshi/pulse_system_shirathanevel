@@ -33,6 +33,14 @@
     "source_id": {
       "type": "string"
     },
+    "notification_template_id": {
+      "type": "string",
+      "description": "Immutable NotificationTemplate ID stamped by trusted existing producer at enqueue; never inferred from text or a WhatsApp callback"
+    },
+    "supplier_buttons_snapshot_json": {
+      "type": "string",
+      "description": "Small immutable URL-only supplier notification button layout captured from owner settings at enqueue; no executable actions"
+    },
     "idempotency_key": {
       "type": "string"
     },
