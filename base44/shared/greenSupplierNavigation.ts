@@ -7,7 +7,8 @@
 // All other message types, groups and Wasender retain ordinary text routing.
 import {buildOfficeWhatsAppInquiryLink} from './whatsappOfficeInquiryLink.ts';
 import {SUPPLIER_PORTAL_URL} from './supplierPortalLink.ts';
-import {GREEN_SUPPLIER_NAVIGATION_SOURCES,supplierNavigationButtonsForSource} from './greenSupplierNavigationPolicy.ts';
+import {GREEN_SUPPLIER_NAVIGATION_SOURCES} from './greenSupplierNavigationPolicy.ts';
+import {selectSupplierButtonSnapshot} from './greenSupplierButtonSnapshot.ts';
 
 const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
 const IDENT=/^[A-Za-z0-9_-]{3,160}$/;
@@ -55,7 +56,7 @@ export function previewGreenSupplierNavigation(input:{
   return null;
  // No new DB read: read the versioned owner policy from the queue control
  // that the worker already holds. Corrupt policies fail closed to old text.
- const policy=supplierNavigationButtonsForSource(control,job.source_type);
+ const policy=selectSupplierButtonSnapshot(control,job);
  if(!policy||(!policy.portal&&!policy.office))return null;
  const body=policy.portal?navigationTextBody(job.message_text):job.message_text;
  if(typeof body!=='string'||!body.trim()||body.length>4096)return null;
