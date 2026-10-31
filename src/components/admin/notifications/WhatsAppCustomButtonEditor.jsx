@@ -18,7 +18,11 @@ const TYPES=[
  {value:'office',name:'פנייה למשרד ב־WhatsApp',label:'פנייה למשרד',
   hint:'פותח צ׳אט עם המשרד עם מספר האסמכתא ותקציר ההודעה'},
  {value:'external',name:'קישור חיצוני (כתובת ידנית)',label:'פתח קישור',
-  hint:'פותח כתובת אתר מאובטחת שתודבק כאן, בלי להריץ פעולה במערכת'}
+  hint:'פותח כתובת אתר מאובטחת שתודבק כאן, בלי להריץ פעולה במערכת'},
+ {value:'copy_reference',name:'העתקת אסמכתת ההודעה',label:'העתק אסמכתא',
+  hint:'מעתיק את אסמכתת ההודעה ללוח, בלי לשנות נתון במערכת'},
+ {value:'call_office',name:'שיחת טלפון למשרד',label:'התקשר למשרד',
+  hint:'פותח חייגן עם מספר המשרד המוגדר במערכת'}
 ];
 export const newCustomSupplierButtons=()=>({
  kind:'custom',
@@ -114,7 +118,7 @@ export default function WhatsAppCustomButtonEditor({
   })}
   {total<3&&<Button type="button" variant="outline" size="sm"
    disabled={busy} onClick={add}>
-   <Plus className="w-4 h-4 ml-1"/> הוסף כפתור קישור
+   <Plus className="w-4 h-4 ml-1"/> הוסף כפתור
   </Button>}
   {canReply&&<div className="rounded-md bg-white border p-3 space-y-2">
    <label className="flex items-center gap-2 text-xs font-medium">
@@ -145,7 +149,8 @@ export default function WhatsAppCustomButtonEditor({
     </span>}
     {links.map((item,index)=><span key={index}
      className="rounded border px-3 py-2 text-xs bg-gray-50">
-     {item.label||'ללא שם'} · קישור
+     {item.label||'ללא שם'} · {item.kind==='copy_reference'?'העתקה':
+      item.kind==='call_office'?'שיחת טלפון':'קישור'}
     </span>)}
    </div>
    <p className="text-xs text-gray-500">
