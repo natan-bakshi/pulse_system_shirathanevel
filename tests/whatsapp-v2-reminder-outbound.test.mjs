@@ -10,6 +10,7 @@ import {defaultSupplierTemplateButtonPolicy,
  SUPPLIER_TEMPLATE_NAVIGATION_FIELD}
  from '../base44/shared/greenSupplierTemplateButtonsPolicy.ts';
 import {withSupplierPortalLink} from '../base44/shared/supplierPortalLink.ts';
+import {sendWhatsAppTransport} from '../base44/shared/whatsappSend.ts';
 
 const secret='v2-integration-reminder-test-signing-secret-12345678';
 const now=Date.parse('2026-10-31T19:50:00Z');
