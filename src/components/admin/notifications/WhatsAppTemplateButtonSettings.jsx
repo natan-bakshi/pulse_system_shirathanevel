@@ -6,8 +6,8 @@ import {Save,RefreshCw} from 'lucide-react';
 import WhatsAppCustomButtonEditor,{newCustomSupplierButtons}
  from './WhatsAppCustomButtonEditor';
 
-// Actual NotificationTemplate overrides. No raw URLs or arbitrary functions.
-// The owner policy is verified against live template IDs on the SERVER.
+// Actual NotificationTemplate overrides. Custom HTTPS links are validated on
+// save and send; there is no support for user-supplied functions or handlers.
 const options=[
  {value:'inherit',label:'לפי ברירת המחדל של סוג ההודעה'},
  {value:'both',label:'כניסה למערכת + פנייה למשרד'},
@@ -17,6 +17,26 @@ const options=[
  {value:'custom',label:'התאמה אישית — יעד וכיתוב לכל כפתור'}
 ];
 const defaults={portalLabel:'',officeLabel:''};
+function friendlySettingsError(error){
+ const raw=String(error?.response?.data?.error||error?.message||'');
+ if(/https_url_required|invalid_url|public_https_only|url_too_long/.test(raw))
+  return 'הקישור החיצוני אינו תקין. יש להדביק כתובת HTTPS מלאה של אתר ציבורי, ללא רווחים או כתובת פנימית.';
+ if(/smart_event_link_requires_event_source/.test(raw))
+  return 'קישור חכם לאירוע זמין רק בתבנית שהמערכת יודעת לאתר ממנה אירוע מדויק.';
+ if(/reply_requires_supplier_event_reminder/.test(raw))
+  return 'כפתור תגובת קבלה זמין כרגע רק בתזכורת אירוע לספק.';
+ if(/one_to_three_buttons_required|too_many_url_buttons/.test(raw))
+  return 'ניתן לשמור בין כפתור אחד לשלושה כפתורים לכל תבנית.';
+ if(/duplicate_action/.test(raw))
+  return 'לא ניתן להוסיף את אותו כפתור משרד או העתקת אסמכתא יותר מפעם אחת.';
+ if(/invalid_custom_buttons|button_fields|invalid_buttons/.test(raw))
+  return 'יש לתת לכל כפתור שם קצר ותקין ולבחור יעד מתאים.';
+ if(/oversized_policy/.test(raw))
+  return 'קיימים יותר מדי קישורים ארוכים בהגדרות. יש לקצר חלק מהם או להפחית כפתורים.';
+ if(/version_conflict|version_race/.test(raw)||error?.response?.status===409)
+  return 'ההגדרות עודכנו במקום אחר. לחץ על רענן ובחר מחדש לפני שמירה.';
+ return raw||'לא הצלחנו לשמור את הגדרות הכפתורים. נסה לרענן.';
+}
 function supported(t){
  return t&&/^[A-Za-z0-9_-]{12,64}$/.test(t.id||'')&&
   t.allowed_channels?.includes('whatsapp')&&t.target_audiences?.includes('supplier')&&
@@ -92,8 +112,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
    setDraft(JSON.parse(JSON.stringify(data.setting.templates)));
    setMessage('נשמר. ההגדרה תחול על הודעות חדשות מהתבנית הזאת בלבד.');
   }catch(e){
-   setError((e?.response?.data?.error||e?.message||'השמירה נכשלה')+
-    (e?.response?.status===409?' הנתונים השתנו בחלון אחר. רענן לפני שמירה.':''));
+   setError(friendlySettingsError(e));
   }finally{setBusy(false);}
  }
  return <details className="border rounded-lg p-4 text-sm" dir="rtl"
@@ -169,6 +188,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
    <p className="text-xs text-gray-500">
     מיועד לתזכורות ולהודעות מתוזמנות לספקים שנשלחות דרך Green. כפתורי אישור ודחיית שיבוץ
     ממשיכים לעבוד במסלול השיבוצים הקיים. תבניות של לקוחות ומנהלים אינן מושפעות.
+    כפתורים אלה דורשים Green וצ'אט אישי; ההצגה תלויה בתמיכת WhatsApp במכשיר הנמען.
    </p>
    <div className="flex flex-wrap gap-2">
     <Button size="sm" variant="outline" disabled={busy} onClick={load}>
