@@ -3,6 +3,8 @@ import {base44} from '@/api/base44Client';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Save,RefreshCw} from 'lucide-react';
+import WhatsAppCustomButtonEditor,{newCustomSupplierButtons}
+ from './WhatsAppCustomButtonEditor';
 
 // Actual NotificationTemplate overrides. No raw URLs or arbitrary functions.
 // The owner policy is verified against live template IDs on the SERVER.
@@ -11,7 +13,8 @@ const options=[
  {value:'both',label:'כניסה למערכת + פנייה למשרד'},
  {value:'portal',label:'כניסה למערכת בלבד'},
  {value:'office',label:'פנייה למשרד בלבד'},
- {value:'none',label:'ללא כפתורים'}
+ {value:'none',label:'ללא כפתורים'},
+ {value:'custom',label:'התאמה אישית — יעד וכיתוב לכל כפתור'}
 ];
 const defaults={portalLabel:'',officeLabel:''};
 function supported(t){
@@ -23,6 +26,7 @@ function supported(t){
 }
 function modeOf(v){
  if(!v)return 'inherit';
+ if(v.kind==='custom')return 'custom';
  if(v.portal&&v.office)return 'both';
  if(v.portal)return 'portal';
  if(v.office)return 'office';
@@ -63,12 +67,15 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
  const editMode=(id,mode)=>setDraft(prior=>{
   const next={...prior};
   if(mode==='inherit')delete next[id];
-  else next[id]=toButtons(mode,prior?.[id]);
+  else if(mode==='custom')next[id]=
+   prior?.[id]?.kind==='custom'?prior[id]:newCustomSupplierButtons();
+  else next[id]=toButtons(mode,prior?.[id]?.kind==='custom'?{}:prior?.[id]);
   return next;
  });
  const editLabel=(id,key,value)=>setDraft(prior=>({
   ...prior,[id]:{...prior[id],[key]:value}
  }));
+ const editCustom=(id,value)=>setDraft(prior=>({...prior,[id]:value}));
  const dirty=!!stored&&!!draft&&JSON.stringify(draft)!==JSON.stringify(stored.templates);
  async function save(){
   if(!dirty||busy)return;
@@ -96,7 +103,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
   </summary>
   <div className="pt-3 space-y-4">
    <p className="text-gray-600">אפשר להשאיר כל תבנית על ברירת המחדל, או לתת לה כפתורים משלה.
-    הבחירה לא תשנה התראות אחרות. אין צורך להקליד קישור.</p>
+    הבחירה לא תשנה התראות אחרות. אפשר לבחור יעד מובנה או להדביק קישור חיצוני מאובטח.</p>
    {busy&&!draft&&<p role="status">טוען תבניות...</p>}
    {draft&&supportedTemplates.length===0&&<p className="text-gray-600">
     אין כרגע תבניות WhatsApp לספקים שזכאיות לכפתורי קישור נפרדים.</p>}
@@ -120,7 +127,10 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
        {options.map(o=><option value={o.value} key={o.value}>{o.label}</option>)}
       </select>
      </label>
-     {mode!=='inherit'&&<div className="rounded border bg-gray-50 p-3 space-y-2">
+     {mode==='custom'&&<WhatsAppCustomButtonEditor
+      template={t} value={v} busy={busy}
+      onChange={value=>editCustom(t.id,value)}/>}
+     {mode!=='inherit'&&mode!=='custom'&&<div className="rounded border bg-gray-50 p-3 space-y-2">
       <p className="text-xs text-gray-600">תצוגה מקדימה — בלי לשלוח הודעה</p>
       {mode==='none'?<p className="text-xs">הודעה רגילה ללא כפתורים.</p>:
       <div className="flex flex-wrap gap-2">
