@@ -39,7 +39,7 @@ export type SupplierNavigationPreview={
  };fallbackReason:'';providerRequestsMade:0
 };
 export function previewGreenSupplierNavigation(input:{
- job:any;provider:string;control:any;config:any
+ job:any;provider:string;control:any;config:any;allowReplyOnly?:boolean
 }):SupplierNavigationPreview|null{
  const {job,provider,control,config}=input||{} as any;
  if(!job||!isSupplierNavigationSource(job.source_type)||
@@ -61,6 +61,7 @@ export function previewGreenSupplierNavigation(input:{
  const policy=selectSupplierButtonSnapshot(control,job);
  if(!policy)return null;
  if(isCustomSupplierButtons(policy)){
+  if(policy.links.length===0&&(!input.allowReplyOnly||!policy.replyLabel))return null;
   if(policy.links.some(link=>link.kind==='office')&&
    !OFFICE.test(config.officeNumber||''))return null;
   const buttons:SupplierNavigationPreview['body']['buttons']=[];
@@ -114,18 +115,19 @@ export function verifiedSupplierNavigationTransport(job:any,provider:string,prev
   preview.method!=='sendInteractiveButtons'||
   preview.body?.chatId!==job.chat_id||
   !Array.isArray(preview.body?.buttons)||
-  preview.body.buttons.length<1||preview.body.buttons.length>3)return false;
+  preview.body.buttons.length>3)return false;
  const policy=selectSupplierButtonSnapshot(null,job);
  if(isCustomSupplierButtons(policy)){
   // Exact immutable settings and source identity; provider payload is NOT
   // permitted to supply the link, type or text independently.
-  if(!job.supplier_buttons_snapshot_json)return false;
+  if(!job.supplier_buttons_snapshot_json||
+   (policy.links.length===0&&!policy.replyLabel))return false;
   const hasCalendar=policy.links.some(link=>link.kind==='supplier_calendar');
   const expectedBody=hasCalendar?navigationTextBody(job.message_text):job.message_text;
   return expectedBody===preview.body.body&&
    verifyCustomLinkRows(preview.body.buttons,policy.links,job);
  }
- if(preview.body.buttons.length>2)return false;
+ if(preview.body.buttons.length<1||preview.body.buttons.length>2)return false;
  const buttons=preview.body.buttons;
  const portal=buttons.find((b:any)=>b?.buttonId==='open_supplier_portal');
  const office=buttons.find((b:any)=>b?.buttonId==='contact_office');
