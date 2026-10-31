@@ -195,6 +195,12 @@ test('owner CAS validates custom destination, recipient template kind and action
  }));
  assert.equal(writes,1);
  assert.equal(lists,2,'invalid URL is rejected before checking template registry');
+ await assert.rejects(saveSupplierTemplateButtonPolicy(client,{
+  expectedVersion:2,templates:{[TEMPLATE2]:custom([
+   link('event_details','אירוע')])}
+ }),/smart_event_link_requires_event_source/);
+ assert.equal(writes,1);
+ assert.equal(lists,3);
 });
 test('V1 template policy remains compatible and custom JSON cannot activate arbitrary callbacks',()=>{
  const old=defaultSupplierTemplateButtonPolicy();
