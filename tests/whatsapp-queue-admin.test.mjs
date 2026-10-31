@@ -150,6 +150,10 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
            safeToReplaceWebhookUrl:false};
        }
      };
+     if(name.endsWith('greenSupplierNavigationPolicy.ts'))return {
+       parseSupplierNavigationGreenPolicy:()=>({setting:{version:1,sources:{}},configured:false,corrupt:false}),
+       saveSupplierNavigationGreenPolicy:async()=>{throw Error('Not used in legacy queue tests')}
+     };
      if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
      if(name.endsWith('greenButtonQaWebhookProvisioning.ts'))return {
        applyOneGreenButtonQaWebhookProvisioning:async()=>{
