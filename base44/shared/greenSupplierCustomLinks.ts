@@ -85,13 +85,16 @@ export function customLinkDestination(button:GreenCustomLink,job:any,
   }
  }catch{return null;}
 }
-export function isSafeOfficeLinkForJob(urlValue:unknown,job:any):boolean{
+export function isSafeOfficeLinkForJob(urlValue:unknown,job:any,
+ expectedOfficeNumber=''):boolean{
  if(typeof urlValue!=='string'||urlValue.length>1800)return false;
  try{
   const link=new URL(urlValue);
   if(link.protocol!=='https:'||link.host!=='wa.me'||
    link.username||link.password||link.hash||
    !/^\/[1-9][0-9]{7,14}$/.test(link.pathname)||
+   !/^[1-9][0-9]{7,14}$/.test(expectedOfficeNumber)||
+   link.pathname!=='/'+expectedOfficeNumber||
    [...link.searchParams.keys()].join(',')!=='text')return false;
   const draft=link.searchParams.get('text')||'';
   return draft.length<400&&draft.includes('אסמכתא: '+job.id)&&
@@ -102,7 +105,7 @@ export function isSafeOfficeLinkForJob(urlValue:unknown,job:any):boolean{
 // before a final transport call. The destination cannot be replaced between
 // queue preparation and Green's sendInteractiveButtons request.
 export function verifyCustomLinkRows(rows:any[],links:GreenCustomLink[],
- job:any):boolean{
+ job:any,expectedOfficeNumber=''):boolean{
  if(!Array.isArray(rows)||rows.length!==links.length)return false;
  return links.every((link,index)=>{
   const b=rows[index];
@@ -113,11 +116,12 @@ export function verifyCustomLinkRows(rows:any[],links:GreenCustomLink[],
    b.copyCode===job.id;
   if(link.kind==='call_office')return b.type==='call'&&
    Object.keys(b).sort().join(',')==='buttonId,buttonText,phoneNumber,type'&&
-   /^[1-9][0-9]{7,14}$/.test(b.phoneNumber||'');
+   /^[1-9][0-9]{7,14}$/.test(expectedOfficeNumber)&&
+   b.phoneNumber===expectedOfficeNumber;
   if(b.type!=='url'||
    Object.keys(b).sort().join(',')!=='buttonId,buttonText,type,url')return false;
   return link.kind==='office'?
-   isSafeOfficeLinkForJob(b.url,job):
+   isSafeOfficeLinkForJob(b.url,job,expectedOfficeNumber):
    b.url===customLinkDestination(link,job);
  });
 }
