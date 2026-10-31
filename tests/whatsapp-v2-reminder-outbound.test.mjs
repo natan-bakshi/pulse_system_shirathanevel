@@ -82,7 +82,7 @@ test('real signed supplier reminder gets one frozen HMAC snapshot CAS before fir
  assert.equal(prepared.preview.method,'sendInteractiveButtons');
  assert.equal(prepared.preview.body.chatId,prepared.job.chat_id);
  assert.equal(await verifyV2ReminderTransport({
-  job:{...f.job,status:'sending'},
+  job:{...f.job,status:'sending',provider:'green'},
   provider:'green',preview:prepared.preview,
   signingSecret:secret,expectedSenderAccountId:'9903183013',now,
   verifyNavigation:verifiedSupplierNavigationTransport
@@ -153,7 +153,7 @@ test('uncertain snapshot CAS never uses regenerated button ID or calls provider'
 });
 test('fake or mutated final payload is rejected even with valid snapshot and supplier ID',async()=>{
  const f=setup(),{preview}=await f.prepare();
- const job={...f.job,status:'sending'};
+ const job={...f.job,status:'sending',provider:'green'};
  const run=async(p,patch={})=>verifyV2ReminderTransport({
   job:{...job,...patch},provider:'green',preview:p,
   signingSecret:secret,expectedSenderAccountId:'9903183013',now,
@@ -173,8 +173,8 @@ test('fake or mutated final payload is rejected even with valid snapshot and sup
   mutate(altered);
   assert.equal(await run(altered),false,JSON.stringify(altered).slice(0,150));
  }
- assert.equal(await run(preview,{provider:'wasender'}),true,
-  'provider field from job is not trusted for transport; trusted provider arg is authoritative');
+ assert.equal(await run(preview,{provider:'wasender'}),false,
+  'sending job must have Green provider receipt, not merely a Green transport argument');
  assert.equal(await verifyV2ReminderTransport({
   job,provider:'wasender',preview,
   signingSecret:secret,expectedSenderAccountId:'9903183013',now,
