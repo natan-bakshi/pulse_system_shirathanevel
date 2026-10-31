@@ -104,7 +104,7 @@ test('changes to scope, sender account, provider receipt or selected ID never au
  ]){
   const other={...live,...patch};
   assert.equal(await resolveAuthenticatedV2GreenButton({
-   job:other,click:click(other,id),signingSecret:secret,now
+   job:other,click:click(live,id),signingSecret:secret,now
   }),null,JSON.stringify(patch));
  }
  for(const patch of [
