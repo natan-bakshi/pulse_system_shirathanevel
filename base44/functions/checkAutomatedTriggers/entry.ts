@@ -399,7 +399,8 @@ async function triggerNotification(base44, template, event, user, supplier, even
         } else {
             try {
                 whatsAppResult = await sendWhatsAppText(phoneToUse, whatsapp_message, base44, {
-                    sourceType:'scheduled_template',sourceId:event.id||'',idempotencyKey:waKey
+                    sourceType:'scheduled_template',sourceId:event.id||'',idempotencyKey:waKey,
+                    supplierId:supplier?.id||'',notificationTemplateId:supplier?.id?template.id:''
                 });
                 whatsappSent = whatsappEnqueueReceiptState(whatsAppResult)==='accepted'; // API receipt, not delivery.
             } catch (e) {
