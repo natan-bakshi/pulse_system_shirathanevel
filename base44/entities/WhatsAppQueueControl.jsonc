@@ -127,6 +127,10 @@
       "type": "string",
       "description": "Owner-only versioned URL-only supplier notice button layout; live Green and queue switches remain authoritative"
     },
+    "interactive_supplier_template_buttons_green_json": {
+      "type": "string",
+      "description": "Owner-only per-NotificationTemplate URL button overrides with CAS, no business callbacks or tenant change"
+    },
     "inbound_create_owner": {
       "type": "string",
       "description": "Independent CAS mutex for inbound receipt registration, never the send worker lease"
