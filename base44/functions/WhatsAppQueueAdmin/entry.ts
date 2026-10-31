@@ -5,6 +5,7 @@ import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts'
 import {readSavedWhatsAppInteractivePolicy,saveWhatsAppInteractivePolicyDraft} from '../../shared/whatsappInteractiveSettingsStore.ts';
 import {parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy} from '../../shared/greenSupplierNavigationPolicy.ts';
 import {parseSupplierTemplateButtonPolicy,saveSupplierTemplateButtonPolicy} from '../../shared/greenSupplierTemplateButtonsPolicy.ts';
+import {trustedGreenAssignmentProductionConfig} from '../../shared/greenButtonQaLaunch.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
@@ -317,6 +318,55 @@ Deno.serve(async(req)=>{
           String((error as any)?.message||'Invalid interactive settings'),
           liveEnabled:false,noMessagesSent:true},status);
       }
+    }
+    if(['reminderV2Get','reminderV2Enable','reminderV2Disable'].includes(action)){
+      // ONE production owner switch for the first new signed button action:
+      // supplier event reminders 'קיבלתי'. V1 assignment buttons unchanged.
+      // Old accepted V2 replies remain authorized after outbound is OFF.
+      const control=await readWhatsAppQueueControl(client);
+      const current=control.interactive_reminder_v2_outbound_enabled===true;
+      let provider:string|null=null;
+      try{provider=await resolveWhatsAppProvider(client);}catch{}
+      const trusted=trustedGreenAssignmentProductionConfig(control,
+        k=>Deno.env.get(k),'outbound');
+      const sourcePolicy=parseSupplierNavigationGreenPolicy(control);
+      const templatePolicy=parseSupplierTemplateButtonPolicy(control);
+      const checks={
+        queueReady:control.enabled===true&&control.paused!==true,
+        greenSelected:provider==='green',
+        greenSignedProduction:trusted?.legacyProductionApproved===true&&
+          trusted.capability==='mixed_url',
+        navigationPolicyValid:!sourcePolicy.corrupt,
+        templatePolicyValid:!templatePolicy.corrupt
+      };
+      const ready=Object.values(checks).every(Boolean);
+      const status=()=>RESPONSE({success:true,enabled:current,ready,checks,
+        historicalInboundEnabled:control.interactive_reminder_v2_inbound_ever_enabled===true,
+        description:'Supplier event reminder: signed קיבלתי + existing URL buttons',
+        noMessagesSent:true,noProviderCalls:true});
+      if(action==='reminderV2Get')return status();
+      const enable=action==='reminderV2Enable';
+      if(enable&&body.confirmation!=='ENABLE_GREEN_SUPPLIER_REMINDER_ACKNOWLEDGEMENT')
+        return RESPONSE({success:false,error:'Explicit owner approval required',
+          noMessagesSent:true,noProviderCalls:true},403);
+      if(enable&&!ready)return RESPONSE({success:false,error:'Green reminder buttons not ready',
+        checks,noMessagesSent:true,noProviderCalls:true},409);
+      if(current===enable)return status();
+      const changed=await entity.updateMany({
+        id:control.id,control_key:'global',
+        interactive_reminder_v2_outbound_enabled:
+          control.interactive_reminder_v2_outbound_enabled??null
+      },{$set:{
+        interactive_reminder_v2_outbound_enabled:enable,
+        ...(enable?{interactive_reminder_v2_inbound_ever_enabled:true}:{})
+      }});
+      if(changed?.updated!==1)return RESPONSE({success:false,
+        error:'Settings changed concurrently; refresh',
+        noMessagesSent:true,noProviderCalls:true},409);
+      return RESPONSE({success:true,enabled:enable,ready,
+        historicalInboundEnabled:enable||
+          control.interactive_reminder_v2_inbound_ever_enabled===true,
+        noMessagesSent:true,noProviderCalls:true});
     }
     if(action==='supplierTemplateButtonsGet'){
       const control=await readWhatsAppQueueControl(client);
