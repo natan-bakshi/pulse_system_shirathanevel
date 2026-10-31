@@ -567,7 +567,7 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
     }
 
     try {
-        await sendWhatsAppText(phone, message, base44, {sourceType:'manual_trigger',sourceId:template.id||'',supplierId:supplierObj?.id||''});
+        await sendWhatsAppText(phone, message, base44, {sourceType:'manual_trigger',sourceId:template.id||'',supplierId:supplierObj?.id||'',notificationTemplateId:supplierObj?.id?template.id:''});
     } catch (e) {
         console.error('[ManualTrigger] WhatsApp send failed:', e?.message || 'unknown');
     }
