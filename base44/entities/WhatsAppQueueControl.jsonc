@@ -101,6 +101,16 @@
       "default": false,
       "description": "Owner-reviewed future rollout safety fence. Default OFF; never set through draft WhatsApp settings or public queue admin."
     },
+    "interactive_reminder_v2_outbound_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Reserved owner-reviewed supplier reminder V2 send switch. No current sender reads this field; always off until signed outbound ready"
+    },
+    "interactive_reminder_v2_inbound_ever_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Historical admission for already accepted signed V2 supplier reminder buttons; separate from the v1 assignment switch and false until release"
+    },
     "interactive_assignment_production_ever_enabled": {
       "type": "boolean",
       "default": false,
