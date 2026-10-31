@@ -5,7 +5,7 @@
 // IMPORTANT: registration is a CODE CHANGE, not a capability granted by a
 // saved policy, external payload, message label or a button id.
 export type InteractiveActionHandler =
- 'supplier_status'|'office_link'|'not_implemented';
+ 'supplier_status'|'office_link'|'notification_ack'|'not_implemented';
 export type InteractiveActionContract={
  action:string;delivery:'reply'|'url';handler:InteractiveActionHandler;
  targetStatus?:'confirmed'|'rejected'
@@ -38,13 +38,15 @@ export function createInteractiveActionRegistry(specs:readonly InteractiveMessag
   const definitions=raw.actions.map(spec=>{
    if(!spec||!validId(spec.action)||actions.has(spec.action)||
     !['reply','url'].includes(spec.delivery)||
-    !['supplier_status','office_link','not_implemented'].includes(spec.handler))
+    !['supplier_status','office_link','notification_ack','not_implemented'].includes(spec.handler))
     fail('action_definition');
    if(spec.handler==='supplier_status'&&
     (spec.delivery!=='reply'||!['confirmed','rejected'].includes(spec.targetStatus||'')))
     fail('supplier_status_requires_reply_and_target');
    if(spec.handler==='office_link'&&spec.delivery!=='url')
     fail('office_link_requires_url');
+   if(spec.handler==='notification_ack'&&spec.delivery!=='reply')
+    fail('notification_ack_requires_reply');
    if(spec.handler!=='supplier_status'&&spec.targetStatus!==undefined)
     fail('unbound_business_status');
    actions.add(spec.action);
