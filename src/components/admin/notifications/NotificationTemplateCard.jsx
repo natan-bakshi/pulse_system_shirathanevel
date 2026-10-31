@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, Clock, Zap, Cog } from "lucide-react";
+import { Pencil, Trash2, Clock, Zap, Cog, MessageSquare } from "lucide-react";
 import { TRIGGER_TYPES, AUDIENCES, TIMING_UNITS } from "./constants";
 import { getSystemTemplateInfo } from "./systemTemplatesInfo";
 
@@ -13,10 +13,16 @@ export default function NotificationTemplateCard({
   onEdit, 
   onDelete, 
   onToggleActive, 
-  onManualTrigger 
+  onManualTrigger,
+  onEditButtons
 }) {
   const canManualTrigger = ['scheduled_check', 'event_status_change'].includes(template.trigger_type);
   const systemInfo = getSystemTemplateInfo(template.type);
+  const supportsButtonEditor = template.allowed_channels?.includes('whatsapp') &&
+    template.target_audiences?.includes('supplier') &&
+    (['SUPPLIER_EVENT_REMINDER','SUPPLIER_PENDING_REMINDER'].includes(template.type) ||
+      (!['SUPPLIER_NEW_ASSIGNMENT','SUPPLIER_ASSIGNMENT_UPDATE','CANCEL_SUPPLIER'].includes(template.type) &&
+       ['scheduled_check','manual'].includes(template.trigger_type)));
 
   return (
     <div 
@@ -90,6 +96,12 @@ export default function NotificationTemplateCard({
             <Zap className="h-4 w-4 text-amber-500" />
           </Button>
         )}
+        {supportsButtonEditor && onEditButtons && <Button variant="ghost" size="icon"
+          title="הגדרת כפתורי WhatsApp להתראה הזאת"
+          aria-label={'הגדרת כפתורי WhatsApp עבור '+template.name}
+          onClick={() => onEditButtons(template)}>
+          <MessageSquare className="h-4 w-4 text-green-700" />
+        </Button>}
         <Button variant="ghost" size="icon" onClick={() => onEdit(template)}>
           <Pencil className="h-4 w-4" />
         </Button>
