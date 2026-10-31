@@ -416,3 +416,135 @@ test('tampered snapshot after definite 429 quarantines, never calls provider aga
  assert.equal(j.status,'failed');
  assert.equal(x.events.snapshotWrites,1);
 });
+function v2ReminderFixture(){
+ const x=fixture();
+ Object.assign(x.control,{
+  interactive_outbound_live_enabled:true,
+  interactive_assignment_production_enabled:true,
+  interactive_reminder_v2_outbound_enabled:true,
+  interactive_reminder_v2_inbound_ever_enabled:true
+ });
+ const config={...opts(),legacyProductionApproved:true,
+  supplierPortalLabel:'כניסה למערכת'};
+ const job=x.add('event_reminder',{
+  supplier_id:'supplier-123',
+  source_id:'event-123',notification_template_id:'69817697d82b634ef3d7d4df',
+  message_text:withSupplierPortalLink('תזכורת לאירוע מחר בבוקר','supplier-123'),
+  sender_account_id:'',assignment_revision:'',interactive_button_bindings_json:''
+ });
+ job.supplier_buttons_snapshot_json=captureSupplierButtonSnapshot(x.control,{
+  sourceType:'event_reminder',notificationTemplateId:job.notification_template_id,
+  supplierId:job.supplier_id
+ });
+ assert.ok(job.supplier_buttons_snapshot_json);
+ return {...x,job,config};
+}
+test('owner-gated V2 supplier reminder sends ONE signed Green reply+URLs via existing central worker',async()=>{
+ const x=v2ReminderFixture(),sent=[];
+ const result=await drainWhatsAppOutbox(x.client,{
+  interactiveConfig:x.config,reminderV2Config:x.config,maxRuntimeMs:10000,
+  transport:async (job,provider,client,preview)=>{
+   sent.push({job,provider,preview});
+   return {messageId:'3EB0SYNTHETIC_GREEN_RESULT'};
+  }
+ });
+ assert.equal(result.accepted,1);
+ assert.equal(sent.length,1,'no separate message is sent for native reply button');
+ assert.equal(sent[0].provider,'green');
+ assert.equal(sent[0].preview.kind,'interactive_reminder_v2');
+ assert.deepEqual(sent[0].preview.body.buttons.map(b=>b.type),
+  ['reply','url','url']);
+ assert.deepEqual(sent[0].preview.body.buttons.map(b=>b.buttonText),
+  ['קיבלתי','כניסה למערכת','למשרד']);
+ assert.equal(x.job.message_kind,'supplier_reminder');
+ assert.equal(x.job.company_id,'shirat_hanevel');
+ assert.equal(x.job.recipient_id,'supplier-123');
+ assert.equal(x.job.resource_id,x.job.id);
+ assert.match(x.job.interactive_v2_button_bindings_json,/snapshotMac/);
+ assert.equal(x.job.status,'accepted');
+ assert.equal(x.events.serviceReads,0);
+ assert.equal(x.events.snapshotWrites,0,
+  'existing assignment V1 snapshot and status are never modified');
+});
+test('definite 429 reuses frozen V2 reply button ID and original Outbox job',async()=>{
+ const x=v2ReminderFixture(),sent=[];
+ let tried=0;
+ const transport=async (job,provider,client,preview)=>{
+  tried++;sent.push(preview.body.buttons[0].buttonId);
+  if(tried===1)throw {errorCode:429,deliveryUncertain:false,retryAfterSeconds:0};
+  return {messageId:'3EB0RATE_RETRY_ACCEPTED'};
+ };
+ const options={interactiveConfig:x.config,reminderV2Config:x.config,
+  maxRuntimeMs:10000,transport};
+ const first=await drainWhatsAppOutbox(x.client,options);
+ assert.equal(first.retried,1);
+ assert.equal(x.job.status,'retry_wait');
+ const saved=x.job.interactive_v2_button_bindings_json;
+ x.job.available_at=new Date(Date.now()-1000).toISOString();
+ const second=await drainWhatsAppOutbox(x.client,options);
+ assert.equal(second.accepted,1);
+ assert.equal(tried,2);
+ assert.equal(sent[0],sent[1]);
+ assert.equal(x.job.interactive_v2_button_bindings_json,saved);
+ assert.equal(x.job.status,'accepted');
+});
+test('V2 owner rollback after 429 holds frozen reminder without plain-text resend; other jobs proceed',async()=>{
+ const x=v2ReminderFixture(),seen=[];
+ const options={interactiveConfig:x.config,reminderV2Config:x.config,
+  transport:async job=>{
+   seen.push(job.id);throw {errorCode:429,deliveryUncertain:false};
+  }};
+ const first=await drainWhatsAppOutbox(x.client,options);
+ assert.equal(first.retried,1);
+ assert.equal(seen.length,1);
+ x.job.available_at=new Date(Date.now()-1000).toISOString();
+ x.control.interactive_reminder_v2_outbound_enabled=false;
+ const invoice=x.add('invoice');
+ const next=await drainWhatsAppOutbox(x.client,{
+  interactiveConfig:x.config,transport:async job=>{
+   seen.push(job.id);return {messageId:'3EB0INVOICE_ONLY'};}
+ });
+ assert.equal(next.failed,1);
+ assert.equal(next.accepted,1);
+ assert.deepEqual(seen,[x.job.id,invoice.id]);
+ assert.equal(x.job.status,'failed');
+ assert.match(x.job.last_error,/Frozen V2 reminder/);
+ assert.equal(invoice.status,'accepted');
+});
+test('corrupted V2 frozen snapshot after 429 never permits a provider attempt',async()=>{
+ const x=v2ReminderFixture(),first=[];
+ const result=await drainWhatsAppOutbox(x.client,{
+  interactiveConfig:x.config,reminderV2Config:x.config,
+  transport:async job=>{
+   first.push(job.id);throw {errorCode:429,deliveryUncertain:false};
+  }
+ });
+ assert.equal(result.retried,1);
+ const changed=JSON.parse(x.job.interactive_v2_button_bindings_json);
+ changed.buttons[0].label='לא קיבלתי';
+ x.job.interactive_v2_button_bindings_json=JSON.stringify(changed);
+ x.job.available_at=new Date(Date.now()-1000).toISOString();
+ const second=await drainWhatsAppOutbox(x.client,{
+  interactiveConfig:x.config,reminderV2Config:x.config,
+  transport:async()=>{throw Error('tampered V2 source cannot send');}
+ });
+ assert.equal(second.failed,1);
+ assert.equal(x.job.status,'failed');
+ assert.equal(first.length,1);
+});
+test('V2 default OFF retains old URL-only reminder behavior and adds no signed business button',async()=>{
+ const x=v2ReminderFixture();
+ x.control.interactive_reminder_v2_outbound_enabled=false;
+ const kinds=[];
+ const result=await drainWhatsAppOutbox(x.client,{
+  interactiveConfig:x.config,maxRuntimeMs:10000,
+  transport:async (_job,_provider,_client,preview)=>{
+   kinds.push(preview?.kind||'plain');
+   return {messageId:'3EB0OLD_NAV_123'};
+  }
+ });
+ assert.equal(result.accepted,1);
+ assert.deepEqual(kinds,['interactive_navigation']);
+ assert.equal(x.job.interactive_v2_button_bindings_json,undefined);
+ assert.equal(x.job.message_kind,undefined);
+});
