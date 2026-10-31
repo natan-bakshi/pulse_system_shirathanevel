@@ -61,8 +61,9 @@ export function normalizeCustomButtons(value:any):CustomSupplierTemplateButtons{
   !LABEL.test(value.replyLabel)||value.replyLabel!==value.replyLabel.trim())
   throw error('invalid_custom_buttons');
  const links=normalizeCustomLinks(value.links);
- if(links.length+Number(!!value.replyLabel)>3)
-  throw error('max_three_buttons');
+ if(links.length+Number(!!value.replyLabel)>3||
+  links.length+Number(!!value.replyLabel)<1)
+  throw error('one_to_three_buttons_required');
  return {kind:'custom',links,replyLabel:value.replyLabel};
 }
 export function normalizeSupplierTemplateButtonPolicy(raw:any):TemplateButtonPolicy{
