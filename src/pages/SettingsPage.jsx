@@ -153,12 +153,12 @@ export default function SettingsPage() {
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const tab = params.get('tab');
-        if (tab && ['general', 'notifications', 'backup'].includes(tab)) {
-            setActiveTab(tab);
-        } else if (params.get('whatsappQueue') === 'review') {
-            // Keep existing incident-review deep links functional after moving
-            // WhatsApp controls from General into the Notifications tab.
+        if (params.get('whatsappQueue') === 'review') {
+            // Existing incident links always open the moved queue, even if an
+            // older bookmark still contains tab=general.
             setActiveTab('notifications');
+        } else if (tab && ['general', 'notifications', 'backup'].includes(tab)) {
+            setActiveTab(tab);
         }
     }, [location.search]);
 
