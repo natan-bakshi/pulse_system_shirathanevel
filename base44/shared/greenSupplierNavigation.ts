@@ -91,6 +91,7 @@ export function verifiedSupplierNavigationTransport(job:any,provider:string,prev
   !PRIVATE.test(job.chat_id||'')||
   preview.kind!=='interactive_navigation'||
   preview.method!=='sendInteractiveButtons'||
+  preview.body?.chatId!==job.chat_id||
   !Array.isArray(preview.body?.buttons)||
   preview.body.buttons.length<1||preview.body.buttons.length>2)return false;
  const buttons=preview.body.buttons;
