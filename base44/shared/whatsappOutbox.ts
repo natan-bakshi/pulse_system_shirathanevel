@@ -3,6 +3,7 @@ import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import {isWhatsAppEnqueueConfirmed} from './whatsappReceipt.ts';
 import {captureSupplierButtonSnapshot} from './greenSupplierButtonSnapshot.ts';
 import {isSafeTemplateId} from './greenSupplierTemplateButtonsPolicy.ts';
+import {verifyV2ReminderAckProof,V2_REMINDER_ACK_FEEDBACK_TEXT} from './whatsappV2ReminderAckProof.ts';
 // Security: only backend clients with service-role entity access may enqueue.
 const CONTROL_KEY = 'global';
 const lockPause = (ms: number) => new Promise(resolve=>setTimeout(resolve,ms));
@@ -109,6 +110,24 @@ export async function enqueueWhatsApp(client: any, data: {
   // Fail closed, never bypass the queue, even while disabled.
   if (!control.enabled) throw new Error('Central WhatsApp queue has not been activated');
   const context = data.context || {};
+  // The reminder feedback pin is privileged. A forged sourceType from an
+  // unrelated producer may NEVER force Green or send unverified text.
+  // This extra HMAC check runs ONLY for V2 feedback; regular messages incur
+  // no extra provider/DB requests and keep their original enqueue behavior.
+  if(context.sourceType==='reminder_button_feedback'){
+    const evidence=context.reminderAckEvidence;
+    const secret=typeof Deno!=='undefined'?Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'':'';
+    const source=String(context.sourceId||'');
+    if(!evidence||evidence.id!==source||
+       context.idempotencyKey!=='reminder-ack-feedback:'+source||
+       evidence.chat_id!==data.chatId||
+       evidence.supplier_id!==context.supplierId||
+       evidence.sender_account_id!==context.feedbackSenderAccountId||
+       evidence.sender_account_id!==(typeof Deno!=='undefined'?Deno.env.get('GREEN_API_INSTANCE_ID'):'')||
+       data.messageType!=='text'||data.messageText!==V2_REMINDER_ACK_FEEDBACK_TEXT||
+       !(await verifyV2ReminderAckProof(evidence,secret)))
+      throw Error('Unverified supplier reminder feedback origin');
+  }
   const key = String(context.idempotencyKey || '').trim();
   const qaButtonsRequired=context.qaButtonsRequired===true;
   const origin=key.match(/^assignment:([A-Za-z0-9_-]{3,100}):([A-Za-z0-9_-]{3,100}):r[1-9][0-9]{0,12}:SUPPLIER_NEW_ASSIGNMENT$/);
