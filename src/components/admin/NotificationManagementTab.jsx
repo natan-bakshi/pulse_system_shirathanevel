@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Bell, Plus, Info } from "lucide-react";
+import { Bell, Plus, Info, MessageSquare, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +13,10 @@ import NotificationTemplatesOverview from "./notifications/NotificationTemplates
 import NotificationTemplateForm from "./notifications/NotificationTemplateForm";
 import ManualTriggerDialog from "./notifications/ManualTriggerDialog";
 import ManualSendersSection from "./notifications/ManualSendersSection";
+import WhatsAppProviderStatus from "./notifications/WhatsAppProviderStatus";
+import WhatsAppQueueSettings from "./notifications/WhatsAppQueueSettings";
+import WhatsAppLiveButtonSettings from "./notifications/WhatsAppLiveButtonSettings";
+import WhatsAppSupplierNoticeButtons from "./notifications/WhatsAppSupplierNoticeButtons";
 
 /**
  * רכיב ניהול התראות מרכזי - מתאם בין כל תת-הקומפוננטות:
@@ -26,6 +30,9 @@ export default function NotificationManagementTab() {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [manualTriggerTemplate, setManualTriggerTemplate] = useState(null);
+  const [section, setSection] = useState(() => typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('whatsappQueue') === 'review'
+      ? 'whatsapp' : 'templates');
 
   // Fetch templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -120,15 +127,25 @@ export default function NotificationManagementTab() {
             ניהול התראות
           </h2>
           <p className="text-gray-500 text-sm mt-1">
-            הגדרת תבניות התראות, תזמונים וקהלי יעד
+            סוגי התראות, כפתורים, WhatsApp ותזמונים — במקום אחד
           </p>
         </div>
-        <Button onClick={handleCreate}>
+        {section === "templates" && <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 ml-2" />
           תבנית חדשה
-        </Button>
+        </Button>}
       </div>
 
+      {/* One clear place for all notification & WhatsApp controls. */}
+      <Tabs value={section} onValueChange={setSection} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto gap-1">
+          <TabsTrigger value="templates" className="text-xs sm:text-sm">סוגי התראות</TabsTrigger>
+          <TabsTrigger value="buttons" className="text-xs sm:text-sm">כפתורים בהודעות</TabsTrigger>
+          <TabsTrigger value="whatsapp" className="text-xs sm:text-sm">חיבור ושליחת WhatsApp</TabsTrigger>
+          <TabsTrigger value="stats" className="text-xs sm:text-sm">סטטיסטיקות</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="templates" className="space-y-4 mt-4">
       {/* הסבר על זיהוי קהל יעד */}
       <Alert className="bg-blue-50 border-blue-200">
         <Info className="h-4 w-4 text-blue-600" />
@@ -145,14 +162,6 @@ export default function NotificationManagementTab() {
       {/* שולחים ידניים */}
       <ManualSendersSection />
 
-      {/* Tabs - תבניות וסטטיסטיקות */}
-      <Tabs defaultValue="templates" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="templates">תבניות התראה</TabsTrigger>
-          <TabsTrigger value="stats">סטטיסטיקות</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="templates" className="space-y-4 mt-4">
           <NotificationTemplatesOverview
             templates={templates}
             isLoading={templatesLoading}
@@ -161,6 +170,52 @@ export default function NotificationManagementTab() {
             onToggleActive={(id, is_active) => toggleActiveMutation.mutate({ id, is_active })}
             onManualTrigger={setManualTriggerTemplate}
           />
+        </TabsContent>
+
+        <TabsContent value="buttons" className="space-y-4 mt-4">
+          <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex gap-2 items-center text-lg">
+                <MessageSquare className="h-5 w-5" />כפתורים בהודעות WhatsApp
+              </CardTitle>
+              <CardDescription>
+                בוחרים מה יופיע בכל סוג הודעה ומה יקרה בלחיצה, בלי להתעסק בקישורים או בקוד.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border p-4 space-y-2">
+                <h3 className="font-semibold">שיבוץ חדש לספק</h3>
+                <p className="text-sm text-gray-600">
+                  אישור שיבוץ — מעדכן את השיבוץ במערכת; דחיית שיבוץ — מעדכנת דחייה;
+                  פנייה למשרד — פותחת שיחת WhatsApp עם פרטי השיבוץ.
+                  קישור ליומן הספק מצורף גם להודעה. אישור ודחייה מתוך Pulse ממשיכים לעבוד כרגיל.
+                </p>
+                <WhatsAppLiveButtonSettings active={true}/>
+              </div>
+              <WhatsAppSupplierNoticeButtons active={true}/>
+              <p className="text-xs text-gray-600">
+                הכפתורים האפשריים כרגע מותאמים להודעות לספקים שנשלחות בפרטי דרך Green API.
+                כפתורים חדשים שמשנים מידע במערכת יופיעו לבחירה רק לאחר שתמומש עבורם פעולה מאובטחת.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="whatsapp" className="space-y-4 mt-4">
+          <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex gap-2 items-center text-lg">
+                <Settings2 className="h-5 w-5" />WhatsApp — חיבור ושליחה
+              </CardTitle>
+              <CardDescription>
+                בוחרים את ספק WhatsApp ומנהלים את שליחת ההודעות. כלים מתקדמים לתקלות מקופלים כברירת מחדל.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <WhatsAppProviderStatus />
+              <WhatsAppQueueSettings />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="stats" className="mt-4">
