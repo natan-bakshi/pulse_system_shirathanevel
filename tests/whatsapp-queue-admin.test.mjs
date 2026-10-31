@@ -10,6 +10,7 @@ import {inspectInboundReceiptReadOnly} from '../base44/shared/whatsappInboundInv
 import {summarizeWhatsAppInteractiveReadiness} from '../base44/shared/whatsappInteractiveReadiness.ts';
 import {inspectAssignmentV2ReleaseReadiness} from '../base44/shared/assignmentV2ReleaseReadiness.ts';
 import {greenButtonQaSafeSummary} from '../base44/shared/greenButtonQaLaunch.ts';
+import {parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy,defaultSupplierNavigationGreenPolicy} from '../base44/shared/greenSupplierNavigationPolicy.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../base44/shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../base44/shared/greenButtonQaEnrollment.ts';
 import {inspectOfficeAssignmentReference} from '../base44/shared/whatsappOfficeReferenceLookup.ts';
@@ -45,7 +46,13 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
  };
  const client={auth:{me:async()=>actor},asServiceRole:{entities:{
    WhatsAppQueueControl:{update:async(_id,patch)=>Object.assign(record,patch),
-     filter:async()=>[record]},
+     filter:async()=>[record],
+     updateMany:async(query,{$set})=>{
+       const equal=Object.entries(query).every(([key,val])=>
+        (record[key]??null)===(val??null));
+       if(!equal)return {updated:0};
+       Object.assign(record,$set);return {updated:1};
+     }}, 
    EventService:{filter:async()=>[],get:async id=>{
      officeReads.push('service');
      return officeServices.length?officeServices.find(x=>x.id===id)||null:{
@@ -151,8 +158,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
        }
      };
      if(name.endsWith('greenSupplierNavigationPolicy.ts'))return {
-       parseSupplierNavigationGreenPolicy:()=>({setting:{version:1,sources:{}},configured:false,corrupt:false}),
-       saveSupplierNavigationGreenPolicy:async()=>{throw Error('Not used in legacy queue tests')}
+       parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy
      };
      if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
      if(name.endsWith('greenButtonQaWebhookProvisioning.ts'))return {
@@ -252,7 +258,7 @@ test('owner review deep link opens queue details and filters unknown without dis
 test('non-system owner cannot read or modify queue operations',async()=>{
  for(const actor of [null,{role:'admin',email:'other@example.com'},{role:'supplier',email:'natib8000@gmail.com'}]){
    const ctx=context({actor,jobs:[makeJob('job-123','queued')]});
-   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','greenButtonQaReadiness','greenButtonQaAssignmentPreflight','greenButtonQaEnroll','officeReferenceLookup','greenWebhookSettingsAudit','greenInstanceStateAudit','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview','assignmentV2Readiness']){
+   for(const action of ['status','configure','list','get','cancel','retry','resolve','archive','kick','sourceAudit','interactiveGet','interactiveSave','inboundAudit','inboundInspect','interactiveReadiness','greenButtonQaReadiness','greenButtonQaAssignmentPreflight','greenButtonQaEnroll','officeReferenceLookup','greenWebhookSettingsAudit','greenInstanceStateAudit','supplierNavigationGet','supplierNavigationSave','unknownCallbackAudit','unknownRecoveryExpiryCleanup','unknownRecoveryStructureReview','assignmentV2Readiness']){
      const res=await ctx.invoke(action,{...config,id:'job-123'});
      assert.equal(res.status,403);
    }
