@@ -1,6 +1,8 @@
 // Durable centralized WhatsApp outbox. Producers never call WhatsApp providers directly.
 import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import {isWhatsAppEnqueueConfirmed} from './whatsappReceipt.ts';
+import {captureSupplierButtonSnapshot} from './greenSupplierButtonSnapshot.ts';
+import {isSafeTemplateId} from './greenSupplierTemplateButtonsPolicy.ts';
 // Security: only backend clients with service-role entity access may enqueue.
 const CONTROL_KEY = 'global';
 const lockPause = (ms: number) => new Promise(resolve=>setTimeout(resolve,ms));
@@ -145,6 +147,13 @@ export async function enqueueWhatsApp(client: any, data: {
     file_uri: data.fileUri || '', file_name: data.fileName || '', caption: data.caption || '',
     source_type: String(context.sourceType || 'system').slice(0, 64),
     source_id: String(context.sourceId || '').slice(0, 120),
+    // Frozen provenance is created ONLY by a trusted producer. It never
+    // becomes a user-editable template ID or a signed inbound action.
+    ...(data.messageType==='text'&&requestedProvider==='green'&&
+      isSafeTemplateId(context.notificationTemplateId)&&
+      /^[A-Za-z0-9_-]{3,160}$/.test(context.supplierId||'')?
+       {notification_template_id:context.notificationTemplateId,
+        supplier_buttons_snapshot_json:captureSupplierButtonSnapshot(latestControl,context)}:{}),
     idempotency_key: key,
     ...(qaButtonsRequired?{interactive_qa_required:true}:{}),
     in_app_notification_id: String(context.inAppNotificationId || ''),
