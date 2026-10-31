@@ -7,7 +7,8 @@ import {buildOfficeWhatsAppInquiryLink} from './whatsappOfficeInquiryLink.ts';
 
 export const GREEN_CUSTOM_LINK_KINDS=Object.freeze([
  'supplier_calendar','supplier_dashboard','event_details',
- 'notification_settings','office','external'
+ 'notification_settings','office','external',
+ 'copy_reference','call_office'
 ] as const);
 export type GreenCustomLinkKind=(typeof GREEN_CUSTOM_LINK_KINDS)[number];
 export type GreenCustomLink={kind:GreenCustomLinkKind;label:string;url:string};
@@ -55,8 +56,10 @@ export function normalizeCustomLinks(raw:any):GreenCustomLink[]{
  if(!Array.isArray(raw)||raw.length>3)
   fail('too_many_url_buttons');
  const result=raw.map(normalizeCustomLink);
- if(result.filter(x=>x.kind==='office').length>1)
-  fail('duplicate_office_button');
+ for(const single of ['office','call_office','copy_reference']){
+  if(result.filter(x=>x.kind===single).length>1)
+   fail('duplicate_action');
+ }
  return result;
 }
 export function customLinkNeedsEvent(kind:string):boolean{
@@ -103,8 +106,16 @@ export function verifyCustomLinkRows(rows:any[],links:GreenCustomLink[],
  if(!Array.isArray(rows)||rows.length!==links.length)return false;
  return links.every((link,index)=>{
   const b=rows[index];
-  if(!b||b.type!=='url'||b.buttonId!=='custom_link_'+(index+1)||
+  if(!b||b.buttonId!=='custom_link_'+(index+1)||
    b.buttonText!==link.label)return false;
+  if(link.kind==='copy_reference')return b.type==='copy'&&
+   Object.keys(b).sort().join(',')==='buttonId,buttonText,copyCode,type'&&
+   b.copyCode===job.id;
+  if(link.kind==='call_office')return b.type==='call'&&
+   Object.keys(b).sort().join(',')==='buttonId,buttonText,phoneNumber,type'&&
+   /^[1-9][0-9]{7,14}$/.test(b.phoneNumber||'');
+  if(b.type!=='url'||
+   Object.keys(b).sort().join(',')!=='buttonId,buttonText,type,url')return false;
   return link.kind==='office'?
    isSafeOfficeLinkForJob(b.url,job):
    b.url===customLinkDestination(link,job);
