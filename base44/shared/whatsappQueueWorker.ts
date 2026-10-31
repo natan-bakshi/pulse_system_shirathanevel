@@ -645,7 +645,8 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           ? {...job,status:'sending',provider,lease_token:token,
              attempt_count:attempt,send_started_at:startedAt}:job;
         receipt=await (opts.transport||sendWhatsAppTransport)(
-          dispatchJob,provider,client,candidate.preview);
+          dispatchJob,provider,client,candidate.preview,
+          opts.interactiveConfig?.officeNumber||opts.reminderV2Config?.officeNumber||'');
         if(!String(receipt?.messageId||'').trim())
           throw Object.assign(new Error('Provider returned no verified message ID'),{
             deliveryUncertain:true,errorCode:502
