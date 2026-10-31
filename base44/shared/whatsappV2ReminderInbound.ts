@@ -9,6 +9,8 @@ import {authenticateWhatsAppProviderCallback}
 import {parseGreenButtonSelection} from './greenInteractiveCallback.ts';
 import {resolveAuthenticatedV2GreenButton}
  from './whatsappV2OpaqueButtonBridge.ts';
+import {signV2ReminderAckProof,verifyV2ReminderAckProof}
+ from './whatsappV2ReminderAckProof.ts';
 
 const ADMITTED=Symbol('verified_green_v2_reminder_admission');
 const BUTTON=/^wa2_[A-Za-z0-9_-]{22}$/;
@@ -20,7 +22,8 @@ const LOOKUP_FIELDS=[
  'message_type','requested_provider','provider','sender_account_id',
  'chat_id','revision','status','provider_message_id',
  'interactive_v2_button_bindings_json',
- 'reminder_acknowledged_at','reminder_acknowledgement_event_id'
+ 'reminder_acknowledged_at','reminder_acknowledgement_event_id',
+ 'reminder_acknowledgement_proof'
 ];
 type Result={status:'refused'|'admitted';reason:string;
  providerCalls:0;outboxReads:0|1;admission?:any};
@@ -88,13 +91,14 @@ export function isAdmittedGreenV2Reminder(input:any):boolean{
 // provider event IDs can only observe the durable original result.
 // An uncertain update never causes an automatic second write in this call.
 export async function recordVerifiedV2ReminderAcknowledgement(input:{
- client:any;admission:any;now?:number
+ client:any;admission:any;signingSecret:string;now?:number
 }):Promise<{
  status:'recorded'|'already_recorded'|'already_acknowledged'|
   'needs_review'|'refused';reason:string;writesAuthorized:0|1
 }>{
  const a=input?.admission;
- if(!isAdmittedGreenV2Reminder(a))
+ if(!isAdmittedGreenV2Reminder(a)||
+  typeof input.signingSecret!=='string'||input.signingSecret.length<32)
   return {status:'refused',reason:'not_verified',writesAuthorized:0};
  const db=input?.client?.asServiceRole?.entities?.WhatsAppOutbox;
  if(!db||typeof db.get!=='function'||typeof db.updateMany!=='function')
@@ -116,7 +120,17 @@ export async function recordVerifiedV2ReminderAcknowledgement(input:{
   row.reminder_acknowledgement_event_id===a.providerEventId
    ?'already_recorded':'already_acknowledged':null;
  const existing=observed(job);
- if(existing)return {status:existing,reason:'durable_ack_exists',writesAuthorized:0};
+ if(existing)return await verifyV2ReminderAckProof(job,input.signingSecret)
+  ?{status:existing,reason:'durable_ack_exists',writesAuthorized:0}
+  :{status:'needs_review',reason:'ack_proof_invalid',writesAuthorized:0};
+ const acknowledgedAt=new Date(input.now??Date.now()).toISOString();
+ let proof:string;
+ try{proof=await signV2ReminderAckProof({
+  ...job,reminder_acknowledged_at:acknowledgedAt,
+  reminder_acknowledgement_event_id:a.providerEventId
+ },input.signingSecret);}catch{
+  return {status:'needs_review',reason:'ack_proof_unavailable',writesAuthorized:0};
+ }
  let changed:any;
  try{
   changed=await db.updateMany({
@@ -128,10 +142,12 @@ export async function recordVerifiedV2ReminderAcknowledgement(input:{
    recipient_id:a.recipientId,supplier_id:a.recipientId,
    revision:a.revision,
    reminder_acknowledged_at:job.reminder_acknowledged_at??null,
-   reminder_acknowledgement_event_id:job.reminder_acknowledgement_event_id??null
+   reminder_acknowledgement_event_id:job.reminder_acknowledgement_event_id??null,
+   reminder_acknowledgement_proof:job.reminder_acknowledgement_proof??null
   },{$set:{
-   reminder_acknowledged_at:new Date(input.now??Date.now()).toISOString(),
-   reminder_acknowledgement_event_id:a.providerEventId
+   reminder_acknowledged_at:acknowledgedAt,
+   reminder_acknowledgement_event_id:a.providerEventId,
+   reminder_acknowledgement_proof:proof
   }});
   if(changed?.updated===1)
    return {status:'recorded',reason:'durable_ack_recorded',writesAuthorized:1};
@@ -143,8 +159,9 @@ export async function recordVerifiedV2ReminderAcknowledgement(input:{
   if(!matches(refreshed))
    return {status:'needs_review',reason:'origin_changed_during_ack',writesAuthorized:0};
   const previous=observed(refreshed);
-  if(previous)return {status:previous,reason:'durable_ack_verified',
-   writesAuthorized:0};
+  if(previous)return await verifyV2ReminderAckProof(refreshed,input.signingSecret)
+   ?{status:previous,reason:'durable_ack_verified',writesAuthorized:0}
+   :{status:'needs_review',reason:'ack_proof_invalid',writesAuthorized:0};
  }catch{}
  return {status:'needs_review',reason:'ack_commit_uncertain',writesAuthorized:0};
 }
