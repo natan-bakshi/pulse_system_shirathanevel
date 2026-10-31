@@ -124,6 +124,42 @@ test('custom three navigation buttons are frozen and exact URL/label tampering i
  assert.deepEqual(selectSupplierButtonSnapshot(control(edited),record),setting.templates[TEMPLATE]);
  assert.deepEqual(preview(record,control(edited)).body.buttons,p.body.buttons);
 });
+test('Green native copy and phone buttons use trusted reference and configured office number',()=>{
+ const setting=navigation([
+  link('copy_reference','העתק אסמכתא'),
+  link('call_office','התקשר'),
+  link('office','WhatsApp למשרד')
+ ]);
+ const {ctl,record}=freeze(setting);
+ const p=preview(record,ctl);
+ assert.deepEqual(p.body.buttons.map(x=>x.type),['copy','call','url']);
+ assert.equal(p.body.buttons[0].copyCode,record.id);
+ assert.equal(p.body.buttons[1].phoneNumber,config.officeNumber);
+ assert.equal(verifiedSupplierNavigationTransport(
+  {...record,status:'sending'},'green',p,config.officeNumber),true);
+ const alteredNumber=structuredClone(p);
+ alteredNumber.body.buttons[1].phoneNumber='972509999999';
+ assert.equal(verifiedSupplierNavigationTransport(
+  {...record,status:'sending'},'green',alteredNumber,config.officeNumber),false);
+ const alteredCopy=structuredClone(p);
+ alteredCopy.body.buttons[0].copyCode='a-different-reference';
+ assert.equal(verifiedSupplierNavigationTransport(
+  {...record,status:'sending'},'green',alteredCopy,config.officeNumber),false);
+ const alteredOffice=structuredClone(p);
+ alteredOffice.body.buttons[2].url=alteredOffice.body.buttons[2].url
+  .replace(config.officeNumber,'972509999999');
+ assert.equal(verifiedSupplierNavigationTransport(
+  {...record,status:'sending'},'green',alteredOffice,config.officeNumber),false);
+ assert.equal(verifiedSupplierNavigationTransport(
+  {...record,status:'sending'},'green',p,''),false,
+  'no trusted office settings means no call or WhatsApp destination');
+ for(const changed of [
+  {chat_id:'972505555555@c.us'}, {source_type:'manual_trigger'},
+  {requested_provider:'wasender'}
+ ])assert.equal(verifiedSupplierNavigationTransport(
+  {...record,...changed,status:'sending'},'green',p,config.officeNumber),false);
+});
+
 test('event deep links use only a trusted event-source outbox identity, not text or client templates',()=>{
  const eventLink=link('event_details','לפרטי האירוע');
  assert.equal(customLinkDestination(eventLink,job()),
