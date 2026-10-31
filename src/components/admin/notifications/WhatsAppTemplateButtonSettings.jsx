@@ -32,11 +32,17 @@ function toButtons(mode,previous){
  return {...defaults,...previous,portal:mode==='portal'||mode==='both',
   office:mode==='office'||mode==='both'};
 }
-export default function WhatsAppTemplateButtonSettings({templates=[]}){
+export default function WhatsAppTemplateButtonSettings({templates=[],focusTemplateId=''}){
  const supportedTemplates=templates.filter(supported);
  const [stored,setStored]=useState(null),[draft,setDraft]=useState(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
- const [expanded,setExpanded]=useState(false);
+ const [expanded,setExpanded]=useState(!!focusTemplateId);
+ useEffect(()=>{if(focusTemplateId)setExpanded(true);},[focusTemplateId]);
+ useEffect(()=>{
+  if(!focusTemplateId||!draft)return;
+  const el=document.getElementById('wa-template-'+focusTemplateId);
+  if(el)el.scrollIntoView({block:'nearest',behavior:'smooth'});
+ },[focusTemplateId,draft]);
  const [editingLabels,setEditingLabels]=useState({});
  async function load(){
   if(busy)return;
@@ -96,7 +102,9 @@ export default function WhatsAppTemplateButtonSettings({templates=[]}){
     אין כרגע תבניות WhatsApp לספקים שזכאיות לכפתורי קישור נפרדים.</p>}
    {draft&&supportedTemplates.map(t=>{
     const v=draft[t.id],mode=modeOf(v);
-    return <div key={t.id} className="rounded border p-3 space-y-2 bg-white">
+    return <div key={t.id} id={'wa-template-'+t.id}
+     className={'rounded border p-3 space-y-2 bg-white '+
+      (focusTemplateId===t.id?'ring-2 ring-green-600':'')}>
      <div className="flex flex-wrap justify-between gap-2 items-center">
       <div>
        <h4 className="font-medium">{t.name}</h4>
