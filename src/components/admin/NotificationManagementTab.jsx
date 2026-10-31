@@ -19,6 +19,7 @@ import WhatsAppQueueSettings from "./notifications/WhatsAppQueueSettings";
 import WhatsAppLiveButtonSettings from "./notifications/WhatsAppLiveButtonSettings";
 import WhatsAppSupplierNoticeButtons from "./notifications/WhatsAppSupplierNoticeButtons";
 import WhatsAppTemplateButtonSettings from "./notifications/WhatsAppTemplateButtonSettings";
+import WhatsAppReminderAckSettings from "./notifications/WhatsAppReminderAckSettings";
 
 /**
  * רכיב ניהול התראות מרכזי - מתאם בין כל תת-הקומפוננטות:
@@ -203,6 +204,7 @@ export default function NotificationManagementTab() {
                 <WhatsAppLiveButtonSettings active={true}/>
               </div>
               <WhatsAppSupplierNoticeButtons active={true}/>
+              <WhatsAppReminderAckSettings />
               <WhatsAppTemplateButtonSettings templates={templates} focusTemplateId={buttonTemplateId}/>
               <p className="text-xs text-gray-600">
                 הכפתורים האפשריים כרגע מותאמים להודעות לספקים שנשלחות בפרטי דרך Green API.
