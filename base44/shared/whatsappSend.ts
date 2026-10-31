@@ -159,7 +159,8 @@ async function callGreenApi(method, body, pilotOnly=false) {
 }
 
 // Queue-worker-only transport. Never call from business functions/endpoints.
-export async function sendWhatsAppTransport(job, provider, client, interactivePreview = null) {
+export async function sendWhatsAppTransport(job, provider, client,
+ interactivePreview = null, expectedOfficeNumber = '') {
   const chatId = validatedChatId(job.chat_id);
   if (provider !== 'green' && provider !== 'wasender') throw new Error('Unsupported WhatsApp provider');
   let fileUrl = '';
@@ -203,7 +204,9 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
       job,provider,preview:interactivePreview,
       signingSecret:Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'',
       expectedSenderAccountId:Deno.env.get('GREEN_API_INSTANCE_ID')||'',
-      verifyNavigation:verifiedSupplierNavigationTransport
+      verifyNavigation:(source,sourceProvider,navigation)=>
+        verifiedSupplierNavigationTransport(source,sourceProvider,
+          navigation,expectedOfficeNumber)
     });
     if(!valid)throw invalidInput('Invalid signed reminder V2 transport');
     try{
@@ -220,7 +223,9 @@ export async function sendWhatsAppTransport(job, provider, client, interactivePr
     }
   }
   if(interactivePreview?.kind==='interactive_navigation'){
-    if(!verifiedSupplierNavigationTransport(job,provider,interactivePreview))
+    if(!Array.isArray(interactivePreview.body?.buttons)||
+      interactivePreview.body.buttons.length<1||
+      !verifiedSupplierNavigationTransport(job,provider,interactivePreview,expectedOfficeNumber))
       throw invalidInput('Invalid supplier navigation buttons');
     try{
       return await callGreenApi('sendInteractiveButtons',interactivePreview.body);
