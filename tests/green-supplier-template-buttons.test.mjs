@@ -192,7 +192,7 @@ test('owner editor is connected to real template inventory, with inherited defau
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppTemplateButtonSettings.jsx','utf8');
  const parent=fs.readFileSync('src/components/admin/NotificationManagementTab.jsx','utf8');
  const api=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
- assert.match(parent,/<WhatsAppTemplateButtonSettings templates=\{templates\}/);
+ assert.match(parent,/<WhatsAppTemplateButtonSettings templates=\{templates\} focusTemplateId=\{buttonTemplateId\}/);
  assert.match(ui,/action:'supplierTemplateButtonsGet'/);
  assert.match(ui,/action:'supplierTemplateButtonsSave'/);
  assert.match(ui,/expectedVersion:stored.version/);
