@@ -2,22 +2,28 @@
 // real supplier NotificationTemplate. Never accept the snapshot from the
 // client or from an incoming WhatsApp event. Does NOT authorize replies.
 // Per-source legacy jobs lacking a snapshot keep their existing behavior.
-import {isSafeTemplateId,supplierButtonsForProvenance}
+import {isSafeTemplateId,supplierButtonsForProvenance,
+ isCustomSupplierButtons,normalizeCustomButtons,type SupplierTemplateButtons}
  from './greenSupplierTemplateButtonsPolicy.ts';
 import {GREEN_SUPPLIER_NAVIGATION_SOURCES,
  type NavigationButtons} from './greenSupplierNavigationPolicy.ts';
 
 export const SUPPLIER_BUTTON_SNAPSHOT_FIELD='supplier_buttons_snapshot_json';
-const MAX=550;
+const MAX=2700;
 const IDENT=/^[A-Za-z0-9_-]{3,160}$/;
 const SCOPE=new Set<string>(GREEN_SUPPLIER_NAVIGATION_SOURCES);
 const LABEL=/^[^\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]{0,25}$/u;
 function parse(raw:any){
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
   Object.keys(raw).sort().join(',')!=='buttons,sourceType,templateId,version'||
-  raw.version!==1||!SCOPE.has(raw.sourceType)||!isSafeTemplateId(raw.templateId))
+  ![1,2].includes(raw.version)||!SCOPE.has(raw.sourceType)||!isSafeTemplateId(raw.templateId))
   return null;
  const b=raw.buttons;
+ if(raw.version===2){
+  try{return {sourceType:raw.sourceType,templateId:raw.templateId,
+   buttons:normalizeCustomButtons(b)};}
+  catch{return null;}
+ }
  if(!b||typeof b!=='object'||Array.isArray(b)||
   Object.keys(b).sort().join(',')!=='office,officeLabel,portal,portalLabel'||
   typeof b.portal!=='boolean'||typeof b.office!=='boolean'||
@@ -38,12 +44,13 @@ export function captureSupplierButtonSnapshot(control:any,context:any):string{
  const selection=supplierButtonsForProvenance(
   control,context.sourceType,context.notificationTemplateId);
  if(!selection)return '';
- const json=JSON.stringify({version:1,sourceType:context.sourceType,
+ const json=JSON.stringify({version:isCustomSupplierButtons(selection)?2:1,
+  sourceType:context.sourceType,
   templateId:context.notificationTemplateId,buttons:selection});
  if(json.length>MAX)return '';
  return json;
 }
-export function selectSupplierButtonSnapshot(control:any,job:any):NavigationButtons|null{
+export function selectSupplierButtonSnapshot(control:any,job:any):SupplierTemplateButtons|null{
  const stored=job?.[SUPPLIER_BUTTON_SNAPSHOT_FIELD];
  if(stored!=null&&stored!==''){
   if(typeof stored!=='string'||stored.length>MAX)return null;
@@ -57,5 +64,7 @@ export function selectSupplierButtonSnapshot(control:any,job:any):NavigationButt
  }
  // Jobs predating frozen snapshots retain the previous per-source settings.
  // The optional per-template override can only act on a stored provenance ID.
- return supplierButtonsForProvenance(control,job?.source_type,job?.notification_template_id);
+ const fallback=supplierButtonsForProvenance(control,job?.source_type,job?.notification_template_id);
+ // Never retroactively apply a new custom destination to an old queued job.
+ return isCustomSupplierButtons(fallback)?null:fallback;
 }
