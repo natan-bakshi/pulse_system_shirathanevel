@@ -115,7 +115,8 @@ export function previewGreenSupplierNavigation(input:{
 // Transport independently validates payload/recipient even if a future worker
 // incorrectly passes an arbitrary preview to it. No recipient or forwarding
 // host can be injected via a supplier note, template or admin setting.
-export function verifiedSupplierNavigationTransport(job:any,provider:string,preview:any){
+export function verifiedSupplierNavigationTransport(job:any,provider:string,
+ preview:any,expectedOfficeNumber=''){
  if(provider!=='green'||!job||!preview||
   !isSupplierNavigationSource(job.source_type)||
   job.message_type!=='text'||job.requested_provider!=='green'||
@@ -136,7 +137,7 @@ export function verifiedSupplierNavigationTransport(job:any,provider:string,prev
   const hasCalendar=policy.links.some(link=>link.kind==='supplier_calendar');
   const expectedBody=hasCalendar?navigationTextBody(job.message_text):job.message_text;
   return expectedBody===preview.body.body&&
-   verifyCustomLinkRows(preview.body.buttons,policy.links,job);
+   verifyCustomLinkRows(preview.body.buttons,policy.links,job,expectedOfficeNumber);
  }
  if(preview.body.buttons.length<1||preview.body.buttons.length>2)return false;
  const buttons=preview.body.buttons;
