@@ -198,7 +198,7 @@ export default function WhatsAppQueueSettings(){
     <div className="flex justify-between items-center"><Header>כפתורי WhatsApp לספקים</Header><strong className="text-sm">{buttonStatus}</strong></div>
     <p className="text-sm text-gray-600">
      שיבוצים: אישור, דחייה ופנייה למשרד; קישור ללוח הספק בגוף ההודעה.
-     תזכורות מתאימות: כפתורי כניסה למערכת ופנייה למשרד.
+     בהודעות אחרות לספק ניתן לבחור כפתורי כניסה למערכת ופנייה למשרד לכל סוג הודעה בנפרד.
     </p>
     <Button size="sm" variant={view?.interactiveButtonsEnabled?'outline':'default'}
      disabled={busy||!view} onClick={()=>toggleButtons(!view.interactiveButtonsEnabled)}>
