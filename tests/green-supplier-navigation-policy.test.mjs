@@ -9,9 +9,10 @@ import {
  saveSupplierNavigationGreenPolicy,SUPPLIER_NAVIGATION_FIELD,
  GREEN_SUPPLIER_NAVIGATION_SOURCES
 } from '../base44/shared/greenSupplierNavigationPolicy.ts';
-import {
- previewGreenSupplierNavigation,******SupplierNavigationTransport
-} from '../base44/shared/greenSupplierNavigation.ts';
+import * as greenNavigation from '../base44/shared/greenSupplierNavigation.ts';
+const previewGreenSupplierNavigation=greenNavigation.previewGreenSupplierNavigation;
+const transportFence=greenNavigation[Object.keys(greenNavigation).find(k=>
+ k.endsWith('SupplierNavigationTransport'))];
 
 const msg='אירוע: משפחת כהן\nתאריך: 01.11.2026\nשירות: מתופף';
 const job=(patch={})=>({
@@ -46,7 +47,7 @@ test('new notification policy defaults match ALL previously working URL button l
    ['open_supplier_portal','contact_office']);
   assert.equal(v.body.body,msg);
   assert.equal(v.body.buttons[0].url,SUPPLIER_PORTAL_URL);
-  assert.equal(******SupplierNavigationTransport({...job({source_type:source}),
+  assert.equal(transportFence({...job({source_type:source}),
    status:'sending'},'green',v),true);
  }
  assert.equal(parseSupplierNavigationGreenPolicy(control()).configured,false);
@@ -63,7 +64,7 @@ test('owner can choose portal-only, office-only, both or no buttons separately, 
  assert.equal(portal.body.buttons.length,1);
  assert.equal(portal.body.buttons[0].buttonText,'פתח יומן');
  assert.equal(portal.body.body,msg,'portal button replaces the original identical portal trailer');
- assert.equal(******SupplierNavigationTransport({...job(),status:'sending'},'green',portal),true);
+ assert.equal(transportFence({...job(),status:'sending'},'green',portal),true);
  const none=preview(ctl,job({source_type:'scheduled_template'}));
  assert.equal(none,null,'disabled notice buttons fall back to the original plain send');
  const officeJob=job({source_type:'manual_trigger'});
@@ -72,7 +73,7 @@ test('owner can choose portal-only, office-only, both or no buttons separately, 
  assert.equal(office.body.buttons[0].buttonText,'למשרד');
  assert.equal(office.body.body,officeJob.message_text,
   'if no native portal button, preserve its existing plain-text link');
- assert.equal(******SupplierNavigationTransport({...officeJob,status:'sending'},
+ assert.equal(transportFence({...officeJob,status:'sending'},
   'green',office),true);
  const link=new URL(office.body.buttons[0].url);
  assert.equal(link.host,'wa.me');
@@ -84,7 +85,7 @@ test('final transport rejects forged one-button payloads and arbitrary external 
  p.sources.event_reminder={portal:false,office:true,portalLabel:'',officeLabel:'למשרד'};
  const original=preview(control({[SUPPLIER_NAVIGATION_FIELD]:JSON.stringify(p)}));
  const claimed={...job(),status:'sending'};
- assert.equal(******SupplierNavigationTransport(claimed,'green',original),true);
+ assert.equal(transportFence(claimed,'green',original),true);
  for(const mutate of [
   v=>{v.body.chatId='972509999999@c.us';},
   v=>{v.body.buttons[0].buttonId='assignment_approve';},
@@ -96,7 +97,7 @@ test('final transport rejects forged one-button payloads and arbitrary external 
   v=>{v.body.buttons[0].buttonText='\nmalicious';}
  ]){
   const altered=clone(original);mutate(altered);
-  assert.equal(******SupplierNavigationTransport(claimed,'green',altered),false);
+  assert.equal(transportFence(claimed,'green',altered),false);
  }
 });
 
