@@ -6,13 +6,12 @@
 // Intended to be called AFTER recordVerifiedV2ReminderAcknowledgement.
 // Not connected to the production webhook until V2 rollout checks complete.
 import {readWhatsAppQueueControl,enqueueWhatsApp} from './whatsappOutbox.ts';
-import {verifyV2ReminderAckProof} from './whatsappV2ReminderAckProof.ts';
+import {verifyV2ReminderAckProof,V2_REMINDER_ACK_FEEDBACK_TEXT} from './whatsappV2ReminderAckProof.ts';
 import {whatsappEnqueueReceiptState} from './whatsappReceipt.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,128}$/;
 const ACCOUNT=/^[0-9]{5,20}$/;
 const CHAT=/^[1-9][0-9]{7,14}@c\.us$/;
-const MESSAGE='אישור קבלת התזכורת נרשם בהצלחה. תודה! פרטי האירוע והעדכונים זמינים ביומן שלך במערכת Pulse.';
 const blocked=(reason:string)=>({queued:false,reason,noProviderCalls:true});
 export async function enqueueVerifiedV2ReminderAckFeedback(input:{
  client:any;sourceOutboxId:string;signingSecret:string;
@@ -53,12 +52,15 @@ export async function enqueueVerifiedV2ReminderAckFeedback(input:{
  let receipt:any;
  try{
   receipt=await enqueueWhatsApp(input.client,{
-   chatId:source.chat_id,messageType:'text',messageText:MESSAGE,
+   chatId:source.chat_id,messageType:'text',messageText:V2_REMINDER_ACK_FEEDBACK_TEXT,
    context:{
     sourceType:'reminder_button_feedback',
     sourceId:source.id,idempotencyKey:feedbackKey,
     supplierId:source.supplier_id,
-    feedbackSenderAccountId:source.sender_account_id
+    feedbackSenderAccountId:source.sender_account_id,
+    // This verified source is used by enqueueWhatsApp to independently
+    // refuse forged feedback requests from any other backend entrypoint.
+    reminderAckEvidence:source
    }
   },control);
  }catch{return blocked('enqueue_outcome_uncertain');}
