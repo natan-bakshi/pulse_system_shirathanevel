@@ -202,12 +202,13 @@ test('malformed tenant/provider/source/type/text/duplicate-edit settings fail cl
 });
 test('new owner UI is opt-in and uses existing privileged backend, not a new integration endpoint',()=>{
  const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppSupplierNoticeButtons.jsx','utf8');
- const parent=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+ const parent=fs.readFileSync('src/components/admin/NotificationManagementTab.jsx','utf8');
  const handler=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
  assert.match(parent,/<WhatsAppSupplierNoticeButtons active=/);
  assert.match(ui,/action:'supplierNavigationGet'/);
  assert.match(ui,/action:'supplierNavigationSave'/);
- assert.match(ui,/if\(value&&!saved&&!busy\)void load\(\)/);
+ assert.match(ui,/useEffect\(\(\)=>\{void load\(\);\},\[\]\)/);
+ assert.match(parent,/<TabsContent value="buttons"/);
  assert.doesNotMatch(ui,/setInterval\(|setTimeout\(|fetch\(/);
  assert.match(handler,/action==='supplierNavigationGet'/);
  assert.match(handler,/action==='supplierNavigationSave'/);
