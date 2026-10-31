@@ -182,3 +182,96 @@ test('fake or mutated final payload is rejected even with valid snapshot and sup
   verifyNavigation:verifiedSupplierNavigationTransport
  }),false);
 });
+async function withTransportFixture(run){
+ const f=setup(),at=Date.now();
+ const prepared=await prepareGreenV2ReminderWorkerCandidate({
+  client:f.client,job:{...f.job},control:f.control,provider:'green',
+  config:config(),now:at
+ });
+ assert.equal(prepared.kind,'reminder_v2');
+ const job={...f.job,status:'sending',provider:'green',
+  send_started_at:new Date(at).toISOString(),attempt_count:1};
+ const oldDeno=globalThis.Deno,oldFetch=globalThis.fetch;
+ let instance='9903183013';
+ globalThis.Deno={env:{get:key=>key==='GREEN_API_INSTANCE_ID'?instance:
+  key==='GREEN_API_TOKEN'?'synthetic-provider-token-never-real':
+  key==='WHATSAPP_INTERACTIVE_SIGNING_SECRET'?secret:''}};
+ const calls=[];
+ try{
+  return await run({
+   job,preview:prepared.preview,calls,
+   setInstance:v=>{instance=v;},
+   mockFetch:handler=>{
+    globalThis.fetch=async(url,req)=>{
+     const body=JSON.parse(req.body);
+     calls.push({url:String(url),body});
+     return handler(String(url),body,calls.length);
+    };
+   }
+  });
+ }finally{
+  globalThis.fetch=oldFetch;
+  if(oldDeno===undefined)delete globalThis.Deno;
+  else globalThis.Deno=oldDeno;
+ }
+}
+test('worker-only final Green transport sends one signed reply plus existing portal and office buttons',async()=>{
+ await withTransportFixture(async ctx=>{
+  ctx.mockFetch(async()=>new Response(JSON.stringify({
+   idMessage:'3EB0_PROVIDER_ACCEPTED'
+  }),{status:200,headers:{'content-type':'application/json'}}));
+  const receipt=await sendWhatsAppTransport(ctx.job,'green',null,ctx.preview);
+  assert.equal(receipt.messageId,'3EB0_PROVIDER_ACCEPTED');
+  assert.equal(ctx.calls.length,1);
+  assert.match(ctx.calls[0].url,/sendInteractiveButtons/);
+  assert.deepEqual(ctx.calls[0].body.buttons.map(b=>b.type),
+   ['reply','url','url']);
+  assert.equal(ctx.calls[0].body.buttons[0].buttonText,'קיבלתי');
+  assert.match(ctx.calls[0].body.buttons[0].buttonId,/^wa2_/);
+  assert.equal(ctx.calls[0].body.chatId,ctx.job.chat_id);
+ });
+});
+test('definite 400 interactive rejection sends original text once; 5xx and timeout never resend',async()=>{
+ await withTransportFixture(async ctx=>{
+  ctx.mockFetch(async(url,body,num)=>num===1?
+   new Response('{}',{status:400}):
+   new Response(JSON.stringify({idMessage:'3EB0_FALLBACK_ACCEPTED'}),
+    {status:200,headers:{'content-type':'application/json'}}));
+  const result=await sendWhatsAppTransport(ctx.job,'green',null,ctx.preview);
+  assert.equal(result.messageId,'3EB0_FALLBACK_ACCEPTED');
+  assert.equal(ctx.calls.length,2);
+  assert.match(ctx.calls[0].url,/sendInteractiveButtons/);
+  assert.match(ctx.calls[1].url,/sendMessage/);
+  assert.equal(ctx.calls[1].body.message,ctx.job.message_text);
+ });
+ await withTransportFixture(async ctx=>{
+  ctx.mockFetch(async()=>new Response('{}',{status:503}));
+  await assert.rejects(sendWhatsAppTransport(ctx.job,'green',null,ctx.preview),
+   error=>error.deliveryUncertain===true);
+  assert.equal(ctx.calls.length,1);
+ });
+ await withTransportFixture(async ctx=>{
+  ctx.mockFetch(async()=>{throw Error('simulated network timeout');});
+  await assert.rejects(sendWhatsAppTransport(ctx.job,'green',null,ctx.preview),
+   error=>error.deliveryUncertain===true);
+  assert.equal(ctx.calls.length,1);
+ });
+});
+test('transport refuses forged ID, arbitrary URL or new Green account before any provider HTTP',async()=>{
+ await withTransportFixture(async ctx=>{
+  ctx.mockFetch(async()=>{throw Error('provider must not be called');});
+  for(const mutation of [
+   p=>{p.body.buttons[0].buttonId='wa2_AAAAAAAAAAAAAAAAAAAAAA';},
+   p=>{p.body.buttons[1].url='https://attack.example/redirect';},
+   p=>{p.body.body='Tampered contents';}
+  ]){
+   const altered=structuredClone(ctx.preview);mutation(altered);
+   await assert.rejects(sendWhatsAppTransport(ctx.job,'green',null,altered),
+    /Invalid signed reminder V2 transport/);
+  }
+  ctx.setInstance('9903183014');
+  await assert.rejects(sendWhatsAppTransport(ctx.job,'green',null,ctx.preview),
+   /Invalid signed reminder V2 transport/);
+  assert.equal(ctx.calls.length,0);
+ });
+});
