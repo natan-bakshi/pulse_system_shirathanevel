@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useLocation } from "react-router-dom";
 import { Bell, Plus, Info, MessageSquare, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,12 +28,18 @@ import WhatsAppSupplierNoticeButtons from "./notifications/WhatsAppSupplierNotic
  */
 export default function NotificationManagementTab() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [manualTriggerTemplate, setManualTriggerTemplate] = useState(null);
   const [section, setSection] = useState(() => typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('whatsappQueue') === 'review'
       ? 'whatsapp' : 'templates');
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('whatsappQueue') === 'review') {
+      setSection('whatsapp');
+    }
+  }, [location.search]);
 
   // Fetch templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
