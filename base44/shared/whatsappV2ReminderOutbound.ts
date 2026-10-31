@@ -81,8 +81,10 @@ export async function prepareGreenV2ReminderWorkerCandidate(input:{
  });
  // Honor prior per-NotificationTemplate URL button selection. No reply
  // button when the owner selected "no buttons" for that template.
- if(!nav||!Array.isArray(nav.body?.buttons)||nav.body.buttons.length>2)
-  return existing?Promise.reject(fail('frozen_reminder_navigation_missing')):null;
+ if(!nav||!Array.isArray(nav.body?.buttons)||nav.body.buttons.length>2){
+  if(existing)throw fail('frozen_reminder_navigation_missing');
+  return null;
+ }
  const db=client?.asServiceRole?.entities?.WhatsAppOutbox;
  if(!db?.get||!db?.updateMany)throw fail('outbox_storage_unavailable');
  const meta=bindingMetadata(job,config.senderAccountId);
@@ -150,6 +152,7 @@ export async function verifyV2ReminderTransport(input:{
 }):Promise<boolean>{
  const {job,preview,provider}=input;
  if(!job||provider!=='green'||job.status!=='sending'||
+  job.provider!=='green'||job.requested_provider!=='green'||
   job.message_kind!=='supplier_reminder'||job.source_type!=='event_reminder'||
   job.sender_account_id!==input.expectedSenderAccountId||
   !INSTANCE.test(job.sender_account_id||'')||
