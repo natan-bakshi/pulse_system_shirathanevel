@@ -3,6 +3,7 @@
 // and frozen button snapshot. Only a matching, committed Outbox receipt may
 // authorize a subsequent feedback message through the EXISTING queue.
 const DOMAIN='pulse-shirat-whatsapp-reminder-ack-proof:v2\n';
+export const V2_REMINDER_ACK_FEEDBACK_TEXT='אישור קבלת התזכורת נרשם בהצלחה. תודה! פרטי האירוע והעדכונים זמינים ביומן שלך במערכת Pulse.';
 const ENC=new TextEncoder();
 const MAC=/^[A-Za-z0-9_-]{43}$/;
 const ID=/^[A-Za-z0-9_-]{3,180}$/;
