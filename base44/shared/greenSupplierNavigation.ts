@@ -54,14 +54,15 @@ export function previewGreenSupplierNavigation(input:{
   control?.enabled!==true||control?.paused===true||
   config?.enabled!==true||config?.legacyProductionApproved!==true||
   config?.accountCapabilityVerified!==true||
-  config?.capability!=='mixed_url'||
-  !OFFICE.test(config.officeNumber||''))
+  config?.capability!=='mixed_url')
   return null;
  // No new DB read: read the versioned owner policy from the queue control
  // that the worker already holds. Corrupt policies fail closed to old text.
  const policy=selectSupplierButtonSnapshot(control,job);
  if(!policy)return null;
  if(isCustomSupplierButtons(policy)){
+  if(policy.links.some(link=>link.kind==='office')&&
+   !OFFICE.test(config.officeNumber||''))return null;
   const buttons:SupplierNavigationPreview['body']['buttons']=[];
   for(const link of policy.links){
    const destination=customLinkDestination(link,job,config.officeNumber);
@@ -76,6 +77,7 @@ export function previewGreenSupplierNavigation(input:{
    body:{chatId:job.chat_id,body,buttons},fallbackReason:'',providerRequestsMade:0};
  }
  if(!policy.portal&&!policy.office)return null;
+ if(!OFFICE.test(config.officeNumber||''))return null;
  const body=policy.portal?navigationTextBody(job.message_text):job.message_text;
  if(typeof body!=='string'||!body.trim()||body.length>4096)return null;
  const officeLabel=policy.officeLabel||String(config.officeLabel||'פנייה למשרד');
