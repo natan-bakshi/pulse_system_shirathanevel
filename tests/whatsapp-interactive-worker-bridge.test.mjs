@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {webcrypto} from 'node:crypto';
 import {drainWhatsAppOutbox} from '../base44/shared/whatsappQueueWorker.ts';
+import {captureSupplierButtonSnapshot} from '../base44/shared/greenSupplierButtonSnapshot.ts';
+import {withSupplierPortalLink} from '../base44/shared/supplierPortalLink.ts';
 
 // Every test uses a synthetic Base44 SDK. Absolutely no outbound HTTP
 // or actual client/supplier notification is performed by this suite.
