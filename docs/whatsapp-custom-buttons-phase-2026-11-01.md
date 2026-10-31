@@ -18,7 +18,7 @@ Safety limitations:
 - Green API has a beta warning, limits buttons to 3 and captions to 25 characters. A real device check is required before claiming delivery.
 
 Next:
-1. Finish full tests and build, checkpoint and production deployment verification.
+1. Final QA completed: 1,047/1,047 Node regression tests passed, Vite build succeeded, TypeScript/JSX parse and focused ESLint passed, git diff-check clean. Save checkpoint and verify production deployment.
 2. Live owner verification of one appropriate new supplier notification before broad rollout; never send a test automatically.
 3. Add verified event provenance for pending reminders without per-send lookups.
 4. Improve legacy smart-link generation across InApp/Push and expand templates for clients/admins with separate recipient safety review.
