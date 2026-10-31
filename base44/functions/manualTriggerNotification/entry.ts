@@ -558,7 +558,9 @@ async function triggerWhatsApp(base44, template, phone, eventObj, supplierObj, s
                 template_type: template.type,
                 is_sent: false,
                 data: JSON.stringify({ send_whatsapp: true, whatsapp_message: message, phone,
-                  related_supplier_id:supplierObj?.id||'' })
+                  related_supplier_id:supplierObj?.id||'',
+                  source_type:supplierObj?.id?'manual_trigger':'scheduled_notification',
+                  notification_template_id:supplierObj?.id?template.id:'' })
             });
         } catch (qErr) {
             console.error('[ManualTrigger] Failed to queue WhatsApp:', qErr);
