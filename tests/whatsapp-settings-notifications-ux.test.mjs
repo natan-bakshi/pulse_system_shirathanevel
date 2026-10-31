@@ -19,7 +19,7 @@ test('one canonical WhatsApp location under Notifications, never duplicate techn
  assert.match(management,/<WhatsAppProviderStatus\s*\/>/);
  assert.match(management,/<WhatsAppQueueSettings\s*\/>/);
  for(const tag of ['WhatsAppProviderStatus','WhatsAppQueueSettings',
-  'WhatsAppSupplierNoticeButtons','WhatsAppTemplateButtonSettings','WhatsAppLiveButtonSettings']){
+  'WhatsAppSupplierNoticeButtons','WhatsAppTemplateButtonSettings','WhatsAppReminderAckSettings','WhatsAppLiveButtonSettings']){
   assert.equal((management.match(new RegExp('<'+tag+'\\b','g'))||[]).length,1,
    'exactly one canonical mounted editor for '+tag);
  }
@@ -53,6 +53,26 @@ test('source-wide vs template-specific scope is stated explicitly; no misleading
  assert.doesNotMatch(form,/WhatsAppSupplierNoticeButtons|supplierNavigationSave/,
   'a global source setting must not masquerade as one NotificationTemplate setting');
 });
+test('one plainly explained production reminder ACK toggle stays off until owner confirmation and backend readiness',()=>{
+ const managerText=manager();
+ const panel=read('src/components/admin/notifications/WhatsAppReminderAckSettings.jsx');
+ const owner=read('base44/functions/WhatsAppQueueAdmin/entry.ts');
+ assert.match(managerText,/<WhatsAppReminderAckSettings\s*\/>/);
+ assert.match(panel,/אישור קבלת תזכורת/);
+ assert.match(panel,/הכפתור אינו מאשר או דוחה שיבוץ/);
+ assert.match(panel,/לאחר\w*/);
+ assert.match(panel,/action:'reminderV2Get'/);
+ assert.match(panel,/reminderV2Enable/);
+ assert.match(panel,/reminderV2Disable/);
+ assert.match(panel,/ENABLE_GREEN_SUPPLIER_REMINDER_ACKNOWLEDGEMENT/);
+ assert.match(panel,/disabled=\{busy\|\|!status\.ready\}/);
+ assert.match(panel,/window\.confirm\(/);
+ assert.match(panel,/if\(e\.currentTarget\.open&&!status&&!busy\)void load\(\)/);
+ assert.doesNotMatch(panel,/setInterval\(|setTimeout\(|fetch\(|type="url"/);
+ assert.match(owner,/action==='reminderV2Enable'/);
+ assert.match(owner,/interactive_reminder_v2_inbound_ever_enabled:true/);
+ assert.match(owner,/trustedGreenAssignmentProductionConfig/);
+});
 test('existing incident deep-link opens the moved Notifications and WhatsApp queue',()=>{
  const page=settings(),manage=manager(),que=queue();
  assert.match(page,/params\.get\('whatsappQueue'\) === 'review'/);
@@ -80,6 +100,7 @@ test('moving WhatsApp administration does not alter existing NotificationTemplat
   'src/pages/SettingsPage.jsx',
   'src/components/admin/NotificationManagementTab.jsx',
   'src/components/admin/notifications/WhatsAppSupplierNoticeButtons.jsx',
-  'src/components/admin/notifications/WhatsAppQueueSettings.jsx'
+  'src/components/admin/notifications/WhatsAppQueueSettings.jsx',
+  'src/components/admin/notifications/WhatsAppReminderAckSettings.jsx'
  ])esbuild.transformSync(read(path),{loader:'jsx',target:'es2022'});
 });
