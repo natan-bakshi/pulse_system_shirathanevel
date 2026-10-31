@@ -60,7 +60,7 @@ test('one plainly explained production reminder ACK toggle stays off until owner
  assert.match(managerText,/<WhatsAppReminderAckSettings\s*\/>/);
  assert.match(panel,/אישור קבלת תזכורת/);
  assert.match(panel,/הכפתור אינו מאשר או דוחה שיבוץ/);
- assert.match(panel,/לאחר\w*/);
+ assert.match(panel,/תגובת.+?לחיצה|בלחיצה/);
  assert.match(panel,/action:'reminderV2Get'/);
  assert.match(panel,/reminderV2Enable/);
  assert.match(panel,/reminderV2Disable/);
