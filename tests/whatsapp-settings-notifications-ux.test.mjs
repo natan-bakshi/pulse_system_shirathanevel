@@ -19,7 +19,7 @@ test('one canonical WhatsApp location under Notifications, never duplicate techn
  assert.match(management,/<WhatsAppProviderStatus\s*\/>/);
  assert.match(management,/<WhatsAppQueueSettings\s*\/>/);
  for(const tag of ['WhatsAppProviderStatus','WhatsAppQueueSettings',
-  'WhatsAppSupplierNoticeButtons','WhatsAppLiveButtonSettings']){
+  'WhatsAppSupplierNoticeButtons','WhatsAppTemplateButtonSettings','WhatsAppLiveButtonSettings']){
   assert.equal((management.match(new RegExp('<'+tag+'\\b','g'))||[]).length,1,
    'exactly one canonical mounted editor for '+tag);
  }
