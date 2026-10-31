@@ -113,7 +113,7 @@ export async function verifySignedWhatsAppActionV2(input:{
   const decoded=decoder.decode(decoding(chunks[1],MAX_BODY));
   const candidate=JSON.parse(decoded);
   if(!candidate||typeof candidate!=='object'||Array.isArray(candidate)||
-   Object.keys(candidate).length!==17)return null;
+   Object.keys(candidate).length!==18)return null;
   const normalized=payloadFrom(candidate,registry,now);
   // Reject altered representations, duplicate JSON names and extra fields
   // even if a caller attempts to construct an alternative signed encoding.
