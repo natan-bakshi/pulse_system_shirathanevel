@@ -212,6 +212,10 @@
       "type": "string",
       "description": "Original authenticated Green button callback ID after once-only supplier reminder acknowledgement"
     },
+    "reminder_acknowledgement_proof": {
+      "type": "string",
+      "description": "Domain-separated HMAC proof committed atomically with the reminder acknowledgement"
+    },
     "attempt_count": {
       "type": "number",
       "default": 0
