@@ -52,8 +52,8 @@ export function normalizeCustomLink(raw:any):GreenCustomLink{
  };
 }
 export function normalizeCustomLinks(raw:any):GreenCustomLink[]{
- if(!Array.isArray(raw)||raw.length<1||raw.length>2)
-  fail('one_or_two_url_buttons');
+ if(!Array.isArray(raw)||raw.length>3)
+  fail('too_many_url_buttons');
  const result=raw.map(normalizeCustomLink);
  if(result.filter(x=>x.kind==='office').length>1)
   fail('duplicate_office_button');
