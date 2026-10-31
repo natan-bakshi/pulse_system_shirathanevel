@@ -18,6 +18,7 @@ import WhatsAppProviderStatus from "./notifications/WhatsAppProviderStatus";
 import WhatsAppQueueSettings from "./notifications/WhatsAppQueueSettings";
 import WhatsAppLiveButtonSettings from "./notifications/WhatsAppLiveButtonSettings";
 import WhatsAppSupplierNoticeButtons from "./notifications/WhatsAppSupplierNoticeButtons";
+import WhatsAppTemplateButtonSettings from "./notifications/WhatsAppTemplateButtonSettings";
 
 /**
  * רכיב ניהול התראות מרכזי - מתאם בין כל תת-הקומפוננטות:
@@ -200,6 +201,7 @@ export default function NotificationManagementTab() {
                 <WhatsAppLiveButtonSettings active={true}/>
               </div>
               <WhatsAppSupplierNoticeButtons active={true}/>
+              <WhatsAppTemplateButtonSettings templates={templates}/>
               <p className="text-xs text-gray-600">
                 הכפתורים האפשריים כרגע מותאמים להודעות לספקים שנשלחות בפרטי דרך Green API.
                 כפתורים חדשים שמשנים מידע במערכת יופיעו לבחירה רק לאחר שתמומש עבורם פעולה מאובטחת.
