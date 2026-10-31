@@ -4,6 +4,7 @@ import { drainWhatsAppOutbox, delayUntilNextSendMs, providerIntervalMs, lastDisp
 import { resolveWhatsAppProvider } from '../../shared/whatsappProviderConfig.ts';
 import {readSavedWhatsAppInteractivePolicy,saveWhatsAppInteractivePolicyDraft} from '../../shared/whatsappInteractiveSettingsStore.ts';
 import {parseSupplierNavigationGreenPolicy,saveSupplierNavigationGreenPolicy} from '../../shared/greenSupplierNavigationPolicy.ts';
+import {parseSupplierTemplateButtonPolicy,saveSupplierTemplateButtonPolicy} from '../../shared/greenSupplierTemplateButtonsPolicy.ts';
 import { summarizeWhatsAppOutbox } from '../../shared/whatsappQueueMetrics.ts';
 import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudit.ts';
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
@@ -315,6 +316,22 @@ Deno.serve(async(req)=>{
         return RESPONSE({success:false,error:status===500?'Interactive settings unavailable':
           String((error as any)?.message||'Invalid interactive settings'),
           liveEnabled:false,noMessagesSent:true},status);
+      }
+    }
+    if(action==='supplierTemplateButtonsGet'){
+      const control=await readWhatsAppQueueControl(client);
+      return RESPONSE({success:true,...parseSupplierTemplateButtonPolicy(control),
+        noMessagesSent:true,noProviderCalls:true});
+    }
+    if(action==='supplierTemplateButtonsSave'){
+      try{
+        const saved=await saveSupplierTemplateButtonPolicy(client,body);
+        return RESPONSE({success:true,...saved,noMessagesSent:true,noProviderCalls:true});
+      }catch(error){
+        const code=Number((error as any)?.status)||503;
+        return RESPONSE({success:false,error:[400,409].includes(code)?String((error as any)?.message):
+          'Template button settings unavailable',noMessagesSent:true,noProviderCalls:true},
+          [400,409].includes(code)?code:503);
       }
     }
     if(action==='supplierNavigationGet'){
