@@ -5,6 +5,7 @@ import { resolveWhatsAppProvider } from './whatsappProviderConfig.ts';
 import { sendWhatsAppTransport } from './whatsappSend.ts';
 import {prepareGreenInteractiveWorkerCandidate} from './whatsappInteractiveWorkerBridge.ts';
 import {previewGreenSupplierNavigation} from './greenSupplierNavigation.ts';
+import {prepareGreenV2ReminderWorkerCandidate} from './whatsappV2ReminderOutbound.ts';
 import {readAssignmentIntents} from './assignmentIntent.ts';
 
 const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
@@ -485,6 +486,27 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
         processed++;failed++;
         continue;
       }
+      // A frozen supplier-reminder V2 snapshot must NEVER be downgraded
+      // to a plain message, even after account changes or owner rollback.
+      const frozenV2=options.job.source_type==='event_reminder'&&!!(
+        options.job.interactive_v2_button_bindings_json||
+        options.job.message_kind==='supplier_reminder');
+      if(frozenV2&&(!opts.reminderV2Config||
+        control.interactive_reminder_v2_outbound_enabled!==true||
+        control.interactive_reminder_v2_inbound_ever_enabled!==true||
+        provider!=='green')){
+        const held=await queueStage('v2_reminder_rollout_hold',()=>
+          db.WhatsAppOutbox.updateMany({
+            id:options.job.id,status:options.job.status,
+            attempt_count:options.job.attempt_count??null
+          },{$set:{status:'failed',error_code:0,
+            last_error:'Frozen V2 reminder requires manual review; owner rollout or original Green sender unavailable',
+            completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+        if(held?.updated!==1){
+          lastError='Cannot safely hold signed V2 reminder';break;
+        }
+        processed++;failed++;continue;
+      }
       // Dormant owner-gated bridge. The production wrapper deliberately does
       // NOT supply opts.interactiveConfig; the control schema defaults OFF.
       // Ordinary WhatsApp jobs avoid every extra lookup and retain their
@@ -509,6 +531,33 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           }
           processed++;failed++;
           continue;
+        }
+      }
+      // V2 "קיבלתי" joins the already working URL navigation buttons for
+      // supplier event reminders ONLY when an independent owner rollout is
+      // armed. Signed snapshot CAS occurs BEFORE the provider rate-slot claim.
+      // No new job, source lookup, worker, scheduler or provider call.
+      if(candidate.kind==='legacy'&&provider==='green'&&
+        options.job.source_type==='event_reminder'&&opts.reminderV2Config){
+        try{
+          const prepared=await queueStage('v2_reminder_pre_dispatch',()=>
+            prepareGreenV2ReminderWorkerCandidate({
+              client,job:options.job,provider,control,
+              config:opts.reminderV2Config
+            }));
+          if(prepared)candidate=prepared;
+        }catch{
+          const held=await queueStage('v2_reminder_pre_dispatch_hold',()=>
+            db.WhatsAppOutbox.updateMany({
+              id:options.job.id,status:options.job.status,
+              attempt_count:options.job.attempt_count??null
+            },{$set:{status:'failed',error_code:0,
+              last_error:'Signed V2 reminder preparation uncertain; manual review before any provider attempt',
+              completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+          if(held?.updated!==1){
+            lastError='Cannot safely hold V2 reminder after pre-dispatch failure';break;
+          }
+          processed++;failed++;continue;
         }
       }
       // URL-only supplier notices are an ADDITION to ordinary Green delivery.
@@ -549,6 +598,14 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // The frozen account, revision and entire signed snapshot must still
       // equal the verified pre-dispatch record when we claim the job.
       const claimFilter:any={id:job.id,status:job.status};
+      if(candidate.kind==='reminder_v2')Object.assign(claimFilter,{
+        attempt_count:job.attempt_count??null,
+        company_id:job.company_id,message_kind:job.message_kind,
+        resource_type:job.resource_type,resource_id:job.resource_id,
+        recipient_audience:job.recipient_audience,recipient_id:job.recipient_id,
+        revision:job.revision,sender_account_id:job.sender_account_id,
+        interactive_v2_button_bindings_json:job.interactive_v2_button_bindings_json
+      });
       if(candidate.kind==='interactive')Object.assign(claimFilter,{
         attempt_count:job.attempt_count??null,
         sender_account_id:job.sender_account_id,
@@ -570,9 +627,9 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       }}));
       if(timeSlot?.updated!==1) {
         await db.WhatsAppOutbox.updateMany({id:job.id,status:'sending',lease_token:token},{$set:{
-          status:candidate.kind==='interactive'?job.status:'queued',
-          send_started_at:candidate.kind==='interactive'?job.send_started_at||'':'',
-          ...(candidate.kind==='interactive'?{attempt_count:job.attempt_count||0}:{})
+          status:['interactive','reminder_v2'].includes(candidate.kind)?job.status:'queued',
+          send_started_at:['interactive','reminder_v2'].includes(candidate.kind)?job.send_started_at||'':'',
+          ...(['interactive','reminder_v2'].includes(candidate.kind)?{attempt_count:job.attempt_count||0}:{})
         }});
         lastError='Lost WhatsApp worker lease before dispatch';
         break;
@@ -584,7 +641,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       let receipt:any=null,transportError:any=null;
       try{
         // This is the ONLY provider call. It is never retried by this worker.
-        const dispatchJob=['interactive','navigation'].includes(candidate.kind)
+        const dispatchJob=['interactive','navigation','reminder_v2'].includes(candidate.kind)
           ? {...job,status:'sending',provider,lease_token:token,
              attempt_count:attempt,send_started_at:startedAt}:job;
         receipt=await (opts.transport||sendWhatsAppTransport)(
