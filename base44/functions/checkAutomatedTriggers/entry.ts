@@ -390,7 +390,9 @@ async function triggerNotification(base44, template, event, user, supplier, even
                     template_type: template.type,
                     is_sent: false,
                     data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsapp_message, phone: phoneToUse,
-                        source_type:'scheduled_template',idempotency_key:waKey })
+                        source_type:'scheduled_template',idempotency_key:waKey,
+                        related_supplier_id:supplier?.id||'',
+                        notification_template_id:supplier?.id?template.id:'' })
                 });
                 console.log(`[AutomatedTriggers] WhatsApp QUEUED for ${phoneToUse} until ${quietEnd.toISOString()}`);
             } catch (qErr) {
