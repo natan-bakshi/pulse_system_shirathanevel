@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {signV2ReminderAckProof,verifyV2ReminderAckProof} from '../base44/shared/whatsappV2ReminderAckProof.ts';
 import {
  createV2OpaqueButtonSnapshot
 } from '../base44/shared/whatsappV2OpaqueButtonBridge.ts';
@@ -126,22 +127,24 @@ test('verified reminder acknowledgement writes exactly one durable CAS, duplicat
  const f=await scenario();
  const admitted=await admitAuthenticatedV2GreenReminder(f.input);
  const first=await recordVerifiedV2ReminderAcknowledgement({
-  client:f.client,admission:admitted.admission,now
+  client:f.client,admission:admitted.admission,signingSecret:signing,now
  });
  assert.deepEqual(first,{status:'recorded',reason:'durable_ack_recorded',writesAuthorized:1});
  assert.equal(f.original.reminder_acknowledgement_event_id,f.raw.idMessage);
  assert.equal(f.original.reminder_acknowledged_at,new Date(now).toISOString());
+ assert.equal(await verifyV2ReminderAckProof(f.original,signing),true);
  assert.equal(f.stats.writes,1);
  const replay=await recordVerifiedV2ReminderAcknowledgement({
-  client:f.client,admission:admitted.admission,now:now+1000
+  client:f.client,admission:admitted.admission,signingSecret:signing,now:now+1000
  });
  assert.equal(replay.status,'already_recorded');
  assert.equal(f.stats.writes,1);
  const other=await scenario();
  const otherAdmitted=await admitAuthenticatedV2GreenReminder(other.input);
  f.original.reminder_acknowledgement_event_id='3EB0_DIFFERENT_PRESS';
+ f.original.reminder_acknowledgement_proof=await signV2ReminderAckProof(f.original,signing);
  const conflict=await recordVerifiedV2ReminderAcknowledgement({
-  client:f.client,admission:admitted.admission,now
+  client:f.client,admission:admitted.admission,signingSecret:signing,now
  });
  assert.equal(conflict.status,'already_acknowledged');
  assert.equal(f.stats.writes,1);
@@ -155,7 +158,7 @@ test('unverified or forged admission cannot write by invoking recorder directly'
  ];
  for(const admission of attempts){
   const denied=await recordVerifiedV2ReminderAcknowledgement({
-   client:f.client,admission,now
+   client:f.client,admission,signingSecret:signing,now
   });
   assert.equal(denied.status,'refused');
  }
@@ -167,7 +170,7 @@ test('ambiguous DB response after commit detects durable result without retrying
  const admitted=await admitAuthenticatedV2GreenReminder(f.input);
  f.setFailMode('after');
  const applied=await recordVerifiedV2ReminderAcknowledgement({
-  client:f.client,admission:admitted.admission,now
+  client:f.client,admission:admitted.admission,signingSecret:signing,now
  });
  assert.equal(applied.status,'already_recorded');
  assert.equal(applied.reason,'durable_ack_verified');
@@ -179,7 +182,7 @@ test('ambiguous before commit requires manual review without additional writes',
  const admitted=await admitAuthenticatedV2GreenReminder(f.input);
  f.setFailMode('before');
  const result=await recordVerifiedV2ReminderAcknowledgement({
-  client:f.client,admission:admitted.admission,now
+  client:f.client,admission:admitted.admission,signingSecret:signing,now
  });
  assert.equal(result.status,'needs_review');
  assert.equal(result.reason,'ack_commit_uncertain');
