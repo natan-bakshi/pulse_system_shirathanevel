@@ -321,6 +321,7 @@ Deno.serve(async (req) => {
                             if (supplier.phone && supplier.whatsapp_enabled !== false) {
                                 whatsappQueue.push({ phone:supplier.phone,message:waMessage,
                                   sourceType:'event_reminder',sourceId:event.id,supplierId,
+                                  notificationTemplateId:supplierReminderTemplate.id,
                                   idempotencyKey:eventReminderWhatsAppKey(event,supplierReminderTemplate,'supplier',supplierId) });
                             }
                             
@@ -500,6 +501,7 @@ Deno.serve(async (req) => {
                         pendingTemplate.allowed_channels?.includes('whatsapp')) {
                         whatsappQueue.push({phone:supplier.phone,message:waMessage,
                           sourceType:'supplier_pending_reminder',sourceId:es.id,supplierId,
+                          notificationTemplateId:pendingTemplate.id,
                           idempotencyKey:automatedWhatsAppKey('supplier_pending',{
                             eventId:event.id,recipientId:supplierId,eventDate:event.event_date,
                             serviceId:es.id,templateType:'SUPPLIER_PENDING_REMINDER',
@@ -1084,7 +1086,7 @@ Deno.serve(async (req) => {
         {
             for (const wa of whatsappQueue) {
                 try {
-                    const receipt=await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',supplierId:wa.supplierId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
+                    const receipt=await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',supplierId:wa.supplierId||'',notificationTemplateId:wa.notificationTemplateId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
                     const state=whatsappEnqueueReceiptState(receipt);
                     // Deduplicated UNKNOWN/FAILED jobs are NOT freshly queued.
                     // Never inflate successful-enqueue counts or claim delivery.
@@ -1328,6 +1330,7 @@ async function sendScheduledToAudiences(base44, template, event, servicesByEvent
                 if (sendWA && supplier.phone && supplier.whatsapp_enabled !== false) {
                     whatsappQueue.push({phone:supplier.phone,message:waMessage,
                       sourceType:'scheduled_template',sourceId:event.id,supplierId:supId,
+                      notificationTemplateId:template.id,
                       idempotencyKey:automatedWhatsAppKey('scheduled_template',{
                         eventId:event.id,recipientId:supId,eventDate:event.event_date,
                         serviceId:es.id,templateType:template.type,target:'supplier'
