@@ -123,6 +123,10 @@
       "type": "string",
       "description": "System owner only: versioned, disabled interactive assignment draft for WasenderAPI"
     },
+    "interactive_supplier_navigation_green_policy_json": {
+      "type": "string",
+      "description": "Owner-only versioned URL-only supplier notice button layout; live Green and queue switches remain authoritative"
+    },
     "inbound_create_owner": {
       "type": "string",
       "description": "Independent CAS mutex for inbound receipt registration, never the send worker lease"
