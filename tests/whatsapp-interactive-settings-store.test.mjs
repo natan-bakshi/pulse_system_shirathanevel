@@ -111,8 +111,10 @@ test('reject unsupported scope, early live activation, invalid phone, labels and
 });
 test('production UI edits the ACTUAL saved office/label policy without re-enabling QA draft screen',()=>{
   const source=fs.readFileSync('src/components/admin/notifications/WhatsAppLiveButtonSettings.jsx','utf8');
-  const parent=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
+  const parent=fs.readFileSync('src/components/admin/NotificationManagementTab.jsx','utf8');
+  const queue=fs.readFileSync('src/components/admin/notifications/WhatsAppQueueSettings.jsx','utf8');
   assert.match(parent,/<WhatsAppLiveButtonSettings active=/);
+  assert.doesNotMatch(queue,/<WhatsAppLiveButtonSettings/,'same settings must not appear twice');
   assert.doesNotMatch(parent,/<WhatsAppInteractiveDraftSettings\s*\/>/);
   assert.match(source,/action:'interactiveGet'/);
   assert.match(source,/action:'interactiveSave'/);
