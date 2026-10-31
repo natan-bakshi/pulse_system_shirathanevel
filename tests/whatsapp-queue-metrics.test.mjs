@@ -228,6 +228,10 @@ test('metrics endpoint is read-only and accessible only to the system owner',asy
           parseSupplierNavigationGreenPolicy:()=>{throw Error('Metrics must not load navigation settings')},
           saveSupplierNavigationGreenPolicy:async()=>{throw Error('Metrics must not modify navigation settings')}
         };
+        if(name.endsWith('greenSupplierTemplateButtonsPolicy.ts'))return {
+          parseSupplierTemplateButtonPolicy:()=>{throw Error('Metrics must not query template-button settings')},
+          saveSupplierTemplateButtonPolicy:async()=>{throw Error('Metrics must not modify template-button settings')}
+        };
         if(name.endsWith('greenButtonQaScopedV2.ts'))return {greenButtonQaScopedV2Enabled:()=>false};
         if(name.endsWith('greenButtonQaWebhookProvisioning.ts'))return {
           applyOneGreenButtonQaWebhookProvisioning:async()=>{throw Error('No provider writes');}
