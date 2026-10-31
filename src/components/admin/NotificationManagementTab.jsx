@@ -33,6 +33,7 @@ export default function NotificationManagementTab() {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [manualTriggerTemplate, setManualTriggerTemplate] = useState(null);
+  const [buttonTemplateId, setButtonTemplateId] = useState('');
   const [section, setSection] = useState(() => typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('whatsappQueue') === 'review'
       ? 'whatsapp' : 'templates');
@@ -177,6 +178,7 @@ export default function NotificationManagementTab() {
             onDelete={(id) => deleteMutation.mutate(id)}
             onToggleActive={(id, is_active) => toggleActiveMutation.mutate({ id, is_active })}
             onManualTrigger={setManualTriggerTemplate}
+            onEditButtons={template=>{setButtonTemplateId(template.id);setSection('buttons');}}
           />
         </TabsContent>
 
@@ -201,7 +203,7 @@ export default function NotificationManagementTab() {
                 <WhatsAppLiveButtonSettings active={true}/>
               </div>
               <WhatsAppSupplierNoticeButtons active={true}/>
-              <WhatsAppTemplateButtonSettings templates={templates}/>
+              <WhatsAppTemplateButtonSettings templates={templates} focusTemplateId={buttonTemplateId}/>
               <p className="text-xs text-gray-600">
                 הכפתורים האפשריים כרגע מותאמים להודעות לספקים שנשלחות בפרטי דרך Green API.
                 כפתורים חדשים שמשנים מידע במערכת יופיעו לבחירה רק לאחר שתמומש עבורם פעולה מאובטחת.
