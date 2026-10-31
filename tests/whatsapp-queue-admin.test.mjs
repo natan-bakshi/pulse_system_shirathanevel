@@ -460,6 +460,39 @@ test('owner supplier-notice buttons save per-source URL options without enabling
  assert.equal((await foreign.invoke('supplierNavigationGet')).status,403);
  assert.equal((await foreign.invoke('supplierNavigationSave',{expectedVersion:1,sources})).status,403);
 });
+test('per-NotificationTemplate buttons save only after owner auth and real supplier WhatsApp template proof',async()=>{
+ const eligible={
+  id:'69817697d82b634ef3d7d4df',type:'SUPPLIER_EVENT_REMINDER',
+  allowed_channels:['whatsapp'],target_audiences:['supplier'],
+  trigger_type:'scheduled_check'
+ };
+ const ctx=context({templates:[eligible]});
+ const get=await ctx.invoke('supplierTemplateButtonsGet');
+ assert.equal(get.status,200);
+ assert.equal(get.body.setting.version,1);
+ assert.equal(get.body.setting.provider,'green');
+ const buttons={portal:false,office:true,portalLabel:'',officeLabel:'למשרד'};
+ const changed=await ctx.invoke('supplierTemplateButtonsSave',{
+  expectedVersion:1,templates:{[eligible.id]:buttons}
+ });
+ assert.equal(changed.status,200,JSON.stringify(changed.body));
+ assert.equal(changed.body.setting.version,2);
+ assert.equal(changed.body.setting.templates[eligible.id].officeLabel,'למשרד');
+ assert.equal(ctx.record.interactive_supplier_template_buttons_green_json.includes(eligible.id),true);
+ assert.equal(ctx.calls.length,0,'never kicks worker from owner config');
+ assert.equal((await ctx.invoke('supplierTemplateButtonsSave',{
+  expectedVersion:1,templates:{[eligible.id]:buttons}
+ })).status,409);
+ assert.equal((await ctx.invoke('supplierTemplateButtonsSave',{
+  expectedVersion:2,templates:{['69817697d82b634ef3d7d4e4']:buttons}
+ })).status,400);
+ const foreign=context({actor:{role:'admin',email:'other@example.com'},templates:[eligible]});
+ assert.equal((await foreign.invoke('supplierTemplateButtonsGet')).status,403);
+ assert.equal((await foreign.invoke('supplierTemplateButtonsSave',{
+  expectedVersion:1,templates:{[eligible.id]:buttons}
+ })).status,403);
+ assert.equal(foreign.record.interactive_supplier_template_buttons_green_json,undefined);
+});
 test('owner Green account change readiness uses only the explicit status action and never mutates queue',async()=>{
  const ctx=context();
  const original=JSON.stringify(ctx.record);
