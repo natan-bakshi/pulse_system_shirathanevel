@@ -10,7 +10,8 @@ import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {whatsappRevisionEligibility} from './supplierStatusPersistence.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
-import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
+import {isEventChangeReconfirmationOutbox,
+ checkEventChangeButtonCandidate,reconfirmationMatchesEvent} from './eventChangeReconfirmation.ts';
 import {type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
 
 const V2_KEY=/^assignment:[A-Za-z0-9_-]{3,100}:[A-Za-z0-9_-]{3,100}:r[1-9][0-9]{0,12}:SUPPLIER_NEW_ASSIGNMENT$/;
@@ -57,8 +58,17 @@ async function validateDefiniteRateLimitRetry(client:any,job:any,config:TrustedG
  if(!service||service.is_external===true||
   !supplierAssigned(service.supplier_ids,job.supplier_id))
   throw blocked('interactive_retry_assignment_removed');
- const revision=whatsappRevisionEligibility(service,job.supplier_id,job.assignment_revision);
- if(!revision.allowed)throw blocked(revision.reason);
+ if(isEventChangeReconfirmationOutbox(job)){
+  const candidate=await checkEventChangeButtonCandidate(service,job);
+  if(!candidate.allowed||candidate.revision!==job.assignment_revision)
+   throw blocked('interactive_retry_reconfirmation_stale');
+  const event=await db.Event?.get(service.event_id).catch(()=>null);
+  if(!reconfirmationMatchesEvent(service,event,true))
+   throw blocked('interactive_retry_event_changed');
+ }else{
+  const revision=whatsappRevisionEligibility(service,job.supplier_id,job.assignment_revision);
+  if(!revision.allowed)throw blocked(revision.reason);
+ }
  let statuses:any;
  try{statuses=JSON.parse(service.supplier_statuses||'{}');}catch{
   throw blocked('interactive_retry_status_corrupt');
