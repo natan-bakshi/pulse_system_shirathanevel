@@ -9,7 +9,7 @@ import { AppSettings } from "@/entities/AppSettings";
 import { Event } from "@/entities/Event";
 import { EventService } from "@/entities/EventService";
 import { Payment } from "@/entities/Payment";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,13 +17,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { X, Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste, Sparkles } from "lucide-react";
+import { Save, Plus, Trash2, Clock, Loader2, GripVertical, Copy, Check, ClipboardPaste, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import EventServicesManager from "./EventServicesManager";
 import PaymentManager from "./PaymentManager";
 import { calculateEventFinancials } from "@/components/utils/eventFinancials";
 import { getCurrencySymbol } from "@/components/utils/currencyUtils";
-import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QuoteTemplate } from "@/entities/QuoteTemplate";
 import OrganizerTypeSelector from "@/components/quotes/OrganizerTypeSelector";
@@ -687,7 +686,7 @@ for (const serviceItem of servicesForSave) {
         const existingService = servicesToDelete.splice(existingIndex, 1)[0];
         servicesToUpdate.push({ id: existingService.id, data, original:existingService });
     } else {
-        servicesToCreate.push(data);
+        servicesToCreate.push(withLegacySupplierReplyRevisions({supplier_ids:'[]',supplier_statuses:'{}'},data));
     }
 }
 
