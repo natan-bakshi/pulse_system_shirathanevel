@@ -105,7 +105,10 @@ Deno.serve(async (req) => {
 
             // Collect suppliers ONLY from affected services (those without supplier_arrival_time).
             // Suppliers in services with a fixed supplier_arrival_time are not impacted by the event time change.
-            const supplierIdsSet = new Set();
+            // One actionable update is bound to one exact EventService.
+            // A supplier covering two affected services must confirm each
+            // independently; unrelated services cannot be approved by a click.
+            const affectedAssignments = [];
             for (const service of services) {
                 if (!affectedServiceIds.has(service.id)) continue; // skip unaffected services
                 let sIds = [];
@@ -115,24 +118,14 @@ Deno.serve(async (req) => {
                         : (Array.isArray(service.supplier_ids) ? service.supplier_ids : []);
                 } catch (e) { sIds = []; }
                 if (Array.isArray(sIds)) {
-                    sIds.forEach(id => supplierIdsSet.add(id));
+                    sIds.forEach(supId => affectedAssignments.push({ supId, supService: service }));
                 }
             }
 
-            for (const supId of supplierIdsSet) {
+            for (const {supId, supService} of affectedAssignments) {
                 try {
                     const supplier = await base44.asServiceRole.entities.Supplier.get(supId);
                     if (!supplier) continue;
-
-                    // Find the service this supplier is assigned to (for service_name resolution)
-                    const supService = services.find(s => {
-                        try {
-                            const ids = typeof s.supplier_ids === 'string' 
-                                ? JSON.parse(s.supplier_ids || '[]') 
-                                : s.supplier_ids;
-                            return Array.isArray(ids) && ids.includes(supId);
-                        } catch (e) { return false; }
-                    });
 
                     let resolvedServiceName = '';
                     let supplierNote = '';
@@ -171,7 +164,9 @@ Deno.serve(async (req) => {
                     // WhatsApp - send via Green API
                     if (sendWhatsApp && supplier.whatsapp_enabled !== false && supplier.phone) {
                         await sendWhatsAppNotification(base44,supplier.phone,waMessage,{
-                            kind:'date_reconfirm',eventId:event.id,supplierId:supId,
+                            kind:'date_reconfirm',eventId:event.id,
+                            eventServiceId:supService.id,supplierId:supId,
+                            revision:reconfirmByService.get(supService.id),
                             templateId:template.id||template.type,
                             oldEventDate:event.previous_event_date||'',
                             oldEventTime:event.previous_event_time||'',
