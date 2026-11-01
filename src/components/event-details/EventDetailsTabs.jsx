@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
+import {useLocation} from 'react-router-dom';
 const EventClosingPanel = lazy(() => import("@/components/billing/EventClosingPanel"));
 const StoredCardPanel = lazy(() => import('@/components/billing/StoredCards'));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -74,15 +75,19 @@ export default function EventDetailsTabs(props) {
   } = props;
 
   const showTasksTab = isAdmin && tasksSystemEnabled;
-  const [tab,setTab]=useState(()=>{
-    const params=new URLSearchParams(window.location.search);
-    const requested=params.get("tab");
-    if(params.has("card"))return "financial";
-    if(["financial","payments"].includes(requested))return "financial";
-    if(["services","suppliers"].includes(requested))return "services";
-    if(requested==="tasks"&&isAdmin)return "tasks";
-    return "details";
-  });
+  const location=useLocation();
+  const tabFromLink=()=>{
+    const params=new URLSearchParams(location.search);
+    const requested=params.get('tab');
+    if(params.has('card'))return 'financial';
+    if(['financial','payments'].includes(requested))return 'financial';
+    if(['services','suppliers'].includes(requested))return 'services';
+    if(requested==='tasks'&&isAdmin)return 'tasks';
+    return 'details';
+  };
+  const [tab,setTab]=useState(tabFromLink);
+  // Also handle a smart-link navigation while EventDetails is already mounted.
+  useEffect(()=>{setTab(tabFromLink());},[location.search,isAdmin]);
   useEffect(()=>{const open=e=>{if(e.detail===event.id)setTab("financial");};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
 
   return (
