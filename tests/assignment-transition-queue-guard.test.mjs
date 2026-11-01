@@ -6,6 +6,8 @@ import esbuild from 'esbuild';
 import {assignmentTransitionWhatsAppKey} from '../base44/shared/assignmentTransitionWhatsApp.ts';
 import {planEventChangeReconfirmation,closeSupersededAssignmentIntents}
  from '../base44/shared/eventChangeReconfirmation.ts';
+import {parseSupplierEventChange,supplierEventAffectedService,eventChangeFingerprint,eventInformationNoticeKey}
+ from '../base44/shared/supplierEventChange.ts';
 
 function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',actor={role:'admin'}}={}){
  const event={id:'event-demo',event_date:'2026-11-21',event_time:'11:00',
@@ -57,6 +59,11 @@ function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',ac
    if(name.endsWith('eventChangeReconfirmation.ts'))return {
     planEventChangeReconfirmation,closeSupersededAssignmentIntents
    };
+   if(name.endsWith('supplierEventChange.ts'))return {
+    parseSupplierEventChange,supplierEventAffectedService,eventChangeFingerprint,eventInformationNoticeKey
+   };
+   if(name.endsWith('whatsappSend.ts'))return {sendWhatsAppText:async()=>({success:true,status:'queued',jobId:'notice-only-stub'})};
+   if(name.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed:()=>true};
    if(name.endsWith('assignmentTransitionWhatsApp.ts'))return {
     enqueueAssignmentTransitionWhatsApp:async(_client,phone,_message,identity,sourceType)=>{
       const key=await assignmentTransitionWhatsAppKey(identity);
