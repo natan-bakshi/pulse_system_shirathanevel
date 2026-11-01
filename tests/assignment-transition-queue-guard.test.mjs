@@ -47,7 +47,7 @@ function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',ac
  vm.runInNewContext(code,{
   exports:{},module:{exports:{}},Deno:{serve:fn=>handler=fn},
   Response:{json:(body,{status=200}={})=>({body,status})},
-  console:{log:()=>{},warn:()=>{},error:()=>{}},
+  console,
   require:name=>{
    if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
    if(name.endsWith('eventFields.js'))return {getClientContacts:()=>[]};
