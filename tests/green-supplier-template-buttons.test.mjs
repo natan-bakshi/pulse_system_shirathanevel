@@ -222,10 +222,10 @@ test('producer attribution is additive, real source IDs and idempotency keys unc
  assert.match(pending,/notificationTemplateId:pendingData.notification_template_id\|\|''/);
 });
 test('owner editor is connected to real template inventory, with inherited default and no custom URLs',()=>{
- const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppTemplateButtonSettings.jsx','utf8');
+ const ui=fs.readFileSync('src/components/admin/notifications/WhatsAppTemplateButtonsTab.jsx','utf8');
  const parent=fs.readFileSync('src/components/admin/NotificationManagementTab.jsx','utf8');
  const api=fs.readFileSync('base44/functions/WhatsAppQueueAdmin/entry.ts','utf8');
- assert.match(parent,/<WhatsAppTemplateButtonSettings templates=\{templates\} focusTemplateId=\{buttonTemplateId\}/);
+ assert.match(parent,/onEditButtons=\{template=>handleEdit\(template,'buttons'\)\}/);
  assert.match(ui,/action:'supplierTemplateButtonsGet'/);
  assert.match(ui,/action:'supplierTemplateButtonsSave'/);
  assert.match(ui,/expectedVersion:stored.version/);
