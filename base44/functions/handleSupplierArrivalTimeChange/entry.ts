@@ -152,7 +152,8 @@ Deno.serve(async (req) => {
                                 eventId:event.id,eventServiceId:eventService.id,supplierId:supId,
                                 templateId:template.id||template.type,
                                 eventDate:event.event_date,eventTime:event.event_time,
-                                supplierArrivalTime:eventService.supplier_arrival_time||''
+                                supplierArrivalTime:eventService.supplier_arrival_time||'',
+                                revision:reconfirm.revision
                             });
                             confirmedWhatsApp++;
                         }
