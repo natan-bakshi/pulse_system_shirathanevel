@@ -8,6 +8,7 @@ import { planEventChangeReconfirmation,closeSupersededAssignmentIntents } from '
 import {parseSupplierEventChange,supplierEventAffectedService,eventChangeFingerprint,eventInformationNoticeKey} from '../../shared/supplierEventChange.ts';
 import {sendWhatsAppText} from '../../shared/whatsappSend.ts';
 import {isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
+import {withLegacySupplierReplyRevisions} from '../../shared/legacySupplierReplyRevisions.ts';
 import {readWhatsAppQueueControl} from '../../shared/whatsappOutbox.ts';
 import {resolveWhatsAppProvider} from '../../shared/whatsappProviderConfig.ts';
 
@@ -104,11 +105,12 @@ Deno.serve(async (req) => {
                     event.event_date || '', event.event_time || '', changeSignature
                 ])
             });
-            await base44.asServiceRole.entities.EventService.update(service.id, {
-                supplier_statuses: JSON.stringify(newStatuses),
-                supplier_reconfirmation_context: reconfirm.value,
-                ...closeSupersededAssignmentIntents(service,supplierIds)
-            });
+            await base44.asServiceRole.entities.EventService.update(service.id,
+                withLegacySupplierReplyRevisions(service,{
+                    supplier_statuses: JSON.stringify(newStatuses),
+                    supplier_reconfirmation_context: reconfirm.value,
+                    ...closeSupersededAssignmentIntents(service,supplierIds)
+                }));
             reconfirmByService.set(service.id, reconfirm.revision);
         }
 
