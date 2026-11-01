@@ -3,10 +3,23 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import FieldLabel from "../FieldLabel";
 import { AUDIENCES, PAGES_BY_ROLE } from "../constants";
+import {notificationLinkPreset} from "@/lib/notificationLinkPresets";
 
 // טאב 5: קישורים מתקדמים - Deep Link וכו'
 export default function AdvancedLinksTab({ template, onChange }) {
   const update = (field, value) => onChange({ ...template, [field]: value });
+  const chooseSmartLink=(type)=>{
+    if(type==='none'){
+      update('dynamic_url_type','none');
+      return;
+    }
+    const preset=notificationLinkPreset(type,template.target_audiences);
+    if(!preset)return;
+    // Also populate legacy deep-link fields: scheduled notifications use them,
+    // while createNotificationCore uses dynamic_url_type. Both routes agree.
+    onChange({...template,dynamic_url_type:type,...preset});
+  };
+  const hasSmartRole=!!notificationLinkPreset('event_page',template?.target_audiences);
 
   // Get relevant pages based on selected audiences
   const getRelevantPages = () => {
@@ -60,20 +73,26 @@ export default function AdvancedLinksTab({ template, onChange }) {
         />
         <Select 
           value={template.dynamic_url_type || 'none'} 
-          onValueChange={(v) => update('dynamic_url_type', v)}
+          onValueChange={chooseSmartLink}
         >
           <SelectTrigger className="mt-1">
             <SelectValue placeholder="בחר סוג קישור" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">ללא / ידני</SelectItem>
-            <SelectItem value="event_page">כרטיסיית אירוע</SelectItem>
-            <SelectItem value="payment_page">דף תשלומים</SelectItem>
-            <SelectItem value="assignment_page">דף שיבוצים/ספק</SelectItem>
-            <SelectItem value="calendar_page">לוח אירועים</SelectItem>
+            <SelectItem value="event_page" disabled={!hasSmartRole}>כרטיסיית אירוע</SelectItem>
+            <SelectItem value="payment_page" disabled={!notificationLinkPreset("payment_page",template?.target_audiences)}>דף תשלומים</SelectItem>
+            <SelectItem value="assignment_page" disabled={!notificationLinkPreset("assignment_page",template?.target_audiences)}>דף שיבוצים/ספק</SelectItem>
+            <SelectItem value="calendar_page" disabled={!notificationLinkPreset("calendar_page",template?.target_audiences)}>לוח אירועים</SelectItem>
             <SelectItem value="settings_page">הגדרות</SelectItem>
           </SelectContent>
         </Select>
+        <p className="text-xs text-gray-500 mt-1">
+          הקישור נפתח רק לפי הרשאות הנמען. כדי למפות דף אירוע או תשלום נכון,
+          בחר קהל יעד אחד בתנאים וקהלים. אם התבנית מיועדת למספר סוגי נמענים,
+          אין לבחור יעד עסקי משותף שעלול להפנות לדף לא נכון.
+          כפתורי WhatsApp מותאמים מוגדרים בלשונית כפתורים.
+        </p>
       </div>
       
       {(!template.dynamic_url_type || template.dynamic_url_type === 'none') && (
@@ -87,7 +106,10 @@ export default function AdvancedLinksTab({ template, onChange }) {
           </div>
           <Select 
             value={template.deep_link_base || ''} 
-            onValueChange={(v) => update('deep_link_base', v)}
+            onValueChange={(v) => onChange({...template,deep_link_base:v,
+            deep_link_params_map:/^(EventDetails|SupplierEventView)(\?|$)/.test(v)&&
+              !template.deep_link_params_map?JSON.stringify({id:'{{event_id}}'}):
+              template.deep_link_params_map})}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="בחר דף" />
