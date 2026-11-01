@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertTriangle, UserCheck, UserX, MinusCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, UserCheck, UserX, MinusCircle, Bell } from 'lucide-react';
 import { confirmReassignAfterDateChange } from '@/functions/confirmReassignAfterDateChange';
 import { cancelAssignmentsAfterDateChange } from '@/functions/cancelAssignmentsAfterDateChange';
 import { clearDateChangePendingAction } from '@/functions/clearDateChangePendingAction';
@@ -15,18 +15,35 @@ import { toast } from 'sonner';
  *  - Do nothing (just clear the flag, change is internal-only)
  */
 export default function DateChangeDecisionDialog({ open, event, onResolved }) {
-  const [loadingAction, setLoadingAction] = useState(null); // 'reassign' | 'cancel' | 'nothing' | null
+  const [loadingAction, setLoadingAction] = useState(null); // 'reassign' | 'notice' | 'cancel' | 'nothing' | null
+  let changeContext = null;
+  try { changeContext = JSON.parse(event?.supplier_event_change_context || 'null'); } catch {}
 
   const handleReassign = async () => {
     if (!event?.id) return;
     setLoadingAction('reassign');
     try {
-      await confirmReassignAfterDateChange({ event_id: event.id });
+      await confirmReassignAfterDateChange({ event_id: event.id, mode: 'notify_reset' });
       toast.success('השיבוצים עודכנו; הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה.');
       onResolved?.();
     } catch (error) {
       console.error('Reassign failed:', error);
       toast.error('שגיאה בשיבוץ מחדש: ' + (error.message || 'נסה שוב'));
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleNoticeOnly = async () => {
+    if (!event?.id) return;
+    setLoadingAction('notice');
+    try {
+      await confirmReassignAfterDateChange({event_id:event.id,mode:'notify_no_reset'});
+      toast.success('הודעת עדכון עם ״קיבלתי״ נשמרה בתור. סטטוס הספקים לא אופס.');
+      onResolved?.();
+    } catch (error) {
+      console.error('Notice-only send failed:', error);
+      toast.error('העדכון נכשל: ' + (error.message || 'נסה שוב'));
     } finally {
       setLoadingAction(null);
     }
@@ -70,11 +87,11 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-amber-700">
             <AlertTriangle className="h-5 w-5" />
-            תאריך האירוע השתנה
+            פרטי האירוע השתנו
           </DialogTitle>
           <DialogDescription className="text-right pt-2 space-y-2">
             <div>
-              תאריך/שעת האירוע <strong>{event?.event_name}</strong> שונו.
+              פרטי האירוע <strong>{event?.event_name}</strong> עודכנו.
             </div>
             {event?.previous_event_date && (
               <div className="text-sm">
@@ -83,6 +100,16 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
                 <span className="mx-2">←</span>
                 <span className="text-gray-500">חדש:</span> {event?.event_date}
                 {event?.event_time && ` ${event.event_time}`}
+              </div>
+            )}
+            {Array.isArray(changeContext?.fields) && changeContext.fields.some(field => ['location', 'concept'].includes(field)) && (
+              <div className="text-sm">
+                {changeContext.fields.filter(field => ['location', 'concept'].includes(field)).map(field => (
+                  <div key={field}>
+                    <strong>{field === 'location' ? 'מיקום' : 'קונספט'}:</strong>{' '}
+                    {changeContext.before?.[field] || '(ריק)'} ← {changeContext.after?.[field] || '(ריק)'}
+                  </div>
+                ))}
               </div>
             )}
             <div className="pt-2">
@@ -103,8 +130,21 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
               <UserCheck className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">שלח עדכון לספקים</div>
-              <div className="text-xs opacity-90 font-normal">תישלח התראת עדכון רק לספקים ללא שעת התייצבות ייעודית. הסטטוס שלהם יחזור ל"ממתין".</div>
+              <div className="font-semibold">שלח עדכון ואפס אישורי שיבוץ</div>
+              <div className="text-xs opacity-90 font-normal">עדכון עם כפתורי אישור/דחייה, ואישור הספקים הרלוונטיים חוזר לממתין.</div>
+            </div>
+          </Button>
+
+          <Button
+            onClick={handleNoticeOnly}
+            disabled={isLoading}
+            variant="outline"
+            className="justify-start h-auto py-3 border-blue-300 text-blue-800"
+          >
+            {loadingAction === 'notice' ? <Loader2 className="h-5 w-5 ml-3 animate-spin" /> : <Bell className="h-5 w-5 ml-3" />}
+            <div className="text-right">
+              <div className="font-semibold">שלח עדכון בלי לאפס אישורים</div>
+              <div className="text-xs font-normal">הודעה עם ״קיבלתי״ בלבד; סטטוסי הספקים לא ישתנו.</div>
             </div>
           </Button>
 
@@ -138,7 +178,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
             )}
             <div className="text-right">
               <div className="font-semibold">לא לעשות דבר</div>
-              <div className="text-xs text-gray-600 font-normal">השינוי נשמר במערכת בלבד. הספקים לא יקבלו התראה והשיבוצים יישארו כפי שהם.</div>
+              <div className="text-xs text-gray-600 font-normal">בלי הודעה ובלי שינוי בסטטוסי הספקים.</div>
             </div>
           </Button>
         </div>
