@@ -21,19 +21,21 @@ export function supplierIsActivelyAssigned(row:any,supplierId:string):boolean{
  let ids:any,statuses:any;
  try{
   ids=typeof row.supplier_ids==='string'?JSON.parse(row.supplier_ids):row.supplier_ids;
-  statuses=typeof row.supplier_statuses==='string'?JSON.parse(row.supplier_statuses):
-   row.supplier_statuses;
+  statuses=typeof row.supplier_statuses==='string'?JSON.parse(row.supplier_statuses||'{}'):
+   (row.supplier_statuses??{});
  }catch{return false;}
  if(!Array.isArray(ids)||!ids.includes(supplierId)||
   !statuses||typeof statuses!=='object'||Array.isArray(statuses))return false;
  // Suppliers who rejected or whose assignment was cancelled lose link access.
- return ['pending','approved','confirmed'].includes(statuses[supplierId]);
+ // Membership with no explicit status is a pending legacy assignment;
+ // malformed records and non-members still fail closed above.
+ return ['pending','approved','confirmed'].includes(statuses[supplierId]??'pending');
 }
 function assignedStatus(row:any,supplierId:string):string{
  try{
-  const statuses=typeof row.supplier_statuses==='string'?JSON.parse(row.supplier_statuses):
-   row.supplier_statuses;
-  return String(statuses?.[supplierId]||'');
+  const statuses=typeof row.supplier_statuses==='string'?JSON.parse(row.supplier_statuses||'{}'):
+   (row.supplier_statuses??{});
+  return String(statuses?.[supplierId]??'pending');
  }catch{return '';}
 }
 export function allowedSupplierEventView(event:any,services:any[],supplierId:string){
