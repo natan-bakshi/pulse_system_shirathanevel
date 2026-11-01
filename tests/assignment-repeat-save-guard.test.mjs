@@ -47,6 +47,7 @@ function fixture(){
      if(name.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(name.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
      if(name.endsWith('eventChangeReconfirmation.ts'))return {isEventChangeStatusReset};
+     if(name.endsWith('supplierEventChange.ts'))return {detectSupplierEventChanges:()=>[],supplierEventChangeSnapshot:()=>({version:1,fields:[],before:{},after:{}})};
      if(name.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,interactive_assignment_production_enabled:false})};
      if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
      if(name.endsWith('supplierPortalLink.ts'))return {
