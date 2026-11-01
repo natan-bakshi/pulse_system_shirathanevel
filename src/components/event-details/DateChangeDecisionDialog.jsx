@@ -83,7 +83,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
 
   return (
     <Dialog open={open} onOpenChange={() => { /* prevent dismiss - admin must choose */ }}>
-      <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-amber-700">
             <AlertTriangle className="h-5 w-5" />
@@ -93,7 +93,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
             <div>
               פרטי האירוע <strong>{event?.event_name}</strong> עודכנו.
             </div>
-            {event?.previous_event_date && (
+            {(Array.isArray(changeContext?.fields) ? changeContext.fields.some(field => ['event_date', 'event_time'].includes(field)) : event?.previous_event_date) && (
               <div className="text-sm">
                 <span className="text-gray-500">תאריך קודם:</span> {event.previous_event_date}
                 {event?.previous_event_time && ` ${event.previous_event_time}`}
