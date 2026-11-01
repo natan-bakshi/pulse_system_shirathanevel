@@ -12,5 +12,8 @@ export const STAGED_V2_WHATSAPP_ACTIONS=createInteractiveActionRegistry([
    {action:'reminder_acknowledge',delivery:'reply',handler:'notification_ack'},
    {action:'open_supplier_portal',delivery:'url',handler:'not_implemented'},
    {action:'contact_office',delivery:'url',handler:'office_link'}
-  ]}
+  ]},
+ {messageKind:'supplier_event_update',sourceType:'event_update',
+  resourceType:'outbox_message',audience:'supplier',maxButtons:1,
+  actions:[{action:'event_update_acknowledge',delivery:'reply',handler:'notification_ack'}]}
 ]);
