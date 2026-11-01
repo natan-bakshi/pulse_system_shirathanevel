@@ -32,7 +32,7 @@ Do NOT blindly change these RLS reads to admin-only; existing client/supplier da
 - Keep owner settings, provider credentials, queue and immutable snapshots unchanged through this migration.
 
 ## QA, launch gates and follow-up
-- Automated tests for signed-in/unauthorized supplier, foreign/rejected assignment, spoofable phone, private-field redaction, role-specific smart link targets, nested query strings, per-template UI, pending EventService vs Event identity and old queue compatibility.
+- 2026-11-01 CODE/TEST: 1,059/1,059 Node regression tests passed, Vite build succeeded, changed backend TypeScript and frontend JSX parsed, targeted ESLint clean and git diff check clean. Includes signed-in/unauthorized supplier, foreign/rejected assignment, spoofable phone, client contact opt-out, private-field redaction, role-specific smart link targets, nested query strings, per-template UI, pending EventService vs Event identity and old queue compatibility.
 - Green-native button device acceptance and production delivery remain unverified until an appropriate real notification is observed; no extra live message was sent for testing.
 - Existing 'קיבלתי' reply is still controlled by its original owner-operated toggle, not auto-enabled.
 - Next: P0 direct-entity read migration/RLS; then reply actions and quote/tag compatibility with Green; then queue latency/UNKNOWN troubleshooting per original plan.
