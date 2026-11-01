@@ -60,6 +60,26 @@ test('mocked Green beta transport performs ONE HTTP POST with frozen short butto
  assert.equal(JSON.stringify(body).includes(signingSecret),false);
  assert.equal(JSON.stringify(body).includes('actionToken'),false);
 });
+test('signed reconfirmation update uses one interactive Green transport, never text fallback',async()=>{
+ const {job,preview}=await prepared();
+ job.source_type='assignment_update';
+ job.idempotency_key='assignment-transition-v1:date_reconfirm:'+'a'.repeat(64);
+ const sent=[];
+ globalThis.fetch=async(url,options)=>{
+  sent.push({url,body:JSON.parse(options.body)});
+  return {ok:true,status:200,json:async()=>({idMessage:'3EB0SIGNED_CHANGE_TEST'})};
+ };
+ const receipt=await sendWhatsAppTransport(job,'green',{},preview);
+ assert.equal(receipt.messageId,'3EB0SIGNED_CHANGE_TEST');
+ assert.equal(sent.length,1);
+ assert.match(sent[0].url,/sendInteractiveButtonsReply/);
+ assert.deepEqual(sent[0].body.buttons.map(x=>x.buttonText),['מאשר','דוחה']);
+ sent.length=0;
+ const forged={...job,idempotency_key:'unrelated-message'};
+ await assert.rejects(sendWhatsAppTransport(forged,'green',{},preview),
+  /Invalid interactive WhatsApp transport preview/);
+ assert.equal(sent.length,0);
+});
 test('ONE marked QA button send uses instance Green URL while normal text remains on historic endpoint',async()=>{
  const {job,preview}=await prepared('mixed_url');
  greenTestEnv.GREEN_API_URL='https://7201.api.green-api.com';
