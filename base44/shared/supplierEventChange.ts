@@ -61,6 +61,19 @@ export function eventChangeFingerprint(context:any):string{
   field,c.before[field],c.after[field]
  ]));
 }
+export async function eventInformationNoticeKey(input:{
+ eventId:string;serviceId:string;supplierId:string;templateId:string;
+ changeFingerprint:string
+}):Promise<string>{
+ const parts=[input.eventId,input.serviceId,input.supplierId,
+  input.templateId,input.changeFingerprint];
+ if(parts.some(s=>typeof s!=='string'||s.length<3||s.length>2200))
+  throw Error('Invalid supplier event update identity');
+ const bytes=new TextEncoder().encode(JSON.stringify(['supplier-event-info-v1',...parts]));
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+ return 'supplier-event-info-v1:'+Array.from(new Uint8Array(digest),
+  x=>x.toString(16).padStart(2,'0')).join('');
+}
 export function eventChangePending(event:any):boolean{
  return event?.date_change_pending_action===true;
 }
