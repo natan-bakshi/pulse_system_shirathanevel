@@ -57,12 +57,14 @@ export default function ContactPicker({
     try {
       // Invoke the native picker first, before any UI state reporting; it must
       // retain the browser's transient user activation on Android Chrome.
-      const selectionPromise = selectDeviceContact(contactApi, availableFields);
+      // Explicit checkbox selection on Android avoids ambiguous single-tap flows
+      // that may finish with an empty result after the contact detail is viewed.
+      const selectionPromise = selectDeviceContact(contactApi, availableFields, { multiple: true });
       report('info', 'פותח בחירת איש קשר…');
       const selected = await selectionPromise;
       if (!selected) {
         setFallbackVisible(true);
-        report('error', 'לא התקבלו פרטי איש קשר. אם אישרת בחירה, נסה לייבא קובץ VCF בכפתור שליד.');
+        report('error', 'הטלפון לא העביר איש קשר. נסה שוב: סמן ✓ ליד איש קשר אחד ברשימה ואז לחץ אישור או שיתוף. אם עדיין לא עובד, אפשר לייבא קובץ VCF.');
         return;
       }
       onContactSelect(selected);
@@ -72,6 +74,8 @@ export default function ContactPicker({
       console.error('Failed to import phone contact:', error?.name, error?.message);
       if (error?.name === 'AbortError') {
         report('info', 'בחירת איש הקשר בוטלה, ולא שונו שדות.');
+      } else if (error?.name === 'MultipleContactsError') {
+        report('error', 'סומנו כמה אנשי קשר. נסה שוב וסמן ✓ ליד איש קשר אחד בלבד, ואז לחץ אישור.');
       } else {
         setFallbackVisible(true);
         report('error', error?.name === 'SecurityError' || error?.name === 'NotAllowedError'
@@ -113,8 +117,8 @@ export default function ContactPicker({
         size="sm"
         onClick={handlePickContact}
         disabled={disabled || busy}
-        aria-label="בחר איש קשר מהטלפון"
-        title={nativeSupported ? 'בחר איש קשר מהטלפון' : 'בדפדפן זה יש לייבא קובץ איש קשר'}
+        aria-label="בחר איש קשר מהטלפון באמצעות סימון ואישור"
+        title={nativeSupported ? 'בחר איש קשר אחד, סמן ✓ ליד שמו ולחץ אישור' : 'בדפדפן זה יש לייבא קובץ איש קשר'}
         className={className}
       >
         <Contact className="h-4 w-4" />
