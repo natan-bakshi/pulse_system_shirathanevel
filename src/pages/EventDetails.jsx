@@ -2275,14 +2275,31 @@ function EventDetailsBody() {
 // Serve only the scoped supplier projection, verified again by the server.
 export default function EventDetails(){
  const location=useLocation();
+ const eventId=new URLSearchParams(location.search).get('id')||'';
  const {data:user,isLoading}=useQuery({
   queryKey:['currentUser'],queryFn:()=>base44.auth.me(),retry:false
  });
+ const isClient=!!user&&user.role!=='admin'&&user.user_type==='client';
+ const {data:clientAllowed,isLoading:checkingClient}=useQuery({
+  queryKey:['eventLinkAccess',eventId,user?.id],
+  enabled:isClient&&/^[A-Za-z0-9_-]{3,100}$/.test(eventId),
+  retry:false,staleTime:15000,
+  queryFn:async()=>{
+   try{
+    const response=await base44.functions.invoke('eventLinkAccess',{eventId});
+    return response.data?.allowed===true;
+   }catch{return false;}
+  }
+ });
  if(isLoading)return <div role="status" className="p-8 text-white">מאמת הרשאות…</div>;
  if(!user)return <div role="alert" className="p-8 text-white">נדרשת התחברות כדי לצפות באירוע.</div>;
- if(user.role!=='admin'&&user.user_type==='supplier'){
-  const id=new URLSearchParams(location.search).get('id')||'';
-  return <Navigate replace to={'/SupplierEventView?id='+encodeURIComponent(id)}/>;
- }
+ if(user.role!=='admin'&&user.user_type==='supplier')
+  return <Navigate replace to={'/SupplierEventView?id='+encodeURIComponent(eventId)}/>;
+ if(user.role!=='admin'&&user.user_type!=='client')
+  return <div role="alert" className="p-8 text-white">אין הרשאה לצפות באירוע.</div>;
+ if(isClient&&(checkingClient||clientAllowed===undefined&&!!eventId))
+  return <div role="status" className="p-8 text-white">בודקים הרשאה לאירוע…</div>;
+ if(isClient&&clientAllowed!==true)
+  return <div role="alert" className="p-8 text-white">האירוע אינו זמין בחשבונך.</div>;
  return <EventDetailsBody/>;
 }
