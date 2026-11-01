@@ -79,6 +79,14 @@ export function eligibleEventChangeReconfirmation(service:any,sourceType:string,
  }catch{return false;}
 }
 export function eventChangeSourceType(kind:Kind):string{return SOURCES[kind];}
+// Distinguish the existing arrival cancellation messages from an actionable
+// change notice BEFORE worker preparation. Never arm buttons for cancellation.
+export function isEventChangeReconfirmationOutbox(job:any):boolean{
+ const kind=job?.source_type==='assignment_update'?'date_reconfirm':
+   job?.source_type==='arrival_time_change'?'arrival_notify':null;
+ return !!kind&&typeof job.idempotency_key==='string'&&
+  new RegExp('^assignment-transition-v1:'+kind+':[0-9a-f]{64}$').test(job.idempotency_key);
+}
 
 // A reconfirmation outbox is signed ONLY if its deterministic transition
 // identity matches the server's still-current choice and exact supplier.
