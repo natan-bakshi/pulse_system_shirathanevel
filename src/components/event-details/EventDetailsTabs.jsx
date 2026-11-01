@@ -74,7 +74,15 @@ export default function EventDetailsTabs(props) {
   } = props;
 
   const showTasksTab = isAdmin && tasksSystemEnabled;
-  const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("card")?"financial":"details");
+  const [tab,setTab]=useState(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const requested=params.get("tab");
+    if(params.has("card"))return "financial";
+    if(["financial","payments"].includes(requested))return "financial";
+    if(["services","suppliers"].includes(requested))return "services";
+    if(requested==="tasks"&&isAdmin)return "tasks";
+    return "details";
+  });
   useEffect(()=>{const open=e=>{if(e.detail===event.id)setTab("financial");};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
 
   return (
