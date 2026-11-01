@@ -5,7 +5,7 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
-import { planEventChangeReconfirmation } from '../../shared/eventChangeReconfirmation.ts';
+import { planEventChangeReconfirmation,closeSupersededAssignmentIntents } from '../../shared/eventChangeReconfirmation.ts';
 
 /**
  * Handles a change to supplier_arrival_time on a specific EventService.
@@ -117,7 +117,8 @@ Deno.serve(async (req) => {
             });
             await base44.asServiceRole.entities.EventService.update(event_service_id, {
                 supplier_statuses: JSON.stringify(supplierStatuses),
-                supplier_reconfirmation_context: reconfirm.value
+                supplier_reconfirmation_context: reconfirm.value,
+                ...closeSupersededAssignmentIntents(eventService,supplierIds)
             });
             await recalculateEventStatus(base44.asServiceRole, eventService.event_id);
 
