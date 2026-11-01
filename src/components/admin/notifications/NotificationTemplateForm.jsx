@@ -54,6 +54,13 @@ export default function NotificationTemplateForm({
     onOpenChange(next);
   };
   const saveForm=async()=>{
+    // Keep the existing required-field validation BEFORE the separate
+    // per-template buttons CAS, avoiding partially saved invalid templates.
+    if(!template?.type||!template?.name||!template?.title_template){
+      toast.error('נא למלא תחילה קוד זיהוי, שם וכותרת לתבנית');
+      setActiveTab('basic');
+      return;
+    }
     if(buttonsRef.current?.hasPendingChanges()){
       setSavingButtons(true);
       try{
