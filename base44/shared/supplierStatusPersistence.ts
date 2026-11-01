@@ -7,8 +7,7 @@
 import {supplierAssigned,supplierTransition} from './whatsappSupplierTransition.ts';
 import {readAssignmentIntents,ASSIGNMENT_INTENT_MODE} from './assignmentIntent.ts';
 import {legacyAssignmentRevisionEligibility} from './legacyAssignmentButtonScope.ts';
-import {eligibleEventChangeReconfirmation,reconfirmationMatchesEvent,
- isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
+import {eligibleEventChangeReconfirmation,reconfirmationMatchesEvent} from './eventChangeReconfirmation.ts';
 
 export type SupplierStatusSource='dashboard'|'whatsapp'|'admin';
 type SupplierStatus='pending'|'confirmed'|'rejected';
