@@ -8,6 +8,8 @@ import { planEventChangeReconfirmation,closeSupersededAssignmentIntents } from '
 import {parseSupplierEventChange,supplierEventAffectedService,eventChangeFingerprint,eventInformationNoticeKey} from '../../shared/supplierEventChange.ts';
 import {sendWhatsAppText} from '../../shared/whatsappSend.ts';
 import {isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
+import {readWhatsAppQueueControl} from '../../shared/whatsappOutbox.ts';
+import {resolveWhatsAppProvider} from '../../shared/whatsappProviderConfig.ts';
 
 /**
  * Called when admin confirms to reassign the same suppliers to an event after a date change.
@@ -51,6 +53,17 @@ Deno.serve(async (req) => {
         // Services with supplier_arrival_time have a fixed supplier time that is unaffected by event time changes,
         // so their suppliers should not be re-pending and should not receive an update notification.
         const services = await base44.asServiceRole.entities.EventService.filter({ event_id });
+        // No business mutation or first Outbox item before checking the
+        // real interactive provider gate: the manager requested buttons.
+        const control=await readWhatsAppQueueControl(base44);
+        if(control.enabled!==true||control.paused===true||
+           control.interactive_outbound_live_enabled!==true||
+           control.interactive_assignment_production_enabled!==true||
+           (await resolveWhatsAppProvider(base44))!=='green'){
+            return Response.json({
+                error:'Interactive Green WhatsApp is unavailable. Supplier confirmations and notices were not changed.'
+            },{status:409});
+        }
         const affectedServiceIds = new Set(); // services whose suppliers are affected by the date/time change
         const reconfirmByService = new Map(); // revision frozen with each status reset
         for (const service of services) {
