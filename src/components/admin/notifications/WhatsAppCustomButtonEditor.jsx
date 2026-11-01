@@ -31,9 +31,8 @@ export const newCustomSupplierButtons=()=>({
  replyLabel:''
 });
 function canSmartEvent(template){
- return template?.type==='SUPPLIER_EVENT_REMINDER'||
-  (template?.type!=='SUPPLIER_PENDING_REMINDER'&&
-   template?.trigger_type==='scheduled_check');
+ return ['SUPPLIER_EVENT_REMINDER','SUPPLIER_PENDING_REMINDER'].includes(template?.type)||
+  template?.trigger_type==='scheduled_check';
 }
 export default function WhatsAppCustomButtonEditor({
  value,onChange,template,busy=false
