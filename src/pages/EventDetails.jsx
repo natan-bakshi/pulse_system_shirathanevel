@@ -774,7 +774,9 @@ function EventDetailsBody() {
       });
       
       for (const service of editableServices) {
-        await base44.entities.EventService.update(service.id, service);
+        const {supplier_assignment_reply_revisions: _existingReplyVersions,...edit} = service;
+        await base44.entities.EventService.update(service.id,
+          withLegacySupplierReplyRevisions(eventServices.find(s=>s.id===service.id),edit));
       }
       
       setEditingSection(null);
@@ -786,7 +788,7 @@ function EventDetailsBody() {
     } finally {
       setIsSavingServices(false);
     }
-  }, [eventId, allInclusiveData, editableServices, loadEventData]);
+  }, [eventId, allInclusiveData, editableServices, eventServices, loadEventData]);
 
   const handleUploadReceipt = useCallback(async (e) => {
     const file = e.target.files?.[0];
