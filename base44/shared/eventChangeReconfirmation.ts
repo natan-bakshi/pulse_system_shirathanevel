@@ -131,9 +131,10 @@ export async function checkEventChangeButtonCandidate(service:any,job:any){
   eventServiceId:service.id,supplierId:job.supplier_id,
   templateId:job.notification_template_id,revision:marker.revision};
  if(marker.kind==='date_reconfirm'){
-  if(parts.length!==4)return refused('reconfirmation_fingerprint_invalid');
+  if(![4,5].includes(parts.length))return refused('reconfirmation_fingerprint_invalid');
   identity={...identity,oldEventDate:parts[0],oldEventTime:parts[1],
-   eventDate:parts[2],eventTime:parts[3]};
+   eventDate:parts[2],eventTime:parts[3],
+   ...(parts.length===5?{changeFingerprint:parts[4]}:{})};
  }else{
   if(parts.length!==3||String(service.supplier_arrival_time||'')!==parts[0])
    return refused('reconfirmation_arrival_changed');
@@ -150,9 +151,20 @@ export function reconfirmationMatchesEvent(service:any,event:any,requireResolved
  let p:any;
  try{p=JSON.parse(marker.fingerprint);}catch{return false;}
  if(!Array.isArray(p))return false;
- if(marker.kind==='date_reconfirm')return p.length===4&&
-  event.event_date===p[2]&&(event.event_time||'')===p[3]&&
-  (!requireResolved||event.date_change_pending_action!==true);
+ if(marker.kind==='date_reconfirm'){
+  if(![4,5].includes(p.length)||event.event_date!==p[2]||
+   (event.event_time||'')!==p[3]||
+   (requireResolved&&event.date_change_pending_action===true))return false;
+  if(p.length===5){
+   let details:any;
+   try{details=JSON.parse(p[4]);}catch{return false;}
+   if(!Array.isArray(details)||details.length<1||
+    details.some((row:any)=>!Array.isArray(row)||row.length!==3||
+      typeof row[0]!=='string'||typeof row[2]!=='string'||
+      String(event[row[0]]??'')!==row[2]))return false;
+  }
+  return true;
+ }
  return p.length===3&&service.supplier_arrival_time===p[0]&&
   event.event_date===p[1]&&(event.event_time||'')===p[2];
 }
