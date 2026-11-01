@@ -237,6 +237,17 @@ export default function SupplierManagement() {
   
   const handleSaveSupplier = useCallback(async () => {
     if (isSaving) return;
+    // A failed contact import must not silently create a supplier with empty
+    // contact details. Manually entering a phone or email still works.
+    if (contactImportFeedback?.kind === 'error' &&
+        !String(formData.phone || '').trim() &&
+        !String(formData.contact_emails || '').trim()) {
+      setContactImportFeedback({
+        kind: 'error',
+        message: 'פרטי איש הקשר לא נקלטו. כדי למנוע יצירת ספק בלי פרטי קשר, יש להזין טלפון/מייל או לנסות ייבוא VCF לפני השמירה.'
+      });
+      return;
+    }
     setIsSaving(true);
     try {
       const dataToSave = {
@@ -256,13 +267,18 @@ export default function SupplierManagement() {
         await base44.entities.Supplier.create(dataToSave);
       }
       setIsDialogOpen(false);
+      setContactImportFeedback(null);
       refetch();
     } catch(error) {
       console.error("Failed to save supplier:", error);
+      setContactImportFeedback({
+        kind: 'error',
+        message: 'שמירת הספק נכשלה. הפרטים לא נשמרו; אפשר לנסות שוב.'
+      });
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, formData, editingSupplier, refetch]);
+  }, [isSaving, formData, editingSupplier, refetch, contactImportFeedback]);
 
   const filteredSuppliers = useMemo(() => {
     return (suppliers || []).filter(s => {
