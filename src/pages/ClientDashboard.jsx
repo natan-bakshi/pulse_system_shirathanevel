@@ -1,11 +1,9 @@
-import { getClientContacts } from '@/lib/eventFields';
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Users, Calendar, Clock, MapPin, Eye, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -20,154 +18,47 @@ export default function ClientDashboard() {
   const queryClient = useQueryClient();
 
   // React Query for current user
-  const { data: user } = useQuery({
+  const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000
   });
 
-  // React Query for all events
-  // Note: updateExpiredEvents now runs in background — no longer blocks initial load.
-  const { data: allEvents = [], isLoading: eventsLoading } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => base44.entities.Event.list(),
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
+  // Server-authorized per-client summary. Never retrieve all raw Event,
+  // EventService, Payment or AppSettings rows into the browser.
+  const identity=typeof user?.email==='string'?user.email.trim().toLowerCase():'';
+  const {data:feed,isLoading:feedLoading,isError:feedError,refetch:reload}=useQuery({
+    queryKey:['clientDashboardFeed',user?.id||identity,identity],
+    enabled:!!identity,
+    queryFn:async()=>{
+      const response=await base44.functions.invoke('clientDashboardFeed',{});
+      const data=response?.data;
+      if(data?.success!==true||!Array.isArray(data.events))
+        throw Error('Could not load client event summary');
+      return data;
+    },
+    staleTime:20*1000,
+    cacheTime:60*1000,
+    refetchOnWindowFocus:true,
+    retry:1
   });
 
-  // Fire-and-forget: refresh expired events in the background after first paint
+  // Retain the original asynchronous expired-event update, but re-read only
+  // the authorized client summary after the server has completed its work.
   useEffect(() => {
     let cancelled = false;
     const id = setTimeout(() => {
       if (cancelled) return;
       updateExpiredEvents()
-        .then(() => queryClient.invalidateQueries({ queryKey: ['events'] }))
-        .catch(error => console.warn("Failed to update expired events:", error));
+        .then(() => queryClient.invalidateQueries({queryKey:['clientDashboardFeed']}))
+        .catch(error => console.warn('Expired-event refresh pending:',error));
     }, 1500);
     return () => { cancelled = true; clearTimeout(id); };
   }, [queryClient]);
 
-  // React Query for event services
-  const { data: allEventServices = [] } = useQuery({
-    queryKey: ['eventServices'],
-    queryFn: () => base44.entities.EventService.list(),
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
-  });
-
-
-  // הגדרות מערכת - שיעור המע"מ נלקח מ-AppSettings ולא מקובע בקוד
-  const { data: appSettings = [] } = useQuery({
-    queryKey: ['appSettings'],
-    queryFn: () => base44.entities.AppSettings.list(),
-    staleTime: 10 * 60 * 1000,
-    cacheTime: 30 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
-  });
-
-  const vatRate = useMemo(() => {
-    const setting = appSettings.find(s => s.setting_key === 'vat_rate');
-    const parsed = setting ? parseFloat(setting.setting_value) / 100 : NaN;
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.18;
-  }, [appSettings]);
-
-  const loading = eventsLoading;
-
-  // Filter events for current client
-  const clientEvents = useMemo(() => {
-    if (!user || !user.email) return [];
-    
-    const userEmail = user.email.toLowerCase();
-    return allEvents.filter(event => {
-      // Check if user created the event
-      if (event.created_by === userEmail) {
-        return true;
-      }
-      
-      // Check in parents array
-      if (getClientContacts(event) && Array.isArray(getClientContacts(event))) {
-        const foundParent = getClientContacts(event).find(parent =>
-          (parent.client_access !== false && parent.email && parent.email.toLowerCase() === userEmail)
-        );
-        if (foundParent) {
-          return true;
-        }
-      }
-      
-      return false;
-    });
-  }, [allEvents, user]);
-
-  const {data: allPayments=[]}=useQuery({
-    queryKey:['clientPayments',clientEvents.map(e=>e.id).join(',')],
-    queryFn:async()=>clientEvents.length?(await base44.functions.invoke('clientEventFinance',{eventIds:clientEvents.map(e=>e.id)})).data.payments:[],
-    enabled:!!user,staleTime:2*60*1000
-  });
-
-  // Pre-group services & payments by event_id ONCE — avoids O(n²) filter per event card.
-  const servicesByEvent = useMemo(() => {
-    const m = new Map();
-    for (const es of allEventServices) {
-      if (!m.has(es.event_id)) m.set(es.event_id, []);
-      m.get(es.event_id).push(es);
-    }
-    return m;
-  }, [allEventServices]);
-
-  const paymentsByEvent = useMemo(() => {
-    const m = new Map();
-    for (const p of allPayments) {
-      if (!m.has(p.event_id)) m.set(p.event_id, []);
-      m.get(p.event_id).push(p);
-    }
-    return m;
-  }, [allPayments]);
-
-  // Calculate event details with financials
-  const eventsWithDetails = useMemo(() => {
-    return clientEvents.map((event) => {
-      const eventServices = servicesByEvent.get(event.id) || [];
-      const payments = paymentsByEvent.get(event.id) || [];
-      
-      let totalCostWithoutVat;
-      if (event.all_inclusive && event.all_inclusive_price) {
-          totalCostWithoutVat = event.all_inclusive_price;
-          if (event.all_inclusive_includes_vat) {
-              totalCostWithoutVat /= (1 + vatRate);
-          }
-      } else {
-          totalCostWithoutVat = eventServices.reduce((sum, s) => {
-              if (s.is_external) return sum;
-              const serviceTotal = (s.custom_price || 0) * (s.quantity || 1);
-              return sum + (s.includes_vat ? serviceTotal / (1 + vatRate) : serviceTotal);
-          }, 0);
-      }
-
-      const vatAmount = totalCostWithoutVat * vatRate;
-      const totalCostWithVat = totalCostWithoutVat + vatAmount;
-      const discountAmount = event.discount_amount || 0;
-      const finalTotal = totalCostWithVat - discountAmount;
-      
-      // רק תשלומים שהושלמו נחשבים ככסף ששולם - זהה לחישוב בהצעת המחיר.
-      const totalPaid = payments
-        .filter(p => p.payment_status === 'completed')
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-      const balance = finalTotal - totalPaid;
-      const progress = finalTotal > 0 ? (totalPaid / finalTotal) * 100 : 0;
-      
-      return {
-        ...event,
-        finalTotal,
-        totalPaid,
-        balance,
-        progress,
-        discount_amount: discountAmount,
-      };
-    }).sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
-  }, [clientEvents, servicesByEvent, paymentsByEvent, vatRate]);
+  const eventsWithDetails=feed?.events||[];
+  const loading=userLoading||feedLoading;
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>;
@@ -175,6 +66,12 @@ export default function ClientDashboard() {
 
   if (!user) {
     return <div className="text-center p-8 text-white">יש להתחבר כדי לצפות בפרטים.</div>;
+  }
+  if (feedError) {
+    return <div className="max-w-xl mx-auto bg-white rounded-xl p-6 text-center space-y-3">
+      <p role="alert">לא ניתן לטעון את סיכום האירועים המאומת שלך. המערכת לא מציגה נתונים לא מאומתים.</p>
+      <Button onClick={() => reload()}>נסה שוב</Button>
+    </div>;
   }
 
   return (
