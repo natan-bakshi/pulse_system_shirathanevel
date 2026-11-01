@@ -19,11 +19,14 @@ test('one canonical WhatsApp location under Notifications, never duplicate techn
  assert.match(management,/<WhatsAppProviderStatus\s*\/>/);
  assert.match(management,/<WhatsAppQueueSettings\s*\/>/);
  for(const tag of ['WhatsAppProviderStatus','WhatsAppQueueSettings',
-  'WhatsAppSupplierNoticeButtons','WhatsAppTemplateButtonSettings','WhatsAppReminderAckSettings','WhatsAppLiveButtonSettings']){
+  'WhatsAppSupplierNoticeButtons','WhatsAppReminderAckSettings','WhatsAppLiveButtonSettings']){
   assert.equal((management.match(new RegExp('<'+tag+'\\b','g'))||[]).length,1,
    'exactly one canonical mounted editor for '+tag);
  }
  assert.doesNotMatch(queue(),/<WhatsAppLiveButtonSettings|<WhatsAppSupplierNoticeButtons/);
+ const form=read('src/components/admin/notifications/NotificationTemplateForm.jsx');
+ assert.equal((form.match(/<WhatsAppTemplateButtonsTab\b/g)||[]).length,1);
+ assert.doesNotMatch(management,/<WhatsAppTemplateButtonSettings/);
 });
 test('nontechnical controls are grouped by tasks with previews and no arbitrary URL/handler field',()=>{
  const manage=manager(),panel=buttons();
