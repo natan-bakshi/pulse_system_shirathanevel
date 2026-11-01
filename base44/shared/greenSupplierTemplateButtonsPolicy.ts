@@ -149,8 +149,8 @@ export async function saveSupplierTemplateButtonPolicy(client:any,input:any){
      throw error('reply_requires_supplier_event_reminder');
     if(selection.links.some(link=>link.kind==='event_details')&&
      !(template.type==='SUPPLIER_EVENT_REMINDER'||
-       (template.type!=='SUPPLIER_PENDING_REMINDER'&&
-        template.trigger_type==='scheduled_check')))
+       template.type==='SUPPLIER_PENDING_REMINDER'||
+       template.trigger_type==='scheduled_check'))
      throw error('smart_event_link_requires_event_source');
    }
   }
