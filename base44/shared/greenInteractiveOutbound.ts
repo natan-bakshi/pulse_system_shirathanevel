@@ -50,7 +50,7 @@ export async function previewGreenInteractiveAssignment(input:{
  now?:number;subtle?:SubtleCrypto
 }):Promise<GreenOutboundPreview>{
  const job=input?.job;
- if(!job||job.source_type!=='assignment_new'||
+ if(!job||!['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)||
   job.message_type!=='text'||job.requested_provider!=='green'||
   !PRIVATE_CHAT.test(job.chat_id||''))throw fail('ineligible_interactive_job');
  const text=textBody(job);
