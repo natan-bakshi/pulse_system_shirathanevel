@@ -28,6 +28,25 @@ test('native picker starts without awaiting permissions and requests only allowe
   assert.deepEqual(await promise, { name: 'משה כהן', phone: '0521234567', email: '' });
 });
 
+test('Android explicit selection uses multiple:true but imports only one checked contact', async () => {
+  const api = {
+    select(fields, options) {
+      assert.deepEqual(fields, ['name', 'tel', 'email']);
+      assert.deepEqual(options, { multiple: true });
+      return Promise.resolve([{ name: ['נאיל'], tel: ['050 123 4567'], email: [] }]);
+    }
+  };
+  assert.deepEqual(await selectDeviceContact(api, CONTACT_FIELDS, { multiple: true }), {
+    name: 'נאיל', phone: '0501234567', email: ''
+  });
+  const two = { select: async () => [
+    { name: ['אחד'], tel: ['0520000000'] },
+    { name: ['שני'], tel: ['0530000000'] }
+  ] };
+  await assert.rejects(selectDeviceContact(two, CONTACT_FIELDS, { multiple: true }), { name: 'MultipleContactsError' });
+  assert.equal(await selectDeviceContact({ select: async () => [] }, CONTACT_FIELDS, { multiple: true }), null);
+});
+
 test('cancel does not populate data; missing and empty contact throw actionable errors', async () => {
   assert.equal(await selectDeviceContact({ select: async () => [] }), null);
   assert.equal(await selectDeviceContact({ select: async () => null }), null);
@@ -91,6 +110,8 @@ test('contact picker shows fallback inside dialog tree, not in an inaccessible p
   assert.match(picker, /בחר קובץ איש קשר VCF/);
   assert.match(picker, /!selected[\s\S]*?setFallbackVisible\(true\)/);
   assert.match(picker, /onImportStatus\?\.\(\{ kind, message \}\)/);
+  assert.match(picker, /selectDeviceContact\(contactApi, availableFields, \{ multiple: true \}\)/);
+  assert.match(picker, /סמן ✓ ליד איש קשר אחד/);
   assert.ok(picker.indexOf('const selectionPromise = selectDeviceContact') < picker.indexOf("report('info', 'פותח בחירת איש קשר"), 'native contact selection happens before feedback code');
 });
 
@@ -103,4 +124,5 @@ test('supplier form renders an accessible, persistent import message in the same
   assert.match(supplier, /contactImportFeedback\?\.kind === 'error'/);
   assert.match(supplier, /פרטי איש הקשר לא נקלטו/);
   assert.match(supplier, /שמירת הספק נכשלה/);
+  assert.match(supplier, /בבחירה מהטלפון: סמן ✓/);
 });
