@@ -162,6 +162,17 @@ test('Green native copy and phone buttons use trusted reference and configured o
 
 test('event deep links use only a trusted event-source outbox identity, not text or client templates',()=>{
  const eventLink=link('event_details','לפרטי האירוע');
+ const pendingJob=job({source_type:'supplier_pending_reminder',
+  source_id:'service-1234',event_service_id:'service-1234',
+  smart_event_id:EVENT});
+ assert.equal(customLinkDestination(eventLink,pendingJob),
+  'https://pulse-system.base44.app/SupplierEventView?id='+EVENT);
+ for(const invalid of [
+  {...pendingJob,smart_event_id:''},
+  {...pendingJob,smart_event_id:'../other-event'},
+  {...pendingJob,event_service_id:'other-service'},
+  {...pendingJob,source_type:'manual_trigger'}
+ ])assert.equal(customLinkDestination(eventLink,invalid),null);
  assert.equal(customLinkDestination(eventLink,job()),
   'https://pulse-system.base44.app/SupplierEventView?id='+EVENT);
  for(const fields of [
@@ -231,11 +242,12 @@ test('owner CAS validates custom destination, recipient template kind and action
  }));
  assert.equal(writes,1);
  assert.equal(lists,2,'invalid URL is rejected before checking template registry');
- await assert.rejects(saveSupplierTemplateButtonPolicy(client,{
+ const pending=await saveSupplierTemplateButtonPolicy(client,{
   expectedVersion:2,templates:{[TEMPLATE2]:custom([
    link('event_details','אירוע')])}
- }),/smart_event_link_requires_event_source/);
- assert.equal(writes,1);
+ });
+ assert.equal(pending.setting.templates[TEMPLATE2].links[0].kind,'event_details');
+ assert.equal(writes,2);
  assert.equal(lists,3);
 });
 test('V1 template policy remains compatible and custom JSON cannot activate arbitrary callbacks',()=>{
