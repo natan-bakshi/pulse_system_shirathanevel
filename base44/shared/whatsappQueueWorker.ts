@@ -7,6 +7,7 @@ import {prepareGreenInteractiveWorkerCandidate} from './whatsappInteractiveWorke
 import {previewGreenSupplierNavigation} from './greenSupplierNavigation.ts';
 import {prepareGreenV2ReminderWorkerCandidate} from './whatsappV2ReminderOutbound.ts';
 import {prepareEventUpdateAcknowledgement} from './supplierEventUpdateAcknowledgement.ts';
+import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 import {readAssignmentIntents} from './assignmentIntent.ts';
 
 const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
@@ -533,6 +534,20 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           processed++;failed++;
           continue;
         }
+      }
+      // A reset-and-reconfirm transition must have its signed action
+      // buttons, not a plain text fallback if trusted configuration failed.
+      // Cancellation messages have another business key and are unaffected.
+      if(candidate.kind==='legacy'&&isEventChangeReconfirmationOutbox(options.job)){
+        const held=await queueStage('event_reconfirmation_buttons_hold',()=>
+          db.WhatsAppOutbox.updateMany({
+            id:options.job.id,status:options.job.status,
+            attempt_count:options.job.attempt_count??null
+          },{$set:{status:'failed',error_code:0,
+            last_error:'Signed event reconfirmation buttons unavailable; manual review',
+            completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+        if(held?.updated!==1){lastError='Cannot hold unsigned reconfirmation';break;}
+        processed++;failed++;continue;
       }
       // An administrator-approved NO-RESET event update must have its one
       // signed receipt button. Never silently downgrade to plain text.
