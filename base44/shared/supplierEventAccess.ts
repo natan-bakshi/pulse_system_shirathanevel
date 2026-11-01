@@ -55,7 +55,7 @@ export function allowedSupplierEventView(event:any,services:any[],supplierId:str
  };
 }
 export async function readSupplierEventView(client:any,user:any,eventId:unknown){
- if(!ID.test(String(eventId||''))||!user||
+ if(typeof eventId!=='string'||!ID.test(eventId)||!user||
   (user.role!=='admin'&&user.user_type!=='supplier'))throw denied();
  const db=client?.asServiceRole?.entities;
  if(!db)throw denied();
