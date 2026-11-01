@@ -101,7 +101,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   config?.enabled!==true||
   (config?.accountCapabilityVerified!==true&&config?.qaBetaProbeApproved!==true))
   return legacy(job,'interactive_feature_disabled');
- if(provider!=='green'||job?.source_type!=='assignment_new'||
+ if(provider!=='green'||!['assignment_new','assignment_update','arrival_time_change'].includes(job?.source_type)||
   job?.message_type!=='text')return legacy(job,'not_green_supplier_assignment');
  if(config.qaChatId!==undefined){
   if(!/^[1-9][0-9]{7,14}@c\.us$/.test(config.qaChatId))
