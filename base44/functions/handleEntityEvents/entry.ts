@@ -14,6 +14,7 @@ import { entityTriggerWhatsAppContext } from '../../shared/entityTriggerWhatsApp
 import { isWhatsAppEnqueueConfirmed } from '../../shared/whatsappReceipt.ts';
 import { shouldScheduleAssignmentReplyReminder, pendingApprovalReminderSupplierIds } from '../../shared/assignmentReminderTiming.ts';
 import { isEventChangeStatusReset } from '../../shared/eventChangeReconfirmation.ts';
+import { supplierEventChangeSnapshot } from '../../shared/supplierEventChange.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -146,61 +147,56 @@ Deno.serve(async (req) => {
                  return newVal && oldVal && newVal !== oldVal;
              });
 
-             // Detect specifically date/time change to handle the special "ask manager" flow
-             const dateOrTimeChanged = changedFields.some(f => 
-                 ['event_date', 'eventdate', 'event_time', 'eventtime'].includes(f)
-             );
-
              if (changedFields.length > 0) {
-                 // Special flow: if date/time changed AND there are assigned suppliers,
-                 // suppress the automatic event_critical_update notification and set a flag
-                 // for the admin to decide what to do with the suppliers (reassign or cancel).
-                 if (dateOrTimeChanged) {
-                     try {
-                         const eventId = data.id;
-                         const services = await base44.asServiceRole.entities.EventService.filter({ event_id: eventId });
-                         
-                         // Check if any service has at least one assigned supplier
-                         let hasAssignedSuppliers = false;
-                         for (const s of services) {
-                             const sIds = s.supplier_ids || s.supplierids;
-                             if (sIds) {
-                                 try {
-                                     const ids = typeof sIds === 'string' ? JSON.parse(sIds) : sIds;
-                                     if (Array.isArray(ids) && ids.length > 0) {
-                                         hasAssignedSuppliers = true;
-                                         break;
-                                     }
-                                 } catch(e) {}
+                 // All supplier-visible critical edits, including location and
+                 // concept, must be decided by an administrator. No automatic
+                 // WhatsApp send or status reset is allowed on an Event write.
+                 try {
+                     const services = await base44.asServiceRole.entities.EventService.filter({
+                         event_id: data.id
+                     });
+                     let hasAssignedSuppliers = false;
+                     for (const s of services) {
+                         try {
+                             const ids = typeof s.supplier_ids === 'string'
+                                 ? JSON.parse(s.supplier_ids || '[]') : s.supplier_ids;
+                             if (Array.isArray(ids) && ids.length > 0) {
+                                 hasAssignedSuppliers = true;
+                                 break;
                              }
-                         }
-
-                         if (hasAssignedSuppliers) {
-                             // Set the pending action flag and store previous date/time
-                             // Skip if flag is already set (avoid overwriting on subsequent updates)
-                             const alreadyPending = data.date_change_pending_action || data.datechangependingaction;
-                             if (!alreadyPending) {
-                                 await base44.asServiceRole.entities.Event.update(eventId, {
-                                     date_change_pending_action: true,
-                                     previous_event_date: oldData.event_date || oldData.eventdate || '',
-                                     previous_event_time: oldData.event_time || oldData.eventtime || ''
-                                 });
-                                 console.log(`[HandleEntityEvents] Date/time changed with assigned suppliers - flagged for admin decision. Skipping event_critical_update notification.`);
-                             }
-                             // Do NOT push event_critical_update - the admin will manually trigger it
-                             return Response.json({ 
-                                 success: true, 
-                                 notifications_sent: 0, 
-                                 reason: 'Date change pending admin decision' 
-                             });
-                         }
-                     } catch (e) {
-                         console.error('[HandleEntityEvents] Error checking suppliers for date change flow:', e);
+                         } catch {}
                      }
+                     if (hasAssignedSuppliers) {
+                         const context = supplierEventChangeSnapshot(oldData, data);
+                         if (context.fields.length === 0)
+                             throw new Error('Changed event fields could not be recorded');
+                         await base44.asServiceRole.entities.Event.update(data.id, {
+                             date_change_pending_action: true,
+                             supplier_event_change_context: JSON.stringify(context),
+                             previous_event_date:
+                                 context.before.event_date ?? oldData.previous_event_date ?? oldData.event_date ?? '',
+                             previous_event_time:
+                                 context.before.event_time ?? oldData.previous_event_time ?? oldData.event_time ?? ''
+                         });
+                         return Response.json({
+                             success: true, notifications_sent: 0,
+                             reason: 'Supplier event change awaits administrator decision'
+                         });
+                     }
+                 } catch (error) {
+                     // Fail closed. A temporary query/write failure must never
+                     // make a real event edit silently notify suppliers.
+                     console.error('[HandleEntityEvents] Event decision recording failed:', error);
+                     return Response.json({
+                         success: false, notifications_sent: 0,
+                         error: 'Supplier change decision needs manual recovery'
+                     }, { status: 503 });
                  }
-
-                 triggerTypesToFetch.push('event_critical_update');
-                 console.log(`[HandleEntityEvents] Detected critical event update. Fields: ${changedFields.join(', ')}`);
+                 // No assigned suppliers: no supplier update is necessary.
+                 return Response.json({
+                     success: true, notifications_sent: 0,
+                     reason: 'No assigned suppliers require an update'
+                 });
              }
         }
 
