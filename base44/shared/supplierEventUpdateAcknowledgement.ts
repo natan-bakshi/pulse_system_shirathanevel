@@ -17,6 +17,7 @@ const ACK='event_update_acknowledged_at';
 const EVENT='event_update_ack_event_id';
 const PROOF='event_update_ack_proof';
 const DOMAIN='pulse-shirat-supplier-event-ack:v1\n';
+const VERIFIED=Symbol('signed_event_update_receipt_verified_by_server');
 const ENC=new TextEncoder();
 const fail=(reason:string)=>Object.assign(Error('Event update receipt: '+reason),{code:reason});
 function validJob(job:any){
@@ -180,10 +181,10 @@ export async function admitEventUpdateAcknowledgement(input:{
   signed.messageKind!=='supplier_event_update')
   return rejected('invalid_signature',true);
  return {status:'admitted',reason:'verified_event_notice',read:true,
-  data:{outboxId:job.id,providerEventId:click.providerEventId,
+  data:Object.freeze({[VERIFIED]:true,outboxId:job.id,providerEventId:click.providerEventId,
    chatId:job.chat_id,providerMessageId:job.provider_message_id,
    senderAccountId:job.sender_account_id,supplierId:job.supplier_id,
-   revision:job.revision}};
+   revision:job.revision})};
 }
 function base64(buf:Uint8Array){
  let s='';for(const byte of buf)s+=String.fromCharCode(byte);
@@ -206,7 +207,7 @@ export async function recordEventUpdateAcknowledgement(input:{
  client:any;admission:any;signingSecret:string;now?:number
 }):Promise<'recorded'|'already_recorded'|'already_acknowledged'|'needs_review'|'refused'>{
  const a=input.admission;
- if(!a||!ID.test(a.outboxId||'')||!ID.test(a.providerEventId||'')||
+ if(!a||a[VERIFIED]!==true||!ID.test(a.outboxId||'')||!ID.test(a.providerEventId||'')||
   !ACCOUNT.test(a.senderAccountId||'')||
   typeof input.signingSecret!=='string'||input.signingSecret.length<32)
   return 'refused';
