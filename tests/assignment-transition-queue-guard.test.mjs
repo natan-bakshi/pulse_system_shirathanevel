@@ -8,6 +8,7 @@ import {planEventChangeReconfirmation,closeSupersededAssignmentIntents}
  from '../base44/shared/eventChangeReconfirmation.ts';
 import {parseSupplierEventChange,supplierEventAffectedService,eventChangeFingerprint,eventInformationNoticeKey}
  from '../base44/shared/supplierEventChange.ts';
+import {withLegacySupplierReplyRevisions} from '../base44/shared/legacySupplierReplyRevisions.ts';
 
 function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',actor={role:'admin'}}={}){
  const event={id:'event-demo',event_date:'2026-11-21',event_time:'11:00',
@@ -62,6 +63,7 @@ function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',ac
    if(name.endsWith('supplierEventChange.ts'))return {
     parseSupplierEventChange,supplierEventAffectedService,eventChangeFingerprint,eventInformationNoticeKey
    };
+   if(name.endsWith('legacySupplierReplyRevisions.ts'))return {withLegacySupplierReplyRevisions};
    if(name.endsWith('whatsappSend.ts'))return {sendWhatsAppText:async()=>({success:true,status:'queued',jobId:'notice-only-stub'})};
    if(name.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed:()=>true};
    if(name.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,paused:false,interactive_outbound_live_enabled:true,interactive_assignment_production_enabled:true})};
