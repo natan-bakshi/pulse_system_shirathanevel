@@ -10,7 +10,7 @@ export async function assignmentTransitionWhatsAppKey(input:{
   kind:'arrival_notify'|'arrival_cancel'|'date_cancel'|'date_reconfirm';
   eventId:string;eventServiceId?:string;supplierId:string;templateId:string;
   oldEventDate?:string;oldEventTime?:string;eventDate?:string;eventTime?:string;
-  supplierArrivalTime?:string;revision?:string;
+  supplierArrivalTime?:string;revision?:string;changeFingerprint?:string;
 }):Promise<string>{
   const kinds=new Set(['arrival_notify','arrival_cancel','date_cancel','date_reconfirm']);
   if(!kinds.has(input?.kind))throw new Error('Unsupported assignment transition kind');
@@ -29,7 +29,8 @@ export async function assignmentTransitionWhatsAppKey(input:{
     String(input.oldEventDate||''),String(input.oldEventTime||''),
     String(input.eventDate||''),String(input.eventTime||''),
     String(input.supplierArrivalTime||''),
-    ...(input.revision?['reconfirmation:'+input.revision]:[])
+    ...(input.revision?['reconfirmation:'+input.revision]:[]),
+    ...(input.changeFingerprint?['changed_fields:'+input.changeFingerprint]:[])
   ];
   const encoded=new TextEncoder().encode(JSON.stringify(values));
   const digest=await crypto.subtle.digest('SHA-256',encoded);
