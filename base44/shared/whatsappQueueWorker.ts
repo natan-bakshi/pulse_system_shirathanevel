@@ -6,6 +6,7 @@ import { sendWhatsAppTransport } from './whatsappSend.ts';
 import {prepareGreenInteractiveWorkerCandidate} from './whatsappInteractiveWorkerBridge.ts';
 import {previewGreenSupplierNavigation} from './greenSupplierNavigation.ts';
 import {prepareGreenV2ReminderWorkerCandidate} from './whatsappV2ReminderOutbound.ts';
+import {prepareEventUpdateAcknowledgement} from './supplierEventUpdateAcknowledgement.ts';
 import {readAssignmentIntents} from './assignmentIntent.ts';
 
 const MAX_RUNTIME_MS = 45_000;       // Conservative bounded worker runtime.
@@ -533,6 +534,38 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
           continue;
         }
       }
+      // An administrator-approved NO-RESET event update must have its one
+      // signed receipt button. Never silently downgrade to plain text.
+      if(candidate.kind==='legacy'&&options.job.source_type==='event_update'){
+        if(!opts.interactiveConfig||provider!=='green'){
+          const held=await queueStage('event_update_ack_no_green_hold',()=>
+            db.WhatsAppOutbox.updateMany({
+              id:options.job.id,status:options.job.status,
+              attempt_count:options.job.attempt_count??null
+            },{$set:{status:'failed',error_code:0,
+              last_error:'Event update receipt button unavailable; review Green rollout and sender',
+              completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+          if(held?.updated!==1){lastError='Cannot quarantine event update';break;}
+          processed++;failed++;continue;
+        }
+        try{
+          candidate=await queueStage('event_update_ack_prepare',()=>
+            prepareEventUpdateAcknowledgement({
+              client,job:options.job,provider,control,
+              config:opts.interactiveConfig
+            }));
+        }catch{
+          const held=await queueStage('event_update_ack_hold',()=>
+            db.WhatsAppOutbox.updateMany({
+              id:options.job.id,status:options.job.status,
+              attempt_count:options.job.attempt_count??null
+            },{$set:{status:'failed',error_code:0,
+              last_error:'Event update signed button preparation failed; manual review',
+              completed_at:new Date().toISOString(),last_status_at:new Date().toISOString()}}));
+          if(held?.updated!==1){lastError='Cannot quarantine event update';break;}
+          processed++;failed++;continue;
+        }
+      }
       // V2 "קיבלתי" joins the already working URL navigation buttons for
       // supplier event reminders ONLY when an independent owner rollout is
       // armed. Signed snapshot CAS occurs BEFORE the provider rate-slot claim.
@@ -598,7 +631,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       // The frozen account, revision and entire signed snapshot must still
       // equal the verified pre-dispatch record when we claim the job.
       const claimFilter:any={id:job.id,status:job.status};
-      if(candidate.kind==='reminder_v2')Object.assign(claimFilter,{
+      if(['reminder_v2','event_update_ack'].includes(candidate.kind))Object.assign(claimFilter,{
         attempt_count:job.attempt_count??null,
         company_id:job.company_id,message_kind:job.message_kind,
         resource_type:job.resource_type,resource_id:job.resource_id,
@@ -627,9 +660,9 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       }}));
       if(timeSlot?.updated!==1) {
         await db.WhatsAppOutbox.updateMany({id:job.id,status:'sending',lease_token:token},{$set:{
-          status:['interactive','reminder_v2'].includes(candidate.kind)?job.status:'queued',
-          send_started_at:['interactive','reminder_v2'].includes(candidate.kind)?job.send_started_at||'':'',
-          ...(['interactive','reminder_v2'].includes(candidate.kind)?{attempt_count:job.attempt_count||0}:{})
+          status:['interactive','reminder_v2','event_update_ack'].includes(candidate.kind)?job.status:'queued',
+          send_started_at:['interactive','reminder_v2','event_update_ack'].includes(candidate.kind)?job.send_started_at||'':'',
+          ...(['interactive','reminder_v2','event_update_ack'].includes(candidate.kind)?{attempt_count:job.attempt_count||0}:{})
         }});
         lastError='Lost WhatsApp worker lease before dispatch';
         break;
@@ -641,7 +674,7 @@ export async function drainWhatsAppOutbox(client:any,opts:any={}) {
       let receipt:any=null,transportError:any=null;
       try{
         // This is the ONLY provider call. It is never retried by this worker.
-        const dispatchJob=['interactive','navigation','reminder_v2'].includes(candidate.kind)
+        const dispatchJob=['interactive','navigation','reminder_v2','event_update_ack'].includes(candidate.kind)
           ? {...job,status:'sending',provider,lease_token:token,
              attempt_count:attempt,send_started_at:startedAt}:job;
         receipt=await (opts.transport||sendWhatsAppTransport)(
