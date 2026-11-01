@@ -8,6 +8,7 @@
 const ID=/^[A-Za-z0-9_-]{3,128}$/;
 const REV=/^r[1-9][0-9]{0,12}$/;
 const RETIRED='retired';
+const TOMBSTONE=/^retired:r[1-9][0-9]{0,12}$/;
 const STATUS=new Set(['pending','confirmed','rejected']);
 const MAX_SUPPLIERS=80;
 export const LEGACY_SUPPLIER_REPLY_FIELD='supplier_assignment_reply_revisions';
@@ -21,7 +22,7 @@ export function parseLegacySupplierReplyRevisions(raw:any):Record<string,string>
  if(!v||typeof v!=='object'||Array.isArray(v)||
   Object.keys(v).length>MAX_SUPPLIERS||
   Object.entries(v).some(([id,rev])=>!ID.test(id)||
-    (rev!==RETIRED&&!REV.test(String(rev)))))
+    (rev!==RETIRED&&!REV.test(String(rev))&&!TOMBSTONE.test(String(rev)))))
   throw Error('Invalid supplier reply revision map');
  return v;
 }
@@ -48,6 +49,7 @@ function nextRevision(current:Record<string,string>,now:number){
  let n=Math.floor(now);
  for(const value of Object.values(current)){
   if(REV.test(value))n=Math.max(n,Number(value.slice(1))+1);
+  else if(TOMBSTONE.test(value))n=Math.max(n,Number(value.slice(9))+1);
  }
  if(!Number.isSafeInteger(n)||n>9999999999999)throw Error('Revision clock overflow');
  return 'r'+n;
@@ -72,8 +74,10 @@ export function planLegacySupplierReplyRevisions(old:any,patch:any,
   const before=beforeStatuses[id]||'pending',after=afterStatuses[id]||'pending';
   if(was===is&&(!is||before===after))continue;
   touched=true;
-  if(!is||after!=='pending')next[id]=RETIRED;
-  else next[id]=nextRevision(next,now);
+  if(!is||after!=='pending'){
+   const prior=REV.test(next[id]||'')?next[id]:nextRevision(next,now);
+   next[id]='retired:'+prior;
+  }else next[id]=nextRevision(next,now);
  }
  return touched?{[LEGACY_SUPPLIER_REPLY_FIELD]:JSON.stringify(next)}:{};
 }
@@ -88,7 +92,7 @@ export function legacySupplierReplyRevision(service:any,supplierId:string):strin
  try{
   const revisions=parseLegacySupplierReplyRevisions(service?.[LEGACY_SUPPLIER_REPLY_FIELD]);
   const own=revisions[supplierId];
-  if(own===RETIRED)return null;
+  if(own===RETIRED||TOMBSTONE.test(String(own)))return null;
   if(own!==undefined)return REV.test(own)?own:null;
   return undefined; // Legacy rows retain their original strict behavior.
  }catch{return null;}
