@@ -166,6 +166,14 @@ export async function enqueueWhatsApp(client: any, data: {
     file_uri: data.fileUri || '', file_name: data.fileName || '', caption: data.caption || '',
     source_type: String(context.sourceType || 'system').slice(0, 64),
     source_id: String(context.sourceId || '').slice(0, 120),
+    // A pending assignment source_id is an EventService ID, never an Event ID.
+    // Only a matching trusted producer may stamp the actual event reference.
+    ...(context.sourceType==='supplier_pending_reminder'&&
+      /^[A-Za-z0-9_-]{3,100}$/.test(context.eventId||'')&&
+      /^[A-Za-z0-9_-]{3,160}$/.test(context.sourceId||'')&&
+      context.eventServiceId===context.sourceId&&
+      /^[A-Za-z0-9_-]{3,160}$/.test(context.supplierId||'')?
+       {smart_event_id:context.eventId}:{}),
     // Frozen provenance is created ONLY by a trusted producer. It never
     // becomes a user-editable template ID or a signed inbound action.
     ...(data.messageType==='text'&&requestedProvider==='green'&&
