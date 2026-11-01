@@ -100,4 +100,7 @@ test('supplier form renders an accessible, persistent import message in the same
   assert.match(supplier, /contactImportFeedback\.message/);
   assert.match(supplier, /role=\{contactImportFeedback\.kind === 'error' \? 'alert' : 'status'\}/);
   assert.match(supplier, /setContactImportFeedback\(null\)/);
+  assert.match(supplier, /contactImportFeedback\?\.kind === 'error'/);
+  assert.match(supplier, /פרטי איש הקשר לא נקלטו/);
+  assert.match(supplier, /שמירת הספק נכשלה/);
 });
