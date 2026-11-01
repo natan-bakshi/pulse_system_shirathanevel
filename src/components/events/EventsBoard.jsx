@@ -1,5 +1,6 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
 import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
+import {withLegacySupplierReplyRevisions} from '../../../base44/shared/legacySupplierReplyRevisions.ts';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -412,10 +413,11 @@ export default function EventsBoard() {
             }
             supplierStatuses[editingAssignment.supplierId] = editingAssignment.currentStatus;
             supplierNotes[editingAssignment.supplierId] = editingAssignment.currentNotes;
-            await base44.entities.EventService.update(editingAssignment.eventServiceId, {
+            await base44.entities.EventService.update(editingAssignment.eventServiceId,
+              withLegacySupplierReplyRevisions(eventService,{
                 supplier_statuses: JSON.stringify(supplierStatuses),
                 supplier_notes: JSON.stringify(supplierNotes)
-            });
+              }));
             await refreshEventStatus(eventService.event_id);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
             setEditingAssignment(null);
@@ -500,7 +502,8 @@ export default function EventsBoard() {
 
             const added=newAssignmentRecipients(currentEventService.supplier_ids,editingService.supplierIds,
                 currentEventService.supplier_statuses,editingService.supplierStatuses);
-            await base44.entities.EventService.update(editingService.eventServiceId, {
+            await base44.entities.EventService.update(editingService.eventServiceId,
+              withLegacySupplierReplyRevisions(currentEventService,{
                 supplier_ids: JSON.stringify(editingService.supplierIds),
                 supplier_statuses: JSON.stringify(editingService.supplierStatuses),
                 supplier_notes: JSON.stringify(editingService.supplierNotes),
@@ -509,7 +512,7 @@ export default function EventsBoard() {
                 standing_time: editingService.units[0]?.pickupPoints[0]?.time || '', 
                 on_site_contact_details: editingService.units[0]?.pickupPoints[0]?.contact || { name: '', phone: '' }, 
                 min_suppliers: parseInt(editingService.minSuppliers) || 0
-            });
+              }));
             await verifyAndRefreshAssignment(editingService.eventServiceId,added,currentEventService.event_id);
             queryClient.invalidateQueries({ queryKey: ['eventServices'] });
             setEditingService(null);
