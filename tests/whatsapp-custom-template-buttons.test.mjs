@@ -105,7 +105,7 @@ test('custom three navigation buttons are frozen and exact URL/label tampering i
  assert.deepEqual(p.body.buttons.map(x=>x.buttonText),
   ['לוח אירועים','האירוע שלי','טופס חיצוני']);
  assert.equal(p.body.buttons[1].url,
-  'https://pulse-system.base44.app/EventDetails?id='+EVENT);
+  'https://pulse-system.base44.app/SupplierEventView?id='+EVENT);
  assert.equal(p.body.buttons[2].url,'https://forms.example.com/rsvp?from=wa');
  assert.equal(p.body.body,'נא להגיע בזמן לאירוע');
  assert.equal(verify(record,p),true);
@@ -163,7 +163,7 @@ test('Green native copy and phone buttons use trusted reference and configured o
 test('event deep links use only a trusted event-source outbox identity, not text or client templates',()=>{
  const eventLink=link('event_details','לפרטי האירוע');
  assert.equal(customLinkDestination(eventLink,job()),
-  'https://pulse-system.base44.app/EventDetails?id='+EVENT);
+  'https://pulse-system.base44.app/SupplierEventView?id='+EVENT);
  for(const fields of [
   {source_type:'manual_trigger'},
   {source_type:'supplier_pending_reminder'},
@@ -319,7 +319,7 @@ test('URL-only custom reminders never create an ACK receipt or extra Green provi
   /Deno\.serve|fetch\(|setInterval\(|eval\(|new Function\(/);
 });
 test('custom editor appears only within the existing owner template-buttons panel',()=>{
- const parent=fs.readFileSync('src/components/admin/notifications/WhatsAppTemplateButtonSettings.jsx','utf8');
+ const parent=fs.readFileSync('src/components/admin/notifications/WhatsAppTemplateButtonsTab.jsx','utf8');
  const editor=fs.readFileSync('src/components/admin/notifications/WhatsAppCustomButtonEditor.jsx','utf8');
  assert.match(parent,/WhatsAppCustomButtonEditor/);
  assert.match(parent,/value:'custom'/);
