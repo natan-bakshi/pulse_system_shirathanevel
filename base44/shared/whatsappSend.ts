@@ -62,6 +62,8 @@ async function routeWhatsApp(client, entry) {
     throw new Error('Pilot assignment requires durable WhatsApp queue');
   if(entry?.context?.sourceType==='reminder_button_feedback')
     throw new Error('Verified reminder feedback requires durable WhatsApp queue');
+  if(entry?.context?.sourceType==='event_update')
+    throw new Error('Event update receipt requires durable signed Green queue');
   if(control.paused) throw new Error('WhatsApp is paused by the administrator');
   const provider=await resolveWhatsAppProvider(client);
   const receipt=await sendWhatsAppTransport({
