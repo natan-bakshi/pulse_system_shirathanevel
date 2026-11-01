@@ -65,7 +65,7 @@ test('rejects invalid or empty vCard', () => {
 
 test('shared picker is used across supplier, event, transport and settings entry points', () => {
   const importer = readFileSync('src/components/ui/ContactPicker.jsx', 'utf8');
-  for (const marker of ['selectDeviceContact', 'parseVCardContact', 'onContactSelect(contact)', 'openFallback', "toast.error("]) {
+  for (const marker of ['selectDeviceContact', 'parseVCardContact', 'onContactSelect(contact)', 'setFallbackVisible(true)', "toast.error("]) {
     assert.ok(importer.includes(marker), marker);
   }
   const consumers = [
@@ -81,4 +81,23 @@ test('shared picker is used across supplier, event, transport and settings entry
     const source = readFileSync(file, 'utf8');
     assert.match(source, /<ContactPicker\b/, file + ' must retain shared importer');
   }
+});
+
+test('contact picker shows fallback inside dialog tree, not in an inaccessible popover portal', () => {
+  const picker = readFileSync('src/components/ui/ContactPicker.jsx', 'utf8');
+  assert.doesNotMatch(picker, /<Popover|PopoverContent|PopoverAnchor/, 'fallback must stay clickable in Radix dialogs');
+  assert.match(picker, /fallbackVisible &&/);
+  assert.match(picker, /fileInputRef\.current\?\.click\(\)/);
+  assert.match(picker, /בחר קובץ איש קשר VCF/);
+  assert.match(picker, /!selected[\s\S]*?setFallbackVisible\(true\)/);
+  assert.match(picker, /onImportStatus\?\.\(\{ kind, message \}\)/);
+  assert.ok(picker.indexOf('const selectionPromise = selectDeviceContact') < picker.indexOf("report('info', 'פותח בחירת איש קשר"), 'native contact selection happens before feedback code');
+});
+
+test('supplier form renders an accessible, persistent import message in the same dialog', () => {
+  const supplier = readFileSync('src/pages/SupplierManagement.jsx', 'utf8');
+  assert.match(supplier, /onImportStatus=\{setContactImportFeedback\}/);
+  assert.match(supplier, /contactImportFeedback\.message/);
+  assert.match(supplier, /role=\{contactImportFeedback\.kind === 'error' \? 'alert' : 'status'\}/);
+  assert.match(supplier, /setContactImportFeedback\(null\)/);
 });
