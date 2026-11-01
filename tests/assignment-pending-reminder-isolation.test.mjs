@@ -64,6 +64,7 @@ test('one optional reminder failure does not block assignment notices; repeated 
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(path.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
      if(path.endsWith('eventChangeReconfirmation.ts'))return {isEventChangeStatusReset};
+     if(path.endsWith('supplierEventChange.ts'))return {detectSupplierEventChanges:()=>[],supplierEventChangeSnapshot:()=>({version:1,fields:[],before:{},after:{}})};
      if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,interactive_assignment_production_enabled:false})};
      if(path.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
      if(path.endsWith('supplierPortalLink.ts'))return {
