@@ -12,7 +12,8 @@ import {checkLegacyAssignmentButtonCandidate,
  type LegacyAssignmentButtonScope} from './legacyAssignmentButtonScope.ts';
 import {createFutureInteractiveButtonSnapshot,verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
-import {checkEventChangeButtonCandidate,reconfirmationMatchesEvent} from './eventChangeReconfirmation.ts';
+import {checkEventChangeButtonCandidate,reconfirmationMatchesEvent,
+ isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 
 const VALID_ID=/^[A-Za-z0-9_-]{3,128}$/;
 const GREEN_INSTANCE=/^[0-9]{5,20}$/;
@@ -47,7 +48,7 @@ function latestSupplierRevision(service:any,supplierId:string):{revision:string;
 }
 function isUnsentQueuedJob(job:any){
  return !!job&&job.status==='queued'&&
-  ['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)&&
+  (job.source_type==='assignment_new'||isEventChangeReconfirmationOutbox(job))&&
   job.message_type==='text'&&job.requested_provider==='green'&&
   Number(job.attempt_count||0)===0&&!job.send_started_at&&
   !job.provider_message_id&&!job.completed_at&&
