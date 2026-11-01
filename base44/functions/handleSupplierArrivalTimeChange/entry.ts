@@ -1,5 +1,6 @@
 import { getClientContacts } from '../../shared/eventFields.js';
 import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
+import {withLegacySupplierReplyRevisions} from '../../shared/legacySupplierReplyRevisions.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { getEventDisplayName } from '../../shared/eventName.ts';
@@ -115,11 +116,12 @@ Deno.serve(async (req) => {
                     event.event_time || ''
                 ])
             });
-            await base44.asServiceRole.entities.EventService.update(event_service_id, {
-                supplier_statuses: JSON.stringify(supplierStatuses),
-                supplier_reconfirmation_context: reconfirm.value,
-                ...closeSupersededAssignmentIntents(eventService,supplierIds)
-            });
+            await base44.asServiceRole.entities.EventService.update(event_service_id,
+                withLegacySupplierReplyRevisions(eventService,{
+                    supplier_statuses: JSON.stringify(supplierStatuses),
+                    supplier_reconfirmation_context: reconfirm.value,
+                    ...closeSupersededAssignmentIntents(eventService,supplierIds)
+                }));
             await recalculateEventStatus(base44.asServiceRole, eventService.event_id);
 
             for (const template of templates) {
@@ -299,11 +301,12 @@ Deno.serve(async (req) => {
             }
 
             // Remove all suppliers from this specific service (and their statuses/notes)
-            await base44.asServiceRole.entities.EventService.update(event_service_id, {
-                supplier_ids: JSON.stringify([]),
-                supplier_statuses: JSON.stringify({}),
-                supplier_notes: JSON.stringify({})
-            });
+            await base44.asServiceRole.entities.EventService.update(event_service_id,
+                withLegacySupplierReplyRevisions(eventService,{
+                    supplier_ids: JSON.stringify([]),
+                    supplier_statuses: JSON.stringify({}),
+                    supplier_notes: JSON.stringify({})
+                }));
             await recalculateEventStatus(base44.asServiceRole, eventService.event_id);
 
             return Response.json({ success: true, mode: 'cancel', notifications_sent: notificationsSent,
