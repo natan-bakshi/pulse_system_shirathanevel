@@ -1,5 +1,5 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.52';
-import {getClientContacts} from '../../shared/eventFields.js';
+import {canOpenClientEventCard} from '../../shared/clientEventLinkAccess.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,100}$/;
 Deno.serve(async(req)=>{
@@ -21,12 +21,7 @@ Deno.serve(async(req)=>{
   const event=await client.asServiceRole.entities.Event.get(body.eventId).catch(()=>null);
   if(!event)return Response.json({allowed:false},
    {status:404,headers:{'Cache-Control':'no-store'}});
-  const email=String(user.email||'').trim().toLowerCase();
-  const allowed=!!email&&(
-   String(event.created_by||'').trim().toLowerCase()===email||
-   getClientContacts(event).some(contact=>
-    typeof contact.email==='string'&&contact.email.trim().toLowerCase()===email)
-  );
+  const allowed=canOpenClientEventCard(user,event);
   return Response.json({allowed},{status:allowed?200:404,
    headers:{'Cache-Control':'private,no-store','Vary':'Authorization'}});
  }catch{
