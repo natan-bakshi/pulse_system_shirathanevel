@@ -117,7 +117,7 @@ export async function checkEventChangeButtonCandidate(service:any,job:any){
   return refused('reconfirmation_business_key_mismatch');
  return {allowed:true,reason:'exact_reconfirmation_transition',revision:marker.revision};
 }
-export function reconfirmationMatchesEvent(service:any,event:any):boolean{
+export function reconfirmationMatchesEvent(service:any,event:any,requireResolved=false):boolean{
  const marker=parseEventChangeReconfirmation(service?.supplier_reconfirmation_context);
  if(!marker||!event||event.id!==marker.eventId)return false;
  let p:any;
@@ -125,7 +125,7 @@ export function reconfirmationMatchesEvent(service:any,event:any):boolean{
  if(!Array.isArray(p))return false;
  if(marker.kind==='date_reconfirm')return p.length===4&&
   event.event_date===p[2]&&(event.event_time||'')===p[3]&&
-  event.date_change_pending_action!==true;
+  (!requireResolved||event.date_change_pending_action!==true);
  return p.length===3&&service.supplier_arrival_time===p[0]&&
   event.event_date===p[1]&&(event.event_time||'')===p[2];
 }
