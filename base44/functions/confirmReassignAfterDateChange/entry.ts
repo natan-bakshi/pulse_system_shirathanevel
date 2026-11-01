@@ -136,7 +136,10 @@ Deno.serve(async (req) => {
                 }
             }
 
+            const supplierNoticeSent=new Set();
             for (const {supId, supService} of affectedAssignments) {
+                if(notifyWithoutReset&&supplierNoticeSent.has(supId))continue;
+                if(notifyWithoutReset)supplierNoticeSent.add(supId);
                 try {
                     const supplier = await base44.asServiceRole.entities.Supplier.get(supId);
                     if (!supplier) continue;
@@ -177,15 +180,33 @@ Deno.serve(async (req) => {
 
                     // WhatsApp - send via Green API
                     if (sendWhatsApp && supplier.whatsapp_enabled !== false && supplier.phone) {
-                        await sendWhatsAppNotification(base44,supplier.phone,waMessage,{
-                            kind:'date_reconfirm',eventId:event.id,
-                            eventServiceId:supService.id,supplierId:supId,
-                            revision:reconfirmByService.get(supService.id),
-                            templateId:template.id||template.type,
-                            oldEventDate:event.previous_event_date||'',
-                            oldEventTime:event.previous_event_time||'',
-                            eventDate:event.event_date,eventTime:event.event_time
-                        });
+                        if(notifyWithoutReset){
+                            const key=await eventInformationNoticeKey({
+                                eventId:event.id,serviceId:supService.id,supplierId:supId,
+                                templateId:template.id||template.type,changeFingerprint:changeSignature
+                            });
+                            const receipt=await sendWhatsAppText(supplier.phone,waMessage,base44,{
+                                sourceType:'event_update',sourceId:event.id,
+                                eventServiceId:supService.id,supplierId:supId,
+                                notificationTemplateId:template.id||template.type,
+                                idempotencyKey:key
+                            });
+                            if(!isWhatsAppEnqueueConfirmed(receipt))
+                                throw Object.assign(Error('Supplier update notice not queued'),{
+                                    whatsappEnqueueError:true
+                                });
+                        }else{
+                            await sendWhatsAppNotification(base44,supplier.phone,waMessage,{
+                                kind:'date_reconfirm',eventId:event.id,
+                                eventServiceId:supService.id,supplierId:supId,
+                                revision:reconfirmByService.get(supService.id),
+                                templateId:template.id||template.type,
+                                oldEventDate:event.previous_event_date||'',
+                                oldEventTime:event.previous_event_time||'',
+                                eventDate:event.event_date,eventTime:event.event_time,
+                                changeFingerprint:changeSignature
+                            });
+                        }
                         confirmedWhatsApp++;
                     }
 
