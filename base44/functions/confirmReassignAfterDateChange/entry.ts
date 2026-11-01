@@ -4,6 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
+import { planEventChangeReconfirmation } from '../../shared/eventChangeReconfirmation.ts';
 
 /**
  * Called when admin confirms to reassign the same suppliers to an event after a date change.
@@ -37,6 +38,7 @@ Deno.serve(async (req) => {
         // so their suppliers should not be re-pending and should not receive an update notification.
         const services = await base44.asServiceRole.entities.EventService.filter({ event_id });
         const affectedServiceIds = new Set(); // services whose suppliers are affected by the date/time change
+        const reconfirmByService = new Map(); // revision frozen with each status reset
         for (const service of services) {
             // Skip services with a specific supplier arrival time - their suppliers are not affected
             const arrivalTime = (service.supplier_arrival_time || '').trim();
@@ -66,9 +68,20 @@ Deno.serve(async (req) => {
                 newStatuses[supId] = 'pending';
             }
 
-            await base44.asServiceRole.entities.EventService.update(service.id, {
-                supplier_statuses: JSON.stringify(newStatuses)
+            // Persist the administrator's explicit notify choice together with
+            // the reset. Entity triggers must not interpret it as a new assignment.
+            const reconfirm = planEventChangeReconfirmation(service, {
+                kind: 'date_reconfirm', supplierIds,
+                fingerprint: JSON.stringify([
+                    event.previous_event_date || '', event.previous_event_time || '',
+                    event.event_date || '', event.event_time || ''
+                ])
             });
+            await base44.asServiceRole.entities.EventService.update(service.id, {
+                supplier_statuses: JSON.stringify(newStatuses),
+                supplier_reconfirmation_context: reconfirm.value
+            });
+            reconfirmByService.set(service.id, reconfirm.revision);
             affectedServiceIds.add(service.id);
         }
 
