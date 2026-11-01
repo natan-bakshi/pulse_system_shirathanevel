@@ -7,7 +7,7 @@ import {canOpenClientEventCard} from './clientEventLinkAccess.ts';
 import {getClientContacts} from './eventFields.js';
 import {getEventDisplayName} from './eventName.ts';
 
-const BATCH=200,MAX_PAGES=20,MAX_EVENTS=120;
+const BATCH=200,MAX_PAGES=30,MAX_EVENTS=120;
 const ID=/^[A-Za-z0-9_-]{3,100}$/;
 const scanFields=[
  'id','created_by','event_name','family_name','child_name','event_date',
@@ -68,14 +68,17 @@ export function clientDashboardFinancialSummary(event:any,services:any[],
 async function listEvents(db:any){
  if(typeof db?.Event?.filter!=='function')throw error('client_feed_event_reader_unavailable');
  const rows:any[]=[],seen=new Set<string>();
+ let offset=0;
  for(let i=0;i<MAX_PAGES;i++){
-  const page=await db.Event.filter({},'-created_date',BATCH,i*BATCH,scanFields);
+  const page=await db.Event.filter({},'-created_date',BATCH,offset,scanFields);
   if(!Array.isArray(page)||page.length>BATCH)throw error('client_feed_invalid_page');
   for(const row of page){
    if(!ID.test(row?.id||'')||seen.has(row.id))throw error('client_feed_duplicate_event');
    rows.push(row);seen.add(row.id);
   }
-  if(page.length<BATCH)return rows;
+  // Never assume the provider honors our requested page limit exactly.
+  if(page.length===0)return rows;
+  offset+=page.length;
  }
  throw error('client_feed_event_scan_limit');
 }
@@ -86,6 +89,26 @@ async function mapLimited<T,U>(items:T[],fn:(item:T)=>Promise<U>,max=5):Promise<
   for(;;){const i=index++;if(i>=items.length)break;result[i]=await fn(items[i]);}
  }));
  return result;
+}
+async function scopedFinancialRows(db:any,kind:'EventService'|'Payment',
+ eventId:string,fields:string[]){
+ const rows:any[]=[],ids=new Set<string>();
+ let offset=0;
+ for(let i=0;i<15;i++){
+  const part=await db[kind].filter({event_id:eventId},'-created_date',
+   500,offset,fields);
+  if(!Array.isArray(part)||part.length>500)
+   throw error('client_feed_incomplete_finance');
+  if(part.length===0)return rows;
+  for(const row of part){
+   if(!ID.test(row?.id||'')||row.event_id!==eventId||
+    ids.has(row.id))throw error('client_feed_finance_identity_mismatch');
+   ids.add(row.id);rows.push(row);
+  }
+  if(rows.length>500)throw error('client_feed_incomplete_finance');
+  offset+=part.length;
+ }
+ throw error('client_feed_finance_scan_limit');
 }
 export async function readClientDashboardFeed(client:any,user:any){
  if(!eligibleUser(user))throw error('client_feed_forbidden',403);
@@ -104,11 +127,9 @@ export async function readClientDashboardFeed(client:any,user:any){
   // These database queries are scoped by an event ID selected ONLY after
   // authenticated server-side membership is established, never by the client.
   const [services,payments]=await Promise.all([
-   db.EventService.filter({event_id:event.id},'-created_date',501,0,serviceFields),
-   db.Payment.filter({event_id:event.id},'-created_date',501,0,paymentFields)
+   scopedFinancialRows(db,'EventService',event.id,serviceFields),
+   scopedFinancialRows(db,'Payment',event.id,paymentFields)
   ]);
-  if(!Array.isArray(services)||services.length>=501||!Array.isArray(payments)||
-   payments.length>=501)throw error('client_feed_incomplete_finance');
   const totals=clientDashboardFinancialSummary(event,services,payments,vatRate);
   return {
    id:event.id,
