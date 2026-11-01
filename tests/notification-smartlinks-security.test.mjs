@@ -9,6 +9,8 @@ import {
  buildNotificationSmartLink,notificationRecipientRole
 } from '../base44/shared/notificationSmartLinks.ts';
 import {customLinkDestination} from '../base44/shared/greenSupplierCustomLinks.ts';
+import {notificationLinkPreset} from '../src/lib/notificationLinkPresets.js';
+import {buildDeepLink} from '../base44/functions/notificationHelpers/entry.ts';
 
 const EVENT='event-1234',SUPPLIER='supplier-1234';
 const user={id:'user-1234',role:'user',user_type:'supplier',
@@ -142,6 +144,38 @@ test('custom Green event link matches secured supplier page and no other event',
   'https://pulse-system.base44.app/SupplierEventView?id='+EVENT);
  assert.equal(customLinkDestination(button,{...draft,source_id:'../event-other'}),null);
  assert.equal(customLinkDestination(button,{...draft,source_type:'supplier_pending_reminder'}),null);
+});
+test('smart presets work for scheduled producers and preserve query parameters and recipient scope',()=>{
+ const source={event_id:EVENT};
+ const origin='https://pulse-system.base44.app';
+ for(const [audience,type,path] of [
+  ['supplier','event_page','SupplierEventView?id='+EVENT],
+  ['admin','event_page','EventDetails?id='+EVENT],
+  ['client','event_page','EventDetails?id='+EVENT],
+  ['client','payment_page','EventDetails?tab=financial&id='+EVENT],
+  ['admin','assignment_page','EventDetails?tab=services&id='+EVENT],
+  ['supplier','assignment_page','SupplierDashboard'],
+  ['supplier','calendar_page','SupplierCalendarDashboard'],
+  ['admin','calendar_page','EventsBoardPage'],
+  ['client','calendar_page','ClientDashboard'],
+  ['supplier','settings_page','MyNotificationSettings']
+ ]){
+  const preset=notificationLinkPreset(type,[audience]);
+  assert.ok(preset,audience+' '+type);
+  const url=buildDeepLink(preset.deep_link_base,preset.deep_link_params_map,source);
+  assert.equal(origin+url,origin+'/'+path);
+ }
+ for(const args of [
+  ['payment_page',['supplier']],
+  ['event_page',['supplier','client']],
+  ['calendar_page',['admin','client']],
+  ['event_page',[]],
+  ['unknown',['admin']]
+ ])assert.equal(notificationLinkPreset(...args),null);
+ const form=fs.readFileSync('src/components/admin/notifications/form/AdvancedLinksTab.jsx','utf8');
+ assert.match(form,/notificationLinkPreset/);
+ assert.match(form,/deep_link_params_map/);
+ assert.match(form,/chooseSmartLink/);
 });
 test('template UX is part of NotificationTemplateForm and one source-level control remains',()=>{
  const form=fs.readFileSync('src/components/admin/notifications/NotificationTemplateForm.jsx','utf8');
