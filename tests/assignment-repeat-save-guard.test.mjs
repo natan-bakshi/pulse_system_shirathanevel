@@ -9,7 +9,7 @@ import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 import {pendingApprovalReminderSupplierIds} from '../base44/shared/assignmentReminderTiming.ts';
 import {toChatId} from '../base44/shared/whatsappSend.ts';
 import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
-import {isEventChangeStatusReset} from '../base44/shared/eventChangeReconfirmation.ts';
+import {isEventChangeStatusReset,planEventChangeReconfirmation} from '../base44/shared/eventChangeReconfirmation.ts';
 
 const src=fs.readFileSync('base44/functions/handleEntityEvents/entry.ts','utf8');
 const compiled=esbuild.transformSync(src,{loader:'ts',format:'cjs',target:'es2022'}).code;
@@ -68,10 +68,11 @@ function fixture(){
      throw Error('Unexpected dependency: '+name);
    }
  });
- async function update({before=[],after=[],beforeStatus={},afterStatus={},updated='2026-10-20T10:00:00.100000'}={}){
+ async function update({before=[],after=[],beforeStatus={},afterStatus={},updated='2026-10-20T10:00:00.100000',reconfirmation=''}={}){
    const data={id:serviceId,event_id:eventId,service_id:'catalog-QA',supplier_ids:JSON.stringify(after),
      supplier_statuses:JSON.stringify(afterStatus),supplier_notes:'{}',
-     updated_date:updated};
+     updated_date:updated,
+     ...(reconfirmation?{supplier_reconfirmation_context:reconfirmation}:{})};
    const old={id:serviceId,event_id:eventId,supplier_ids:JSON.stringify(before),
      supplier_statuses:JSON.stringify(beforeStatus),supplier_notes:'{}',
      updated_date:'2026-10-20T09:59:00.000000'};
@@ -97,6 +98,21 @@ test('confirming an existing pending supplier never repeats the initial assignme
  const r=await x.update({before,after:before,beforeStatus:{[supplier]:'pending'},
    afterStatus:{[supplier]:'confirmed'}});
  assert.equal(r.status,200);
+ assert.equal(x.requests.length,0);
+});
+test('admin choice to notify and reset approval suppresses a spurious new assignment',async()=>{
+ const x=fixture(),before=[supplier];
+ const pending=planEventChangeReconfirmation({
+  id:serviceId,event_id:eventId,supplier_ids:JSON.stringify(before)
+ },{
+  kind:'date_reconfirm',supplierIds:before,
+  fingerprint:JSON.stringify(['2026-10-18','','2026-10-20',''])
+ },Date.parse('2026-10-20T11:00:00Z'));
+ const outcome=await x.update({before,after:before,
+  beforeStatus:{[supplier]:'confirmed'},afterStatus:{[supplier]:'pending'},
+  reconfirmation:pending.value});
+ assert.equal(outcome.status,200);
+ assert.equal(outcome.body.notifications_sent,0);
  assert.equal(x.requests.length,0);
 });
 test('a genuine confirmed-to-pending reassignment is eligible for ONE new approval request',async()=>{
