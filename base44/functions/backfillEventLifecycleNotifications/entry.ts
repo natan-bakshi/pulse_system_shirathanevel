@@ -297,7 +297,7 @@ function buildDeepLink(basePage, paramsMapJson, data) {
                 if (value && !value.includes('{{')) params.append(key, value);
             }
             const paramString = params.toString();
-            if (paramString) url += `?${paramString}`;
+            if (paramString) url += (url.includes('?')?'&':'?')+paramString;
         } catch {}
     }
     return url;

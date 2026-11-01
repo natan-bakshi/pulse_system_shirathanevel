@@ -121,7 +121,7 @@ export function buildDeepLink(basePage, paramsMapJson, data) {
             
             const paramString = params.toString();
             if (paramString) {
-                url += `?${paramString}`;
+                url += (url.includes('?')?'&':'?')+paramString;
             }
         } catch (e) {
             console.warn('Failed to parse deep_link_params_map:', e);
