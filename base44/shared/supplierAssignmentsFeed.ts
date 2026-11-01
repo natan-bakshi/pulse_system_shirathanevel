@@ -24,6 +24,7 @@ const record=(raw:any):Record<string,any>=>{
  return data&&typeof data==='object'&&!Array.isArray(data)?data:{};
 };
 const normalizeStatus=(value:unknown)=>{
+ if(value==='approved')return 'confirmed'; // historical saved status
  if(value==='pending'||value==='confirmed'||value==='rejected')return value;
  return null;
 };
