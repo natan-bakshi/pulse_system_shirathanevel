@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import {isGreenButtonQaFixtureServicePayload} from '../../shared/greenButtonQaFixture.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
+import { isEventChangeStatusReset } from '../../shared/eventChangeReconfirmation.ts';
 
 /**
  * Handles EventService changes and sends appropriate notifications
@@ -94,7 +95,8 @@ Deno.serve(async (req) => {
                 const statusChanged = oldStatuses[supplierId] !== currentStatuses[supplierId];
                 
                 // Notify if new assignment or status changed to pending/approved
-                if (isNew || (statusChanged && ['pending', 'approved'].includes(currentStatuses[supplierId]))) {
+                if (isNew || (statusChanged && ['pending', 'approved'].includes(currentStatuses[supplierId]) &&
+                    !(currentStatuses[supplierId]==='pending' && isEventChangeStatusReset(old_data,data,supplierId)))) {
                     const supplier = suppliersMap.get(supplierId);
                     if (!supplier) continue;
                     
