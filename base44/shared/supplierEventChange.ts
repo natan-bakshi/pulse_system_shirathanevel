@@ -30,7 +30,8 @@ export function parseSupplierEventChange(raw:any):Change|null{
 }
 export function supplierEventChangeSnapshot(oldRow:any,newRow:any){
  const fields=detectSupplierEventChanges(oldRow,newRow);
- const prior=parseSupplierEventChange(oldRow?.supplier_event_change_context);
+ const prior=oldRow?.date_change_pending_action===true?
+  parseSupplierEventChange(oldRow?.supplier_event_change_context):null;
  const before:Record<string,string>={},after:Record<string,string>={};
  const union=new Set<EventChangeField>([...(prior?.fields||[]),...fields]);
  for(const field of union){
@@ -48,17 +49,17 @@ export function supplierEventAffectedService(service:any,change:any):boolean{
  if(!Array.isArray(ids)||ids.length===0)return false;
  const context=parseSupplierEventChange(change);
  if(!context)return false;
- // Fixed arrival-time suppliers are unaffected ONLY by a pure change
- // to the *event start time*. A date/location/concept change affects them.
+ // Preserve existing exclusion of fixed-arrival suppliers for date/time-only
+ // changes. A changed location or concept affects them too.
  const onlyEventTiming=context.fields.every(f=>f==='event_date'||f==='event_time');
  return !onlyEventTiming||!String(service.supplier_arrival_time||'').trim();
 }
 export function eventChangeFingerprint(context:any):string{
  const c=parseSupplierEventChange(context);
  if(!c)throw Error('Invalid event-change context');
- return JSON.stringify([c.fields.map(field=>[
+ return JSON.stringify(c.fields.map(field=>[
   field,c.before[field],c.after[field]
- ])]);
+ ]));
 }
 export function eventChangePending(event:any):boolean{
  return event?.date_change_pending_action===true;
