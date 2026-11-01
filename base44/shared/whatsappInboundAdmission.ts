@@ -9,6 +9,8 @@ import {parseWhatsAppPhone} from './whatsappPhone.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
 import {whatsappRevisionEligibility} from './supplierStatusPersistence.ts';
 import {normalizeInboundReceipt} from './whatsappInboundInbox.ts';
+import {isEventChangeReconfirmationOutbox,eligibleEventChangeReconfirmation,
+ reconfirmationMatchesEvent} from './eventChangeReconfirmation.ts';
 
 const MAX_ACCOUNT=128;
 const MAX_EVENT_ID=180;
@@ -66,7 +68,9 @@ export async function preflightWhatsAppAssignmentResponse(input:{
   if(!origin||origin.status!=='accepted')return rejected('unverified_origin');
   // A message from another campaign (invoice, event reminder, etc.) cannot
   // authorize supplier assignment transitions, even with a valid receipt.
-  if(job?.source_type!=='assignment_new')return rejected('wrong_message_kind');
+  const isChange=isEventChangeReconfirmationOutbox(job);
+  if(job?.source_type!=='assignment_new'&&!isChange)
+   return rejected('wrong_message_kind');
   if(!supplier||supplier.is_active===false||
    parseWhatsAppPhone(supplier.phone).chatId!==sender.chatId)
    return rejected('supplier_sender_mismatch');
@@ -92,17 +96,26 @@ export async function preflightWhatsAppAssignmentResponse(input:{
    verifiedTerminalRejectionCandidate:[
     'assignment_not_pending','stale_assignment_revision',
     'stale_legacy_assignment','legacy_assignment_not_pending',
-    'assignment_intent_inactive','supplier_not_assigned'
+    'assignment_intent_inactive','supplier_not_assigned',
+   'stale_reconfirmation'
    ].includes(reason),
    noMessagesSent:true} as const);
   if(!supplierAssigned(service.supplier_ids,signed.supplierId))
    return historicalOnly('supplier_not_assigned');
-  const rev=whatsappRevisionEligibility(service,signed.supplierId,signed.revision);
+  const rev=isChange?
+   {allowed:eligibleEventChangeReconfirmation(service,job.source_type,
+      signed.supplierId,signed.revision),reason:'stale_reconfirmation'}:
+   whatsappRevisionEligibility(service,signed.supplierId,signed.revision);
   if(!rev.allowed)return historicalOnly(rev.reason);
+  if(isChange){
+   const event=await db.Event.get(service.event_id).catch(()=>null);
+   if(!reconfirmationMatchesEvent(service,event,true))
+    return historicalOnly('stale_reconfirmation');
+  }
   if(!supplierPending(service,signed.supplierId))
    return historicalOnly('assignment_not_pending');
   return {admissible:true,reason:'verified_read_only',
-   receipt,action:signed.action,expiresAt:signed.expiresAt,noMessagesSent:true,
+   sourceType:job.source_type,receipt,action:signed.action,expiresAt:signed.expiresAt,noMessagesSent:true,
    // Deliberately cannot apply without durable inbox claim and deployment gate.
    requiresDurableClaim:true,requiresRolloutApproval:true};
  }catch{return rejected('context_unavailable');}
