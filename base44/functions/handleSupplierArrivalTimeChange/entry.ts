@@ -5,6 +5,7 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
+import { planEventChangeReconfirmation } from '../../shared/eventChangeReconfirmation.ts';
 
 /**
  * Handles a change to supplier_arrival_time on a specific EventService.
@@ -105,8 +106,18 @@ Deno.serve(async (req) => {
             for (const supId of supplierIds) {
                 supplierStatuses[supId] = 'pending';
             }
+            // Only the explicit 'notify' dialog choice marks a reconfirmation.
+            // Keep this metadata in the same update as the status reset.
+            const reconfirm = planEventChangeReconfirmation(eventService, {
+                kind: 'arrival_notify', supplierIds,
+                fingerprint: JSON.stringify([
+                    eventService.supplier_arrival_time || '', event.event_date || '',
+                    event.event_time || ''
+                ])
+            });
             await base44.asServiceRole.entities.EventService.update(event_service_id, {
-                supplier_statuses: JSON.stringify(supplierStatuses)
+                supplier_statuses: JSON.stringify(supplierStatuses),
+                supplier_reconfirmation_context: reconfirm.value
             });
             await recalculateEventStatus(base44.asServiceRole, eventService.event_id);
 
