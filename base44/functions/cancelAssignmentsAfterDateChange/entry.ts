@@ -1,5 +1,6 @@
 import { getClientContacts } from '../../shared/eventFields.js';
 import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
+import {withLegacySupplierReplyRevisions} from '../../shared/legacySupplierReplyRevisions.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
@@ -179,11 +180,12 @@ Deno.serve(async (req) => {
 
         // 2. Remove all suppliers from each service
         for (const service of services) {
-            await base44.asServiceRole.entities.EventService.update(service.id, {
-                supplier_ids: JSON.stringify([]),
-                supplier_statuses: JSON.stringify({}),
-                supplier_notes: JSON.stringify({})
-            });
+            await base44.asServiceRole.entities.EventService.update(service.id,
+                withLegacySupplierReplyRevisions(service,{
+                    supplier_ids: JSON.stringify([]),
+                    supplier_statuses: JSON.stringify({}),
+                    supplier_notes: JSON.stringify({})
+                }));
         }
 
         await recalculateEventStatus(base44.asServiceRole, event_id);
