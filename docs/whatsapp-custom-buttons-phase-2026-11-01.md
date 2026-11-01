@@ -12,7 +12,7 @@ Implemented in code:
 - The final provider transport rechecks custom link targets, exact reply binding, original source identity and the office phone number from trusted worker configuration.
 
 Safety limitations:
-- Smart event URLs are supported for known event reminder or scheduled event sources. Pending-assignment reminders have an EventService ID rather than an Event ID and cannot use that smart link yet.
+- Updated 2026-11-01: smart event URLs also work for trusted pending-assignment reminders, because the producer stamps the actual Event.id in Outbox.smart_event_id with its EventService source identity. A missing/mismatched stamp fails closed to text.
 - Other recipients, group chats, Wasender, billing, cancellation and document messages stay on their previous routes.
 - Original-message quoting stays unenabled because SendInteractiveButtons does not document quotedMessageId.
 - Green API has a beta warning, limits buttons to 3 and captions to 25 characters. A real device check is required before claiming delivery.
@@ -20,10 +20,12 @@ Safety limitations:
 Next:
 1. Final QA completed: 1,047/1,047 Node regression tests passed, Vite build succeeded, TypeScript/JSX parse and focused ESLint passed, git diff-check clean. Save checkpoint and verify production deployment.
 2. Live owner verification of one appropriate new supplier notification before broad rollout; never send a test automatically.
-3. Add verified event provenance for pending reminders without per-send lookups.
+3. Completed: verified Event.id provenance for pending reminders without per-send lookups. Next P0: migrate non-admin Event/EventService list reads to scoped backend endpoints and then tighten broad RLS reads safely.
 4. Improve legacy smart-link generation across InApp/Push and expand templates for clients/admins with separate recipient safety review.
 5. Expand non-business reactions only after signed inbound handling and idempotency tests.
 6. Revisit quote/tag limitations with Green API and return to queue performance and failure monitoring.
+
+Further details of the embedded template editor, link security, testing and P0 RLS follow-up: docs/whatsapp-smartlinks-template-tab-2026-11-01.md.
 
 Detailed code modules: greenSupplierCustomLinks.ts, greenSupplierTemplateButtonsPolicy.ts, greenSupplierButtonSnapshot.ts, greenSupplierNavigation.ts, whatsappV2ReminderOutbound.ts, WhatsAppCustomButtonEditor.jsx, WhatsAppTemplateButtonSettings.jsx.
 
