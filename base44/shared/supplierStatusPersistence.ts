@@ -7,6 +7,8 @@
 import {supplierAssigned,supplierTransition} from './whatsappSupplierTransition.ts';
 import {readAssignmentIntents,ASSIGNMENT_INTENT_MODE} from './assignmentIntent.ts';
 import {legacyAssignmentRevisionEligibility} from './legacyAssignmentButtonScope.ts';
+import {planLegacySupplierReplyRevisions,LEGACY_SUPPLIER_REPLY_FIELD}
+ from './legacySupplierReplyRevisions.ts';
 import {eligibleEventChangeReconfirmation,reconfirmationMatchesEvent} from './eventChangeReconfirmation.ts';
 
 export type SupplierStatusSource='dashboard'|'whatsapp'|'admin';
@@ -110,11 +112,16 @@ export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
    ...(transition.changed?{supplier_statuses:JSON.stringify({...statuses,[supplierId]:newStatus})}:{}),
    ...(noteChanged?{supplier_notes:JSON.stringify({...(notes||{}),[supplierId]:input.supplierNote})}:{})
   };
+  const replyRevisionPatch=transition.changed?
+   planLegacySupplierReplyRevisions(row,{supplier_statuses:updateData.supplier_statuses}):{};
+  Object.assign(updateData,replyRevisionPatch);
   const filter:any={
    id:row.id,supplier_ids:row.supplier_ids??null,
    supplier_statuses:row.supplier_statuses??null
   };
   if(noteChanged)filter.supplier_notes=row.supplier_notes??null;
+  if(Object.keys(replyRevisionPatch).length)
+   filter[LEGACY_SUPPLIER_REPLY_FIELD]=row[LEGACY_SUPPLIER_REPLY_FIELD]??null;
   // In-app approvals/rejections remain independent of WhatsApp availability.
   // A dashboard decision atomically closes the supplier's previous signed
   // button generation, including when an administrator reopens an assignment.
