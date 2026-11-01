@@ -21,7 +21,10 @@ export function supplierMatchesUser(supplier:any,user:any):boolean{
  const matchedEmail=email.length>3&&Array.isArray(supplier.contact_emails)&&
   supplier.contact_emails.some((value:any)=>
    typeof value==='string'&&value.trim().toLowerCase()===email);
- return matchedEmail||samePhone(supplier.phone,user.phone);
+ // User.phone is editable profile data, not proof of a verified number.
+ // Do not authorize access by phone until the auth provider supplies a
+ // server-verified binding. Email identity is checked against Supplier.
+ return Boolean(matchedEmail);
 }
 export function supplierIsActivelyAssigned(row:any,supplierId:string):boolean{
  if(!row||row.is_external===true||!ID.test(supplierId))return false;
