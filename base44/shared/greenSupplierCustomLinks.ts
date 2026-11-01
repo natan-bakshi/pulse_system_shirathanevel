@@ -74,7 +74,7 @@ export function customLinkDestination(button:GreenCustomLink,job:any,
    case 'notification_settings':return PULSE_ORIGIN+'/MyNotificationSettings';
    case 'event_details':
     return HAS_EVENT.has(job?.source_type)&&SAFE_EVENT.test(job?.source_id||'')?
-     PULSE_ORIGIN+'/EventDetails?id='+encodeURIComponent(job.source_id):null;
+     PULSE_ORIGIN+'/SupplierEventView?id='+encodeURIComponent(job.source_id):null;
    case 'external':return normalizePublicWhatsAppUrl(button.url);
    case 'office':
     return officeNumber?buildOfficeWhatsAppInquiryLink({
