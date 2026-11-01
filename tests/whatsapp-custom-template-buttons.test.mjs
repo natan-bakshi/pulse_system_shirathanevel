@@ -13,6 +13,7 @@ import {previewGreenSupplierNavigation,
  verifiedSupplierNavigationTransport}
  from '../base44/shared/greenSupplierNavigation.ts';
 import {withSupplierPortalLink} from '../base44/shared/supplierPortalLink.ts';
+import {enqueueWhatsApp} from '../base44/shared/whatsappOutbox.ts';
 import {prepareGreenV2ReminderWorkerCandidate,verifyV2ReminderTransport}
  from '../base44/shared/whatsappV2ReminderOutbound.ts';
 
@@ -158,6 +159,51 @@ test('Green native copy and phone buttons use trusted reference and configured o
   {requested_provider:'wasender'}
  ])assert.equal(verifiedSupplierNavigationTransport(
   {...record,...changed,status:'sending'},'green',p,config.officeNumber),false);
+});
+
+test('real pending-assignment enqueue freezes the actual Event ID from its trusted EventService producer',async()=>{
+ const setting=navigation([link('supplier_calendar','יומן')]);
+ setting.templates[TEMPLATE2]=custom([link('event_details','פרטי האירוע')]);
+ const ctl=control(setting);
+ let created=null,controlReads=0,providerReads=0;
+ const client={asServiceRole:{entities:{
+  WhatsAppQueueControl:{filter:async()=>{controlReads++;return [ctl]}},
+  WhatsAppOutbox:{create:async row=>{
+   created={id:'outbox-pending-123',...row};return created;
+  }},
+  AppSettings:{filter:async()=>{providerReads++;return [{
+   setting_key:'whatsapp_default_provider',setting_value:'green'
+  }]}}
+ }}};
+ const context={sourceType:'supplier_pending_reminder',
+  sourceId:'event-service-pending-123',
+  eventServiceId:'event-service-pending-123',
+  eventId:EVENT,supplierId:'supplier-123',notificationTemplateId:TEMPLATE2,
+  idempotencyKey:''};
+ const first=await enqueueWhatsApp(client,{
+  chatId:'972501234567@c.us',messageType:'text',
+  messageText:'נא לאשר את השיבוץ',context
+ });
+ assert.equal(first.status,'queued');
+ assert.equal(created.smart_event_id,EVENT);
+ assert.equal(created.source_id,context.sourceId);
+ assert.equal(created.event_service_id,context.eventServiceId);
+ assert.ok(created.supplier_buttons_snapshot_json);
+ const p=preview(created,ctl);
+ assert.equal(p.body.buttons[0].url,
+  'https://pulse-system.base44.app/SupplierEventView?id='+EVENT);
+ assert.equal(verifiedSupplierNavigationTransport({
+  ...created,status:'sending'
+ },'green',p,''),true);
+ assert.equal(controlReads,1);
+ assert.equal(providerReads,1);
+ const second=await enqueueWhatsApp(client,{
+  chatId:'972501234567@c.us',messageType:'text',
+  messageText:'נא לאשר',context:{...context,eventServiceId:'other-service'}
+ });
+ assert.equal(second.status,'queued');
+ assert.equal(created.smart_event_id,undefined);
+ assert.equal(preview(created,ctl),null,'missing proven Event ID falls back to original text');
 });
 
 test('event deep links use only a trusted event-source outbox identity, not text or client templates',()=>{
