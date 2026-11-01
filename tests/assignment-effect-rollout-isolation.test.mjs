@@ -41,6 +41,6 @@ test('supplier dashboard and admin Pulse status buttons are not replaced by expe
  assert.match(supplier,/functions\.invoke\('updateSupplierStatus'/);
  assert.match(supplier,/handleStatusChange\(event\.eventServiceId, 'confirmed'\)/);
  assert.match(supplier,/handleStatusChange\(event\.eventServiceId, 'rejected'\)/);
- assert.match(admin,/base44\.entities\.EventService\.update\(eventServiceId, updateData\)/);
+ assert.match(admin,/base44\.entities\.EventService\.update\(eventServiceId,\s*withLegacySupplierReplyRevisions\(eventService,updateData\)\)/);
  assert.match(board,/base44\.entities\.EventService\.update\(editingAssignment\.eventServiceId/);
 });
