@@ -501,6 +501,7 @@ Deno.serve(async (req) => {
                         pendingTemplate.allowed_channels?.includes('whatsapp')) {
                         whatsappQueue.push({phone:supplier.phone,message:waMessage,
                           sourceType:'supplier_pending_reminder',sourceId:es.id,supplierId,
+                          eventId:event.id,eventServiceId:es.id,
                           notificationTemplateId:pendingTemplate.id,
                           idempotencyKey:automatedWhatsAppKey('supplier_pending',{
                             eventId:event.id,recipientId:supplierId,eventDate:event.event_date,
@@ -1086,7 +1087,7 @@ Deno.serve(async (req) => {
         {
             for (const wa of whatsappQueue) {
                 try {
-                    const receipt=await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',supplierId:wa.supplierId||'',notificationTemplateId:wa.notificationTemplateId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
+                    const receipt=await sendWhatsAppText(wa.phone, wa.message, base44, {sourceType:wa.sourceType||'daily_notification',sourceId:wa.sourceId||'',supplierId:wa.supplierId||'',eventId:wa.eventId||'',eventServiceId:wa.eventServiceId||'',notificationTemplateId:wa.notificationTemplateId||'',inAppNotificationId:wa.inAppNotificationId||'',idempotencyKey:wa.idempotencyKey||''});
                     const state=whatsappEnqueueReceiptState(receipt);
                     // Deduplicated UNKNOWN/FAILED jobs are NOT freshly queued.
                     // Never inflate successful-enqueue counts or claim delivery.
