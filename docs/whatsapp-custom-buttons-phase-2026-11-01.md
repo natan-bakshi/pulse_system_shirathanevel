@@ -20,7 +20,7 @@ Safety limitations:
 Next:
 1. Final QA completed: 1,047/1,047 Node regression tests passed, Vite build succeeded, TypeScript/JSX parse and focused ESLint passed, git diff-check clean. Save checkpoint and verify production deployment.
 2. Live owner verification of one appropriate new supplier notification before broad rollout; never send a test automatically.
-3. Completed: verified Event.id provenance for pending reminders without per-send lookups. Next P0: migrate non-admin Event/EventService list reads to scoped backend endpoints and then tighten broad RLS reads safely.
+3. Completed: verified Event.id provenance for pending reminders without per-send lookups. WA-I08g code now replaces broad reads in SupplierDashboard, SupplierCalendarDashboard and ClientDashboard with authenticated per-user server projections (1,122 tests); **P0 remains open** until all other non-admin readers are audited and global Event/EventService RLS is safely restricted, after real account verification.
 4. Improve legacy smart-link generation across InApp/Push and expand templates for clients/admins with separate recipient safety review.
 5. Expand non-business reactions only after signed inbound handling and idempotency tests.
 6. Revisit quote/tag limitations with Green API and return to queue performance and failure monitoring.
