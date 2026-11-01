@@ -1,4 +1,5 @@
 import {readAssignmentIntents,ASSIGNMENT_INTENT_MODE} from './assignmentIntent.ts';
+import {assignmentTransitionWhatsAppKey} from './assignmentTransitionWhatsApp.ts';
 
 // Server-owned proof that an administrator chose "notify and re-confirm" in
 // an Event/arrival-time change dialog. The marker is written in the SAME
@@ -126,7 +127,6 @@ export async function checkEventChangeButtonCandidate(service:any,job:any){
  try{parts=JSON.parse(marker.fingerprint);}catch{return refused('reconfirmation_fingerprint_invalid');}
  if(!Array.isArray(parts)||parts.some(x=>typeof x!=='string'))
   return refused('reconfirmation_fingerprint_invalid');
- const {assignmentTransitionWhatsAppKey}=await import('./assignmentTransitionWhatsApp.ts');
  let identity:any={kind:marker.kind,eventId:marker.eventId,
   eventServiceId:service.id,supplierId:job.supplier_id,
   templateId:job.notification_template_id,revision:marker.revision};
@@ -135,7 +135,7 @@ export async function checkEventChangeButtonCandidate(service:any,job:any){
   identity={...identity,oldEventDate:parts[0],oldEventTime:parts[1],
    eventDate:parts[2],eventTime:parts[3]};
  }else{
-  if(parts.length!==3||service.supplier_arrival_time!==parts[0])
+  if(parts.length!==3||String(service.supplier_arrival_time||'')!==parts[0])
    return refused('reconfirmation_arrival_changed');
   identity={...identity,supplierArrivalTime:parts[0],
    eventDate:parts[1],eventTime:parts[2]};
