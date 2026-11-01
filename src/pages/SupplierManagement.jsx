@@ -114,6 +114,7 @@ export default function SupplierManagement() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("supplier_name");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [contactImportFeedback, setContactImportFeedback] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [expandedSuppliers, setExpandedSuppliers] = useState({});
@@ -188,6 +189,7 @@ export default function SupplierManagement() {
   }, []);
 
   const handleNew = useCallback(() => {
+    setContactImportFeedback(null);
     setEditingSupplier(null);
     setFormData({
       supplier_name: "",
@@ -205,6 +207,7 @@ export default function SupplierManagement() {
   }, []);
   
   const handleEdit = useCallback((supplier) => {
+    setContactImportFeedback(null);
     setEditingSupplier(supplier);
     setFormData({
       supplier_name: supplier.supplier_name,
@@ -413,11 +416,21 @@ export default function SupplierManagement() {
                 placeholder="שם הספק"
                 className="flex-1"
               />
-              <ContactPicker 
+              <ContactPicker
                 onContactSelect={handleContactSelect}
+                onImportStatus={setContactImportFeedback}
                 className="shrink-0"
               />
             </div>
+            {contactImportFeedback && (
+              <p
+                role={contactImportFeedback.kind === 'error' ? 'alert' : 'status'}
+                aria-live="polite"
+                className={`text-sm rounded-md px-3 py-2 ${contactImportFeedback.kind === 'error' ? 'bg-red-50 text-red-800 border border-red-200' : contactImportFeedback.kind === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-slate-50 text-slate-700'}`}
+              >
+                {contactImportFeedback.message}
+              </p>
+            )}
             <div><Label htmlFor="s_contact">איש קשר</Label><Input id="s_contact" value={formData.contact_person} onChange={e => setFormData({...formData, contact_person: e.target.value})} /></div>
             <div><Label htmlFor="s_phone">טלפון</Label><Input id="s_phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
             <div><Label htmlFor="s_emails">אימיילים (מופרדים בפסיק)</Label><Input id="s_emails" value={formData.contact_emails} onChange={e => setFormData({...formData, contact_emails: e.target.value})} /></div>
