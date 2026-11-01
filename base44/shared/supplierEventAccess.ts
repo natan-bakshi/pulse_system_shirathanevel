@@ -5,16 +5,6 @@
 const ID=/^[A-Za-z0-9_-]{3,100}$/;
 const denied=()=>Object.assign(new Error('Not found'),{status:404});
 const text=(input:any,max=180)=>typeof input==='string'?input.slice(0,max):'';
-function samePhone(a:any,b:any){
- const digits=(v:any)=>String(v||'').replace(/[^0-9]/g,'');
- const canonical=(v:any)=>{
-  const d=digits(v);
-  return /^05[0-9]{8}$/.test(d)?'972'+d.slice(1):
-   /^9725[0-9]{8}$/.test(d)?d:
-   /^[1-9][0-9]{7,14}$/.test(d)?d:'';
- };
- return Boolean(canonical(a)&&canonical(a)===canonical(b));
-}
 export function supplierMatchesUser(supplier:any,user:any):boolean{
  if(!supplier||!user)return false;
  const email=String(user.email||'').trim().toLowerCase();
