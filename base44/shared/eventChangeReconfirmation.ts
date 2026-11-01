@@ -1,3 +1,5 @@
+import {readAssignmentIntents,ASSIGNMENT_INTENT_MODE} from './assignmentIntent.ts';
+
 // Server-owned proof that an administrator chose "notify and re-confirm" in
 // an Event/arrival-time change dialog. The marker is written in the SAME
 // EventService.update as the statuses reset to pending. Ordinary reassignments
@@ -48,6 +50,23 @@ export function planEventChangeReconfirmation(service:any,input:{
 function parseIds(raw:any):string[]{
  try{const v=typeof raw==='string'?JSON.parse(raw):raw;
   return Array.isArray(v)?v.map(String):[];}catch{return [];}
+}
+// Invalidate older pending/accepted durable initial-assignment button
+// generations when the manager requests a fresh confirmation. Without this,
+// an old signed initial-assignment click could resolve the NEW decision.
+export function closeSupersededAssignmentIntents(service:any,supplierIds:string[]){
+ if(service?.assignment_intent_mode!==ASSIGNMENT_INTENT_MODE)return {};
+ const original=readAssignmentIntents(service.assignment_notification_intents||'[]');
+ const affected=new Set(supplierIds);
+ let changed=false;
+ const entries=original.map((item:any)=>{
+  if(!affected.has(item.supplier_id)||
+    !['requested','queued','accepted'].includes(item.state))return item;
+  changed=true;
+  return {...item,state:'resolved',resolution:'event_change_requires_reconfirmation'};
+ });
+ return changed?{assignment_notification_intents:JSON.stringify(entries),
+  assignment_intents_pending:entries.some((item:any)=>item.state==='requested')}:{};
 }
 export function isEventChangeStatusReset(oldRow:any,newRow:any,supplierId:string):boolean{
  const previous=parseEventChangeReconfirmation(oldRow?.supplier_reconfirmation_context);
