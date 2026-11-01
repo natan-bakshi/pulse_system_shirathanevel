@@ -2,7 +2,7 @@ import { getEventFields, getEventContacts, prepareContacts, normalizeEventValues
 import { refreshEventStatus, refreshStoredCardPolicy } from '@/lib/eventStatus';
 import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -50,7 +50,7 @@ function getLocalOverrides(localService, serverService) {
   return overrides;
 }
 
-export default function EventDetails() {
+function EventDetailsBody() {
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const eventId = urlParams.get('id');
@@ -2268,4 +2268,21 @@ export default function EventDetails() {
       />
     </div>
   );
+}
+
+// A supplier landing on a historical /EventDetails?id= link must NOT mount
+// the administrative event page or initiate its broad Event/EventService reads.
+// Serve only the scoped supplier projection, verified again by the server.
+export default function EventDetails(){
+ const location=useLocation();
+ const {data:user,isLoading}=useQuery({
+  queryKey:['currentUser'],queryFn:()=>base44.auth.me(),retry:false
+ });
+ if(isLoading)return <div role="status" className="p-8 text-white">מאמת הרשאות…</div>;
+ if(!user)return <div role="alert" className="p-8 text-white">נדרשת התחברות כדי לצפות באירוע.</div>;
+ if(user.role!=='admin'&&user.user_type==='supplier'){
+  const id=new URLSearchParams(location.search).get('id')||'';
+  return <Navigate replace to={'/SupplierEventView?id='+encodeURIComponent(id)}/>;
+ }
+ return <EventDetailsBody/>;
 }
