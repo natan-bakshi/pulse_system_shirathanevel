@@ -1,7 +1,8 @@
 import { cacheEventStatus } from '@/lib/eventStatus';
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
+import {useSupplierAssignmentsFeed} from "@/hooks/useSupplierAssignmentsFeed";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,103 +18,7 @@ export default function SupplierCalendarDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // React Query for current user
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000
-  });
-
-  // React Query for all suppliers
-  const { data: allSuppliers = [] } = useQuery({
-    queryKey: ['suppliers'],
-    queryFn: () => base44.entities.Supplier.list(),
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
-  });
-
-  // React Query for all events
-  const { data: allEvents = [], isLoading: eventsLoading } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => base44.entities.Event.list(),
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
-  });
-
-  // React Query for event services
-  const { data: allEventServices = [] } = useQuery({
-    queryKey: ['eventServices'],
-    queryFn: () => base44.entities.EventService.list(),
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
-  });
-
-  // React Query for services
-  const { data: allServices = [] } = useQuery({
-    queryKey: ['services'],
-    queryFn: () => base44.entities.Service.list(),
-    staleTime: 2 * 60 * 1000,
-    cacheTime: 5 * 60 * 1000,
-    select: (data) => Array.isArray(data) ? data : []
-  });
-
-  // Find matching supplier for current user
-  const supplier = useMemo(() => {
-    if (!user) return null;
-    const userEmail = user.email?.toLowerCase();
-    const userPhone = user.phone;
-    return allSuppliers.find(s =>
-      (userEmail && Array.isArray(s.contact_emails) && s.contact_emails.some(email => email.toLowerCase() === userEmail)) ||
-      (userPhone && s.phone === userPhone)
-    );
-  }, [user, allSuppliers]);
-
-  // Get supplier events with assignment status
-  const supplierEvents = useMemo(() => {
-    if (!supplier) return [];
-    const supplierAssignments = allEventServices.filter(es => {
-      if (es.is_external) return false;
-      let ids = [];
-      try {
-        if (es.supplier_ids) ids = JSON.parse(es.supplier_ids);
-        if (!Array.isArray(ids)) ids = [];
-      } catch (e) { ids = []; }
-      return ids.includes(supplier.id);
-    });
-
-    return supplierAssignments.map(assignment => {
-      const event = allEvents.find(e => e.id === assignment.event_id);
-      const service = allServices.find(s => s.id === assignment.service_id);
-      if (!event || !service) return null;
-
-      let statuses = {};
-      try {
-        if (assignment.supplier_statuses) statuses = JSON.parse(assignment.supplier_statuses);
-        if (typeof statuses !== 'object' || statuses === null) statuses = {};
-      } catch (e) { statuses = {}; }
-      const assignmentStatus = statuses[supplier.id] || 'pending';
-
-      // שעת התייצבות אפקטיבית: אם הוגדרה לספק - היא תוצג; אחרת שעת האירוע
-      const supplierArrivalTime = (assignment.supplier_arrival_time && String(assignment.supplier_arrival_time).trim() !== '')
-        ? String(assignment.supplier_arrival_time).trim()
-        : '';
-      const effectiveTime = supplierArrivalTime || event.event_time;
-
-      return {
-        ...event,
-        event_time: effectiveTime,
-        original_event_time: event.event_time,
-        supplier_arrival_time: supplierArrivalTime,
-        serviceName: assignment.service_name || service.service_name,
-        assignmentStatus,
-        eventServiceId: assignment.id
-      };
-    }).filter(Boolean);
-  }, [supplier, allEventServices, allEvents, allServices]);
+  const {user,supplier,supplierEvents,loading,feedError,reload} = useSupplierAssignmentsFeed();
 
   // Calendar events - mapped to match EventsCalendar format
   // Map supplier assignment statuses to EventsCalendar color statuses:
@@ -137,25 +42,25 @@ export default function SupplierCalendarDashboard() {
       .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
   }, [supplierEvents]);
 
-  // Handle status change (reuse existing function from SupplierDashboard)
+  // Keep the existing authenticated status endpoint, not a direct entity edit.
   const handleStatusChange = useCallback(async (eventServiceId, newStatus) => {
     if (!supplier) return;
     try {
-      const { data: statusResult } = await base44.functions.invoke('updateSupplierStatus', {
-        eventServiceId,
-        newStatus
+      const {data: statusResult} = await base44.functions.invoke('updateSupplierStatus', {
+        eventServiceId,newStatus
       });
-      cacheEventStatus(statusResult.eventId, statusResult.newStatus);
-      queryClient.invalidateQueries({ queryKey: ['eventServices'] });
+      cacheEventStatus(statusResult.eventId,statusResult.newStatus);
+      queryClient.invalidateQueries({queryKey:['supplierAssignmentsFeed']});
     } catch (error) {
-      console.error("Failed to update service status:", error);
-      alert("שגיאה בעדכון הסטטוס. אנא נסה שוב.");
+      console.error('Failed to update supplier status:',error);
+      alert('שגיאה בעדכון הסטטוס. אנא נסה שוב.');
     }
-  }, [supplier, queryClient]);
+  },[supplier,queryClient]);
 
-  // Calendar: click on event navigates to EventDetails
+  // A rejected assignment retains a redacted history card, not event access.
   const handleEventClick = useCallback((event) => {
-    navigate(createPageUrl('EventDetails') + `?id=${event.id}`);
+    if (event.detailsAllowed !== true) return;
+    navigate(createPageUrl('SupplierEventView') + `?id=${event.id}`);
   }, [navigate]);
 
   // Calendar: click on date does nothing for suppliers
@@ -173,12 +78,19 @@ export default function SupplierCalendarDashboard() {
     return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
   };
 
-  if (eventsLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-white" />
       </div>
     );
+  }
+
+  if (feedError) {
+    return <div className="max-w-xl mx-auto bg-white rounded-xl p-6 text-center space-y-3">
+      <p role="alert">לא ניתן לטעון כרגע את לוח השיבוצים המאומת שלך.</p>
+      <Button onClick={() => reload()}>נסה שוב</Button>
+    </div>;
   }
 
   if (!supplier) {
@@ -291,7 +203,7 @@ export default function SupplierCalendarDashboard() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(createPageUrl('EventDetails') + `?id=${event.id}`)}
+                    onClick={() => navigate(createPageUrl('SupplierEventView') + `?id=${event.id}`)}
                     className="border-red-200 text-red-800 hover:bg-red-50 text-xs sm:text-sm"
                   >
                     פרטים
