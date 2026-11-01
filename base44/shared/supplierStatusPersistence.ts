@@ -7,6 +7,8 @@
 import {supplierAssigned,supplierTransition} from './whatsappSupplierTransition.ts';
 import {readAssignmentIntents,ASSIGNMENT_INTENT_MODE} from './assignmentIntent.ts';
 import {legacyAssignmentRevisionEligibility} from './legacyAssignmentButtonScope.ts';
+import {eligibleEventChangeReconfirmation,reconfirmationMatchesEvent,
+ isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 
 export type SupplierStatusSource='dashboard'|'whatsapp'|'admin';
 type SupplierStatus='pending'|'confirmed'|'rejected';
@@ -54,6 +56,7 @@ export function whatsappRevisionEligibility(service:any,supplierId:string,revisi
 export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
  eventServiceId:string;supplierId:string;newStatus:SupplierStatus;
  source:SupplierStatusSource;expectedRevision?:string;
+ expectedSourceType?:'assignment_new'|'assignment_update'|'arrival_time_change';
  expectedStatus?:SupplierStatus;supplierNote?:string
 }):Promise<{kind:'changed'|'unchanged';eventId:string;status:SupplierStatus}>{
  const {eventServiceId,supplierId,newStatus,source}=input;
@@ -70,9 +73,19 @@ export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
   if(!row)throw issue('event_service_not_found',404);
   if(row.is_external===true)throw issue('external_service',403);
   if(!supplierAssigned(row.supplier_ids,supplierId))throw issue('supplier_not_assigned',403);
+  const isChange=source==='whatsapp'&&
+   ['assignment_update','arrival_time_change'].includes(input.expectedSourceType||'');
   if(source==='whatsapp'){
-   const revision=whatsappRevisionEligibility(row,supplierId,input.expectedRevision||'');
-   if(!revision.allowed)throw issue(revision.reason,409);
+   if(isChange){
+    if(!eligibleEventChangeReconfirmation(row,input.expectedSourceType||'',
+        supplierId,input.expectedRevision||''))throw issue('stale_reconfirmation',409);
+    const changedEvent=await entities.Event.get(row.event_id).catch(()=>null);
+    if(!reconfirmationMatchesEvent(row,changedEvent,true))
+     throw issue('stale_reconfirmation',409);
+   }else{
+    const revision=whatsappRevisionEligibility(row,supplierId,input.expectedRevision||'');
+    if(!revision.allowed)throw issue(revision.reason,409);
+   }
   }
   const statuses=parseStatuses(row.supplier_statuses);
   // An admin dialog must not overwrite a newer WhatsApp or supplier decision.
@@ -130,9 +143,14 @@ export async function persistAuthorizedSupplierStatus(serviceClient:any,input:{
   if(source==='whatsapp'){
    filter.assignment_intent_mode=row.assignment_intent_mode??null;
    filter.assignment_notification_intents=row.assignment_notification_intents??null;
-   // Legacy canary buttons must match the exact business write generation.
-   if(row.assignment_intent_mode!==ASSIGNMENT_INTENT_MODE)
+   if(isChange){
+    // A later admin-approved event change invalidates old buttons even if
+    // this supplier was still pending on the same service.
+    filter.supplier_reconfirmation_context=row.supplier_reconfirmation_context??null;
+   }else if(row.assignment_intent_mode!==ASSIGNMENT_INTENT_MODE){
+    // Legacy initial-assignment button identity remains unchanged.
     filter.updated_date=row.updated_date??null;
+   }
   }
   if(newStatus==='rejected'&&transition.changed){
    const declined=declinedHistory(row.declined_suppliers);
