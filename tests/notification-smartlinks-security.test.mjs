@@ -11,6 +11,7 @@ import {
 import {customLinkDestination} from '../base44/shared/greenSupplierCustomLinks.ts';
 import {notificationLinkPreset} from '../src/lib/notificationLinkPresets.js';
 import {buildDeepLink} from '../base44/functions/notificationHelpers/entry.ts';
+import {canOpenClientEventCard} from '../base44/shared/clientEventLinkAccess.ts';
 
 const EVENT='event-1234',SUPPLIER='supplier-1234';
 const user={id:'user-1234',role:'user',user_type:'supplier',
@@ -111,6 +112,23 @@ test('supplier list is checked against auth email, never an editable phone or ar
  assert.equal(supplierIsActivelyAssigned(service,'not-listed'),false);
  assert.throws(()=>allowedSupplierEventView(event,[],SUPPLIER),/Not found/);
 });
+test('client event-detail authorization rejects stranger and non-client even when a link ID is known',()=>{
+ const original={id:EVENT,created_by:'owner@example.org',contacts_schema_version:2,
+  parents:JSON.stringify([{email:'mother@example.org',client_access:true},
+   {email:'hidden@example.org',client_access:false}]),
+  organizer_contacts:JSON.stringify([{email:'guest@example.org'}])};
+ const viewer={role:'user',user_type:'client',email:'mother@example.org'};
+ assert.equal(canOpenClientEventCard(viewer,original),true);
+ assert.equal(canOpenClientEventCard({...viewer,email:'owner@example.org'},original),true);
+ assert.equal(canOpenClientEventCard({...viewer,email:'MOTHER@example.org'},original),true);
+ assert.equal(canOpenClientEventCard({...viewer,email:'hidden@example.org'},original),false);
+ assert.equal(canOpenClientEventCard({...viewer,email:'guest@example.org'},original),false);
+ assert.equal(canOpenClientEventCard({...viewer,email:'stranger@example.org'},original),false);
+ assert.equal(canOpenClientEventCard({...viewer,user_type:'supplier'},original),false);
+ assert.equal(canOpenClientEventCard({...viewer,email:''},original),false);
+ assert.equal(canOpenClientEventCard({role:'admin'},original),true);
+ assert.equal(canOpenClientEventCard(viewer,null),false);
+});
 test('known smart links reach real correct role-specific pages without role escalation',()=>{
  const origin='https://pulse-system.base44.app';
  for(const [role,kind,expected] of [
@@ -203,7 +221,7 @@ test('supplier and client event-route guards execute before administrative event
  assert.match(details,/return <Navigate replace to=\{'\/SupplierEventView/);
  assert.match(details,/base44\.functions\.invoke\('eventLinkAccess'/);
  assert.match(backend,/readSupplierEventView\(client,user,body\.eventId\)/);
- assert.match(clientGate,/getClientContacts\(event\)/);
+ assert.match(clientGate,/canOpenClientEventCard\(user,event\)/);
  assert.match(view,/base44\.functions\.invoke\('supplierEventView'/);
  assert.doesNotMatch(view,/base44\.entities\.Event\.(?:get|list|filter)/);
  assert.doesNotMatch(view,/base44\.entities\.EventService\.(?:get|list|filter)/);
