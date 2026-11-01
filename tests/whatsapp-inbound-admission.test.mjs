@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {createSignedWhatsAppAction} from '../base44/shared/whatsappSignedAction.ts';
 import {preflightWhatsAppAssignmentResponse} from '../base44/shared/whatsappInboundAdmission.ts';
+import {withLegacySupplierReplyRevisions} from '../base44/shared/legacySupplierReplyRevisions.ts';
+import {legacyAssignmentGeneration} from '../base44/shared/legacyAssignmentButtonScope.ts';
+import {assignmentWhatsAppKey} from '../base44/shared/assignmentWhatsApp.ts';
 
 const now=Date.parse('2026-10-26T12:00:00Z');
 const webhookSecret='provider-green-webhook-secret-32-bytes-minimum';
@@ -131,6 +134,42 @@ test('reassigned, cancelled, rejected or removed assignments deny stale provider
   const result=await preflightWhatsAppAssignmentResponse(await request(),f.client);
   assert.equal(result.admissible,false);
  }
+});
+test('signed original Green callback still admits supplier B after unrelated supplier A confirms on the same service',async()=>{
+ const f=fixture();
+ const b='supplier-123',a='supplier-unrelated';
+ const s0={...f.service,supplier_ids:'[]',supplier_statuses:'{}',
+  assignment_intent_mode:'',assignment_notification_intents:'[]'};
+ const first=withLegacySupplierReplyRevisions(s0,{
+  supplier_ids:JSON.stringify([a,b]),
+  supplier_statuses:JSON.stringify({[a]:'pending',[b]:'pending'})
+ },now);
+ Object.assign(f.service,s0,first);
+ f.row.assignment_revision=legacyAssignmentGeneration(f.service,b);
+ f.row.idempotency_key=assignmentWhatsAppKey(f.service,b);
+ assert.match(f.row.idempotency_key,/:l[0-9]+:SUPPLIER_NEW_ASSIGNMENT$/);
+ const aConfirmed=withLegacySupplierReplyRevisions(f.service,{
+  supplier_statuses:JSON.stringify({[a]:'confirmed',[b]:'pending'})
+ },now+2000);
+ Object.assign(f.service,aConfirmed,{
+  updated_date:new Date(now+2000).toISOString().slice(0,-1)+'000'
+ });
+ const signed=await request({}, {revision:f.row.assignment_revision});
+ const allowed=await preflightWhatsAppAssignmentResponse(signed,f.client);
+ assert.equal(allowed.admissible,true,allowed.reason);
+ assert.equal(allowed.receipt.supplierId,b);
+ assert.equal(allowed.receipt.revision,f.row.assignment_revision);
+ // A status change by the SAME supplier revokes its old token. Reopening
+ // cannot revive the original request even if it happens within one ms.
+ Object.assign(f.service,withLegacySupplierReplyRevisions(f.service,{
+  supplier_statuses:JSON.stringify({[a]:'confirmed',[b]:'confirmed'})
+ },now+2100));
+ Object.assign(f.service,withLegacySupplierReplyRevisions(f.service,{
+  supplier_statuses:JSON.stringify({[a]:'confirmed',[b]:'pending'})
+ },now+2100));
+ const stale=await preflightWhatsAppAssignmentResponse(signed,f.client);
+ assert.equal(stale.admissible,false);
+ assert.equal(stale.reason,'stale_legacy_assignment');
 });
 test('provider read failure never authorizes mutation or sends anything',async()=>{
  const f=fixture();
