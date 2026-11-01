@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {
  planEventChangeReconfirmation,parseEventChangeReconfirmation,
- isEventChangeStatusReset,eligibleEventChangeReconfirmation,
+ isEventChangeStatusReset,closeSupersededAssignmentIntents,
+ eligibleEventChangeReconfirmation,
  isEventChangeReconfirmationOutbox,checkEventChangeButtonCandidate
 } from '../base44/shared/eventChangeReconfirmation.ts';
 import {assignmentTransitionWhatsAppKey} from '../base44/shared/assignmentTransitionWhatsApp.ts';
@@ -130,6 +131,24 @@ test('retries re-use same marker and new real change advances revision',()=>{
  assert.equal(changed.reused,false);
  assert.notEqual(changed.revision,f.planned.revision);
  assert.equal(parseEventChangeReconfirmation(changed.value)?.eventServiceId,SID);
+});
+test('old durable initial assignment intents are atomically retired on reconfirmation',()=>{
+ const f=context();
+ f.previous.assignment_intent_mode='durable_v1';
+ f.previous.assignment_intents_pending=true;
+ f.previous.assignment_notification_intents=JSON.stringify([{
+  key:'assignment:service-test-123:supplier-test-123:r3:SUPPLIER_NEW_ASSIGNMENT',
+  supplier_id:SUP,revision:3,state:'accepted',created_at:'2026-10-29T10:00:00Z'
+ },{
+  key:'assignment:service-test-123:someone-else-123:r4:SUPPLIER_NEW_ASSIGNMENT',
+  supplier_id:'someone-else-123',revision:4,state:'requested'
+ }]);
+ const retired=closeSupersededAssignmentIntents(f.previous,[SUP]);
+ const entries=JSON.parse(retired.assignment_notification_intents);
+ assert.equal(entries[0].state,'resolved');
+ assert.equal(entries[1].state,'requested');
+ assert.equal(retired.assignment_intents_pending,true);
+ assert.deepEqual(closeSupersededAssignmentIntents({...f.previous,assignment_intent_mode:''},[SUP]),{});
 });
 test('transition WhatsApp key is stable per revision; cancels and unrelated sources are not actionable',async()=>{
  const f=context('arrival_notify');
