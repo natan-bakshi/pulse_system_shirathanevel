@@ -29,6 +29,13 @@ export function supplierIsActivelyAssigned(row:any,supplierId:string):boolean{
  // Suppliers who rejected or whose assignment was cancelled lose link access.
  return ['pending','approved','confirmed'].includes(statuses[supplierId]);
 }
+function assignedStatus(row:any,supplierId:string):string{
+ try{
+  const statuses=typeof row.supplier_statuses==='string'?JSON.parse(row.supplier_statuses):
+   row.supplier_statuses;
+  return String(statuses?.[supplierId]||'');
+ }catch{return '';}
+}
 export function allowedSupplierEventView(event:any,services:any[],supplierId:string){
  if(!event||!ID.test(event.id||'')||!Array.isArray(services)||
   !services.some(s=>supplierIsActivelyAssigned(s,supplierId)))throw denied();
@@ -43,7 +50,7 @@ export function allowedSupplierEventView(event:any,services:any[],supplierId:str
   services:services.filter(s=>supplierIsActivelyAssigned(s,supplierId)).map(s=>({
    serviceName:text(s.service_name,130),
    arrivalTime:text(s.supplier_arrival_time,40),
-   status:JSON.parse(s.supplier_statuses)[supplierId]
+   status:assignedStatus(s,supplierId)
   })).slice(0,30)
  };
 }
