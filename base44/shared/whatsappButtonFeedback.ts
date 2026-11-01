@@ -8,6 +8,7 @@ import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifyTerminalButtonFeedbackProof} from './whatsappButtonFeedbackProof.ts';
 import {inboundReceiptKey} from './whatsappInteractiveReceipt.ts';
 import {parseWhatsAppPhone} from './whatsappPhone.ts';
+import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,160}$/;
 const JID=/^[1-9][0-9]{7,14}@c\.us$/;
@@ -49,7 +50,7 @@ function matchedSource(row:any,job:any,supplier:any){
    providerEventId:row.provider_event_id
   })||row.company_id!==COMPANY||
   row.provider!=='green'||job.status!=='accepted'||
-  job.source_type!=='assignment_new'||
+  !(job.source_type==='assignment_new'||isEventChangeReconfirmationOutbox(job))||
   job.provider!=='green'||job.requested_provider!=='green'||
   job.id!==row.outbox_job_id||
   job.provider_message_id!==row.provider_message_id||
@@ -118,7 +119,13 @@ export async function enqueueVerifiedButtonFeedback(
  let queued:any;
  try{
   queued=await enqueueWhatsApp(client,{
-   chatId:job.chat_id,messageType:'text',messageText:planned.message,
+   chatId:job.chat_id,messageType:'text',
+   messageText:job.source_type==='assignment_new'?planned.message:
+    row.state==='applied'&&['applied','already_applied'].includes(row.result_code)?
+      row.action==='assignment_approve'?
+       'אישרת את שינוי פרטי האירוע והשיבוץ שלך אושר מחדש. תודה! לשינוי נוסף יש לפנות למשרד או להיכנס למערכת Pulse.':
+       'דחית את השיבוץ לאחר שינוי פרטי האירוע. ההחלטה נרשמה במערכת.':
+      planned.message,
    context:{
     sourceType:'assignment_button_feedback',
     sourceId:planned.sourceId,idempotencyKey:planned.idempotencyKey,
