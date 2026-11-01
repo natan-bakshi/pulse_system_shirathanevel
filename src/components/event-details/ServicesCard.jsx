@@ -1,4 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
+import {withLegacySupplierReplyRevisions} from '../../../base44/shared/legacySupplierReplyRevisions.ts';
 import { newAssignmentRecipients, verifyAssignmentWhatsApp, showAssignmentWhatsAppWarning, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -221,10 +222,11 @@ export default function ServicesCard({
             const updatedSupplierIds = [...currentSupplierIds, newSupplierRecord.id];
             currentSupplierStatuses[newSupplierRecord.id] = 'pending';
             
-            await base44.entities.EventService.update(eventServiceId, {
+            await base44.entities.EventService.update(eventServiceId,
+              withLegacySupplierReplyRevisions(eventService,{
                 supplier_ids: JSON.stringify(updatedSupplierIds),
                 supplier_statuses: JSON.stringify(currentSupplierStatuses)
-            });
+              }));
             const delivery=await verifyAssignmentWhatsApp(eventServiceId,[newSupplierRecord.id]);
             showAssignmentWhatsAppWarning(delivery);
         }
@@ -281,11 +283,12 @@ export default function ServicesCard({
 
       const added=newAssignmentRecipients(localSelectedService.supplier_ids,localSupplierFormData.supplierIds,
         localSelectedService.supplier_statuses,nextStatuses);
-      await base44.entities.EventService.update(localSelectedService.id, {
-        supplier_ids: JSON.stringify(localSupplierFormData.supplierIds),
-        supplier_statuses: JSON.stringify(nextStatuses),
-        supplier_notes: JSON.stringify(localSupplierFormData.notes)
-      });
+      await base44.entities.EventService.update(localSelectedService.id,
+        withLegacySupplierReplyRevisions(localSelectedService,{
+          supplier_ids: JSON.stringify(localSupplierFormData.supplierIds),
+          supplier_statuses: JSON.stringify(nextStatuses),
+          supplier_notes: JSON.stringify(localSupplierFormData.notes)
+        }));
       await verifyAndRefreshAssignment(localSelectedService.id,added,event.id);
 
       setShowLocalSupplierDialog(false);
