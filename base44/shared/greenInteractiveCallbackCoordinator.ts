@@ -47,7 +47,7 @@ export async function processFutureGreenButtonCallback(input:{
  let jobs:any[];
  try{
   jobs=await db.filter({
-   source_type:'assignment_new',status:'accepted',provider:'green',
+   status:'accepted',provider:'green',
    sender_account_id:input.expectedInstanceId,
    provider_message_id:click.originalProviderMessageId,
    chat_id:click.senderChatId
@@ -56,6 +56,10 @@ export async function processFutureGreenButtonCallback(input:{
  if(!Array.isArray(jobs)||jobs.length!==1)
   return closed(jobs?.length>1?'ambiguous_original_message':'original_message_not_found');
  const original=jobs[0];
+ // Only code-owned assignment and reconfirmation types can reach the
+ // signed action resolver. Source type is read from the original Outbox.
+ if(!['assignment_new','assignment_update','arrival_time_change'].includes(original.source_type))
+  return closed('wrong_message_kind');
  // Isolated QA may change only ONE specifically authorized supplier/service.
  // This identity comes from trusted server settings, never the provider body.
  // Reject before action parsing, receipt creation or EventService CAS.
