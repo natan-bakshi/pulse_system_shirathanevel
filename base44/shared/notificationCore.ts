@@ -1,7 +1,8 @@
 import { getEventContacts } from './eventFields.js';
 // ליבת יצירת ההתראות - מודול backend פנימי בלבד (לא endpoint ציבורי).
 // נקרא ישירות מפונקציות ה-backend, ומ-endpoint ה-HTTP המאומת createNotification.
-import { validateNotificationInput, sanitizeLink, PULSE_ORIGIN } from "./notificationValidation.ts";
+import { validateNotificationInput, sanitizeLink } from "./notificationValidation.ts";
+import {buildNotificationSmartLink,notificationRecipientRole} from "./notificationSmartLinks.ts";
 import { sendWhatsAppText } from "./whatsappSend.ts";
 import { resolveNotificationDelay } from "./quietHours.ts";
 
@@ -75,10 +76,9 @@ export async function createNotificationCore(base44, payload, options = {}) {
                 if (!allowed.includes('push')) sendPush = false;
 
                 if (!link && template.dynamic_url_type && template.dynamic_url_type !== 'none') {
-                    link = sanitizeLink(generateDynamicUrl(template.dynamic_url_type, {
-                        event_id: input.related_event_id,
-                        supplier_id: input.related_supplier_id,
-                        user_role: targetUser?.role || targetUser?.user_type || 'client'
+                    link = sanitizeLink(buildNotificationSmartLink(template.dynamic_url_type, {
+                        eventId:input.related_event_id,
+                        role:notificationRecipientRole(targetUser)
                     }));
                 }
             }
@@ -323,20 +323,5 @@ async function resolveWhatsAppPhone(base44, targetUser, input, allowManualPhone)
 }
 
 function collectEventContacts(ev) { return getEventContacts(ev); }
-
-function generateDynamicUrl(type, context) {
-    let path = '';
-    switch (type) {
-        case 'event_page': path = context.event_id ? `/EventDetails?id=${context.event_id}` : ''; break;
-        case 'payment_page': path = context.event_id ? `/EventDetails?id=${context.event_id}&tab=payments` : ''; break;
-        case 'assignment_page':
-            path = context.user_role === 'supplier' ? `/SupplierDashboard` : `/EventManagement?id=${context.event_id}&tab=suppliers`;
-            break;
-        case 'calendar_page': path = `/EventManagement?tab=board`; break;
-        case 'settings_page': path = `/MyNotificationSettings`; break;
-        default: path = '';
-    }
-    return path ? `${PULSE_ORIGIN}${path}` : '';
-}
 
 // חישובי שבת/שעות שקט מרוכזים ב-shared/quietHours.ts (שעון ירושלים, כולל שעון קיץ).
