@@ -9,7 +9,9 @@ const ID=/^[A-Za-z0-9_-]{3,128}$/;
 const REV=/^r[1-9][0-9]{0,12}$/;
 const RETIRED='retired';
 const TOMBSTONE=/^retired:r[1-9][0-9]{0,12}$/;
-const STATUS=new Set(['pending','confirmed','rejected']);
+// Tolerate historical 'approved' in old services for safe retire/cancel;
+// the active status writer still validates the stricter current values.
+const STATUS=new Set(['pending','confirmed','approved','rejected']);
 const MAX_SUPPLIERS=80;
 export const LEGACY_SUPPLIER_REPLY_FIELD='supplier_assignment_reply_revisions';
 export function parseLegacySupplierReplyRevisions(raw:any):Record<string,string>{
