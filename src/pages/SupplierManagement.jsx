@@ -1,4 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
+import {withLegacySupplierReplyRevisions} from '../../base44/shared/legacySupplierReplyRevisions.ts';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from '@tanstack/react-query';
@@ -71,7 +72,8 @@ const SupplierEventsList = ({ supplierId }) => {
       
       const newSupplierIds = supplierIds.filter(id => id !== supplierId);
       
-      await base44.entities.EventService.update(eventServiceId, { supplier_ids: JSON.stringify(newSupplierIds) });
+      await base44.entities.EventService.update(eventServiceId,
+        withLegacySupplierReplyRevisions(eventService,{supplier_ids:JSON.stringify(newSupplierIds)}));
       await refreshEventStatus(eventService.event_id);
       
       loadSupplierEvents();
