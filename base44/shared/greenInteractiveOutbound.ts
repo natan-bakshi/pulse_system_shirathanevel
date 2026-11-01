@@ -7,6 +7,7 @@
 import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
+import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 import {buildOfficeWhatsAppInquiryLink,type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
 import {SUPPLIER_PORTAL_URL,withSupplierPortalLink} from './supplierPortalLink.ts';
 
@@ -50,7 +51,7 @@ export async function previewGreenInteractiveAssignment(input:{
  now?:number;subtle?:SubtleCrypto
 }):Promise<GreenOutboundPreview>{
  const job=input?.job;
- if(!job||!['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)||
+ if(!job||!(job.source_type==='assignment_new'||isEventChangeReconfirmationOutbox(job))||
   job.message_type!=='text'||job.requested_provider!=='green'||
   !PRIVATE_CHAT.test(job.chat_id||''))throw fail('ineligible_interactive_job');
  const text=textBody(job);
