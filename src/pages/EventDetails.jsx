@@ -2276,13 +2276,14 @@ function EventDetailsBody() {
 export default function EventDetails(){
  const location=useLocation();
  const eventId=new URLSearchParams(location.search).get('id')||'';
+ const validEventId=/^[A-Za-z0-9_-]{3,100}$/.test(eventId);
  const {data:user,isLoading}=useQuery({
   queryKey:['currentUser'],queryFn:()=>base44.auth.me(),retry:false
  });
  const isClient=!!user&&user.role!=='admin'&&user.user_type==='client';
  const {data:clientAllowed,isLoading:checkingClient}=useQuery({
   queryKey:['eventLinkAccess',eventId,user?.id],
-  enabled:isClient&&/^[A-Za-z0-9_-]{3,100}$/.test(eventId),
+  enabled:isClient&&validEventId,
   retry:false,staleTime:15000,
   queryFn:async()=>{
    try{
@@ -2297,7 +2298,9 @@ export default function EventDetails(){
   return <Navigate replace to={'/SupplierEventView?id='+encodeURIComponent(eventId)}/>;
  if(user.role!=='admin'&&user.user_type!=='client')
   return <div role="alert" className="p-8 text-white">אין הרשאה לצפות באירוע.</div>;
- if(isClient&&(checkingClient||clientAllowed===undefined&&!!eventId))
+ if(isClient&&!validEventId)
+  return <div role="alert" className="p-8 text-white">קישור האירוע אינו תקין.</div>;
+ if(isClient&&(checkingClient||clientAllowed===undefined))
   return <div role="status" className="p-8 text-white">בודקים הרשאה לאירוע…</div>;
  if(isClient&&clientAllowed!==true)
   return <div role="alert" className="p-8 text-white">האירוע אינו זמין בחשבונך.</div>;
