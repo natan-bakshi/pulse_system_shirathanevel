@@ -13,6 +13,7 @@ import {
 } from '../base44/shared/eventChangeReconfirmation.ts';
 import {assignmentTransitionWhatsAppKey} from '../base44/shared/assignmentTransitionWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {withLegacySupplierReplyRevisions} from '../base44/shared/legacySupplierReplyRevisions.ts';
 
 const LOCATION = 'Jerusalem Old City';
 const EVENT_ID='event-choice-test';
@@ -94,6 +95,7 @@ function compileEndpoint(file,fixtures){
         parseSupplierEventChange,supplierEventAffectedService,
         eventChangeFingerprint,eventInformationNoticeKey
       };
+      if(path.endsWith('legacySupplierReplyRevisions.ts'))return {withLegacySupplierReplyRevisions};
       if(path.endsWith('whatsappReceipt.ts'))return {
         isWhatsAppEnqueueConfirmed
       };
