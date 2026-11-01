@@ -7,7 +7,7 @@ import {supplierMatchesUser,supplierIsActivelyAssigned}
  from './supplierEventAccess.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,100}$/;
-const BATCH=200,MAX_PAGES=20,MAX_ROWS=200,MAX_EVENTS=120;
+const BATCH=200,MAX_PAGES=30,MAX_ROWS=200,MAX_EVENTS=120;
 const projection=[
  'id','event_id','service_id','supplier_ids','supplier_statuses',
  'supplier_notes','supplier_arrival_time','service_name',
@@ -23,7 +23,14 @@ const record=(raw:any):Record<string,any>=>{
  try{if(typeof data==='string')data=JSON.parse(data);}catch{return {};}
  return data&&typeof data==='object'&&!Array.isArray(data)?data:{};
 };
+const statusMap=(raw:any):Record<string,any>|null=>{
+ if(raw==null||raw==='')return {};
+ let parsed=raw;
+ try{if(typeof parsed==='string')parsed=JSON.parse(parsed);}catch{return null;}
+ return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:null;
+};
 const normalizeStatus=(value:unknown)=>{
+ if(value===undefined)return 'pending'; // legacy assigned member without status yet
  if(value==='approved')return 'confirmed'; // historical saved status
  if(value==='pending'||value==='confirmed'||value==='rejected')return value;
  return null;
@@ -42,7 +49,8 @@ export function supplierFeedAssignment(assignment:any,event:any,service:any,
  try{ids=typeof assignment.supplier_ids==='string'?
   JSON.parse(assignment.supplier_ids):assignment.supplier_ids;}catch{return null;}
  if(!Array.isArray(ids)||!ids.includes(supplierId))return null;
- const status=normalizeStatus(record(assignment.supplier_statuses)[supplierId]);
+ const statuses=statusMap(assignment.supplier_statuses);
+ const status=statuses?normalizeStatus(statuses[supplierId]):null;
  if(!status||!event||event.id!==assignment.event_id)return null;
  const isActive=status!=='rejected'&&
   supplierIsActivelyAssigned(assignment,supplierId);
@@ -76,16 +84,20 @@ async function pageServices(db:any){
  if(typeof db?.EventService?.filter!=='function')
   throw unavailable();
  const rows:any[]=[],ids=new Set<string>();
+ let offset=0;
  for(let i=0;i<MAX_PAGES;i++){
   // Only minimal columns are transferred inside the trusted backend.
   const page=await db.EventService.filter({},'-created_date',BATCH,
-    i*BATCH,projection);
+    offset,projection);
   if(!Array.isArray(page)||page.length>BATCH)throw unavailable();
   for(const row of page){
    if(!ID.test(row?.id||'')||ids.has(row.id))throw unavailable();
    ids.add(row.id);rows.push(row);
   }
-  if(page.length<BATCH)return rows;
+  // Some SDKs may silently cap page size below our requested limit.
+  // Continue until an ACTUAL empty page; advance by rows actually received.
+  if(page.length===0)return rows;
+  offset+=page.length;
  }
  // Never silently serve incomplete lists that could conceal assignments.
  throw unavailable('supplier_feed_scan_limit');
@@ -116,7 +128,8 @@ export async function readSupplierAssignmentsFeed(client:any,user:any){
  const services=await pageServices(db);
  const mine=services.filter((row:any)=>{
   if(row?.is_external===true)return false;
-  const status=normalizeStatus(record(row.supplier_statuses)[supplier.id]);
+  const statuses=statusMap(row.supplier_statuses);
+  const status=statuses?normalizeStatus(statuses[supplier.id]):null;
   if(!status)return false;
   try{
    const ids=typeof row.supplier_ids==='string'?JSON.parse(row.supplier_ids):
