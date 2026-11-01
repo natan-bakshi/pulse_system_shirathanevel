@@ -9,6 +9,7 @@ import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 import {pendingApprovalReminderSupplierIds} from '../base44/shared/assignmentReminderTiming.ts';
 import {toChatId} from '../base44/shared/whatsappSend.ts';
 import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
+import {isEventChangeStatusReset} from '../base44/shared/eventChangeReconfirmation.ts';
 
 const src=fs.readFileSync('base44/functions/handleEntityEvents/entry.ts','utf8');
 const compiled=esbuild.transformSync(src,{loader:'ts',format:'cjs',target:'es2022'}).code;
@@ -45,6 +46,7 @@ function fixture(){
      if(name.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
      if(name.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(name.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
+     if(name.endsWith('eventChangeReconfirmation.ts'))return {isEventChangeStatusReset};
      if(name.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,interactive_assignment_production_enabled:false})};
      if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
      if(name.endsWith('supplierPortalLink.ts'))return {
