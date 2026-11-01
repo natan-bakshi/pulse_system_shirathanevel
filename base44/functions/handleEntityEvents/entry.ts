@@ -14,7 +14,7 @@ import { entityTriggerWhatsAppContext } from '../../shared/entityTriggerWhatsApp
 import { isWhatsAppEnqueueConfirmed } from '../../shared/whatsappReceipt.ts';
 import { shouldScheduleAssignmentReplyReminder, pendingApprovalReminderSupplierIds } from '../../shared/assignmentReminderTiming.ts';
 import { isEventChangeStatusReset } from '../../shared/eventChangeReconfirmation.ts';
-import { supplierEventChangeSnapshot } from '../../shared/supplierEventChange.ts';
+import { supplierEventChangeSnapshot, detectSupplierEventChanges } from '../../shared/supplierEventChange.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -140,12 +140,7 @@ Deno.serve(async (req) => {
         
         // Special logic for Event Critical Updates
         if (entityName === 'Event' && triggerType === 'entity_update' && oldData) {
-             const criticalFields = ['event_date', 'eventdate', 'event_time', 'eventtime', 'location', 'concept'];
-             const changedFields = criticalFields.filter(field => {
-                 const newVal = data[field];
-                 const oldVal = oldData[field];
-                 return newVal && oldVal && newVal !== oldVal;
-             });
+             const changedFields = detectSupplierEventChanges(oldData, data);
 
              if (changedFields.length > 0) {
                  // All supplier-visible critical edits, including location and
