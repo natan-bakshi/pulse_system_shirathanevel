@@ -45,7 +45,7 @@ async function prepared(){
 }
 test('staged reminder action is separate from live v1 assignment registry and cannot update supplier status',()=>{
  assert.deepEqual(STAGED_V2_WHATSAPP_ACTIONS.messageKinds.map(x=>x.messageKind),
-  ['assignment','supplier_reminder']);
+  ['assignment','supplier_reminder','supplier_event_update']);
  assert.equal(getInteractiveActionContract('supplier_reminder',
   'reminder_acknowledge',STAGED_V2_WHATSAPP_ACTIONS)?.handler,'notification_ack');
  assert.deepEqual(allowedInboundActionIds('supplier_reminder',STAGED_V2_WHATSAPP_ACTIONS),[]);
