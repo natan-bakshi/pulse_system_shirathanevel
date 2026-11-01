@@ -185,8 +185,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
    const reason=String((error as any)?.code||'');
    if((legacyCanary||legacyProduction)&& !job.interactive_button_bindings_json&&
     !job.assignment_revision&&!job.sender_account_id&&
-    ['reconfirmation_origin_invalid',
-     'legacy_canary_outbox_business_generation_mismatch',
+    ['legacy_canary_outbox_business_generation_mismatch',
      'legacy_canary_supplier_not_pending',
      'legacy_canary_supplier_not_assigned',
      'legacy_canary_unverifiable_legacy_write_generation',
