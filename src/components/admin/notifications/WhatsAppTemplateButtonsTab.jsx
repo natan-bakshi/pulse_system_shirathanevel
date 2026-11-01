@@ -14,7 +14,6 @@ const choices=[
  {value:'none',label:'ללא כפתורים'},
  {value:'custom',label:'כפתורים מותאמים אישית'}
 ];
-const defaults={portalLabel:'',officeLabel:''};
 function supported(t){
  return !!(t?.id&&/^[A-Za-z0-9_-]{12,64}$/.test(t.id)&&
   t.allowed_channels?.includes('whatsapp')&&
