@@ -12,6 +12,7 @@ import {checkLegacyAssignmentButtonCandidate,
  type LegacyAssignmentButtonScope} from './legacyAssignmentButtonScope.ts';
 import {createFutureInteractiveButtonSnapshot,verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
+import {checkEventChangeButtonCandidate,reconfirmationMatchesEvent} from './eventChangeReconfirmation.ts';
 
 const VALID_ID=/^[A-Za-z0-9_-]{3,128}$/;
 const GREEN_INSTANCE=/^[0-9]{5,20}$/;
@@ -45,7 +46,8 @@ function latestSupplierRevision(service:any,supplierId:string):{revision:string;
  return {revision,key:latest.key};
 }
 function isUnsentQueuedJob(job:any){
- return !!job&&job.status==='queued'&&job.source_type==='assignment_new'&&
+ return !!job&&job.status==='queued'&&
+  ['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)&&
   job.message_type==='text'&&job.requested_provider==='green'&&
   Number(job.attempt_count||0)===0&&!job.send_started_at&&
   !job.provider_message_id&&!job.completed_at&&
@@ -107,7 +109,15 @@ export async function prepareFutureGreenAssignmentOutbox(client:any,input:Params
  if(!map||map[original.supplier_id]!=='pending')
   throw refused('supplier_not_pending');
  let revision:string;
- if(input.legacyCanaryScope){
+ const reconfirmation=original.source_type!=='assignment_new';
+ if(reconfirmation){
+  const check=await checkEventChangeButtonCandidate(service,original);
+  if(!check.allowed||!check.revision)throw refused(check.reason);
+  const event=await db.Event.get(service.event_id).catch(()=>null);
+  if(!reconfirmationMatchesEvent(service,event))
+   throw refused('reconfirmation_event_changed');
+  revision=check.revision;
+ }else if(input.legacyCanaryScope){
   // Fast-track: reuse the original EventService UPDATE business generation.
   // No mutation of supplier assignment, original workflows or notification
   // producer. A newer update invalidates this queued candidate.
@@ -139,14 +149,19 @@ export async function prepareFutureGreenAssignmentOutbox(client:any,input:Params
  if(original.interactive_button_bindings_json)
   throw refused('orphan_interactive_snapshot_requires_review');
  const prepared={...original,sender_account_id:input.senderAccountId,assignment_revision:revision};
+ const policy=reconfirmation?{...input.policy,
+   buttons:(input.policy?.buttons||[]).map((button:any)=>({
+    ...button,label:button.action==='assignment_approve'?'מאשר את השינוי':
+      button.action==='assignment_reject'?'דוחה את השיבוץ':button.label
+   }))}:input.policy;
  const snapshot=await createFutureInteractiveButtonSnapshot({
-  job:prepared,policy:input.policy,signingSecret:input.signingSecret,issuedAt:now
+  job:prepared,policy,signingSecret:input.signingSecret,issuedAt:now
  },subtle);
  // Pre-CREATE side effects: one atomic conditional update of only the three
  // new metadata fields. Do not steal the worker lease or change message status.
  const filter={
   id:original.id,status:'queued',attempt_count:original.attempt_count??null,
-  source_type:'assignment_new',requested_provider:'green',
+  source_type:original.source_type,requested_provider:'green',
   send_started_at:original.send_started_at??null,
   provider_message_id:original.provider_message_id??null,
   sender_account_id:original.sender_account_id??null,
