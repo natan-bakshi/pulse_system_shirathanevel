@@ -142,7 +142,7 @@ test('existing admin EventService update workflows are preserved while CAS migra
  const event=fs.readFileSync('src/pages/EventDetails.jsx','utf8');
  const board=fs.readFileSync('src/components/events/EventsBoard.jsx','utf8');
  const supplier=fs.readFileSync('src/pages/SupplierDashboard.jsx','utf8');
- assert.match(event,/base44\.entities\.EventService\.update\(eventServiceId, updateData\)/);
+ assert.match(event,/base44\.entities\.EventService\.update\(eventServiceId,\s*withLegacySupplierReplyRevisions\(eventService,updateData\)\)/);
  assert.match(board,/base44\.entities\.EventService\.update\(editingAssignment\.eventServiceId/);
  assert.match(board,/await refreshEventStatus\(eventService\.event_id\)/);
  assert.doesNotMatch(event,/functions\.invoke\('adminUpdateSupplierStatus'/);
