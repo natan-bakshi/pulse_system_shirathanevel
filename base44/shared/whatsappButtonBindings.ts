@@ -7,6 +7,7 @@
 import {createSignedWhatsAppAction,verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {validateWhatsAppInteractivePolicy} from './whatsappInteractivePolicy.ts';
 import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
+import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 
 const BUTTON_ID=/^wa1_[A-Za-z0-9_-]{22}$/;
 const ASSIGNMENT_ID=/^[A-Za-z0-9_-]{3,128}$/;
@@ -45,7 +46,7 @@ function newButtonId(){
  return 'wa1_'+btoa(chars).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function originSnapshot(job:any){
- if(!job||!['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)||!ASSIGNMENT_ID.test(job.id||'')||
+ if(!job||!(job.source_type==='assignment_new'||isEventChangeReconfirmationOutbox(job))||!ASSIGNMENT_ID.test(job.id||'')||
   !ASSIGNMENT_ID.test(job.event_service_id||'')||
   !ASSIGNMENT_ID.test(job.supplier_id||'')||
   !['green','wasender'].includes(job.requested_provider||job.provider)||
@@ -130,7 +131,7 @@ export function resolveSignedActionForGreenButton(job:any,click:{
  buttonId:string;provider:string;senderAccountId:string;
  originalProviderMessageId:string;senderChatId:string}){
  if(!job||job.status!=='accepted'||
-  !['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)||
+  !(job.source_type==='assignment_new'||isEventChangeReconfirmationOutbox(job))||
   job.provider!=='green'||click.provider!=='green'||
   job.provider_message_id!==click.originalProviderMessageId||
   job.chat_id!==click.senderChatId||
