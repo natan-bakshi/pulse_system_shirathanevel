@@ -8,6 +8,7 @@ import {assignmentWhatsAppKey,assignmentWhatsAppContext,cleanMissingAssignmentTi
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
 import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
 import {sendWhatsAppToChat,toChatId} from '../base44/shared/whatsappSend.ts';
+import {isEventChangeStatusReset} from '../base44/shared/eventChangeReconfirmation.ts';
 
 const base={
  entityName:'EventService',origin:{id:'es-120',updated_date:'2026-10-19T05:26:02.583051'},
@@ -77,6 +78,7 @@ function loadTrigger({now='2026-10-19T20:30:00Z',reply,statusCode='',sendError=n
      if(path.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(path.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
+     if(path.endsWith('eventChangeReconfirmation.ts'))return {isEventChangeStatusReset};
      if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,interactive_assignment_production_enabled:false})};
      if(path.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
      if(path.endsWith('supplierPortalLink.ts'))return {
