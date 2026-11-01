@@ -155,7 +155,8 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
   const changed=await persistAuthorizedSupplierStatus(
    input.client.asServiceRole,{
     eventServiceId:record.eventServiceId,supplierId:record.supplierId,
-    newStatus:status,source:'whatsapp',expectedRevision:record.revision
+    newStatus:status,source:'whatsapp',expectedRevision:record.revision,
+    expectedSourceType:admission.admissible?admission.sourceType:'assignment_new'
    });
   // The business CAS may have committed. A subsequent failure to recalculate
   // readiness must NEVER cause the supplier CAS to be run again.
@@ -179,7 +180,7 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
    'legacy_assignment_not_pending','assignment_intent_inactive',
    'assignment_intent_not_ready','stale_or_invalid_supplier_transition',
    'assignment_changed_concurrently','supplier_not_assigned',
-   'external_service','invalid_assignment','invalid_supplier_status_record',
+   'external_service','invalid_assignment','stale_reconfirmation','invalid_supplier_status_record',
    'invalid_decline_history']);
   if(known.has(code)){
    outcome='rejected';resultCode=code==='supplier_not_assigned'?'not_assigned':
