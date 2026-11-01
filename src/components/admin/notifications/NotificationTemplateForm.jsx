@@ -224,7 +224,7 @@ export default function NotificationTemplateForm({
             <Button variant="outline" onClick={() => changeOpen(false)}>
               ביטול
             </Button>
-            <Button onClick={saveForm} disabled={isSaving}>
+            <Button onClick={saveForm} disabled={isSaving||savingButtons}>
               {isSaving||savingButtons ? (
                 <Loader2 className="h-4 w-4 animate-spin ml-2" />
               ) : (
