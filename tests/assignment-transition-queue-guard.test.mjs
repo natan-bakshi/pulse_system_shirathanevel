@@ -64,6 +64,8 @@ function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',ac
    };
    if(name.endsWith('whatsappSend.ts'))return {sendWhatsAppText:async()=>({success:true,status:'queued',jobId:'notice-only-stub'})};
    if(name.endsWith('whatsappReceipt.ts'))return {isWhatsAppEnqueueConfirmed:()=>true};
+   if(name.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,paused:false,interactive_outbound_live_enabled:true,interactive_assignment_production_enabled:true})};
+   if(name.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
    if(name.endsWith('assignmentTransitionWhatsApp.ts'))return {
     enqueueAssignmentTransitionWhatsApp:async(_client,phone,_message,identity,sourceType)=>{
       const key=await assignmentTransitionWhatsAppKey(identity);
