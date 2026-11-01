@@ -171,6 +171,10 @@
       "type": "string",
       "description": "Metadata-only notification to the existing Google Calendar EventService workflow after an atomic supplier decision"
     },
+    "supplier_assignment_reply_revisions": {
+      "type": "string",
+      "description": "Per-supplier active legacy WhatsApp reply generation or retired tombstone; updated atomically with individual supplier assignment/status changes"
+    },
     "supplier_reconfirmation_context": {
       "type": "string",
       "description": "Server-owned reconfirmation transition: written with supplier status reset when administrator chooses notify; not a new assignment"
