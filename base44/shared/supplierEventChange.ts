@@ -50,8 +50,8 @@ export function supplierEventAffectedService(service:any,change:any):boolean{
  if(!context)return false;
  // Fixed arrival-time suppliers are unaffected ONLY by a pure change
  // to the *event start time*. A date/location/concept change affects them.
- const onlyEventTime=context.fields.every(f=>f==='event_time');
- return !onlyEventTime||!String(service.supplier_arrival_time||'').trim();
+ const onlyEventTiming=context.fields.every(f=>f==='event_date'||f==='event_time');
+ return !onlyEventTiming||!String(service.supplier_arrival_time||'').trim();
 }
 export function eventChangeFingerprint(context:any):string{
  const c=parseSupplierEventChange(context);
