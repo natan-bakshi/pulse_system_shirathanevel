@@ -10,6 +10,7 @@ import {withSupplierPortalLink} from './supplierPortalLink.ts';
 import {verifiedSupplierNavigationTransport} from './greenSupplierNavigation.ts';
 import {verifyV2ReminderTransport} from './whatsappV2ReminderOutbound.ts';
 import {verifyEventUpdateAckTransport} from './supplierEventUpdateAcknowledgement.ts';
+import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -255,7 +256,8 @@ export async function sendWhatsAppTransport(job, provider, client,
   // Only the guarded worker can supply a pre-validated, frozen beta payload.
   // Ordinary messages always use the exact legacy sendMessage/sendWasender path.
   if(interactivePreview){
-    const valid=provider==='green'&&job.source_type==='assignment_new'&&
+    const valid=provider==='green'&&
+      (job.source_type==='assignment_new'||isEventChangeReconfirmationOutbox(job))&&
       job.message_type==='text'&&job.status==='sending'&&
       typeof job.interactive_button_bindings_json==='string'&&
       job.interactive_button_bindings_json.length>0&&
