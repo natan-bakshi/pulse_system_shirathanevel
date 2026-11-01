@@ -41,6 +41,16 @@
       "type": "string",
       "description": "Immutable NotificationTemplate ID stamped by trusted existing producer at enqueue; never inferred from text or a WhatsApp callback"
     },
+    "event_update_acknowledged_at": {
+      "type": "string",
+      "description": "Receipt-only signed acknowledgement of an event change notice; no assignment status effect"
+    },
+    "event_update_ack_event_id": {
+      "type": "string"
+    },
+    "event_update_ack_proof": {
+      "type": "string"
+    },
     "supplier_buttons_snapshot_json": {
       "type": "string",
       "description": "Small immutable URL-only supplier notification button layout captured from owner settings at enqueue; no executable actions"
