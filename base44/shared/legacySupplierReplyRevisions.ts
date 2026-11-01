@@ -77,6 +77,12 @@ export function planLegacySupplierReplyRevisions(old:any,patch:any,
  }
  return touched?{[LEGACY_SUPPLIER_REPLY_FIELD]:JSON.stringify(next)}:{};
 }
+export function withLegacySupplierReplyRevisions<T extends Record<string,any>>(
+ old:any,patch:T,now=Date.now()):T{
+ // Preserve every caller's existing EventService.update semantics.
+ // Add a revision patch only if a specific supplier membership/status changed.
+ return {...patch,...planLegacySupplierReplyRevisions(old,patch,now)};
+}
 export function legacySupplierReplyRevision(service:any,supplierId:string):string|null|undefined{
  if(!ID.test(supplierId||''))return null;
  try{
