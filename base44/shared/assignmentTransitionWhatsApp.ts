@@ -10,7 +10,7 @@ export async function assignmentTransitionWhatsAppKey(input:{
   kind:'arrival_notify'|'arrival_cancel'|'date_cancel'|'date_reconfirm';
   eventId:string;eventServiceId?:string;supplierId:string;templateId:string;
   oldEventDate?:string;oldEventTime?:string;eventDate?:string;eventTime?:string;
-  supplierArrivalTime?:string;
+  supplierArrivalTime?:string;revision?:string;
 }):Promise<string>{
   const kinds=new Set(['arrival_notify','arrival_cancel','date_cancel','date_reconfirm']);
   if(!kinds.has(input?.kind))throw new Error('Unsupported assignment transition kind');
@@ -18,6 +18,9 @@ export async function assignmentTransitionWhatsAppKey(input:{
   const supplierId=String(input.supplierId||'').trim();
   const templateId=String(input.templateId||'').trim();
   if(!eventId||!supplierId||!templateId)throw new Error('Assignment transition identity incomplete');
+  if(input.revision && (!/^r[1-9][0-9]{0,12}$/.test(input.revision)||
+    !['arrival_notify','date_reconfirm'].includes(input.kind)))
+    throw new Error('Unsupported reconfirmation revision');
   if(input.kind.startsWith('arrival_')&&!String(input.eventServiceId||'').trim())
     throw new Error('EventService required for arrival transition');
   const values=[
@@ -25,7 +28,8 @@ export async function assignmentTransitionWhatsAppKey(input:{
     supplierId,templateId,
     String(input.oldEventDate||''),String(input.oldEventTime||''),
     String(input.eventDate||''),String(input.eventTime||''),
-    String(input.supplierArrivalTime||'')
+    String(input.supplierArrivalTime||''),
+    ...(input.revision?['reconfirmation:'+input.revision]:[])
   ];
   const encoded=new TextEncoder().encode(JSON.stringify(values));
   const digest=await crypto.subtle.digest('SHA-256',encoded);
@@ -46,7 +50,8 @@ export async function enqueueAssignmentTransitionWhatsApp(
   const receipt=await sendWhatsAppText(phone,message,client,{
     sourceType,sourceId:identity.eventId,
     idempotencyKey:key,eventServiceId:identity.eventServiceId||'',
-    supplierId:identity.supplierId
+    supplierId:identity.supplierId,
+    notificationTemplateId:identity.templateId
   });
   const state=whatsappEnqueueReceiptState(receipt);
   if(!isWhatsAppEnqueueConfirmed(receipt)){
