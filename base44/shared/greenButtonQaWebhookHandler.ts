@@ -23,6 +23,8 @@ import {parseGreenButtonSelection} from './greenInteractiveCallback.ts';
 import {admitAuthenticatedV2GreenReminder,recordVerifiedV2ReminderAcknowledgement}
  from './whatsappV2ReminderInbound.ts';
 import {enqueueVerifiedV2ReminderAckFeedback} from './whatsappV2ReminderFeedback.ts';
+import {admitEventUpdateAcknowledgement,recordEventUpdateAcknowledgement}
+ from './supplierEventUpdateAcknowledgement.ts';
 type Result={httpStatus:number;body:{received:boolean};noProviderCalls:true};
 const result=(httpStatus:number,received=false):Result=>({
  httpStatus,body:{received},noProviderCalls:true
@@ -102,12 +104,30 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
   const client=opts.makeClient(request);
   const control=await readWhatsAppQueueControl(client);
   if(v2Callback){
+   const signing=opts.env('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'';
+   const account=opts.env('GREEN_API_INSTANCE_ID')||'';
+   if(greenProductionPassiveInboundReady(opts.env)&&
+      (control.interactive_assignment_production_enabled===true||
+       control.interactive_assignment_production_ever_enabled===true)){
+    const eventAck=await admitEventUpdateAcknowledgement({
+     client,headers:request.headers,rawCallback:v2Callback,
+     callbackByteLength:v2Bytes,expectedInstanceId:account,
+     webhookSecret:bearer,signingSecret:signing,now:opts.now
+    });
+    if(eventAck.status==='admitted'){
+     const saved=await recordEventUpdateAcknowledgement({
+      client,admission:eventAck.data,signingSecret:signing,now:opts.now
+     });
+     return ['recorded','already_recorded','already_acknowledged'].includes(saved)
+      ?result(200,true):result(503);
+    }
+    if(!['unknown_origin','not_v2_reply'].includes(eventAck.reason))
+     return result(eventAck.reason==='outbox_read_uncertain'?503:422);
+   }
    // A rollback of NEW V2 sends must never invalidate buttons already
    // accepted by Green. Historical authorization is independent of sending.
    if(control.interactive_reminder_v2_inbound_ever_enabled!==true||
       !greenProductionPassiveInboundReady(opts.env))return result(503);
-   const signing=opts.env('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||'';
-   const account=opts.env('GREEN_API_INSTANCE_ID')||'';
    const admission=await admitAuthenticatedV2GreenReminder({
     client,headers:request.headers,rawCallback:v2Callback,
     callbackByteLength:v2Bytes,expectedInstanceId:account,
