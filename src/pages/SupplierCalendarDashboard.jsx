@@ -4,7 +4,6 @@ import {useSupplierAssignmentsFeed} from "@/hooks/useSupplierAssignmentsFeed";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, AlertCircle, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
