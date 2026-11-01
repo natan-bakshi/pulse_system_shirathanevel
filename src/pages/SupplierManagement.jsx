@@ -437,6 +437,9 @@ export default function SupplierManagement() {
                 className="shrink-0"
               />
             </div>
+            <p className="text-xs text-gray-600">
+              בבחירה מהטלפון: סמן ✓ ליד איש קשר אחד ואז לחץ אישור או שיתוף.
+            </p>
             {contactImportFeedback && (
               <p
                 role={contactImportFeedback.kind === 'error' ? 'alert' : 'status'}
