@@ -144,6 +144,25 @@ test('pagination finds own record after 200 unrelated services without client-si
  assert.equal(f.calls.filters,3);
  assert.deepEqual(f.calls.eventIds,[EVENT]);
 });
+test('legacy assigned member with no status remains pending and is permitted own event link',async()=>{
+ const f=fixture({rows:[{...assigned(),supplier_statuses:'{}'}],evs:[event]});
+ const feed=await readSupplierAssignmentsFeed(f.client,f.user);
+ assert.equal(feed.assignments.length,1);
+ assert.equal(feed.assignments[0].assignmentStatus,'pending');
+ assert.equal(feed.assignments[0].detailsAllowed,true);
+});
+test('provider page cap below requested 200 still reaches later assigned rows',async()=>{
+ const filler=Array.from({length:135},(_,i)=>({
+  ...assigned('event-other-'+i,'pending',OTHER),id:'foreign-row-'+i
+ }));
+ const rows=[...filler,assigned()];
+ const f=fixture({rows,evs:[event]});
+ const db=f.client.asServiceRole.entities;
+ db.EventService.filter=async(q,sort,limit,offset)=>
+  structuredClone(rows.slice(offset,offset+Math.min(limit,60)));
+ const result=await readSupplierAssignmentsFeed(f.client,f.user);
+ assert.deepEqual(result.assignments.map(x=>x.id),[EVENT]);
+});
 test('multiple supplier profiles are never client-selected; only first exact email association',async()=>{
  const second={id:'supplier-extra',supplier_name:'Second',
   contact_emails:['supplier@example.com'],phone:'0507777777'};
