@@ -33,6 +33,10 @@
     "source_id": {
       "type": "string"
     },
+    "smart_event_id": {
+      "type": "string",
+      "description": "Optional event ID stamped at enqueue by a trusted pending-assignment producer, never inferred from EventService source_id or editable message text"
+    },
     "notification_template_id": {
       "type": "string",
       "description": "Immutable NotificationTemplate ID stamped by trusted existing producer at enqueue; never inferred from text or a WhatsApp callback"
