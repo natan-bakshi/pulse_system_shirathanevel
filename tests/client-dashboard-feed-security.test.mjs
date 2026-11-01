@@ -142,6 +142,38 @@ test('page through 200 foreign events; do not create a payment query for outside
  assert.ok(f.calls.serviceIds.length>0&&f.calls.serviceIds.every(id=>id===OWN));
  assert.ok(f.calls.paymentIds.length>0&&f.calls.paymentIds.every(id=>id===OWN));
 });
+test('SDK silently capping requested page size does not hide a later authorized event',async()=>{
+ const extras=Array.from({length:130},(_,i)=>({
+  ...foreign,id:'unrelated-'+i
+ }));
+ const all=[...extras,base];
+ const f=fixture({events:all});
+ f.client.asServiceRole.entities.Event.filter=async(q,sort,limit,offset)=>
+  structuredClone(all.slice(offset,offset+Math.min(limit,65)));
+ const {events}=await readClientDashboardFeed(f.client,f.user);
+ assert.deepEqual(events.map(x=>x.id),[OWN]);
+});
+test('payments and service totals remain complete when SDK caps each finance page',async()=>{
+ const services=Array.from({length:4},(_,i)=>({
+  ...svc,id:'svc-own-'+i,custom_price:100,quantity:1
+ }));
+ const payments=Array.from({length:3},(_,i)=>({
+  ...paid,id:'payment-own-'+i,amount:25
+ }));
+ const f=fixture({services,payments,events:[{...base,discount_amount:0}]});
+ const db=f.client.asServiceRole.entities;
+ db.EventService.filter=async(q,sort,limit,offset)=>
+  structuredClone(services.filter(s=>s.event_id===q.event_id)
+   .slice(offset,offset+Math.min(limit,2)));
+ db.Payment.filter=async(q,sort,limit,offset)=>
+  structuredClone(payments.filter(p=>p.event_id===q.event_id)
+   .slice(offset,offset+Math.min(limit,1)));
+ const {events}=await readClientDashboardFeed(f.client,f.user);
+ assert.equal(events.length,1);
+ assert.equal(events[0].finalTotal,472);
+ assert.equal(events[0].totalPaid,75);
+ assert.equal(events[0].balance,397);
+});
 test('non-matching opted-out client contact must not gain access to payments',async()=>{
  const f=fixture({events:[optedOut]});
  const result=await readClientDashboardFeed(f.client,f.user);
