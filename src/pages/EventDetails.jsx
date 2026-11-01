@@ -669,16 +669,40 @@ function EventDetailsBody() {
       if (_customFields) dataToSave.custom_organizer_fields = JSON.stringify(_customFields);
       // Preserve the legacy required field only when no organizer name has been entered.
       if (!dataToSave.family_name) dataToSave.family_name = dataToSave.event_name;
+      const changedSupplierFields = ['event_date', 'event_time', 'location', 'concept'].some(
+        field => Object.prototype.hasOwnProperty.call(dataToSave, field) &&
+          String(dataToSave[field] ?? '') !== String(event?.[field] ?? '')
+      );
+      const hasAssignedSuppliers = changedSupplierFields && eventServices.some(service => {
+        try {
+          const ids = typeof service.supplier_ids === 'string'
+            ? JSON.parse(service.supplier_ids || '[]') : service.supplier_ids;
+          return Array.isArray(ids) && ids.length > 0;
+        } catch { return false; }
+      });
       await base44.entities.Event.update(eventId, dataToSave);
       setEditingSection(null);
       await loadEventData();
+      // Entity-change automations may write the administrator decision flag
+      // just after the original Event UPDATE returns. Bounded refresh only
+      // when supplier-visible fields actually changed and suppliers exist.
+      if (hasAssignedSuppliers) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (queryClient.getQueryData(['event', eventId])?.date_change_pending_action)
+            break;
+          await new Promise(resolve => setTimeout(resolve, 300));
+          await queryClient.refetchQueries({ queryKey: ['event', eventId] });
+        }
+        if (!queryClient.getQueryData(['event', eventId])?.date_change_pending_action)
+          alert('פרטי האירוע נשמרו, אך חלון ההחלטה לספקים עדיין לא הופיע. יש לרענן את האירוע ולבחור פעולה לפני שליחת עדכונים.');
+      }
     } catch (error) {
       console.error("Failed to save event details:", error);
       alert("שגיאה בשמירת פרטי האירוע");
     } finally {
       setIsSavingEventDetails(false);
     }
-  }, [eventId, event, eventDetailsData, loadEventData, queryClient]);
+  }, [eventId, event, eventServices, eventDetailsData, loadEventData, queryClient]);
 
   const handleSaveFamilyDetails = useCallback(async (orgContacts) => {
     setIsSavingFamilyDetails(true);
