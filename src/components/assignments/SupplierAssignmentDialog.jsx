@@ -1,4 +1,5 @@
 import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
+import {withLegacySupplierReplyRevisions} from '../../../base44/shared/legacySupplierReplyRevisions.ts';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -79,13 +80,14 @@ export default function SupplierAssignmentDialog({
     try {
       const added=newAssignmentRecipients(eventServiceData.supplier_ids,editingService.supplierIds,
         eventServiceData.supplier_statuses,editingService.supplierStatuses);
-      await base44.entities.EventService.update(editingService.eventServiceId, {
-        supplier_ids: JSON.stringify(editingService.supplierIds),
-        supplier_statuses: JSON.stringify(editingService.supplierStatuses),
-        supplier_notes: JSON.stringify(editingService.supplierNotes),
-        client_notes: editingService.serviceNotes,
-        min_suppliers: parseInt(editingService.minSuppliers) || 0
-      });
+      await base44.entities.EventService.update(editingService.eventServiceId,
+        withLegacySupplierReplyRevisions(eventServiceData,{
+          supplier_ids: JSON.stringify(editingService.supplierIds),
+          supplier_statuses: JSON.stringify(editingService.supplierStatuses),
+          supplier_notes: JSON.stringify(editingService.supplierNotes),
+          client_notes: editingService.serviceNotes,
+          min_suppliers: parseInt(editingService.minSuppliers) || 0
+        }));
       await verifyAndRefreshAssignment(editingService.eventServiceId,added,eventServiceData.event_id);
       queryClient.invalidateQueries({ queryKey: ['eventServices'] });
       
