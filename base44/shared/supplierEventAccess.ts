@@ -61,12 +61,14 @@ export async function readSupplierEventView(client:any,user:any,eventId:unknown)
  if(!db)throw denied();
  const suppliers=await db.Supplier.list();
  if(!Array.isArray(suppliers))throw denied();
- const supplier=suppliers.find((row:any)=>supplierMatchesUser(row,user));
- if(!supplier?.id||!ID.test(supplier.id))throw denied();
+ const matches=suppliers.filter((row:any)=>
+  supplierMatchesUser(row,user)&&ID.test(row.id||''));
+ if(!matches.length)throw denied();
  const assignments=await db.EventService.filter({event_id:eventId});
- if(!Array.isArray(assignments)||
-  !assignments.some((s:any)=>supplierIsActivelyAssigned(s,supplier.id)))
-  throw denied();
+ if(!Array.isArray(assignments))throw denied();
+ const supplier=matches.find((row:any)=>assignments.some((assignment:any)=>
+  supplierIsActivelyAssigned(assignment,row.id)));
+ if(!supplier)throw denied();
  const event=await db.Event.get(eventId).catch(()=>null);
  if(!event)throw denied();
  return allowedSupplierEventView(event,assignments,supplier.id);
