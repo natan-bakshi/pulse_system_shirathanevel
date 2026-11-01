@@ -379,7 +379,7 @@ export default function Layout({ children }) {
     // redirect them to their appropriate dashboard
     const isOnCorrectDashboard = pathname.startsWith(homePage);
     const isAccessingSpecificEvent = pathname.includes('EventDetails');
-    const isAccessingSupplierPage = pathname.includes('SupplierDashboard') || pathname.includes('SupplierCalendarDashboard');
+    const isAccessingSupplierPage = pathname.includes('SupplierDashboard') || pathname.includes('SupplierCalendarDashboard') || pathname.includes('SupplierEventView');
 
 
     if (!isOnCorrectDashboard && !isAccessingSpecificEvent && !isTryingToAccessAdminPage && !isAccessingBillingPage && !isAccessingNotificationSettings && !isAccessingSettingsPage && !isAccessingUserSettings && !isAccessingContactDirectory && !isAccessingBarMitzvahCalculator && !isAccessingSupplierPage) {
