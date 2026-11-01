@@ -58,7 +58,9 @@ export default function ClientDashboard() {
   }, [queryClient]);
 
   const eventsWithDetails=feed?.events||[];
-  const loading=userLoading||feedLoading;
+  // A missing email must show the logged-out/no-access state, not a spinner:
+  // React Query may report isLoading on a disabled query.
+  const loading=userLoading||(!!identity&&feedLoading);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>;
