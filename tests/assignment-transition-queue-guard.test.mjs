@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {assignmentTransitionWhatsAppKey} from '../base44/shared/assignmentTransitionWhatsApp.ts';
+import {planEventChangeReconfirmation,closeSupersededAssignmentIntents}
+ from '../base44/shared/eventChangeReconfirmation.ts';
 
 function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',actor={role:'admin'}}={}){
  const event={id:'event-demo',event_date:'2026-11-21',event_time:'11:00',
@@ -52,6 +54,9 @@ function testHarness(functionName,{mode='notify',failureSupplier='supplier-b',ac
    if(name.endsWith('notificationCore.ts'))return {createNotificationCore:async()=>{
      sideEffects.push('notification');return {ok:true};
    }};
+   if(name.endsWith('eventChangeReconfirmation.ts'))return {
+    planEventChangeReconfirmation,closeSupersededAssignmentIntents
+   };
    if(name.endsWith('assignmentTransitionWhatsApp.ts'))return {
     enqueueAssignmentTransitionWhatsApp:async(_client,phone,_message,identity,sourceType)=>{
       const key=await assignmentTransitionWhatsAppKey(identity);
