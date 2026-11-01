@@ -39,6 +39,7 @@ const QuoteTemplateManagement = lazyWithPreload(() => import('./pages/QuoteTempl
 const ServiceManagement = lazyWithPreload(() => import('./pages/ServiceManagement'));
 const SettingsPage = lazyWithPreload(() => import('./pages/SettingsPage'));
 const SupplierCalendarDashboard = lazyWithPreload(() => import('./pages/SupplierCalendarDashboard'));
+const SupplierEventView = lazyWithPreload(() => import('./pages/SupplierEventView'));
 const SupplierDashboard = lazyWithPreload(() => import('./pages/SupplierDashboard'));
 const SupplierManagement = lazyWithPreload(() => import('./pages/SupplierManagement'));
 const UserManagement = lazyWithPreload(() => import('./pages/UserManagement'));
@@ -77,6 +78,7 @@ export const PAGES = {
     "ServiceManagement": ServiceManagement,
     "SettingsPage": SettingsPage,
     "SupplierCalendarDashboard": SupplierCalendarDashboard,
+    "SupplierEventView": SupplierEventView,
     "SupplierDashboard": SupplierDashboard,
     "SupplierManagement": SupplierManagement,
     "UserManagement": UserManagement,
