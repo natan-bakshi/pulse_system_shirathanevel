@@ -79,3 +79,53 @@ export function eligibleEventChangeReconfirmation(service:any,sourceType:string,
  }catch{return false;}
 }
 export function eventChangeSourceType(kind:Kind):string{return SOURCES[kind];}
+
+// A reconfirmation outbox is signed ONLY if its deterministic transition
+// identity matches the server's still-current choice and exact supplier.
+// Outbox rows alone are not authorization; admin-editable snapshots are not
+// allowed to opt an arbitrary WhatsApp job into interactive decisions.
+export async function checkEventChangeButtonCandidate(service:any,job:any){
+ const refused=(reason:string)=>({allowed:false,reason,revision:null as string|null});
+ const marker=parseEventChangeReconfirmation(service?.supplier_reconfirmation_context);
+ if(!marker||!job||!eligibleEventChangeReconfirmation(service,job.source_type,
+   job.supplier_id,marker.revision)||
+   job.event_service_id!==service.id||job.source_id!==service.event_id||
+   job.message_type!=='text'||job.requested_provider!=='green'||
+   typeof job.notification_template_id!=='string'||
+   !ID.test(job.notification_template_id)||
+   typeof job.chat_id!=='string'||!/^[1-9][0-9]{7,14}@c\.us$/.test(job.chat_id))
+  return refused('reconfirmation_origin_invalid');
+ let parts:any;
+ try{parts=JSON.parse(marker.fingerprint);}catch{return refused('reconfirmation_fingerprint_invalid');}
+ if(!Array.isArray(parts)||parts.some(x=>typeof x!=='string'))
+  return refused('reconfirmation_fingerprint_invalid');
+ const {assignmentTransitionWhatsAppKey}=await import('./assignmentTransitionWhatsApp.ts');
+ let identity:any={kind:marker.kind,eventId:marker.eventId,
+  eventServiceId:service.id,supplierId:job.supplier_id,
+  templateId:job.notification_template_id,revision:marker.revision};
+ if(marker.kind==='date_reconfirm'){
+  if(parts.length!==4)return refused('reconfirmation_fingerprint_invalid');
+  identity={...identity,oldEventDate:parts[0],oldEventTime:parts[1],
+   eventDate:parts[2],eventTime:parts[3]};
+ }else{
+  if(parts.length!==3||service.supplier_arrival_time!==parts[0])
+   return refused('reconfirmation_arrival_changed');
+  identity={...identity,supplierArrivalTime:parts[0],
+   eventDate:parts[1],eventTime:parts[2]};
+ }
+ if(job.idempotency_key!==await assignmentTransitionWhatsAppKey(identity))
+  return refused('reconfirmation_business_key_mismatch');
+ return {allowed:true,reason:'exact_reconfirmation_transition',revision:marker.revision};
+}
+export function reconfirmationMatchesEvent(service:any,event:any):boolean{
+ const marker=parseEventChangeReconfirmation(service?.supplier_reconfirmation_context);
+ if(!marker||!event||event.id!==marker.eventId)return false;
+ let p:any;
+ try{p=JSON.parse(marker.fingerprint);}catch{return false;}
+ if(!Array.isArray(p))return false;
+ if(marker.kind==='date_reconfirm')return p.length===4&&
+  event.event_date===p[2]&&(event.event_time||'')===p[3]&&
+  event.date_change_pending_action!==true;
+ return p.length===3&&service.supplier_arrival_time===p[0]&&
+  event.event_date===p[1]&&(event.event_time||'')===p[2];
+}
