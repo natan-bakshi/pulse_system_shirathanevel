@@ -254,7 +254,7 @@ export const PAGES_BY_ROLE = {
   admin: [
     { value: 'AdminDashboard', label: 'דשבורד מנהל' },
     { value: 'EventManagement', label: 'ניהול אירועים' },
-    { value: 'EventManagement?tab=board', label: 'לוח אירועים' },
+    { value: 'EventsBoardPage', label: 'לוח אירועים' },
     { value: 'ClientManagement', label: 'ניהול לקוחות' },
     { value: 'SupplierManagement', label: 'ניהול ספקים' },
     { value: 'ServiceManagement', label: 'ניהול שירותים' },
@@ -264,12 +264,12 @@ export const PAGES_BY_ROLE = {
   client: [
     { value: 'ClientDashboard', label: 'האירועים שלי' },
     { value: 'EventDetails', label: 'פרטי אירוע' },
-    { value: 'EventDetails?tab=payments', label: 'תשלומים' },
+    { value: 'EventDetails?tab=financial', label: 'תשלומים' },
     { value: 'ClientGallery', label: 'גלריה' }
   ],
   supplier: [
     { value: 'SupplierDashboard', label: 'האירועים שלי' },
-    { value: 'EventDetails', label: 'פרטי אירוע (מוגבל)' }
+    { value: 'SupplierEventView', label: 'פרטי אירוע שלי (מאומת)' }
   ],
   system_creator: [
     { value: 'SettingsPage', label: 'הגדרות מערכת' }
