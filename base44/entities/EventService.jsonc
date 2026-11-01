@@ -171,6 +171,10 @@
       "type": "string",
       "description": "Metadata-only notification to the existing Google Calendar EventService workflow after an atomic supplier decision"
     },
+    "supplier_reconfirmation_context": {
+      "type": "string",
+      "description": "Server-owned reconfirmation transition: written with supplier status reset when administrator chooses notify; not a new assignment"
+    },
     "assignment_effects_revision": {
       "type": "number",
       "default": 0,
