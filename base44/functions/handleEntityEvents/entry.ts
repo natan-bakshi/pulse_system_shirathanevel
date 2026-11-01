@@ -13,6 +13,7 @@ import { resolveNotificationDelay } from '../../shared/quietHours.ts';
 import { entityTriggerWhatsAppContext } from '../../shared/entityTriggerWhatsApp.ts';
 import { isWhatsAppEnqueueConfirmed } from '../../shared/whatsappReceipt.ts';
 import { shouldScheduleAssignmentReplyReminder, pendingApprovalReminderSupplierIds } from '../../shared/assignmentReminderTiming.ts';
+import { isEventChangeStatusReset } from '../../shared/eventChangeReconfirmation.ts';
 
 /**
  * Handle Entity Events (Create/Update) for Notification Triggers
@@ -125,7 +126,8 @@ Deno.serve(async (req) => {
                         const hadPreviousStatusData = oldData && (oldData.supplier_statuses !== undefined ||
                           oldData.supplierstatuses !== undefined);
                         if (hadPreviousStatusData && oldStatus && oldStatus !== 'pending' &&
-                          newStatus === 'pending' && !event.added_supplier_ids?.includes(supId)) {
+                          newStatus === 'pending' && !event.added_supplier_ids?.includes(supId) &&
+                          !isEventChangeStatusReset(oldData,data,supId)) {
                             event.added_supplier_ids = [...(event.added_supplier_ids || []), supId];
                             triggerTypesToFetch.push('supplier_assignment_create');
                         }
