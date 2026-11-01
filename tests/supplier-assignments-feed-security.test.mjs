@@ -141,7 +141,7 @@ test('pagination finds own record after 200 unrelated services without client-si
  const f=fixture({rows:[...foreignRows,assigned()]});
  const data=await readSupplierAssignmentsFeed(f.client,f.user);
  assert.equal(data.assignments.length,1);
- assert.equal(f.calls.filters,2);
+ assert.equal(f.calls.filters,3);
  assert.deepEqual(f.calls.eventIds,[EVENT]);
 });
 test('multiple supplier profiles are never client-selected; only first exact email association',async()=>{
