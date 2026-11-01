@@ -45,7 +45,7 @@ function newButtonId(){
  return 'wa1_'+btoa(chars).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function originSnapshot(job:any){
- if(!job||job.source_type!=='assignment_new'||!ASSIGNMENT_ID.test(job.id||'')||
+ if(!job||!['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)||!ASSIGNMENT_ID.test(job.id||'')||
   !ASSIGNMENT_ID.test(job.event_service_id||'')||
   !ASSIGNMENT_ID.test(job.supplier_id||'')||
   !['green','wasender'].includes(job.requested_provider||job.provider)||
@@ -129,7 +129,8 @@ export async function createFutureInteractiveButtonSnapshot(input:{
 export function resolveSignedActionForGreenButton(job:any,click:{
  buttonId:string;provider:string;senderAccountId:string;
  originalProviderMessageId:string;senderChatId:string}){
- if(!job||job.status!=='accepted'||job.source_type!=='assignment_new'||
+ if(!job||job.status!=='accepted'||
+  !['assignment_new','assignment_update','arrival_time_change'].includes(job.source_type)||
   job.provider!=='green'||click.provider!=='green'||
   job.provider_message_id!==click.originalProviderMessageId||
   job.chat_id!==click.senderChatId||
