@@ -9,6 +9,7 @@ import { greenApiOrigin } from './greenWebhookSettingsAudit.ts';
 import {withSupplierPortalLink} from './supplierPortalLink.ts';
 import {verifiedSupplierNavigationTransport} from './greenSupplierNavigation.ts';
 import {verifyV2ReminderTransport} from './whatsappV2ReminderOutbound.ts';
+import {verifyEventUpdateAckTransport} from './supplierEventUpdateAcknowledgement.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -197,6 +198,18 @@ export async function sendWhatsAppTransport(job, provider, client,
   // arbitrary destinations, recipients and URL query injection. A proven
   // 400/403 rejection may fall back once to the original plain text; UNKNOWN
   // provider responses must never trigger a second provider send.
+  // Receipt-only Green event update: exact V2 signature, no status action.
+  // Rejections are never silently sent as plain text.
+  if(interactivePreview?.kind==='interactive_event_update_ack'){
+    if(job.sender_account_id!==Deno.env.get('GREEN_API_INSTANCE_ID')||
+      !await verifyEventUpdateAckTransport({
+        job,provider,preview:interactivePreview,
+        secret:Deno.env.get('WHATSAPP_INTERACTIVE_SIGNING_SECRET')||''
+      }))throw invalidInput('Invalid event update acknowledgement transport');
+    return callGreenApi('sendInteractiveButtons',interactivePreview.body);
+  }
+  if(job.source_type==='event_update'&&!interactivePreview)
+    throw invalidInput('Event update requires signed receipt button');
   if(interactivePreview?.kind==='interactive_reminder_v2'){
     // Signed reminder reply plus up to two existing, verified owner URL
     // buttons. Never accept an arbitrary selected ID or forwarding URL.
