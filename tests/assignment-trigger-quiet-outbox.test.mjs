@@ -9,6 +9,7 @@ import {toChatId} from '../base44/shared/whatsappSend.ts';
 import {isGreenButtonQaFixtureEventPayload,isGreenButtonQaFixtureServicePayload} from '../base44/shared/greenButtonQaFixture.ts';
 import {entityTriggerWhatsAppContext} from '../base44/shared/entityTriggerWhatsApp.ts';
 import {isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {isEventChangeStatusReset} from '../base44/shared/eventChangeReconfirmation.ts';
 
 // Execute only the actual trigger's internal send path in isolation, without
 // triggering a real Base44 workflow, inserting Pending rows, or contacting WhatsApp.
@@ -30,6 +31,7 @@ test('assignment trigger uses the same Outbox key while quiet, never a second Pe
      if(path.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
      if(path.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
+     if(path.endsWith('eventChangeReconfirmation.ts'))return {isEventChangeStatusReset};
      if(path.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
      if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,interactive_assignment_production_enabled:false})};
      if(path.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
