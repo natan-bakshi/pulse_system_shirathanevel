@@ -1,6 +1,7 @@
 import { getEventFields, getEventContacts, prepareContacts, normalizeEventValues, validateEventFields } from '@/lib/eventFields';
 import { refreshEventStatus, refreshStoredCardPolicy } from '@/lib/eventStatus';
 import { newAssignmentRecipients, verifyAndRefreshAssignment } from '@/lib/assignmentWhatsAppGuarantee';
+import {withLegacySupplierReplyRevisions} from '../../base44/shared/legacySupplierReplyRevisions.ts';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
@@ -953,7 +954,8 @@ function EventDetailsBody() {
           updateData.declined_suppliers = JSON.stringify(declined);
         }
       }
-      await base44.entities.EventService.update(eventServiceId, updateData);
+      await base44.entities.EventService.update(eventServiceId,
+        withLegacySupplierReplyRevisions(eventService,updateData));
       await refreshEventStatus(eventId);
       await loadEventData();
     } catch (error) {
@@ -984,11 +986,12 @@ function EventDetailsBody() {
       delete supplierStatuses[supplierId];
       delete supplierNotes[supplierId];
 
-      await base44.entities.EventService.update(eventServiceId, {
-        supplier_ids: JSON.stringify(supplierIds),
-        supplier_statuses: JSON.stringify(supplierStatuses),
-        supplier_notes: JSON.stringify(supplierNotes)
-      });
+      await base44.entities.EventService.update(eventServiceId,
+        withLegacySupplierReplyRevisions(eventService,{
+          supplier_ids: JSON.stringify(supplierIds),
+          supplier_statuses: JSON.stringify(supplierStatuses),
+          supplier_notes: JSON.stringify(supplierNotes)
+        }));
       
 
       await refreshEventStatus(eventId);
@@ -1217,10 +1220,11 @@ function EventDetailsBody() {
     setAssignmentSaving(true);
     try {
       const added=newAssignmentRecipients(selectedServiceForSupplier.supplier_ids,supplierFormData.supplierIds);
-      await base44.entities.EventService.update(selectedServiceForSupplier.id, {
-        supplier_ids: JSON.stringify(supplierFormData.supplierIds),
-        supplier_notes: JSON.stringify(supplierFormData.notes)
-      });
+      await base44.entities.EventService.update(selectedServiceForSupplier.id,
+        withLegacySupplierReplyRevisions(selectedServiceForSupplier,{
+          supplier_ids: JSON.stringify(supplierFormData.supplierIds),
+          supplier_notes: JSON.stringify(supplierFormData.notes)
+        }));
       // Only newly assigned suppliers should receive a new assignment Push.
       // Push and WhatsApp verification are independent, and must not block
       // one another. An existing supplier must not receive repeat Push simply
@@ -1624,7 +1628,8 @@ function EventDetailsBody() {
       const updateData = makeExternal
         ? { is_external: true, supplier_ids: JSON.stringify([]), supplier_statuses: JSON.stringify({}), supplier_notes: JSON.stringify({}) }
         : { is_external: false };
-      await base44.entities.EventService.update(serviceId, updateData);
+      await base44.entities.EventService.update(serviceId,
+        withLegacySupplierReplyRevisions(eventServices.find(es=>es.id===serviceId),updateData));
       await refreshEventStatus(eventId);
       // Update local state immediately
       setEditableServices(prev => prev.map(s => 
