@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { createNotification } from "@/functions/createNotification";
@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save, Send, FileText, MessageSquare, Clock, Filter, Link2 } from "lucide-react";
+import { Loader2, Save, Send, FileText, MessageSquare, Clock, Filter, Link2, MousePointerClick } from "lucide-react";
 import { toast } from "sonner";
 import BasicInfoTab from "./form/BasicInfoTab";
 import ContentTab from "./form/ContentTab";
 import TriggerTimingTab from "./form/TriggerTimingTab";
 import ConditionsTargetTab from "./form/ConditionsTargetTab";
 import AdvancedLinksTab from "./form/AdvancedLinksTab";
+import WhatsAppTemplateButtonsTab from './WhatsAppTemplateButtonsTab';
 
 // טופס עריכה/יצירה של תבנית התראה - מאורגן בטאבים
 export default function NotificationTemplateForm({ 
@@ -20,12 +21,16 @@ export default function NotificationTemplateForm({
   onOpenChange, 
   template, 
   onChange, 
-  onSave, 
-  isSaving 
+  onSave,
+  isSaving,
+  initialTab='basic'
 }) {
   const [activeTab, setActiveTab] = useState('basic');
   const [sendingTest, setSendingTest] = useState(false);
   const [testPhoneNumber, setTestPhoneNumber] = useState('');
+  const [buttonsOpened,setButtonsOpened]=useState(false);
+  const [savingButtons,setSavingButtons]=useState(false);
+  const buttonsRef=useRef(null);
 
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
@@ -34,8 +39,30 @@ export default function NotificationTemplateForm({
 
   // איפוס לטאב הראשון בכל פתיחה
   useEffect(() => {
-    if (open) setActiveTab('basic');
-  }, [open]);
+    if(open){
+      setActiveTab(initialTab);
+      setButtonsOpened(initialTab==='buttons');
+    }
+  }, [open,initialTab,template?.id]);
+  const changeTab=(tab)=>{
+    setActiveTab(tab);
+    if(tab==='buttons')setButtonsOpened(true);
+  };
+  const changeOpen=(next)=>{
+    if(!next&&buttonsRef.current?.hasPendingChanges()&&
+      !window.confirm('יש שינויי כפתורים שלא נשמרו. לסגור בלי לשמור אותם?'))return;
+    onOpenChange(next);
+  };
+  const saveForm=async()=>{
+    if(buttonsRef.current?.hasPendingChanges()){
+      setSavingButtons(true);
+      try{
+        const saved=await buttonsRef.current.save();
+        if(!saved){setActiveTab('buttons');return;}
+      }finally{setSavingButtons(false);}
+    }
+    onSave();
+  };
 
   // שליחת התראת בדיקה לעצמי
   const handleSendTestNotification = async () => {
@@ -104,7 +131,7 @@ export default function NotificationTemplateForm({
   if (!template) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -115,8 +142,8 @@ export default function NotificationTemplateForm({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto">
+        <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto">
             <TabsTrigger value="basic" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <FileText className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">פרטים כלליים</span>
@@ -142,6 +169,10 @@ export default function NotificationTemplateForm({
               <span className="hidden sm:inline">קישורים</span>
               <span className="sm:hidden">לינקים</span>
             </TabsTrigger>
+            <TabsTrigger value="buttons" className="text-xs sm:text-sm flex items-center gap-1 py-2">
+              <MousePointerClick className="h-3.5 w-3.5" />
+              <span>כפתורים</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="mt-4">
@@ -158,6 +189,11 @@ export default function NotificationTemplateForm({
           </TabsContent>
           <TabsContent value="advanced" className="mt-4">
             <AdvancedLinksTab template={template} onChange={onChange} />
+          </TabsContent>
+          <TabsContent value="buttons" forceMount
+            className="mt-4 data-[state=inactive]:hidden">
+            {buttonsOpened&&<WhatsAppTemplateButtonsTab
+              ref={buttonsRef} template={template}/>}
           </TabsContent>
         </Tabs>
 
@@ -185,11 +221,11 @@ export default function NotificationTemplateForm({
             </Button>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => changeOpen(false)}>
               ביטול
             </Button>
-            <Button onClick={onSave} disabled={isSaving}>
-              {isSaving ? (
+            <Button onClick={saveForm} disabled={isSaving}>
+              {isSaving||savingButtons ? (
                 <Loader2 className="h-4 w-4 animate-spin ml-2" />
               ) : (
                 <Save className="h-4 w-4 ml-2" />
