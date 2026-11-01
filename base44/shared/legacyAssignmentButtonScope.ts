@@ -7,6 +7,7 @@
 // action (conservative, safe for initial controlled canary).
 import {assignmentWhatsAppKey,canonicalAssignmentUpdatedDate} from './assignmentWhatsApp.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
+import {legacySupplierReplyRevision} from './legacySupplierReplyRevisions.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,100}$/;
 const PRIVATE=/^[1-9][0-9]{7,14}@c\.us$/;
@@ -24,7 +25,13 @@ const statuses=(raw:unknown):Record<string,string>|null=>{
   return data;
  }catch{return null;}
 };
-export function legacyAssignmentGeneration(service:any):string|null{
+export function legacyAssignmentGeneration(service:any,supplierId?:string):string|null{
+ // An immutable supplier-specific business revision survives decisions made
+ // by OTHER suppliers on the same EventService. Old rows stay strict.
+ if(supplierId){
+  const specific=legacySupplierReplyRevision(service,supplierId);
+  if(specific!==undefined)return specific;
+ }
  const raw=canonicalAssignmentUpdatedDate(service?.updated_date);
  // The six-fractional-digit legacy identity is the exact generation included
  // in assignmentWhatsAppKey. Conversion truncates only excess precision.
@@ -56,7 +63,7 @@ export function checkLegacyAssignmentButtonCandidate(input:{
  const current=statuses(service.supplier_statuses);
  if(!current|| (current[target.supplierId]||'pending')!=='pending')
   return refused('supplier_not_pending');
- const revision=legacyAssignmentGeneration(service);
+ const revision=legacyAssignmentGeneration(service,target.supplierId);
  if(!revision)return refused('unverifiable_legacy_write_generation');
  if(job.idempotency_key!==assignmentWhatsAppKey(service,target.supplierId))
   return refused('outbox_business_generation_mismatch');
@@ -85,7 +92,7 @@ export function legacyAssignmentRevisionEligibility(service:any,
   return {allowed:false,reason:'not_legacy_assignment'};
  if(!ID.test(supplierId||'')||!VALID_REVISION.test(revision||''))
   return {allowed:false,reason:'invalid_legacy_revision'};
- if(legacyAssignmentGeneration(service)!==revision)
+ if(legacyAssignmentGeneration(service,supplierId)!==revision)
   return {allowed:false,reason:'stale_legacy_assignment'};
  const status=statuses(service.supplier_statuses);
  if(!status||!supplierAssigned(service.supplier_ids,supplierId)||
