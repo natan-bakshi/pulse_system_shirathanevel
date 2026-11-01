@@ -1,4 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
+import {withLegacySupplierReplyRevisions} from '../../../base44/shared/legacySupplierReplyRevisions.ts';
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { Service } from "@/entities/Service";
@@ -684,7 +685,7 @@ for (const serviceItem of servicesForSave) {
 
     if (existingIndex !== -1) {
         const existingService = servicesToDelete.splice(existingIndex, 1)[0];
-        servicesToUpdate.push({ id: existingService.id, data });
+        servicesToUpdate.push({ id: existingService.id, data, original:existingService });
     } else {
         servicesToCreate.push(data);
     }
@@ -696,7 +697,8 @@ for (const serviceItem of servicesForSave) {
             await Promise.all(servicesToDelete.map(es => EventService.delete(es.id)));
         }
         if (servicesToUpdate.length > 0) {
-            await Promise.all(servicesToUpdate.map(item => EventService.update(item.id, item.data)));
+            await Promise.all(servicesToUpdate.map(item => EventService.update(item.id,
+              withLegacySupplierReplyRevisions(item.original,item.data))));
         }
         if (servicesToCreate.length > 0) {
             await EventService.bulkCreate(servicesToCreate);
