@@ -4,7 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
-import { planEventChangeReconfirmation } from '../../shared/eventChangeReconfirmation.ts';
+import { planEventChangeReconfirmation,closeSupersededAssignmentIntents } from '../../shared/eventChangeReconfirmation.ts';
 
 /**
  * Called when admin confirms to reassign the same suppliers to an event after a date change.
@@ -79,7 +79,8 @@ Deno.serve(async (req) => {
             });
             await base44.asServiceRole.entities.EventService.update(service.id, {
                 supplier_statuses: JSON.stringify(newStatuses),
-                supplier_reconfirmation_context: reconfirm.value
+                supplier_reconfirmation_context: reconfirm.value,
+                ...closeSupersededAssignmentIntents(service,supplierIds)
             });
             reconfirmByService.set(service.id, reconfirm.revision);
             affectedServiceIds.add(service.id);
