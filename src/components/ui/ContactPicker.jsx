@@ -33,16 +33,17 @@ export default function ContactPicker({
   };
 
   React.useEffect(() => {
-    if (typeof contactApi?.getProperties !== 'function') return;
+    const pickerApi = typeof navigator !== 'undefined' ? navigator.contacts : null;
+    if (typeof pickerApi?.getProperties !== 'function') return;
     let active = true;
     Promise.resolve()
-      .then(() => contactApi.getProperties())
+      .then(() => pickerApi.getProperties())
       .then(properties => {
         if (active) setAvailableFields(usableContactFields(properties));
       })
       .catch(error => console.warn('Could not check contact fields; native picker will be tried:', error));
     return () => { active = false; };
-  }, [contactApi]);
+  }, []);
 
   const handlePickContact = async () => {
     if (disabled || pickingRef.current) return;
@@ -53,11 +54,12 @@ export default function ContactPicker({
     }
     pickingRef.current = true;
     setBusy(true);
-    report('info', 'פותח בחירת איש קשר…');
     try {
-      // Must be called in the original user interaction; no awaited permission
-      // checks, timers or other async work before calling navigator.contacts.select.
-      const selected = await selectDeviceContact(contactApi, availableFields);
+      // Invoke the native picker first, before any UI state reporting; it must
+      // retain the browser's transient user activation on Android Chrome.
+      const selectionPromise = selectDeviceContact(contactApi, availableFields);
+      report('info', 'פותח בחירת איש קשר…');
+      const selected = await selectionPromise;
       if (!selected) {
         setFallbackVisible(true);
         report('error', 'לא התקבלו פרטי איש קשר. אם אישרת בחירה, נסה לייבא קובץ VCF בכפתור שליד.');
