@@ -82,8 +82,10 @@ export function legacyRevisionFromOutboxKey(job:any):string|null{
  const suffix=':SUPPLIER_NEW_ASSIGNMENT';
  const key=job.idempotency_key;
  if(typeof key!=='string'||!key.startsWith(prefix)||!key.endsWith(suffix))return null;
- const date=key.slice(prefix.length,-suffix.length);
- return legacyAssignmentGeneration({updated_date:date});
+ const generation=key.slice(prefix.length,-suffix.length);
+ if(/^l[1-9][0-9]{0,12}$/.test(generation))
+  return 'r'+generation.slice(1);
+ return legacyAssignmentGeneration({updated_date:generation});
 }
 export function legacyAssignmentRevisionEligibility(service:any,
  supplierId:string,revision:string){
