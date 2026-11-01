@@ -10,6 +10,7 @@ import {verifyFutureButtonSnapshotMac} from './whatsappButtonBindings.ts';
 import {verifySignedWhatsAppAction} from './whatsappSignedAction.ts';
 import {whatsappRevisionEligibility} from './supplierStatusPersistence.ts';
 import {supplierAssigned} from './whatsappSupplierTransition.ts';
+import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
 import {type OfficeContextMode} from './whatsappOfficeInquiryLink.ts';
 
 const V2_KEY=/^assignment:[A-Za-z0-9_-]{3,100}:[A-Za-z0-9_-]{3,100}:r[1-9][0-9]{0,12}:SUPPLIER_NEW_ASSIGNMENT$/;
@@ -101,7 +102,7 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
   config?.enabled!==true||
   (config?.accountCapabilityVerified!==true&&config?.qaBetaProbeApproved!==true))
   return legacy(job,'interactive_feature_disabled');
- if(provider!=='green'||!['assignment_new','assignment_update','arrival_time_change'].includes(job?.source_type)||
+ if(provider!=='green'||!(job?.source_type==='assignment_new'||isEventChangeReconfirmationOutbox(job))||
   job?.message_type!=='text')return legacy(job,'not_green_supplier_assignment');
  if(config.qaChatId!==undefined){
   if(!/^[1-9][0-9]{7,14}@c\.us$/.test(config.qaChatId))
@@ -174,7 +175,8 @@ export async function prepareGreenInteractiveWorkerCandidate(client:any,
    const reason=String((error as any)?.code||'');
    if((legacyCanary||legacyProduction)&& !job.interactive_button_bindings_json&&
     !job.assignment_revision&&!job.sender_account_id&&
-    ['legacy_canary_outbox_business_generation_mismatch',
+    ['reconfirmation_origin_invalid',
+     'legacy_canary_outbox_business_generation_mismatch',
      'legacy_canary_supplier_not_pending',
      'legacy_canary_supplier_not_assigned',
      'legacy_canary_unverifiable_legacy_write_generation',
