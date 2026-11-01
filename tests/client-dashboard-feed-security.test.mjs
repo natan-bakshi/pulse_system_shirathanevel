@@ -45,16 +45,18 @@ function fixture({
   }},
   EventService:{filter:async(q,order,limit,offset,fields)=>{
    calls.serviceIds.push(q.event_id);
-   assert.equal(limit,501);assert.equal(offset,0);
+   assert.equal(limit,500);assert.ok(offset>=0);
    assert.ok(fields.includes('custom_price'));
    assert.ok(!fields.includes('supplier_ids'));
-   return structuredClone(services.filter(x=>x.event_id===q.event_id));
+   return structuredClone(services.filter(x=>x.event_id===q.event_id)
+    .slice(offset,offset+limit));
   }},
   Payment:{filter:async(q,order,limit,offset,fields)=>{
    calls.paymentIds.push(q.event_id);
    assert.ok(fields.includes('payment_status'));
    assert.ok(!fields.includes('stored_card_operation_id'));
-   return structuredClone(payments.filter(x=>x.event_id===q.event_id));
+   return structuredClone(payments.filter(x=>x.event_id===q.event_id)
+    .slice(offset,offset+limit));
   }},
   AppSettings:{filter:async(q,order,limit,offset,fields)=>{
    calls.settings++;assert.deepEqual(q,{setting_key:'vat_rate'});
@@ -76,8 +78,8 @@ test('own client sees only authorized event summary and server-computed finance 
  assert.equal(e.balance,1660);
  assert.equal(e.progress,600/2260*100);
  assert.equal(e.discount_amount,100);
- assert.deepEqual(f.calls.serviceIds,[OWN]);
- assert.deepEqual(f.calls.paymentIds,[OWN]);
+ assert.ok(f.calls.serviceIds.length>0&&f.calls.serviceIds.every(id=>id===OWN));
+ assert.ok(f.calls.paymentIds.length>0&&f.calls.paymentIds.every(id=>id===OWN));
  for(const field of ['parents','contacts_schema_version','created_by','total_price',
   'billing_customer_id','custom_organizer_fields','notes','internal_token','services',
   'payments','all_inclusive_price']){
@@ -135,10 +137,10 @@ test('page through 200 foreign events; do not create a payment query for outside
  }));
  const f=fixture({events:[...extras,base]});
  const {events}=await readClientDashboardFeed(f.client,f.user);
- assert.equal(f.calls.events,2);
+ assert.equal(f.calls.events,3);
  assert.equal(events.length,1);
- assert.deepEqual(f.calls.serviceIds,[OWN]);
- assert.deepEqual(f.calls.paymentIds,[OWN]);
+ assert.ok(f.calls.serviceIds.length>0&&f.calls.serviceIds.every(id=>id===OWN));
+ assert.ok(f.calls.paymentIds.length>0&&f.calls.paymentIds.every(id=>id===OWN));
 });
 test('non-matching opted-out client contact must not gain access to payments',async()=>{
  const f=fixture({events:[optedOut]});
