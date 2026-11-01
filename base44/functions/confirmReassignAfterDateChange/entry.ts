@@ -5,6 +5,9 @@ import { formatEventContacts } from '../../shared/eventContacts.ts';
 import { createNotificationCore } from '../../shared/notificationCore.ts';
 import { enqueueAssignmentTransitionWhatsApp } from '../../shared/assignmentTransitionWhatsApp.ts';
 import { planEventChangeReconfirmation,closeSupersededAssignmentIntents } from '../../shared/eventChangeReconfirmation.ts';
+import {parseSupplierEventChange,supplierEventAffectedService,eventChangeFingerprint,eventInformationNoticeKey} from '../../shared/supplierEventChange.ts';
+import {sendWhatsAppText} from '../../shared/whatsappSend.ts';
+import {isWhatsAppEnqueueConfirmed} from '../../shared/whatsappReceipt.ts';
 
 /**
  * Called when admin confirms to reassign the same suppliers to an event after a date change.
@@ -24,6 +27,9 @@ Deno.serve(async (req) => {
 
         const payload = await req.json();
         const { event_id } = payload;
+        const notifyWithoutReset=payload?.mode==='notify_no_reset';
+        if(payload?.mode && !['notify_no_reset','notify_reset'].includes(payload.mode))
+            return Response.json({error:'Invalid decision mode'},{status:400});
         if (!event_id) {
             return Response.json({ error: 'event_id is required' }, { status: 400 });
         }
@@ -32,6 +38,14 @@ Deno.serve(async (req) => {
         if (!event) {
             return Response.json({ error: 'Event not found' }, { status: 404 });
         }
+        if(event.date_change_pending_action!==true)
+            return Response.json({error:'No supplier change awaits a decision'},{status:409});
+        const change=parseSupplierEventChange(event.supplier_event_change_context)||{
+            version:1,fields:['event_date','event_time'],
+            before:{event_date:event.previous_event_date||'',event_time:event.previous_event_time||''},
+            after:{event_date:event.event_date||'',event_time:event.event_time||''}
+        };
+        const changeSignature=eventChangeFingerprint(change);
 
         // 1. Reset supplier statuses to 'pending' ONLY for services WITHOUT supplier_arrival_time.
         // Services with supplier_arrival_time have a fixed supplier time that is unaffected by event time changes,
@@ -40,9 +54,7 @@ Deno.serve(async (req) => {
         const affectedServiceIds = new Set(); // services whose suppliers are affected by the date/time change
         const reconfirmByService = new Map(); // revision frozen with each status reset
         for (const service of services) {
-            // Skip services with a specific supplier arrival time - their suppliers are not affected
-            const arrivalTime = (service.supplier_arrival_time || '').trim();
-            if (arrivalTime) continue;
+            if(!supplierEventAffectedService(service,change))continue;
 
             let supplierIds = [];
             try {
@@ -55,6 +67,8 @@ Deno.serve(async (req) => {
 
             if (!Array.isArray(supplierIds) || supplierIds.length === 0) continue;
 
+            affectedServiceIds.add(service.id);
+            if(notifyWithoutReset)continue; // No supplier status writes.
             // Preserve existing statuses for suppliers in OTHER services and only reset on this service
             let existingStatuses = {};
             try {
@@ -74,7 +88,7 @@ Deno.serve(async (req) => {
                 kind: 'date_reconfirm', supplierIds,
                 fingerprint: JSON.stringify([
                     event.previous_event_date || '', event.previous_event_time || '',
-                    event.event_date || '', event.event_time || ''
+                    event.event_date || '', event.event_time || '', changeSignature
                 ])
             });
             await base44.asServiceRole.entities.EventService.update(service.id, {
@@ -83,10 +97,9 @@ Deno.serve(async (req) => {
                 ...closeSupersededAssignmentIntents(service,supplierIds)
             });
             reconfirmByService.set(service.id, reconfirm.revision);
-            affectedServiceIds.add(service.id);
         }
 
-        await recalculateEventStatus(base44.asServiceRole, event_id);
+        if(!notifyWithoutReset)await recalculateEventStatus(base44.asServiceRole, event_id);
 
         // 2. Send 'event_critical_update' notification (SUPPLIER_ASSIGNMENT_UPDATE) to each assigned supplier
         // We invoke handleEntityEvents-like logic by directly fetching templates and dispatching
