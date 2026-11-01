@@ -72,9 +72,14 @@ export function customLinkDestination(button:GreenCustomLink,job:any,
    case 'supplier_calendar':return SUPPLIER_PORTAL_URL;
    case 'supplier_dashboard':return PULSE_ORIGIN+'/SupplierDashboard';
    case 'notification_settings':return PULSE_ORIGIN+'/MyNotificationSettings';
-   case 'event_details':
-    return HAS_EVENT.has(job?.source_type)&&SAFE_EVENT.test(job?.source_id||'')?
-     PULSE_ORIGIN+'/SupplierEventView?id='+encodeURIComponent(job.source_id):null;
+   case 'event_details':{
+    const eventId=HAS_EVENT.has(job?.source_type)?job.source_id:
+     job?.source_type==='supplier_pending_reminder'&&
+      job?.event_service_id===job?.source_id?
+       job.smart_event_id:'';
+    return SAFE_EVENT.test(eventId||'')?
+     PULSE_ORIGIN+'/SupplierEventView?id='+encodeURIComponent(eventId):null;
+   }
    case 'external':return normalizePublicWhatsAppUrl(button.url);
    case 'office':
     return officeNumber?buildOfficeWhatsAppInquiryLink({
