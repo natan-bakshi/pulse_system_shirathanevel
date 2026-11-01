@@ -242,11 +242,11 @@ test('owner CAS validates custom destination, recipient template kind and action
  }));
  assert.equal(writes,1);
  assert.equal(lists,2,'invalid URL is rejected before checking template registry');
- const pending=await saveSupplierTemplateButtonPolicy(client,{
+ const savedPending=await saveSupplierTemplateButtonPolicy(client,{
   expectedVersion:2,templates:{[TEMPLATE2]:custom([
    link('event_details','אירוע')])}
  });
- assert.equal(pending.setting.templates[TEMPLATE2].links[0].kind,'event_details');
+ assert.equal(savedPending.setting.templates[TEMPLATE2].links[0].kind,'event_details');
  assert.equal(writes,2);
  assert.equal(lists,3);
 });
