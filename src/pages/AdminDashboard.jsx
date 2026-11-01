@@ -1,4 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
+import {withLegacySupplierReplyRevisions} from '../../base44/shared/legacySupplierReplyRevisions.ts';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -283,9 +284,10 @@ export default function AdminDashboard() {
 
       supplierStatuses[supplierId] = newStatus;
 
-      await base44.entities.EventService.update(eventServiceId, {
-        supplier_statuses: JSON.stringify(supplierStatuses)
-      });
+      await base44.entities.EventService.update(eventServiceId,
+        withLegacySupplierReplyRevisions(eventService,{
+          supplier_statuses: JSON.stringify(supplierStatuses)
+        }));
 
       await refreshEventStatus(eventService.event_id);
 
