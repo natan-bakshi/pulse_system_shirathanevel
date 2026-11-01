@@ -1,4 +1,5 @@
 import { savedAssignmentIntentKey, readAssignmentIntents } from './assignmentIntent.ts';
+import {legacySupplierReplyRevision} from './legacySupplierReplyRevisions.ts';
 // Base44 entity event payloads can carry sub-millisecond UTC precision,
 // e.g. 2026-10-18T10:22:19.719051 while EventService.get returns the SAME
 // write as 2026-10-18T10:22:19.719000. Raw string identity created two
@@ -26,6 +27,14 @@ export function assignmentWhatsAppKey(service:any,supplierId:string,templateType
     const key=savedAssignmentIntentKey(service,supplierId);
     if(key)return key;
   }
+  // Stable business generation PER SUPPLIER for newly saved legacy
+  // assignments. The 'l' namespace differs from durable V2's 'r' key.
+  // Existing services without a per-supplier marker keep old identities.
+  const own=templateType==='SUPPLIER_NEW_ASSIGNMENT'?
+    legacySupplierReplyRevision(service,supplierId):undefined;
+  if(typeof own==='string'&&/^r[1-9][0-9]{0,12}$/.test(own))
+    return ['assignment',String(service?.id||''),String(supplierId||''),
+      'l'+own.slice(1),templateType].join(':');
   return ['assignment',String(service?.id||''),String(supplierId||''),
     canonicalAssignmentUpdatedDate(service?.updated_date),templateType].join(':');
 }
