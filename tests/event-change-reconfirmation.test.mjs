@@ -202,6 +202,23 @@ test('worker freezes changed labels; signed click can update only its matching s
  },client.asServiceRole);
  assert.equal(second.admissible,false);
 });
+test('definite Green 429 retry keeps frozen reconfirmation buttons and refuses stale event',async()=>{
+ const f=context('arrival_notify');
+ const job=await makeJob(f);
+ const {client}=await readyInteractive(f,job);
+ const original=job.interactive_button_bindings_json;
+ job.status='retry_wait';job.error_code=429;job.attempt_count=1;
+ job.provider='green';
+ const config={enabled:true,accountCapabilityVerified:true,legacyProductionApproved:true,
+  capability:'reply_only',senderAccountId:INSTANCE,signingSecret:SIGN,policy,now};
+ const retried=await prepareGreenInteractiveWorkerCandidate(client,job,'green',
+  {interactive_outbound_live_enabled:true},config);
+ assert.equal(retried.kind,'interactive');
+ assert.equal(job.interactive_button_bindings_json,original);
+ f.service.supplier_arrival_time='15:00';
+ await assert.rejects(()=>prepareGreenInteractiveWorkerCandidate(client,job,'green',
+  {interactive_outbound_live_enabled:true},config),/interactive_retry_reconfirmation_stale/);
+});
 test('changed event or stale marker refuses the old button rather than approving current service',async()=>{
  const f=context('arrival_notify');
  const job=await makeJob(f);
