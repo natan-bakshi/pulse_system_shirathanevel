@@ -147,6 +147,35 @@ test('authenticated Green receipt is recorded exactly once, never changes assign
  });
  assert.equal(wrongBearer.status,'refused');
 });
+test('a fabricated receipt capability cannot update the Outbox',async()=>{
+ const f=await fixture();
+ const status=await recordEventUpdateAcknowledgement({
+  client:f.client,signingSecret:SIGN,admission:{
+   outboxId:f.job.id,providerEventId:'forged_event_12345',
+   senderAccountId:ACCOUNT,chatId:f.job.chat_id,
+   providerMessageId:'3EB0FORGED12345',
+   supplierId:SUPPLIER,revision:'r1'
+  },now
+ });
+ assert.equal(status,'refused');
+ assert.equal(f.stats.outboxUpdates,0);
+});
+test('known 429 retry reuses the exact immutable signed button',async()=>{
+ const f=await fixture();
+ const prepared=await prepareEventUpdateAcknowledgement({
+  client:f.client,job:f.job,provider:'green',control,config,now
+ });
+ const frozen=f.job.interactive_v2_button_bindings_json;
+ Object.assign(f.job,{status:'retry_wait',provider:'green',error_code:429,
+  attempt_count:1,send_started_at:new Date(now).toISOString()});
+ const retry=await prepareEventUpdateAcknowledgement({
+  client:f.client,job:f.job,provider:'green',control,config,now:now+1000
+ });
+ assert.equal(retry.kind,'event_update_ack');
+ assert.equal(f.job.interactive_v2_button_bindings_json,frozen);
+ assert.deepEqual(retry.preview.body.buttons,prepared.preview.body.buttons);
+ assert.equal(f.stats.outboxUpdates,1);
+});
 test('wrong source, invalid rollout or removed assignment refuses before signing',async()=>{
  const f=await fixture();
  await assert.rejects(()=>prepareEventUpdateAcknowledgement({
