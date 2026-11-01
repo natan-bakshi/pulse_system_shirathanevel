@@ -32,6 +32,7 @@ test('assignment trigger uses the same Outbox key while quiet, never a second Pe
      if(path.endsWith('eventFields.js'))return {getClientContacts:()=>[],getEventContacts:()=>[]};
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      if(path.endsWith('eventChangeReconfirmation.ts'))return {isEventChangeStatusReset};
+     if(path.endsWith('supplierEventChange.ts'))return {detectSupplierEventChanges:()=>[],supplierEventChangeSnapshot:()=>({version:1,fields:[],before:{},after:{}})};
      if(path.endsWith('notificationCore.ts'))return {createNotificationCore:()=>({})};
      if(path.endsWith('whatsappOutbox.ts'))return {readWhatsAppQueueControl:async()=>({enabled:true,interactive_assignment_production_enabled:false})};
      if(path.endsWith('whatsappProviderConfig.ts'))return {resolveWhatsAppProvider:async()=> 'green'};
