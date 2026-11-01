@@ -18,7 +18,6 @@ import WhatsAppProviderStatus from "./notifications/WhatsAppProviderStatus";
 import WhatsAppQueueSettings from "./notifications/WhatsAppQueueSettings";
 import WhatsAppLiveButtonSettings from "./notifications/WhatsAppLiveButtonSettings";
 import WhatsAppSupplierNoticeButtons from "./notifications/WhatsAppSupplierNoticeButtons";
-import WhatsAppTemplateButtonSettings from "./notifications/WhatsAppTemplateButtonSettings";
 import WhatsAppReminderAckSettings from "./notifications/WhatsAppReminderAckSettings";
 
 /**
@@ -34,7 +33,7 @@ export default function NotificationManagementTab() {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [manualTriggerTemplate, setManualTriggerTemplate] = useState(null);
-  const [buttonTemplateId, setButtonTemplateId] = useState('');
+  const [templateInitialTab,setTemplateInitialTab]=useState('basic');
   const [section, setSection] = useState(() => typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('whatsappQueue') === 'review'
       ? 'whatsapp' : 'templates');
@@ -87,12 +86,14 @@ export default function NotificationManagementTab() {
     }
   });
 
-  const handleEdit = (template) => {
+  const handleEdit = (template,tab='basic') => {
+    setTemplateInitialTab(tab);
     setEditingTemplate({ ...template });
     setIsDialogOpen(true);
   };
 
   const handleCreate = () => {
+    setTemplateInitialTab('basic');
     setEditingTemplate({
       type: '',
       name: '',
@@ -179,7 +180,7 @@ export default function NotificationManagementTab() {
             onDelete={(id) => deleteMutation.mutate(id)}
             onToggleActive={(id, is_active) => toggleActiveMutation.mutate({ id, is_active })}
             onManualTrigger={setManualTriggerTemplate}
-            onEditButtons={template=>{setButtonTemplateId(template.id);setSection('buttons');}}
+            onEditButtons={template=>handleEdit(template,'buttons')}
           />
         </TabsContent>
 
@@ -205,7 +206,15 @@ export default function NotificationManagementTab() {
               </div>
               <WhatsAppSupplierNoticeButtons active={true}/>
               <WhatsAppReminderAckSettings />
-              <WhatsAppTemplateButtonSettings templates={templates} focusTemplateId={buttonTemplateId}/>
+              <div className="border rounded-lg p-4 text-sm space-y-2">
+                <strong>כפתורים לפי תבנית התראה</strong>
+                <p className="text-gray-600">
+                  התאמת הכפתורים נמצאת עכשיו בתוך כל תבנית: סוגי התראות ← עריכת תבנית ← כפתורים.
+                  הגדרות הספק והכפתורים הכלליים נשארו כאן.
+                </p>
+                <Button type="button" size="sm" variant="outline"
+                  onClick={()=>setSection('templates')}>עבור לתבניות ההתראות</Button>
+              </div>
               <p className="text-xs text-gray-600">
                 הכפתורים האפשריים כרגע מותאמים להודעות לספקים שנשלחות בפרטי דרך Green API.
                 כפתורים חדשים שמשנים מידע במערכת יופיעו לבחירה רק לאחר שתמומש עבורם פעולה מאובטחת.
@@ -275,6 +284,7 @@ export default function NotificationManagementTab() {
         onChange={setEditingTemplate}
         onSave={handleSave}
         isSaving={saveMutation.isPending}
+        initialTab={templateInitialTab}
       />
 
       {/* דיאלוג שליחה ידנית */}
