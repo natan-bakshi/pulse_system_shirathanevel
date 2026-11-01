@@ -42,7 +42,7 @@ function hasContactDetails(contact) {
   return Boolean(contact.name || contact.phone || contact.email);
 }
 
-export async function selectDeviceContact(contactApi, supportedFields = CONTACT_FIELDS) {
+export async function selectDeviceContact(contactApi, supportedFields = CONTACT_FIELDS, options = { multiple: false }) {
   if (!contactApi || typeof contactApi.select !== 'function') {
     throw Object.assign(new Error('Contact Picker API is unavailable'), { name: 'NotSupportedError' });
   }
@@ -52,8 +52,11 @@ export async function selectDeviceContact(contactApi, supportedFields = CONTACT_
   }
   // Call select() directly from the user's click. No async permission probe here:
   // awaiting before select() can lose transient user activation on mobile browsers.
-  const chosen = await contactApi.select(fields, { multiple: false });
+  const chosen = await contactApi.select(fields, { multiple: options.multiple === true });
   if (!chosen || (Array.isArray(chosen) && chosen.length === 0)) return null;
+  if (Array.isArray(chosen) && chosen.length > 1) {
+    throw Object.assign(new Error('Select exactly one contact'), { name: 'MultipleContactsError' });
+  }
   const contact = normalizePhoneContact(Array.isArray(chosen) ? chosen[0] : chosen);
   if (!hasContactDetails(contact)) {
     throw Object.assign(new Error('Selected contact has no readable details'), { name: 'EmptyContactError' });
