@@ -27,7 +27,6 @@ const normalizeStatus=(value:unknown)=>{
  if(value==='pending'||value==='confirmed'||value==='rejected')return value;
  return null;
 };
-const unique=(rows:any[])=>new Set(rows.map(row=>row.id)).size===rows.length;
 
 // Membership must be checked before event reads and AGAIN before projection.
 // Rejected assignments remain visible as a *redacted history card* in Pulse,
@@ -63,8 +62,7 @@ export function supplierFeedAssignment(assignment:any,event:any,service:any,
   location:isActive?safe(event.location,180):'',
   city:isActive?safe(event.city,90):'',
   guest_count:isActive?number(event.guest_count):0,
-  serviceName:isActive?safe(assignment.service_name||service?.service_name,130):
-   'שירות שנדחה',
+  serviceName:safe(assignment.service_name||service?.service_name,130)||'שירות שנדחה',
   serviceDescription:isActive?safe(
    assignment.service_description||service?.service_description,5000):'',
   supplierNote:isActive?safe(record(assignment.supplier_notes)[supplierId],1500):'',
