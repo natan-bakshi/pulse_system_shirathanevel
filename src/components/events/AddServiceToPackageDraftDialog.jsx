@@ -18,9 +18,10 @@ export default function AddServiceToPackageDraftDialog({
   onAdd
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
+    {/* Nested inside the modal EventForm: stay modal so Radix scroll lock permits the inner list to scroll. */}
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-md max-h-[90vh] overflow-y-auto"
+        className="max-w-md max-h-[90dvh] overflow-y-auto overscroll-y-contain"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
@@ -40,7 +41,7 @@ export default function AddServiceToPackageDraftDialog({
                 className="pr-10"
               />
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
+            <div className="space-y-2 max-h-64 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y border rounded p-2">
               {filteredServices.length === 0 ? (
                 <div className="text-center text-gray-500 text-sm py-3">לא נמצאו שירותים זמינים</div>
               ) : (
