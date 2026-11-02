@@ -1511,7 +1511,7 @@ export default function EventServicesManager({
               )}
             </div>
 
-            <div className="max-h-60 overflow-y-auto space-y-1">
+            <div className="max-h-60 overflow-y-auto overscroll-y-contain touch-pan-y space-y-1">
               {/* Create New Service Option */}
               <div 
                 className="flex items-center p-2 hover:bg-blue-50 rounded-md cursor-pointer text-blue-700 font-medium text-sm transition-colors border border-transparent hover:border-blue-100 mb-1"
@@ -1756,7 +1756,7 @@ export default function EventServicesManager({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto overscroll-y-contain touch-pan-y">
               {filteredSuppliersForDialog.map(supplier => {
                 const declineRecord = (supplierFormData.declinedSuppliers || []).find(d => d.supplier_id === supplier.id);
                 const hasDeclined = !!declineRecord;
@@ -1827,7 +1827,7 @@ export default function EventServicesManager({
       </Dialog>
       
       {/* Dialogs */}
-      <Dialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog} modal={false}>
+      <Dialog open={showAddToPackageDialog} onOpenChange={setShowAddToPackageDialog}>
         <DialogContent 
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -1900,7 +1900,7 @@ export default function EventServicesManager({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showNewServiceDialog} onOpenChange={setShowNewServiceDialog} modal={false}>
+      <Dialog open={showNewServiceDialog} onOpenChange={setShowNewServiceDialog}>
         <DialogContent 
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -1989,7 +1989,7 @@ export default function EventServicesManager({
         </DialogContent>
       </Dialog>
       
-      <Dialog open={showNewSupplierDialog} onOpenChange={setShowNewSupplierDialog} modal={false}>
+      <Dialog open={showNewSupplierDialog} onOpenChange={setShowNewSupplierDialog}>
         <DialogContent 
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -2059,7 +2059,7 @@ export default function EventServicesManager({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showPackageDialog} onOpenChange={setShowPackageDialog} modal={false}>
+      <Dialog open={showPackageDialog} onOpenChange={setShowPackageDialog}>
         <DialogContent 
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -2112,7 +2112,7 @@ export default function EventServicesManager({
                   className="pr-10"
                 />
               </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto border rounded p-2">
+              <div className="space-y-2 max-h-48 overflow-y-auto overscroll-y-contain touch-pan-y border rounded p-2">
                 {selectedServices.filter(s => !s.package_id).filter(s => {
                     const serviceDetails = allServices.find(s2 => s2.id === s.service_id);
                     const name = s.service_name || serviceDetails?.service_name || '';
@@ -2153,7 +2153,7 @@ export default function EventServicesManager({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showAddExistingPackageDialog} onOpenChange={setShowAddExistingPackageDialog} modal={false}>
+      <Dialog open={showAddExistingPackageDialog} onOpenChange={setShowAddExistingPackageDialog}>
         <DialogContent 
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -2166,7 +2166,7 @@ export default function EventServicesManager({
           <div className="space-y-4">
             <div>
               <Label>בחר חבילה</Label>
-              <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
+              <div className="space-y-2 max-h-64 overflow-y-auto overscroll-y-contain touch-pan-y border rounded p-2">
                 {allPackages.map(pkg => (
                   <div key={pkg.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
                     <Checkbox
@@ -2197,7 +2197,7 @@ export default function EventServicesManager({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog} modal={false}>
+      <Dialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog}>
         <DialogContent 
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
