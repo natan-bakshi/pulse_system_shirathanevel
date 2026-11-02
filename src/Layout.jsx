@@ -1,4 +1,5 @@
 import { subscribeToEventStatus } from '@/lib/eventStatus';
+import {canMountPulsePage} from '@/lib/routeRoleAccess';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
