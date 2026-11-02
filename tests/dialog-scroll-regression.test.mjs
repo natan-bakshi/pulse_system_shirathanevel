@@ -11,7 +11,7 @@ const form=read('src/components/events/EventForm.jsx');
 test('FIX-004: modal event form has seven true nested modal roots (not modal=false portals)',()=>{
  assert.match(form,/<Dialog open=\{isOpen\} onOpenChange=\{onClose\}>/);
  const nested=[...manager.matchAll(/<Dialog\s+open=\{[^}]+\}\s+onOpenChange=\{[^}]+\}(?:\s+modal=\{false\})?>/g)];
- assert.equal(nested.length,6,'six nested EventServicesManager dialogs');
+ assert.equal(nested.length,7,'six formerly nonmodal dialogs plus the existing supplier-assignment modal');
  assert.ok(nested.every(m=>!m[0].includes('modal={false}')));
  assert.match(packageDialog,/<Dialog open=\{open\} onOpenChange=\{onOpenChange\}>/);
  assert.doesNotMatch(packageDialog,/modal=\{false\}/);
