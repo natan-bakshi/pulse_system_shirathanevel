@@ -14,6 +14,15 @@ const DialogPortal = DialogPrimitive.Portal
 
 const DialogClose = DialogPrimitive.Close
 
+// Nested Radix dialogs are portalled to document.body, outside the outer
+// dialog's RemoveScroll shard. The outer lock can therefore cancel wheel and
+// touchmove on an inner dialog even while both display valid scrollbars.
+// React context follows the component tree through portals, letting only
+// truly nested DialogContent instances stop those events before they reach
+// the outer document-level lock. We never preventDefault: native scrolling,
+// keyboard, pointer selection, and body scroll locking remain unchanged.
+const NestedDialogScrollContext = React.createContext(false)
+
 const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
@@ -25,17 +34,30 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
-  <DialogPortal>
+const DialogContent = React.forwardRef(({ className, children, onWheel, onTouchMove, ...props }, ref) => {
+  const isNested = React.useContext(NestedDialogScrollContext)
+  const handleWheel = (event) => {
+    onWheel?.(event)
+    if (isNested) event.stopPropagation()
+  }
+  const handleTouchMove = (event) => {
+    onTouchMove?.(event)
+    if (isNested) event.stopPropagation()
+  }
+  return <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      onWheel={handleWheel}
+      onTouchMove={handleTouchMove}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-y-contain translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
         className
       )}
       {...props}>
-      {children}
+      <NestedDialogScrollContext.Provider value={true}>
+        {children}
+      </NestedDialogScrollContext.Provider>
       <DialogPrimitive.Close
         className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />
@@ -43,7 +65,7 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
-))
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({
