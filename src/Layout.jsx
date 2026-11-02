@@ -1114,7 +1114,9 @@ export default function Layout({ children }) {
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative">
               <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full box-border overflow-x-hidden">
-                {children}
+                {canMountContent ? children : <div role="alert" className="rounded-lg bg-white p-5 text-gray-800">
+                  העמוד הזה אינו זמין לחשבון שלך. מעבירים אותך לדף המורשה שלך.
+                </div>}
               </div>
             <footer className="text-center text-xs text-gray-400 py-3 border-t border-white/10">
               © {new Date().getFullYear()} Developed by Natan Bakshi
