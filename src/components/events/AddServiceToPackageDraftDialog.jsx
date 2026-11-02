@@ -17,8 +17,9 @@ export default function AddServiceToPackageDraftDialog({
   setSelected,
   onAdd
 }) {
+  // Nested inside modal EventForm. Radix must treat this dialog as the top
+  // active modal so the parent's scroll lock won't intercept its list swipes.
   return (
-    {/* Nested inside the modal EventForm: stay modal so Radix scroll lock permits the inner list to scroll. */}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-md max-h-[90dvh] overflow-y-auto overscroll-y-contain"
