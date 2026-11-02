@@ -129,6 +129,13 @@ test('nested event editor dialog permits wheel and touch scroll without unlockin
   assert.equal(document.querySelectorAll('[role=dialog]').length,1);
   assert.deepEqual(dispatchWheel(document.getElementById('app-root')),
    {allowed:false,prevented:true});
+  // Closing the entire editor releases the background scroll lock, too.
+  await React.act(async()=>{
+   root.render(null);
+   await new Promise(resolve=>setTimeout(resolve,40));
+  });
+  assert.deepEqual(dispatchWheel(document.getElementById('app-root')),
+   {allowed:true,prevented:false});
  }finally{
   await React.act(async()=>{root.unmount();});
   // Radix schedules focus/scroll cleanup as microtasks; preserve jsdom's
