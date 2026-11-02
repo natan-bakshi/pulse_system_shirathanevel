@@ -39,9 +39,6 @@ test('nested event editor dialog permits wheel and touch scroll without unlockin
   'DOMRect','EventTarget','NodeFilter','HTMLInputElement','HTMLButtonElement',
   'HTMLSelectElement','HTMLTextAreaElement','SVGElement'
  ];
- const previous=new Map(globals.map(key=>[key,
-  Object.getOwnPropertyDescriptor(globalThis,key)]));
- const oldActEnv=globalThis.IS_REACT_ACT_ENVIRONMENT;
  for(const key of globals)Object.defineProperty(globalThis,key,{
   value:dom.window[key],configurable:true,writable:true
  });
@@ -134,11 +131,8 @@ test('nested event editor dialog permits wheel and touch scroll without unlockin
    {allowed:false,prevented:true});
  }finally{
   await React.act(async()=>{root.unmount();});
-  dom.window.close();
-  for(const key of globals){
-   if(previous.get(key)===undefined)delete globalThis[key];
-   else Object.defineProperty(globalThis,key,previous.get(key));
-  }
-  globalThis.IS_REACT_ACT_ENVIRONMENT=oldActEnv;
+  // Radix schedules focus/scroll cleanup as microtasks; preserve jsdom's
+  // Event globals until its isolated node:test worker process exits.
+  await new Promise(resolve=>setTimeout(resolve,80));
  }
 });
