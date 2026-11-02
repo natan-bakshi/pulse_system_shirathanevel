@@ -109,9 +109,11 @@ export default function Layout({ children }) {
 
   // Read the persisted status when another user confirms/removes an assignment; no polling.
   useEffect(() => {
-    if (!user?.id) return;
+    // Raw realtime Event/EventService payloads may contain unrelated
+    // customer and supplier data. Do not subscribe non-admin accounts.
+    if (!user?.id || user.role !== 'admin') return;
     return subscribeToEventStatus();
-  }, [user?.id]);
+  }, [user?.id,user?.role]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [themeMode, setThemeMode] = useState(() => {
@@ -459,6 +461,9 @@ export default function Layout({ children }) {
   const currentNavItems = user.role === 'admin'
     ? getAdminNavItems(user.email, tasksSystemEnabled, billingEnabled) 
     : (navigationItems[user.user_type] || navigationItems.client);
+  // Route authorization must happen BEFORE rendering page children: a
+  // redirect effect alone runs after unauthorized queries can be mounted.
+  const canMountContent=canMountPulsePage(user,location.pathname,SYSTEM_CREATOR_EMAIL);
 
 
 
