@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, GripVertical, Edit, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, HelpCircle, X, Check, Copy, ArrowLeftRight } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Edit, ChevronDown, ChevronUp, Search, Package as PackageIcon, LogOut, HelpCircle, X, ArrowLeftRight } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -14,7 +14,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Service } from '@/entities/Service';
 import { Supplier } from '@/entities/Supplier';
-import { Package } from '@/entities/Package';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import ContactPicker from '../ui/ContactPicker';
