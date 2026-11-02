@@ -74,13 +74,21 @@ test('FIX-004: Tailwind merged defaults honor deliberate per-dialog overrides',(
  assert.ok(normal.includes('overflow-y-auto'));
 });
 
-test('FIX-004: no global event interception or body scroll unblock introduced',()=>{
+test('FIX-004: nested scroll events are locally isolated, never prevented globally',()=>{
+ const dialog=read('src/components/ui/dialog.jsx');
+ assert.match(dialog,/NestedDialogScrollContext\s*=\s*React\.createContext\(false\)/);
+ assert.match(dialog,/React\.useContext\(NestedDialogScrollContext\)/);
+ assert.match(dialog,/onWheel=\{handleWheel\}/);
+ assert.match(dialog,/onTouchMove=\{handleTouchMove\}/);
+ assert.match(dialog,/NestedDialogScrollContext\.Provider value=\{true\}/);
+ assert.equal((dialog.match(/if \(isNested\) event\.stopPropagation\(\)/g)||[]).length,2);
+ assert.doesNotMatch(dialog,/event\.preventDefault\(\)/);
  for(const source of [manager,packageDialog,
-  read('src/components/ui/dialog.jsx'),
   read('src/components/ui/alert-dialog.jsx'),
   read('src/components/ui/popover.jsx'),
   read('src/components/ui/dropdown-menu.jsx')]){
   assert.doesNotMatch(source,/onWheel(Capture)?=|onTouchMove(Capture)?=|addEventListener\(['"](?:wheel|touchmove)/);
   assert.doesNotMatch(source,/document\.body\.style\.overflow/);
  }
+ assert.doesNotMatch(dialog,/document\.body\.style\.overflow|document\.addEventListener\(['"](?:wheel|touchmove)/);
 });
