@@ -235,10 +235,15 @@ Deno.serve(async (req) => {
         if (rejectionTemplate) {
             // טוענים את declined_suppliers הנוכחי כדי לבדוק מי דחה
             let currentDeclinedRecords = [];
+            let previousDeclinedRecords = [];
             try {
                 currentDeclinedRecords = JSON.parse(data.declined_suppliers || '[]');
                 if (!Array.isArray(currentDeclinedRecords)) currentDeclinedRecords = [];
             } catch (e) { currentDeclinedRecords = []; }
+            try {
+                previousDeclinedRecords = JSON.parse(old_data?.declined_suppliers || '[]');
+                if (!Array.isArray(previousDeclinedRecords)) previousDeclinedRecords = [];
+            } catch (e) { previousDeclinedRecords = []; }
 
             for (const supplierId of currentSupplierIds) {
                 const wasRejected = oldStatuses[supplierId] !== 'rejected' && currentStatuses[supplierId] === 'rejected';
@@ -248,7 +253,14 @@ Deno.serve(async (req) => {
                 // בדיקה: האם הדחייה בוצעה ע"י הספק עצמו? אם רשום declined_by_supplier=true ברשומה - כן.
                 // אם המנהל דחה (דרך ה-UI) - הרשומה לא תיווצר ע"י updateSupplierStatus, ולכן לא יהיה flag כזה.
                 const declinedRecord = currentDeclinedRecords.find(d => d.supplier_id === supplierId);
-                const wasDeclinedBySupplier = declinedRecord?.declined_by_supplier === true;
+                // An old supplier rejection can remain in decline history even
+                // after a manager reopens and later rejects the assignment.
+                // Only a newly supplier-marked rejection is proof for this
+                // legacy entity-update path (dashboard CAS uses its own path).
+                const wasDeclinedBySupplier = Boolean(old_data) &&
+                    declinedRecord?.declined_by_supplier === true &&
+                    !previousDeclinedRecords.some(d =>
+                        d?.supplier_id === supplierId && d?.declined_by_supplier === true);
 
                 if (!wasDeclinedBySupplier) {
                     console.log(`[AssignmentChange] Skipping admin notification - rejection of supplier ${supplierId} was made by admin, not by supplier`);
