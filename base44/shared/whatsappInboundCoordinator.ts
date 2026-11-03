@@ -11,6 +11,7 @@ import {persistAuthorizedSupplierStatus} from './supplierStatusPersistence.ts';
 import {wakeExistingCalendarSyncAfterSupplierDecision} from './calendarSyncStatusWake.ts';
 import {enqueueVerifiedButtonFeedback} from './whatsappButtonFeedback.ts';
 import {assignmentDecisionForAction} from './whatsappInteractiveActionRegistry.ts';
+import {notifyManagersOfSupplierRejection} from './supplierRejectionAlert.ts';
 
 const preflightRefused=(reason:string)=>({status:'refused',reason,
  providerCalls:0,supplierWritesAuthorized:false});
@@ -32,7 +33,10 @@ type InboundResult={status:InboundOutcome;reason:string;providerCalls:0;
 export async function processVerifiedWhatsAppAssignmentResponse(input:{
  providerEvent:any;client:any;trustedRolloutEnabled:boolean;
  providerCapabilityVerified:boolean;claimOwner:string;
- recalculateEventStatus:(eventId:string)=>Promise<any>
+ recalculateEventStatus:(eventId:string)=>Promise<any>;
+ // Internal test hook only. The authenticated production webhook does not
+ // accept a notification dispatcher from HTTP or button payloads.
+ notifySupplierRejection?:typeof notifyManagersOfSupplierRejection
 }):Promise<InboundResult>{
  if(input?.trustedRolloutEnabled!==true||input?.providerCapabilityVerified!==true)
   return preflightRefused('rollout_disabled');
@@ -148,6 +152,7 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
  let outcome:'applied'|'rejected'|'needs_review'='needs_review';
  let resultCode='unknown_after_write';
  let supplierWritesAuthorized=false;
+ let committedRejectionEventId='';
  try{
   const status=assignmentDecisionForAction(record.action);
   if(!status)throw Object.assign(Error('Invalid inbound action'),{code:'invalid_assignment'});
@@ -161,6 +166,7 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
   // The business CAS may have committed. A subsequent failure to recalculate
   // readiness must NEVER cause the supplier CAS to be run again.
   if(changed.kind==='changed'){
+   if(status==='rejected')committedRejectionEventId=changed.eventId;
    await input.recalculateEventStatus(changed.eventId);
    // WhatsApp CAS does not fire the previous EventService UPDATE trigger.
    // Retain the existing Calendar pipeline; no direct Google call is made
@@ -198,6 +204,28 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
       (outcome==='needs_review'&&resultCode==='unknown_after_write'))
     await feedbackAfterVerifiedTerminal(input.client,registered.id,
      input.providerEvent.actionSigningSecret);
+   // updateMany intentionally bypasses entity UPDATE workflows. A VERIFIED
+   // supplier-originated WhatsApp rejection needs the SAME manager notification
+   // dispatcher as an in-app supplier rejection. Run it ONLY after the
+   // durable inbound receipt was finalized as applied, never on stale clicks,
+   // admin changes, approval, ambiguous writes or duplicate provider replays.
+   if(outcome==='applied'&&resultCode==='applied'&&
+      record.action==='assignment_reject'&&committedRejectionEventId){
+    try{
+     const send=input.notifySupplierRejection||notifyManagersOfSupplierRejection;
+     const alert=await send(input.client,{
+      eventId:committedRejectionEventId,
+      eventServiceId:record.eventServiceId,
+      supplierId:record.supplierId
+     },{decisionNonce:'green-receipt:'+registered.id});
+     if(alert?.failures>0)
+      console.warn('[WhatsAppInbound] Verified rejection manager notification incomplete');
+    }catch{
+     // The supplier's decision and signed reply have already committed.
+     // Never fail the webhook or replay CAS to repair an alert failure.
+     console.error('[WhatsAppInbound] Verified rejection manager notification failed');
+    }
+   }
    return {status:outcome,reason:resultCode,providerCalls:0,supplierWritesAuthorized};
   }
  }catch{}
