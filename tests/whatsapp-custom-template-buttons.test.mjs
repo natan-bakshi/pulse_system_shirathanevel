@@ -166,9 +166,11 @@ test('prepared office responses contain exact verified intent, reference and eve
   link('office','פנייה למשרד'),link('office_details','צריך פרטים'),
   link('office_callback','תחזרו אליי')
  ]);
- const {ctl,record}=freeze(setting);
+ const {ctl,record}=freeze(setting,{event_service_id:'event-service-stable-123'});
  const p=preview(record,ctl);
  assert.deepEqual(p.body.buttons.map(x=>x.type),['url','url','url']);
+ assert.ok(new URL(p.body.buttons[1].url).searchParams.get('text').includes(
+  'אסמכתת השיבוץ: event-service-stable-123'));
  const texts=p.body.buttons.map(row=>new URL(row.url).searchParams.get('text'));
  assert.ok(texts[0].includes('שלום, יש לי שאלה'));
  assert.ok(texts[1].includes('אשמח לקבל פרטים נוספים'));
