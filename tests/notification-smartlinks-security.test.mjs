@@ -219,7 +219,8 @@ test('supplier and client event-route guards execute before administrative event
  assert.match(details,/function EventDetailsBody\(\)/);
  assert.match(details,/export default function EventDetails\(\)/);
  assert.match(details,/return <Navigate replace to=\{'\/SupplierEventView/);
- assert.match(details,/base44\.functions\.invoke\('eventLinkAccess'/);
+ assert.match(details,/base44\.functions\.invoke\('clientEventDetailsFeed'/);
+ assert.match(details,/queryKey:\['clientEventDetailsFeed'/);
  assert.match(backend,/readSupplierEventView\(client,user,body\.eventId\)/);
  assert.match(clientGate,/canOpenClientEventCard\(user,event\)/);
  assert.match(view,/base44\.functions\.invoke\('supplierEventView'/);
