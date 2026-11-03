@@ -206,6 +206,9 @@ test('dashboard endpoint binds signed-in supplier and ignores client-forged What
    if(name.endsWith('eventReadiness.ts'))return {
     recalculateEventStatus:async()=>({newStatus:'confirmed'})
    };
+   if(name.endsWith('supplierRejectionAlert.ts'))return {
+    notifyManagersOfSupplierRejection:async()=>{throw Error('A confirmation must never notify admins');}
+   };
    if(name.endsWith('calendarSyncStatusWake.ts'))return {
     wakeExistingCalendarSyncAfterSupplierDecision:async()=>({requested:true,reason:'existing_calendar_workflow_woken'})
    };
