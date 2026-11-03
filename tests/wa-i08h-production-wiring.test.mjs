@@ -19,8 +19,10 @@ test('client EventDetails reads one scoped backend bundle before mounting event 
   const needle='base44.entities.'+source+'.';
   assert.match(body,new RegExp(needle.replace(/\./g,'\\.')+'(?:get|list|filter)'));
  }
- assert.equal((body.match(/enabled: isAdmin/g)||[]).length,6,
-  'all six raw admin service, suppliers, packages, templates, event and eventServices must be admin-only');
+ assert.equal((body.match(/enabled: isAdmin/g)||[]).length,4,
+  'catalog, suppliers, packages and quote templates are admin-only');
+ assert.equal((body.match(/enabled: !!eventId && isAdmin/g)||[]).length,2,
+  'raw Event and EventService reads are admin-only');
  assert.match(body,/enabled: !!eventId && isAdmin/);
  assert.doesNotMatch(outer,/base44\.entities\.(Event|EventService)/);
 });
