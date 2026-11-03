@@ -357,7 +357,7 @@ Deno.serve(async (req) => {
                             const perSupplierConditionsMet = await checkConditions(base44, template, contextEnrichedData, oldData, event, triggerType);
                             if (!perSupplierConditionsMet) continue;
 
-                            if (template.type === 'ADMIN_ASSIGNMENT_REJECTED' && !wasDeclinedBySupplier(data, changeContext.id)) {
+                            if (template.type === 'ADMIN_ASSIGNMENT_REJECTED' && !wasDeclinedBySupplier(data, oldData, changeContext.id)) {
                                 console.log(`[HandleEntityEvents] Skipping admin rejection alert for supplier ${changeContext.id} - rejection was not made by supplier`);
                                 continue;
                             }
@@ -511,15 +511,21 @@ async function scheduleSupplierPendingReminder(base44, eventServiceData, supplie
     return true;
 }
 
-function wasDeclinedBySupplier(eventServiceData, supplierId) {
-    let declinedRecords = [];
-    try {
-        declinedRecords = JSON.parse(eventServiceData?.declined_suppliers || eventServiceData?.declinedsuppliers || '[]');
-        if (!Array.isArray(declinedRecords)) declinedRecords = [];
-    } catch (e) {
-        declinedRecords = [];
-    }
-    return declinedRecords.some(record => record.supplier_id === supplierId && record.declined_by_supplier === true);
+function wasDeclinedBySupplier(eventServiceData, previousData, supplierId) {
+    // Historical supplier declines survive reassignments. An admin may later
+    // reject that same supplier, so the old flag alone proves nothing.
+    // Only the new appearance of a supplier-originated decline is admitted.
+    if (!previousData) return false;
+    const read = data => {
+        try {
+            const raw = data?.declined_suppliers || data?.declinedsuppliers || '[]';
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
+    };
+    const active = record => record?.supplier_id === supplierId &&
+        record?.declined_by_supplier === true;
+    return read(eventServiceData).some(active) && !read(previousData).some(active);
 }
 
 function applyTimingOffset(date, unit, value) {
