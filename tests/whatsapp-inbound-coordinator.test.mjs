@@ -26,7 +26,7 @@ async function signedEvent(action='assignment_approve',providerEventId='incoming
 }
 function fixture(){
  const now=new Date().toISOString();
- const records=[],stats={reads:0,creates:0,supplierWrites:0,recalc:0};
+ const records=[],adminAlerts=[],stats={reads:0,creates:0,supplierWrites:0,recalc:0};
  const job={id:'outbox-abc',source_type:'assignment_new',status:'accepted',
   provider:'green',provider_message_id:'3EB0STANZAMESSAGEID',
   sender_account_id:instance,assignment_revision:'r2',
@@ -83,7 +83,11 @@ function fixture(){
   }
  };
  const client={asServiceRole:{entities:db}};
- return {client,stats,job,supplier,service,control,records,
+ return {client,stats,job,supplier,service,control,records,adminAlerts,
+  notifySupplierRejection:async(_client,identity,options)=>{
+   adminAlerts.push({identity,options});
+   return {enabled:true,targeted:2,inAppCreated:2,whatsappQueued:2,failures:0};
+  },
   race:fn=>raceChange=fn,
   failure:mode=>supplierFail=mode,
   recalcError:flag=>recalcFail=flag,
@@ -98,7 +102,8 @@ function call(f,providerEvent,patch={}){
  return processVerifiedWhatsAppAssignmentResponse({
   providerEvent,client:f.client,trustedRolloutEnabled:true,
   providerCapabilityVerified:true,claimOwner:'test-worker-owner-123',
-  recalculateEventStatus:f.recalculateEventStatus,...patch
+  recalculateEventStatus:f.recalculateEventStatus,
+  notifySupplierRejection:f.notifySupplierRejection,...patch
  });
 }
 test('unapproved rollout/capability fails with ZERO entity reads or writes',async()=>{
