@@ -218,8 +218,15 @@ export async function processVerifiedWhatsAppAssignmentResponse(input:{
       eventServiceId:record.eventServiceId,
       supplierId:record.supplierId
      },{decisionNonce:'green-receipt:'+registered.id});
-     if(alert?.failures>0)
-      console.warn('[WhatsAppInbound] Verified rejection manager notification incomplete');
+     // Summarize outcomes without logging phone numbers or message contents.
+     // Outbox queued is NOT proof of provider acceptance or delivery.
+     console.info('[WhatsAppInbound] Verified rejection manager alert',{
+      enabled:alert?.enabled===true,targeted:alert?.targeted||0,
+      inAppCreated:alert?.inAppCreated||0,whatsappQueued:alert?.whatsappQueued||0,
+      failures:alert?.failures||0,skippedReason:alert?.skippedReason||''
+     });
+     if(alert?.failures>0 || alert?.enabled===false)
+      console.warn('[WhatsAppInbound] Verified rejection manager notification incomplete or disabled');
     }catch{
      // The supplier's decision and signed reply have already committed.
      // Never fail the webhook or replay CAS to repair an alert failure.
