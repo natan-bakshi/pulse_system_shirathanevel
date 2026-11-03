@@ -27,7 +27,8 @@ function shortSafeExcerpt(message:string):string{
 export function buildOfficeWhatsAppInquiryLink(input:{
  officeNumber:string;outboxJobId?:string;messageText?:string;
  contextMode?:OfficeContextMode;
- messageKind?:'assignment'|'supplier_notice'
+ messageKind?:'assignment'|'supplier_notice';
+ requestIntent?:'question'|'details'|'callback'
 }):string{
  const number=input?.officeNumber;
  if(typeof number!=='string'||!PHONE.test(number))throw error('office_number_invalid');
@@ -36,9 +37,15 @@ export function buildOfficeWhatsAppInquiryLink(input:{
  if(mode==='none')return base;
  if(!['reference','excerpt'].includes(mode))throw error('office_context_mode_invalid');
  if(!REF.test(input.outboxJobId||''))throw error('office_context_reference_invalid');
- const intro=input.messageKind==='supplier_notice'
-  ?'שלום, יש לי שאלה לגבי הודעה שקיבלתי.'
-  :'שלום, יש לי שאלה לגבי הודעת השיבוץ.';
+ const intent=input.requestIntent||'question';
+ if(!['question','details','callback'].includes(intent))throw error('office_intent_invalid');
+ const intro=intent==='details'
+  ?'שלום, אשמח לקבל פרטים נוספים לגבי ההודעה שקיבלתי.'
+  :intent==='callback'
+   ?'שלום, אשמח שיחזרו אליי טלפונית לגבי ההודעה שקיבלתי.'
+   :input.messageKind==='supplier_notice'
+    ?'שלום, יש לי שאלה לגבי הודעה שקיבלתי.'
+    :'שלום, יש לי שאלה לגבי הודעת השיבוץ.';
  let text=intro+'\n'+'אסמכתא: '+input.outboxJobId;
  if(mode==='excerpt'){
   const excerpt=shortSafeExcerpt(input.messageText||'');
