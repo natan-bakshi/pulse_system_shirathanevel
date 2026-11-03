@@ -196,3 +196,51 @@ test('dashboard endpoint dispatches only committed supplier rejection, including
  assert.equal(writes,6);
  assert.equal(calendarWakes,5,'Only real status changes request calendar sync');
 });
+
+test('legacy EventService workflow never mistakes historical supplier-decline flag for a new rejection',async()=>{
+ const source=esbuild.transformSync(fs.readFileSync(
+  'base44/functions/onAssignmentChange/entry.ts','utf8'),
+  {loader:'ts',format:'cjs',target:'es2022'}).code;
+ const previous={id:ESID,event_id:EID,service_id:'catalog-1234',
+  supplier_ids:JSON.stringify([SID]),supplier_statuses:JSON.stringify({[SID]:'pending'}),
+  declined_suppliers:JSON.stringify([{supplier_id:SID,declined_by_supplier:true}])};
+ let calls=0,handler;
+ const client={auth:{me:async()=>({role:'admin'})},asServiceRole:{entities:{
+  Event:{filter:async()=>[{id:EID,event_name:'Test event',event_date:'2026-11-04'}]},
+  Service:{list:async()=>[{id:'catalog-1234',service_name:'נגינה'}]},
+  Supplier:{list:async()=>[{id:SID,supplier_name:'Supplier'}]},
+  User:{list:async()=>[{id:'admin-001',role:'admin',email:'admin@example.com'}]},
+  NotificationTemplate:{filter:async()=>[template()]}
+ }}};
+ vm.runInNewContext(source,{
+  module:{exports:{}},exports:{},console:{log:()=>{},warn:()=>{},error:()=>{}},
+  Deno:{serve:fn=>handler=fn},
+  Response:{json:(body,{status=200}={})=>({body,status})},
+  require:name=>{
+   if(name.startsWith('npm:@base44/sdk'))return {createClientFromRequest:()=>client};
+   if(name.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
+   if(name.endsWith('greenButtonQaFixture.ts'))return {
+    isGreenButtonQaFixtureServicePayload:()=>false
+   };
+   if(name.endsWith('notificationCore.ts'))return {
+    createNotificationCore:async()=>{calls++;return {ok:true};}
+   };
+   if(name.endsWith('eventChangeReconfirmation.ts'))return {
+    isEventChangeStatusReset:()=>false
+   };
+   throw Error('Unexpected import '+name);
+  }
+ });
+ const run=async(before,after)=>handler({json:async()=>({
+  event:{type:'update',entity_id:ESID},data:after,old_data:before
+ })});
+ const adminAfter={...previous,supplier_statuses:JSON.stringify({[SID]:'rejected'})};
+ const falseAlert=await run(previous,adminAfter);
+ assert.equal(falseAlert.status,200);
+ assert.equal(calls,0,'The previously stored supplier flag must not notify for admin rejection');
+ const newRecord={...previous,declined_suppliers:'[]'};
+ const supplierAfter={...adminAfter};
+ const trueAlert=await run(newRecord,supplierAfter);
+ assert.equal(trueAlert.status,200);
+ assert.equal(calls,1,'A new supplier-originated rejection remains recognizable');
+});
