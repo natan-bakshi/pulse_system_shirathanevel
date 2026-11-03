@@ -63,7 +63,7 @@ export function previewGreenSupplierNavigation(input:{
  if(!policy)return null;
  if(isCustomSupplierButtons(policy)){
   if(policy.links.length===0&&(!input.allowReplyOnly||!policy.replyLabel))return null;
-  if(policy.links.some(link=>['office','call_office'].includes(link.kind))&&
+  if(policy.links.some(link=>['office','office_details','office_callback','call_office'].includes(link.kind))&&
    !OFFICE.test(config.officeNumber||''))return null;
   const buttons:SupplierNavigationPreview['body']['buttons']=[];
   for(const link of policy.links){
