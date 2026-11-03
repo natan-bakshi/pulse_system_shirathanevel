@@ -442,3 +442,57 @@ test('office notification cannot precede durable receipt finalization',async()=>
  assert.equal(f.adminAlerts.length,0);
  assert.equal(f.records[0].state,'processing');
 });
+
+test('end-to-end synthetic Green button rejection materializes the configured office template for two admins',async()=>{
+ const {notifyManagersOfSupplierRejection}=await import('../base44/shared/supplierRejectionAlert.ts');
+ const f=fixture(),click=await signedEvent('assignment_reject','green-e2e-office-alert');
+ const db=f.client.asServiceRole.entities;
+ f.supplier.supplier_name='Test Supplier';
+ f.service.service_name='Music';
+ db.Event={get:async()=>({
+  id:'event-abc',event_name:'Test Bar Mitzvah',
+  family_name:'Example',event_date:'2026-11-09'
+ })};
+ const admins=[
+  {id:'admin-001',email:'admin1@example.com',role:'admin',phone:'0501234567',whatsapp_enabled:true},
+  {id:'admin-002',email:'admin2@example.com',role:'admin',phone:'0508765432',whatsapp_enabled:true},
+  {id:'admin-003',email:'other@example.com',role:'admin',phone:'0509999999',whatsapp_enabled:true}
+ ];
+ db.User={filter:async()=>admins};
+ db.NotificationTemplate={filter:async()=>[{
+  id:'template-rejected',type:'ADMIN_ASSIGNMENT_REJECTED',is_active:true,
+  trigger_type:'assignment_status_change',entity_name:'EventService',
+  target_audiences:['admin'],admin_recipient_ids:['admin-001','admin-002'],
+  allowed_channels:['whatsapp'],
+  event_filter_condition:JSON.stringify([{field:'assignment_status',operator:'equals',value:'rejected'}]),
+  title_template:'דחיית שיבוץ - {{event_name}}',
+  body_template:'{{supplier_name}} דחה את שירות {{service_name}} עבור {{family_name}}',
+  whatsapp_body_template:'{{supplier_name}} דחה את שירות {{service_name}} עבור {{family_name}} בתאריך {{event_date}}',
+  dynamic_url_type:'event_page'
+ }]};
+ const inApps=[],whatsapps=[];
+ const dispatch=async(client,ident,opts)=>notifyManagersOfSupplierRejection(client,ident,{
+  ...opts,now:new Date('2026-11-03T10:00:00Z'),
+  createInApp:async(_client,payload)=>{
+   inApps.push(payload);return {ok:true,body:{notification_id:'inapp-'+inApps.length}};
+  },
+  sendWhatsApp:async(chat,message,_client,ctx)=>{
+   whatsapps.push({chat,message,ctx});
+   return {success:true,queued:true,status:'queued',jobId:'job-'+whatsapps.length};
+  }
+ });
+ const initial=await call(f,click,{notifySupplierRejection:dispatch});
+ assert.equal(initial.status,'applied');
+ assert.equal(inApps.length,2);
+ assert.equal(whatsapps.length,2);
+ assert.deepEqual(inApps.map(x=>x.target_user_id).sort(),['admin-001','admin-002']);
+ assert.ok(inApps.every(x=>x.send_push===false));
+ assert.ok(inApps.every(x=>x.related_event_service_id==='service-abc'));
+ assert.ok(whatsapps.every(x=>x.message.includes('Test Supplier')));
+ assert.ok(whatsapps.every(x=>x.ctx.idempotencyKey.startsWith('supplier-rejection-alert-v1:')));
+ assert.equal(new Set(whatsapps.map(x=>x.ctx.idempotencyKey)).size,2);
+ const again=await call(f,click,{notifySupplierRejection:dispatch});
+ assert.equal(again.status,'duplicate');
+ assert.equal(inApps.length,2);
+ assert.equal(whatsapps.length,2);
+});
