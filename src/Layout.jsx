@@ -18,8 +18,6 @@ import {
   FileText,
   UserCheck,
   ArrowRight,
-  Bell,
-  UserCog,
   User,
   ListChecks,
   PhoneCall,
@@ -34,8 +32,6 @@ import PushNotificationPrompt from "@/components/notifications/PushNotificationP
 import { PAGES } from "@/pages.config";
 import TermsPopup from "@/components/legal/TermsPopup";
 import { Toaster as SonnerToaster } from "sonner";
-import DeleteAccountButton from "@/components/account/DeleteAccountButton";
-import DarkModeToggle from "@/components/DarkModeToggle";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import UserOnboardingTour from "@/components/onboarding/UserOnboardingTour";
 import CalendarSyncPrompt from "@/components/calendar/CalendarSyncPrompt";
