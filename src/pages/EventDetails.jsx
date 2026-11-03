@@ -2332,15 +2332,17 @@ export default function EventDetails(){
   queryKey:['currentUser'],queryFn:()=>base44.auth.me(),retry:false
  });
  const isClient=!!user&&user.role!=='admin'&&user.user_type==='client';
- const {data:clientAllowed,isLoading:checkingClient}=useQuery({
-  queryKey:['eventLinkAccess',eventId,user?.id],
+ // The exact same authenticated projection is consumed by EventDetailsBody.
+ // One backend call replaces the old authorization-only preflight + raw reads.
+ const {data:clientView,isLoading:checkingClient,isError:clientViewError}=useQuery({
+  queryKey:['clientEventDetailsFeed',eventId,user?.id,user?.email],
   enabled:isClient&&validEventId,
   retry:false,staleTime:15000,
   queryFn:async()=>{
-   try{
-    const response=await base44.functions.invoke('eventLinkAccess',{eventId});
-    return response.data?.allowed===true;
-   }catch{return false;}
+   const response=await base44.functions.invoke('clientEventDetailsFeed',{eventId});
+   if(!response.data?.success||!response.data?.event||
+      !Array.isArray(response.data?.services))throw Error('Event not available');
+   return response.data;
   }
  });
  if(isLoading)return <div role="status" className="p-8 text-white">מאמת הרשאות…</div>;
@@ -2351,9 +2353,9 @@ export default function EventDetails(){
   return <div role="alert" className="p-8 text-white">אין הרשאה לצפות באירוע.</div>;
  if(isClient&&!validEventId)
   return <div role="alert" className="p-8 text-white">קישור האירוע אינו תקין.</div>;
- if(isClient&&(checkingClient||clientAllowed===undefined))
+ if(isClient&&checkingClient)
   return <div role="status" className="p-8 text-white">בודקים הרשאה לאירוע…</div>;
- if(isClient&&clientAllowed!==true)
+ if(isClient&&(clientViewError||!clientView?.event))
   return <div role="alert" className="p-8 text-white">האירוע אינו זמין בחשבונך.</div>;
  return <EventDetailsBody/>;
 }
