@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.46';
 import { recalculateEventStatus } from '../../shared/eventReadiness.ts';
 import { persistAuthorizedSupplierStatus } from '../../shared/supplierStatusPersistence.ts';
 import { wakeExistingCalendarSyncAfterSupplierDecision } from '../../shared/calendarSyncStatusWake.ts';
+import { notifyManagersOfSupplierRejection } from '../../shared/supplierRejectionAlert.ts';
 
 // Existing supplier dashboard endpoint. Never accepts a channel/source selector
 // from a client; WhatsApp calls will require separate authenticated admission.
@@ -35,6 +36,23 @@ Deno.serve(async(req)=>{
     const saved=await persistAuthorizedSupplierStatus(base44.asServiceRole,{
       eventServiceId,supplierId:matchingSupplier.id,newStatus,source:'dashboard'
     });
+    // updateMany does not fire EventService notification workflows. A real
+    // supplier-originated rejection therefore needs this authenticated,
+    // post-CAS notification path. No alert for admin decisions, confirmations,
+    // unchanged retries or failed/ambiguous supplier writes.
+    if(saved.kind==='changed'&&newStatus==='rejected'){
+      try{
+        const alert=await notifyManagersOfSupplierRejection(base44,{
+          eventId:saved.eventId,eventServiceId,supplierId:matchingSupplier.id
+        });
+        if(alert.failures>0)
+          console.warn('[updateSupplierStatus] Rejection notification delivery needs review');
+      }catch{
+        // The business decision already committed; never retry the CAS or
+        // misreport an accepted rejection due to a downstream alert failure.
+        console.error('[updateSupplierStatus] Rejection alert dispatch failed');
+      }
+    }
     const eventStatus=await recalculateEventStatus(base44.asServiceRole,saved.eventId);
     // updateMany is intentionally retained for concurrency safety but does
     // not dispatch the entity UPDATE workflows. Reuse the existing Calendar
