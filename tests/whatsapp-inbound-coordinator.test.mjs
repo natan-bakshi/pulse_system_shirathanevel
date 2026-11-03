@@ -364,3 +364,81 @@ test('precommit supplier API failures remain conservatively needs_review; no aut
  assert.equal(f.stats.supplierWrites,0);
  assert.equal(f.records[0].state,'needs_review');
 });
+
+test('real WhatsApp reject: one verified applied receipt alerts office once with same event and supplier',async()=>{
+ const f=fixture(),click=await signedEvent('assignment_reject','green-decline-for-office');
+ const result=await call(f,click);
+ assert.equal(result.status,'applied');
+ assert.equal(result.reason,'applied');
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(f.records[0].state,'applied','notification follows durable business receipt');
+ assert.equal(JSON.parse(f.service.supplier_statuses)['supplier-abc'],'rejected');
+ assert.equal(f.adminAlerts.length,1);
+ assert.deepEqual(f.adminAlerts[0].identity,{
+  eventId:'event-abc',eventServiceId:'service-abc',supplierId:'supplier-abc'
+ });
+ assert.equal(f.adminAlerts[0].options.decisionNonce,'green-receipt:receipt-1',
+  'office WhatsApp queue key must bind to same durable inbound receipt');
+ const second=await call(f,click);
+ assert.equal(second.status,'duplicate');
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(f.adminAlerts.length,1,'redelivered Green webhook cannot alert office twice');
+});
+test('WhatsApp approval never generates an office rejection alert',async()=>{
+ const f=fixture(),event=await signedEvent('assignment_approve','green-approval-no-office');
+ assert.equal((await call(f,event)).status,'applied');
+ assert.equal(f.adminAlerts.length,0);
+});
+test('late stale reject is not a supplier-originated decline and never alerts office',async()=>{
+ const f=fixture();
+ f.service.assignment_notification_intents=JSON.stringify([
+  ...JSON.parse(f.service.assignment_notification_intents),{
+   key:'assignment:service-abc:supplier-abc:r3:SUPPLIER_NEW_ASSIGNMENT',
+   supplier_id:'supplier-abc',revision:3,state:'accepted'
+  }
+ ]);
+ const click=await signedEvent('assignment_reject','green-stale-reject-no-office');
+ const result=await call(f,click);
+ assert.equal(result.status,'rejected');
+ assert.equal(result.reason,'business_conflict');
+ assert.equal(f.stats.supplierWrites,0);
+ assert.equal(f.adminAlerts.length,0);
+});
+test('ambiguous rejected supplier CAS never alerts office or retries a possibly committed decision',async()=>{
+ const f=fixture(),click=await signedEvent('assignment_reject','green-ambiguous-reject');
+ f.failure('after');
+ const first=await call(f,click);
+ assert.equal(first.status,'needs_review');
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(f.adminAlerts.length,0);
+ const replay=await call(f,click);
+ assert.equal(replay.status,'duplicate');
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(f.adminAlerts.length,0);
+});
+test('office alert failure cannot reverse verified rejection, prevent supplier feedback or trigger another CAS',async()=>{
+ const f=fixture(),click=await signedEvent('assignment_reject','green-reject-office-error');
+ let attempts=0;
+ const response=await call(f,click,{
+  notifySupplierRejection:async()=>{
+   attempts++;
+   throw Error('Synthetic office notification failure');
+  }
+ });
+ assert.equal(response.status,'applied');
+ assert.equal(f.records[0].state,'applied');
+ assert.equal(f.records[0].result_code,'applied');
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(attempts,1);
+ assert.equal((await call(f,click)).status,'duplicate');
+ assert.equal(attempts,1,'a failure must not cause a blind retry with new WhatsApp key');
+});
+test('office notification cannot precede durable receipt finalization',async()=>{
+ const f=fixture(),click=await signedEvent('assignment_reject','green-reject-unverified-receipt');
+ f.receiptError(true);
+ const response=await call(f,click);
+ assert.equal(response.status,'needs_review');
+ assert.equal(f.stats.supplierWrites,1);
+ assert.equal(f.adminAlerts.length,0);
+ assert.equal(f.records[0].state,'processing');
+});
