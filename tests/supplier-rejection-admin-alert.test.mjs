@@ -67,7 +67,8 @@ test('supplier rejected alert honors existing WhatsApp-only template and exactly
  assert.match(f.messages[0].message,/משה הספק \/ נגינה \/ ישראל/);
  assert.match(f.messages[0].message,/04\/11\/2026/);
  assert.equal(f.messages[0].ctx.eventServiceId,ESID);
- assert.equal(f.messages[0].ctx.supplierId,SID);
+ assert.equal(f.messages[0].ctx.supplierId,undefined,
+  'Admin alerts must not append a supplier-only calendar link');
  assert.notEqual(f.messages[0].ctx.idempotencyKey,f.messages[1].ctx.idempotencyKey);
  assert.equal(f.messages[0].ctx.sourceType,'notification');
  assert.ok(f.messages.every(x=>x.ctx.idempotencyKey.startsWith('supplier-rejection-alert-v1:')));
