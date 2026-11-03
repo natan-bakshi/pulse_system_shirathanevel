@@ -26,6 +26,7 @@ function shortSafeExcerpt(message:string):string{
 }
 export function buildOfficeWhatsAppInquiryLink(input:{
  officeNumber:string;outboxJobId?:string;messageText?:string;
+ eventServiceId?:string;
  contextMode?:OfficeContextMode;
  messageKind?:'assignment'|'supplier_notice';
  requestIntent?:'question'|'details'|'callback'
@@ -47,6 +48,10 @@ export function buildOfficeWhatsAppInquiryLink(input:{
     ?'שלום, יש לי שאלה לגבי הודעה שקיבלתי.'
     :'שלום, יש לי שאלה לגבי הודעת השיבוץ.';
  let text=intro+'\n'+'אסמכתא: '+input.outboxJobId;
+ // Adds a resolvable assignment context, not a fake native WhatsApp quote.
+ // Never trust a source guessed from the message body.
+ if(input.eventServiceId&&REF.test(input.eventServiceId))
+  text+='\nאסמכתת השיבוץ: '+input.eventServiceId;
  if(mode==='excerpt'){
   const excerpt=shortSafeExcerpt(input.messageText||'');
   if(excerpt){
