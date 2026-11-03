@@ -86,6 +86,7 @@ export function customLinkDestination(button:GreenCustomLink,job:any,
    case 'office_callback':
     return officeNumber?buildOfficeWhatsAppInquiryLink({
      officeNumber,outboxJobId:job.id,messageText:job.message_text,
+     eventServiceId:job.event_service_id,
      contextMode:'excerpt',messageKind:'supplier_notice',
      requestIntent:button.kind==='office_details'?'details':
       button.kind==='office_callback'?'callback':'question'
