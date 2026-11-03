@@ -158,8 +158,11 @@ export async function notifyManagersOfSupplierRejection(client: any, input: {
       const delay=resolveNotificationDelay(admin,{checkQuietHours:true},now);
       const key=await whatsappDecisionKey(eventServiceId,supplierId,nonce,chatId);
       const receipt=await whatsapp(chatId,whatsappMessage,client,{
+        // Admin recipients are not suppliers. Do not set supplierId in this
+        // transport context: sendWhatsAppToChat would append a supplier-only
+        // calendar URL to the office alert. InApp stores the supplier ID.
         sourceType:'notification',sourceId:eventServiceId,
-        eventServiceId,supplierId,idempotencyKey:key,
+        eventServiceId,idempotencyKey:key,
         ...(delay.shouldDelay && delay.scheduledFor
           ? {availableAt:delay.scheduledFor.toISOString()} : {})
       });
