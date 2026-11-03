@@ -7,7 +7,7 @@
 - CODE: WhatsApp provider numbers/settings and central queue are unchanged. Added office inquiry buttons with `need details` and `callback` intents, both using a trusted office phone and event-service reference.
 
 ## Security status — NOT FINISHED
-Both Event.jsonc and EventService.jsonc retain `rls.read={}`. A user might still make direct SDK calls and retrieve raw rows even when protected frontend paths are blocked. This is NOT resolved by the code changes above. Do not claim tenant-level confidentiality.
+**Verified against live Base44 entity schemas on 2026-11-03:** both Event and EventService still report `rls.read={}`. A user might still make direct SDK calls and retrieve raw rows even when protected frontend paths are blocked. This is NOT resolved by the code changes above. Do not claim tenant-level confidentiality.
 
 ## Next P0 work before turning on restrictive RLS
 1. Inventory all other direct Event and EventService readers including Layout, admin UI, provider integrations, client galleries, notifications and calendar functions.
