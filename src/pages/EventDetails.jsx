@@ -192,58 +192,77 @@ function EventDetailsBody() {
     cacheTime: 10 * 60 * 1000
   });
 
-  // React Query for static data
-  const { data: appSettings = [] } = useQuery({
+  const isAdmin = user?.role === 'admin';
+  const isClient = user?.role !== 'admin' && user?.user_type === 'client';
+  const isSupplier = user?.role !== 'admin' && user?.user_type === 'supplier';
+
+  // Clients get one server-authorized event + service + catalog projection.
+  // Never fetch Event, EventService, Service or Supplier raw rows as a client.
+  const {data: clientDetail, isLoading: clientDetailLoading,
+    isError: clientDetailError} = useQuery({
+    queryKey: ['clientEventDetailsFeed', eventId, user?.id, user?.email],
+    enabled: !!eventId && !!user && isClient,
+    queryFn: async () => {
+      const response = await base44.functions.invoke('clientEventDetailsFeed', {eventId});
+      if (!response.data?.success || !response.data?.event ||
+          !Array.isArray(response.data?.services)) throw new Error('Event not available');
+      return response.data;
+    },
+    retry: false,
+    staleTime: 15000
+  });
+
+  // Preserve the existing admin editors and cache keys unchanged.
+  const {data: appSettings = []} = useQuery({
     queryKey: ['appSettings'],
     queryFn: () => base44.entities.AppSettings.list(),
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000
+    enabled: isAdmin
   });
-
-  const { data: allServices = [] } = useQuery({
+  const {data: adminServices = []} = useQuery({
     queryKey: ['services'],
     queryFn: () => base44.entities.Service.list(),
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000
+    enabled: isAdmin
   });
-
-  const { data: allSuppliers = [] } = useQuery({
+  const {data: allSuppliers = []} = useQuery({
     queryKey: ['suppliers'],
     queryFn: () => base44.entities.Supplier.list(),
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000
+    enabled: isAdmin
   });
-
-  const { data: allPackages = [] } = useQuery({
+  const {data: allPackages = []} = useQuery({
     queryKey: ['packages'],
     queryFn: () => base44.entities.Package.list(),
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000
+    enabled: isAdmin
   });
-
-  const { data: quoteTemplates = [] } = useQuery({
+  const {data: quoteTemplates = []} = useQuery({
     queryKey: ['quoteTemplates'],
     queryFn: () => base44.entities.QuoteTemplate.list(),
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000
+    enabled: isAdmin
   });
-
-  // React Query for event data
-  const { data: event, isLoading: eventLoading } = useQuery({
+  const {data: adminEvent, isLoading: adminEventLoading} = useQuery({
     queryKey: ['event', eventId],
     queryFn: () => base44.entities.Event.get(eventId),
-    enabled: !!eventId,
+    enabled: !!eventId && isAdmin,
     onError: () => setError("האירוע לא נמצא")
   });
-
-  const { data: eventServices = [], isLoading: servicesLoading } = useQuery({
+  const {data: adminEventServices = [], isLoading: adminServicesLoading} = useQuery({
     queryKey: ['eventServices', eventId],
-    queryFn: () => base44.entities.EventService.filter({ event_id: eventId }),
-    enabled: !!eventId,
-    select: (data) => data.sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+    queryFn: () => base44.entities.EventService.filter({event_id: eventId}),
+    enabled: !!eventId && isAdmin,
+    select: data => [...data].sort((a,b)=>(a.order_index||0)-(b.order_index||0))
   });
+  const event = isAdmin ? adminEvent : clientDetail?.event;
+  const eventServices = isAdmin ? adminEventServices :
+    [...(clientDetail?.services || [])].sort((a,b)=>(a.order_index||0)-(b.order_index||0));
+  const allServices = isAdmin ? adminServices : (clientDetail?.catalog || []);
+  const eventLoading = isAdmin ? adminEventLoading : clientDetailLoading;
+  const servicesLoading = isAdmin ? adminServicesLoading : clientDetailLoading;
 
-  const shouldLoadPayments = user?.role === 'admin' || user?.user_type === 'client';
+  const shouldLoadPayments = isAdmin || isClient;
   
   const { data: payments = [] } = useQuery({
     queryKey: ['payments', eventId],
@@ -251,11 +270,7 @@ function EventDetailsBody() {
     enabled: !!eventId && !!user && shouldLoadPayments
   });
 
-  const loading = eventLoading || servicesLoading;
-
-  const isAdmin = user?.role === 'admin';
-  const isClient = user?.user_type === 'client';
-  const isSupplier = user?.user_type === 'supplier';
+  const loading = eventLoading || servicesLoading || (isClient && clientDetailError);
   const billingEnabled = appSettings.find((item) => item.setting_key === 'billing_enabled')?.setting_value === 'true';
   const clientClearingAllowed = appSettings.find((item) => item.setting_key === 'client_clearing_allowed')?.setting_value === 'true';
   const billingSettings = useMemo(() => appSettings.reduce((all, item) => ({ ...all, [item.setting_key]: item.setting_value }), {}), [appSettings]);
