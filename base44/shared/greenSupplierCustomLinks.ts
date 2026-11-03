@@ -7,7 +7,7 @@ import {buildOfficeWhatsAppInquiryLink} from './whatsappOfficeInquiryLink.ts';
 
 export const GREEN_CUSTOM_LINK_KINDS=Object.freeze([
  'supplier_calendar','supplier_dashboard','event_details',
- 'notification_settings','office','external',
+ 'notification_settings','office','office_details','office_callback','external',
  'copy_reference','call_office'
 ] as const);
 export type GreenCustomLinkKind=(typeof GREEN_CUSTOM_LINK_KINDS)[number];
@@ -56,7 +56,7 @@ export function normalizeCustomLinks(raw:any):GreenCustomLink[]{
  if(!Array.isArray(raw)||raw.length>3)
   fail('too_many_url_buttons');
  const result=raw.map(normalizeCustomLink);
- for(const single of ['office','call_office','copy_reference']){
+ for(const single of ['office','office_details','office_callback','call_office','copy_reference']){
   if(result.filter(x=>x.kind===single).length>1)
    fail('duplicate_action');
  }
@@ -82,9 +82,13 @@ export function customLinkDestination(button:GreenCustomLink,job:any,
    }
    case 'external':return normalizePublicWhatsAppUrl(button.url);
    case 'office':
+   case 'office_details':
+   case 'office_callback':
     return officeNumber?buildOfficeWhatsAppInquiryLink({
      officeNumber,outboxJobId:job.id,messageText:job.message_text,
-     contextMode:'excerpt',messageKind:'supplier_notice'
+     contextMode:'excerpt',messageKind:'supplier_notice',
+     requestIntent:button.kind==='office_details'?'details':
+      button.kind==='office_callback'?'callback':'question'
     }):null;
    default:return null;
   }
@@ -125,8 +129,12 @@ export function verifyCustomLinkRows(rows:any[],links:GreenCustomLink[],
    b.phoneNumber===expectedOfficeNumber;
   if(b.type!=='url'||
    Object.keys(b).sort().join(',')!=='buttonId,buttonText,type,url')return false;
-  return link.kind==='office'?
-   isSafeOfficeLinkForJob(b.url,job,expectedOfficeNumber):
-   b.url===customLinkDestination(link,job);
+  if(['office','office_details','office_callback'].includes(link.kind)){
+   // Compare the ENTIRE URL and the server-owned office number, not just
+   // a substring containing an event reference or a familiar greeting.
+   return /^[1-9][0-9]{7,14}$/.test(expectedOfficeNumber)&&
+    b.url===customLinkDestination(link,job,expectedOfficeNumber);
+  }
+  return b.url===customLinkDestination(link,job);
  });
 }
