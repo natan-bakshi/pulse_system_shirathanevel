@@ -217,7 +217,9 @@ function EventDetailsBody() {
     queryKey: ['appSettings'],
     queryFn: () => base44.entities.AppSettings.list(),
     staleTime: 5 * 60 * 1000,
-    enabled: isAdmin
+    // Existing client-visible billing switches and VAT settings remain
+    // available until the separate AppSettings allowlist migration.
+    enabled: !!user
   });
   const {data: adminServices = []} = useQuery({
     queryKey: ['services'],
@@ -270,7 +272,7 @@ function EventDetailsBody() {
     enabled: !!eventId && !!user && shouldLoadPayments
   });
 
-  const loading = eventLoading || servicesLoading || (isClient && clientDetailError);
+  const loading = eventLoading || servicesLoading;
   const billingEnabled = appSettings.find((item) => item.setting_key === 'billing_enabled')?.setting_value === 'true';
   const clientClearingAllowed = appSettings.find((item) => item.setting_key === 'client_clearing_allowed')?.setting_value === 'true';
   const billingSettings = useMemo(() => appSettings.reduce((all, item) => ({ ...all, [item.setting_key]: item.setting_value }), {}), [appSettings]);
@@ -420,6 +422,7 @@ function EventDetailsBody() {
     await Promise.all([
       queryClient.refetchQueries({ queryKey: ['event', eventId] }),
       queryClient.refetchQueries({ queryKey: ['eventServices', eventId] }),
+      queryClient.refetchQueries({ queryKey: ['clientEventDetailsFeed', eventId] }),
       queryClient.refetchQueries({ queryKey: ['payments', eventId] })
     ]);
   }, [eventId, queryClient]);
@@ -2026,8 +2029,10 @@ function EventDetailsBody() {
     );
   }
 
-  if (error) {
-    return <div className="text-center py-12 text-red-600">{error}</div>;
+  if (error || (isClient && clientDetailError)) {
+    return <div role="alert" className="text-center py-12 text-red-600">
+      {error || 'לא ניתן לטעון את פרטי האירוע. ודא שיש לך הרשאה ונסה שוב.'}
+    </div>;
   }
 
   if (!event) {
