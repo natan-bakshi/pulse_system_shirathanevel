@@ -161,6 +161,43 @@ test('Green native copy and phone buttons use trusted reference and configured o
   {...record,...changed,status:'sending'},'green',p,config.officeNumber),false);
 });
 
+test('prepared office responses contain exact verified intent, reference and event context',()=>{
+ const setting=navigation([
+  link('office','פנייה למשרד'),link('office_details','צריך פרטים'),
+  link('office_callback','תחזרו אליי')
+ ]);
+ const {ctl,record}=freeze(setting);
+ const p=preview(record,ctl);
+ assert.deepEqual(p.body.buttons.map(x=>x.type),['url','url','url']);
+ const texts=p.body.buttons.map(row=>new URL(row.url).searchParams.get('text'));
+ assert.ok(texts[0].includes('שלום, יש לי שאלה'));
+ assert.ok(texts[1].includes('אשמח לקבל פרטים נוספים'));
+ assert.ok(texts[2].includes('שיחזרו אליי טלפונית'));
+ for(const item of p.body.buttons){
+  const url=new URL(item.url);
+  assert.equal(url.host,'wa.me');
+  assert.equal(url.pathname,'/'+config.officeNumber);
+  assert.ok(url.searchParams.get('text').includes('אסמכתא: '+record.id));
+ }
+ assert.equal(verifiedSupplierNavigationTransport(
+  {...record,status:'sending'},'green',p,config.officeNumber),true);
+ const swaps=[
+  row=>row.url=row.url.replace(config.officeNumber,'972509999999'),
+  row=>row.url+='&other=1',
+  row=>row.url=row.url.replace('text=','bad='),
+  row=>row.url='https://malicious.example.com?text='+encodeURIComponent(texts[1])
+ ];
+ for(const change of swaps){
+  const modified=structuredClone(p);
+  change(modified.body.buttons[1]);
+  assert.equal(verifiedSupplierNavigationTransport(
+   {...record,status:'sending'},'green',modified,config.officeNumber),false);
+ }
+ assert.equal(verifiedSupplierNavigationTransport(
+  {...record,status:'sending'},'green',p,''),false);
+ assert.equal(preview(record,ctl)?.body.buttons.length,3);
+ assert.equal(preview(record,ctl)?.providerRequestsMade,0);
+});
 test('real pending-assignment enqueue freezes the actual Event ID from its trusted EventService producer',async()=>{
  const setting=navigation([link('supplier_calendar','יומן')]);
  setting.templates[TEMPLATE2]=custom([link('event_details','פרטי האירוע')]);
