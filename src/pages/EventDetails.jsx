@@ -415,17 +415,15 @@ function EventDetailsBody() {
   });
 
   const loadEventData = useCallback(async () => {
-    // The three read-only queries are independent AFTER a mutation commits.
-    // Refreshing serially held the EventClosingPanel (and other editors)
-    // spinner open for three network round trips. Keep every query key and
-    // wait for ALL results, but overlap their network time.
-    await Promise.all([
-      queryClient.refetchQueries({ queryKey: ['event', eventId] }),
-      queryClient.refetchQueries({ queryKey: ['eventServices', eventId] }),
-      queryClient.refetchQueries({ queryKey: ['clientEventDetailsFeed', eventId] }),
-      queryClient.refetchQueries({ queryKey: ['payments', eventId] })
-    ]);
-  }, [eventId, queryClient]);
+    // Never re-fetch admin-only raw Event/EventService for a client.
+    // Both paths use parallel queries after a mutation, not serial awaits.
+    const sourceKeys = isAdmin ?
+      [['event', eventId], ['eventServices', eventId]] :
+      [['clientEventDetailsFeed', eventId]];
+    await Promise.all([...sourceKeys, ['payments', eventId]].map(queryKey =>
+      queryClient.refetchQueries({queryKey})
+    ));
+  }, [eventId, queryClient, isAdmin]);
 
   const filteredServicesForSupplier = useMemo(() => {
     if (!isSupplier || !user) return eventServices;
