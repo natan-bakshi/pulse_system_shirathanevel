@@ -7,7 +7,10 @@ import {supplierMatchesUser,supplierIsActivelyAssigned}
  from './supplierEventAccess.ts';
 
 const ID=/^[A-Za-z0-9_-]{3,100}$/;
-const BATCH=200,MAX_PAGES=30,MAX_ROWS=200,MAX_EVENTS=120;
+// The old global scan paged through ~2,850 EventService rows on EVERY
+// supplier login and often exceeded function/read budgets. Query by the
+// verified Supplier ID instead; bound the result and recheck exact membership.
+const BATCH=100,MAX_PAGES=6,MAX_ROWS=200,MAX_EVENTS=120;
 const projection=[
  'id','event_id','service_id','supplier_ids','supplier_statuses',
  'supplier_notes','supplier_arrival_time','service_name',
@@ -80,19 +83,32 @@ export function supplierFeedAssignment(assignment:any,event:any,service:any,
   detailsAllowed:isActive
  };
 }
-async function pageServices(db:any){
- if(typeof db?.EventService?.filter!=='function')
+async function pageServices(db:any,supplierId:string){
+ if(typeof db?.EventService?.filter!=='function'||!ID.test(supplierId||''))
   throw unavailable();
  const rows:any[]=[],ids=new Set<string>();
  let offset=0;
+ // Supplier IDs are stored in a JSON-encoded array string. Match the
+ // complete quoted member, never a prefix or user-controlled regex.
+ // Base44's entity query supports $regex (verified with production data).
+ const scopedQuery={supplier_ids:{$regex:'"'+supplierId+'"'}};
  for(let i=0;i<MAX_PAGES;i++){
-  // Only minimal columns are transferred inside the trusted backend.
-  const page=await db.EventService.filter({},'-created_date',BATCH,
+  // Only records containing THIS server-verified supplier ID are read.
+  // Do not fall back to global EventService scans on provider errors.
+  const page=await db.EventService.filter(scopedQuery,'-created_date',BATCH,
     offset,projection);
   if(!Array.isArray(page)||page.length>BATCH)throw unavailable();
   for(const row of page){
    if(!ID.test(row?.id||'')||ids.has(row.id))throw unavailable();
+   // Regex is an index/filter, not authorization. Verify exact membership
+   // before any Event.get or Service.get and never return foreign records.
+   let memberships:any;
+   try{memberships=typeof row.supplier_ids==='string'?
+    JSON.parse(row.supplier_ids):row.supplier_ids;}catch{memberships=null;}
+   if(!Array.isArray(memberships)||!memberships.includes(supplierId))
+    throw unavailable('supplier_feed_scope_mismatch');
    ids.add(row.id);rows.push(row);
+   if(rows.length>MAX_ROWS)throw unavailable('supplier_feed_too_many_assignments');
   }
   // Some SDKs may silently cap page size below our requested limit.
   // Continue until an ACTUAL empty page; advance by rows actually received.
@@ -125,7 +141,7 @@ export async function readSupplierAssignmentsFeed(client:any,user:any){
  const supplier=suppliers.find((row:any)=>ID.test(row?.id||'')&&
   supplierMatchesUser(row,user));
  if(!supplier)return {supplier:null,assignments:[]};
- const services=await pageServices(db);
+ const services=await pageServices(db,supplier.id);
  const mine=services.filter((row:any)=>{
   if(row?.is_external===true)return false;
   const statuses=statusMap(row.supplier_statuses);
