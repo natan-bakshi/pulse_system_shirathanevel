@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import DocumentItemsEditor from "@/components/billing/DocumentItemsEditor";
+import {itemUnitGross,totalDocumentGross} from "@/components/billing/documentAmountMath";
 import DocumentPaymentsEditor from "@/components/billing/DocumentPaymentsEditor";
 import DialogLanguageToggle from "@/components/billing/DialogLanguageToggle";
 import { DOCUMENT_TYPE_LABELS_EN, billingText } from "@/components/billing/billingI18n";
@@ -33,7 +34,7 @@ export default function ManualDocumentDialog({ open, initialType = "invoice", on
     if (!open) return;
     setDocumentType(initialType);
     setCustomer(emptyCustomer);
-    setItems([{ name: "", quantity: 1, price: "", taxRate: vatPercent }]);
+    setItems([{ name: "", quantity: 1, price: "", grossPrice: "", priceSource: "gross", taxRate: vatPercent }]);
     setPayments([{ amount: "", type: "cash", date: new Date().toISOString().slice(0, 10) }]);
     setLinkedEventId("none");
     setSubject("");
@@ -44,13 +45,9 @@ export default function ManualDocumentDialog({ open, initialType = "invoice", on
 
   const config = getStandaloneType(documentType);
   const typeLabel = lang === "en" ? DOCUMENT_TYPE_LABELS_EN[documentType] || config.label : config.label;
-  const itemsTotal = useMemo(() => items.reduce((sum, item) => {
-    const line = (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0);
-    const rate = item.taxRate === "" || item.taxRate === undefined ? vatPercent : parseFloat(item.taxRate) || 0;
-    return sum + line * (1 + rate / 100);
-  }, 0), [items, vatPercent]);
+  const itemsTotal = useMemo(() => totalDocumentGross(items, vatPercent), [items, vatPercent]);
 
-  const hasValidItems = items.some((item) => String(item.name || "").trim() && parseFloat(item.price));
+  const hasValidItems = items.some((item) => String(item.name || "").trim() && itemUnitGross(item, vatPercent) > 0);
   const hasValidPayments = payments.some((payment) => parseFloat(payment.amount) > 0);
   const canSubmit = !loading && customer.name.trim() && (!config.needsItems || hasValidItems) && (!config.needsPayments || hasValidPayments);
 
@@ -61,7 +58,12 @@ export default function ManualDocumentDialog({ open, initialType = "invoice", on
       const response = await base44.functions.invoke("invoice4uCreateStandaloneDocument", {
         documentType,
         customer,
-        items: config.needsItems ? items : [],
+        // Convert BOTH net and gross inputs to the same VAT-inclusive source
+        // of truth. Invoice4U receives TaxIncluded=true to preserve the exact
+        // total that the administrator entered in either price field.
+        priceMode: "gross",
+        items: config.needsItems ? items.map(item => ({name:item.name,quantity:item.quantity,
+          price:itemUnitGross(item,vatPercent),taxRate:item.taxRate})) : [],
         payments: config.needsPayments ? payments : [],
         linkedEventId: linkedEventId === "none" ? "" : linkedEventId,
         subject,
