@@ -177,7 +177,7 @@ export async function ensureHostedPaymentInvoice(base44:any,payment:any):Promise
         ...(payment.is_interested_in_invoice!==false && payment.payer_email
           ? [String(payment.payer_email).trim()] : []),
         ...(config.owner_copy_email ? [String(config.owner_copy_email).trim()] : [])
-      ].filter((email:string)=>/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)))];
+      ].filter((email:string)=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))];
       const doc=buildDocumentBody({
         slug:'invoice_receipt',subject:payment.invoice_charge_label||'תשלום באשראי',
         currency:payment.currency||'ILS',taxIncluded:true,
