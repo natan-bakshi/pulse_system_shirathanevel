@@ -46,12 +46,14 @@ function fixture({
   Supplier:{list:async()=>{calls.suppliers++;return structuredClone(suppliers);}},
   EventService:{filter:async(q,sort,limit,offset,fields)=>{
    calls.filters++;
-   assert.deepEqual(q,{});
+   assert.deepEqual(q,{supplier_ids:{$regex:'"'+SUP+'"'}});
    assert.equal(sort,'-created_date');
    assert.ok(Number.isInteger(limit)&&Number.isInteger(offset));
    assert.ok(fields.includes('supplier_ids')&&fields.includes('supplier_statuses'));
    assert.ok(!fields.includes('custom_price'));
-   return structuredClone(rows.slice(offset,offset+limit));
+   const scoped=rows.filter(row=>typeof row?.supplier_ids==='string'&&
+    row.supplier_ids.includes(q.supplier_ids.$regex));
+   return structuredClone(scoped.slice(offset,offset+limit));
   }},
   Event:{get:async id=>{calls.eventIds.push(id);
    return structuredClone(events.get(id)??null);}},
@@ -141,7 +143,7 @@ test('pagination finds own record after 200 unrelated services without client-si
  const f=fixture({rows:[...foreignRows,assigned()]});
  const data=await readSupplierAssignmentsFeed(f.client,f.user);
  assert.equal(data.assignments.length,1);
- assert.equal(f.calls.filters,3);
+ assert.equal(f.calls.filters,2,'one scoped page and one empty page, not a global scan');
  assert.deepEqual(f.calls.eventIds,[EVENT]);
 });
 test('legacy assigned member with no status remains pending and is permitted own event link',async()=>{
@@ -155,13 +157,19 @@ test('provider page cap below requested 200 still reaches later assigned rows',a
  const filler=Array.from({length:135},(_,i)=>({
   ...assigned('event-other-'+i,'pending',OTHER),id:'foreign-row-'+i
  }));
- const rows=[...filler,assigned()];
+ const ownRows=Array.from({length:110},(_,i)=>({...assigned(),id:'mine-'+i}));
+ const rows=[...filler,...ownRows];
  const f=fixture({rows,evs:[event]});
  const db=f.client.asServiceRole.entities;
- db.EventService.filter=async(q,sort,limit,offset)=>
-  structuredClone(rows.slice(offset,offset+Math.min(limit,60)));
+ db.EventService.filter=async(q,sort,limit,offset)=>{
+  assert.deepEqual(q,{supplier_ids:{$regex:'"'+SUP+'"'}});
+  const mine=rows.filter(row=>row.supplier_ids.includes(q.supplier_ids.$regex));
+  return structuredClone(mine.slice(offset,offset+Math.min(limit,60)));
+ };
  const result=await readSupplierAssignmentsFeed(f.client,f.user);
- assert.deepEqual(result.assignments.map(x=>x.id),[EVENT]);
+ assert.equal(result.assignments.length,110);
+ assert.equal(new Set(result.assignments.map(x=>x.eventServiceId)).size,110);
+ assert.deepEqual(result.assignments.map(x=>x.id).filter(x=>x!==EVENT),[]);
 });
 test('multiple supplier profiles are never client-selected; only first exact email association',async()=>{
  const second={id:'supplier-extra',supplier_name:'Second',
@@ -175,7 +183,9 @@ test('multiple supplier profiles are never client-selected; only first exact ema
 });
 test('malformed or ambiguous scans must fail closed, not silently serve an incomplete feed',async()=>{
  const f=fixture();
- f.client.asServiceRole.entities.EventService.filter=async()=>[null];
+ f.client.asServiceRole.entities.EventService.filter=async(q)=>{
+  assert.deepEqual(q,{supplier_ids:{$regex:'"'+SUP+'"'}});return [null];
+ };
  await assert.rejects(readSupplierAssignmentsFeed(f.client,f.user),
   e=>e.status===503);
  const tooMany=Array.from({length:202},(_,i)=>({
