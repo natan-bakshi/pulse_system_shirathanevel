@@ -137,7 +137,7 @@ async function createDeposit(client,a,config){
  try{
   const result=await providerCall({environment,key,purpose:"hosted"},"ProcessApiRequestV2",{request:{
    Invoice4UUserApiKey:key,Sum:total,Currency:f.currency==="ILS"?"NIS":f.currency,Type:1,CreditCardCompanyType:Number(config.invoice4u_clearing_company_type),
-   FullName:a.recipient_name,Phone:a.recipient_phone,Email:a.recipient_email||"",Description:(a.signature?.language==="en"?"Advance payment for ":"מקדמה עבור ")+event.event_name,
+   FullName:a.recipient_name,Phone:a.recipient_phone,Email:a.recipient_email||config.billing_fallback_email||config.owner_copy_email||"",Description:(a.signature?.language==="en"?"Advance payment for ":"מקדמה עבור ")+event.event_name,
    // Documents for NEW hosted charges are issued only after verified payment
    // via the idempotent Invoice4U document API, so an unsuccessful payment
    // cannot create a tax invoice and the fee remains a SEPARATE invoice line.
