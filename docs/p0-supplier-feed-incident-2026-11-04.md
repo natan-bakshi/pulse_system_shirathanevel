@@ -24,7 +24,9 @@ Two independent suppliers reported an empty screen saying the authenticated assi
 - [x] Checkpoint created before editing: `6aeb10206beb1f7a36380d39`.
 - [x] Focused tests passed: 18/18.
 - [x] Full regression suite: **1,164 / 1,164 tests passed**; production Vite build and focused ESLint succeeded; diff validation clean.
-- [ ] Final checkpoint and production deploy / published-version verification.
+- [x] Final checkpoint created: `6aeb13fe46414439bb688aaf`, commit `44712f0b8fcaac4e1a8c49509d6bb7a118ad54be`.
+- [x] **Published to production 2026-11-04 11:16:38 UTC** at `https://pulse-system.base44.app`. Base44 status is `ready`, published URL matches, and the deployed checkpoint reports that exact commit.
+- [x] Checked production `supplierAssignmentsFeed` logs after publish; no errors were logged in the available window. No real affected supplier session was impersonated or observed.
 - [ ] Retest by one of the two affected suppliers; this cannot be simulated as their authenticated accounts by admin-only queries.
 - [ ] If issue recurs, read `supplierAssignmentsFeed` prod logs for `category=...`; distinguish expired authentication (401), role (403), query fallback (503), network failure or stale PWA cache. Do not diagnose by switching the browser to unrestricted EventService.list.
 
