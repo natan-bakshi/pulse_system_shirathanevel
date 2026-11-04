@@ -10,7 +10,7 @@ const ID=/^[A-Za-z0-9_-]{3,100}$/;
 // The old global scan paged through ~2,850 EventService rows on EVERY
 // supplier login and often exceeded function/read budgets. Query by the
 // verified Supplier ID instead; bound the result and recheck exact membership.
-const BATCH=100,MAX_PAGES=6,MAX_ROWS=200,MAX_EVENTS=120;
+const BATCH=100,MAX_PAGES=24,MAX_ROWS=200,MAX_EVENTS=120;
 const projection=[
  'id','event_id','service_id','supplier_ids','supplier_statuses',
  'supplier_notes','supplier_arrival_time','service_name',
@@ -95,8 +95,11 @@ async function pageServices(db:any,supplierId:string){
  for(let i=0;i<MAX_PAGES;i++){
   // Only records containing THIS server-verified supplier ID are read.
   // Do not fall back to global EventService scans on provider errors.
-  const page=await db.EventService.filter(scopedQuery,'-created_date',BATCH,
+  let page:any;
+  try{
+   page=await db.EventService.filter(scopedQuery,'-created_date',BATCH,
     offset,projection);
+  }catch{throw unavailable('supplier_feed_scoped_query_failed');}
   if(!Array.isArray(page)||page.length>BATCH)throw unavailable();
   for(const row of page){
    if(!ID.test(row?.id||'')||ids.has(row.id))throw unavailable();
@@ -110,8 +113,8 @@ async function pageServices(db:any,supplierId:string){
    ids.add(row.id);rows.push(row);
    if(rows.length>MAX_ROWS)throw unavailable('supplier_feed_too_many_assignments');
   }
-  // Some SDKs may silently cap page size below our requested limit.
-  // Continue until an ACTUAL empty page; advance by rows actually received.
+  // Some SDKs silently cap page size below our requested limit. Never
+  // stop on a short page or silently omit historical assigned events.
   if(page.length===0)return rows;
   offset+=page.length;
  }
