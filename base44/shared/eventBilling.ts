@@ -134,8 +134,8 @@ export function buildDocumentItems({ event, services = [], amount, fee, itemized
 }
 
 // Invoice4U מקבל את שורות המסמך כמחרוזות מופרדות בצינור, שדה לכל מאפיין.
-// expectedTotal (הסכום הכולל שנסלק בפועל, כולל מע"מ) - מיישר את השורה האחרונה כך
-// שסך השורות לפני מע"מ יהיה מדויק מול הסכום. בלעדיו עיגול כל שורה בנפרד יוצר פער
+// expectedTotal (הסכום הכולל שנסלק בפועל, כולל מע"מ) - מיישר את שורת הפריט הראשונה כך
+// שסך השורות לפני מע"מ יהיה מדויק מול הסכום, אך **לא** משנה את שורת עמלת הסליקה.
 // אגורות שגורם ל-Invoice4U להוסיף שורת התאמה (General item) של 0.01-.
 export function itemsToPipedFields(items, vatPercent, expectedTotal) {
   const rate = (Number(vatPercent) || 0) / 100;
@@ -146,8 +146,10 @@ export function itemsToPipedFields(items, vatPercent, expectedTotal) {
     const currentWithoutVat = round2(lines.reduce((sum, item) => sum + item.price * (num(item.quantity) || 1), 0));
     const gap = round2(targetWithoutVat - currentWithoutVat);
     if (gap !== 0) {
-      const last = lines[lines.length - 1];
-      last.price = round2(last.price + gap / (num(last.quantity) || 1));
+      // Adjust the main service/advance line, not the separate fee line.
+      // Otherwise a 0.01 rounding delta silently changes the charged fee.
+      const main = lines[0];
+      main.price = round2(main.price + gap / (num(main.quantity) || 1));
     }
   }
   return {
