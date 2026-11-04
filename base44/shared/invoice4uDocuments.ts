@@ -66,6 +66,7 @@ export function buildDocumentBody({ slug, subject, currency = "ILS", items = [],
     DocumentType: documentTypeCodes[slug],
     Subject: subject,
     Currency: currency,
+    TaxPercentage: vatPercent,
     // Invoice4U מצפה לקוד מספרי: 0 = עברית, 1 = אנגלית.
     Language: language === "en" ? 1 : 0
   };
@@ -75,7 +76,9 @@ export function buildDocumentBody({ slug, subject, currency = "ILS", items = [],
       Name: item.name,
       Quantity: Number(item.quantity) || 1,
       Price: round2(item.price),
-      TaxRate: item.taxRate === undefined || item.taxRate === null || item.taxRate === "" ? vatPercent : Number(item.taxRate)
+      // DocumentItem uses TaxPercentage (DocItemTaxRate belongs only to
+      // ProcessApiRequestV2 pipe-separated clearing fields).
+      TaxPercentage: item.taxRate === undefined || item.taxRate === null || item.taxRate === "" ? vatPercent : Number(item.taxRate)
     }));
   }
 
