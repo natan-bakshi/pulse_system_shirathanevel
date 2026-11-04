@@ -11,6 +11,8 @@ const ID=/^[A-Za-z0-9_-]{3,100}$/;
 // supplier login and often exceeded function/read budgets. Query by the
 // verified Supplier ID instead; bound the result and recheck exact membership.
 const BATCH=100,MAX_PAGES=24,MAX_ROWS=200,MAX_EVENTS=120;
+const EVENT_FIELDS=['id','event_name','family_name','child_name','event_date',
+ 'event_time','location','city','guest_count'];
 const projection=[
  'id','event_id','service_id','supplier_ids','supplier_statuses',
  'supplier_notes','supplier_arrival_time','service_name',
@@ -121,7 +123,32 @@ async function pageServices(db:any,supplierId:string){
  // Never silently serve incomplete lists that could conceal assignments.
  throw unavailable('supplier_feed_scan_limit');
 }
-async function limitedMap<T,U>(values:T[],f:(value:T)=>Promise<U>,width=6):Promise<U[]>{
+async function scopedEvents(db:any,ids:string[]){
+ if(!ids.length)return [];
+ if(typeof db?.Event?.filter!=='function')
+  return limitedMap(ids,async id=>db.Event.get(id).catch(()=>null));
+ const allowed=new Set(ids),seen=new Set<string>(),rows:any[]=[];
+ let offset=0;
+ for(let i=0;i<MAX_PAGES;i++){
+  let page:any;
+  try{page=await db.Event.filter({id:{$in:ids}},'-created_date',BATCH,
+   offset,EVENT_FIELDS);}catch{
+   // Retain the already-working get-by-id path for SDK runtimes that do
+   // not support the optimized $in operator; never widen the query.
+   return limitedMap(ids,async id=>db.Event.get(id).catch(()=>null));
+  }
+  if(!Array.isArray(page)||page.length>BATCH)throw unavailable();
+  for(const event of page){
+   if(!allowed.has(event?.id)||seen.has(event.id))
+    throw unavailable('supplier_feed_event_scope_mismatch');
+   seen.add(event.id);rows.push(event);
+  }
+  if(page.length===0)return rows;
+  offset+=page.length;
+ }
+ throw unavailable('supplier_feed_incomplete_event_page');
+}
+async function limitedMap<T,U>(values:T[],f:(value:T)=>Promise<U>,width=6):Promise<U[]>{ 
  const result:U[]=new Array(values.length);
  let current=0;
  await Promise.all(Array.from({length:Math.min(width,values.length)},
@@ -160,9 +187,8 @@ export async function readSupplierAssignmentsFeed(client:any,user:any){
  const eventIds=[...new Set(mine.map((row:any)=>row.event_id))];
  if(eventIds.length>MAX_EVENTS||eventIds.some(id=>!ID.test(id||'')))
   throw unavailable('supplier_feed_event_limit');
- const events=await limitedMap(eventIds,async id=>
-  db.Event.get(id).catch(()=>null));
- const eventMap=new Map(eventIds.map((id,i)=>[id,events[i]]));
+ const events=await scopedEvents(db,eventIds);
+ const eventMap=new Map(events.filter(Boolean).map(event=>[event.id,event]));
  const catalogIds=[...new Set(mine.filter((row:any)=>
   !row.service_name||!row.service_description).map((row:any)=>row.service_id)
    .filter((id:any)=>ID.test(id||'')))];
