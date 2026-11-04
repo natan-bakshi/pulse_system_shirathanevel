@@ -202,6 +202,45 @@ test('provider page cap below requested 200 still reaches later assigned rows',a
  assert.equal(new Set(result.assignments.map(x=>x.eventServiceId)).size,110);
  assert.deepEqual(result.assignments.map(x=>x.id).filter(x=>x!==EVENT),[]);
 });
+test('batch event projection retrieves many owned events with only a few scoped queries',async()=>{
+ const rows=Array.from({length:112},(_,i)=>assigned('event-many-'+i));
+ const evs=Array.from({length:112},(_,i)=>({
+  ...event,id:'event-many-'+i,event_name:'Supplier event '+i
+ }));
+ const f=fixture({rows,evs});
+ const db=f.client.asServiceRole.entities;
+ let eventFilters=0;
+ db.Event.filter=async(q,sort,limit,offset,fields)=>{
+  eventFilters++;
+  assert.deepEqual(new Set(q.id.$in),new Set(evs.map(x=>x.id)));
+  assert.equal(sort,'-created_date');
+  assert.ok(!fields.includes('parents'));
+  assert.ok(!fields.includes('total_price'));
+  return structuredClone(evs.slice(offset,offset+Math.min(limit,60)));
+ };
+ const out=await readSupplierAssignmentsFeed(f.client,f.user);
+ assert.equal(out.assignments.length,112);
+ assert.equal(eventFilters,3,'two scoped data pages plus terminal empty page');
+ assert.equal(f.calls.eventIds.length,0,'no expensive one-by-one Event.get reads');
+ assert.equal(f.calls.filters,3,'scoped EventService pages only');
+ assert.ok(out.assignments.every(x=>x.detailsAllowed));
+});
+test('batch event lookup cannot inject a different supplier event into projection',async()=>{
+ const f=fixture();
+ f.client.asServiceRole.entities.Event.filter=async()=>[
+  {...event,id:FOREIGN}
+ ];
+ await assert.rejects(readSupplierAssignmentsFeed(f.client,f.user),
+  e=>e.status===503&&e.code==='supplier_feed_event_scope_mismatch');
+ assert.equal(f.calls.eventIds.length,0);
+});
+test('batch Event.filter unsupported falls back only to already authorized event IDs',async()=>{
+ const f=fixture();
+ f.client.asServiceRole.entities.Event.filter=async()=>{throw Error('unsupported $in');};
+ const out=await readSupplierAssignmentsFeed(f.client,f.user);
+ assert.equal(out.assignments.length,2);
+ assert.deepEqual(f.calls.eventIds.sort(),[EVENT,REJECTED].sort());
+});
 test('multiple supplier profiles are never client-selected; only first exact email association',async()=>{
  const second={id:'supplier-extra',supplier_name:'Second',
   contact_emails:['supplier@example.com'],phone:'0507777777'};
