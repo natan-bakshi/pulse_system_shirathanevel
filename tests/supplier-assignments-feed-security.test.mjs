@@ -146,6 +146,37 @@ test('pagination finds own record after 200 unrelated services without client-si
  assert.equal(f.calls.filters,2,'one scoped page and one empty page, not a global scan');
  assert.deepEqual(f.calls.eventIds,[EVENT]);
 });
+test('more than 2800 unrelated services cannot trigger a global scan or truncate the supplier feed',async()=>{
+ const unrelated=Array.from({length:2847},(_,i)=>({
+  ...assigned('other-'+i,'pending',OTHER),id:'historical-'+i
+ }));
+ const own=Array.from({length:48},(_,i)=>({
+  ...assigned(EVENT,'pending',SUP),id:'own-service-'+i
+ }));
+ const f=fixture({rows:[...unrelated,...own],evs:[event]});
+ const out=await readSupplierAssignmentsFeed(f.client,f.user);
+ assert.equal(out.assignments.length,48);
+ assert.equal(f.calls.filters,2,'exact supplier-only search, plus empty page');
+ assert.deepEqual(f.calls.eventIds,[EVENT]);
+ assert.ok(out.assignments.every(x=>x.detailsAllowed));
+});
+test('unsupported targeted query and provider returning foreign rows fail closed',async()=>{
+ const unimplemented=fixture();
+ unimplemented.client.asServiceRole.entities.EventService.filter=async()=>{
+  throw Error('provider rejected scoped query');
+ };
+ await assert.rejects(readSupplierAssignmentsFeed(
+  unimplemented.client,unimplemented.user),
+  e=>e.status===503&&e.code==='supplier_feed_scoped_query_failed');
+ assert.deepEqual(unimplemented.calls.eventIds,[]);
+ const ignored=fixture();
+ ignored.client.asServiceRole.entities.EventService.filter=async()=>[
+  {...assigned(FOREIGN,'pending',OTHER),id:'foreign-service'}
+ ];
+ await assert.rejects(readSupplierAssignmentsFeed(ignored.client,ignored.user),
+  e=>e.status===503&&e.code==='supplier_feed_scope_mismatch');
+ assert.deepEqual(ignored.calls.eventIds,[]);
+});
 test('legacy assigned member with no status remains pending and is permitted own event link',async()=>{
  const f=fixture({rows:[{...assigned(),supplier_statuses:'{}'}],evs:[event]});
  const feed=await readSupplierAssignmentsFeed(f.client,f.user);
@@ -263,6 +294,11 @@ test('supplier portals have no direct entity bulk reads and preserve secure stat
   assert.match(text,/SupplierEventView/);
   assert.match(text,/feedError/);
  }
+ const server=fs.readFileSync('base44/shared/supplierAssignmentsFeed.ts','utf8');
+ assert.match(server,/const scopedQuery=\{supplier_ids:\{\$regex:/);
+ assert.doesNotMatch(server,/EventService\.filter\(\{\},/);
+ const api=fs.readFileSync('base44/functions/supplierAssignmentsFeed/entry.ts','utf8');
+ assert.match(api,/category=/);
  // Do not prematurely make RLS admin-only while the CLIENT and other
  // non-admin pages still use legacy list queries.
  const es=fs.readFileSync('base44/entities/EventService.jsonc','utf8');
