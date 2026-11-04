@@ -182,6 +182,14 @@ export async function ensureHostedPaymentInvoice(base44:any,payment:any):Promise
       const errs=Array.isArray(result?.Errors)?result.Errors:[];
       if(errs.length && !errs.every((e:any)=>Number(e.ID??e.Id)===134))
         throw new Error('Invoice4U document issuance rejected');
+      if(errs.length){
+        // A duplicate response proves provider idempotency, but may not
+        // include Total or PDF tokens. Read the existing full document.
+        result=await invoice4uRequest(environment,'GetDocumentByApiIdentifier',{
+          apiIdentifier,docType:3,token
+        });
+        if(invoice4uErrors(result))throw new Error('Invoice4U duplicate-document read failed');
+      }
     }
     if(!remoteDocumentIsValid(result,payment))
       throw new Error('Invoice4U document amount or identity does not match the payment');
