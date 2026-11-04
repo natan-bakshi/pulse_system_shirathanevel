@@ -19,8 +19,11 @@ const pdf = (url:unknown) => {
 };
 const cipherUrl=(cipher:unknown,environment:string)=>{
   const value=String(cipher||'');
-  return value ? 'https://'+(environment==='qa'?'newviewqa':'newview')+
-    '.invoice4u.co.il/Views/PDF.aspx?cipher='+encodeURIComponent(value) : '';
+  if(!value)return '';
+  let canonical=value;
+  try{canonical=decodeURIComponent(value);}catch{}
+  return 'https://'+(environment==='qa'?'newviewqa':'newview')+
+    '.invoice4u.co.il/Views/PDF.aspx?cipher='+encodeURIComponent(canonical);
 };
 const documentTotal=(payment:any)=>round2(Number(payment.amount)+Number(payment.processing_fee_amount||0));
 
