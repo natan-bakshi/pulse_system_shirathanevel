@@ -119,7 +119,7 @@ export default async function(req) {
       FullName: payer.fullName,
       Phone: payer.phone,
       // כשהסולק אינו מעוניין בחשבונית - המסמך עדיין מופק, אך נשלח לבעל החשבון בלבד.
-      Email: isInterested ? (payer.email || "") : (config.owner_copy_email || ""),
+      Email: isInterested ? (payer.email || config.billing_fallback_email || config.owner_copy_email || "") : (config.owner_copy_email || config.billing_fallback_email || ""),
       Description: subject,
       OrderIdClientUsage: payment.id,
       // Invoice4U hosted auto-document issuance is disabled for NEW payments.
