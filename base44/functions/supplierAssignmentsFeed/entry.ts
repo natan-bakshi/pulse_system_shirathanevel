@@ -32,7 +32,8 @@ Deno.serve(async req=>{
    const categories=new Set([
     'supplier_feed_scoped_query_failed','supplier_feed_scope_mismatch',
     'supplier_feed_too_many_assignments','supplier_feed_event_limit',
-    'supplier_feed_scan_limit','supplier_feed_unavailable'
+    'supplier_feed_scan_limit','supplier_feed_unavailable',
+    'supplier_feed_event_scope_mismatch','supplier_feed_incomplete_event_page'
    ]);
    const category=categories.has(error?.code)?error.code:'backend_unavailable';
    console.warn('[supplierAssignmentsFeed] status='+code+' category='+category);
