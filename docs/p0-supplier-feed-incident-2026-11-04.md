@@ -23,7 +23,8 @@ Two independent suppliers reported an empty screen saying the authenticated assi
 - [x] Read-only production data audit and targeted query validation.
 - [x] Checkpoint created before editing: `6aeb10206beb1f7a36380d39`.
 - [x] Focused tests passed: 18/18.
-- [ ] Full regression suite, build, final checkpoint and production deploy / published-version verification.
+- [x] Full regression suite: **1,164 / 1,164 tests passed**; production Vite build and focused ESLint succeeded; diff validation clean.
+- [ ] Final checkpoint and production deploy / published-version verification.
 - [ ] Retest by one of the two affected suppliers; this cannot be simulated as their authenticated accounts by admin-only queries.
 - [ ] If issue recurs, read `supplierAssignmentsFeed` prod logs for `category=...`; distinguish expired authentication (401), role (403), query fallback (503), network failure or stale PWA cache. Do not diagnose by switching the browser to unrestricted EventService.list.
 
