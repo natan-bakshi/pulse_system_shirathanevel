@@ -1,6 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { invoice4uErrors, invoice4uRequest, invoice4uToken } from "../../shared/invoice4uClient.ts";
-import { buildDocumentItems, calculateEventBalance, calculateProcessingFee, itemsToPipedFields } from "../../shared/eventBilling.ts";
+import { calculateEventBalance, calculateProcessingFee } from "../../shared/eventBilling.ts";
+import { HOSTED_INVOICE_MODE } from "../../shared/hostedPaymentInvoice.ts";
 import { sendWhatsAppText } from "../../shared/whatsappSend.ts";
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from "../../shared/whatsappReceipt.ts";
 
@@ -56,11 +57,10 @@ export default async function(req) {
     const isInterested = payer.isInterestedInInvoice !== false;
     const fee = calculateProcessingFee(config, requestedAmount, docLanguage);
     const chargeTotal = round2(requestedAmount + fee.amount);
-    const feeItems = fee.amount > 0 ? [{ name: fee.label, quantity: 1, price: round2(fee.amount / (1 + vatRate)) }] : [];
+    const environment = config.invoice4u_env === "production" ? "production" : "qa";
 
     let event = null;
     let currency = "ILS";
-    let items;
     let isAdvance = false;
     let subject;
 
@@ -68,7 +68,6 @@ export default async function(req) {
       const itemName = String(description || "").trim();
       if (!itemName) return Response.json({ error: "נדרש תיאור לסליקה הכללית" }, { status: 400 });
       subject = itemName;
-      items = [{ name: itemName, quantity: 1, price: round2(requestedAmount / (1 + vatRate)) }, ...feeItems];
     } else {
       event = await base44.entities.Event.get(eventId);
       if (!event) return Response.json({ error: "האירוע לא נמצא" }, { status: 404 });
@@ -86,9 +85,6 @@ export default async function(req) {
       subject = docLanguage === "en"
         ? (isAdvance ? `Advance payment for ${event.event_name}` : `Payment for ${event.event_name}`)
         : (isAdvance ? `מקדמה עבור ${event.event_name}` : `תשלום עבור ${event.event_name}`);
-      items = isAdvance
-        ? [{ name: docLanguage === "en" ? `Advance payment - ${event.event_name}` : `מקדמה - ${event.event_name}`, quantity: 1, price: round2(requestedAmount / (1 + vatRate)) }, ...feeItems]
-        : buildDocumentItems({ event, services, amount: requestedAmount, fee, itemized: isAdmin && payer.itemized === true, financials, vatRate, usdIlsRate, language: docLanguage });
     }
 
     const callbackToken = crypto.randomUUID();
@@ -109,10 +105,11 @@ export default async function(req) {
       invoice4u_callback_token: callbackToken,
       document_language: docLanguage,
       is_payment_link: isLinkMode,
-      notes: [isGeneral ? subject : (isAdvance ? "מקדמה" : ""), isLinkMode ? "דרישת תשלום בקישור" : ""].filter(Boolean).join(" - ")
+      notes: [isGeneral ? subject : (isAdvance ? "מקדמה" : ""), isLinkMode ? "דרישת תשלום בקישור" : ""].filter(Boolean).join(" - "),
+      auto_invoice_mode:HOSTED_INVOICE_MODE,invoice_environment:environment,
+      invoice_issuance_state:"pending",invoice_vat_percent:Number(config.vat_rate)||18,
+      invoice_charge_label:subject,invoice_fee_label:fee.label|| (docLanguage === "en" ? "Processing fee" : "עמלת סליקה")
     }));
-
-    const environment = config.invoice4u_env === "production" ? "production" : "qa";
     const request = {
       Invoice4UUserApiKey: invoice4uToken(environment),
       Sum: chargeTotal,
@@ -125,9 +122,11 @@ export default async function(req) {
       Email: isInterested ? (payer.email || "") : (config.owner_copy_email || ""),
       Description: subject,
       OrderIdClientUsage: payment.id,
-      IsDocCreate: true,
-      IsManualDocCreationsWithParams: true,
-      ...itemsToPipedFields(items, Number(config.vat_rate) || 18, chargeTotal),
+      // Invoice4U hosted auto-document issuance is disabled for NEW payments.
+      // After the provider verifies the charge, the callback creates a
+      // deduplicated two-line tax invoice / receipt in the DOCUMENT API.
+      IsDocCreate: false,
+      IsManualDocCreationsWithParams: false,
       DocHeadline: docLanguage === "en" ? (config.default_subject_en || subject) : (config.default_subject || subject),
       DocComments: docLanguage === "en" ? (config.default_email_comment_en || "") : (config.default_email_comment || ""),
       DocBranchId: config.invoice4u_branch_id || undefined,
