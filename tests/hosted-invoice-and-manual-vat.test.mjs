@@ -28,6 +28,7 @@ function fixture(overrides={}){
  const docs=[],provider={remote:null,creates:0,lookups:0,throwAfterCreate:false,invalidTotal:false};
  const stats={claims:0,invoiceTokens:0,providerVerifications:0,messages:[],lastDoc:null};
  const db={
+  AppSettings:{list:async()=>[]},
   Payment:{
    update:async(id,patch)=>{
     assert.equal(id,payment.id);Object.assign(payment,patch);return {...payment};
