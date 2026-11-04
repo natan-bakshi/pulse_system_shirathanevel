@@ -37,6 +37,11 @@ export default async function(req) {
     if (requirements.needsPayments && cleanPayments.length === 0) return Response.json({ error: "נדרש לפחות תשלום אחד למסמך זה" }, { status: 400 });
 
     const vatPercent = Number(config.vat_rate) || 18;
+    const fallback = summarizeItems(cleanItems, vatPercent, taxIncluded);
+    const paidTotal = round2(cleanPayments.reduce((sum, payment) => sum + payment.amount, 0));
+    // Never issue a legal document and THEN find out amounts do not reconcile.
+    if (requirements.needsItems && requirements.needsPayments && Math.abs(paidTotal - fallback.total) > 0.01)
+      return Response.json({ error: "סכום התשלומים חייב להיות שווה לסכום הפריטים כולל מע״מ" }, { status: 400 });
     const environment = config.invoice4u_env === "production" ? "production" : "qa";
     const token = invoice4uToken(environment);
     const label = documentLabel(documentType, docLanguage);
@@ -67,10 +72,6 @@ export default async function(req) {
     const errorMessage = invoice4uErrors(result);
     if (errorMessage) return Response.json({ error: errorMessage }, { status: 400 });
 
-    const fallback = summarizeItems(cleanItems, vatPercent, taxIncluded);
-    const paidTotal = round2(cleanPayments.reduce((sum, payment) => sum + payment.amount, 0));
-    if (requirements.needsItems && requirements.needsPayments && Math.abs(paidTotal - fallback.total) > 0.01)
-      return Response.json({ error: "סכום התשלומים חייב להיות שווה לסכום הפריטים כולל מע״מ" }, { status: 400 });
     const document = await base44.asServiceRole.entities.FinancialDocument.create({
       document_type: documentType,
       document_number: String(result.DocumentNumber || ""),
