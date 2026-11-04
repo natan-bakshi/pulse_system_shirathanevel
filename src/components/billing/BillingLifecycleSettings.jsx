@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 // הגדרות מחזור החיים של דרישות תשלום בקישור ואישורי תשלום ללקוח.
 export default function BillingLifecycleSettings({ settings, onChange }) {
-  const receiptEnabled = settings.client_payment_receipt_enabled === "true";
+  const receiptEnabled = settings.client_payment_receipt_enabled !== "false";
   const reminderDays = Number(settings.payment_link_reminder_days) || 0;
 
   return (
