@@ -10,7 +10,7 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
 
-    const { documentType, customer = {}, items = [], payments = [], linkedEventId, subject, comments, language } = await req.json();
+    const { documentType, customer = {}, items = [], payments = [], linkedEventId, subject, comments, language, priceMode } = await req.json();
     // שפת המסמך - עברית כברירת מחדל. Invoice4U יפיק את פרטי העסק בשפה זו.
     const docLanguage = language === "en" ? "en" : "he";
     if (!standaloneDocumentTypes.includes(documentType)) return Response.json({ error: "סוג מסמך לא נתמך" }, { status: 400 });
@@ -23,6 +23,9 @@ export default async function(req) {
     if (!customerName) return Response.json({ error: "נדרש שם לקוח עבור המסמך" }, { status: 400 });
 
     const requirements = documentRequirements(documentType);
+    // Only the new manual editor sends priceMode=gross. Legacy integrations
+    // keep their existing net-unit-price semantics by default.
+    const taxIncluded = priceMode === "gross";
     const cleanItems = items
       .filter((item) => String(item?.name || "").trim() && Number(item?.price) !== 0)
       .map((item) => ({ name: String(item.name).trim(), quantity: Number(item.quantity) || 1, price: round2(item.price), taxRate: item.taxRate }));
@@ -56,6 +59,7 @@ export default async function(req) {
         comments: comments || (docLanguage === "en" ? config.default_email_comment_en : config.default_email_comment) || "",
         associatedEmails: customer.email ? [customer.email] : [],
         vatPercent,
+        taxIncluded,
         language: docLanguage
       })
     });
@@ -63,8 +67,10 @@ export default async function(req) {
     const errorMessage = invoice4uErrors(result);
     if (errorMessage) return Response.json({ error: errorMessage }, { status: 400 });
 
-    const fallback = summarizeItems(cleanItems, vatPercent);
-    const paidTotal = cleanPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const fallback = summarizeItems(cleanItems, vatPercent, taxIncluded);
+    const paidTotal = round2(cleanPayments.reduce((sum, payment) => sum + payment.amount, 0));
+    if (requirements.needsItems && requirements.needsPayments && Math.abs(paidTotal - fallback.total) > 0.01)
+      return Response.json({ error: "סכום התשלומים חייב להיות שווה לסכום הפריטים כולל מע״מ" }, { status: 400 });
     const document = await base44.asServiceRole.entities.FinancialDocument.create({
       document_type: documentType,
       document_number: String(result.DocumentNumber || ""),
