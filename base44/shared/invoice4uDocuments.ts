@@ -109,9 +109,13 @@ export function buildDocumentBody({ slug, subject, currency = "ILS", items = [],
 }
 
 // סיכומי המסמך לפי השורות שהוזנו - לשמירה מקומית כשה-API לא מחזיר סיכום.
-export function summarizeItems(items = [], vatPercent = 18) {
-  const withoutTax = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
-  const rate = (Number(vatPercent) || 0) / 100;
-  const tax = withoutTax * rate;
-  return { totalWithoutTax: round2(withoutTax), totalTax: round2(tax), total: round2(withoutTax + tax) };
+export function summarizeItems(items = [], vatPercent = 18, taxIncluded = false) {
+  const amounts = items.reduce((totals, item) => {
+    const rate = Number(item.taxRate === undefined || item.taxRate === null || item.taxRate === "" ? vatPercent : item.taxRate) / 100;
+    const line = (Number(item.price) || 0) * (Number(item.quantity) || 1);
+    const net = taxIncluded ? line / (1 + rate) : line;
+    return { net: totals.net + net, gross: totals.gross + (taxIncluded ? line : line * (1 + rate)) };
+  }, { net: 0, gross: 0 });
+  const total = round2(amounts.gross), totalWithoutTax = round2(amounts.net);
+  return { totalWithoutTax, totalTax: round2(total - totalWithoutTax), total };
 }
