@@ -2,7 +2,8 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.50";
 import { convert } from "npm:html-to-text@9.0.5";
 import { agreementQuote } from "../../shared/agreementQuote.ts";
 import { getEventContacts } from "../../shared/eventFields.js";
-import { calculateAdvanceAmount, calculateProcessingFee, itemsToPipedFields } from "../../shared/eventBilling.ts";
+import { calculateAdvanceAmount, calculateProcessingFee } from "../../shared/eventBilling.ts";
+import { HOSTED_INVOICE_MODE } from "../../shared/hostedPaymentInvoice.ts";
 import { beginSetup } from "../../shared/storedCardSetup.ts";
 import { CardError, requireCards, reserveHostedPayment } from "../../shared/storedCards.ts";
 import { providerCall, hasErrors, providerFailure } from "../../shared/storedCardProvider.ts";
@@ -128,15 +129,19 @@ async function createDeposit(client,a,config){
  const payment=await reserveHostedPayment(client,event,config,amount,f.currency,()=>client.entities.Payment.create({
   event_id:event.id,agreement_id:a.id,agreement_environment:environment,agreement_verified:false,
   amount,currency:f.currency,payment_date:new Date().toISOString().slice(0,10),payment_method:"credit_card",payment_status:"pending",clearing_method:"hosted_page",charge_type:"advance",
-  processing_fee_amount:fee.amount,payer_name:a.recipient_name,payer_phone:a.recipient_phone,payer_email:a.recipient_email||"",invoice4u_callback_token:cb,document_language:a.signature?.language||a.snapshot.form_language||"he",is_payment_link:false,notes:"מקדמה לפי הסכם "+a.id
+  processing_fee_amount:fee.amount,payer_name:a.recipient_name,payer_phone:a.recipient_phone,payer_email:a.recipient_email||"",invoice4u_callback_token:cb,document_language:a.signature?.language||a.snapshot.form_language||"he",is_interested_in_invoice:true,is_payment_link:false,notes:"מקדמה לפי הסכם "+a.id,
+  auto_invoice_mode:HOSTED_INVOICE_MODE,invoice_environment:environment,invoice_issuance_state:"pending",invoice_vat_percent:Number(config.vat_rate)||18,
+  invoice_charge_label:(a.signature?.language==="en"?"Advance payment for ":"מקדמה עבור ")+event.event_name,
+  invoice_fee_label:a.signature?.language==="en"?"Processing fee":(fee.label||"עמלת סליקה")
  }));
- const vat=Number(config.vat_rate)||18;
  try{
   const result=await providerCall({environment,key,purpose:"hosted"},"ProcessApiRequestV2",{request:{
    Invoice4UUserApiKey:key,Sum:total,Currency:f.currency==="ILS"?"NIS":f.currency,Type:1,CreditCardCompanyType:Number(config.invoice4u_clearing_company_type),
    FullName:a.recipient_name,Phone:a.recipient_phone,Email:a.recipient_email||"",Description:(a.signature?.language==="en"?"Advance payment for ":"מקדמה עבור ")+event.event_name,
-   OrderIdClientUsage:payment.id,IsDocCreate:true,IsManualDocCreationsWithParams:true,
-   ...itemsToPipedFields([{name:(a.signature?.language==="en"?"Advance payment for ":"מקדמה עבור ")+event.event_name,quantity:1,price:total/(1+vat/100)}],vat,total),
+   // Documents for NEW hosted charges are issued only after verified payment
+   // via the idempotent Invoice4U document API, so an unsuccessful payment
+   // cannot create a tax invoice and the fee remains a SEPARATE invoice line.
+   OrderIdClientUsage:payment.id,IsDocCreate:false,IsManualDocCreationsWithParams:false,
    Language:a.signature?.language||a.snapshot.form_language||"he",IsQaMode:environment==="qa",Platform:"Pulse",
    ReturnUrl:APP+"/EventClosing?id="+a.id,CallBackUrl:APP+"/functions/invoice4uClearingCallback?token="+cb
   }});
