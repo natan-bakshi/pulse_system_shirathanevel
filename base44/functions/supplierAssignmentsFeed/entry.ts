@@ -25,7 +25,18 @@ Deno.serve(async req=>{
  }catch(error){
   const code=(error as any)?.status===403?403:
    (error as any)?.status===503?503:500;
-  if(code===500)console.warn('[supplierAssignmentsFeed] read failed');
+  // Prior 503 failures were silent in production, making supplier incidents
+  // impossible to distinguish from connectivity issues. Log ONLY a fixed
+  // error category (no IDs, names, event content or raw exception strings).
+  if(code>=500){
+   const categories=new Set([
+    'supplier_feed_scoped_query_failed','supplier_feed_scope_mismatch',
+    'supplier_feed_too_many_assignments','supplier_feed_event_limit',
+    'supplier_feed_scan_limit','supplier_feed_unavailable'
+   ]);
+   const category=categories.has(error?.code)?error.code:'backend_unavailable';
+   console.warn('[supplierAssignmentsFeed] status='+code+' category='+category);
+  }
   return Response.json({error:code===403?'Forbidden':'Unable to load assignments'},
    {status:code,headers});
  }
