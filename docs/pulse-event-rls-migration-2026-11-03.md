@@ -6,6 +6,11 @@
 - CODE: Raw Event/EventService realtime subscriptions are restricted to admins in Layout. Route role decisions now prevent mounting unauthorized admin page children before redirect.
 - CODE: WhatsApp provider numbers/settings and central queue are unchanged. Added office inquiry buttons with `need details` and `callback` intents, both using a trusted office phone and event-service reference.
 
+## 2026-11-04 — P0 Supplier portal feed hotfix (independent of future RLS migration)
+- Two supplier screens displayed a feed-loading error. Live read-only audit found about 2,847 EventService rows; the previous per-supplier request scanned all rows before filtering and performed one Event.get per matched event. The shared feed now queries only the server-verified supplier ID and loads those already-authorized event IDs in a restricted batch. Exact membership, rejection redaction, identity validation and no-fallback-to-broad-scan guarantees remain. New sanitized failure category logs support future production diagnosis.
+- 1,164 full Node regressions and Vite build passed. The incident, remaining verification and checkpoint/deploy status are tracked separately at `docs/p0-supplier-feed-incident-2026-11-04.md`.
+- The RLS permission exposure described below remains a **separate outstanding task**; this hotfix does not close it.
+
 ## Security status — NOT FINISHED
 **Verified against live Base44 entity schemas on 2026-11-03:** both Event and EventService still report `rls.read={}`. A user might still make direct SDK calls and retrieve raw rows even when protected frontend paths are blocked. This is NOT resolved by the code changes above. Do not claim tenant-level confidentiality.
 
