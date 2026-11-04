@@ -161,6 +161,30 @@
     },
     "agreement_callback_started_at": {
       "type": "string"
+    },
+    "auto_invoice_mode": {
+      "type": "string"
+    },
+    "invoice_environment": {
+      "type": "string"
+    },
+    "invoice_charge_label": {
+      "type": "string"
+    },
+    "invoice_fee_label": {
+      "type": "string"
+    },
+    "invoice_vat_percent": {
+      "type": "number"
+    },
+    "invoice_issuance_state": {
+      "type": "string"
+    },
+    "invoice_issuance_owner": {
+      "type": "string"
+    },
+    "invoice_issuance_started_at": {
+      "type": "string"
     }
   },
   "required": [
