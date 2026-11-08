@@ -468,7 +468,11 @@ export const interfaceLabels = Object.freeze({
   'טקסט כללי (גוף השירותים)': 'Body Text (Services)',
   'כותרות': 'Headings',
   'משפיע על כותרות הסעיפים ושמות החבילות': 'Affects Section Headings and Package Names',
-  'פרטי המשפחה והאירוע': 'Family and Event Details'
+  'פרטי המשפחה והאירוע': 'Family and Event Details',
+  'עריכת פרטי אירוע באנגלית': 'Edit English Event Details',
+  'לו"ז': 'Schedule',
+  'מכין מסמך...': 'Preparing Document...',
+  'המסמך מוכן — לחץ לשיתוף': 'Document Ready — Select to Share'
 });
 export const translateLabel = (value, locale = 'he') =>
   locale === 'en' ? (interfaceLabels[String(value)] ?? String(value)) : String(value);
