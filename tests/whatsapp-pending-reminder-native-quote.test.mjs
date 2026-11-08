@@ -129,7 +129,7 @@ test('no preference, wrong account, wrong recipient, wrong source never makes a 
   [{...makeJob(),chat_id:'120010101010@g.us'},'green',account],
   [{...makeJob(),sender_account_id:'9903183014'},'green',account],
   [{...makeJob(),interactive_button_bindings_json:'signed'},'green',account],
-  [{...makeJob(),status:'queued'},'green',account],
+  [{...makeJob(),status:'failed'},'green',account],
   [makeJob(),'green','']
  ]){
   const f=fixture({job});
