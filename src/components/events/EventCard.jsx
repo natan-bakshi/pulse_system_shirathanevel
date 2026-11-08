@@ -7,8 +7,10 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { getCurrencySymbol } from "@/components/utils/currencyUtils";
 import { getEventTitle } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function EventCard({ event, onSelect, onStatusChange, totals }) {
+  const {t}=useLanguage();
   const getStatusText = (status) => {
     switch (status) {
       case "quote": return "הצעת מחיר";
@@ -43,34 +45,34 @@ export default function EventCard({ event, onSelect, onStatusChange, totals }) {
       <CardHeader className="p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
             <CardTitle className="text-lg text-gray-900 break-words w-full">{getEventTitle(event)}</CardTitle>
-            <Badge className={`${getStatusColor(event.status)} shrink-0`}>{getStatusText(event.status)}</Badge>
+            <Badge className={`${getStatusColor(event.status)} shrink-0`}>{t(getStatusText(event.status))}</Badge>
         </div>
-        <p className="text-sm text-gray-600">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
+        <p className="text-sm text-gray-600">{event.child_name && `${t('שם החתן/כלה')}: ${event.child_name}`}</p>
       </CardHeader>
       <CardContent className="flex-grow space-y-3 p-4 sm:p-6 pt-0">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div className="flex items-center gap-2 overflow-hidden"><Calendar className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.event_date ? format(new Date(event.event_date), 'dd/MM/yyyy', { locale: he }) : 'N/A'}</span></div>
           <div className="flex items-center gap-2 overflow-hidden"><Clock className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.event_time || 'N/A'}</span></div>
           <div className="flex items-center gap-2 overflow-hidden"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location || 'N/A'}</span></div>
-          <div className="flex items-center gap-2 overflow-hidden"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count || 0} אורחים</span></div>
+          <div className="flex items-center gap-2 overflow-hidden"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count || 0} {t('אורחים')}</span></div>
         </div>
         <div className="text-sm text-gray-700 pt-3 border-t">
           <div className="flex justify-between items-center mb-1">
-            <span>עלות כוללת:</span>
+            <span>{t('עלות כוללת')}:</span>
             <span className="font-semibold">{cs}{finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
           {discountAmount > 0 && (
              <div className="flex justify-between items-center mb-1 text-red-600 text-xs">
-               <span>הנחה:</span>
+               <span>{t('הנחה')}:</span>
                <span>-{cs}{discountAmount.toLocaleString()}</span>
              </div>
           )}
           <div className="flex justify-between items-center mb-1 text-gray-600">
-            <span>שולם:</span>
+            <span>{t('שולם')}:</span>
             <span>{cs}{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between items-center font-bold mt-2">
-            <span>יתרה לתשלום:</span>
+            <span>{t('יתרה לתשלום')}:</span>
             <span className={balance > 0 ? "text-red-700" : "text-green-700"}>{cs}{balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
         </div>
@@ -78,7 +80,7 @@ export default function EventCard({ event, onSelect, onStatusChange, totals }) {
       <CardFooter className="p-4 sm:p-6 pt-0">
         <Button className="w-full bg-red-800 hover:bg-red-700 whitespace-normal h-auto py-2" onClick={() => onSelect(event.id)}>
             <Eye className="h-4 w-4 ml-2 shrink-0" />
-            צפה בפרטי האירוע
+            {t('צפה בפרטי האירוע')}
         </Button>
       </CardFooter>
     </Card>
