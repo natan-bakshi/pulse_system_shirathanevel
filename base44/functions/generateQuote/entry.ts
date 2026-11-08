@@ -2,6 +2,7 @@ import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, syst
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from '../../shared/quoteServicePresentation.ts';
+import {generateQuoteHtml} from '../../shared/quoteHtml.ts';
 
 // Helper functions from generateQuotePdf
 function groupBy(arr, keyAccessor) {
@@ -266,6 +267,21 @@ Deno.serve(async (req) => {
     }
     if (!requestedEvent) {
       return Response.json({ error: 'Event not found' }, { status: 404 });
+    }
+    // English previews use the same HTML composer as the PDF. Hebrew stays on
+    // its original, extensively tested path with no behavior changes.
+    if(body.language==='en'){
+      try{
+        const result=await generateQuoteHtml(eventId,base44,{
+          includeIntro,includePaymentTerms,includeSchedule,includeExternalServices,
+          preloadedEvent:requestedEvent,language:'en'
+        });
+        return Response.json({html:result.html,language:'en'});
+      }catch(e){
+        if(e?.code==='ENGLISH_TRANSLATION_INCOMPLETE')
+          return Response.json({error:e.message,fields:e.fields},{status:422});
+        throw e;
+      }
     }
 
     // Using the same logic as generateQuotePdf
