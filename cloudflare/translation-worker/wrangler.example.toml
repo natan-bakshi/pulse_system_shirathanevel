@@ -1,0 +1,19 @@
+name = "pulse-translation-drafts"
+main = "src/index.mjs"
+compatibility_date = "2026-11-08"
+workers_dev = false
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "LIMITS"
+id = "REPLACE_WITH_CLOUDFLARE_KV_NAMESPACE_ID"
+
+[vars]
+ALLOWED_ORIGIN = "https://pulse-system.base44.app"
+ACCESS_TEAM = "REPLACE_WITH_ACCESS_TEAM"
+ACCESS_AUD = "REPLACE_WITH_ACCESS_APPLICATION_AUDIENCE"
+
+# Set ALLOWED_EMAILS in Workers Secrets; never commit personal credentials.
+# Add an Access application that protects this Worker before deployment.
