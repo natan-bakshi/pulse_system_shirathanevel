@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
 /**
@@ -13,9 +13,15 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
   const [shareStatus, setShareStatus] = useState('initial'); // 'initial' | 'fetching' | 'ready'
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
-  // A previously prepared Hebrew file must never be shared after selecting
-  // English, or vice versa. Keep the two-click iOS share interaction intact.
-  useEffect(()=>{setShareStatus('initial');setPdfBlob(null);setPdfFileName('');},[quoteLanguage,eventId]);
+  const preparationRevision=useRef(0);
+  // A previous document must never be shared after the chosen language,
+  // event or included sections change. The revision also prevents a slow
+  // response from an OLD language from populating the new share button.
+  useEffect(()=>{
+    preparationRevision.current+=1;
+    setShareStatus('initial');setPdfBlob(null);setPdfFileName('');
+  },[quoteLanguage,eventId,quoteIncludeIntro,quoteIncludePaymentTerms,
+     quoteIncludeSchedule,quoteIncludeExternalServices]);
 
   // שלב 1: הכנת ה-PDF - יכול לקחת זמן
   const handlePrepareShare = useCallback(async (e) => {
@@ -24,6 +30,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       e.stopPropagation();
     }
 
+    const revision=preparationRevision.current;
     try {
       setShareStatus('fetching');
 
@@ -35,6 +42,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
         includeExternalServices: quoteIncludeExternalServices,
         language: quoteLanguage
       });
+      if(revision!==preparationRevision.current)return;
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.event_name || event?.family_name || eventId}.pdf`;
 
@@ -42,6 +50,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
 
       const pdfResponse = await fetch(pdfUrl);
       const blob = await pdfResponse.blob();
+      if(revision!==preparationRevision.current)return;
 
       setPdfBlob(blob);
       setPdfFileName(fileName);
@@ -50,6 +59,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       // רענון נתוני האירוע לעדכון היסטוריית ההצעות
       if (loadEventData) loadEventData();
     } catch (err) {
+      if(revision!==preparationRevision.current)return;
       console.error('Prepare share failed:', err);
       alert(err.response?.data?.error || 'שגיאה בהכנת הקובץ, נסה שוב');
       setShareStatus('initial');
