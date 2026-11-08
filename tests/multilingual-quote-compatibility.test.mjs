@@ -112,3 +112,50 @@ test('modular custom Hebrew text is blocked unless reviewed against exact source
  await assert.rejects(composeModularQuoteHtml({content:stale},client()),
   e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
 });
+
+test('organization quote keeps its Hebrew internal field IDs but localizes title and section captions',()=>{
+ const source='<p>אירוע (([סוג_האירוע_123]))</p>';
+ const english='<p>Event (([סוג_האירוע_123]))</p>';
+ const blocks=[{block_type:'services',subtitle_title:'החבילה כוללת',enabled:true}];
+ const row=approved('QuoteOrganizerType','org-1',{
+   quote_main_title_template:[source,english],
+   block_0_subtitle_title:['החבילה כוללת','Your Package Includes'],
+   contacts_label:['אנשי קשר לאירוע','Event Contacts']
+ });
+ const index=l.translationIndex([row]);
+ const organizer={id:'org-1',type_name:'מוסד / ארגון',
+  quote_main_title_template:source,quote_blocks:JSON.stringify(blocks),
+  contacts_config:JSON.stringify({label:'אנשי קשר לאירוע'})};
+ const missing=new Set();
+ const translated=l.translateOrganizerQuoteFields(organizer,index,missing);
+ assert.equal(missing.size,0);
+ assert.equal(translated.quote_main_title_template,english);
+ assert.equal(JSON.parse(translated.quote_blocks)[0].subtitle_title,'Your Package Includes');
+ assert.equal(translated.english_contacts_label,'Event Contacts');
+ assert.equal(organizer.quote_main_title_template,source,'internal source unchanged');
+ assert.equal(organizer.quote_blocks,JSON.stringify(blocks));
+ const stale=l.translateOrganizerQuoteFields({...organizer,quote_main_title_template:source+' new'},index,new Set());
+ assert.notEqual(stale.quote_main_title_template,english,'edited sources must not reuse stale translation');
+});
+test('custom organizer event values are translated by exact ID while numeric data is untouched',()=>{
+ const originalFields={company_name:'שירת הנבל',guest_count:350};
+ const event={id:'event-2',family_name:'Company',event_name:'Annual Gala',
+  custom_organizer_fields:JSON.stringify(originalFields)};
+ const index=l.translationIndex([approved('Event','event-2',{
+  custom_company_name:['שירת הנבל','Shirat HaNevel']
+ })]);
+ const converted=l.localizeEventQuoteData({event,services:[],eventServices:[],
+  templates:[],index});
+ assert.equal(converted.missing.size,0);
+ assert.equal(JSON.parse(converted.event.custom_organizer_fields).company_name,'Shirat HaNevel');
+ assert.equal(JSON.parse(converted.event.custom_organizer_fields).guest_count,350);
+ assert.equal(event.custom_organizer_fields,JSON.stringify(originalFields));
+});
+test('manually approved English cannot change a financial number in modular quote',async()=>{
+ const content={document_language:'en',event_type:'בר מצווה',items:[],
+  intro:'<p>מקדמה בסך 2,000 ש״ח</p>',english:{
+   intro:{source:'<p>מקדמה בסך 2,000 ש״ח</p>',value:'<p>Deposit NIS 3,000</p>'}
+  }};
+ await assert.rejects(composeModularQuoteHtml({content},client()),
+  e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
+});
