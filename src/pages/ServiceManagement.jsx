@@ -203,6 +203,7 @@ export default function ServiceManagement() {
     setIsSaving(true);
     try {
       const dataToSave = { ...formData, base_price: parseFloat(formData.base_price) || 0 };
+      let savedId=editingService?.id;
       if (editingService) {
         await base44.entities.Service.update(editingService.id, dataToSave);
         if (dataToSave.default_min_suppliers !== editingService.default_min_suppliers) {
@@ -211,17 +212,29 @@ export default function ServiceManagement() {
       } else {
         const maxOrderIndex = services.reduce((max, s) => Math.max(max, s.default_order_index || 0), -1);
         dataToSave.default_order_index = maxOrderIndex + 1;
-        await base44.entities.Service.create(dataToSave);
+        const created=await base44.entities.Service.create(dataToSave);
+        savedId=created.id;
+        // If the English write fails, a retry updates this service rather
+        // than creating an unintended second service.
+        setEditingService({...dataToSave,id:savedId});
+      }
+      if(englishTouched.length){
+        if(englishLoading||englishError)throw Error(englishError||'English fields are still loading');
+        await persistCatalogEnglish(base44,{entity:'Service',id:savedId,
+          source:dataToSave,values:englishValues,changed:englishTouched,
+          loadedRecord:englishRecord});
       }
       setIsDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ['services'] });
     } catch (error) {
       console.error("Failed to save service:", error);
+      setEnglishError('נדרש לבדוק את שמירת הגרסה האנגלית: '+(error.message||''));
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, formData, editingService, queryClient, services]);
+  }, [isSaving, formData, editingService, queryClient, services,
+      englishTouched,englishValues,englishRecord,englishLoading,englishError]);
 
   const handleDelete = useCallback(async (serviceId) => {
     if (window.confirm("האם אתה בטוח שברצונך למחוק שירות זה?")) {
@@ -293,20 +306,31 @@ export default function ServiceManagement() {
         package_price: parseFloat(packageFormData.package_price) || 0,
         is_active: true
       };
+      let savedId=editingPackage?.id;
       if (editingPackage) {
         await base44.entities.Package.update(editingPackage.id, dataToSave);
       } else {
-        await base44.entities.Package.create(dataToSave);
+        const created=await base44.entities.Package.create(dataToSave);
+        savedId=created.id;
+        setEditingPackage({...dataToSave,id:savedId});
+      }
+      if(englishTouched.length){
+        if(englishLoading||englishError)throw Error(englishError||'English fields are still loading');
+        await persistCatalogEnglish(base44,{entity:'Package',id:savedId,
+          source:dataToSave,values:englishValues,changed:englishTouched,
+          loadedRecord:englishRecord});
       }
       setIsPackageDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ['packages'] });
     } catch (error) {
       console.error("Failed to save package:", error);
+      setEnglishError('נדרש לבדוק את שמירת הגרסה האנגלית: '+(error.message||''));
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, packageFormData, editingPackage, queryClient]);
+  }, [isSaving, packageFormData, editingPackage, queryClient,
+      englishTouched,englishValues,englishRecord,englishLoading,englishError]);
 
   const handleDeletePackage = useCallback(async (packageId) => {
     if (window.confirm("האם אתה בטוח שברצונך למחוק חבילה זו?")) {
