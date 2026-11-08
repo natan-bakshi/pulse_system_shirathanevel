@@ -14,6 +14,7 @@ import { getCurrencySymbol } from '@/components/utils/currencyUtils';
 import OrganizerTypeSelector from '@/components/quotes/OrganizerTypeSelector';
 import DynamicEventFieldsSection from '@/components/events/DynamicEventFieldsSection';
 import { getEventTitle } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 function getStatusText(status) {
   const statusTexts = { quote: "הצעת מחיר", confirmed: "אירוע סגור", in_progress: "אירוע תפור", completed: "אירוע עבר", cancelled: "אירוע בוטל" };
@@ -37,6 +38,7 @@ export default function EventOverviewCard({
   handleStatusChange,
   handleDeleteEvent
 }) {
+  const {t}=useLanguage();
   const { fields: eventFields, isLoading, isError } = useOrganizerConfig(editingSection === 'event_details' ? (eventDetailsData.organizer_type ?? event.organizer_type) : event.organizer_type);
   const field = key => getField(eventFields, key);
   const customFieldValues = parseObject(event.custom_organizer_fields);
@@ -58,7 +60,7 @@ export default function EventOverviewCard({
           <div className="flex flex-col gap-3">
             <div className="min-w-0 w-full">
               <h2 className="text-lg sm:text-xl md:text-2xl font-bold break-words leading-tight">{getEventTitle(event)}</h2>
-              {field("child_name") && event.child_name && <p className="text-gray-600 mt-1 text-sm sm:text-base break-words">{field("child_name")?.name}: {event.child_name}</p>}
+              {field("child_name") && event.child_name && <p className="text-gray-600 mt-1 text-sm sm:text-base break-words">{t(field("child_name")?.name)}: {event.child_name}</p>}
             </div>
             <div className="flex flex-wrap gap-2">
               {isAdmin && (
@@ -66,16 +68,16 @@ export default function EventOverviewCard({
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline" className="w-full sm:w-auto bg-white">
                       <Badge className={getStatusColor(event.status)}>
-                        {getStatusText(event.status)}
+                        {t(getStatusText(event.status))}
                       </Badge>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleStatusChange('quote')}>הצעת מחיר</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange('confirmed')}>אירוע סגור</DropdownMenuItem>
-                    <DropdownMenuItem disabled>אירוע תפור — נקבע לפי השיבוצים והאישורים</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange('completed')}>אירוע עבר</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange('cancelled')}>אירוע בוטל</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusChange('quote')}>{t('הצעת מחיר')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusChange('confirmed')}>{t('אירוע סגור')}</DropdownMenuItem>
+                    <DropdownMenuItem disabled>{t('אירוע תפור — נקבע לפי השיבוצים והאישורים')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusChange('completed')}>{t('אירוע עבר')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusChange('cancelled')}>{t('אירוע בוטל')}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -87,7 +89,7 @@ export default function EventOverviewCard({
                   className="w-full sm:w-auto"
                 >
                   <Trash2 className="h-4 w-4 ml-2" />
-                  מחק אירוע
+                  {t('מחק אירוע')}
                 </Button>
               )}
             </div>
@@ -100,14 +102,14 @@ export default function EventOverviewCard({
                 onChange={vals => setEventDetailsData(prev => ({...prev, _customFields: vals}))}
                 eventValues={eventDetailsData} onEventChange={onFieldChange} disabled={isSavingEventDetails || isLoading} compact />
               <div className="col-span-full">
-                <Label>סוג הזמנה</Label>
+                <Label>{t('סוג הזמנה')}</Label>
                 <OrganizerTypeSelector value={eventDetailsData.organizer_type || ''} onChange={(v) => setEventDetailsData({ ...eventDetailsData, organizer_type: v })} />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setEditingSection(null)} disabled={isSavingEventDetails}>ביטול</Button>
+                <Button variant="outline" onClick={() => setEditingSection(null)} disabled={isSavingEventDetails}>{t('ביטול')}</Button>
                 <Button onClick={handleSaveEventDetails} disabled={isSavingEventDetails || isLoading || isError || !!guestChange}>
                   {isSavingEventDetails && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-                  <Save className="h-4 w-4 ml-2" />שמור
+                  <Save className="h-4 w-4 ml-2" />{t('שמור')}
                 </Button>
               </div>
             </div>
@@ -117,18 +119,18 @@ export default function EventOverviewCard({
                 const definition = field(key);
                 const Icon = icons[key];
                 let value = displayEventField(definition, event);
-                if (key === 'event_date') value = value && !Number.isNaN(Date.parse(value)) ? format(new Date(value), 'dd/MM/yyyy', { locale: he }) : 'לא צוין';
+                if (key === 'event_date') value = value && !Number.isNaN(Date.parse(value)) ? format(new Date(value), 'dd/MM/yyyy', { locale: he }) : t('לא צוין');
                 if (['concept','notes'].includes(key) && !value) return null;
                 return <div key={key} className={['concept','notes'].includes(key) ? 'col-span-full break-words' : 'flex items-center gap-2 min-w-0'}>
                   {Icon && <Icon className="h-4 w-4 text-gray-500 shrink-0" />}
-                  <span className="min-w-0 break-words"><strong>{definition.name}: </strong>{value ?? 'לא צוין'}{key === 'guest_count' && event.is_price_per_guest && event.price_per_guest > 0 && ` (${getCurrencySymbol(event.primary_currency || 'ILS')}${event.price_per_guest.toLocaleString()} למשתתף)`}</span>
+                  <span className="min-w-0 break-words"><strong>{t(definition.name)}: </strong>{value ?? t('לא צוין')}{key === 'guest_count' && event.is_price_per_guest && event.price_per_guest > 0 && ` (${getCurrencySymbol(event.primary_currency || 'ILS')}${event.price_per_guest.toLocaleString()} ${t('למשתתף')})`}</span>
                 </div>;
               })}
               {eventFields.filter(f => !systemKey(f) && f.category !== 'organizer_details').map(f => {
                 const value = displayEventField(f, event, customFieldValues);
-                return value === '' || value == null ? null : <div key={f.id} className="break-words"><strong>{f.name}: </strong>{String(value)}</div>;
+                return value === '' || value == null ? null : <div key={f.id} className="break-words"><strong>{t(f.name)}: </strong>{String(value)}</div>;
               })}
-              {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span>סוג הזמנה: {event.organizer_type}</span></div>}
+              {event.organizer_type && <div className="flex items-center gap-2 min-w-0"><Tag className="h-4 w-4 text-gray-500 shrink-0" /><span>{t('סוג הזמנה')}: {event.organizer_type}</span></div>}
               {isAdmin && (
                 <div className="col-span-full">
                   <Button variant="outline" size="sm" onClick={() => { 
@@ -149,7 +151,7 @@ export default function EventOverviewCard({
                       _customFields: { ...customFieldValues }
                     }); 
                   }}>
-                    <Edit className="h-4 w-4 ml-2" />ערוך פרטים
+                    <Edit className="h-4 w-4 ml-2" />{t('ערוך פרטים')}
                   </Button>
                 </div>
               )}
