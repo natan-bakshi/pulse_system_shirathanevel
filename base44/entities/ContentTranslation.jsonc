@@ -12,7 +12,8 @@
         "EventService",
         "AppSettings",
         "ModularQuote",
-        "ManualQuote"
+        "ManualQuote",
+        "QuoteOrganizerType"
       ]
     },
     "source_id": {
