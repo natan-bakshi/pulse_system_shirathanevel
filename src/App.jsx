@@ -8,6 +8,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { LanguageProvider } from '@/i18n/LanguageProvider';
 
 // Loading fallback for lazy-loaded pages
 const PageLoadingFallback = () => (
@@ -106,6 +107,7 @@ function App() {
   if(window.location.pathname.replace(/\/$/, '') === '/EventClosing') return <Suspense fallback={<PageLoadingFallback/>}><EventClosing/></Suspense>;
 
   return (
+    <LanguageProvider>
     <Router>
       <Routes>
         <Route path="/ModularQuoteView" element={<Suspense fallback={<PageLoadingFallback />}><ModularQuoteView /></Suspense>} />
@@ -121,6 +123,7 @@ function App() {
         } />
       </Routes>
     </Router>
+    </LanguageProvider>
   )
 }
 
