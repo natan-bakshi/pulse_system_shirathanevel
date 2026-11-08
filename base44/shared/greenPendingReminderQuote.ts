@@ -21,8 +21,12 @@ const result=(quotedMessageId:string|null,reason:string,providerReads:0|1)=>
 // This guard uses a frozen owner setting from Outbox, never a fresh template
 // lookup. A policy change cannot make a previously queued job quote anything.
 export function optedInPendingQuote(job:any,provider:string,account:string):boolean{
+ // The central worker CAS-claims the job as `sending` immediately before
+ // transport, but passes its immutable pre-claim queued/retry_wait payload
+ // to the legacy text branch. Those are the ONLY legitimate text paths.
  if(provider!=='green'||job?.source_type!=='supplier_pending_reminder'||
-  job?.message_type!=='text'||job?.status!=='sending'||
+  job?.message_type!=='text'||
+  !['sending','queued','retry_wait'].includes(job?.status)||
   job?.requested_provider!=='green'||job?.event_service_id!==job?.source_id||
   !IDENT.test(job?.event_service_id||'')||!IDENT.test(job?.supplier_id||'')||
   !IDENT.test(job?.id||'')||!CHAT.test(job?.chat_id||'')||
