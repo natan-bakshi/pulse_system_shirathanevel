@@ -9,8 +9,10 @@ import DarkModeToggle from "@/components/DarkModeToggle";
 import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {useLanguage} from "@/i18n/LanguageProvider";
 
 export default function UserSettings() {
+  const {t}=useLanguage();
   const { data: user, isLoading } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me()
@@ -46,14 +48,14 @@ export default function UserSettings() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Settings className="h-6 w-6" />
-          הגדרות משתמש
+          {t("הגדרות משתמש")}
         </h1>
       </div>
 
       {/* Dark Mode / Theme Selection */}
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
         <CardHeader>
-          <CardTitle className="text-lg">מצב תצוגה</CardTitle>
+          <CardTitle className="text-lg">{t("מצב תצוגה")}</CardTitle>
         </CardHeader>
         <CardContent>
           <DarkModeToggle themeMode={themeMode} setThemeMode={handleSetThemeMode} />
@@ -63,10 +65,10 @@ export default function UserSettings() {
       {/* Guided Tour */}
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
         <CardHeader>
-          <CardTitle className="text-lg">סיור מודרך</CardTitle>
+          <CardTitle className="text-lg">{t("סיור מודרך")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500 mb-3">הפעל את הסיור המודרך כדי ללמוד על כל הפונקציות במערכת.</p>
+          <p className="text-sm text-gray-500 mb-3">{t("הפעל את הסיור המודרך כדי ללמוד על כל הפונקציות במערכת.")}</p>
           <Button
             variant="outline"
             className="border-red-200 text-red-800 hover:bg-red-50"
@@ -84,7 +86,7 @@ export default function UserSettings() {
             }}
           >
             <Navigation className="h-4 w-4 ml-2" />
-            התחל סיור מודרך
+            {t("התחל סיור מודרך")}
           </Button>
         </CardContent>
       </Card>
@@ -97,15 +99,15 @@ export default function UserSettings() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-green-600" />
-              סוכן ניהול אירועים - WhatsApp
+              {t("סוכן ניהול אירועים - WhatsApp")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-500 mb-3">לחץ על הקישור כדי לפתוח שיחה עם הסוכן החכם של Pulse בוואטסאפ. לאחר הלחיצה הראשונה, השיחה תישמר בצ'אטים שלך.</p>
+            <p className="text-sm text-gray-500 mb-3">{t("לחץ על הקישור כדי לפתוח שיחה עם הסוכן החכם של Pulse בוואטסאפ. לאחר הלחיצה הראשונה, השיחה תישמר בצ'אטים שלך.")}</p>
             <a href={base44.agents.getWhatsAppConnectURL('admin_event_manager')} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="border-green-200 text-green-700 hover:bg-green-50">
                 <MessageCircle className="h-4 w-4 ml-2" />
-                פתח שיחה עם הסוכן בוואטסאפ
+                {t("פתח שיחה עם הסוכן בוואטסאפ")}
               </Button>
             </a>
           </CardContent>
@@ -123,10 +125,10 @@ export default function UserSettings() {
       {/* Delete Account */}
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
         <CardHeader>
-          <CardTitle className="text-lg text-red-700">אזור מסוכן</CardTitle>
+          <CardTitle className="text-lg text-red-700">{t("אזור מסוכן")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500 mb-3">מחיקת החשבון היא פעולה בלתי הפיכה. כל הנתונים האישיים שלך יימחקו.</p>
+          <p className="text-sm text-gray-500 mb-3">{t("מחיקת החשבון היא פעולה בלתי הפיכה. כל הנתונים האישיים שלך יימחקו.")}</p>
           <DeleteAccountButton />
         </CardContent>
       </Card>
