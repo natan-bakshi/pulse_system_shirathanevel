@@ -439,7 +439,7 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
   // Parse blocks
   let blocks = [];
   const english=manualQuote.document_language==='en';
-  const missing=new Set<string>();
+  const missing=new Set();
   const translations=await loadQuoteTranslations(base44Instance,manualQuote.document_language);
   const translatedCustom=(source,pair,key)=>{
     if(!english||typeof source!=='string'||!isHebrew(source))return source;
