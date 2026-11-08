@@ -260,11 +260,17 @@ export function localizeEventQuoteData(input:{
        'event.contact_'+id+'_name')};
    });
  }
- const translatedServices=options.includeServices===false?services:services.map(s=>({
-  ...s,
-  service_name:field('Service',s.id,'service_name',s.service_name,'catalog.service_name'),
-  service_description:field('Service',s.id,'service_description',s.service_description,'catalog.service_description')
- }));
+ // A catalog may contain hundreds of services that are not included in this
+ // event. Missing translations for those unrelated records must not block a
+ // client-facing English quote.
+ const relevantServiceIds=new Set(eventServices.filter(es=>
+    options.includeExternalServices!==false||!es.is_external).map(es=>es.service_id));
+ const translatedServices=options.includeServices===false?services:services.map(s=>
+  !relevantServiceIds.has(s.id)?s:({
+   ...s,
+   service_name:field('Service',s.id,'service_name',s.service_name,'catalog.service_name'),
+   service_description:field('Service',s.id,'service_description',s.service_description,'catalog.service_description')
+  }));
  const translatedEventServices=eventServices.map(es=>{
    if(options.includeServices===false||es.is_external&&options.includeExternalServices===false)return es;
    const serviceId=es.service_id;
