@@ -202,6 +202,8 @@ export function localizeEventQuoteData(input:{
  for(const key of ['event_name','family_name','child_name','location','city',
   'services_section_title','standalone_services_title','external_services_title'])
   e[key]=field('Event',event.id,key,event[key],'event.'+key);
+ e.__english_concept=approvedField(index,'Event',event.id,'concept',event.concept)||
+   indexedText(index,'identifier',event.concept)||approvedPlace(event.concept)||null;
  if(event.notes)e.notes=field('Event',event.id,'notes',event.notes,'event.notes');
  // Custom event values can be rendered through organizer title templates.
  // Translate values only; the original field IDs must remain byte-for-byte.
