@@ -26,8 +26,8 @@ export function optedInPendingQuote(job:any,provider:string,account:string):bool
   job?.requested_provider!=='green'||job?.event_service_id!==job?.source_id||
   !IDENT.test(job?.event_service_id||'')||!IDENT.test(job?.supplier_id||'')||
   !IDENT.test(job?.id||'')||!CHAT.test(job?.chat_id||'')||
-  !ACCOUNT.test(account||'')||job?.sender_account_id&&
-    job.sender_account_id!==account||
+  !ACCOUNT.test(account||'')||
+  (job?.sender_account_id&&job.sender_account_id!==account)||
   job?.interactive_button_bindings_json||job?.interactive_v2_button_bindings_json||
   job?.interactive_qa_required)return false;
  const settings=selectSupplierButtonSnapshot(null,job);
@@ -82,6 +82,9 @@ export async function resolvePendingReminderGreenQuote(input:{
   return result(null,'no_original_assignment',0);
  const origin=origins[0];
  if(!origin||origin.status!=='accepted'||
+  origin.source_type!=='assignment_new'||
+  origin.event_service_id!==job.event_service_id||
+  origin.supplier_id!==job.supplier_id||
   origin.idempotency_key!==newest.key||origin.requested_provider!=='green'||
   origin.provider!=='green'||origin.sender_account_id!==senderAccountId||
   origin.chat_id!==job.chat_id||!IDENT.test(origin.id||'')||
