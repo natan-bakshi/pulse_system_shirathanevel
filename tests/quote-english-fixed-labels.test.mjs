@@ -146,3 +146,33 @@ test('manual English quote transport and discounts localize labels without chang
  assert.ok(result.html.includes('Mamilla'));
  assert.ok(result.html.includes('11:30'));
 });
+
+test('unrelated unapproved catalog services never block a completed English proposal',async()=>{
+ const {client,entities,event}=fixture();
+ const originalList=entities.Service.list;
+ entities.Service.list=async()=>[
+  ...(await originalList()),
+  {id:'unrelated-catalog-item',service_name:'שירות חדש שאין לו תרגום',
+   service_description:'תיאור פנימי חדש',base_price:9999}
+ ];
+ const result=await generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includePaymentTerms:false
+ });
+ assert.ok(result.html.includes('Four-Piece Band'));
+ assert.ok(!result.html.includes('שירות חדש שאין לו תרגום'));
+ assert.deepEqual(hebrewTextNodes(result.html),[]);
+});
+test('an unapproved service USED in an English quote fails closed',async()=>{
+ const {client,entities,event}=fixture();
+ const bad={id:'es2',service_id:'s2',service_name:'שירות חדש שאין לו תרגום',
+  service_description:'תיאור עסקי חדש',custom_price:999,quantity:1};
+ const listed=await entities.EventService.filter();
+ entities.EventService.filter=async()=>[...listed,bad];
+ entities.Service.list=async()=>[
+  {id:'s1',service_name:'Four-Piece Band'},
+  {id:'s2',service_name:bad.service_name,service_description:bad.service_description}
+ ];
+ await assert.rejects(generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includePaymentTerms:false
+ }),e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
+});
