@@ -1,0 +1,113 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+
+async function load(path){
+ const result=await build({entryPoints:[path],bundle:true,platform:'node',format:'esm',write:false,plugins:[{
+   name:'runtime',setup(b){
+    b.onResolve({filter:/^npm:sanitize-html/},()=>({path:'sanitize',namespace:'stub'}));
+    b.onLoad({filter:/.*/,namespace:'stub'},()=>({contents:'export default v=>String(v);'}));
+   }
+ }]});
+ return import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));
+}
+const l=await load('base44/shared/quoteLocalization.ts');
+const {composeModularQuoteHtml}=await load('base44/shared/modularQuote.ts');
+const {generateQuoteHtml}=await load('base44/shared/quoteHtml.ts');
+const approved=(entity,id,fields)=>({source_entity:entity,source_id:id,locale:'en',status:'approved',
+ fields:Object.fromEntries(Object.entries(fields).map(([key,[source,value]])=>[key,{source,value}]))});
+const catalog=[
+ approved('Service','service-1',{
+  service_name:['להקת שירת הנבל ארבעה נגנים','Shirat HaNevel Four-Piece Band'],
+  service_description:['<p>תיאור מיוחד</p>','<p>Special description</p>']
+ }),
+ approved('QuoteTemplate','intro-1',{content:['<p>ברוכים הבאים</p>','<p>Welcome</p>']})
+];
+const client=(rows=catalog)=>({asServiceRole:{entities:{
+ AppSettings:{list:async()=>[{setting_key:'vat_rate',setting_value:'18'}]},
+ ContentTranslation:{filter:async()=>rows},
+ Event:{get:async()=>({})},EventService:{filter:async()=>[]},
+ Service:{list:async()=>[]},Payment:{filter:async()=>[]},
+ QuoteTemplate:{list:async()=>[]},QuoteOrganizerType:{list:async()=>[]}
+}}});
+
+test('approved source-exact translations and no mutation',()=>{
+ const map=l.translationIndex(catalog);
+ const sample=catalog[0];
+ const original=JSON.stringify(sample);
+ assert.equal(l.approvedField(map,'Service','service-1','service_name','להקת שירת הנבל ארבעה נגנים'),
+   'Shirat HaNevel Four-Piece Band');
+ assert.equal(l.approvedField(map,'Service','service-1','service_name','שלושה נגנים'),null);
+ assert.equal(l.indexedText(map,'service_name','להקת שירת הנבל ארבעה נגנים'),
+   'Shirat HaNevel Four-Piece Band');
+ assert.equal(JSON.stringify(sample),original);
+});
+test('protected numbers, links, placeholders and script cannot change',()=>{
+ assert.equal(l.translationPreservesProtectedContent('4 נגנים במשך 45 דקות','4 musicians for 45 minutes'),true);
+ assert.equal(l.translationPreservesProtectedContent('4 נגנים','5 musicians'),false);
+ assert.equal(l.translationPreservesProtectedContent('https://example.com/abc קישור','https://evil.com/abc link'),false);
+ assert.equal(l.translationPreservesProtectedContent('אירוע {{family}}','Event {{event}}'),false);
+ assert.equal(l.translationPreservesProtectedContent('הצעה','<script>alert(1)</script>'),false);
+});
+test('regular Hebrew continues unchanged and English uses approved catalog/intro without changing figures',async()=>{
+ const base={id:'event-1',event_name:'Family Event',family_name:'Family',child_name:'David',
+   event_date:'2027-01-15',event_type:'bar_mitzvah',location:'Jerusalem',
+   status:'quote',all_inclusive:false,concept:'ירושלים'};
+ const eventServices=[{id:'es-1',service_id:'service-1',
+   service_name:'להקת שירת הנבל ארבעה נגנים',
+   service_description:'<p>תיאור מיוחד</p>',
+   custom_price:1000,quantity:2,show_price_in_quote:true}];
+ const entities=client().asServiceRole.entities;
+ entities.Event={get:async()=>base};
+ entities.EventService={filter:async()=>eventServices};
+ entities.QuoteTemplate={list:async()=>[{id:'intro-1',identifier:'ירושלים',template_type:'concept_intro',content:'<p>ברוכים הבאים</p>'}]};
+ entities.Service={list:async()=>[catalog[0]?{id:'service-1',service_name:'להקת שירת הנבל ארבעה נגנים',service_description:'<p>תיאור מיוחד</p>',base_price:1000}:{}]};
+ entities.ContentTranslation={filter:async()=>catalog};
+ const user={asServiceRole:{entities}};
+ const he=await generateQuoteHtml(base.id,user);
+ const en=await generateQuoteHtml(base.id,user,{language:'en'});
+ assert.ok(he.html.includes('להקת שירת הנבל ארבעה נגנים'));
+ assert.ok(en.html.includes('Shirat HaNevel Four-Piece Band'));
+ assert.ok(en.html.includes('<html lang="en" dir="ltr">'));
+ assert.ok(en.html.includes('<p>Welcome</p>'));
+ assert.ok(en.html.includes('₪2,000.00'));
+ assert.ok(he.html.includes('₪2,000.00'));
+ assert.equal(eventServices[0].service_name,'להקת שירת הנבל ארבעה נגנים');
+});
+test('English proposal rejects a missing personal English spelling without touching Hebrew path',async()=>{
+ const entities=client().asServiceRole.entities;
+ const event={id:'event-1',event_name:'משפחת לוי',child_name:'דוד',family_name:'לוי',
+  event_date:'2027-01-15',event_type:'bar_mitzvah'};
+ entities.Event={get:async()=>event};
+ await assert.rejects(generateQuoteHtml('event-1',{asServiceRole:{entities}},{language:'en'}),
+  err=>err.code==='ENGLISH_TRANSLATION_INCOMPLETE' && err.fields.includes('event.event_name'));
+ const he=await generateQuoteHtml('event-1',{asServiceRole:{entities}});
+ assert.ok(he.html.includes('משפחת לוי'));
+});
+test('modular proposal translates items, descriptions, headings and stays priced identically',async()=>{
+ const content={document_language:'he',event_type:'בר מצווה',show_intro:true,
+   show_payment_terms:false,show_agreement:false,show_summary:true,
+   services_title:'חבילות ושירותים',
+   items:[{id:'item-1',kind:'service',name:'להקת שירת הנבל ארבעה נגנים',
+    description:'<p>תיאור מיוחד</p>',price:2200,quantity:1,includes_vat:false,
+    show_price:true,show_description:true,visible:true}]};
+ const he=await composeModularQuoteHtml({content},client());
+ const en=await composeModularQuoteHtml({content:{...content,document_language:'en'}},client());
+ assert.ok(he.html.includes('להקת שירת הנבל ארבעה נגנים'));
+ assert.ok(en.html.includes('Shirat HaNevel Four-Piece Band'));
+ assert.ok(en.html.includes('Packages &amp; Services')||en.html.includes('Packages & Services'));
+ assert.ok(en.html.includes('lang="en" dir="ltr"'));
+ assert.ok(en.html.includes('₪2,200.00')&&he.html.includes('₪2,200.00'));
+});
+test('modular custom Hebrew text is blocked unless reviewed against exact source',async()=>{
+ const content={document_language:'en',event_type:'בר מצווה',intro:'<p>פרטים מיוחדים</p>',
+   show_summary:false,items:[]};
+ await assert.rejects(composeModularQuoteHtml({content},client()),
+  e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
+ const complete={...content,english:{intro:{source:content.intro,value:'<p>Special details</p>'}}};
+ const result=await composeModularQuoteHtml({content:complete},client());
+ assert.ok(result.html.includes('Special details'));
+ const stale={...complete,intro:'<p>פרטים אחרים</p>'};
+ await assert.rejects(composeModularQuoteHtml({content:stale},client()),
+  e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
+});
