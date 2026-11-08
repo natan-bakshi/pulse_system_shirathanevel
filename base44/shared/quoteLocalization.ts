@@ -28,7 +28,11 @@ export function translationPreservesProtectedContent(source:string,value:string)
   const visible=(s:string)=>s.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
   const extract=(s:string,re:RegExp)=>(s.match(re)||[]).sort().join('|');
   const sourceVisible=visible(source),targetVisible=visible(value);
-  if(extract(sourceVisible,/\d[\d,./%-]*/g)!==extract(targetVisible,/\d[\d,./%-]*/g))return false;
+  // Keep real amounts, decimals, percentages and numeric ranges unchanged.
+  // Do not treat the hyphen in a natural compound such as '55-Seat' as
+  // part of the number when source contained plain '55'.
+  const numeric=/\d+(?:[.,/]\d+)*(?:%|-\d+(?:[.,/]\d+)*)?/g;
+  if(extract(sourceVisible,numeric)!==extract(targetVisible,numeric))return false;
   if(extract(source,/https?:\/\/[^\s\"'<>]+/g)!==extract(value,/https?:\/\/[^\s\"'<>]+/g))return false;
   if(extract(source,/\{\{?[^{}]+\}\}?/g)!==extract(value,/\{\{?[^{}]+\}\}?/g))return false;
   return true;
