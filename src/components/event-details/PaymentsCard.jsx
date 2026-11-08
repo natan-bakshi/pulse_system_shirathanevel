@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ManualDocumentButton from './ManualDocumentButton';
 import { format } from 'date-fns';
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from '@/components/utils/currencyUtils';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 function getPaymentMethodText(method) {
   const methods = { cash: 'מזומן', bank_transfer: 'העברה בנקאית', check: 'צ\'ק', credit_card: 'כרטיס אשראי' };
@@ -29,25 +30,26 @@ export default function PaymentsCard({
   onCreateManualDocument,
   creatingDocumentPaymentId = null
 }) {
+  const {t}=useLanguage();
   return (
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">תשלומים</h3>
+          <h3 className="text-lg font-semibold">{t('תשלומים')}</h3>
           <div className="flex gap-2">
             {(isAdmin || clientClearingAllowed) && billingEnabled && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" className="bg-red-800 text-white hover:bg-red-900"><CreditCard className="h-4 w-4 ml-2" />תשלום בכרטיס<ChevronDown className="h-4 w-4 mr-1" /></Button>
+                  <Button size="sm" className="bg-red-800 text-white hover:bg-red-900"><CreditCard className="h-4 w-4 ml-2" />{t('תשלום בכרטיס')}<ChevronDown className="h-4 w-4 mr-1" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[240px]">
-                  <DropdownMenuItem onSelect={() => onStartClearing('direct')}><CreditCard className="h-4 w-4 ml-2" />סליקת לקוח כאן ועכשיו</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => onStartClearing('link')}><Link2 className="h-4 w-4 ml-2" />שליחת דרישת תשלום בקישור</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onStartClearing('direct')}><CreditCard className="h-4 w-4 ml-2" />{t('סליקת לקוח כאן ועכשיו')}</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onStartClearing('link')}><Link2 className="h-4 w-4 ml-2" />{t('שליחת דרישת תשלום בקישור')}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {isAdmin && billingEnabled && event?.billing_customer_id && <Button size="sm" variant="outline" onClick={()=>window.dispatchEvent(new CustomEvent("open-stored-card-charge",{detail:event.id}))}>חיוב מהכרטיס השמור</Button>}
-            {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)}><Plus className="h-4 w-4 ml-2" />הוסף תשלום</Button>}
+            {isAdmin && billingEnabled && event?.billing_customer_id && <Button size="sm" variant="outline" onClick={()=>window.dispatchEvent(new CustomEvent("open-stored-card-charge",{detail:event.id}))}>{t('חיוב מהכרטיס השמור')}</Button>}
+            {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)}><Plus className="h-4 w-4 ml-2" />{t('הוסף תשלום')}</Button>}
           </div>
         </div>
       </CardHeader>
@@ -73,9 +75,9 @@ export default function PaymentsCard({
                     return null;
                   })()}
                   <div className="text-sm text-gray-600">
-                    {format(new Date(payment.payment_date), 'dd/MM/yyyy')} - {getPaymentMethodText(payment.payment_method)}
+                    {format(new Date(payment.payment_date), 'dd/MM/yyyy')} - {t(getPaymentMethodText(payment.payment_method))}
                   </div>
-                  {payment.stored_card_operation_id && <div className="text-sm text-amber-800">{payment.payment_status === 'completed' ? 'חיוב בכרטיס שמור הושלם' : payment.payment_status === 'failed' ? 'החיוב נדחה' : 'חיוב בכרטיס שמור בטיפול — אינו נחשב כתשלום שהושלם'}</div>}
+                  {payment.stored_card_operation_id && <div className="text-sm text-amber-800">{payment.payment_status === 'completed' ? t('חיוב בכרטיס שמור הושלם') : payment.payment_status === 'failed' ? t('החיוב נדחה') : t('חיוב בכרטיס שמור בטיפול — אינו נחשב כתשלום שהושלם')}</div>}
                   {payment.notes && <div className="text-sm text-gray-500">{payment.notes}</div>}
                   {payment.receipt_image_url && payment.receipt_image_url.trim() !== '' && (
                     <Button 
@@ -89,7 +91,7 @@ export default function PaymentsCard({
                       }}
                     >
                       <FileText className="h-4 w-4 ml-2" />
-                      צפה באסמכתא
+                      {t('צפה באסמכתא')}
                     </Button>
                   )}
                 </div>
@@ -110,7 +112,7 @@ export default function PaymentsCard({
               </div>
             ))
           ) : (
-            <div className="text-center py-4 text-gray-500">אין תשלומים להצגה</div>
+            <div className="text-center py-4 text-gray-500">{t('אין תשלומים להצגה')}</div>
           )}
         </div>
       </CardContent>
