@@ -11,9 +11,11 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 import { getEventTitle } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 
 export default function ClientDashboard() {
+  const {locale,t}=useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -67,31 +69,31 @@ export default function ClientDashboard() {
   }
 
   if (!user) {
-    return <div className="text-center p-8 text-white">יש להתחבר כדי לצפות בפרטים.</div>;
+    return <div className="text-center p-8 text-white">{t("יש להתחבר כדי לצפות בפרטים.")}</div>;
   }
   if (feedError) {
     return <div className="max-w-xl mx-auto bg-white rounded-xl p-6 text-center space-y-3">
-      <p role="alert">לא ניתן לטעון את סיכום האירועים המאומת שלך. המערכת לא מציגה נתונים לא מאומתים.</p>
-      <Button onClick={() => reload()}>נסה שוב</Button>
+      <p role="alert">{t("לא ניתן לטעון את סיכום האירועים המאומת שלך. המערכת לא מציגה נתונים לא מאומתים.")}</p>
+      <Button onClick={() => reload()}>{t("נסה שוב")}</Button>
     </div>;
   }
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-7xl mx-auto">
       <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">שלום {user.full_name || 'לקוח/ה'}</h1>
-        <p className="text-white/80 text-sm sm:text-base">ברוך הבא לאזור האישי שלך</p>
-        <p className="text-white/60 text-xs sm:text-sm mt-1 sm:mt-2">מחובר עם: {user.email}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">{locale==='en'?'Hello':'שלום'} {user.full_name || (locale==='en'?'there':'לקוח/ה')}</h1>
+        <p className="text-white/80 text-sm sm:text-base">{t("ברוך הבא לאזור האישי שלך")}</p>
+        <p className="text-white/60 text-xs sm:text-sm mt-1 sm:mt-2">{t("מחובר עם")}: {user.email}</p>
       </div>
 
       {eventsWithDetails.length === 0 ? (
         <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
           <CardContent className="p-12 text-center">
             <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-gray-600 mb-4">לא נמצאו אירועים</h2>
-            <p className="text-gray-500 mb-2">עדיין לא שויכו אירועים למשתמש שלך.</p>
-            <p className="text-gray-500 text-sm">פנה/י למנהל/ת האירוע או וודא/י שהמייל שלך רשום נכון באירוע.</p>
-            <p className="text-gray-400 text-xs mt-4">מייל שלך במערכת: {user.email}</p>
+            <h2 className="text-2xl font-bold text-gray-600 mb-4">{t("לא נמצאו אירועים")}</h2>
+            <p className="text-gray-500 mb-2">{t("עדיין לא שויכו אירועים למשתמש שלך.")}</p>
+            <p className="text-gray-500 text-sm">{t("פנה/י למנהל/ת האירוע או וודא/י שהמייל שלך רשום נכון באירוע.")}</p>
+            <p className="text-gray-400 text-xs mt-4">{t("מייל שלך במערכת")}: {user.email}</p>
           </CardContent>
         </Card>
       ) : (
@@ -101,34 +103,34 @@ export default function ClientDashboard() {
               <CardHeader className="p-3 sm:p-4">
                 <div className="flex flex-wrap justify-between items-start gap-2">
                     <CardTitle className="text-lg text-gray-900 break-words">{getEventTitle(event)}</CardTitle>
-                    <Badge className="bg-red-100 text-red-800 shrink-0">{event.status === 'quote' ? 'הצעת מחיר' : 'אירוע'}</Badge>
+                    <Badge className="bg-red-100 text-red-800 shrink-0">{t(event.status === 'quote' ? 'הצעת מחיר' : 'אירוע')}</Badge>
                 </div>
-                <p className="text-sm text-gray-600">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
+                <p className="text-sm text-gray-600">{event.child_name && `${t("שם החתן/כלה")}: ${event.child_name}`}</p>
               </CardHeader>
               <CardContent className="flex-grow space-y-3 p-4 pt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2 overflow-hidden"><Calendar className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{format(new Date(event.event_date), 'dd/MM/yyyy', { locale: he })}</span></div>
                   <div className="flex items-center gap-2 overflow-hidden"><Clock className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.event_time}</span></div>
                   <div className="flex items-center gap-2 overflow-hidden"><MapPin className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.location}</span></div>
-                  <div className="flex items-center gap-2 overflow-hidden"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} אורחים</span></div>
+                  <div className="flex items-center gap-2 overflow-hidden"><Users className="h-4 w-4 text-gray-500 shrink-0" /><span className="truncate">{event.guest_count} {t("אורחים")}</span></div>
                 </div>
                 <div className="pt-4 border-t mt-2">
                   <div className="flex justify-between items-center text-xs text-gray-600 mb-1">
-                    <span>סה"כ:</span>
+                    <span>{t('סה"כ')}:</span>
                     <span className="font-semibold">₪{event.finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
                   {(event.discount_amount || 0) > 0 && (
                     <div className="flex justify-between items-center text-xs text-red-600 mb-1">
-                      <span>הנחה:</span>
+                      <span>{t("הנחה")}:</span>
                       <span>-₪{event.discount_amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center text-xs text-gray-600 mb-1">
-                    <span>שולם:</span>
+                    <span>{t("שולם")}:</span>
                     <span>₪{event.totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm font-bold mb-2">
-                    <span>יתרה:</span>
+                    <span>{t("יתרה")}:</span>
                     <span className={event.balance > 0 ? "text-red-700" : "text-green-700"}>₪{event.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -140,7 +142,7 @@ export default function ClientDashboard() {
                 <div className="flex flex-col gap-2 w-full">
                   <Button className="w-full bg-red-800 hover:bg-red-700 h-auto py-2 whitespace-normal" onClick={() => navigate(createPageUrl(`EventDetails?id=${event.id}`))}>
                       <Eye className="h-4 w-4 ml-2 shrink-0" />
-                      צפה בפרטי האירוע
+                      {t("צפה בפרטי האירוע")}
                   </Button>
                 </div>
               </CardFooter>
