@@ -58,6 +58,10 @@ const labels=new Map<string,string>([
   ['שמות ההורים',"Parents' Names"],['עיר מגורים','City of Residence'],
   ['אירוע ב','Event at '],['סיכום כספי','Financial Summary'],
   ['תנאי תשלום','Payment Terms'],['תנאי התקשרות','Terms & Conditions'],
+  ['תשלום ישיר','Paid Directly'],['מחיר מוערך','Estimated Price'],
+  ['חבילות ושירותים הכלולים בהצעה','Packages & Services Included in This Quote'],
+  ['שירותים הכלולים בהצעה','Services Included in This Quote'],
+  ['הצעה מודולרית','Modular Quotation'],
   ['חבילת ההפקה כוללת','Your Production Package Includes'],
   ['חבילות ושירותים','Packages & Services'],
   ['שירותים נוספים','Additional Services'],['הערות','Notes'],
@@ -88,6 +92,10 @@ export function localizeVisibleHtmlLabels(html:string):string{
     const trailing=text.match(/\s*$/)?.[0]||'';
     const value=text.trim();
     if(labels.has(value))return '>'+leading+labels.get(value)+trailing+'<';
+    if(/^\((כולל|לא כולל) מע[״\"]מ\)$/.test(value))
+      return '>'+leading+(value.startsWith('(כולל')?'(VAT included)':'(excluding VAT)')+trailing+'<';
+    const vat=value.match(/^מע[״\"]מ\s*\((\d+(?:\.\d+)?)%\)(:?)$/);
+    if(vat)return '>'+leading+'VAT ('+vat[1]+'%)'+vat[2]+trailing+'<';
     const match=value.match(/^(.+?)([:：])(\s*.*)$/);
     if(match&&labels.has(match[1]))
       return '>'+leading+labels.get(match[1])+match[2]+match[3]+trailing+'<';
