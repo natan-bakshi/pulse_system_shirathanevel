@@ -24,6 +24,7 @@ export default function ManualQuoteEditor() {
 
   const [quoteId, setQuoteId] = useState(quoteIdFromUrl || null);
   const [title, setTitle] = useState('הצעת מחיר ידנית');
+  const [documentLanguage,setDocumentLanguage]=useState('he');
   const [linkedEventId, setLinkedEventId] = useState('');
   const [blocks, setBlocks] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -59,6 +60,7 @@ export default function ManualQuoteEditor() {
         const q = await base44.entities.ManualQuote.get(quoteIdFromUrl);
         if (cancelled || !q) return;
         setTitle(q.title || 'הצעת מחיר ידנית');
+        setDocumentLanguage(q.document_language==='en'?'en':'he');
         setLinkedEventId(q.linked_event_id || '');
         setLastPdfUri(q.last_pdf_uri || '');
         setLastPdfName(q.last_pdf_name || '');
@@ -131,6 +133,7 @@ export default function ManualQuoteEditor() {
     try {
       const data = {
         title: title.trim() || 'הצעת מחיר ידנית',
+        document_language:documentLanguage,
         linked_event_id: linkedEventId || '',
         blocks: JSON.stringify(blocks),
         status: 'draft'
@@ -155,7 +158,7 @@ export default function ManualQuoteEditor() {
     } finally {
       setIsSaving(false);
     }
-  }, [title, linkedEventId, blocks, quoteId, queryClient, location.pathname]);
+  }, [title, linkedEventId, blocks, quoteId, queryClient, location.pathname,documentLanguage]);
 
   // Helper — מפיק PDF טרי לפי המצב הנוכחי ומחזיר { pdf_url, fileName } או null במקרה של שגיאה.
   const buildFreshPdf = useCallback(async () => {
@@ -376,6 +379,15 @@ export default function ManualQuoteEditor() {
           <CardTitle className="text-base">פרטי ההצעה</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="manual-quote-document-language" className="text-sm font-medium">שפת הצעת המחיר</label>
+            <select id="manual-quote-document-language" value={documentLanguage}
+              onChange={e=>{setDocumentLanguage(e.target.value);setLastPdfUri('');setLastPdfName('');}}
+              className="rounded-md border px-3 py-2 bg-background text-sm">
+              <option value="he">עברית</option><option value="en">English</option>
+            </select>
+            {documentLanguage==='en'&&<p className="text-xs text-gray-600">הטקסטים הקבועים יתורגמו אוטומטית. תוכן חופשי דורש נוסח אנגלי מאושר לפני הפקה.</p>}
+          </div>
           <div>
             <Label>כותרת ההצעה (לשימוש פנימי)</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="לדוגמה: טיוטה למשפחת כהן" />
@@ -430,6 +442,7 @@ export default function ManualQuoteEditor() {
               linkedEventId={linkedEventId}
               linkedEvent={linkedEvent}
               templates={templates}
+              documentLanguage={documentLanguage}
             />
             <div className="flex justify-center">
               <BlockAdder onAdd={(b) => insertBlockAt(b, idx + 1)} label="הוסף קטע כאן" />
