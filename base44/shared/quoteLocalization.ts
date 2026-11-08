@@ -113,3 +113,79 @@ export function ensureCompleteEnglish(missing:Iterable<string>){
   (error as any).fields=list.slice(0,40);
   throw error;
 }
+
+const places=new Map([
+ ['ירושלים','Jerusalem'],['הכותל המערבי','Western Wall'],
+ ['ממילא','Mamilla'],['יפו העתיקה','Old Jaffa'],
+ ['זכרון יעקב','Zichron Yaakov'],['הר ציון','Mount Zion'],
+ ['קבר דוד המלך',"King David's Tomb"],['הרובע היהודי','Jewish Quarter'],
+ ['מונטיפיורי','Montefiore'],['דוד המלך','King David']
+]);
+// Only full-place matches; never attempt to "translate" arbitrary personal names.
+export function approvedPlace(value:unknown){
+ return places.get(String(value??'').trim())||null;
+}
+export function localizeEventQuoteData(input:{
+ event:any;services:any[];eventServices:any[];templates:any[];index:Map<string,any>;
+ options?:any
+}){
+ const {event,services,eventServices,templates,index,options={}}=input;
+ const missing=new Set<string>();
+ const field=(entity:string,id:string,key:string,source:any,label:string,catalogId?:string)=>{
+   if(typeof source!=='string'||!source.trim()||!isHebrew(source))return source;
+   const value=approvedField(index,entity,id,key,source)||
+     (catalogId&&approvedField(index,'Service',catalogId,key,source))||
+     indexedText(index,key,source)||
+     approvedPlace(source);
+   if(value)return value;
+   const fixed=fixedEnglishLabel(source);
+   if(fixed!==source)return fixed;
+   missing.add(label);
+   return source;
+ };
+ const e={...event};
+ for(const key of ['event_name','child_name','location','city','concept',
+  'services_section_title','standalone_services_title','external_services_title'])
+  e[key]=field('Event',event.id,key,event[key],'event.'+key);
+ if(!event.event_name)e.family_name=field('Event',event.id,'family_name',event.family_name,'event.family_name');
+ if(event.notes)e.notes=field('Event',event.id,'notes',event.notes,'event.notes');
+ if(Array.isArray(event.schedule)&&options.includeSchedule!==false){
+   e.schedule=event.schedule.map((item:any,i:number)=>({...item,
+     activity:field('Event',event.id,'schedule_'+i+'_activity',item.activity,'event.schedule_'+i+'_activity'),
+     notes:field('Event',event.id,'schedule_'+i+'_notes',item.notes,'event.schedule_'+i+'_notes')
+   }));
+ }
+ if(Array.isArray(event.parents)){
+   e.parents=event.parents.map((p:any,i:number)=>{
+     const id=String(p.id||i);
+     return {...p,name:field('Event',event.id,'contact_'+id+'_name',p.name,
+       'event.contact_'+id+'_name')};
+   });
+ }
+ const translatedServices=services.map(s=>({
+  ...s,
+  service_name:field('Service',s.id,'service_name',s.service_name,'catalog.service_name'),
+  service_description:field('Service',s.id,'service_description',s.service_description,'catalog.service_description')
+ }));
+ const translatedEventServices=eventServices.map(es=>{
+   if(es.is_external&&options.includeExternalServices===false)return es;
+   const serviceId=es.service_id;
+   const result={...es};
+   for(const key of ['service_name','service_description','package_name','package_description',
+      'client_notes','price_display_text']){
+     if(es[key]!==null&&es[key]!==undefined)
+       result[key]=field('EventService',es.id,key,es[key],'service.'+key,serviceId);
+   }
+   // Notes can be client-facing in the established price/notes renderer. 
+   // Never blindly translate or expose internal admin_notes.
+   if(es.notes)
+     result.notes=field('EventService',es.id,'notes',es.notes,'service.notes',serviceId);
+   return result;
+ });
+ const translatedTemplates=templates.map(t=>({
+  ...t,
+  content:field('QuoteTemplate',t.id,'content',t.content,'template.'+t.template_type)
+ }));
+ return {event:e,services:translatedServices,eventServices:translatedEventServices,
+   templates:translatedTemplates,missing};
+}
