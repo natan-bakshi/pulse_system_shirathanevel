@@ -1,0 +1,81 @@
+{
+  "name": "ContentTranslation",
+  "type": "object",
+  "properties": {
+    "source_entity": {
+      "type": "string",
+      "enum": [
+        "Service",
+        "Package",
+        "QuoteTemplate",
+        "Event",
+        "EventService",
+        "AppSettings",
+        "ModularQuote",
+        "ManualQuote"
+      ]
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "locale": {
+      "type": "string",
+      "enum": [
+        "en"
+      ]
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Per field: {source: exact Hebrew source, value: reviewed translation}. No mutation of the source entity."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "draft"
+      ],
+      "default": "draft"
+    },
+    "provenance": {
+      "type": "string",
+      "enum": [
+        "assistant_reviewed",
+        "human_reviewed",
+        "external_draft"
+      ]
+    },
+    "review_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_entity",
+    "source_id",
+    "locale",
+    "fields",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
