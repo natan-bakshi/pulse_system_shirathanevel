@@ -934,7 +934,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                               <DropdownMenuTrigger asChild>
                                 <Button size="sm" variant="outline" className="h-6 text-xs">
                                   <Badge className={getSupplierAssignmentStatusColor(status)}>
-                                    {t(getSupplierAssignmentStatusText(status)}
+                                    {t(getSupplierAssignmentStatusText(status))}
                                   </Badge>
                                 </Button>
                               </DropdownMenuTrigger>
@@ -946,7 +946,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                             </DropdownMenu>
                           ) : (
                             <Badge className={getSupplierAssignmentStatusColor(status)}>
-                              {t(getSupplierAssignmentStatusText(status)}
+                              {t(getSupplierAssignmentStatusText(status))}
                             </Badge>
                           )}
                           {isAdmin && (
