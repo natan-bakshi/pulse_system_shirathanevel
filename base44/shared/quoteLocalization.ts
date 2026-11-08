@@ -1,0 +1,115 @@
+// Shared, read-only translation selection. Stored Hebrew is never overwritten.
+// Only *approved* records whose source matches byte-for-byte are used.
+// No calls to an external AI provider occur here.
+export const LANGUAGE_EN='en';
+export function localeForQuote(value:unknown):'he'|'en'{
+  return value==='en'?'en':'he';
+}
+export function isHebrew(value:unknown):boolean{
+  return /[\u0590-\u05ff]/.test(String(value??''));
+}
+export function translationIndex(rows:any[]=[]){
+  const index=new Map<string,any>();
+  for(const row of rows){
+    if(row?.locale==='en'&&row.status==='approved'&&row.source_entity&&row.source_id)
+      index.set(row.source_entity+':'+row.source_id,row);
+  }
+  return index;
+}
+export async function loadQuoteTranslations(client:any,locale:unknown){
+  if(localeForQuote(locale)!=='en')return new Map<string,any>();
+  const rows=await client.asServiceRole.entities.ContentTranslation.filter({
+    locale:'en',status:'approved'
+  },'-updated_date',500);
+  return translationIndex(rows);
+}
+export function approvedField(index:Map<string,any>,entity:string,id:string,field:string,source:unknown){
+  if(typeof source!=='string')return null;
+  const x=index.get(entity+':'+id)?.fields?.[field];
+  return x?.source===source && typeof x?.value==='string' && x.value.trim()?x.value:null;
+}
+export function indexedText(index:Map<string,any>,field:string,source:unknown){
+  if(typeof source!=='string'||!source.trim())return null;
+  // Fallback for old, copied quote-item snapshots which contain a catalog text
+  // but not its original catalog item ID. Reject colliding translations.
+  const matches=new Set<string>();
+  for(const [key,row] of index){
+    if(!/^(Service|Package|QuoteTemplate):/.test(key))continue;
+    const pair=row?.fields?.[field];
+    if(pair?.source===source&&typeof pair.value==='string'&&pair.value.trim())
+      matches.add(pair.value);
+  }
+  return matches.size===1?[...matches][0]:null;
+}
+const labels=new Map<string,string>([
+  ['תאריך הפקה','Issue Date'],['כמות','Quantity'],
+  ['כמות משתתפים','Number of Guests'],['כמות מוזמנים','Number of Guests'],
+  ['שמות ההורים',"Parents' Names"],['עיר מגורים','City of Residence'],
+  ['אירוע ב','Event at '],['סיכום כספי','Financial Summary'],
+  ['תנאי תשלום','Payment Terms'],['תנאי התקשרות','Terms & Conditions'],
+  ['חבילת ההפקה כוללת','Your Production Package Includes'],
+  ['חבילות ושירותים','Packages & Services'],
+  ['שירותים נוספים','Additional Services'],['הערות','Notes'],
+  ['לוח זמנים','Schedule'],['סה"כ לחבילה','Package Total'],
+  ['סה״כ לחבילה','Package Total'],['סה"כ לפני מע"מ','Subtotal Before VAT'],
+  ['סה"כ כולל מע"מ','Total Including VAT'],
+  ['סה״כ לפני מע״מ','Subtotal Before VAT'],
+  ['סה״כ כולל מע״מ','Total Including VAT'],
+  ['מע"מ','VAT'],['מע״מ','VAT'],
+  ['כולל מע"מ','VAT included'],['לא כולל מע"מ','excluding VAT'],
+  ['כולל מע״מ','VAT included'],['לא כולל מע״מ','excluding VAT'],
+  ['איש קשר במקום','On-site contact'],
+  ['איש קשר','Contact person'],['שעה','Time'],['מיקום','Location'],
+  ['נסיעה','Journey'],['נקודה','Stop'],['שירות','Service'],
+  ['בר מצווה','Bar Mitzvah'],['בת מצווה','Bat Mitzvah'],
+  ['חתונה','Wedding'],['אירוע','Event']
+]);
+export function fixedEnglishLabel(value:unknown):string{
+  const source=String(value??'');
+  const clean=source.trim();
+  return labels.get(clean)??source;
+}
+export function localizeVisibleHtmlLabels(html:string):string{
+  // Text nodes only, never tags/attributes/URLs. Rich customer content should
+  // already have passed exact-source approval; this is only for fixed labels.
+  return html.replace(/>([^<>]*)</g,(_,text:string)=>{
+    const leading=text.match(/^\s*/)?.[0]||'';
+    const trailing=text.match(/\s*$/)?.[0]||'';
+    const value=text.trim();
+    if(labels.has(value))return '>'+leading+labels.get(value)+trailing+'<';
+    const match=value.match(/^(.+?)([:：])(\s*.*)$/);
+    if(match&&labels.has(match[1]))
+      return '>'+leading+labels.get(match[1])+match[2]+match[3]+trailing+'<';
+    // Standalone "אירוע ב..." without markup is a fixed label + variable.
+    if(value.startsWith('אירוע ב')&&value.length>6)
+      return '>'+leading+'Event at '+value.slice(6)+trailing+'<';
+    return '>'+text+'<';
+  });
+}
+export function applyDocumentDirection(html:string,locale:unknown):string{
+  if(localeForQuote(locale)!=='en')return html;
+  const ltrCss='<style data-quote-locale="en">html,body{direction:ltr;text-align:left} .page-content{direction:ltr} .section,.event-details-box,.package-content,.intro-content,.payment-terms,.event-notes{text-align:left;direction:ltr} .package-content{padding-left:15px!important;padding-right:0!important} .summary-table{direction:ltr} .summary-table td.label{text-align:left} .summary-table td.value{text-align:right}</style>';
+  return localizeVisibleHtmlLabels(html.replace(/<html([^>]*)>/i,(_x,attrs)=>
+    '<html'+attrs.replace(/\s+dir="[^"]*"/,'').replace(/\s+lang="[^"]*"/,'')+' lang="en" dir="ltr">')
+    .replace('</head>',ltrCss+'</head>'));
+}
+export function translateOrMissing(index:Map<string,any>,entity:string,id:string,field:string,
+ source:unknown,missing:Set<string>,label?:string){
+  if(typeof source!=='string'||!source.trim()||!isHebrew(source))return source;
+  const result=approvedField(index,entity,id,field,source)??indexedText(index,field,source);
+  if(result)return result;
+  // Fixed UI strings are not user-authored translations.
+  const fixed=fixedEnglishLabel(source);
+  if(fixed!==source)return fixed;
+  missing.add(label||field);
+  return source;
+}
+export function ensureCompleteEnglish(missing:Iterable<string>){
+  const list=[...new Set(missing)];
+  if(!list.length)return;
+  const error=new Error('The English quote has '+list.length+
+    ' untranslated or outdated content fields. Review the English fields before generating or sharing the quote.');
+  (error as any).code='ENGLISH_TRANSLATION_INCOMPLETE';
+  (error as any).fields=list.slice(0,40);
+  throw error;
+}
