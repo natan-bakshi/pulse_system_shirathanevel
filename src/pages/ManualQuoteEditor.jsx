@@ -62,8 +62,9 @@ export default function ManualQuoteEditor() {
         setTitle(q.title || 'הצעת מחיר ידנית');
         setDocumentLanguage(q.document_language==='en'?'en':'he');
         setLinkedEventId(q.linked_event_id || '');
-        setLastPdfUri(q.last_pdf_uri || '');
-        setLastPdfName(q.last_pdf_name || '');
+        const pdfMatchesLanguage=(q.last_pdf_language||'he')===(q.document_language==='en'?'en':'he');
+        setLastPdfUri(pdfMatchesLanguage?(q.last_pdf_uri||''):'');
+        setLastPdfName(pdfMatchesLanguage?(q.last_pdf_name||''):'');
         try {
           const parsed = q.blocks ? JSON.parse(q.blocks) : [];
           setBlocks(Array.isArray(parsed) ? parsed : []);
@@ -173,13 +174,13 @@ export default function ManualQuoteEditor() {
     // לאחר ייצור — עדכן את ה-state המקומי כדי שהכפתור "צפייה ב-PDF קיים" יופיע מיד
     try {
       const fresh = await base44.entities.ManualQuote.get(id);
-      if (fresh?.last_pdf_uri) {
+      if (fresh?.last_pdf_uri&&(fresh.last_pdf_language||'he')===documentLanguage) {
         setLastPdfUri(fresh.last_pdf_uri);
         setLastPdfName(fresh.last_pdf_name || '');
       }
     } catch {}
     return data;
-  }, [handleSave]);
+  }, [handleSave,documentLanguage]);
 
   const handleGeneratePdf = useCallback(async () => {
     setIsGenerating(true);
