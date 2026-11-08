@@ -472,7 +472,9 @@ export const interfaceLabels = Object.freeze({
   'עריכת פרטי אירוע באנגלית': 'Edit English Event Details',
   'לו"ז': 'Schedule',
   'מכין מסמך...': 'Preparing Document...',
-  'המסמך מוכן — לחץ לשיתוף': 'Document Ready — Select to Share'
+  'המסמך מוכן — לחץ לשיתוף': 'Document Ready — Select to Share',
+  'שירותים וחבילות': 'Services & Packages',
+  'שירותים לחבילה': 'Services to Package'
 });
 export const translateLabel = (value, locale = 'he') =>
   locale === 'en' ? (interfaceLabels[String(value)] ?? String(value)) : String(value);
