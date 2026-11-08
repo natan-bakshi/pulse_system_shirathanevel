@@ -35,6 +35,8 @@ import { Toaster as SonnerToaster } from "sonner";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import UserOnboardingTour from "@/components/onboarding/UserOnboardingTour";
 import CalendarSyncPrompt from "@/components/calendar/CalendarSyncPrompt";
+import LanguageSwitch from '@/i18n/LanguageSwitch';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 
 
@@ -100,6 +102,7 @@ const commonNavItems = [];
 
 
 export default function Layout({ children }) {
+  const {t,locale,dir}=useLanguage();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -994,7 +997,7 @@ export default function Layout({ children }) {
 
 
                   <item.icon className="h-4 w-4 lg:h-5 lg:w-5 ml-2 lg:ml-3" />
-                  <span className="font-medium">{item.title}</span>
+                  <span className="font-medium">{t(item.title)}</span>
                 </Link>
                 )}
             </nav>
@@ -1020,7 +1023,7 @@ export default function Layout({ children }) {
 
 
                   <LogOut className="h-4 w-4 ml-2" />
-                  יציאה
+                  {t('יציאה')}
                 </Button>
               </div>
             </div>
@@ -1072,6 +1075,8 @@ export default function Layout({ children }) {
           </div>
 
 
+          {/* Small native language control. No change to existing actions. */}
+          <LanguageSwitch />
           {/* פעמון התראות */}
           <div data-tour="notification-bell">
             <NotificationBell user={user} />
@@ -1108,10 +1113,10 @@ export default function Layout({ children }) {
         </header>
 
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative">
+          <main dir={dir} lang={locale} className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-[100vw] relative">
               <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full box-border overflow-x-hidden">
                 {canMountContent ? children : <div role="alert" className="rounded-lg bg-white p-5 text-gray-800">
-                  העמוד הזה אינו זמין לחשבון שלך. מעבירים אותך לדף המורשה שלך.
+                  {t('העמוד הזה אינו זמין לחשבון שלך. מעבירים אותך לדף המורשה שלך.')}
                 </div>}
               </div>
             <footer className="text-center text-xs text-gray-400 py-3 border-t border-white/10">
