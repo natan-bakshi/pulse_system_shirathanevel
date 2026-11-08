@@ -554,18 +554,56 @@ export default function QuoteTemplateManagement() {
     const handleSave = useCallback(async (templateData) => {
         setIsSaving(true);
         try {
-            if (templateData.id) {
-                await base44.entities.QuoteTemplate.update(templateData.id, templateData);
+            const {__english, ...data}=templateData;
+            const touched=__english?.touched||[];
+            if(touched.length){
+              for(const key of touched){
+                if(!['content','identifier'].includes(key))throw Error('Invalid English field');
+                const source=String(data[key]||''),value=String(__english.values[key]||'').trim();
+                if(value && (!source.trim()||!translationPreservesProtectedContent(source,value)))
+                  throw Error('English wording changed a number, link or template field: '+key);
+              }
+            }
+            let id=data.id;
+            if (id) {
+                await base44.entities.QuoteTemplate.update(id, data);
             } else {
-                await base44.entities.QuoteTemplate.create(templateData);
+                const created=await base44.entities.QuoteTemplate.create(data);
+                id=created.id;
+                // The Hebrew template has already committed. Any retry of
+                // the English write must update this same template, not create
+                // a second document template.
+                setEditingTemplate({...data,id});
+            }
+            if(touched.length){
+              const rows=await base44.entities.ContentTranslation.filter({
+                source_entity:'QuoteTemplate',source_id:id,locale:'en'
+              });
+              if(rows.length>1)throw Error('Duplicate English translations require review');
+              const old=rows[0];
+              if(__english.loadedRecord &&
+                (old?.id!==__english.loadedRecord.id||old?.updated_date!==__english.loadedRecord.updated_date))
+                throw Error('English content changed in another session. Reopen the template.');
+              if(!__english.loadedRecord && old)
+                throw Error('English content was added in another session. Reopen the template.');
+              const fields={...(old?.fields||{})};
+              for(const key of touched){
+                const source=String(data[key]||''),value=String(__english.values[key]||'').trim();
+                if(value)fields[key]={source,value};else delete fields[key];
+              }
+              if(old)await base44.entities.ContentTranslation.update(old.id,{
+                fields,status:'approved',provenance:'human_reviewed'
+              });
+              else if(Object.keys(fields).length)await base44.entities.ContentTranslation.create({
+                source_entity:'QuoteTemplate',source_id:id,locale:'en',fields,
+                status:'approved',provenance:'human_reviewed'
+              });
             }
             setEditingTemplate(null);
-            
-            // Invalidate cache to refresh templates
             queryClient.invalidateQueries({ queryKey: ['quoteTemplates'] });
         } catch (error) {
-            console.error("Failed to save template:", error);
-            alert("שגיאה בשמירת התבנית");
+            console.error('Failed to save template:', error);
+            alert('שגיאה בשמירת התבנית או הגרסה האנגלית: '+(error.message||''));
         } finally {
             setIsSaving(false);
         }
