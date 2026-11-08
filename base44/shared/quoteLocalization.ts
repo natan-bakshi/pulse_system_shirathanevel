@@ -220,6 +220,7 @@ export function localizeEventQuoteData(input:{
  e.__english_concept=approvedField(index,'Event',event.id,'concept',event.concept)||
    indexedText(index,'identifier',event.concept)||approvedPlace(event.concept)||null;
  if(event.notes)e.notes=field('Event',event.id,'notes',event.notes,'event.notes');
+ if(event.discount_reason)e.discount_reason=field('Event',event.id,'discount_reason',event.discount_reason,'event.discount_reason');
  // Custom event values can be rendered through organizer title templates.
  // Translate values only; the original field IDs must remain byte-for-byte.
  if(typeof event.custom_organizer_fields==='string'&&event.custom_organizer_fields.trim()){
@@ -261,6 +262,30 @@ export function localizeEventQuoteData(input:{
       'client_notes','price_display_text']){
      if(es[key]!==null&&es[key]!==undefined)
        result[key]=field('EventService',es.id,key,es[key],'service.'+key,serviceId);
+   }
+   // Public transport details are embedded in the quote, including names
+   // and pickup points. Keep their sequence, times and phone numbers intact.
+   if(typeof es.pickup_point==='string' && es.pickup_point.trim()){
+     try{
+       const units=JSON.parse(es.pickup_point);
+       if(Array.isArray(units))result.pickup_point=JSON.stringify(units.map((unit:any,u:number)=>({
+         ...unit,pickupPoints:(unit.pickupPoints||[]).map((point:any,p:number)=>({
+           ...point,
+           location:field('EventService',es.id,'pickup_'+u+'_'+p+'_location',point.location,
+             'service.pickup_'+u+'_'+p+'_location'),
+           contact:point.contact?{...point.contact,
+             name:field('EventService',es.id,'pickup_'+u+'_'+p+'_contact',point.contact.name,
+               'service.pickup_'+u+'_'+p+'_contact')}:point.contact
+         }))
+       })));
+     }catch{
+       result.pickup_point=field('EventService',es.id,'pickup_point',es.pickup_point,'service.pickup_point');
+     }
+   }
+   if(es.on_site_contact_details && typeof es.on_site_contact_details==='object'){
+     result.on_site_contact_details={...es.on_site_contact_details,
+       name:field('EventService',es.id,'on_site_contact_name',es.on_site_contact_details.name,
+         'service.on_site_contact_name')};
    }
    // Notes can be client-facing in the established price/notes renderer. 
    // Never blindly translate or expose internal admin_notes.
