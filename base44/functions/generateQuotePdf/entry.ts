@@ -42,7 +42,17 @@ Deno.serve(async (req) => {
         }
 
         // Generate HTML content
-        const { html, fileAndTitleName, margins } = await generateQuoteHtml(eventId, base44, { includeIntro, includePaymentTerms, includeSchedule, includeExternalServices, preloadedEvent: requestedEvent });
+        let resultHtml;
+        try{
+          resultHtml=await generateQuoteHtml(eventId, base44, { includeIntro,
+            includePaymentTerms, includeSchedule, includeExternalServices,
+            preloadedEvent: requestedEvent, language:body.language==='en'?'en':'he' });
+        }catch(error){
+          if(error?.code==='ENGLISH_TRANSLATION_INCOMPLETE')
+            return Response.json({error:error.message,fields:error.fields},{status:422});
+          throw error;
+        }
+        const {html,fileAndTitleName,margins}=resultHtml;
 
         const apiKey = Deno.env.get('API2PDF_API_KEY');
         if (!apiKey) {
