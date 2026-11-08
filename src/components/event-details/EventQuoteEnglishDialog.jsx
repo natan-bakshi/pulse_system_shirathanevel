@@ -8,10 +8,26 @@ import {Label} from '@/components/ui/label';
 import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 import {isHebrew,translationPreservesProtectedContent} from '../../../base44/shared/quoteLocalization.ts';
 
-const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes'};
+const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes',discount_reason:'Discount Reason'};
 const serviceFields={service_name:'Service name',service_description:'Description',package_name:'Package name',package_description:'Package description',client_notes:'Client-facing notes',price_display_text:'Custom price label',notes:'Other notes'};
 function liveValue(f,event,services){
- if(f.entity==='EventService')return services.find(s=>s.id===f.id)?.[f.key]||'';
+ if(f.entity==='EventService'){
+  const service=services.find(s=>s.id===f.id);
+  if(!service)return '';
+  if(f.key==='on_site_contact_name')return service.on_site_contact_details?.name||'';
+  const pickup=f.key.match(/^pickup_(\d+)_(\d+)_(location|contact)$/);
+  if(pickup){
+   try{
+    const point=JSON.parse(service.pickup_point||'[]')?.[Number(pickup[1])]?.pickupPoints?.[Number(pickup[2])];
+    return pickup[3]==='location'?(point?.location||''):(point?.contact?.name||'');
+   }catch{return '';}
+  }
+  return service[f.key]||'';
+ }
+ if(f.key.startsWith('custom_')){
+  try{return JSON.parse(event.custom_organizer_fields||'{}')?.[f.key.slice(7)]||'';}
+  catch{return '';}
+ }
  const m=f.key.match(/^schedule_(\d+)_(activity|notes)$/);
  if(m)return event.schedule?.[Number(m[1])]?.[m[2]]||'';
  if(f.key.startsWith('contact_')&&f.key.endsWith('_name')){
@@ -30,6 +46,12 @@ function collect(event,services,catalog,rows){
  };
  for(const [key,label] of Object.entries(eventFields))
   add('Event',event.id,key,event[key],label,'event');
+ if(typeof event.custom_organizer_fields==='string'&&event.custom_organizer_fields.trim()){
+  try{const fields=JSON.parse(event.custom_organizer_fields);
+   for(const [key,value] of Object.entries(fields||{}))
+    add('Event',event.id,'custom_'+key,value,'Organizer Field: '+key,'event');
+  }catch{}
+ }
 
  (event.parents||[]).forEach((p,i)=>
   add('Event',event.id,'contact_'+String(p.id||i)+'_name',p.name,"Contact's English spelling",'event'));
@@ -37,13 +59,32 @@ function collect(event,services,catalog,rows){
   add('Event',event.id,'schedule_'+i+'_activity',s.activity,'Schedule activity '+(i+1),'event');
   add('Event',event.id,'schedule_'+i+'_notes',s.notes,'Schedule notes '+(i+1),'event');
  });
- for(const service of services)for(const [key,label] of Object.entries(serviceFields)){
-  const source=service[key];
-  if(!source||!isHebrew(source))continue;
-  const approvedCatalog=rows.some(t=>t.source_entity==='Service'&&
-    t.source_id===service.service_id&&t.status==='approved'&&
-    t.fields?.[key]?.source===source);
-  if(!approvedCatalog)add('EventService',service.id,key,source,label,service.id);
+ for(const service of services){
+  for(const [key,label] of Object.entries(serviceFields)){
+   const source=service[key];
+   if(!source||!isHebrew(source))continue;
+   const approvedCatalog=rows.some(t=>t.source_entity==='Service'&&
+     t.source_id===service.service_id&&t.status==='approved'&&
+     t.fields?.[key]?.source===source&&
+     translationPreservesProtectedContent(source,t.fields?.[key]?.value||''));
+   if(!approvedCatalog)add('EventService',service.id,key,source,label,service.id);
+  }
+  add('EventService',service.id,'on_site_contact_name',
+    service.on_site_contact_details?.name,'On-site Contact Name',service.id);
+  const pickup=service.pickup_point;
+  if(typeof pickup==='string'&&pickup.trim()&&isHebrew(pickup)){
+   let parsed;
+   try{parsed=JSON.parse(pickup);}catch{}
+   if(Array.isArray(parsed)){
+    parsed.forEach((unit,u)=>(unit.pickupPoints||[]).forEach((point,p)=>{
+     add('EventService',service.id,'pickup_'+u+'_'+p+'_location',point.location,
+       'Journey '+(u+1)+' — Stop '+(p+1)+' Location',service.id);
+     add('EventService',service.id,'pickup_'+u+'_'+p+'_contact',point.contact?.name,
+       'Journey '+(u+1)+' — Stop '+(p+1)+' Contact Name',service.id);
+    }));
+   }else add('EventService',service.id,'pickup_point',pickup,
+       'Pickup Location / Transport Details',service.id);
+  }
  }
  return fields;
 }
