@@ -43,10 +43,16 @@ export default function WhatsAppCustomButtonEditor({
 }){
  const links=value?.links||[],reply=value?.replyLabel||'';
  const canReply=template?.type==='SUPPLIER_EVENT_REMINDER';
+ const canQuote=template?.type==='SUPPLIER_PENDING_REMINDER';
+ const quoteEnabled=value?.quoteSource==='assignment_new';
  const total=links.length+(reply?1:0);
  const update=(nextLinks,replyLabel=reply)=>onChange({
   kind:'custom',links:nextLinks,replyLabel
  });
+ const toggleQuote=checked=>onChange(checked?{
+  kind:'custom',links:[],replyLabel:'',quoteSource:'assignment_new'
+ }:{kind:'custom',links:[{kind:'supplier_calendar',
+  label:'כניסה למערכת',url:''}],replyLabel:''});
  const updateLink=(index,patch)=>update(links.map((item,i)=>i===index?{...item,...patch}:item));
  const add=()=>update([...links,{kind:'supplier_calendar',
   label:'כניסה למערכת',url:''}]);
@@ -62,7 +68,25 @@ export default function WhatsAppCustomButtonEditor({
     עד שלושה כפתורים בסך הכול, כולל כפתור תגובה.
    </p>
   </div>
-  {links.map((link,index)=>{
+  {canQuote&&<div className="rounded-md bg-white border p-3 space-y-2">
+   <label className="flex items-center gap-2 text-sm font-medium">
+    <input type="checkbox" checked={quoteEnabled} disabled={busy}
+     onChange={e=>toggleQuote(e.target.checked)}/>
+    ציטוט הודעת השיבוץ המקורית בתזכורת
+   </label>
+   <p className="text-xs text-gray-600">
+    אם קיימת הודעת שיבוץ קודמת באותו צ׳אט ובאותו מספר Green,
+    והיא מאומתת כי נמסרה או נקראה, התזכורת תישלח כתגובה מצוטטת ב־WhatsApp.
+    ציטוט אינו נתמך יחד עם כפתורים אינטראקטיביים, ולכן אפשרות זו מחליפה
+    את הכפתורים בתבנית. כשאין מקור מאומת התזכורת תישלח כטקסט רגיל.
+   </p>
+   <p className="text-xs text-amber-800">
+    הפעלה יזומה: לציטוט עשויה להתווסף קריאת בדיקה אחת ל־Green לכל הודעה.
+    לא חל על הודעות שכבר נוצרו בתור. Green מציינת שגם מזהה ציטוט
+    שנראה תקין עלול להיכשל במסירה; השתמש רק לאחר בדיקת מסירה מבוקרת.
+   </p>
+  </div>}
+  {!quoteEnabled&&links.map((link,index)=>{
    const choice=TYPES.find(item=>item.value===link.kind)||TYPES[0];
    return <div key={index} className="rounded-md border bg-white p-3 space-y-2">
     <div className="flex items-center justify-between gap-2">
@@ -119,7 +143,7 @@ export default function WhatsAppCustomButtonEditor({
     <p className="text-xs text-gray-600">{choice.hint}</p>
    </div>;
   })}
-  {total<3&&<Button type="button" variant="outline" size="sm"
+  {!quoteEnabled&&total<3&&<Button type="button" variant="outline" size="sm"
    disabled={busy} onClick={add}>
    <Plus className="w-4 h-4 ml-1"/> הוסף כפתור
   </Button>}
@@ -147,6 +171,9 @@ export default function WhatsAppCustomButtonEditor({
   <div className="space-y-2 rounded-md bg-white border p-3">
    <p className="text-xs font-semibold">כך יופיעו הכפתורים בהודעה</p>
    <div className="flex flex-wrap gap-2">
+    {quoteEnabled&&<span className="rounded border px-3 py-2 text-xs bg-gray-50">
+     ציטוט השיבוץ המקורי · הודעת טקסט ללא כפתורים
+    </span>}
     {reply&&<span className="rounded border px-3 py-2 text-xs bg-gray-50">
      {reply||'קיבלתי'} · תגובה
     </span>}
