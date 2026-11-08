@@ -225,8 +225,10 @@ export function localizeEventQuoteData(input:{
   e[key]=field('Event',event.id,key,event[key],'event.'+key);
  e.__english_concept=approvedField(index,'Event',event.id,'concept',event.concept)||
    indexedText(index,'identifier',event.concept)||approvedPlace(event.concept)||null;
- if(event.notes)e.notes=field('Event',event.id,'notes',event.notes,'event.notes');
- if(event.discount_reason)e.discount_reason=field('Event',event.id,'discount_reason',event.discount_reason,'event.discount_reason');
+ if(event.notes&&options.includeEventNotes!==false)
+   e.notes=field('Event',event.id,'notes',event.notes,'event.notes');
+ if(event.discount_reason&&options.includeFinancialSummary!==false)
+   e.discount_reason=field('Event',event.id,'discount_reason',event.discount_reason,'event.discount_reason');
  // Custom event values can be rendered through organizer title templates.
  // Translate values only; the original field IDs must remain byte-for-byte.
  if(typeof event.custom_organizer_fields==='string'&&event.custom_organizer_fields.trim()){
@@ -255,13 +257,13 @@ export function localizeEventQuoteData(input:{
        'event.contact_'+id+'_name')};
    });
  }
- const translatedServices=services.map(s=>({
+ const translatedServices=options.includeServices===false?services:services.map(s=>({
   ...s,
   service_name:field('Service',s.id,'service_name',s.service_name,'catalog.service_name'),
   service_description:field('Service',s.id,'service_description',s.service_description,'catalog.service_description')
  }));
  const translatedEventServices=eventServices.map(es=>{
-   if(es.is_external&&options.includeExternalServices===false)return es;
+   if(options.includeServices===false||es.is_external&&options.includeExternalServices===false)return es;
    const serviceId=es.service_id;
    const result={...es};
    for(const key of ['service_name','service_description','package_name','package_description',
@@ -299,9 +301,11 @@ export function localizeEventQuoteData(input:{
      result.notes=field('EventService',es.id,'notes',es.notes,'service.notes',serviceId);
    return result;
  });
+ const requiredIds=Array.isArray(options.requiredTemplateIds)?new Set(options.requiredTemplateIds):null;
  const translatedTemplates=templates.map(t=>({
   ...t,
-  content:field('QuoteTemplate',t.id,'content',t.content,'template.'+t.template_type)
+  content:requiredIds&&!requiredIds.has(t.id)?t.content:
+    field('QuoteTemplate',t.id,'content',t.content,'template.'+t.template_type)
  }));
  return {event:e,services:translatedServices,eventServices:translatedEventServices,
    templates:translatedTemplates,missing};
