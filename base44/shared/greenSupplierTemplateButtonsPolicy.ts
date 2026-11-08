@@ -16,7 +16,8 @@ const LABEL=/^[^\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]{0,25}$/u;
 const MAX_KEYS=80;
 const MAX_JSON=24000;
 export type CustomSupplierTemplateButtons={
- kind:'custom';links:GreenCustomLink[];replyLabel:string
+ kind:'custom';links:GreenCustomLink[];replyLabel:string;
+ quoteSource?:'assignment_new'
 };
 export type SupplierTemplateButtons=NavigationButtons|CustomSupplierTemplateButtons;
 export type TemplateButtonPolicy={
@@ -56,15 +57,22 @@ function normalizeButtons(value:any):NavigationButtons{
 }
 export function normalizeCustomButtons(value:any):CustomSupplierTemplateButtons{
  if(!value||typeof value!=='object'||Array.isArray(value)||
-  Object.keys(value).sort().join(',')!=='kind,links,replyLabel'||
+  !['kind,links,replyLabel','kind,links,quoteSource,replyLabel'].includes(
+   Object.keys(value).sort().join(','))||
   value.kind!=='custom'||typeof value.replyLabel!=='string'||
   !LABEL.test(value.replyLabel)||value.replyLabel!==value.replyLabel.trim())
   throw error('invalid_custom_buttons');
  const links=normalizeCustomLinks(value.links);
+ const quoteSource=value.quoteSource;
+ if(quoteSource!==undefined&&quoteSource!=='assignment_new')
+  throw error('invalid_quote_source');
+ if(quoteSource&&(links.length!==0||!!value.replyLabel))
+  throw error('quote_requires_text_only');
  if(links.length+Number(!!value.replyLabel)>3||
-  links.length+Number(!!value.replyLabel)<1)
+  (links.length+Number(!!value.replyLabel)<1&&!quoteSource))
   throw error('one_to_three_buttons_required');
- return {kind:'custom',links,replyLabel:value.replyLabel};
+ return {kind:'custom',links,replyLabel:value.replyLabel,
+  ...(quoteSource?{quoteSource}:{} )};
 }
 export function normalizeSupplierTemplateButtonPolicy(raw:any):TemplateButtonPolicy{
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
@@ -145,6 +153,8 @@ export async function saveSupplierTemplateButtonPolicy(client:any,input:any){
    const template=eligible.get(id);
    if(!template)throw error('template_not_supplier_whatsapp_eligible',400);
    if(isCustomSupplierButtons(selection)){
+    if(selection.quoteSource&&template.type!=='SUPPLIER_PENDING_REMINDER')
+     throw error('quote_requires_pending_assignment_reminder');
     if(selection.replyLabel&&template.type!=='SUPPLIER_EVENT_REMINDER')
      throw error('reply_requires_supplier_event_reminder');
     if(selection.links.some(link=>link.kind==='event_details')&&
