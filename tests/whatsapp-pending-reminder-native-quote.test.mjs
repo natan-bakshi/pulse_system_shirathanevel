@@ -210,6 +210,11 @@ test('unsupported target template cannot be used for quote-only settings',async(
   expectedVersion:1,templates:setting.templates
  }),/quote_requires_pending_assignment_reminder/);
 });
+test('central worker passes a queued/retry_wait pre-claim job, and quotation remains eligible',()=>{
+ assert.equal(optedInPendingQuote({...makeJob(),status:'queued'},'green',account),true);
+ assert.equal(optedInPendingQuote({...makeJob(),status:'retry_wait'},'green',account),true);
+ assert.equal(optedInPendingQuote({...makeJob(),status:'unknown'},'green',account),false);
+});
 test('Green sendMessage integration makes exactly one GetMessage and ONE send when quote verified',async()=>{
  const oldDeno=globalThis.Deno,oldFetch=globalThis.fetch;
  const calls=[],f=fixture();
