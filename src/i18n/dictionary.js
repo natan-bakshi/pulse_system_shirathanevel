@@ -423,7 +423,13 @@ export const interfaceLabels = Object.freeze({
   'ערוך תנאי התקשרות רק עבור הצעה זו (לא משנה את התבנית הגלובלית)': 'Customize Agreement Terms for This Quote Only (Does Not Change the Global Template)',
   'טקסט פתיח מותאם להצעה זו...': 'Custom Introduction for This Quote...',
   'תנאי תשלום מותאמים להצעה זו...': 'Custom Payment Terms for This Quote...',
-  'תנאי התקשרות מותאמים להצעה זו...': 'Custom Agreement Terms for This Quote...'
+  'תנאי התקשרות מותאמים להצעה זו...': 'Custom Agreement Terms for This Quote...',
+  'צפה ב-PDF הקיים': 'View Existing PDF',
+  'הטקסטים הקבועים יתורגמו אוטומטית. תוכן חופשי דורש נוסח אנגלי מאושר לפני הפקה.': 'Fixed labels will be translated automatically. Custom content must have approved English wording before PDF generation.',
+  'לדוגמה: טיוטה למשפחת כהן': 'Example: Quote Draft for the Cohen Family',
+  'העורך מחולק לקטעים. הוסף קטעים בסוגים השונים, סדר אותם בסדר הרצוי, ולחץ על "הפק PDF" כדי לייצר את ההצעה. ה-PDF יופק עם אותו רקע, שוליים ועיצוב כמו הצעות המחיר הרגילות.': 'The editor is organized into sections. Add and reorder the sections you need, then select Generate PDF. The PDF uses the same background, margins, and styling as standard quotes.',
+  'יש לשייך אירוע למעלה': 'Link an Event Above First',
+  'בנה הצעה רגילה כנקודת התחלה': 'Start from a Standard Event Quote'
 });
 export const translateLabel = (value, locale = 'he') =>
   locale === 'en' ? (interfaceLabels[String(value)] ?? String(value)) : String(value);
