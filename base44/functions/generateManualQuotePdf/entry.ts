@@ -739,7 +739,8 @@ export default async function(req) {
       await quoteEntity.update(savedQuoteId, {
         last_pdf_uri: fileUri,
         last_pdf_name: fileName,
-        ...(modularQuoteId ? {} : { status: 'finalized' })
+        ...(modularQuoteId ? {} : { status: 'finalized',
+          last_pdf_language: manualQuote.document_language==='en'?'en':'he' })
       });
 
       // Append to event quote_history if linked
