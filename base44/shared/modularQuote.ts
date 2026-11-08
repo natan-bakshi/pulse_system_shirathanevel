@@ -1,6 +1,7 @@
 import sanitizeHtml from 'npm:sanitize-html@2.17.0';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
+import {loadQuoteTranslations, indexedText, isHebrew, fixedEnglishLabel, applyDocumentDirection, ensureCompleteEnglish} from './quoteLocalization.ts';
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rich = (value) => sanitizeHtml(String(value || ''), {allowedTags: ['p','br','strong','b','em','i','u','s','h1','h2','h3','h4','ul','ol','li','blockquote','a','span','div','table','tbody','thead','tr','td','th','hr'], allowedAttributes: {'a':['href','target','rel'], '*':['style']}, allowedStyles: {'*': {'text-align':[/^(left|right|center|justify)$/], 'color':[/^#[0-9a-f]{3,8}$/i], 'font-size':[/^\d+(px|pt)$/], 'line-height':[/^[\d.]+$/]}}});
@@ -9,6 +10,10 @@ const fmt = value => '₪' + num(value).toLocaleString('he-IL', {minimumFraction
 
 export function modularTitle(c = {}) {
   const type = c.show_event_type !== false ? String(c.event_type || '').trim() : '';
+  if(c.document_language==='en'&&!c.custom_title){
+    const concept=c.show_concept!==false?String(c.concept||'').trim():'';
+    return `Modular Quotation${type?` for ${type}`:''}${concept?` — ${concept}`:''}`;
+  }
   const concept = c.show_concept !== false ? String(c.concept || '').trim() : '';
   if (!c.custom_title) return `הצעת מחיר מודולרית${type ? ` ל${type}` : ''}${concept ? ` בקונספט ${concept}` : ''}`;
   let title = String(c.custom_title);
@@ -20,8 +25,47 @@ export function modularTitle(c = {}) {
 export async function composeModularQuoteHtml(quote, client) {
   const rows = await client.asServiceRole.entities.AppSettings.list();
   const settings = Object.fromEntries(rows.map(s => [s.setting_key,s.setting_value]));
-  const c = quote.content || {};
+  const original=quote.content || {};
+  const english=original.document_language==='en';
+  const missing=new Set();
+  const translations=await loadQuoteTranslations(client,original.document_language);
+  const translation=(source,field,label,manualPair=null)=>{
+    if(!english||!source||!isHebrew(source))return source;
+    if(manualPair?.source===source&&typeof manualPair.value==='string'&&manualPair.value.trim())return manualPair.value;
+    const predefined=fixedEnglishLabel(source);
+    if(predefined!==source)return predefined;
+    const stored=indexedText(translations,field,source);
+    if(stored)return stored;
+    missing.add(label);return source;
+  };
+  const localizeItem=item=>{
+    if(!english||item.visible===false||original.show_services===false)return item;
+    const field=item.kind==='package'?'package_name':'service_name';
+    const descriptionField=item.kind==='package'?'package_description':'service_description';
+    return {...item,
+      name:translation(item.name,field,'item_name',item.english?.name),
+      description:original.show_descriptions!==false&&item.show_description!==false
+        ?translation(item.description,descriptionField,'item_description',item.english?.description):item.description,
+      client_notes:translation(item.client_notes,'client_notes','item_client_notes',item.english?.client_notes),
+      children:Array.isArray(item.children)?item.children.map(localizeItem):[]
+    };
+  };
+  const c=english?{...original,
+    event_type:translation(original.event_type,'event_type','event_type',original.english?.event_type),
+    concept:translation(original.concept,'identifier','concept',original.english?.concept),
+    custom_title:original.show_title!==false
+      ?translation(original.custom_title,'custom_title','custom_title',original.english?.custom_title):original.custom_title,
+    services_title:translation(original.services_title,'services_title','services_title',original.english?.services_title),
+    intro:original.show_intro!==false?translation(original.intro,'content','intro',original.english?.intro):original.intro,
+    payment_terms:original.show_payment_terms!==false?translation(original.payment_terms,'content','payment_terms',original.english?.payment_terms):original.payment_terms,
+    agreement:original.show_agreement!==false?translation(original.agreement,'content','agreement',original.english?.agreement):original.agreement,
+    notes:translation(original.notes,'notes','notes',original.english?.notes),
+    items:(original.items||[]).map(localizeItem)
+  }:original;
   const title = c.show_title === false ? '' : modularTitle(c);
+  if(english && settings.quote_show_footer==='true' && isHebrew(settings.quote_footer_text||''))
+    missing.add('footer');
+  if(english)ensureCompleteEnglish(missing);
   const vat = Number(settings.vat_rate || 18) / 100;
   const visibleItems = (Array.isArray(c.items) ? c.items : []).filter(i => i.visible !== false);
   const bodySize = settings.quote_body_font_size || '15';
@@ -40,5 +84,5 @@ export async function composeModularQuoteHtml(quote, client) {
   const heading = title || (c.show_quantity !== false && c.guest_count) ? `<div class="event-details-box">${title?`<strong style="font-size:calc(${settings.quote_event_details_font_size||bodySize}px + 1px);">${esc(title)}</strong>`:''}${c.show_quantity !== false && c.guest_count?`<div><strong>כמות משתתפים:</strong> ${esc(num(c.guest_count))}</div>`:''}</div>` : '';
   const body = `${heading}${c.show_intro !== false && c.intro ? `<div class="section"><div class="intro-content">${rich(c.intro)}</div></div>` : ''}${c.show_services !== false && visibleItems.length ? `<div class="section services-section">${c.services_title !== ''?`<h2 class="section-title">${esc(c.services_title??'חבילות ושירותים')}</h2>`:''}${visibleItems.map(i=>renderItem(i)).join('')}</div>`:''}${c.show_prices !== false && c.show_summary !== false && c.show_services !== false ? `<div class="section summary-section" style="margin-top:50px;page-break-inside:avoid;"><h2 class="section-title">סיכום כספי</h2><table class="summary-table"><tr><td class="label">סה״כ לפני מע״מ:</td><td class="value">${fmt(beforeVat)}</td></tr><tr><td class="label">מע״מ (${vat*100}%):</td><td class="value">${fmt(beforeVat*vat)}</td></tr><tr class="total"><td class="label">סה״כ כולל מע״מ:</td><td class="value">${fmt(beforeVat*(1+vat))}</td></tr></table></div>`:''}${c.show_payment_terms !== false && c.payment_terms?`<div class="section payment-section" style="margin-top:50px;page-break-inside:avoid;"><h2 class="section-title">תנאי תשלום</h2><div class="payment-terms">${rich(c.payment_terms)}</div></div>`:''}${c.show_agreement !== false && c.agreement?`<div class="payment-terms">${rich(c.agreement)}</div>`:''}${c.notes?`<div class="section"><div class="event-notes">${rich(c.notes)}</div></div>`:''}`;
   const html = `<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title||'הצעה מודולרית')}</title>${quoteDocumentStyle(settings)}</head><body><table style="width:100%;border-collapse:collapse;border:none;"><thead><tr><td><div style="height:${settings.quote_margin_top_mm||'20'}mm;">&nbsp;</div></td></tr></thead><tbody><tr><td><div class="page-content">${body}${settings.quote_show_footer==='true'?`<div class="footer"><div>${esc(settings.quote_footer_text)}</div></div>`:''}</div></td></tr></tbody><tfoot><tr><td><div style="height:${settings.quote_margin_bottom_mm||'35'}mm;">&nbsp;</div></td></tr></tfoot></table></body></html>`;
-  return {html, fileBaseName: title || 'הצעה מודולרית', event:null};
+  return {html:applyDocumentDirection(html,original.document_language), fileBaseName: title || 'הצעה מודולרית', event:null,locale:english?'en':'he'};
 }
