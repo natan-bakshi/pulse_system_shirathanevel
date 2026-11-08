@@ -345,11 +345,12 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
 }
 
 function NotLinkedNotice() {
+  const {t}=useLanguage();
   return (
     <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
       <Info className="h-4 w-4 mt-0.5 shrink-0" />
       <div>
-        קטע זה דורש אירוע משויך. שייך אירוע בראש העמוד כדי שהתוכן יומשך מהאירוע אוטומטית בעת ייצוא ה-PDF.
+        {t('קטע זה דורש אירוע משויך. שייך אירוע בראש העמוד כדי שהתוכן יומשך מהאירוע אוטומטית בעת ייצוא ה-PDF.')}
       </div>
     </div>
   );
@@ -364,6 +365,7 @@ function NotLinkedNotice() {
  * הנוכחי בעיצובו ויוכל לערוך/לשנות/למחוק אותו.
  */
 function CustomContentToggle({ block, updateOptions, label, placeholder, defaultContent = '' }) {
+  const {t}=useLanguage();
   const useCustom = !!block.options?.useCustomContent;
 
   const handleToggle = (v) => {
@@ -390,7 +392,7 @@ function CustomContentToggle({ block, updateOptions, label, placeholder, default
           value={block.options?.customContent || ''}
           onChange={(html) => updateOptions({ customContent: html })}
           minHeight={140}
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
         />
       )}
     </div>
