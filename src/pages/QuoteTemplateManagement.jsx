@@ -14,6 +14,7 @@ import ManualQuoteTabs from "@/components/manualQuote/ManualQuoteTabs";
 import OrganizerTypesTab from "@/components/quotes/OrganizerTypesTab";
 import EnglishDraftButton from "@/i18n/EnglishDraftButton";
 import {translationPreservesProtectedContent} from "../../base44/shared/quoteLocalization.ts";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const quillModules = {
   toolbar: [
@@ -42,6 +43,7 @@ const quillFormats = [
 ];
 
 function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
+    const {t}=useLanguage();
     const [content, setContent] = useState(template.content);
     const [identifier, setIdentifier] = useState(template.identifier);
     const [customConcept, setCustomConcept] = useState('');
@@ -96,30 +98,30 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
     return (
       <Card className="mt-4 bg-white/95">
         <CardHeader>
-          <CardTitle>{template.id ? `עריכת תבנית: ${template.identifier}` : 'תבנית פתיח חדשה'}</CardTitle>
+          <CardTitle>{template.id ? `${t('עריכת תבנית')}: ${template.identifier}` : t('תבנית פתיח חדשה')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>מזהה (שם קונספט)</Label>
+            <Label>{t('מזהה (שם קונספט)')}</Label>
             {template.template_type === 'concept_intro' ? (
                 <div className="space-y-2">
                     <Select value={identifier} onValueChange={(value) => {
                         setIdentifier(value);
                         setCustomConcept('');
                     }} disabled={isSaving}>
-                        <SelectTrigger><SelectValue placeholder="בחר קונספט"/></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t("בחר קונספט")}/></SelectTrigger>
                         <SelectContent>
                             {concepts.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                    <div className="text-xs text-gray-500">או הכנס שם קונספט חדש:</div>
+                    <div className="text-xs text-gray-500">{t('או הכנס שם קונספט חדש:')}</div>
                     <Input
                         value={customConcept}
                         onChange={(e) => {
                             setCustomConcept(e.target.value);
                             setIdentifier('');
                         }}
-                        placeholder="שם קונספט חדש..."
+                        placeholder={t("שם קונספט חדש...")}
                         disabled={isSaving}
                     />
                     </div>
@@ -131,7 +133,7 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
                     {(template.template_type === 'concept_intro' || template.template_type === 'agreement_disclaimer') && (
                     <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>גודל פונט (px)</Label>
+                      <Label>{t('גודל פונט (px)')}</Label>
                       <Input 
                           type="number" 
                           value={fontSize} 
@@ -140,7 +142,7 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
                       />
                     </div>
                     <div>
-                      <Label>מרווח שורות</Label>
+                      <Label>{t('מרווח שורות')}</Label>
                       <Input 
                           type="number" 
                           step="0.1" 
@@ -153,7 +155,7 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
                     )}
 
                     <div>
-                    <Label>תוכן</Label>
+                    <Label>{t('תוכן')}</Label>
             <ReactQuill 
                 theme="snow" 
                 value={content} 
@@ -190,10 +192,10 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
 
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel} disabled={isSaving}>ביטול</Button>
+          <Button variant="ghost" onClick={onCancel} disabled={isSaving}>{t('ביטול')}</Button>
           <Button onClick={handleInternalSave} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-            שמור תבנית
+            {t('שמור תבנית')}
           </Button>
         </CardFooter>
       </Card>
@@ -201,6 +203,7 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
 }
 
 function QuoteSettings({ isSaving, setIsSaving }) {
+    const {t}=useLanguage();
     const [isUploading, setIsUploading] = useState(false);
     const queryClient = useQueryClient();
 
@@ -322,13 +325,13 @@ function QuoteSettings({ isSaving, setIsSaving }) {
     return (
         <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
             <CardHeader>
-                <CardTitle>הגדרות הצעת מחיר</CardTitle>
+                <CardTitle>{t('הגדרות הצעת מחיר')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 max-h-[70vh] overflow-y-auto">
                 
                 {/* General Settings */}
                 <div className="space-y-4 border p-4 rounded-lg bg-gray-50/50">
-                    <h3 className="font-bold text-lg text-gray-800 border-b pb-2">הגדרות כלליות</h3>
+                    <h3 className="font-bold text-lg text-gray-800 border-b pb-2">{t('הגדרות כלליות')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex items-center gap-2">
                             <input
@@ -338,10 +341,10 @@ function QuoteSettings({ isSaving, setIsSaving }) {
                                 onChange={(e) => handleSettingChange('quote_hide_logo', e.target.checked)}
                                 className="h-4 w-4"
                             />
-                            <Label htmlFor="quote_hide_logo">הסתר לוגו</Label>
+                            <Label htmlFor="quote_hide_logo">{t('הסתר לוגו')}</Label>
                         </div>
                         <div>
-                            <Label htmlFor="quote_text_color">צבע טקסט ראשי</Label>
+                            <Label htmlFor="quote_text_color">{t('צבע טקסט ראשי')}</Label>
                             <div className="flex gap-2">
                                 <Input
                                     type="color"
@@ -360,12 +363,12 @@ function QuoteSettings({ isSaving, setIsSaving }) {
                     </div>
                     
                     <div>
-                        <Label>תמונת רקע</Label>
+                        <Label>{t('תמונת רקע')}</Label>
                         <div className="mt-2 flex items-center gap-4">
                             <Input
                                 value={localSettings.quote_background_image}
                                 onChange={(e) => handleSettingChange('quote_background_image', e.target.value)}
-                                placeholder="הדבק URL או העלה קובץ"
+                                placeholder={t("הדבק URL או העלה קובץ")}
                             />
                             <Input
                                 type="file"
@@ -379,35 +382,35 @@ function QuoteSettings({ isSaving, setIsSaving }) {
                                 <Button asChild variant="outline" disabled={isUploading}>
                                     <span>
                                         {isUploading ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <UploadCloud className="h-4 w-4 ml-2" />}
-                                        העלה
+                                        {t('העלה')}
                                     </span>
                                 </Button>
                             </Label>
                         </div>
                         {localSettings.quote_background_image && (
-                            <img src={localSettings.quote_background_image} alt="רקע" className="h-32 w-auto mt-2 rounded-lg object-cover border" />
+                            <img src={localSettings.quote_background_image} alt={t("רקע")} className="h-32 w-auto mt-2 rounded-lg object-cover border" />
                         )}
                     </div>
                 </div>
 
                 {/* Margins */}
                 <div className="space-y-4 border p-4 rounded-lg bg-gray-50/50">
-                    <h3 className="font-bold text-lg text-gray-800 border-b pb-2">שוליים (מילימטרים)</h3>
+                    <h3 className="font-bold text-lg text-gray-800 border-b pb-2">{t('שוליים (מילימטרים)')}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                            <Label>עליון</Label>
+                            <Label>{t('עליון')}</Label>
                             <Input type="number" value={localSettings.quote_margin_top_mm} onChange={(e) => handleSettingChange('quote_margin_top_mm', e.target.value)} />
                         </div>
                         <div>
-                            <Label>תחתון</Label>
+                            <Label>{t('תחתון')}</Label>
                             <Input type="number" value={localSettings.quote_margin_bottom_mm} onChange={(e) => handleSettingChange('quote_margin_bottom_mm', e.target.value)} />
                         </div>
                         <div>
-                            <Label>ימין</Label>
+                            <Label>{t('ימין')}</Label>
                             <Input type="number" value={localSettings.quote_margin_right_mm} onChange={(e) => handleSettingChange('quote_margin_right_mm', e.target.value)} />
                         </div>
                         <div>
-                            <Label>שמאל</Label>
+                            <Label>{t('שמאל')}</Label>
                             <Input type="number" value={localSettings.quote_margin_left_mm} onChange={(e) => handleSettingChange('quote_margin_left_mm', e.target.value)} />
                         </div>
                     </div>
@@ -415,40 +418,40 @@ function QuoteSettings({ isSaving, setIsSaving }) {
 
                 {/* Typography & Spacing - Grouped by Section */}
                 <div className="space-y-4 border p-4 rounded-lg bg-gray-50/50">
-                    <h3 className="font-bold text-lg text-gray-800 border-b pb-2">טיפוגרפיה וריווח לפי מקטעים</h3>
+                    <h3 className="font-bold text-lg text-gray-800 border-b pb-2">{t('טיפוגרפיה וריווח לפי מקטעים')}</h3>
                     
                     {/* General Body */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
-                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">טקסט כללי (גוף השירותים)</div>
+                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">{t('טקסט כללי (גוף השירותים)')}</div>
                         <div>
-                            <Label>גודל פונט (px)</Label>
+                            <Label>{t('גודל פונט (px)')}</Label>
                             <Input type="number" value={localSettings.quote_body_font_size} onChange={(e) => handleSettingChange('quote_body_font_size', e.target.value)} />
                         </div>
                         <div>
-                            <Label>מרווח שורות</Label>
+                            <Label>{t('מרווח שורות')}</Label>
                             <Input type="number" step="0.1" value={localSettings.quote_line_height} onChange={(e) => handleSettingChange('quote_line_height', e.target.value)} />
                         </div>
                     </div>
 
                     {/* Titles */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
-                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">כותרות</div>
+                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">{t('כותרות')}</div>
                         <div>
-                            <Label>גודל פונט (px)</Label>
+                            <Label>{t('גודל פונט (px)')}</Label>
                             <Input type="number" value={localSettings.quote_title_font_size} onChange={(e) => handleSettingChange('quote_title_font_size', e.target.value)} />
                         </div>
-                        <div className="text-xs text-gray-400 flex items-center">משפיע על כותרות הסעיפים ושמות החבילות</div>
+                        <div className="text-xs text-gray-400 flex items-center">{t('משפיע על כותרות הסעיפים ושמות החבילות')}</div>
                     </div>
 
                     {/* Event Details */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
-                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">פרטי המשפחה והאירוע</div>
+                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">{t('פרטי המשפחה והאירוע')}</div>
                         <div>
-                            <Label>גודל פונט (px)</Label>
+                            <Label>{t('גודל פונט (px)')}</Label>
                             <Input type="number" value={localSettings.quote_event_details_font_size} onChange={(e) => handleSettingChange('quote_event_details_font_size', e.target.value)} />
                         </div>
                         <div>
-                            <Label>מרווח שורות</Label>
+                            <Label>{t('מרווח שורות')}</Label>
                             <Input type="number" step="0.1" value={localSettings.quote_event_details_line_height} onChange={(e) => handleSettingChange('quote_event_details_line_height', e.target.value)} />
                         </div>
                     </div>
@@ -465,11 +468,11 @@ function QuoteSettings({ isSaving, setIsSaving }) {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">סיכום כספי ותנאי תשלום</div>
                             <div>
-                                <Label>גודל פונט (px)</Label>
+                                <Label>{t('גודל פונט (px)')}</Label>
                                 <Input type="number" value={localSettings.quote_summary_font_size} onChange={(e) => handleSettingChange('quote_summary_font_size', e.target.value)} />
                             </div>
                             <div>
-                                <Label>מרווח שורות</Label>
+                                <Label>{t('מרווח שורות')}</Label>
                                 <Input type="number" step="0.1" value={localSettings.quote_summary_line_height} onChange={(e) => handleSettingChange('quote_summary_line_height', e.target.value)} />
                             </div>
                         </div>
@@ -513,6 +516,7 @@ function QuoteSettings({ isSaving, setIsSaving }) {
 }
 
 export default function QuoteTemplateManagement() {
+    const {t,dir}=useLanguage();
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const queryClient = useQueryClient();
@@ -649,20 +653,20 @@ export default function QuoteTemplateManagement() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-white">ניהול תבניות הצעות מחיר</h1>
+                <h1 className="text-3xl font-bold text-white">{t('ניהול תבניות הצעות מחיר')}</h1>
             </div>
 
-            <Tabs defaultValue="settings" className="space-y-6">
+            <Tabs defaultValue="settings" dir={dir} className="space-y-6">
                 <TabsList className="bg-white/95 backdrop-blur-sm shadow-xl flex-wrap h-auto">
-                    <TabsTrigger value="settings">הגדרות הצעה</TabsTrigger>
-                    <TabsTrigger value="organizer_types">סוגי הזמנות</TabsTrigger>
-                    <TabsTrigger value="intro">פתיחים</TabsTrigger>
-                    <TabsTrigger value="payment">תנאי תשלום</TabsTrigger>
-                    <TabsTrigger value="agreement">תנאי התקשרות</TabsTrigger>
+                    <TabsTrigger value="settings">{t('הגדרות הצעה')}</TabsTrigger>
+                    <TabsTrigger value="organizer_types">{t('סוגי הזמנות')}</TabsTrigger>
+                    <TabsTrigger value="intro">{t('פתיחים')}</TabsTrigger>
+                    <TabsTrigger value="payment">{t('תנאי תשלום')}</TabsTrigger>
+                    <TabsTrigger value="agreement">{t('תנאי התקשרות')}</TabsTrigger>
                     {manualQuoteEnabled && (
                         <TabsTrigger value="manual" className="flex items-center gap-1">
                             <FileText className="h-4 w-4" />
-                            הצעות מחיר ידניות
+                            {t('הצעות מחיר ידניות')}
                         </TabsTrigger>
                     )}
                 </TabsList>
@@ -679,10 +683,10 @@ export default function QuoteTemplateManagement() {
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
                         <CardHeader>
                             <div className="flex justify-between items-center">
-                                <CardTitle>תבניות פתיח לקונספטים</CardTitle>
+                                <CardTitle>{t('תבניות פתיח לקונספטים')}</CardTitle>
                                 <Button onClick={() => setEditingTemplate({ template_type: 'concept_intro', identifier: '', content: '' })}>
                                     <Plus className="h-4 w-4 ml-2" />
-                                    פתיח חדש
+                                    {t('פתיח חדש')}
                                 </Button>
                             </div>
                         </CardHeader>
@@ -704,7 +708,7 @@ export default function QuoteTemplateManagement() {
                                     </div>
                                 ))}
                                 {conceptIntroTemplates.length === 0 && (
-                                    <p className="text-center text-gray-500 py-4">אין פתיחים מוגדרים</p>
+                                    <p className="text-center text-gray-500 py-4">{t('אין פתיחים מוגדרים')}</p>
                                 )}
                             </div>
                         </CardContent>
@@ -729,7 +733,7 @@ export default function QuoteTemplateManagement() {
                                 {paymentTermsTemplates.length === 0 && (
                                     <Button onClick={() => setEditingTemplate({ template_type: 'payment_terms', identifier: 'default', content: '' })}>
                                         <Plus className="h-4 w-4 ml-2" />
-                                        צור תנאי תשלום
+                                        {t('צור תנאי תשלום')}
                                     </Button>
                                 )}
                             </div>
@@ -752,7 +756,7 @@ export default function QuoteTemplateManagement() {
                                     </div>
                                 ))}
                                 {paymentTermsTemplates.length === 0 && (
-                                    <p className="text-center text-gray-500 py-4">אין תנאי תשלום מוגדרים</p>
+                                    <p className="text-center text-gray-500 py-4">{t('אין תנאי תשלום מוגדרים')}</p>
                                 )}
                             </div>
                         </CardContent>
@@ -777,7 +781,7 @@ export default function QuoteTemplateManagement() {
                                 {agreementTemplates.length === 0 && (
                                     <Button onClick={() => setEditingTemplate({ template_type: 'agreement_disclaimer', identifier: 'default', content: '' })}>
                                         <Plus className="h-4 w-4 ml-2" />
-                                        צור תנאי התקשרות
+                                        {t('צור תנאי התקשרות')}
                                     </Button>
                                 )}
                             </div>
@@ -803,7 +807,7 @@ export default function QuoteTemplateManagement() {
                                     </div>
                                 ))}
                                 {agreementTemplates.length === 0 && (
-                                    <p className="text-center text-gray-500 py-4">אין תנאי התקשרות מוגדרים</p>
+                                    <p className="text-center text-gray-500 py-4">{t('אין תנאי התקשרות מוגדרים')}</p>
                                 )}
                             </div>
                         </CardContent>
