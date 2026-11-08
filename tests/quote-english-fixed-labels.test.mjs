@@ -90,3 +90,59 @@ test('fixed labels in manual English quote contain no untranslated Hebrew',async
  const leaked=hebrewTextNodes(quote.html);
  assert.deepEqual(leaked,[],JSON.stringify(leaked,null,2));
 });
+
+test('English quote with transport, discounts and inclusive prices keeps all labels English',async()=>{
+ const {client,event,entities}=fixture();
+ event.discount_amount=150;
+ event.discount_before_vat=true;
+ event.discount_reason='Early Booking';
+ event.all_inclusive=true;
+ event.all_inclusive_price=14000;
+ event.all_inclusive_includes_vat=true;
+ const service={
+  id:'es2',event_id:event.id,service_id:'s1',
+  service_name:'Executive Shuttle',service_description:'Reserved Transport',
+  quantity:1,custom_price:6000,includes_vat:true,
+  on_site_contact_details:{name:'John',phone:'0521234567'},
+  pickup_point:JSON.stringify([{pickupPoints:[
+   {time:'10:00',location:'Mamilla',contact:{name:'John',phone:'0521234567'}},
+   {time:'10:30',location:'Old City',contact:{name:'Jane',phone:'0527654321'}}
+  ]},{pickupPoints:[
+   {time:'12:00',location:'Western Wall',contact:{name:'John',phone:'0521234567'}}
+  ]}])
+ };
+ entities.EventService.filter=async()=>[service];
+ const result=await generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includePaymentTerms:false
+ });
+ assert.deepEqual(hebrewTextNodes(result.html),[]);
+ assert.ok(result.html.includes('Journey'));
+ assert.ok(result.html.includes('Early Booking'));
+ assert.ok(result.html.includes('John'));
+ assert.ok(result.html.includes('0521234567'));
+});
+test('manual English quote transport and discounts localize labels without changing values',async()=>{
+ const {client,event,entities}=fixture();
+ event.discount_amount=100;
+ event.discount_before_vat=false;
+ event.discount_reason='Special Offer';
+ entities.EventService.filter=async()=>[{
+  id:'es2',event_id:event.id,service_id:'s1',service_name:'Coach Transfer',
+  service_description:'Transport',custom_price:5000,quantity:2,
+  pickup_point:JSON.stringify([{pickupPoints:[
+   {time:'11:30',location:'Mamilla',contact:{name:'John',phone:'0501234567'}},
+   {time:'12:15',location:'Western Wall',contact:{name:'Jane',phone:'0507654321'}}
+  ]}])
+ }];
+ const result=await composeManualQuoteHtml({
+  title:'Transport Proposal',document_language:'en',linked_event_id:event.id,
+  blocks:JSON.stringify([
+   {type:'event_details',options:{showParents:false}},
+   {type:'services',options:{showTransportDetails:true}},
+   {type:'financial_summary',options:{}}
+  ])
+ },client);
+ assert.deepEqual(hebrewTextNodes(result.html),[]);
+ assert.ok(result.html.includes('Mamilla'));
+ assert.ok(result.html.includes('11:30'));
+});
