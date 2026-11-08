@@ -47,6 +47,7 @@ export async function composeModularQuoteHtml(quote, client) {
       description:original.show_descriptions!==false&&item.show_description!==false
         ?translation(item.description,descriptionField,'item_description',item.english?.description):item.description,
       client_notes:translation(item.client_notes,'client_notes','item_client_notes',item.english?.client_notes),
+      price_display_text:translation(item.price_display_text,'price_display_text','item_price_display_text',item.english?.price_display_text),
       children:Array.isArray(item.children)?item.children.map(localizeItem):[]
     };
   };
