@@ -22,6 +22,7 @@ import EventChangeDecisionDialogs from '../components/event-details/EventChangeD
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import EventCloseButton from '@/components/billing/EventCloseButton';
 import EventQuoteEnglishDialog from '@/components/event-details/EventQuoteEnglishDialog';
+import {useLanguage} from '@/i18n/LanguageProvider';
 // דיאלוג הסליקה נטען רק כשנפתח בפועל - כדי לא להעמיס את טעינת דף האירוע.
 const ClearingPaymentDialog = React.lazy(() => import('../components/billing/ClearingPaymentDialog'));
 // דיאלוג הפקת מסמך לתשלום ידני - נטען רק כשנפתח בפועל.
@@ -53,6 +54,7 @@ function getLocalOverrides(localService, serverService) {
 }
 
 function EventDetailsBody() {
+  const {t}=useLanguage();
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const eventId = urlParams.get('id');
@@ -2083,13 +2085,13 @@ function EventDetailsBody() {
                 ) : (
                   <FileText className="h-4 w-4 ml-2" />
                 )}
-                הצעת מחיר
+                {t('הצעת מחיר')}
                 <ChevronDown className="h-4 w-4 mr-2" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[200px]">
               <div className="flex items-center justify-between gap-3 px-2 py-2 border-b border-gray-100">
-                <label htmlFor="event-quote-language" className="text-xs text-gray-600">שפת הצעת המחיר</label>
+                <label htmlFor="event-quote-language" className="text-xs text-gray-600">{t('שפת הצעת המחיר')}</label>
                 <select id="event-quote-language" value={quoteLanguage} onChange={e=>setQuoteLanguage(e.target.value)}
                   onClick={e=>e.stopPropagation()} className="bg-background border rounded-md text-xs px-2 py-1.5">
                   <option value="he">עברית</option><option value="en">English</option>
@@ -2105,37 +2107,37 @@ function EventDetailsBody() {
                     {hasIntroTemplate && (
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
                         <Checkbox checked={quoteIncludeIntro} onCheckedChange={setQuoteIncludeIntro} className="h-3.5 w-3.5" />
-                        <span>פתיח</span>
+                        <span>{t('פתיח')}</span>
                       </label>
                     )}
                     {hasPaymentTemplate && (
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
                         <Checkbox checked={quoteIncludePaymentTerms} onCheckedChange={setQuoteIncludePaymentTerms} className="h-3.5 w-3.5" />
-                        <span>תנאי תשלום</span>
+                        <span>{t('תנאי תשלום')}</span>
                       </label>
                     )}
                     {hasSchedule && (
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
                         <Checkbox checked={quoteIncludeSchedule} onCheckedChange={setQuoteIncludeSchedule} className="h-3.5 w-3.5" />
-                        <span>לו"ז</span>
+                        <span>{t('לו"ז')}</span>
                       </label>
                     )}
                     {hasExternalServices && (
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-gray-600">
                         <Checkbox checked={quoteIncludeExternalServices} onCheckedChange={setQuoteIncludeExternalServices} className="h-3.5 w-3.5" />
-                        <span>שירותים חיצוניים</span>
+                        <span>{t('שירותים חיצוניים')}</span>
                       </label>
                     )}
                   </div>
                 ) : null;
               })()}
               {quoteLanguage==='en'&&<DropdownMenuItem onSelect={()=>setShowEnglishQuoteDialog(true)}
-                className="cursor-pointer text-sm">Edit English event details</DropdownMenuItem>}
+                className="cursor-pointer text-sm">{t('עריכת פרטי אירוע באנגלית')}</DropdownMenuItem>}
               <DropdownMenuItem onClick={handleGenerateQuote} disabled={isGeneratingQuote}>
                 <FileText className="h-4 w-4 ml-2" />
-                הצג
+                {t('הצג')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}><Download className="h-4 w-4 ml-2" />ייצא כ-PDF</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}><Download className="h-4 w-4 ml-2" />{t('ייצא כ-PDF')}</DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={shareStatus === 'ready' ? handleDoShare : handlePrepareShare}
                 disabled={shareStatus === 'fetching'}
@@ -2146,15 +2148,15 @@ function EventDetailsBody() {
                   : <Share2 className={`h-4 w-4 ml-2 ${shareStatus === 'ready' ? 'text-green-600' : ''}`} />}
                 <span className={shareStatus === 'ready' ? 'font-semibold text-green-700' : ''}>
                   {shareStatus === 'fetching'
-                    ? 'מכין מסמך...'
+                    ? t('מכין מסמך...')
                     : shareStatus === 'ready'
-                      ? 'המסמך מוכן — לחץ לשיתוף'
-                      : 'שתף הצעת מחיר'}
+                      ? t('המסמך מוכן — לחץ לשיתוף')
+                      : t('שתף הצעת מחיר')}
                 </span>
               </DropdownMenuItem>
               <div className="border-t border-gray-100 my-1" />
               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); navigate(`${createPageUrl('ManualQuoteEditor')}?fromEventId=${eventId}&includeIntro=${quoteIncludeIntro}&includePaymentTerms=${quoteIncludePaymentTerms}&includeSchedule=${quoteIncludeSchedule}&includeExternalServices=${quoteIncludeExternalServices}`); }} className="cursor-pointer">
-                <Edit3 className="h-4 w-4 ml-2" /><span>צור הצעה רגילה עם התאמות</span>
+                <Edit3 className="h-4 w-4 ml-2" /><span>{t('צור הצעה רגילה עם התאמות')}</span>
               </DropdownMenuItem>
               {event.quote_history && event.quote_history.length > 0 && (
                 <>
@@ -2164,7 +2166,7 @@ function EventDetailsBody() {
                     className="cursor-pointer"
                   >
                     <Clock className="h-4 w-4 ml-2" />
-                    <span>היסטוריה ({event.quote_history.length})</span>
+                    <span>{t('היסטוריה')} ({event.quote_history.length})</span>
                   </DropdownMenuItem>
                   {showQuoteHistory && (
                     <QuoteHistoryPanel 
