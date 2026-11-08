@@ -221,8 +221,11 @@ export function localizeEventQuoteData(input:{
  // Keep event.concept in its original Hebrew: it is the identifier used to
  // select a QuoteTemplate. Translating it here would lose the intro template.
  for(const key of ['event_name','family_name','child_name','location','city',
-  'services_section_title','standalone_services_title','external_services_title'])
+  'services_section_title','standalone_services_title','external_services_title']){
+  if(options.includeEventHeader===false&&['location','city'].includes(key))continue;
+  if(options.includeServices===false&&key.endsWith('_services_title'))continue;
   e[key]=field('Event',event.id,key,event[key],'event.'+key);
+ }
  e.__english_concept=approvedField(index,'Event',event.id,'concept',event.concept)||
    indexedText(index,'identifier',event.concept)||approvedPlace(event.concept)||null;
  if(event.notes&&options.includeEventNotes!==false)
@@ -231,7 +234,7 @@ export function localizeEventQuoteData(input:{
    e.discount_reason=field('Event',event.id,'discount_reason',event.discount_reason,'event.discount_reason');
  // Custom event values can be rendered through organizer title templates.
  // Translate values only; the original field IDs must remain byte-for-byte.
- if(typeof event.custom_organizer_fields==='string'&&event.custom_organizer_fields.trim()){
+ if(options.includeEventHeader!==false && typeof event.custom_organizer_fields==='string'&&event.custom_organizer_fields.trim()){
    try{
      const original=JSON.parse(event.custom_organizer_fields);
      if(original&&typeof original==='object'&&!Array.isArray(original)){
@@ -250,7 +253,7 @@ export function localizeEventQuoteData(input:{
      notes:field('Event',event.id,'schedule_'+i+'_notes',item.notes,'event.schedule_'+i+'_notes')
    }));
  }
- if(Array.isArray(event.parents)){
+ if(Array.isArray(event.parents)&&options.includeContacts!==false){
    e.parents=event.parents.map((p:any,i:number)=>{
      const id=String(p.id||i);
      return {...p,name:field('Event',event.id,'contact_'+id+'_name',p.name,
