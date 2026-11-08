@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, Plus, Trash2, Loader2, Edit, UploadCloud, FileText } from "lucide-react";
 import ManualQuoteTabs from "@/components/manualQuote/ManualQuoteTabs";
 import OrganizerTypesTab from "@/components/quotes/OrganizerTypesTab";
+import EnglishDraftButton from "@/i18n/EnglishDraftButton";
+import {translationPreservesProtectedContent} from "../../base44/shared/quoteLocalization.ts";
 
 const quillModules = {
   toolbar: [
@@ -45,6 +47,15 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
     const [customConcept, setCustomConcept] = useState('');
     const [fontSize, setFontSize] = useState(template.font_size || '15');
     const [lineHeight, setLineHeight] = useState(template.line_height || '1.6');
+    const [english, setEnglish] = useState({});
+    const [englishTouched,setEnglishTouched]=useState([]);
+    const [englishLoading,setEnglishLoading]=useState(false);
+    const [englishRecord,setEnglishRecord]=useState(null);
+    const [englishError,setEnglishError]=useState('');
+    const updateEnglish=(key,value)=>{
+      setEnglish(v=>({...v,[key]:value}));
+      setEnglishTouched(old=>old.includes(key)?old:[...old,key]);
+    };
 
     useEffect(() => {
         setContent(template.content);
@@ -52,6 +63,19 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
         setCustomConcept('');
         setFontSize(template.font_size || '15');
         setLineHeight(template.line_height || '1.6');
+        setEnglish({});setEnglishTouched([]);setEnglishRecord(null);setEnglishError('');
+        if(!template.id){setEnglishLoading(false);return;}
+        let active=true;setEnglishLoading(true);
+        base44.entities.ContentTranslation.filter({source_entity:'QuoteTemplate',source_id:template.id,locale:'en'})
+          .then(rows=>{if(active){
+            if(rows.length>1)throw Error('Duplicate English records require review');
+            const row=rows[0]||null;
+            setEnglishRecord(row);
+            setEnglish(Object.fromEntries(Object.entries(row?.fields||{}).map(([key,pair])=>[key,pair.value||''])));
+          }})
+          .catch(err=>{if(active)setEnglishError(err.message||'Could not load English version');})
+          .finally(()=>{if(active)setEnglishLoading(false);});
+        return()=>{active=false;};
     }, [template]);
 
     const handleInternalSave = useCallback(() => {
@@ -61,9 +85,13 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
             content, 
             identifier: finalIdentifier,
             font_size: fontSize,
-            line_height: lineHeight
+            line_height: lineHeight,
+            ...(englishTouched.length?{__english:{
+              values:english,touched:englishTouched,loadedRecord:englishRecord
+            }}:{})
         });
-    }, [customConcept, identifier, content, fontSize, lineHeight, template, onSave]);
+    }, [customConcept, identifier, content, fontSize, lineHeight, template, onSave,
+      english,englishTouched,englishRecord]);
 
     return (
       <Card className="mt-4 bg-white/95">
@@ -137,6 +165,28 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
                 readOnly={isSaving}
             />
           </div>
+          <details className="rounded-lg border p-3">
+            <summary className="cursor-pointer font-medium text-sm">English · תרגום באנגלית</summary>
+            <p className="text-xs text-gray-500 mt-2">The original Hebrew is unchanged. English text is used only for English proposals. Review and save when the Hebrew source changes.</p>
+            {englishLoading?<p className="text-sm mt-2">Loading English text…</p>:<div className="space-y-3 mt-3" dir="ltr">
+              {template.template_type==='concept_intro'&&<div>
+                <Label>English concept name</Label><Input dir="ltr" lang="en"
+                  value={english.identifier||''} onChange={e=>updateEnglish('identifier',e.target.value)}/>
+                {englishRecord?.fields?.identifier?.source!==(customConcept||identifier)&&englishRecord?.fields?.identifier?.value&&
+                  <p className="text-xs text-amber-700">The Hebrew concept name has changed.</p>}
+              </div>}
+              <div><Label>English content</Label>
+                <ReactQuill theme="snow" value={english.content||''}
+                  onChange={v=>updateEnglish('content',v)} modules={quillModules}
+                  formats={quillFormats} style={{direction:'ltr'}} readOnly={isSaving}/>
+                <EnglishDraftButton source={content||''} kind={template.template_type==='concept_intro'?'quote_intro':'quote_terms'}
+                  onDraft={draft=>updateEnglish('content',draft)}/>
+                {englishRecord?.fields?.content?.source!==content&&englishRecord?.fields?.content?.value&&
+                  <p className="text-xs text-amber-700">The Hebrew source has changed. Review the English version.</p>}
+              </div>
+            </div>}
+            {englishError&&<p role="alert" className="text-xs text-red-700">{englishError}</p>}
+          </details>
 
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
