@@ -39,6 +39,15 @@
       ],
       "default": "he",
       "description": "Client-facing PDF language; separate from UI language"
+    },
+    "last_pdf_language": {
+      "type": "string",
+      "enum": [
+        "he",
+        "en"
+      ],
+      "default": "he",
+      "description": "Language of the last issued PDF, independent of current document editing language"
     }
   },
   "required": [
