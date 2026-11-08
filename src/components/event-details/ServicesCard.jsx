@@ -482,7 +482,7 @@ const handleCopyTransport = (service, serviceDetails) => {
             {isExpanded && isAdmin && !isSupplier && !isClient && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mr-6 mt-2">
                 <div className="col-span-full">
-                  <Label className="text-xs">שם השירות באירוע זה</Label>
+                  <Label className="text-xs">{t('שם השירות באירוע זה')}</Label>
                   <div className="relative">
                     <Input
                       value={editableService.service_name || serviceDetails?.service_name || ''}
@@ -505,7 +505,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 {!event.all_inclusive && (
                   <>
                     <div>
-                      <Label className="text-xs">מחיר ליחידה</Label>
+                      <Label className="text-xs">{t('מחיר ליחידה')}</Label>
                       <div className="relative">
                         <Input
                           type="number"
@@ -547,7 +547,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                   </>
                 )}
                 <div>
-                  <Label className="text-xs">כמות</Label>
+                  <Label className="text-xs">{t('כמות')}</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -571,7 +571,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 {/* מינימום ספקים */}
                 <div>
                    <div className="flex items-center gap-1 mb-1">
-                    <Label className="text-xs">מינימום ספקים</Label>
+                    <Label className="text-xs">{t('מינימום ספקים')}</Label>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -608,7 +608,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                         onCheckedChange={(checked) => handleUpdateServiceField(service.id, 'includes_vat', checked)}
                         disabled={isSaving && savingServiceField?.field === 'includes_vat'}
                       />
-                      <Label htmlFor={`vat-${service.id}`} className="text-xs">כולל מע"מ</Label>
+                      <Label htmlFor={`vat-${service.id}`} className="text-xs">{t('כולל מע"מ')}</Label>
                       {isSaving && savingServiceField?.field === 'includes_vat' && (
                         <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
                       )}
@@ -618,7 +618,7 @@ const handleCopyTransport = (service, serviceDetails) => {
 
                 {/* תצוגת מחיר בהצעה */}
                 <div className="col-span-full">
-                  <Label className="text-xs font-semibold text-gray-500">תצוגת מחיר בהצעת מחיר</Label>
+                  <Label className="text-xs font-semibold text-gray-500">{t('תצוגת מחיר בהצעת מחיר')}</Label>
                   <div className="flex flex-wrap items-center gap-3 mt-1 p-2 bg-gray-50 rounded border">
                     <div className="flex items-center gap-1.5">
                       <Checkbox
@@ -626,10 +626,10 @@ const handleCopyTransport = (service, serviceDetails) => {
                         checked={editableService.show_price_in_quote !== false}
                         onCheckedChange={(checked) => handleUpdateServiceField(service.id, 'show_price_in_quote', checked)}
                       />
-                      <Label htmlFor={`show-price-${service.id}`} className="text-xs cursor-pointer">הצג מחיר</Label>
+                      <Label htmlFor={`show-price-${service.id}`} className="text-xs cursor-pointer">{t('הצג מחיר')}</Label>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-xs text-gray-500 whitespace-nowrap">כיתוב נוסף:</Label>
+                      <Label className="text-xs text-gray-500 whitespace-nowrap">{t('כיתוב נוסף')}:</Label>
                       <Select
                         value={editableService.price_display_mode || 'default'}
                         onValueChange={(value) => handleUpdateServiceField(service.id, 'price_display_mode', value)}
@@ -667,7 +667,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 {/* שעת התייצבות לספק - אופציונלי */}
                 <div>
                   <div className="flex items-center gap-1 mb-1">
-                    <Label className="text-xs">שעת התייצבות לספק</Label>
+                    <Label className="text-xs">{t('שעת התייצבות לספק')}</Label>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -700,7 +700,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 </div>
 
                 <div className="col-span-full">
-                  <Label className="text-xs">תיאור לשירות (ספציפי לאירוע)</Label>
+                  <Label className="text-xs">{t('תיאור לשירות (ספציפי לאירוע)')}</Label>
                   <div className="relative">
                     <ReactQuill
                       value={editableService.service_description || serviceDetails?.service_description || ''}
@@ -734,7 +734,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                     {isSaving && savingServiceField?.field === 'service_description' && (
                       <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>שומר...</span>
+                        <span>{t('שומר...')}</span>
                       </div>
                     )}
                   </div>
@@ -753,7 +753,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 </div>
 
                 <div className="col-span-full">
-                  <Label className="text-xs">הערות ללקוח (יופיעו בהצעת מחיר)</Label>
+                  <Label className="text-xs">{t('הערות ללקוח (יופיעו בהצעת מחיר)')}</Label>
                   <div className="relative">
                     <Textarea
                       value={editableService.client_notes || ''}
@@ -777,7 +777,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 {/* שדות נסיעות - הבלוק החדש והמתוקן */}
                 {isTransportService && (
                   <div className="col-span-full space-y-4">
-                    <Label className="text-xs font-semibold text-gray-500">פרטי נסיעה (נקודות איסוף ועצירה)</Label>
+                    <Label className="text-xs font-semibold text-gray-500">{t('פרטי נסיעה (נקודות איסוף ועצירה)')}</Label>
                     
                     {(() => {
                       let units = [];
@@ -845,7 +845,7 @@ const handleCopyTransport = (service, serviceDetails) => {
 
                               <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1">
-                               <Label className="text-xs">שעה</Label>
+                               <Label className="text-xs">{t('שעה')}</Label>
                                <Input type="time" value={point.time || ''} onChange={(e) => {
                                  const newUnits = JSON.parse(JSON.stringify(units));
                                  newUnits[uIdx].pickupPoints[pIdx].time = e.target.value;
@@ -853,7 +853,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                                }} onBlur={() => saveTransportChanges(JSON.parse(JSON.stringify(units)))} className="text-sm h-8" />
                               </div>
                               <div className="space-y-1">
-                               <Label className="text-xs">מיקום</Label>
+                               <Label className="text-xs">{t('מיקום')}</Label>
                                <Input value={point.location || ''} onChange={(e) => {
                                  const newUnits = JSON.parse(JSON.stringify(units));
                                  newUnits[uIdx].pickupPoints[pIdx].location = e.target.value;
@@ -863,7 +863,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                               </div>
 
                               <div className="space-y-1">
-                              <Label className="text-xs">איש קשר</Label>
+                              <Label className="text-xs">{t('איש קשר')}</Label>
                               <div className="flex gap-2">
                                <Input placeholder="שם" value={point.contact?.name || ''} onChange={(e) => {
                                  const newUnits = JSON.parse(JSON.stringify(units));
@@ -934,7 +934,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                               <DropdownMenuTrigger asChild>
                                 <Button size="sm" variant="outline" className="h-6 text-xs">
                                   <Badge className={getSupplierAssignmentStatusColor(status)}>
-                                    {getSupplierAssignmentStatusText(status)}
+                                    {t(getSupplierAssignmentStatusText(status)}
                                   </Badge>
                                 </Button>
                               </DropdownMenuTrigger>
@@ -946,7 +946,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                             </DropdownMenu>
                           ) : (
                             <Badge className={getSupplierAssignmentStatusColor(status)}>
-                              {getSupplierAssignmentStatusText(status)}
+                              {t(getSupplierAssignmentStatusText(status)}
                             </Badge>
                           )}
                           {isAdmin && (
@@ -1063,7 +1063,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>מחק שירות זה מהאירוע</p>
+                      <p>{t('מחק שירות זה מהאירוע')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1684,7 +1684,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                   </div>
                   {localSupplierFormData.supplierIds.includes(supplier.id) && (
                     <div className="mr-6">
-                      <Label className="text-xs">הערה לספק</Label>
+                      <Label className="text-xs">{t('הערה לספק')}</Label>
                       <Input
                         placeholder="הערה ספציפית לספק זה..."
                         value={localSupplierFormData.notes[supplier.id] || ''}
@@ -1719,7 +1719,7 @@ const handleCopyTransport = (service, serviceDetails) => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>שם השירות</Label>
+              <Label>{t('שם השירות')}</Label>
               <Input
                 value={newService.service_name}
                 onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))}
@@ -1727,7 +1727,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               />
             </div>
             <div>
-              <Label>תיאור השירות</Label>
+              <Label>{t('תיאור השירות')}</Label>
               <ReactQuill
                 value={newService.service_description}
                 onChange={(value) => setNewService(prev => ({ ...prev, service_description: value }))}
@@ -1744,7 +1744,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               />
             </div>
             <div>
-              <Label>קטגוריה</Label>
+              <Label>{t('קטגוריה')}</Label>
               <Input
                 value={newService.category}
                 onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))}
@@ -1752,7 +1752,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               />
             </div>
             <div>
-              <Label>מחיר בסיס</Label>
+              <Label>{t('מחיר בסיס')}</Label>
               <Input
                 type="number"
                 value={newService.base_price}
@@ -1766,7 +1766,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 checked={newService.default_includes_vat}
                 onCheckedChange={(checked) => setNewService(prev => ({ ...prev, default_includes_vat: checked }))}
               />
-              <Label htmlFor="new-service-vat">כולל מע"מ כברירת מחדל</Label>
+              <Label htmlFor="new-service-vat">{t('כולל מע"מ כברירת מחדל')}</Label>
             </div>
           </div>
           <DialogFooter>
@@ -1788,7 +1788,7 @@ const handleCopyTransport = (service, serviceDetails) => {
           <div className="space-y-4">
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Label>שם הספק</Label>
+                <Label>{t('שם הספק')}</Label>
                 <Input
                   value={newSupplier.supplier_name}
                   onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))}
@@ -1817,7 +1817,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               />
             </div>
             <div>
-              <Label>טלפון</Label>
+              <Label>{t('טלפון')}</Label>
               <Input
                 value={newSupplier.phone}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))}
@@ -1825,7 +1825,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               />
             </div>
             <div>
-              <Label>אימייל</Label>
+              <Label>{t('אימייל')}</Label>
               <Input
                 type="email"
                 value={newSupplier.contact_emails[0]}
