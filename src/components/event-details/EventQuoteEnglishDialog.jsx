@@ -5,6 +5,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {Label} from '@/components/ui/label';
+import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 import {isHebrew,translationPreservesProtectedContent} from '../../../base44/shared/quoteLocalization.ts';
 
 const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes'};
@@ -114,6 +115,9 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
        onChange={e=>setDraft(d=>({...d,[f.hash]:e.target.value}))}/>:
     <Input dir="ltr" lang="en" value={val}
        onChange={e=>setDraft(d=>({...d,[f.hash]:e.target.value}))}/>}
+   <EnglishDraftButton source={f.source} kind={f.key.includes('description')?'service_description':
+     f.key.includes('name')?'event_name':f.key.includes('schedule')?'schedule_notes':'event_notes'}
+     onDraft={draft=>setDraft(d=>({...d,[f.hash]:draft}))} compact/>
    {stale&&<p className="text-xs text-amber-700">The Hebrew source changed. Review the English version.</p>}
   </div>;
  };
