@@ -12,6 +12,7 @@ import PaymentsCard from './PaymentsCard';
 import EventDocumentsCard from './EventDocumentsCard';
 import FinancialSummaryCard from './FinancialSummaryCard';
 import EventTasksTab from '../tasks/EventTasksTab';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * עוטף את כל קלפי הפרטים של האירוע בלשוניות:
@@ -22,6 +23,7 @@ import EventTasksTab from '../tasks/EventTasksTab';
  * שמירה מלאה על כל הפונקציונליות הקיימת.
  */
 export default function EventDetailsTabs(props) {
+  const {t,dir}=useLanguage();
   const {
     // משותפים
     event, isAdmin, isClient, isSupplier, currentUser,
@@ -91,28 +93,28 @@ export default function EventDetailsTabs(props) {
   useEffect(()=>{const open=e=>{if(e.detail===event.id)setTab("financial");};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
 
   return (
-    <Tabs value={tab} onValueChange={setTab} className="w-full">
+    <Tabs value={tab} onValueChange={setTab} dir={dir} className="w-full">
       <TabsList className="flex w-full justify-start overflow-x-auto bg-white/80 backdrop-blur-sm">
         <TabsTrigger value="details" className="text-xs sm:text-sm gap-1">
           <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          <span className="hidden sm:inline">פרטי אירוע ומשפחה</span>
-          <span className="sm:hidden">פרטים</span>
+          <span className="hidden sm:inline">{t('פרטי אירוע ומשפחה')}</span>
+          <span className="sm:hidden">{t('פרטים')}</span>
         </TabsTrigger>
         <TabsTrigger value="services" className="text-xs sm:text-sm gap-1">
           <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          <span className="hidden sm:inline">שירותים וחבילות</span>
-          <span className="sm:hidden">שירותים</span>
+          <span className="hidden sm:inline">{t('שירותים וחבילות')}</span>
+          <span className="sm:hidden">{t('שירותים')}</span>
         </TabsTrigger>
         <TabsTrigger value="financial" className="text-xs sm:text-sm gap-1">
           <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          <span className="hidden sm:inline">סיכום כספי</span>
-          <span className="sm:hidden">כספי</span>
+          <span className="hidden sm:inline">{t('סיכום כספי')}</span>
+          <span className="sm:hidden">{t('כספי')}</span>
         </TabsTrigger>
         {showTasksTab && (
           <TabsTrigger value="tasks" className="text-xs sm:text-sm gap-1">
             <ListChecks className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">משימות לביצוע</span>
-            <span className="sm:hidden">משימות</span>
+            <span className="hidden sm:inline">{t('משימות לביצוע')}</span>
+            <span className="sm:hidden">{t('משימות')}</span>
           </TabsTrigger>
         )}
       </TabsList>
