@@ -23,10 +23,21 @@ export async function loadQuoteTranslations(client:any,locale:unknown){
   },'-updated_date',500);
   return translationIndex(rows);
 }
+export function translationPreservesProtectedContent(source:string,value:string):boolean{
+  if(/<\s*(script|iframe|object|embed|style)\b|\bon\w+\s*=|javascript\s*:/i.test(value))return false;
+  const visible=(s:string)=>s.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
+  const extract=(s:string,re:RegExp)=>(s.match(re)||[]).sort().join('|');
+  const sourceVisible=visible(source),targetVisible=visible(value);
+  if(extract(sourceVisible,/\d[\d,./%-]*/g)!==extract(targetVisible,/\d[\d,./%-]*/g))return false;
+  if(extract(source,/https?:\/\/[^\s\"'<>]+/g)!==extract(value,/https?:\/\/[^\s\"'<>]+/g))return false;
+  if(extract(source,/\{\{?[^{}]+\}\}?/g)!==extract(value,/\{\{?[^{}]+\}\}?/g))return false;
+  return true;
+}
 export function approvedField(index:Map<string,any>,entity:string,id:string,field:string,source:unknown){
   if(typeof source!=='string')return null;
   const x=index.get(entity+':'+id)?.fields?.[field];
-  return x?.source===source && typeof x?.value==='string' && x.value.trim()?x.value:null;
+  return x?.source===source && typeof x?.value==='string' && x.value.trim() &&
+    translationPreservesProtectedContent(source,x.value)?x.value:null;
 }
 export function indexedText(index:Map<string,any>,field:string,source:unknown){
   if(typeof source!=='string'||!source.trim())return null;
@@ -36,8 +47,8 @@ export function indexedText(index:Map<string,any>,field:string,source:unknown){
   for(const [key,row] of index){
     if(!/^(Service|Package|QuoteTemplate):/.test(key))continue;
     const pair=row?.fields?.[field];
-    if(pair?.source===source&&typeof pair.value==='string'&&pair.value.trim())
-      matches.add(pair.value);
+    if(pair?.source===source&&typeof pair.value==='string'&&pair.value.trim()&&
+      translationPreservesProtectedContent(source,pair.value))matches.add(pair.value);
   }
   return matches.size===1?[...matches][0]:null;
 }
