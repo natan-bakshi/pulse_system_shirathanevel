@@ -76,6 +76,8 @@ function EventDetailsBody() {
   const [quoteIncludePaymentTerms, setQuoteIncludePaymentTerms] = useState(null);
   const [quoteIncludeSchedule, setQuoteIncludeSchedule] = useState(null);
   const [quoteIncludeExternalServices, setQuoteIncludeExternalServices] = useState(null);
+  // Per-document choice, independent of the administrator's interface language.
+  const [quoteLanguage,setQuoteLanguage]=useState('he');
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -1826,7 +1828,7 @@ function EventDetailsBody() {
   const handleGenerateQuote = useCallback(async () => {
     setIsGeneratingQuote(true);
     try {
-      const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices });
+      const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices,language:quoteLanguage });
       const html = response.data.html;
       
       const newWindow = window.open();
@@ -1838,16 +1840,16 @@ function EventDetailsBody() {
       }
     } catch (error) {
       console.error("Failed to generate quote:", error);
-      alert("שגיאה ביצירת הצעת המחיר");
+      alert(error.response?.data?.error || "שגיאה ביצירת הצעת המחיר");
     } finally {
       setIsGeneratingQuote(false);
     }
-  }, [eventId, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices]);
+  }, [eventId, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices,quoteLanguage]);
 
   const handleGeneratePdf = useCallback(async () => {
     setIsGeneratingPdf(true);
     try {
-      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices });
+      const response = await base44.functions.invoke('generateQuotePdf', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices,language:quoteLanguage });
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.event_name || event?.family_name || eventId}.pdf`;
 
@@ -1881,7 +1883,7 @@ function EventDetailsBody() {
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, loadEventData]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices,loadEventData,quoteLanguage]);
 
   // Two-step share flow: prepare PDF first, then share on a separate click.
   // This satisfies browser "user activation" requirements on iOS & Android.
@@ -1892,6 +1894,7 @@ function EventDetailsBody() {
     quoteIncludePaymentTerms,
     quoteIncludeSchedule,
     quoteIncludeExternalServices,
+    quoteLanguage,
     loadEventData
   });
 
@@ -2081,6 +2084,13 @@ function EventDetailsBody() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[200px]">
+              <div className="flex items-center justify-between gap-3 px-2 py-2 border-b border-gray-100">
+                <label htmlFor="event-quote-language" className="text-xs text-gray-600">שפת הצעת המחיר</label>
+                <select id="event-quote-language" value={quoteLanguage} onChange={e=>setQuoteLanguage(e.target.value)}
+                  onClick={e=>e.stopPropagation()} className="bg-background border rounded-md text-xs px-2 py-1.5">
+                  <option value="he">עברית</option><option value="en">English</option>
+                </select>
+              </div>
               {(() => {
                 const hasIntroTemplate = event.concept && quoteTemplates.some(t => t.template_type === 'concept_intro' && t.identifier === event.concept);
                 const hasPaymentTemplate = quoteTemplates.some(t => t.template_type === 'payment_terms');
