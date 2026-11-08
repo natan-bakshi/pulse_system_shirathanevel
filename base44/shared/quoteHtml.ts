@@ -2,7 +2,7 @@ import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, syst
 import { getEventDisplayName } from './eventName.ts';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
-import {loadQuoteTranslations,localizeEventQuoteData,translateOrganizerQuoteFields,ensureCompleteEnglish,applyDocumentDirection} from './quoteLocalization.ts';
+import {loadQuoteTranslations,localizeEventQuoteData,translateOrganizerQuoteFields,ensureCompleteEnglish,applyDocumentDirection,approvedField,isHebrew,fixedEnglishLabel} from './quoteLocalization.ts';
 
 // Import helper functions
 function formatDate(dateStringOrDate) {
@@ -35,13 +35,13 @@ function getEventType(typeKey) {
 }
 
 // Process organizer type title template with variable replacement and conditional blocks
-function processOrganizerTitleTemplate(template, event, customFieldValues, organizerType) {
+function processOrganizerTitleTemplate(template, event, customFieldValues, organizerType, language='he') {
     if (!template) return '';
 
     // Build variable map from event fields + custom fields
     const vars = {
         event_name: getEventDisplayName(event),
-        event_type: getEventType(event.event_type),
+        event_type: language==='en'?({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event'):getEventType(event.event_type),
         event_date: formatDate(event.event_date),
         family_name: getEventDisplayName(event),
         child_name: event.child_name || '',
@@ -51,7 +51,7 @@ function processOrganizerTitleTemplate(template, event, customFieldValues, organ
         concept: event.__english_concept || event.concept || '',
         ...buildQuoteFieldValues(event, organizerType),
         event_date: formatDate(event.event_date),
-        event_type: getEventType(event.event_type)
+        event_type: language==='en'?({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event'):getEventType(event.event_type)
     };
 
     let result = template;
@@ -312,7 +312,13 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
     // Footer settings
     const quoteShowFooter = String(appSettings.quote_show_footer) === 'true';
-    const quoteFooterText = appSettings.quote_footer_text || '';
+    let quoteFooterText = appSettings.quote_footer_text || '';
+    if(options.language==='en'&&String(appSettings.quote_show_footer)==='true'&&quoteFooterText){
+      const row=appSettingsList.find(s=>s.setting_key==='quote_footer_text');
+      const englishFooter=approvedField(localeIndex,'AppSettings',row?.id,'setting_value',quoteFooterText);
+      quoteFooterText=englishFooter||quoteFooterText;
+      if(isHebrew(quoteFooterText))ensureCompleteEnglish(['footer']);
+    }
 
     // Margins from settings (for table spacers and padding)
     const quoteMarginTop = appSettings.quote_margin_top_mm || '20';
@@ -547,7 +553,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     // Process organizer type main title template if available
     let mainTitleHtml = familyDetailsLine;
     if (organizerType?.quote_main_title_template) {
-        mainTitleHtml = processOrganizerTitleTemplate(organizerType.quote_main_title_template, event, customOrganizerFieldValues, organizerType);
+        mainTitleHtml = processOrganizerTitleTemplate(organizerType.quote_main_title_template, event, customOrganizerFieldValues, organizerType, options.language);
     }
 
     // Get contacts config from organizer type
@@ -571,7 +577,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
             <div class="event-details-box">
                 <div class="text-center">
                     <span style="font-weight: 700; font-size: calc(${quoteEventDetailsFontSize}px + 1px);">${mainTitleHtml}</span><br>
-                    ${event.location && !templateIncludes('location') ? `<strong>אירוע ב${event.location}</strong> | ` : ''}${formatDate(event.event_date)}<br>
+                    ${event.location && !templateIncludes('location') ? `<strong>${options.language==='en'?'Event at ':'אירוע ב'}${event.location}</strong> | ` : ''}${formatDate(event.event_date)}<br>
                     ${parentContacts.some(p => p.name) ? `<strong>שמות ההורים:</strong> ${parentContacts.map(p => p.name).filter(Boolean).join(', ')}<br>` : ''}
                     ${otherContacts.some(c => c.name) ? `<strong>${contactsLabel}:</strong> ${otherContacts.map(c => c.name).filter(Boolean).join(', ')}<br>` : ''}
                     ${event.city ? `<strong>עיר מגורים:</strong> ${event.city} |` : ''} ${event.guest_count && !templateIncludes('guest_count') ? `<strong>כמות מוזמנים:</strong> ${event.guest_count}` : ''}
@@ -755,7 +761,14 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     }
 
     // Build external services HTML
-    const externalServicesTitle = event.external_services_title || appSettings.default_external_services_title || 'שירותים נוספים';
+    let externalServicesTitle = event.external_services_title || appSettings.default_external_services_title || 'שירותים נוספים';
+    if(options.language==='en'&&externalEventServices.length){
+      const candidate=fixedEnglishLabel(externalServicesTitle);
+      const row=appSettingsList.find(s=>s.setting_key==='default_external_services_title');
+      const approved=approvedField(localeIndex,'AppSettings',row?.id,'setting_value',externalServicesTitle);
+      externalServicesTitle=approved||candidate;
+      if(isHebrew(externalServicesTitle))ensureCompleteEnglish(['external_services_title']);
+    }
     let externalServicesHtml = '';
     const populatedExternalServices = externalEventServices.map(es => {
         const serviceDetails = allServices.find(s => s.id === es.service_id) || {};
