@@ -2,6 +2,7 @@ import React from 'react';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import QuoteTextSection from './QuoteTextSection';
+import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 
 // Secondary content is optional while editing Hebrew, and only shown when
 // the operator explicitly chooses an English client document.
@@ -28,6 +29,8 @@ export default function BilingualQuoteFields({content,onChange}){
     return <div key={key}><Label>{label}</Label>
       <Input dir="ltr" lang="en" value={pair?.value||''} onChange={e=>set(key,e.target.value)}
        placeholder="English wording (optional if already in glossary)" />
+      <EnglishDraftButton source={String(content[key]||'')} kind={key==='custom_title'?'custom_title':key==='concept'?'concept':'event_name'}
+        onDraft={draft=>set(key,draft)} compact/>
       {outdated&&<p className="text-xs text-amber-700">Hebrew text changed. Review and update this English wording.</p>}
     </div>;
    })}
@@ -37,6 +40,8 @@ export default function BilingualQuoteFields({content,onChange}){
     const pair=content.english?.[key];
     const outdated=pair?.value && pair.source!==(content[key]||'');
     return <div key={key}><QuoteTextSection label={label} value={pair?.value||''} onChange={v=>set(key,v)}/>
+      <EnglishDraftButton source={String(content[key]||'')} kind={key==='intro'?'quote_intro':key==='payment_terms'||key==='agreement'?'quote_terms':'quote_notes'}
+        onDraft={draft=>set(key,draft)}/>
       {outdated&&<p className="text-xs text-amber-700">Source changed—review and approve the English version.</p>}
     </div>;
    })}
