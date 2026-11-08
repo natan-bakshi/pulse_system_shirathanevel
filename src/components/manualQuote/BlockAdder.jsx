@@ -37,15 +37,15 @@ export default function BlockAdder({ onAdd, label = 'הוסף קטע', size = 's
       <PopoverContent dir={dir} className="w-72 p-2">
         <div className="text-xs font-semibold text-gray-500 px-2 py-1 mb-1 border-b">{t('בחר סוג קטע')}</div>
         <div className="space-y-1 max-h-80 overflow-y-auto">
-          {ALL_TYPES.map(t => (
+          {ALL_TYPES.map(type => (
             <button
-              key={t}
+              key={type}
               type="button"
-              onClick={() => handlePick(t)}
+              onClick={() => handlePick(type)}
               className="w-full text-start p-2 rounded hover:bg-gray-100 transition"
             >
-              <div className="text-sm font-medium">{t(BLOCK_LABELS[t])}</div>
-              <div className="text-xs text-gray-500">{t(BLOCK_DESCRIPTIONS[t])}</div>
+              <div className="text-sm font-medium">{t(BLOCK_LABELS[type])}</div>
+              <div className="text-xs text-gray-500">{t(BLOCK_DESCRIPTIONS[type])}</div>
             </button>
           ))}
         </div>
