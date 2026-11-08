@@ -13,8 +13,10 @@ import BlockAdder from '@/components/manualQuote/BlockAdder';
 import BlockEditor from '@/components/manualQuote/BlockEditor';
 import { generateManualQuotePdf } from '@/functions/generateManualQuotePdf';
 import { buildBlocksFromEvent } from '@/components/manualQuote/buildBlocksFromEvent';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ManualQuoteEditor() {
+  const {t,locale}=useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -320,16 +322,16 @@ export default function ManualQuoteEditor() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate('/QuoteTemplateManagement')} className="text-white hover:bg-white/10">
-          <ArrowRight className="h-4 w-4 ml-1" /> חזרה לניהול הצעות
+          <ArrowRight className="h-4 w-4 ml-1" /> {t('חזרה לניהול הצעות')}
         </Button>
         <div className="flex gap-2 flex-wrap items-center">
           <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={isSaving || isGenerating || isSharing || isDownloading}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : <Save className="h-4 w-4 ml-1" />}
-            שמור
+            {t('שמור')}
           </Button>
           <Button size="sm" onClick={handleGeneratePdf} disabled={isSaving || isGenerating || isSharing || isDownloading}>
             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : <FileDown className="h-4 w-4 ml-1" />}
-            הפק PDF
+            {t('הפק PDF')}
           </Button>
 
           {/* כפתורי אייקון: שיתוף, הורדה, צפייה ב-PDF קיים */}
@@ -339,7 +341,7 @@ export default function ManualQuoteEditor() {
             className="h-8 w-8"
             onClick={handleSharePdf}
             disabled={isSaving || isGenerating || isSharing || isDownloading}
-            title="שתף הצעת מחיר"
+            title={t("שתף הצעת מחיר")}
           >
             {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
           </Button>
@@ -349,7 +351,7 @@ export default function ManualQuoteEditor() {
             className="h-8 w-8"
             onClick={handleDownloadPdf}
             disabled={isSaving || isGenerating || isSharing || isDownloading}
-            title="הורד PDF"
+            title={t("הורד PDF")}
           >
             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           </Button>
@@ -360,7 +362,7 @@ export default function ManualQuoteEditor() {
               className="h-8 w-8"
               onClick={handleViewExistingPdf}
               disabled={isViewing}
-              title={lastPdfName ? `צפה ב-PDF הקיים (${lastPdfName})` : 'צפה ב-PDF הקיים'}
+              title={lastPdfName ? `${t('צפה ב-PDF הקיים')} (${lastPdfName})` : t('צפה ב-PDF הקיים')}
             >
               {isViewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
             </Button>
@@ -368,7 +370,7 @@ export default function ManualQuoteEditor() {
 
           {quoteId && (
             <Button variant="ghost" size="sm" onClick={handleDelete} className="text-red-300 hover:bg-red-500/20">
-              <Trash2 className="h-4 w-4 ml-1" /> מחק
+              <Trash2 className="h-4 w-4 ml-1" /> {t('מחק')}
             </Button>
           )}
         </div>
@@ -377,21 +379,21 @@ export default function ManualQuoteEditor() {
       {/* Title + Event link */}
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
         <CardHeader>
-          <CardTitle className="text-base">פרטי ההצעה</CardTitle>
+          <CardTitle className="text-base">{t('פרטי ההצעה')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <label htmlFor="manual-quote-document-language" className="text-sm font-medium">שפת הצעת המחיר</label>
+            <label htmlFor="manual-quote-document-language" className="text-sm font-medium">{t('שפת הצעת המחיר')}</label>
             <select id="manual-quote-document-language" value={documentLanguage}
               onChange={e=>{setDocumentLanguage(e.target.value);setLastPdfUri('');setLastPdfName('');}}
               className="rounded-md border px-3 py-2 bg-background text-sm">
               <option value="he">עברית</option><option value="en">English</option>
             </select>
-            {documentLanguage==='en'&&<p className="text-xs text-gray-600">הטקסטים הקבועים יתורגמו אוטומטית. תוכן חופשי דורש נוסח אנגלי מאושר לפני הפקה.</p>}
+            {documentLanguage==='en'&&<p className="text-xs text-gray-600">{t('הטקסטים הקבועים יתורגמו אוטומטית. תוכן חופשי דורש נוסח אנגלי מאושר לפני הפקה.')}</p>}
           </div>
           <div>
-            <Label>כותרת ההצעה (לשימוש פנימי)</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="לדוגמה: טיוטה למשפחת כהן" />
+            <Label>{t('כותרת ההצעה (לשימוש פנימי)')}</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("לדוגמה: טיוטה למשפחת כהן")} />
           </div>
         </CardContent>
       </Card>
@@ -403,7 +405,7 @@ export default function ManualQuoteEditor() {
         <div className="flex items-start gap-2 flex-1 min-w-[260px]">
           <Info className="h-4 w-4 mt-0.5 shrink-0" />
           <div>
-            העורך מחולק לקטעים. הוסף קטעים בסוגים השונים, סדר אותם בסדר הרצוי, ולחץ על "הפק PDF" כדי לייצר את ההצעה. ה-PDF יופק עם אותו רקע, שוליים ועיצוב כמו הצעות המחיר הרגילות.
+            {t('העורך מחולק לקטעים. הוסף קטעים בסוגים השונים, סדר אותם בסדר הרצוי, ולחץ על "הפק PDF" כדי לייצר את ההצעה. ה-PDF יופק עם אותו רקע, שוליים ועיצוב כמו הצעות המחיר הרגילות.')}
           </div>
         </div>
         <Button
@@ -412,10 +414,10 @@ export default function ManualQuoteEditor() {
           onClick={handleLoadFromEvent}
           disabled={!linkedEventId}
           className="shrink-0"
-          title={!linkedEventId ? 'יש לשייך אירוע למעלה' : 'בנה הצעה רגילה כנקודת התחלה'}
+          title={t(!linkedEventId ? 'יש לשייך אירוע למעלה' : 'בנה הצעה רגילה כנקודת התחלה')}
         >
           <Wand2 className="h-4 w-4 ml-1" />
-          טען הצעה רגילה מהאירוע
+          {t('טען הצעה רגילה מהאירוע')}
         </Button>
       </div>
 
@@ -424,7 +426,7 @@ export default function ManualQuoteEditor() {
         {blocks.length === 0 && (
           <Card className="bg-white/95">
             <CardContent className="text-center py-12 text-gray-500">
-              <p className="mb-3">אין עדיין קטעים בהצעה.</p>
+              <p className="mb-3">{t('אין עדיין קטעים בהצעה.')}</p>
               <BlockAdder onAdd={addBlock} label="הוסף קטע ראשון" size="default" variant="default" />
             </CardContent>
           </Card>
