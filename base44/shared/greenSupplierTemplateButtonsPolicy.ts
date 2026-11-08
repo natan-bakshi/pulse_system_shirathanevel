@@ -72,7 +72,7 @@ export function normalizeCustomButtons(value:any):CustomSupplierTemplateButtons{
   (links.length+Number(!!value.replyLabel)<1&&!quoteSource))
   throw error('one_to_three_buttons_required');
  return {kind:'custom',links,replyLabel:value.replyLabel,
-  ...(quoteSource?{quoteSource}:{} )};
+  ...(quoteSource?{quoteSource}:{})};
 }
 export function normalizeSupplierTemplateButtonPolicy(raw:any):TemplateButtonPolicy{
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
@@ -119,7 +119,7 @@ export function parseSupplierTemplateButtonPolicy(control:any):{
 // Invalid owner policy fails closed to text; absent or unknown template ID
 // falls back to exactly the source-level settings that shipped previously.
 export function supplierButtonsForProvenance(control:any,source:unknown,templateId:unknown):
- NavigationButtons|null{
+ SupplierTemplateButtons|null{
  if(!GREEN_SUPPLIER_NAVIGATION_SOURCES.includes(source as any))return null;
  const baseline=supplierNavigationButtonsForSource(control,source);
  if(!baseline)return null;
