@@ -5,8 +5,10 @@ import { Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { getEventDisplayName } from "@/lib/eventDisplayName";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function RecentEvents({ events }) {
+  const {t}=useLanguage();
   const getStatusColor = (status) => {
     const colors = {
       planning: "bg-yellow-100 text-yellow-800",
@@ -34,7 +36,7 @@ export default function RecentEvents({ events }) {
       <CardHeader>
         <CardTitle className="text-xl font-bold flex items-center gap-2">
           <Clock className="h-5 w-5" />
-          אירועים אחרונים
+          {t('אירועים אחרונים')}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -58,7 +60,7 @@ export default function RecentEvents({ events }) {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <Badge className={getStatusColor(event.status)}>
-                  {getStatusText(event.status)}
+                  {t(getStatusText(event.status))}
                 </Badge>
                 {event.total_price && (
                   <span className="text-sm font-medium text-gray-900">
