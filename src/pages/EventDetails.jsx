@@ -21,6 +21,7 @@ import QuoteHistoryPanel from '../components/event-details/QuoteHistoryPanel';
 import EventChangeDecisionDialogs from '../components/event-details/EventChangeDecisionDialogs';
 import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import EventCloseButton from '@/components/billing/EventCloseButton';
+import EventQuoteEnglishDialog from '@/components/event-details/EventQuoteEnglishDialog';
 // דיאלוג הסליקה נטען רק כשנפתח בפועל - כדי לא להעמיס את טעינת דף האירוע.
 const ClearingPaymentDialog = React.lazy(() => import('../components/billing/ClearingPaymentDialog'));
 // דיאלוג הפקת מסמך לתשלום ידני - נטען רק כשנפתח בפועל.
@@ -78,6 +79,7 @@ function EventDetailsBody() {
   const [quoteIncludeExternalServices, setQuoteIncludeExternalServices] = useState(null);
   // Per-document choice, independent of the administrator's interface language.
   const [quoteLanguage,setQuoteLanguage]=useState('he');
+  const [showEnglishQuoteDialog,setShowEnglishQuoteDialog]=useState(false);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -2065,6 +2067,8 @@ function EventDetailsBody() {
 
   return (
     <div className="p-2 sm:p-4 lg:p-8 w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6">
+      {isAdmin&&<EventQuoteEnglishDialog open={showEnglishQuoteDialog} onOpenChange={setShowEnglishQuoteDialog}
+        event={event} eventServices={eventServices} allServices={allServices}/>}
       {isAdmin && (
         <div className="flex flex-wrap gap-3 justify-end">
           <EventCloseButton event={event}/>
@@ -2125,6 +2129,8 @@ function EventDetailsBody() {
                   </div>
                 ) : null;
               })()}
+              {quoteLanguage==='en'&&<DropdownMenuItem onSelect={()=>setShowEnglishQuoteDialog(true)}
+                className="cursor-pointer text-sm">Edit English event details</DropdownMenuItem>}
               <DropdownMenuItem onClick={handleGenerateQuote} disabled={isGeneratingQuote}>
                 <FileText className="h-4 w-4 ml-2" />
                 הצג
