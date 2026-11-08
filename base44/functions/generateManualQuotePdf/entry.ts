@@ -483,19 +483,43 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
   }
 
   if(english){
+    if(manualQuote.linked_event_id&&!event)
+      throw new Error('Linked event is unavailable; cannot safely create an English quote.');
+    // Approve only templates actually rendered by these blocks. A completely
+    // unrelated template must not prevent a valid English manual quotation.
+    const requiredTemplateIds=new Set();
+    for(const block of blocks){
+      const opts=block.options||{};
+      if(opts.useCustomContent&&opts.customContent)continue;
+      let template=null;
+      if(block.type==='intro_template'){
+        if(opts.useEventConcept!==false&&event?.concept)
+          template=templates.find(t=>t.template_type==='concept_intro'&&t.identifier===event.concept);
+        if(!template&&opts.templateId)template=templates.find(t=>t.id===opts.templateId);
+      }else if(['payment_terms','agreement_disclaimer'].includes(block.type)){
+        template=templates.find(t=>t.id===opts.templateId)||
+          templates.find(t=>t.template_type===block.type);
+      }
+      if(template)requiredTemplateIds.add(template.id);
+    }
     if(event){
       const localized=localizeEventQuoteData({event,services:allServices,
         eventServices,templates,index:translations,
-        options:{includeSchedule:blocks.some(b=>b.type==='schedule')}});
+        options:{requiredTemplateIds:[...requiredTemplateIds],
+          includeServices:blocks.some(b=>b.type==='services'),
+          includeFinancialSummary:blocks.some(b=>b.type==='financial_summary'),
+          includeEventHeader:blocks.some(b=>b.type==='event_details'),
+          includeContacts:blocks.some(b=>b.type==='event_details'&&b.options?.showParents!==false),
+          includeEventNotes:false,includeSchedule:blocks.some(b=>b.type==='schedule')}});
       event=localized.event;
       allServices=localized.services;
       eventServices=localized.eventServices;
       templates=localized.templates;
       for(const key of localized.missing)missing.add(key);
     }else{
-      templates=templates.map(t=>({...t,content:translatedCustom(t.content,
+      templates=templates.map(t=>({...t,content:requiredTemplateIds.has(t.id)?translatedCustom(t.content,
         {source:t.content,value:approvedField(translations,'QuoteTemplate',t.id,'content',t.content)},
-        'template.'+t.template_type)}));
+        'template.'+t.template_type):t.content}));
     }
     blocks=blocks.map((block,i)=>{
       const next={...block,options:{...(block.options||{})}};
