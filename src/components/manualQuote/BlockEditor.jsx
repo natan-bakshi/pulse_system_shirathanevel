@@ -9,15 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { GripVertical, Trash2, ChevronUp, ChevronDown, Info } from 'lucide-react';
 import RichTextEditor from './RichTextEditor';
 import { BLOCK_TYPES, BLOCK_LABELS } from './blockTypes';
+import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 
 /**
  * עורך בלוק יחיד בהצעה הידנית.
  * רכיבים שתלויים באירוע (פרטי אירוע / שירותים / סיכום כספי) מציגים תצוגה מקדימה אינפורמטיבית בלבד —
  * התוכן עצמו נבנה בצד השרת בעת ייצוא PDF.
  */
-export default function BlockEditor({ block, index, total, onChange, onRemove, onMoveUp, onMoveDown, linkedEventId, templates, linkedEvent }) {
+export default function BlockEditor({ block, index, total, onChange, onRemove, onMoveUp, onMoveDown, linkedEventId, templates, linkedEvent, documentLanguage='he' }) {
   const update = (patch) => onChange({ ...block, ...patch });
   const updateOptions = (patch) => onChange({ ...block, options: { ...(block.options || {}), ...patch } });
+  const updateEnglish=(key,source,value)=>onChange({...block,english:{...block.english,[key]:{source,value}}});
+  const englishKey=block.type===BLOCK_TYPES.HEADING||block.type===BLOCK_TYPES.FREE_TEXT
+    ?'content':(['intro_template','payment_terms','agreement_disclaimer'].includes(block.type)&&block.options?.useCustomContent?'customContent':null);
+  const englishSource=englishKey==='customContent'?block.options?.customContent:block.content;
 
   const introTemplates = (templates || []).filter(t => t.template_type === 'concept_intro');
   const paymentTemplates = (templates || []).filter(t => t.template_type === 'payment_terms');
@@ -317,6 +322,21 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
           </div>
         </div>
         {renderEditor()}
+        {documentLanguage==='en'&&englishKey&&!!englishSource?.trim()&&(
+          <details className="border rounded-lg p-3 mt-3">
+            <summary className="font-medium text-sm cursor-pointer">English wording for this section</summary>
+            <p className="text-xs text-gray-500 mt-2">Translate the custom text only. The original Hebrew is retained; changes require an updated English version.</p>
+            {englishKey==='content'&&block.type===BLOCK_TYPES.HEADING?
+              <Input dir="ltr" lang="en" className="mt-3" value={block.english?.content?.value||''}
+                onChange={e=>updateEnglish('content',englishSource,e.target.value)}/>:
+              <div dir="ltr" className="mt-3"><RichTextEditor value={block.english?.[englishKey]?.value||''}
+                onChange={value=>updateEnglish(englishKey,englishSource,value)} minHeight={110}/></div>}
+            <EnglishDraftButton source={englishSource} kind={block.type===BLOCK_TYPES.HEADING?'custom_title':block.type===BLOCK_TYPES.FREE_TEXT?'quote_notes':'quote_terms'}
+              onDraft={value=>updateEnglish(englishKey,englishSource,value)} compact />
+            {block.english?.[englishKey]?.value&&block.english[englishKey].source!==englishSource&&
+              <p className="text-xs text-amber-700 mt-2">Hebrew text changed. The previous English translation must be reviewed.</p>}
+          </details>
+        )}
       </CardContent>
     </Card>
   );
