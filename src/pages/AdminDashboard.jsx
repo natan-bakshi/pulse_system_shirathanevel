@@ -21,10 +21,12 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SupplierAssignmentDialog from "../components/assignments/SupplierAssignmentDialog";
 import { getEventDisplayName } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const DEFAULT_VISIBLE_STATUSES = ["confirmed", "in_progress"];
 
 export default function AdminDashboard() {
+  const {t,locale}=useLanguage();
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [formInitialDate, setFormInitialDate] = useState('');
@@ -372,8 +374,8 @@ export default function AdminDashboard() {
       <div className="flex flex-col gap-3 sm:gap-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">דשבורד ניהול</h1>
-            <p className="text-white/80 mt-0.5 sm:mt-1 text-sm sm:text-base">מבט כללי על האירועים והביצועים</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">{t("דשבורד ניהול")}</h1>
+            <p className="text-white/80 mt-0.5 sm:mt-1 text-sm sm:text-base">{t('מבט כללי על האירועים והביצועים')}</p>
           </div>
           
           {/* Desktop/Tablet Action Buttons */}
@@ -382,13 +384,13 @@ export default function AdminDashboard() {
               onClick={() => setShowDashboardSettings(!showDashboardSettings)}
               variant="ghost" className="text-red-700 px-3 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap ring-offset-background transition-colors hover:text-accent-foreground h-9 hover:bg-white/20">
               <Settings className="h-4 w-4 ml-2" />
-              הגדרות דשבורד
+              {t('הגדרות דשבורד')}
             </Button>
             <Link to={createPageUrl("EventsBoardPage")}>
               <Button
                 variant="ghost" className="text-red-700 px-3 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-accent-foreground h-9 hover:bg-white/20">
                 <Calendar className="h-4 w-4 ml-2" />
-                לוח אירועים
+                {t('לוח אירועים')}
               </Button>
             </Link>
             <Button
@@ -396,7 +398,7 @@ export default function AdminDashboard() {
               onClick={() => handleCreateEvent('')}
               className="bg-red-800 hover:bg-red-700 text-white shadow-lg">
               <Plus className="h-4 w-4 ml-2" />
-              אירוע חדש
+              {t('אירוע חדש')}
             </Button>
 
           </div>
@@ -415,7 +417,7 @@ export default function AdminDashboard() {
                   <Plus className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">אירוע<br/>חדש</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'New Event':<>אירוע<br/>חדש</>}</span>
             </button>
 
             {/* Events Board */}
@@ -428,7 +430,7 @@ export default function AdminDashboard() {
                   <Calendar className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">לוח<br/>אירועים</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Events Board':<>לוח<br/>אירועים</>}</span>
             </button>
 
             {/* My Tasks */}
@@ -441,7 +443,7 @@ export default function AdminDashboard() {
                   <ListChecks className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">המשימות<br/>שלי</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'My Tasks':<>המשימות<br/>שלי</>}</span>
             </button>
             
             {/* Bar Mitzvah Calculator */}
@@ -454,7 +456,7 @@ export default function AdminDashboard() {
                   <Calculator className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">מחשבון<br/>בר מצווה</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Bar Mitzvah Calculator':<>מחשבון<br/>בר מצווה</>}</span>
             </button>
 
             {/* Dashboard Settings */}
@@ -467,7 +469,7 @@ export default function AdminDashboard() {
                   <Settings className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">הגדרות<br/>דשבורד</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Dashboard Settings':<>הגדרות<br/>דשבורד</>}</span>
             </button>
 
           </div>
@@ -504,7 +506,7 @@ export default function AdminDashboard() {
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <ListChecks className="h-4 w-4 sm:h-5 sm:w-5" />
-                אירועים קרובים
+                {t('אירועים קרובים')}
               </CardTitle>
             </CardHeader>
             <CardContent className="overflow-y-auto flex-grow p-3 sm:p-6 pt-0">
@@ -514,7 +516,7 @@ export default function AdminDashboard() {
                     <button
                       key={event.id}
                       onClick={() => handleEventClick(event)}
-                      className="block w-full p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-right">
+                      className="block w-full p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-start">
 
                             <div className="flex justify-between items-start gap-2">
                               <div className="min-w-0 flex-1">
@@ -529,18 +531,18 @@ export default function AdminDashboard() {
                                  <div className="flex items-center gap-2 mt-1">
                                   <Home className="h-3 w-3 text-gray-400" />
                                   <span className="text-xs text-gray-500">
-                                    {event.city || 'לא צוין'}
+                                    {event.city || t('לא צוין')}
                                   </span>
                                 </div>
                               </div>
                               <Badge className={getStatusColor(event.status)}>
-                                {getStatusText(event.status)}
+                                {t(getStatusText(event.status))}
                               </Badge>
                             </div>
                         </button>);
 
                 }) :
-                <p className="text-center text-gray-500 py-4">אין אירועים קרובים להצגה.</p>
+                <p className="text-center text-gray-500 py-4">{t('אין אירועים קרובים להצגה.')}</p>
                 }
               </div>
             </CardContent>
@@ -554,13 +556,13 @@ export default function AdminDashboard() {
             <div className="flex flex-col gap-3 sm:gap-4">
               <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
-                ניהול שיבוצים
+                {t('ניהול שיבוצים')}
               </CardTitle>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                   <Input
-                  placeholder="חיפוש..."
+                  placeholder={t("חיפוש...")}
                   value={assignmentSearchTerm}
                   onChange={(e) => setAssignmentSearchTerm(e.target.value)}
                   className="pr-10" />
@@ -574,7 +576,7 @@ export default function AdminDashboard() {
                   className="text-xs sm:text-sm h-8 px-2 sm:px-3 shrink-0"
                   onClick={() => setAssignmentSortBy('event')}>
 
-                    אירוע
+                    {t('אירוע')}
                   </Button>
                   <Button
                   variant={assignmentSortBy === 'supplier' ? 'default' : 'outline'}
@@ -582,7 +584,7 @@ export default function AdminDashboard() {
                   className="text-xs sm:text-sm h-8 px-2 sm:px-3 shrink-0"
                   onClick={() => setAssignmentSortBy('supplier')}>
 
-                    ספק
+                    {t('ספק')}
                   </Button>
                   <Button
                   variant={assignmentSortBy === 'service' ? 'default' : 'outline'}
@@ -590,7 +592,7 @@ export default function AdminDashboard() {
                   className="text-xs sm:text-sm h-8 px-2 sm:px-3 shrink-0"
                   onClick={() => setAssignmentSortBy('service')}>
 
-                    שירות
+                    {t('שירות')}
                   </Button>
                 </div>
               </div>
@@ -602,7 +604,7 @@ export default function AdminDashboard() {
             <div>
                   <h3 className="font-semibold text-lg mb-3 text-red-800 flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
-                    שיבוצים שנדחו ({filteredRejectedAssignments.length})
+                    {t('שיבוצים שנדחו')} ({filteredRejectedAssignments.length})
                   </h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {filteredRejectedAssignments.map(({ event, supplier, eventServiceId, serviceName, supplierId }) => {
@@ -613,8 +615,8 @@ export default function AdminDashboard() {
                           <Link to={createPageUrl(`EventDetails?id=${event.id}`)} className="font-semibold text-blue-600 hover:underline break-words block">
                             {getEventDisplayName(event)} - {format(new Date(event.event_date), "dd/MM/yy", { locale: he })}
                           </Link>
-                          <p className="text-sm text-gray-600 break-words">ספק: {supplier.supplier_name}</p>
-                          <p className="text-sm text-gray-500 break-words">שירות: {serviceName}</p>
+                          <p className="text-sm text-gray-600 break-words">{t('ספק')}: {supplier.supplier_name}</p>
+                          <p className="text-sm text-gray-500 break-words">{t('שירות')}: {serviceName}</p>
                         </div>
                         <div className="flex gap-2 items-center mt-2 sm:mt-0">
                           <Button
@@ -626,22 +628,22 @@ export default function AdminDashboard() {
                             eventName: event.event_name,
                             serviceName
                           })}
-                          title="ניהול שיבוץ ספקים">
+                          title={t("ניהול שיבוץ ספקים")}>
 
                             <Edit className="h-3 w-3" />
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="outline" className="h-7">
-                                <Badge className="bg-red-100 text-red-800">נדחה</Badge>
+                                <Badge className="bg-red-100 text-red-800">{t('נדחה')}</Badge>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                               <DropdownMenuItem onClick={() => handleUpdateAssignmentStatus(eventServiceId, supplierId, 'pending')}>
-                                שנה ל-בהמתנה
+                                {t('שנה ל-בהמתנה')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleUpdateAssignmentStatus(eventServiceId, supplierId, 'confirmed')}>
-                                שנה ל-אושר
+                                {t('שנה ל-אושר')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -655,7 +657,7 @@ export default function AdminDashboard() {
 
               {filteredPendingAssignments.length === 0 && filteredRejectedAssignments.length === 0 && debouncedAssignmentSearch &&
             <div className="text-center text-gray-500 py-8">
-                  לא נמצאו שיבוצים התואמים את החיפוש "{assignmentSearchTerm}"
+                  {t('לא נמצאו שיבוצים התואמים את החיפוש')} "{assignmentSearchTerm}"
                 </div>
             }
 
@@ -663,7 +665,7 @@ export default function AdminDashboard() {
             <div>
                   <h3 className="font-semibold text-lg mb-3 text-yellow-800 flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    שיבוצים ממתינים ({filteredPendingAssignments.length})
+                    {t('שיבוצים ממתינים')} ({filteredPendingAssignments.length})
                   </h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {filteredPendingAssignments.map(({ event, supplier, eventServiceId, serviceName, supplierId }) =>
@@ -672,22 +674,22 @@ export default function AdminDashboard() {
                           <Link to={createPageUrl(`EventDetails?id=${event.id}`)} className="font-semibold text-blue-600 hover:underline break-words block">
                             {getEventDisplayName(event)} - {format(new Date(event.event_date), "dd/MM/yy", { locale: he })}
                           </Link>
-                          <p className="text-sm text-gray-600 break-words">ספק: {supplier.supplier_name}</p>
-                          <p className="text-sm text-gray-500 break-words">שירות: {serviceName}</p>
+                          <p className="text-sm text-gray-600 break-words">{t('ספק')}: {supplier.supplier_name}</p>
+                          <p className="text-sm text-gray-500 break-words">{t('שירות')}: {serviceName}</p>
                         </div>
                         <div className="flex gap-2 items-center mt-2 sm:mt-0">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="outline" className="h-7">
-                                <Badge className="bg-yellow-100 text-yellow-800">בהמתנה</Badge>
+                                <Badge className="bg-yellow-100 text-yellow-800">{t('בהמתנה')}</Badge>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                               <DropdownMenuItem onClick={() => handleUpdateAssignmentStatus(eventServiceId, supplierId, 'confirmed')}>
-                                שנה ל-אושר
+                                {t('שנה ל-אושר')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleUpdateAssignmentStatus(eventServiceId, supplierId, 'rejected')}>
-                                שנה ל-נדחה
+                                {t('שנה ל-נדחה')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
