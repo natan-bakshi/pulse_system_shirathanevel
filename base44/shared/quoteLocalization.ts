@@ -80,6 +80,16 @@ const labels=new Map<string,string>([
   ['איש קשר במקום','On-site contact'],
   ['איש קשר','Contact person'],['שעה','Time'],['מיקום','Location'],
   ['נסיעה','Journey'],['נקודה','Stop'],['שירות','Service'],
+  ['אירוע ב','Event at'],['פרטי אירוע','Event Details'],
+  ['מחיר חבילה (לפני מע"מ)','Package Price Before VAT'],
+  ['מחיר חבילה (לפני מע״מ)','Package Price Before VAT'],
+  ['סה"כ לפני מע"מ','Subtotal Before VAT'],['סה״כ לפני מע״מ','Subtotal Before VAT'],
+  ['סה"כ כולל מע"מ','Total Including VAT'],['סה״כ כולל מע״מ','Total Including VAT'],
+  ['סה"כ לתשלום','Total Due'],['סה״כ לתשלום','Total Due'],
+  ['יתרה לתשלום','Balance Due'],['שולם','Paid'],['הנחה','Discount'],
+  ['תשלומים','Payments'],['מחיר למשתתף','Price per Guest'],
+  ['שירותים נוספים בתשלום נפרד','Additional Services Billed Separately'],
+  ['החבילה כוללת','Package Inclusions'],
   ['בר מצווה','Bar Mitzvah'],['בת מצווה','Bat Mitzvah'],
   ['חתונה','Wedding'],['אירוע','Event']
 ]);
@@ -104,8 +114,13 @@ export function localizeVisibleHtmlLabels(html:string):string{
     if(match&&labels.has(match[1]))
       return '>'+leading+labels.get(match[1])+match[2]+match[3]+trailing+'<';
     // Standalone "אירוע ב..." without markup is a fixed label + variable.
-    if(value.startsWith('אירוע ב')&&value.length>6)
-      return '>'+leading+'Event at '+value.slice(6)+trailing+'<';
+    // A carefully bounded set of fixed labels with dynamic numeric suffixes.
+    const ride=value.match(/^נסיעה\s+(\d+)$/);
+    if(ride)return '>'+leading+'Journey '+ride[1]+trailing+'<';
+    const stop=value.match(/^נקודה\s+(\d+)(:?)$/);
+    if(stop)return '>'+leading+'Stop '+stop[1]+stop[2]+trailing+'<';
+    const discount=value.match(/^הנחה(\s*\([^()<>]*\))?:$/);
+    if(discount)return '>'+leading+'Discount'+(discount[1]||'')+':'+trailing+'<';
     return '>'+text+'<';
   });
 }
