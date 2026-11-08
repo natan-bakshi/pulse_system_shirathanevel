@@ -48,7 +48,7 @@ function processOrganizerTitleTemplate(template, event, customFieldValues, organ
         city: event.city || '',
         guest_count: event.guest_count ? String(event.guest_count) : '',
         location: event.location || '',
-        concept: event.concept || '',
+        concept: event.__english_concept || event.concept || '',
         ...buildQuoteFieldValues(event, organizerType),
         event_date: formatDate(event.event_date),
         event_type: getEventType(event.event_type)
