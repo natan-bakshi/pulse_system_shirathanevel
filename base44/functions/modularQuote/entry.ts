@@ -30,12 +30,16 @@ export default async function(req) {
       if (typeof body.id !== 'string' || !body.id) return Response.json({error:'מזהה הצעה חסר'},{status:400,headers});
       const quote = await client.entities.ModularQuote.get(body.id);
       if (!quote) return Response.json({error:'ההצעה לא נמצאה'},{status:404,headers});
+      // Fail before publishing an English link with incomplete or stale text.
+      if(quote.content?.document_language==='en')await composeModularQuoteHtml(quote,client);
       const token = quote.share_token || Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
       if (!quote.share_token) await client.entities.ModularQuote.update(quote.id,{share_token:token});
       return Response.json({url:`https://pulse-system.base44.app/ModularQuoteView?quote=${token}`},{headers});
     }
     return Response.json({error:'פעולה לא מוכרת'},{status:400,headers});
   } catch(error) {
+    if(error?.code==='ENGLISH_TRANSLATION_INCOMPLETE')
+      return Response.json({error:error.message,fields:error.fields},{status:422,headers:{'Cache-Control':'no-store'}});
     return Response.json({error:error.message},{status:500,headers:{'Cache-Control':'no-store'}});
   }
 }
