@@ -87,11 +87,15 @@ test('quote origin lookup bounded to latest accepted assignment, never falls bac
   ...reply,chatId:'invalid'})).origin,null);
  assert.equal(reads.length,1,'invalid scope makes no database call');
 });
-test('quote planner is passive; existing provider transport remains unchanged and no getMessage cost yet',()=>{
+test('quote planner is passive; only separately opted-in text reminders may quote, interactive transport is unchanged',()=>{
  const src=fs.readFileSync('base44/shared/greenVerifiedQuotePlanner.ts','utf8');
  const transport=fs.readFileSync('base44/shared/whatsappSend.ts','utf8');
  assert.doesNotMatch(src,/fetch\(|Deno\.serve|setInterval\(|\.create\(|\.update\(/);
- assert.doesNotMatch(transport,/greenVerifiedQuotePlanner|quotedMessageId/);
+ assert.doesNotMatch(transport,/from '\.\/greenVerifiedQuotePlanner\.ts'/);
+ const interactive=transport.slice(transport.indexOf('if(interactivePreview?.kind==='),
+  transport.indexOf("if(provider==='wasender')return sendWasenderTextToChat"));
+ assert.doesNotMatch(interactive,/quotedMessageId/);
+ assert.match(transport,/resolvePendingReminderGreenQuote/);
  assert.match(src,/targetMethod!=='sendMessage'/);
  assert.match(src,/sendByApi!==true/);
 });
