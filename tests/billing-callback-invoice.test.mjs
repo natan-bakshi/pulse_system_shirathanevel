@@ -101,7 +101,7 @@ test('general/direct card callback creates and delivers one invoice path, not ol
  assert.equal(f.payment.invoice4u_payment_id,'payment-provider-123');
 });
 test('legacy hosted callbacks with DocCreated=false never auto-mint a retroactive invoice',async()=>{
- const f=fixture({agreement:true,mode:undefined});
+ const f=fixture({agreement:true,mode:null});
  const result=await f.handler(f.request);
  assert.equal(result.status,200);
  assert.equal(f.stats.agreementCalls,1);
@@ -109,7 +109,7 @@ test('legacy hosted callbacks with DocCreated=false never auto-mint a retroactiv
  assert.equal(f.stats.deliveries,0);
 });
 test('legacy generic callback without document never sends broken empty invoice URL',async()=>{
- const f=fixture({mode:undefined});
+ const f=fixture({mode:null});
  const result=await f.handler(f.request);
  assert.equal(result.status,200);
  assert.equal(f.stats.issueCalls,0);
