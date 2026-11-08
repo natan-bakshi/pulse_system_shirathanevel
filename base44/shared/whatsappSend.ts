@@ -15,7 +15,9 @@ import {resolvePendingReminderGreenQuote} from './greenPendingReminderQuote.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
-const QUOTE_JOURNAL_TIMEOUT_MS = 4500;
+// Keep optional quotation from monopolizing the central queue lease.
+// Fast plain-text fallback is preferred over delaying all recipients.
+const QUOTE_JOURNAL_TIMEOUT_MS = 1800;
 
 // Historical export retained for existing callers. Both text and file sends
 // now use one E.164 parser; ambiguous foreign numbers fail closed.
