@@ -10,6 +10,7 @@ import { GripVertical, Trash2, ChevronUp, ChevronDown, Info } from 'lucide-react
 import RichTextEditor from './RichTextEditor';
 import { BLOCK_TYPES, BLOCK_LABELS } from './blockTypes';
 import EnglishDraftButton from '@/i18n/EnglishDraftButton';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * עורך בלוק יחיד בהצעה הידנית.
@@ -17,6 +18,7 @@ import EnglishDraftButton from '@/i18n/EnglishDraftButton';
  * התוכן עצמו נבנה בצד השרת בעת ייצוא PDF.
  */
 export default function BlockEditor({ block, index, total, onChange, onRemove, onMoveUp, onMoveDown, linkedEventId, templates, linkedEvent, documentLanguage='he' }) {
+  const {t,locale}=useLanguage();
   const update = (patch) => onChange({ ...block, ...patch });
   const updateOptions = (patch) => onChange({ ...block, options: { ...(block.options || {}), ...patch } });
   const updateEnglish=(key,source,value)=>onChange({...block,english:{...block.english,[key]:{source,value}}});
@@ -80,25 +82,25 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               <Select value={String(block.options?.level || 2)} onValueChange={(v) => updateOptions({ level: parseInt(v, 10) })}>
                 <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">כותרת 1 (גדולה)</SelectItem>
-                  <SelectItem value="2">כותרת 2</SelectItem>
-                  <SelectItem value="3">כותרת 3</SelectItem>
-                  <SelectItem value="4">כותרת 4</SelectItem>
+                  <SelectItem value="1">{t('כותרת 1 (גדולה)')}</SelectItem>
+                  <SelectItem value="2">{t('כותרת 2')}</SelectItem>
+                  <SelectItem value="3">{t('כותרת 3')}</SelectItem>
+                  <SelectItem value="4">{t('כותרת 4')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={block.options?.align || 'center'} onValueChange={(v) => updateOptions({ align: v })}>
                 <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="right">ישור לימין</SelectItem>
-                  <SelectItem value="center">מרכז</SelectItem>
-                  <SelectItem value="left">ישור לשמאל</SelectItem>
+                  <SelectItem value="right">{t('ישור לימין')}</SelectItem>
+                  <SelectItem value="center">{t('מרכז')}</SelectItem>
+                  <SelectItem value="left">{t('ישור לשמאל')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Input
               value={block.content || ''}
               onChange={(e) => update({ content: e.target.value })}
-              placeholder="כותרת..."
+              placeholder={t("כותרת...")}
               className="text-lg font-bold"
             />
           </div>
@@ -110,7 +112,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
         }
         return (
           <div className="space-y-2">
-            <div className="text-xs text-gray-600">בחר אילו פרטים מהאירוע המשויך יוצגו:</div>
+            <div className="text-xs text-gray-600">{t('בחר אילו פרטים מהאירוע המשויך יוצגו:')}</div>
             <div className="grid grid-cols-2 gap-2">
               {[
                 ['showFamilyName', 'שם משפחה'],
@@ -126,7 +128,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                     checked={block.options?.[key] !== false}
                     onCheckedChange={(v) => updateOptions({ [key]: !!v })}
                   />
-                  <span>{label}</span>
+                  <span>{t(label)}</span>
                 </label>
               ))}
             </div>
@@ -142,15 +144,15 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                 onCheckedChange={(v) => updateOptions({ useEventConcept: !!v })}
                 disabled={!linkedEventId}
               />
-              <span>השתמש אוטומטית בקונספט של האירוע המשויך</span>
+              <span>{t('השתמש אוטומטית בקונספט של האירוע המשויך')}</span>
             </label>
             {(!block.options?.useEventConcept || !linkedEventId) && (
               <div>
-                <Label className="text-xs">בחר תבנית פתיח ידנית:</Label>
+                <Label className="text-xs">{t('בחר תבנית פתיח ידנית:')}</Label>
                 <Select value={block.options?.templateId || '__none__'} onValueChange={(v) => updateOptions({ templateId: v === '__none__' ? '' : v })}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="בחר פתיח..." /></SelectTrigger>
+                  <SelectTrigger className="h-9"><SelectValue placeholder={t("בחר פתיח...")} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">— ללא —</SelectItem>
+                    <SelectItem value="__none__">{t('— ללא —')}</SelectItem>
                     {introTemplates.map(t => (
                       <SelectItem key={t.id} value={t.id}>{t.identifier}</SelectItem>
                     ))}
@@ -172,7 +174,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
         if (!linkedEventId) return <NotLinkedNotice />;
         return (
           <div className="space-y-2">
-            <div className="text-xs text-gray-600">תצוגת רשימת שירותים וחבילות מתוך האירוע המשויך:</div>
+            <div className="text-xs text-gray-600">{t('תצוגת רשימת שירותים וחבילות מתוך האירוע המשויך:')}</div>
             <div className="grid grid-cols-2 gap-2">
               {[
                 ['showPrices', 'הצג מחירים'],
@@ -186,7 +188,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                     checked={block.options?.[key] !== false}
                     onCheckedChange={(v) => updateOptions({ [key]: !!v })}
                   />
-                  <span>{label}</span>
+                  <span>{t(label)}</span>
                 </label>
               ))}
             </div>
@@ -197,7 +199,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
         if (!linkedEventId) return <NotLinkedNotice />;
         return (
           <div className="space-y-2">
-            <div className="text-xs text-gray-600">סיכום כספי מהאירוע המשויך:</div>
+            <div className="text-xs text-gray-600">{t('סיכום כספי מהאירוע המשויך:')}</div>
             <div className="grid grid-cols-2 gap-2">
               {[
                 ['showVat', 'הצג מע"מ'],
@@ -210,7 +212,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                     checked={block.options?.[key] !== false}
                     onCheckedChange={(v) => updateOptions({ [key]: !!v })}
                   />
-                  <span>{label}</span>
+                  <span>{t(label)}</span>
                 </label>
               ))}
             </div>
@@ -221,18 +223,18 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
         if (!linkedEventId) return <NotLinkedNotice />;
         return (
           <div className="space-y-2">
-            <div className="text-xs text-gray-600">לוח הזמנים יוצג מתוך האירוע המשויך (אם קיים).</div>
+            <div className="text-xs text-gray-600">{t('לוח הזמנים יוצג מתוך האירוע המשויך (אם קיים).')}</div>
           </div>
         );
 
       case BLOCK_TYPES.PAYMENT_TERMS:
         return (
           <div className="space-y-2">
-            <Label className="text-xs">בחר תבנית תנאי תשלום:</Label>
+            <Label className="text-xs">{t('בחר תבנית תנאי תשלום:')}</Label>
             <Select value={block.options?.templateId || '__default__'} onValueChange={(v) => updateOptions({ templateId: v === '__default__' ? '' : v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__default__">תבנית ברירת מחדל</SelectItem>
+                <SelectItem value="__default__">{t('תבנית ברירת מחדל')}</SelectItem>
                 {paymentTemplates.map(t => (
                   <SelectItem key={t.id} value={t.id}>{t.identifier}</SelectItem>
                 ))}
@@ -251,11 +253,11 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
       case BLOCK_TYPES.AGREEMENT_DISCLAIMER:
         return (
           <div className="space-y-2">
-            <Label className="text-xs">בחר תבנית תנאי התקשרות:</Label>
+            <Label className="text-xs">{t('בחר תבנית תנאי התקשרות:')}</Label>
             <Select value={block.options?.templateId || '__default__'} onValueChange={(v) => updateOptions({ templateId: v === '__default__' ? '' : v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__default__">תבנית ברירת מחדל</SelectItem>
+                <SelectItem value="__default__">{t('תבנית ברירת מחדל')}</SelectItem>
                 {agreementTemplates.map(t => (
                   <SelectItem key={t.id} value={t.id}>{t.identifier}</SelectItem>
                 ))}
@@ -275,7 +277,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
         return (
           <div className="flex items-center gap-3 flex-wrap">
             <div>
-              <Label className="text-xs">גובה (px)</Label>
+              <Label className="text-xs">{t('גובה (px)')}</Label>
               <Input
                 type="number"
                 min="0"
@@ -290,13 +292,13 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
                 checked={!!block.options?.showLine}
                 onCheckedChange={(v) => updateOptions({ showLine: !!v })}
               />
-              <span>קו מפריד</span>
+              <span>{t('קו מפריד')}</span>
             </label>
           </div>
         );
 
       default:
-        return <div className="text-sm text-gray-500">סוג בלוק לא נתמך</div>;
+        return <div className="text-sm text-gray-500">{t('סוג בלוק לא נתמך')}</div>;
     }
   };
 
@@ -306,7 +308,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
         <div className="flex items-center justify-between mb-3 pb-2 border-b">
           <div className="flex items-center gap-2">
             <GripVertical className="h-4 w-4 text-gray-400" />
-            <Badge variant="secondary" className="text-xs">{BLOCK_LABELS[block.type] || block.type}</Badge>
+            <Badge variant="secondary" className="text-xs">{t(BLOCK_LABELS[block.type] || block.type)}</Badge>
             <span className="text-xs text-gray-400">#{index + 1}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -381,7 +383,7 @@ function CustomContentToggle({ block, updateOptions, label, placeholder, default
           checked={useCustom}
           onCheckedChange={handleToggle}
         />
-        <span>{label}</span>
+        <span>{t(label)}</span>
       </label>
       {useCustom && (
         <RichTextEditor
