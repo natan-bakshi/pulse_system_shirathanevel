@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { getEventDisplayName } from '../../shared/eventName.ts';
 import { composeModularQuoteHtml } from '../../shared/modularQuote.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from '../../shared/quoteServicePresentation.ts';
+import {loadQuoteTranslations,localizeEventQuoteData,ensureCompleteEnglish,applyDocumentDirection,
+ isHebrew,fixedEnglishLabel,indexedText,approvedField,translationPreservesProtectedContent} from '../../shared/quoteLocalization.ts';
 
 // =====================================================================
 // Helpers
@@ -60,7 +62,9 @@ function renderEventDetailsBlock(block, event, settings) {
   if (!event) return '';
   const opts = block.options || {};
   const eventIdentityName = getEventDisplayName(event);
-  const familyLine = event.child_name
+  const familyLine = settings.documentLanguage==='en'
+    ? `${({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event')}${event.child_name?' for '+event.child_name:''} — ${eventIdentityName}`.trim()
+    : event.child_name
     ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
     : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
   const parts = [];
@@ -70,7 +74,7 @@ function renderEventDetailsBlock(block, event, settings) {
     parts.push(`<span style="font-weight: 700; font-size: calc(${settings.quoteEventDetailsFontSize}px + 1px);">${escapeHtml(familyLine)}</span>`);
   }
   const line2Parts = [];
-  if (opts.showLocation !== false && event.location) line2Parts.push(`<strong>אירוע ב${escapeHtml(event.location)}</strong>`);
+  if (opts.showLocation !== false && event.location) line2Parts.push(`<strong>${settings.documentLanguage==='en'?'Event at ':'אירוע ב'}${escapeHtml(event.location)}</strong>`);
   if (opts.showDate !== false && event.event_date) line2Parts.push(formatDate(event.event_date));
   if (line2Parts.length) parts.push(line2Parts.join(' | '));
 
@@ -434,6 +438,18 @@ function renderSpacerBlock(block) {
 async function composeManualQuoteHtml(manualQuote, base44Instance) {
   // Parse blocks
   let blocks = [];
+  const english=manualQuote.document_language==='en';
+  const missing=new Set<string>();
+  const translations=await loadQuoteTranslations(base44Instance,manualQuote.document_language);
+  const translatedCustom=(source,pair,key)=>{
+    if(!english||typeof source!=='string'||!isHebrew(source))return source;
+    if(pair?.source===source&&typeof pair.value==='string'&&pair.value.trim()&&
+      translationPreservesProtectedContent(source,pair.value))return pair.value;
+    const fixed=fixedEnglishLabel(source);
+    if(fixed!==source)return fixed;
+    missing.add('block.'+key);
+    return source;
+  };
   try {
     blocks = manualQuote.blocks ? JSON.parse(manualQuote.blocks) : [];
   } catch (e) {
@@ -441,12 +457,13 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
   }
 
   // Load context
-  const [appSettingsList, templates] = await Promise.all([
+  const [appSettingsList, originalTemplates] = await Promise.all([
     base44Instance.asServiceRole.entities.AppSettings.list(),
     base44Instance.asServiceRole.entities.QuoteTemplate.list()
   ]);
 
   const appSettings = appSettingsList.reduce((acc, item) => ({ ...acc, [item.setting_key]: item.setting_value }), {});
+  let templates=originalTemplates;
 
   let event = null;
   let allServices = [];
@@ -465,7 +482,36 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
     }
   }
 
+  if(english){
+    if(event){
+      const localized=localizeEventQuoteData({event,services:allServices,
+        eventServices,templates,index:translations,
+        options:{includeSchedule:blocks.some(b=>b.type==='schedule')}});
+      event=localized.event;
+      allServices=localized.services;
+      eventServices=localized.eventServices;
+      templates=localized.templates;
+      for(const key of localized.missing)missing.add(key);
+    }else{
+      templates=templates.map(t=>({...t,content:translatedCustom(t.content,
+        {source:t.content,value:approvedField(translations,'QuoteTemplate',t.id,'content',t.content)},
+        'template.'+t.template_type)}));
+    }
+    blocks=blocks.map((block,i)=>{
+      const next={...block,options:{...(block.options||{})}};
+      if((block.type==='heading'||block.type==='free_text')&&block.content){
+        next.content=translatedCustom(block.content,block.english?.content,i+'.content');
+      }
+      if(['intro_template','payment_terms','agreement_disclaimer'].includes(block.type)&&
+         block.options?.useCustomContent&&block.options?.customContent){
+        next.options.customContent=translatedCustom(block.options.customContent,
+          block.english?.customContent,i+'.customContent');
+      }
+      return next;
+    });
+  }
   const settings = {
+    documentLanguage:english?'en':'he',
     quoteBodyFontSize: appSettings.quote_body_font_size || '15',
     quoteTitleFontSize: appSettings.quote_title_font_size || '16',
     quoteGeneralLineHeight: appSettings.quote_line_height || '1.6',
@@ -476,13 +522,20 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
     quoteTextColor: appSettings.quote_text_color || '#333333',
     backgroundImage: appSettings.quote_background_image || '',
     quoteShowFooter: String(appSettings.quote_show_footer) === 'true',
-    quoteFooterText: appSettings.quote_footer_text || '',
+    quoteFooterText: english && appSettings.quote_footer_text && isHebrew(appSettings.quote_footer_text)
+      ? (approvedField(translations,'AppSettings',
+          appSettingsList.find(s=>s.setting_key==='quote_footer_text')?.id,
+          'setting_value',appSettings.quote_footer_text) || appSettings.quote_footer_text)
+      : appSettings.quote_footer_text || '',
     quoteMarginTop: appSettings.quote_margin_top_mm || '20',
     quoteMarginBottom: appSettings.quote_margin_bottom_mm || '35',
     quoteMarginLeft: appSettings.quote_margin_left_mm || '20',
     quoteMarginRight: appSettings.quote_margin_right_mm || '20',
     vatRate: parseFloat(appSettings.vat_rate) / 100 || 0.18
   };
+
+  if(english&&settings.quoteShowFooter&&isHebrew(settings.quoteFooterText))missing.add('footer');
+  if(english)ensureCompleteEnglish(missing);
 
   // Render blocks
   let body = '';
@@ -503,10 +556,12 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
   }
 
   // Build file name
-  let fileBaseName = manualQuote.title || 'הצעת מחיר ידנית';
+  let fileBaseName = english?'Manual Quotation':(manualQuote.title || 'הצעת מחיר ידנית');
   if (event) {
     const eventIdentityName = getEventDisplayName(event);
-    const eventTitle = event.child_name
+    const eventTitle = english
+      ? `${({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event')}${event.child_name?' for '+event.child_name:''} — ${eventIdentityName}`.trim()
+      : event.child_name
       ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
       : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
     fileBaseName = `${eventTitle} ${formatDate(event.event_date)}`.trim();
@@ -585,7 +640,7 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
 </body>
 </html>`;
 
-  return { html, fileBaseName, event };
+  return { html:applyDocumentDirection(html,manualQuote.document_language), fileBaseName, event };
 }
 
 // =====================================================================
