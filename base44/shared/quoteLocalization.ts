@@ -163,10 +163,11 @@ export function localizeEventQuoteData(input:{
    return source;
  };
  const e={...event};
- for(const key of ['event_name','child_name','location','city','concept',
+ // Keep event.concept in its original Hebrew: it is the identifier used to
+ // select a QuoteTemplate. Translating it here would lose the intro template.
+ for(const key of ['event_name','family_name','child_name','location','city',
   'services_section_title','standalone_services_title','external_services_title'])
   e[key]=field('Event',event.id,key,event[key],'event.'+key);
- if(!event.event_name)e.family_name=field('Event',event.id,'family_name',event.family_name,'event.family_name');
  if(event.notes)e.notes=field('Event',event.id,'notes',event.notes,'event.notes');
  if(Array.isArray(event.schedule)&&options.includeSchedule!==false){
    e.schedule=event.schedule.map((item:any,i:number)=>({...item,
