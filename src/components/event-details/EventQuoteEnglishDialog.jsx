@@ -7,7 +7,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {Label} from '@/components/ui/label';
 import {isHebrew,translationPreservesProtectedContent} from '../../../base44/shared/quoteLocalization.ts';
 
-const eventFields={event_name:'Event title',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes'};
+const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes'};
 const serviceFields={service_name:'Service name',service_description:'Description',package_name:'Package name',package_description:'Package description',client_notes:'Client-facing notes',price_display_text:'Custom price label',notes:'Other notes'};
 function liveValue(f,event,services){
  if(f.entity==='EventService')return services.find(s=>s.id===f.id)?.[f.key]||'';
@@ -29,7 +29,7 @@ function collect(event,services,catalog,rows){
  };
  for(const [key,label] of Object.entries(eventFields))
   add('Event',event.id,key,event[key],label,'event');
- if(!event.event_name)add('Event',event.id,'family_name',event.family_name,'Family name','event');
+
  (event.parents||[]).forEach((p,i)=>
   add('Event',event.id,'contact_'+String(p.id||i)+'_name',p.name,"Contact's English spelling",'event'));
  (event.schedule||[]).forEach((s,i)=>{
