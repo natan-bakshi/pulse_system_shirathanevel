@@ -2,6 +2,7 @@ import React from 'react';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {Label} from '@/components/ui/label';
+import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 
 // A single collapsed area in the existing editor, not a second workflow.
 export default function CatalogEnglishFields({
@@ -21,6 +22,8 @@ export default function CatalogEnglishFields({
       value={f.value} onChange={e=>onChange(f.key,e.target.value)}/>:
       <Input dir="ltr" lang="en" value={f.value}
       onChange={e=>onChange(f.key,e.target.value)}/>}
+    <EnglishDraftButton source={String(source[f.key]||'')} kind={f.key}
+      onDraft={draft=>onChange(f.key,draft)} compact/>
     {f.stale&&!touched.includes(f.key)&&
       <p className="text-xs text-amber-700">The Hebrew text changed. Review this English version before using it.</p>}
    </div>)}
