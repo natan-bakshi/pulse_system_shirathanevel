@@ -127,7 +127,37 @@ export function translateOrMissing(index:Map<string,any>,entity:string,id:string
   missing.add(label||field);
   return source;
 }
-export function ensureCompleteEnglish(missing:Iterable<string>){
+export function translateOrganizerQuoteFields(organizer:any,index:Map<string,any>,missing:Set<string>){
+  if(!organizer)return organizer;
+  const id=organizer.id;
+  const translate=(key:string,source:any,label:string)=>{
+    if(!source||!isHebrew(source))return source;
+    const value=approvedField(index,'QuoteOrganizerType',id,key,source);
+    if(value)return value;
+    const fixed=fixedEnglishLabel(source);
+    if(fixed!==source)return fixed;
+    missing.add(label);return source;
+  };
+  let quote_blocks=organizer.quote_blocks;
+  if(quote_blocks){
+    try{
+      const blocks=JSON.parse(quote_blocks);
+      if(Array.isArray(blocks))quote_blocks=JSON.stringify(blocks.map((block:any,i:number)=>({
+        ...block,subtitle_title:translate('block_'+i+'_subtitle_title',block.subtitle_title,
+          'organizer.block_'+i)
+      })));
+    }catch{missing.add('organizer.quote_blocks');}
+  }
+  return {...organizer,
+    quote_main_title_template:translate('quote_main_title_template',
+      organizer.quote_main_title_template,'organizer.quote_main_title_template'),
+    quote_blocks,
+    english_contacts_label:translate('contacts_label',
+      (()=>{try{return JSON.parse(organizer.contacts_config||'{}')?.label||''}catch{return''}})(),
+      'organizer.contacts_label')
+  };
+}
+export function ensureCompleteEnglish(missing:Iterable<string>){ 
   const list=[...new Set(missing)];
   if(!list.length)return;
   const error=new Error('The English quote has '+list.length+
@@ -173,6 +203,21 @@ export function localizeEventQuoteData(input:{
   'services_section_title','standalone_services_title','external_services_title'])
   e[key]=field('Event',event.id,key,event[key],'event.'+key);
  if(event.notes)e.notes=field('Event',event.id,'notes',event.notes,'event.notes');
+ // Custom event values can be rendered through organizer title templates.
+ // Translate values only; the original field IDs must remain byte-for-byte.
+ if(typeof event.custom_organizer_fields==='string'&&event.custom_organizer_fields.trim()){
+   try{
+     const original=JSON.parse(event.custom_organizer_fields);
+     if(original&&typeof original==='object'&&!Array.isArray(original)){
+       const translated:any={...original};
+       for(const [key,value] of Object.entries(original)){
+         if(typeof value==='string'&&isHebrew(value))
+           translated[key]=field('Event',event.id,'custom_'+key,value,'event.custom_'+key);
+       }
+       e.custom_organizer_fields=JSON.stringify(translated);
+     }
+   }catch{missing.add('event.custom_organizer_fields');}
+ }
  if(Array.isArray(event.schedule)&&options.includeSchedule!==false){
    e.schedule=event.schedule.map((item:any,i:number)=>({...item,
      activity:field('Event',event.id,'schedule_'+i+'_activity',item.activity,'event.schedule_'+i+'_activity'),
