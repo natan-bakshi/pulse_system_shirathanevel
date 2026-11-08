@@ -11,9 +11,11 @@ import {verifiedSupplierNavigationTransport} from './greenSupplierNavigation.ts'
 import {verifyV2ReminderTransport} from './whatsappV2ReminderOutbound.ts';
 import {verifyEventUpdateAckTransport} from './supplierEventUpdateAcknowledgement.ts';
 import {isEventChangeReconfirmationOutbox} from './eventChangeReconfirmation.ts';
+import {resolvePendingReminderGreenQuote} from './greenPendingReminderQuote.ts';
 
 const GREEN_API_BASE = 'https://api.green-api.com';
 const REQUEST_TIMEOUT_MS = 15000;
+const QUOTE_JOURNAL_TIMEOUT_MS = 4500;
 
 // Historical export retained for existing callers. Both text and file sends
 // now use one E.164 parser; ambiguous foreign numbers fail closed.
@@ -162,6 +164,30 @@ async function callGreenApi(method, body, pilotOnly=false) {
   return { success:true,provider:'green',messageId,idMessage:messageId,deliveryStatus:'accepted' };
 }
 
+// Optional ONE-SHOT journal read, only after the trusted server has matched
+// the original accepted assignment, sender account, chat and revision.
+// Green GetMessage can lag, return 404 or time out: that MUST NOT delay
+// the business reminder into a failed/UNKNOWN queue state. A missing journal
+// reply means plain text, not a second provider send attempt.
+async function getGreenQuoteMessage(chatId,idMessage){
+  if(!/^[1-9][0-9]{7,14}@c\.us$/.test(chatId)||
+    !/^[A-Za-z0-9_-]{8,180}$/.test(idMessage))return null;
+  const instanceId=Deno.env.get('GREEN_API_INSTANCE_ID');
+  const token=Deno.env.get('GREEN_API_TOKEN');
+  if(!/^[0-9]{5,20}$/.test(instanceId||'')||!token)return null;
+  try{
+    const response=await fetch(GREEN_API_BASE+'/waInstance'+instanceId+
+      '/getMessage/'+token,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chatId,idMessage}),
+        signal:AbortSignal.timeout(QUOTE_JOURNAL_TIMEOUT_MS)
+      });
+    if(!response.ok)return null;
+    const body=await response.json();
+    return body&&typeof body==='object'&&!Array.isArray(body)?body:null;
+  }catch{return null;}
+}
+
 // Queue-worker-only transport. Never call from business functions/endpoints.
 export async function sendWhatsAppTransport(job, provider, client,
  interactivePreview = null, expectedOfficeNumber = '') {
@@ -277,7 +303,20 @@ export async function sendWhatsAppTransport(job, provider, client,
     return callGreenApi(interactivePreview.method,interactivePreview.body,
       job.interactive_qa_required===true);
   }
-  return provider === 'wasender'
-    ? sendWasenderTextToChat(chatId,text)
-    : callGreenApi('sendMessage',{chatId,message:text});
+  if(provider==='wasender')return sendWasenderTextToChat(chatId,text);
+  // This is a text-only, per-template owner opt-in. Interactive messages
+  // above already returned and can NEVER acquire quotedMessageId.
+  // If proof is unavailable we still send the original text exactly once.
+  const quote=await resolvePendingReminderGreenQuote({
+    client,job,provider,senderAccountId:Deno.env.get('GREEN_API_INSTANCE_ID')||'',
+    getGreenMessage:getGreenQuoteMessage
+  });
+  if(quote.providerReads===1&&!quote.quotedMessageId){
+    // Reasons are fixed internal codes; no supplier IDs or provider payloads.
+    console.warn('[WhatsAppQuote] skipped reason='+quote.reason);
+  }
+  return callGreenApi('sendMessage',{
+    chatId,message:text,
+    ...(quote.quotedMessageId?{quotedMessageId:quote.quotedMessageId}:{})
+  });
 }
