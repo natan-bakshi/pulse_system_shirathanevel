@@ -119,6 +119,12 @@ export function localizeVisibleHtmlLabels(html:string):string{
     if(ride)return '>'+leading+'Journey '+ride[1]+trailing+'<';
     const stop=value.match(/^נקודה\s+(\d+)(:?)$/);
     if(stop)return '>'+leading+'Stop '+stop[1]+stop[2]+trailing+'<';
+    // Dates, quantity, and transport labels can share a text node with
+    // numeric values. Only match known label prefixes, never generic Hebrew.
+    const issueDate=value.match(/^תאריך הפקה:\s*(\d{1,2}[./-]\d{1,2}[./-]\d{4})$/);
+    if(issueDate)return '>'+leading+'Issue Date: '+issueDate[1]+trailing+'<';
+    const quantity=value.match(/^כמות:\s*(\d+(?:\.\d+)?)(.*)$/);
+    if(quantity)return '>'+leading+'Quantity: '+quantity[1]+quantity[2]+trailing+'<';
     const discount=value.match(/^הנחה(\s*\([^()<>]*\))?:$/);
     if(discount)return '>'+leading+'Discount'+(discount[1]||'')+':'+trailing+'<';
     return '>'+text+'<';
@@ -126,7 +132,7 @@ export function localizeVisibleHtmlLabels(html:string):string{
 }
 export function applyDocumentDirection(html:string,locale:unknown):string{
   if(localeForQuote(locale)!=='en')return html;
-  const ltrCss='<style data-quote-locale="en">html,body{direction:ltr;text-align:left} .page-content{direction:ltr} .section,.event-details-box,.package-content,.intro-content,.payment-terms,.event-notes{text-align:left;direction:ltr} .package-content{padding-left:15px!important;padding-right:0!important} .summary-table{direction:ltr} .summary-table td.label{text-align:left} .summary-table td.value{text-align:right}</style>';
+  const ltrCss='<style data-quote-locale="en">html,body{direction:ltr;text-align:left} .page-content{direction:ltr} .section,.event-details-box,.package-content,.intro-content,.payment-terms,.event-notes{text-align:left;direction:ltr} .package-content{padding-left:15px!important;padding-right:0!important} .summary-table{direction:ltr} .summary-table td.label{text-align:left} .summary-table td.value{text-align:right} .package-footer,.package-service-item{direction:ltr} .package-service-bullet{margin-right:10px;margin-left:0} .schedule-table td{text-align:left}</style>';
   return localizeVisibleHtmlLabels(html.replace(/<html([^>]*)>/i,(_x,attrs)=>
     '<html'+attrs.replace(/\s+dir="[^"]*"/,'').replace(/\s+lang="[^"]*"/,'')+' lang="en" dir="ltr">')
     .replace('</head>',ltrCss+'</head>'));
