@@ -29,12 +29,14 @@ import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 import { useOrganizerConfig } from '@/hooks/useOrganizerConfig';
 import { getField } from '@/lib/eventFields';
 import SectionTitleEditor from '@/components/events/SectionTitleEditor';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 function SupplierNoteInput({ serviceId, supplierId, initialNote, handleUpdateSupplierNote }) {
+  const {t}=useLanguage();
   const [localNote, setLocalNote] = React.useState(initialNote || '');
   return (
     <Input
-      placeholder="הערה לספק..."
+      placeholder={t('הערה לספק...')}
       value={localNote}
       onChange={(e) => setLocalNote(e.target.value)}
       onBlur={() => {
@@ -105,6 +107,7 @@ export default function ServicesCard({
   exchangeRate = 3.6,
   onPrimaryCurrencyChange
 }) {
+  const {t,locale}=useLanguage();
   const [expandedServices, setExpandedServices] = useState({});
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
   const [serviceTabs, setServiceTabs] = useState({}); // לניהול לשוניות עריכה לכל שירות
@@ -1086,7 +1089,7 @@ const handleCopyTransport = (service, serviceDetails) => {
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex-1 min-w-0 space-y-2">
-            <h3 className="text-lg font-semibold">שירותים</h3>
+            <h3 className="text-lg font-semibold">{t('שירותים')}</h3>
 
           </div>
           {isAdmin && !editingSection && (
@@ -1102,11 +1105,11 @@ const handleCopyTransport = (service, serviceDetails) => {
                         onClick={handleDeleteSelectedServices}
                       >
                         <Trash2 className="h-4 w-4 ml-2" />
-                        מחק {selectedServicesForAction.length} שירותים
+                        {t('מחק')} {selectedServicesForAction.length} {t('שירותים')}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>מחק את השירותים המסומנים מהאירוע</p>
+                      <p>{t('מחק את השירותים המסומנים מהאירוע')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1123,11 +1126,11 @@ const handleCopyTransport = (service, serviceDetails) => {
                         className="bg-amber-600 hover:bg-amber-700"
                       >
                         <PackageIcon className="h-4 w-4 ml-2" />
-                        הוסף {selectedServicesForAction.length} שירותים לחבילה
+                        {t('הוסף')} {selectedServicesForAction.length} {t('שירותים לחבילה')}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>הוסף שירותים מסומנים לחבילה חדשה או קיימת</p>
+                      <p>{t('הוסף שירותים מסומנים לחבילה חדשה או קיימת')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1140,23 +1143,23 @@ const handleCopyTransport = (service, serviceDetails) => {
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" className="bg-green-600 hover:bg-green-700">
                           <Plus className="h-4 w-4 ml-2" />
-                          הוסף שירות
+                          {t('הוסף שירות')}
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>הוסף שירות חדש או קיים לאירוע</p>
+                      <p>{t('הוסף שירות חדש או קיים לאירוע')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={() => setShowNewServiceDialog(true)}>
                     <Plus className="h-4 w-4 ml-2" />
-                    צור שירות חדש
+                    {t('צור שירות חדש')}
                   </DropdownMenuItem>
                   <div className="border-t my-1"></div>
                   <DropdownMenuItem onClick={() => setShowAddServiceDialog(true)}>
-                    הוסף שירות קיים
+                    {t('הוסף שירות קיים')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1164,11 +1167,11 @@ const handleCopyTransport = (service, serviceDetails) => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button size="sm" onClick={() => setShowAddExistingPackageDialog(true)} className="bg-purple-600 hover:bg-purple-700">
-                      <Plus className="h-4 w-4 ml-2" />הוסף חבילה קיימת
+                      <Plus className="h-4 w-4 ml-2" />{t('הוסף חבילה קיימת')}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>הוסף חבילת שירותים מוכנה מראש</p>
+                    <p>{t('הוסף חבילת שירותים מוכנה מראש')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -1176,10 +1179,10 @@ const handleCopyTransport = (service, serviceDetails) => {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="sm" onClick={() => setShowPackageDialog(true)} className="bg-red-800 hover:bg-red-700">צור חבילה</Button>
+                    <Button size="sm" onClick={() => setShowPackageDialog(true)} className="bg-red-800 hover:bg-red-700">{t('צור חבילה')}</Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>צור חבילה חדשה ריקה</p>
+                    <p>{t('צור חבילה חדשה ריקה')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -1195,11 +1198,11 @@ const handleCopyTransport = (service, serviceDetails) => {
                         all_inclusive_includes_vat: event.all_inclusive_includes_vat
                       });
                     }}>
-                      <Edit className="h-4 w-4 ml-2" />הכל כלול
+                      <Edit className="h-4 w-4 ml-2" />{t('הכל כלול')}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>הגדר מחיר גלובלי לכל האירוע (דריסת מחירי שירותים)</p>
+                    <p>{t('הגדר מחיר גלובלי לכל האירוע (דריסת מחירי שירותים)')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -1249,13 +1252,13 @@ const handleCopyTransport = (service, serviceDetails) => {
                         }}
                         className="text-xs font-medium px-2 py-1.5 rounded border border-gray-300 hover:bg-white transition-colors"
                         aria-label={field('primary_currency')?.name}
-                        title="לחץ להחלפת מטבע (ימיר את כל המחירים)"
+                        title={t('לחץ להחלפת מטבע (ימיר את כל המחירים)')}
                       >
-                        {getCurrencySymbol(event?.primary_currency || 'ILS')} {(event?.primary_currency || 'ILS') === 'ILS' ? 'שקל' : 'דולר'}
+                        {getCurrencySymbol(event?.primary_currency || 'ILS')} {t((event?.primary_currency || 'ILS') === 'ILS' ? 'שקל' : 'דולר')}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>החלף מטבע ראשי וימיר את כל המחירים</p>
+                      <p>{t('החלף מטבע ראשי וימיר את כל המחירים')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1270,24 +1273,24 @@ const handleCopyTransport = (service, serviceDetails) => {
             <div className="p-4 bg-blue-50 rounded space-y-3">
               <div className="flex items-center gap-2">
                 <Switch checked={allInclusiveData.all_inclusive} onCheckedChange={(checked) => setAllInclusiveData({ ...allInclusiveData, all_inclusive: checked })} />
-                <Label>חבילת הכל כלול</Label>
+                <Label>{t('חבילת הכל כלול')}</Label>
               </div>
               {allInclusiveData.all_inclusive && (
                 <div className="grid grid-cols-2 gap-2">
-                  <Input type="number" placeholder="מחיר החבילה" value={allInclusiveData.all_inclusive_price} onChange={(e) => setAllInclusiveData({ ...allInclusiveData, all_inclusive_price: e.target.value })} />
+                  <Input type="number" placeholder={t('מחיר החבילה')} value={allInclusiveData.all_inclusive_price} onChange={(e) => setAllInclusiveData({ ...allInclusiveData, all_inclusive_price: e.target.value })} />
                   <div className="flex items-center gap-2">
                     <Checkbox checked={allInclusiveData.all_inclusive_includes_vat} onCheckedChange={(checked) => setAllInclusiveData({ ...allInclusiveData, all_inclusive_includes_vat: checked })} />
-                    <Label>כולל מע"מ</Label>
+                    <Label>{t('כולל מע"מ')}</Label>
                   </div>
                 </div>
               )}
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setEditingSection(null)} disabled={isSavingServices}>ביטול</Button>
+              <Button variant="outline" onClick={() => setEditingSection(null)} disabled={isSavingServices}>{t('ביטול')}</Button>
               <Button onClick={handleSaveServices} disabled={isSavingServices}>
                 {isSavingServices && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
                 <Save className="h-4 w-4 ml-2" />
-                שמור
+                {t('שמור')}
               </Button>
             </div>
           </div>
@@ -1296,8 +1299,8 @@ const handleCopyTransport = (service, serviceDetails) => {
             <div className="space-y-4">
               {event.all_inclusive && event.all_inclusive_price && !isSupplier && (
                 <div className="p-4 bg-blue-50 rounded">
-                  <strong>חבילת הכל כלול:</strong> {getCurrencySymbol(event?.primary_currency || 'ILS')}{event.all_inclusive_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  {event.all_inclusive_includes_vat && <span className="text-sm text-gray-600"> (כולל מע"מ)</span>}
+                  <strong>{t('חבילת הכל כלול')}:</strong> {getCurrencySymbol(event?.primary_currency || 'ILS')}{event.all_inclusive_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {event.all_inclusive_includes_vat && <span className="text-sm text-gray-600"> ({t('כולל מע"מ')})</span>}
                 </div>
               )}
 
@@ -1345,7 +1348,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                                     onClick={() => handleOpenEditPackage(pkg)}
                                   >
                                     <Edit className="h-4 w-4 sm:ml-1" />
-                                    <span className="hidden sm:inline">ערוך חבילה</span>
+                                    <span className="hidden sm:inline">{t('ערוך חבילה')}</span>
                                   </Button>
 
                                   <Button 
@@ -1355,7 +1358,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                                     onClick={() => handleOpenAddServiceToPackage(pkg.package_id)}
                                   >
                                     <Plus className="h-4 w-4 sm:ml-1" />
-                                    <span className="hidden sm:inline">הוסף שירות</span>
+                                    <span className="hidden sm:inline">{t('הוסף שירות')}</span>
                                   </Button>
 
                                   <Button 
@@ -1703,8 +1706,8 @@ const handleCopyTransport = (service, serviceDetails) => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowLocalSupplierDialog(false); setLocalSupplierSearchTerm(""); }}>ביטול</Button>
-            <Button onClick={handleAssignLocalSuppliers} disabled={localAssignmentSaving}>שמור</Button>
+            <Button variant="outline" onClick={() => { setShowLocalSupplierDialog(false); setLocalSupplierSearchTerm(""); }}>{t('ביטול')}</Button>
+            <Button onClick={handleAssignLocalSuppliers} disabled={localAssignmentSaving}>{t('שמור')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
