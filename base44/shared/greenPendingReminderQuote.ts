@@ -12,6 +12,7 @@ const IDENT=/^[A-Za-z0-9_-]{3,100}$/;
 const CHAT=/^[1-9][0-9]{7,14}@c\.us$/;
 const ACCOUNT=/^[0-9]{5,20}$/;
 const VERSION=/^r[1-9][0-9]{0,12}$/;
+const RECEIPT=/^[A-Za-z0-9_-]{8,180}$/;
 const ALLOWED_STATES=new Set(['requested','queued','accepted']);
 const MAX_ORIGIN_AGE=90*86400;
 const result=(quotedMessageId:string|null,reason:string,providerReads:0|1)=>
@@ -84,6 +85,8 @@ export async function resolvePendingReminderGreenQuote(input:{
   origin.idempotency_key!==newest.key||origin.requested_provider!=='green'||
   origin.provider!=='green'||origin.sender_account_id!==senderAccountId||
   origin.chat_id!==job.chat_id||!IDENT.test(origin.id||'')||
+  !RECEIPT.test(origin.provider_message_id||'')||
+  (origin.company_id&&origin.company_id!=='shirat_hanevel')||
   (origin.assignment_revision&&origin.assignment_revision!=='r'+newest.revision)||
   (origins.length>1&&origins[1]?.idempotency_key===newest.key))
   return result(null,'stale_or_foreign_original_assignment',0);
