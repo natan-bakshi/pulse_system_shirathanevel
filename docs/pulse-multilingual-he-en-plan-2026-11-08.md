@@ -71,3 +71,18 @@ Payment creation/callbacks, invoice amounts/VAT behavior, WhatsApp queues/button
 - A prior discovery found no connected Cloudflare plugin; external deployment remains unverified. Do not substitute a paid Base44 AI call.
 - Plan and restore point created before implementation. No business data changes, provider inference, client messages or document issuance performed.
 - Next: inspect catalog schema and quote generation, then implement and test the additive localization layer.
+
+### 2026-11-09 — Fixed-label completion in event cards and quote editors
+- Restore checkpoint before edits: 6af0f7ffb291fe20ca6c5b14 (commit 2bfa4dabf6a73330b7c6dbe710c0665187e02426).
+- Added fixed Hebrew/English labels to the central front-end dictionary, and connected explicit `useLanguage` calls in: AdminDashboard and stats, event cards, event overview and family cards, FinancialSummaryCard, PaymentsCard, EventDocumentsCard, ScheduleCard, ServicesCard, EventDetailsTabs, client/supplier portal cards (from prior session), manual quote lists and editors, modular quote details/visibility/item editing/preview/share, manual BlockAdder and BlockEditor, and quote-template management.
+- Kept business records and actions intact. Labels are localized at render time, while event names, contact names, customer notes, prices, numeric values and provider actions remain source data.
+- Quote assembly: extended fixed English labels for VAT, payment totals, balance, discounts, transport journeys, pickup stops, contacts, quantities, dates and client-facing sections. Source matching prevents stale/invalid translations.
+- ManualQuote now stores `document_language` and `last_pdf_language`, preserving old PDFs while avoiding display of a Hebrew PDF as the current English file. English custom blocks and only relevant templates are source-checked before PDF generation.
+- Corrected overvalidation of unrelated catalog services/templates: English quotes only need translations for items/templates included in the document. Included untranslated items still fail closed.
+- Event bilingual editor now supports transport pickup locations, pickup contact names, on-site contact names, organizer custom fields and discount reason, in addition to normal name and schedule editing.
+- QuoteShareLinks and QuoteWhatsAppButton take the document language so the default attachment caption is English for English modular quotes; user-authored WhatsApp captions remain editable.
+- Automated coverage: 1,237 tests passed across all test suites; Vite build passed; git diff --check passed. Dedicated manual, modular and regular quote tests confirm English/RTL-LTR paths, figures and URL placeholders preserved, rejection of stale source, and no Hebrew fixed text leakage in standard and transport/discount quote fixtures.
+- Dynamic personal/event data still requires administrator-approved English; this is intentional. The Cloudflare free translation Worker is source-only and disabled until verified owner-controlled Access/quota/hosting is configured.
+- Not yet certified: browser visual testing on authenticated mobile and desktop; live PDF rendering against API2PDF (no production PDF was issued as a test); external translator deployment; proof of public production publish. Do not claim these are complete.
+- Next gates: inspect live screenshot previews across role dashboards and Hebrew/English client quotes; test actual PDF in a non-customer test event; confirm publish state, then complete remaining lower-priority fixed UI labels and document-specific formatting.
+
