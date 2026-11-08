@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 
 /**
@@ -9,10 +9,13 @@ import { base44 } from '@/api/base44Client';
  * ההפרדה הזו נחוצה כי דפדפני מובייל (iOS וגם Android) דורשים
  * שקריאה ל-navigator.share תתבצע כתגובה מידית ללחיצת משתמש.
  */
-export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, loadEventData }) {
+export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, quoteLanguage = 'he', loadEventData }) {
   const [shareStatus, setShareStatus] = useState('initial'); // 'initial' | 'fetching' | 'ready'
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
+  // A previously prepared Hebrew file must never be shared after selecting
+  // English, or vice versa. Keep the two-click iOS share interaction intact.
+  useEffect(()=>{setShareStatus('initial');setPdfBlob(null);setPdfFileName('');},[quoteLanguage,eventId]);
 
   // שלב 1: הכנת ה-PDF - יכול לקחת זמן
   const handlePrepareShare = useCallback(async (e) => {
@@ -29,7 +32,8 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
         includeIntro: quoteIncludeIntro,
         includePaymentTerms: quoteIncludePaymentTerms,
         includeSchedule: quoteIncludeSchedule,
-        includeExternalServices: quoteIncludeExternalServices
+        includeExternalServices: quoteIncludeExternalServices,
+        language: quoteLanguage
       });
       const pdfUrl = response.data.pdf_url;
       const fileName = response.data.fileName || `quote_${event?.event_name || event?.family_name || eventId}.pdf`;
@@ -47,12 +51,12 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       if (loadEventData) loadEventData();
     } catch (err) {
       console.error('Prepare share failed:', err);
-      alert('שגיאה בהכנת הקובץ, נסה שוב');
+      alert(err.response?.data?.error || 'שגיאה בהכנת הקובץ, נסה שוב');
       setShareStatus('initial');
       setPdfBlob(null);
       setPdfFileName('');
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, loadEventData]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, quoteLanguage, loadEventData]);
 
   // שלב 2: שיתוף הקובץ המוכן - חייב להיות מידי, ללא await לפני navigator.share
   const handleDoShare = useCallback(async (e) => {
