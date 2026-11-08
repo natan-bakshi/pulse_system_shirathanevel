@@ -2,7 +2,7 @@ import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, syst
 import { getEventDisplayName } from './eventName.ts';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
-import {loadQuoteTranslations,localizeEventQuoteData,ensureCompleteEnglish,applyDocumentDirection} from './quoteLocalization.ts';
+import {loadQuoteTranslations,localizeEventQuoteData,translateOrganizerQuoteFields,ensureCompleteEnglish,applyDocumentDirection} from './quoteLocalization.ts';
 
 // Import helper functions
 function formatDate(dateStringOrDate) {
@@ -254,8 +254,11 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     if (!event) {
         throw new Error('Event not found');
     }
+    let localeIndex=new Map();
+    let localeMissing=new Set();
     if(options.language==='en'){
       const index=await loadQuoteTranslations(base44Instance,'en');
+      localeIndex=index;
       const localized=localizeEventQuoteData({event,services:allServices,
         eventServices:allEventServices,templates,index,options});
       ensureCompleteEnglish(localized.missing);
@@ -274,6 +277,10 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     let organizerType = null;
     if (event.organizer_type) {
         organizerType = allOrganizerTypes.find(t => t.type_name === event.organizer_type && t.is_active !== false);
+    }
+    if(options.language==='en'&&organizerType){
+      organizerType=translateOrganizerQuoteFields(organizerType,localeIndex,localeMissing);
+      ensureCompleteEnglish(localeMissing);
     }
     let organizerBlocks = null;
     if (organizerType?.quote_blocks) {
@@ -549,7 +556,9 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
         try { contactsConfig = JSON.parse(organizerType.contacts_config); } catch (e) { contactsConfig = {}; }
     }
     const configuredFields = getEventFields(organizerType);
-    const contactsLabel = getField(configuredFields, 'parents')?.name || contactsConfig.label || 'אנשי קשר';
+    const contactsLabel = options.language==='en'
+      ? organizerType?.english_contacts_label||'Event Contacts'
+      : getField(configuredFields, 'parents')?.name || contactsConfig.label || 'אנשי קשר';
     const familyContacts = !organizerType || organizerType.is_default;
     const parentContacts = familyContacts ? getEventContacts(event) : [];
     const otherContacts = familyContacts ? [] : getEventContacts(event);
