@@ -12,8 +12,10 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import EventsCalendar from "@/components/admin/EventsCalendar";
 import { getEventTitle } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function SupplierCalendarDashboard() {
+  const {t,locale}=useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -52,7 +54,7 @@ export default function SupplierCalendarDashboard() {
       queryClient.invalidateQueries({queryKey:['supplierAssignmentsFeed']});
     } catch (error) {
       console.error('Failed to update supplier status:',error);
-      alert('שגיאה בעדכון הסטטוס. אנא נסה שוב.');
+      alert(locale==='en'?'Unable to update the assignment. Please try again.':'שגיאה בעדכון הסטטוס. אנא נסה שוב.');
     }
   },[supplier,queryClient]);
 
@@ -69,7 +71,7 @@ export default function SupplierCalendarDashboard() {
 
   const getStatusText = (status) => {
     const statusTexts = { pending: "ממתין לאישור", confirmed: "אישרתי", rejected: "לא יכול" };
-    return statusTexts[status] || "לא ידוע";
+    return t(statusTexts[status] || "לא ידוע");
   };
 
   const getStatusColor = (status) => {
@@ -87,8 +89,8 @@ export default function SupplierCalendarDashboard() {
 
   if (feedError) {
     return <div className="max-w-xl mx-auto bg-white rounded-xl p-6 text-center space-y-3">
-      <p role="alert">לא ניתן לטעון כרגע את לוח השיבוצים המאומת שלך.</p>
-      <Button onClick={() => reload()}>נסה שוב</Button>
+      <p role="alert">{t("לא ניתן לטעון כרגע את לוח השיבוצים המאומת שלך.")}</p>
+      <Button onClick={() => reload()}>{t("נסה שוב")}</Button>
     </div>;
   }
 
@@ -96,12 +98,12 @@ export default function SupplierCalendarDashboard() {
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">שלום {user?.full_name || "ספק"}</h1>
+          <h1 className="text-3xl font-bold text-white mb-4">{locale==="en"?"Hello":"שלום"} {user?.full_name || (locale==="en"?"Supplier":"ספק")}</h1>
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl max-w-md mx-auto">
             <CardContent className="p-6 text-center">
               <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-              <p className="text-gray-600">לא נמצא פרופיל ספק התואם למשתמש זה.</p>
-              <p className="text-sm text-gray-500 mt-2">אנא פנה למנהל המערכת לעדכון הפרטים.</p>
+              <p className="text-gray-600">{t("לא נמצא פרופיל ספק התואם למשתמש זה.")}</p>
+              <p className="text-sm text-gray-500 mt-2">{t("אנא פנה למנהל המערכת לעדכון הפרטים.")}</p>
             </CardContent>
           </Card>
         </div>
@@ -113,11 +115,11 @@ export default function SupplierCalendarDashboard() {
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
-          שלום {user?.full_name || supplier?.supplier_name || "ספק"}
+          {locale==="en"?"Hello":"שלום"} {user?.full_name || supplier?.supplier_name || (locale==="en"?"Supplier":"ספק")}
         </h1>
         {pendingEvents.length > 0 && (
           <p className="text-white/80">
-            יש לך {pendingEvents.length} שיבוצים ממתינים לאישור
+            {locale==="en"?`You have ${pendingEvents.length} assignments awaiting confirmation`:`יש לך ${pendingEvents.length} שיבוצים ממתינים לאישור`}
           </p>
         )}
       </div>
@@ -137,7 +139,7 @@ export default function SupplierCalendarDashboard() {
           <CardHeader className="p-3 sm:p-6 pb-2">
             <CardTitle className="text-lg sm:text-xl text-gray-900 flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-500" />
-              שיבוצים ממתינים לאישור
+              {t("שיבוצים ממתינים לאישור")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0 space-y-3">
@@ -160,9 +162,9 @@ export default function SupplierCalendarDashboard() {
                         <Clock className="h-3.5 w-3.5" />
                         {event.supplier_arrival_time ? (
                           <>
-                            <span className="font-semibold">התייצבות: {event.event_time}</span>
+                            <span className="font-semibold">{t("התייצבות")}: {event.event_time}</span>
                             {event.original_event_time && event.original_event_time !== event.event_time && (
-                              <span className="text-[10px] text-gray-500">(אירוע: {event.original_event_time})</span>
+                              <span className="text-[10px] text-gray-500">({t("אירוע")}: {event.original_event_time})</span>
                             )}
                           </>
                         ) : (
@@ -178,7 +180,7 @@ export default function SupplierCalendarDashboard() {
                     )}
                   </div>
                   <div className="text-xs sm:text-sm text-red-800 font-medium mt-1">
-                    שירות: {event.serviceName}
+                    {t("שירות")}: {event.serviceName}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -188,7 +190,7 @@ export default function SupplierCalendarDashboard() {
                     className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
                   >
                     <CheckCircle className="h-4 w-4 sm:ml-1" />
-                    <span className="hidden sm:inline">אשר</span>
+                    <span className="hidden sm:inline">{t("אשר")}</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -197,7 +199,7 @@ export default function SupplierCalendarDashboard() {
                     className="border-red-500 text-red-600 hover:bg-red-50 text-xs sm:text-sm"
                   >
                     <XCircle className="h-4 w-4 sm:ml-1" />
-                    <span className="hidden sm:inline">דחה</span>
+                    <span className="hidden sm:inline">{t("דחה")}</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -205,7 +207,7 @@ export default function SupplierCalendarDashboard() {
                     onClick={() => navigate(createPageUrl('SupplierEventView') + `?id=${event.id}`)}
                     className="border-red-200 text-red-800 hover:bg-red-50 text-xs sm:text-sm"
                   >
-                    פרטים
+                    {t("פרטים")}
                   </Button>
                 </div>
               </div>
