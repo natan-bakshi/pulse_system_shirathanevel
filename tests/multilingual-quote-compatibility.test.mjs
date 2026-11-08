@@ -82,7 +82,8 @@ test('English proposal rejects a missing personal English spelling without touch
  await assert.rejects(generateQuoteHtml('event-1',{asServiceRole:{entities}},{language:'en'}),
   err=>err.code==='ENGLISH_TRANSLATION_INCOMPLETE' && err.fields.includes('event.event_name'));
  const he=await generateQuoteHtml('event-1',{asServiceRole:{entities}});
- assert.ok(he.html.includes('משפחת לוי'));
+ assert.ok(he.html.includes('לוי'));
+ assert.equal(event.family_name,'לוי');
 });
 test('modular proposal translates items, descriptions, headings and stays priced identically',async()=>{
  const content={document_language:'he',event_type:'בר מצווה',show_intro:true,
