@@ -46,10 +46,13 @@ test('only admin mounts raw event realtime subscription; route role gate execute
  assert.match(routes,/canMountPulsePage/);
  assert.match(routes,/if\(ADMIN\.has\(first\)\)return user\.role==='admin'/);
 });
-test('interactive Green provider transport remains free of native quote request fields',()=>{
+test('native quote is isolated to Green text-only sendMessage, never interactive buttons',()=>{
  const transport=read('base44/shared/whatsappSend.ts');
  const quotePlanner=read('base44/shared/greenVerifiedQuotePlanner.ts');
  assert.match(transport,/callGreenApi\('sendInteractiveButtons'/);
- assert.doesNotMatch(transport,/quotedMessageId/);
+ const interactive=transport.slice(transport.indexOf('if(interactivePreview?.kind==='),
+  transport.indexOf('if(provider===\'wasender\')return sendWasenderTextToChat'));
+ assert.doesNotMatch(interactive,/quotedMessageId/);
+ assert.match(transport,/return callGreenApi\('sendMessage',\{\s*chatId,message:text,/);
  assert.match(quotePlanner,/interactive_quote_not_documented/);
 });
