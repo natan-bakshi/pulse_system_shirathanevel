@@ -101,7 +101,7 @@ test('English quote with transport, discounts and inclusive prices keeps all lab
  event.all_inclusive_includes_vat=true;
  const service={
   id:'es2',event_id:event.id,service_id:'s1',
-  service_name:'Executive Shuttle',service_description:'Reserved Transport',
+  service_name:'Executive Shuttle',service_description:'Reserved Transport',category:'נסיעות',
   quantity:1,custom_price:6000,includes_vat:true,
   on_site_contact_details:{name:'John',phone:'0521234567'},
   pickup_point:JSON.stringify([{pickupPoints:[
@@ -128,7 +128,7 @@ test('manual English quote transport and discounts localize labels without chang
  event.discount_reason='Special Offer';
  entities.EventService.filter=async()=>[{
   id:'es2',event_id:event.id,service_id:'s1',service_name:'Coach Transfer',
-  service_description:'Transport',custom_price:5000,quantity:2,
+  service_description:'Transport',category:'נסיעות',custom_price:5000,quantity:2,
   pickup_point:JSON.stringify([{pickupPoints:[
    {time:'11:30',location:'Mamilla',contact:{name:'John',phone:'0501234567'}},
    {time:'12:15',location:'Western Wall',contact:{name:'Jane',phone:'0507654321'}}
