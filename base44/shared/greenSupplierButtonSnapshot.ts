@@ -16,12 +16,15 @@ const LABEL=/^[^\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]{0,25}$/u;
 function parse(raw:any){
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
   Object.keys(raw).sort().join(',')!=='buttons,sourceType,templateId,version'||
-  ![1,2].includes(raw.version)||!SCOPE.has(raw.sourceType)||!isSafeTemplateId(raw.templateId))
+  ![1,2,3].includes(raw.version)||!SCOPE.has(raw.sourceType)||!isSafeTemplateId(raw.templateId))
   return null;
  const b=raw.buttons;
- if(raw.version===2){
-  try{return {sourceType:raw.sourceType,templateId:raw.templateId,
-   buttons:normalizeCustomButtons(b)};}
+ if(raw.version===2||raw.version===3){
+  try{
+   const buttons=normalizeCustomButtons(b);
+   if((raw.version===3)!==Boolean(buttons.quoteSource))return null;
+   return {sourceType:raw.sourceType,templateId:raw.templateId,buttons};
+  }
   catch{return null;}
  }
  if(!b||typeof b!=='object'||Array.isArray(b)||
@@ -44,7 +47,8 @@ export function captureSupplierButtonSnapshot(control:any,context:any):string{
  const selection=supplierButtonsForProvenance(
   control,context.sourceType,context.notificationTemplateId);
  if(!selection)return '';
- const json=JSON.stringify({version:isCustomSupplierButtons(selection)?2:1,
+ const json=JSON.stringify({version:isCustomSupplierButtons(selection)?
+  (selection.quoteSource?3:2):1,
   sourceType:context.sourceType,
   templateId:context.notificationTemplateId,buttons:selection});
  if(json.length>MAX)return '';
