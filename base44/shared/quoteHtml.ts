@@ -2,6 +2,7 @@ import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, syst
 import { getEventDisplayName } from './eventName.ts';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
+import {loadQuoteTranslations,localizeEventQuoteData,ensureCompleteEnglish,applyDocumentDirection} from './quoteLocalization.ts';
 
 // Import helper functions
 function formatDate(dateStringOrDate) {
@@ -240,7 +241,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const includeIntro = options.includeIntro !== false;
     const includePaymentTerms = options.includePaymentTerms !== false;
     const includeSchedule = options.includeSchedule !== false;
-    const [event, allServices, allEventServices, payments, templates, appSettingsList, allOrganizerTypes] = await Promise.all([
+    let [event, allServices, allEventServices, payments, templates, appSettingsList, allOrganizerTypes] = await Promise.all([
         options.preloadedEvent ? Promise.resolve(options.preloadedEvent) : base44Instance.asServiceRole.entities.Event.get(eventId),
         base44Instance.asServiceRole.entities.Service.list(),
         base44Instance.asServiceRole.entities.EventService.filter({ event_id: eventId }),
@@ -252,6 +253,16 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
     if (!event) {
         throw new Error('Event not found');
+    }
+    if(options.language==='en'){
+      const index=await loadQuoteTranslations(base44Instance,'en');
+      const localized=localizeEventQuoteData({event,services:allServices,
+        eventServices:allEventServices,templates,index,options});
+      ensureCompleteEnglish(localized.missing);
+      event=localized.event;
+      allServices=localized.services;
+      allEventServices=localized.eventServices;
+      templates=localized.templates;
     }
 
     const appSettings = appSettingsList.reduce((acc, item) => ({ ...acc, [item.setting_key]: item.setting_value }), {});
@@ -517,9 +528,12 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
     // שם תצוגה לאירוע: שם האירוע מחליף את שם המשפחה בכל מקום שמייצג את האירוע
     const eventIdentityName = getEventDisplayName(event);
-    const familyDetailsLine = event.child_name
-        ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
-        : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
+    const typeName=options.language==='en'?({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event'):getEventType(event.event_type);
+    const familyDetailsLine = options.language==='en'
+        ? `${typeName}${event.child_name?` for ${event.child_name}`:''} — ${eventIdentityName}`.trim()
+        : event.child_name
+        ? `${typeName} של ${event.child_name} ${eventIdentityName}`.trim()
+        : `${typeName} ${eventIdentityName}`.trim();
 
     const fileAndTitleName = `${familyDetailsLine} ${formatDate(event.event_date)}`.trim();
 
@@ -870,5 +884,5 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
       </html>
     `;
 
-    return { html, fileAndTitleName, margins };
+    return { html: applyDocumentDirection(html,options.language), fileAndTitleName, margins };
 }
