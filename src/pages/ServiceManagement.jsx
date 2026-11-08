@@ -1,5 +1,5 @@
 import { refreshEventStatus } from '@/lib/eventStatus';
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Edit, Trash2, Star, Settings, Loader2, Download, Package as PackageIcon, X, GripVertical, HelpCircle } from "lucide-react";
 import ConceptDefaultsManager from "../components/services/ConceptDefaultsManager";
+import CatalogEnglishFields from '@/components/services/CatalogEnglishFields';
+import {persistCatalogEnglish} from '@/lib/catalogEnglish';
 import CategorySelector from "@/components/common/CategorySelector";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -32,6 +34,33 @@ export default function ServiceManagement() {
   const [editingService, setEditingService] = useState(null);
   const [editingPackage, setEditingPackage] = useState(null);
   const [activeTab, setActiveTab] = useState("services");
+  const [englishValues,setEnglishValues]=useState({});
+  const [englishTouched,setEnglishTouched]=useState([]);
+  const [englishRecord,setEnglishRecord]=useState(null);
+  const [englishLoading,setEnglishLoading]=useState(false);
+  const [englishError,setEnglishError]=useState('');
+  const englishSerial=useRef(0);
+  const loadEnglish=useCallback(async(entity,id)=>{
+    const serial=++englishSerial.current;
+    setEnglishValues({});setEnglishTouched([]);setEnglishRecord(null);setEnglishError('');
+    if(!id){setEnglishLoading(false);return;}
+    setEnglishLoading(true);
+    try{
+      const rows=await base44.entities.ContentTranslation.filter({
+        source_entity:entity,source_id:id,locale:'en'
+      });
+      if(serial!==englishSerial.current)return;
+      if(rows.length>1)throw Error('Duplicate English records require review');
+      const row=rows[0]||null;
+      setEnglishRecord(row);
+      setEnglishValues(Object.fromEntries(Object.entries(row?.fields||{}).map(([key,pair])=>[key,pair.value||''])));
+    }catch(error){if(serial===englishSerial.current)setEnglishError(error.message||'Could not load English fields');}
+    finally{if(serial===englishSerial.current)setEnglishLoading(false);}
+  },[]);
+  const changeEnglish=useCallback((key,value)=>{
+    setEnglishValues(v=>({...v,[key]:value}));
+    setEnglishTouched(old=>old.includes(key)?old:[...old,key]);
+  },[]);
   
   const [formData, setFormData] = useState({
     service_name: "",
@@ -140,6 +169,7 @@ export default function ServiceManagement() {
 
 
   const handleEdit = useCallback((service) => {
+    loadEnglish('Service',service.id);
     setEditingService(service);
     setFormData({
       service_name: service.service_name,
@@ -151,9 +181,10 @@ export default function ServiceManagement() {
       admin_notes: service.admin_notes || "",
     });
     setIsDialogOpen(true);
-  }, []);
+  }, [loadEnglish]);
 
   const handleNew = useCallback(() => {
+    loadEnglish('Service',null);
     setEditingService(null);
     setFormData({
       service_name: "",
@@ -165,7 +196,7 @@ export default function ServiceManagement() {
       admin_notes: "",
     });
     setIsDialogOpen(true);
-  }, []);
+  }, [loadEnglish]);
 
   const handleSave = useCallback(async () => {
     if (isSaving) return;
@@ -226,6 +257,7 @@ export default function ServiceManagement() {
   }, [queryClient]);
 
   const handleEditPackage = useCallback((pkg) => {
+    loadEnglish('Package',pkg.id);
     setEditingPackage(pkg);
     setPackageFormData({
       package_name: pkg.package_name,
@@ -236,9 +268,10 @@ export default function ServiceManagement() {
       category: pkg.category || ""
     });
     setIsPackageDialogOpen(true);
-  }, []);
+  }, [loadEnglish]);
 
   const handleNewPackage = useCallback(() => {
+    loadEnglish('Package',null);
     setEditingPackage(null);
     setPackageFormData({
       package_name: "",
@@ -249,7 +282,7 @@ export default function ServiceManagement() {
       category: ""
     });
     setIsPackageDialogOpen(true);
-  }, []);
+  }, [loadEnglish]);
 
   const handleSavePackage = useCallback(async () => {
     if (isSaving) return;
