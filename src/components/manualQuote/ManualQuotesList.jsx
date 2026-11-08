@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * רשימת הצעות מחיר ידניות (טיוטות + שמורות) — מוצגת בתוך לשונית "הצעות מחיר ידניות".
  */
 export default function ManualQuotesList() {
+  const {t,locale}=useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -54,10 +56,10 @@ export default function ManualQuotesList() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            הצעות מחיר ידניות
+            {t('הצעות מחיר ידניות')}
           </CardTitle>
           <Button onClick={handleNew}>
-            <Plus className="h-4 w-4 ml-1" /> יצירת הצעת מחיר ידנית
+            <Plus className="h-4 w-4 ml-1" /> {t('יצירת הצעת מחיר ידנית')}
           </Button>
         </div>
       </CardHeader>
@@ -68,9 +70,9 @@ export default function ManualQuotesList() {
           </div>
         ) : quotes.length === 0 ? (
           <div className="text-center py-10 text-gray-500">
-            <p className="mb-3">אין עדיין הצעות מחיר ידניות.</p>
+            <p className="mb-3">{t('אין עדיין הצעות מחיר ידניות.')}</p>
             <Button variant="outline" onClick={handleNew}>
-              <Plus className="h-4 w-4 ml-1" /> צור הצעה ראשונה
+              <Plus className="h-4 w-4 ml-1" /> {t('צור הצעה ראשונה')}
             </Button>
           </div>
         ) : (
@@ -85,13 +87,13 @@ export default function ManualQuotesList() {
                   <div className="flex-1 min-w-[200px]">
                     <div className="font-medium">{q.title}</div>
                     <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-1">
-                      <span>עודכן: {new Date(q.updated_date).toLocaleDateString('he-IL')}</span>
+                      <span>{t('עודכן')}: {new Date(q.updated_date).toLocaleDateString(locale==='en'?'en-GB':'he-IL')}</span>
                       {linked ? (
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          משויך: {linked.event_name}
+                          {t('משויך')}: {linked.event_name}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-gray-500">לא משויך</Badge>
+                        <Badge variant="outline" className="text-gray-500">{t('לא משויך')}</Badge>
                       )}
                     </div>
                   </div>
