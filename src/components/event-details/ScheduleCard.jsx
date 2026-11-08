@@ -1,5 +1,6 @@
 import { useOrganizerConfig } from '@/hooks/useOrganizerConfig';
 import { getField } from '@/lib/eventFields';
+import {useLanguage} from '@/i18n/LanguageProvider';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ export default function ScheduleCard({
   handleSaveSchedule,
   isSavingSchedule
 }) {
+  const {t,locale}=useLanguage();
   const { fields } = useOrganizerConfig(event?.organizer_type);
   const scheduleField = getField(fields, 'schedule');
   const [importText, setImportText] = useState("");
@@ -128,7 +130,7 @@ export default function ScheduleCard({
       <CardHeader>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">{scheduleField.name}</h3>
+            <h3 className="text-lg font-semibold">{t(scheduleField.name)}</h3>
             {event.schedule?.length > 0 && (
               <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 w-8 p-0">
                 {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
@@ -140,7 +142,7 @@ export default function ScheduleCard({
               setEditingSection('schedule'); 
               setEditableSchedule([...(event.schedule || [])]); 
             }}>
-              <Edit className="h-4 w-4 ml-2" />ערוך
+              <Edit className="h-4 w-4 ml-2" />{t('ערוך')}
             </Button>
           )}
         </div>
@@ -150,30 +152,30 @@ export default function ScheduleCard({
           <div className="space-y-4">
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={addScheduleItem} className="flex-1">
-                <Plus className="h-4 w-4 ml-1" />הוסף ידנית
+                <Plus className="h-4 w-4 ml-1" />{t('הוסף ידנית')}
               </Button>
               
               <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
                 <DialogTrigger asChild>
                   <Button variant="secondary" size="sm" className="flex-1">
-                    <ClipboardPaste className="h-4 w-4 ml-1" />טעינה חכמה
+                    <ClipboardPaste className="h-4 w-4 ml-1" />{t('טעינה חכמה')}
                   </Button>
                 </DialogTrigger>
-                <DialogContent dir="rtl">
+                <DialogContent dir={locale==='en'?'ltr':'rtl'}>
                   <DialogHeader>
-                    <DialogTitle>ייבוא לו"ז מהיר</DialogTitle>
+                    <DialogTitle>{t('ייבוא לו"ז מהיר')}</DialogTitle>
                   </DialogHeader>
                   <div className="py-4">
                     <Textarea 
-                      placeholder="הדבק כאן... (למשל: 10.00 קבלת פנים 11.30 חופה)&#10;המערכת תפריד זמנים ופעילויות באופן אוטומטי." 
+                      placeholder={locale==='en'?'Paste here (example: 10:00 Welcome, 11:30 Ceremony). The system will separate times and activities automatically.':'הדבק כאן... (למשל: 10.00 קבלת פנים 11.30 חופה) — המערכת תפריד זמנים ופעילויות באופן אוטומטי.'} 
                       className="h-64 font-mono text-sm" 
                       value={importText}
                       onChange={(e) => setImportText(e.target.value)}
                     />
                   </div>
                   <DialogFooter className="gap-2">
-                    <Button variant="outline" onClick={() => setIsImportOpen(false)}>ביטול</Button>
-                    <Button onClick={processBulkImport}>הוסף ללו"ז</Button>
+                    <Button variant="outline" onClick={() => setIsImportOpen(false)}>{t('ביטול')}</Button>
+                    <Button onClick={processBulkImport}>{locale==='en'?'Add to Schedule':'הוסף ללו"ז'}</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -202,7 +204,7 @@ export default function ScheduleCard({
                             <Input
                               value={item.activity}
                               onChange={(e) => handleScheduleChange(index, "activity", e.target.value)}
-                              placeholder="פעילות"
+                              placeholder={locale==='en'?'Activity':'פעילות'}
                               className="flex-1"
                             />
                             <Button
@@ -225,11 +227,11 @@ export default function ScheduleCard({
             </DragDropContext>
             
             <div className="flex gap-2 justify-end pt-4">
-              <Button variant="outline" onClick={() => setEditingSection(null)} disabled={isSavingSchedule}>ביטול</Button>
+              <Button variant="outline" onClick={() => setEditingSection(null)} disabled={isSavingSchedule}>{t('ביטול')}</Button>
               <Button onClick={handleSaveSchedule} disabled={isSavingSchedule}>
                 {isSavingSchedule && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
                 <Save className="h-4 w-4 ml-2" />
-                שמור
+                {t('שמור')}
               </Button>
             </div>
           </div>
@@ -250,7 +252,7 @@ export default function ScheduleCard({
                 </div>
               ))
             ) : (
-              <div className="text-center py-6 text-gray-500 italic">אין לו"ז מעודכן</div>
+              <div className="text-center py-6 text-gray-500 italic">{locale==='en'?'No Schedule Available':'אין לו"ז מעודכן'}</div>
             )}
           </div>
         )}
