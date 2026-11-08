@@ -1,7 +1,7 @@
 import sanitizeHtml from 'npm:sanitize-html@2.17.0';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
-import {loadQuoteTranslations, indexedText, isHebrew, fixedEnglishLabel, applyDocumentDirection, ensureCompleteEnglish} from './quoteLocalization.ts';
+import {loadQuoteTranslations, indexedText, isHebrew, fixedEnglishLabel, applyDocumentDirection, ensureCompleteEnglish,translationPreservesProtectedContent} from './quoteLocalization.ts';
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rich = (value) => sanitizeHtml(String(value || ''), {allowedTags: ['p','br','strong','b','em','i','u','s','h1','h2','h3','h4','ul','ol','li','blockquote','a','span','div','table','tbody','thead','tr','td','th','hr'], allowedAttributes: {'a':['href','target','rel'], '*':['style']}, allowedStyles: {'*': {'text-align':[/^(left|right|center|justify)$/], 'color':[/^#[0-9a-f]{3,8}$/i], 'font-size':[/^\d+(px|pt)$/], 'line-height':[/^[\d.]+$/]}}});
@@ -31,7 +31,8 @@ export async function composeModularQuoteHtml(quote, client) {
   const translations=await loadQuoteTranslations(client,original.document_language);
   const translation=(source,field,label,manualPair=null)=>{
     if(!english||!source||!isHebrew(source))return source;
-    if(manualPair?.source===source&&typeof manualPair.value==='string'&&manualPair.value.trim())return manualPair.value;
+    if(manualPair?.source===source&&typeof manualPair.value==='string'&&manualPair.value.trim()&&
+       translationPreservesProtectedContent(source,manualPair.value))return manualPair.value;
     const predefined=fixedEnglishLabel(source);
     if(predefined!==source)return predefined;
     const stored=indexedText(translations,field,source);
