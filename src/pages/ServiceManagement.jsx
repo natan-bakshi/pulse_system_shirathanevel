@@ -219,7 +219,7 @@ export default function ServiceManagement() {
         setEditingService({...dataToSave,id:savedId});
       }
       if(englishTouched.length){
-        if(englishLoading||englishError)throw Error(englishError||'English fields are still loading');
+        if(englishLoading)throw Error('English fields are still loading');
         await persistCatalogEnglish(base44,{entity:'Service',id:savedId,
           source:dataToSave,values:englishValues,changed:englishTouched,
           loadedRecord:englishRecord});
@@ -315,7 +315,7 @@ export default function ServiceManagement() {
         setEditingPackage({...dataToSave,id:savedId});
       }
       if(englishTouched.length){
-        if(englishLoading||englishError)throw Error(englishError||'English fields are still loading');
+        if(englishLoading)throw Error('English fields are still loading');
         await persistCatalogEnglish(base44,{entity:'Package',id:savedId,
           source:dataToSave,values:englishValues,changed:englishTouched,
           loadedRecord:englishRecord});
@@ -633,6 +633,11 @@ export default function ServiceManagement() {
                 placeholder="תיאור מפורט של השירות"
               />
             </div>
+            <CatalogEnglishFields loading={englishLoading}
+              fields={[["service_name","English service name"],["service_description","English description"]]}
+              source={formData} existing={englishRecord?.fields}
+              values={englishValues} touched={englishTouched} onChange={changeEnglish}/>
+            {englishError&&<p role="alert" className="text-sm text-red-700">{englishError}</p>}
             <div>
               <Label>מחיר בסיס</Label>
               <Input 
@@ -723,6 +728,11 @@ export default function ServiceManagement() {
               onChange={e => setPackageFormData({ ...packageFormData, package_description: e.target.value })}
               rows={3}
             />
+            <CatalogEnglishFields loading={englishLoading}
+              fields={[["package_name","English package name"],["package_description","English description"]]}
+              source={packageFormData} existing={englishRecord?.fields}
+              values={englishValues} touched={englishTouched} onChange={changeEnglish}/>
+            {englishError&&<p role="alert" className="text-sm text-red-700">{englishError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input 
                 type="number" 
