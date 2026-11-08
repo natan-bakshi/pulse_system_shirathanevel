@@ -259,8 +259,14 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     if(options.language==='en'){
       const index=await loadQuoteTranslations(base44Instance,'en');
       localeIndex=index;
+      const neededTemplateIds=[
+        options.includeIntro!==false&&templates.find(t=>t.template_type==='concept_intro'&&t.identifier===event.concept)?.id,
+        options.includePaymentTerms!==false&&templates.find(t=>t.template_type==='payment_terms')?.id,
+        options.includeAgreement!==false&&templates.find(t=>t.template_type==='agreement_disclaimer')?.id
+      ].filter(Boolean);
       const localized=localizeEventQuoteData({event,services:allServices,
-        eventServices:allEventServices,templates,index,options});
+        eventServices:allEventServices,templates,index,
+        options:{...options,requiredTemplateIds:neededTemplateIds}});
       ensureCompleteEnglish(localized.missing);
       event=localized.event;
       allServices=localized.services;
