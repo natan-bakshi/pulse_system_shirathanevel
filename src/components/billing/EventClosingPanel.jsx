@@ -86,7 +86,10 @@ export default function EventClosingPanel({event,onChanged}){
  const changeFormLanguage=language=>setDraft(d=>{
    const translations={...d.translations,[d.form_language]:{...d.translations[d.form_language],terms:d.terms,clauses:d.clauses,milestones:d.milestones}};
    const next=translations[language];
-   return {...d,translations,form_language:language,terms:next.terms,clauses:next.clauses,quote:next.quote_text,milestones:next.milestones.map((m,i)=>({...d.milestones[i],label:m.label}))};
+   return {...d,translations,form_language:language,terms:next.terms,clauses:next.clauses,
+    quote:next.quote_text,quote_summary:next.quote_summary,quote_file:next.quote_file,
+    bank_details:next.bank_details,
+    milestones:next.milestones.map((m,i)=>({...d.milestones[i],label:m.label}))};
  });
   const toggleDeposit=checked=>setDraft(d=>{
    if(d.milestones.length<2)return {...d,require_deposit:checked};
@@ -149,6 +152,7 @@ export default function EventClosingPanel({event,onChanged}){
   </div></details>
   <Dialog open={!!draft} onOpenChange={open=>{if(!open&&!busy)setDraft(null);}}><DialogContent dir="rtl" className="w-[calc(100vw-1rem)] max-w-3xl max-h-[92dvh] overflow-y-auto rounded-2xl border border-border bg-card p-0 shadow-2xl"><DialogHeader className="border-b border-border bg-muted/40 px-5 py-6 sm:px-8 sm:py-7 text-right"><p className="text-xs font-semibold tracking-wide text-red-800">{uiTranslate("סגירת אירוע ·")} {event.event_name}</p><DialogTitle className="text-xl sm:text-2xl font-bold text-foreground">{uiTranslate("הכנת טופס סגירת אירוע")}</DialogTitle><DialogDescription className="text-sm leading-6">{uiTranslate("הנוסח יישמר כגרסה קבועה. ניתן לערוך את הסעיפים לפני יצירת הטופס.")}</DialogDescription></DialogHeader>
    {draft&&<div className="space-y-5 px-5 py-6 sm:px-8 sm:py-7 text-foreground">
+     {(draft.english_missing?.length>0||!draft.english_terms_configured)&&<div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 space-y-2"><strong>{uiTranslate('אנגלית — נדרשת השלמת פרטים לפני שליחת טופס')}</strong><p>{!draft.english_terms_configured?'יש להגדיר ולבדוק את תנאי ההתקשרות באנגלית בהגדרות החיוב.':'יש להשלים תרגומים מאושרים לשמות השירותים או לפרטי הבנק. אפשר לעשות זאת בכרטיס האירוע ובמסך התרגומים, ולאחר מכן לפתוח טיוטה חדשה.'}</p>{draft.english_missing?.length>0&&<p dir="ltr" className="break-all text-xs">{draft.english_missing.slice(0,15).join(' · ')}</p>}</div>}
      <div className="grid gap-4 sm:grid-cols-2 rounded-xl border border-border bg-muted/30 p-4"><label className="text-sm font-medium">{uiTranslate("שפת הטופס וההסכם")}<select className={input} value={draft.form_language} onChange={e=>changeFormLanguage(e.target.value)}>{draft.available_languages?.map(lang=><option key={lang} value={lang}>{lang==="en"?"English":uiTranslate("עברית")}</option>)}</select></label><label className="text-sm font-medium">{uiTranslate("שפת ההודעות ללקוח")}<select className={input} value={draft.message_language} onChange={e=>setDraft(d=>({...d,message_language:e.target.value,notifications:{...d.notifications,language:e.target.value,template:""}}))}><option value="he">{uiTranslate("עברית")}</option><option value="en">English</option></select></label></div>
     {!!draft.contacts?.length&&<label className="block">{uiTranslate("מילוי מתוך אנשי הקשר באירוע")}<select className={input} defaultValue="" onChange={e=>{const c=draft.contacts[Number(e.target.value)];if(c)setDraft({...draft,name:c.name,phone:c.phone,email:c.email});}}><option value="" disabled>{uiTranslate("בחר איש קשר")}</option>{draft.contacts.map((c,i)=><option key={i} value={i}>{c.name} — {c.phone}</option>)}</select></label>}
     <label className="block">{uiTranslate("שם מלא")}<input className={input} value={draft.name} onChange={e=>change("name",e.target.value)}/></label>
