@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {customerMessageTemplate,formatCustomerMessage} from '../base44/shared/customerMessageTone.ts';
 
 const cases=[
  [{queued:true,status:'queued',success:true},'queued',true],
@@ -38,6 +39,7 @@ function loadBilling(receipt,{emailFailure=false,transportFailure=null}={}){
        return receipt;
      }};
      if(name.endsWith('whatsappReceipt.ts'))return {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed};
+     if(name.endsWith('customerMessageTone.ts'))return {customerMessageTemplate,formatCustomerMessage};
      throw Error('Unexpected import '+name);
    }
  });
