@@ -196,6 +196,16 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
      opts.recalculateEventStatus(client,eventId)
    });
   const plan=planFutureGreenWebhookHttpContract(processed);
+  // Minimal operations evidence for the existing live webhook. Do not log
+  // the provider payload, phone, chat, token, message IDs or supplier data.
+  // This records WHY an authenticated button could not be acknowledged,
+  // which was previously invisible when no inbound receipt was created.
+  if(plan.plannedHttpStatus!==200)
+   console.warn('[GreenButtonWebhook] signed callback not acknowledged',{
+    status:plan.plannedHttpStatus,
+    stage:typeof processed?.stage==='string'?processed.stage:'unknown',
+    reason:typeof processed?.reason==='string'?processed.reason:'unknown'
+   });
   return result(plan.plannedHttpStatus,plan.acknowledgeCandidate);
  }catch{
   // Never leak phone, action, provider credentials, state or raw payload.
