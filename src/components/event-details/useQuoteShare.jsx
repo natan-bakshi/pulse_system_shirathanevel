@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * Hook לניהול שיתוף הצעת מחיר בשני שלבים:
@@ -10,6 +11,7 @@ import { base44 } from '@/api/base44Client';
  * שקריאה ל-navigator.share תתבצע כתגובה מידית ללחיצת משתמש.
  */
 export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, quoteLanguage = 'he', loadEventData, onEnglishTranslationIssue }) {
+  const {t}=useLanguage();
   const [shareStatus, setShareStatus] = useState('initial'); // 'initial' | 'fetching' | 'ready'
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
@@ -62,12 +64,12 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       if(revision!==preparationRevision.current)return;
       console.error('Prepare share failed:', err);
       if(!onEnglishTranslationIssue?.(err))
-        alert(err.response?.data?.error || 'שגיאה בהכנת הקובץ, נסה שוב');
+        alert(err.response?.data?.error || t('שגיאה בהכנת הקובץ, נסה שוב'));
       setShareStatus('initial');
       setPdfBlob(null);
       setPdfFileName('');
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, quoteLanguage, loadEventData,onEnglishTranslationIssue]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices, quoteLanguage, loadEventData,onEnglishTranslationIssue,t]);
 
   // שלב 2: שיתוף הקובץ המוכן - חייב להיות מידי, ללא await לפני navigator.share
   const handleDoShare = useCallback(async (e) => {
@@ -84,7 +86,7 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: 'הצעת מחיר'
+          title: quoteLanguage==='en'?'Quotation':'הצעת מחיר'
         });
       } else {
         // Fallback: הורדה ישירה
@@ -100,14 +102,14 @@ export function useQuoteShare({ eventId, event, quoteIncludeIntro, quoteIncludeP
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error('Share failed:', err);
-        alert('שגיאה בשיתוף הקובץ, נסה שוב');
+        alert(t('שגיאה בשיתוף הקובץ, נסה שוב'));
       }
     } finally {
       setShareStatus('initial');
       setPdfBlob(null);
       setPdfFileName('');
     }
-  }, [pdfBlob, pdfFileName]);
+  }, [pdfBlob, pdfFileName,quoteLanguage,t]);
 
   return { shareStatus, handlePrepareShare, handleDoShare };
 }
