@@ -22,3 +22,19 @@ test('duplicate and malformed fields are filtered',()=>{
  const e={response:{status:422,data:{fields:['event.child_name','event.child_name',{},'']}}};
  assert.deepEqual(englishQuoteIssuesFromError(e),['event.child_name','']);
 });
+
+test('422 final HTML check yields visible Hebrew excerpts for admin review',()=>{
+ const error={response:{status:422,data:{
+  error:'The English quote contains visible text that was not translated.',
+  fields:['document.visible_text'],
+  samples:['שלום משפחה','שלום משפחה','Unrelated English','הערה אחרת']
+ }}};
+ assert.deepEqual(englishQuoteIssuesFromError(error),['document.visible_text']);
+ assert.deepEqual(englishQuoteVisibleSamplesFromError(error),
+  ['שלום משפחה','הערה אחרת']);
+});
+test('unrelated backend failures never display private translation samples',()=>{
+ const error={response:{status:503,data:{error:'PDF unavailable'}}};
+ assert.equal(englishQuoteIssuesFromError(error),null);
+ assert.deepEqual(englishQuoteVisibleSamplesFromError(error),[]);
+});
