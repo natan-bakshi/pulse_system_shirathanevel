@@ -198,14 +198,22 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
    f.entity==='QuoteTemplate'?'template.'+f.id+'.'+f.key:
    f.entity==='QuoteOrganizerType'?'organizer.'+f.key:
    f.entity==='AppSettings'?'footer':'service.'+f.id+'.'+f.key;
+ const matchesResidual=f=>{
+   const existing=map.get(f.entity+':'+f.id)?.fields?.[f.key];
+   // The latest backend identifies partly translated fields directly, but
+   // support older 422 document.visible_text errors too: match the actual
+   // leftover text to its approved translation rather than hiding its editor.
+   return matchesResidualEnglishSample(existing?.value,visibleTextSamples)||
+     matchesResidualEnglishSample(f.source,visibleTextSamples);
+ };
  const matchesMissing=f=>needed.has(issueKey(f))||
-   needed.has('service.'+f.key)||needed.has('catalog.'+f.key);
+   needed.has('service.'+f.key)||needed.has('catalog.'+f.key)||matchesResidual(f);
  const displayedFields=Array.isArray(missingFields)&&!showAll?
    fields.filter(matchesMissing):fields;
  const grouped=displayedFields.reduce((o,f)=>((o[f.group]??=[]).push(f),o),{});
  const matchedIssueKeys=new Set(fields.filter(matchesMissing).map(issueKey));
  const unmatched=Array.isArray(missingFields)?missingFields.filter(k=>
-   !(k==='document.visible_text'&&visibleTextSamples.length>0)&&
+   !(k==='document.visible_text'&&fields.some(matchesResidual))&&
    !matchedIssueKeys.has(k)&&!fields.some(f=>k==='service.'+f.key||k==='catalog.'+f.key)):[];
  const save=async()=>{
   if(!changed.length){
@@ -239,8 +247,10 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
       liveValue(f,latestEvent,latestServices);
     if(String(liveSource??'')!==f.source)
      throw Error('The original Hebrew text changed. Reopen this editor to review it.');
+    if(matchesMissing(f)&&!String(draft[f.hash]||'').trim())
+     throw Error(locale==='en'?'A required English translation cannot be empty.':'לא ניתן להשאיר תרגום נדרש ריק.');
     if(draft[f.hash]&&!translationPreservesProtectedContent(f.source,draft[f.hash]))
-     throw Error('English text changed a number, URL, placeholder, or contains unsafe markup: '+f.label);
+     throw Error(locale==='en'?'The English text still contains Hebrew or changed a protected number, URL or placeholder: '+f.label:'התרגום מכיל עדיין עברית או שינה מספר, קישור או משתנה מוגן: '+f.label);
    }
    const updates=new Map();
    for(const f of changed){
