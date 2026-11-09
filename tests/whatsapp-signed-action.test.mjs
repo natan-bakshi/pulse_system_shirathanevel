@@ -55,10 +55,22 @@ test('wrong server secret, expired nonce, invalid shapes and office link cannot 
  assert.equal(await verifySignedWhatsAppAction({token,secret,now:now-4*86400000},webcrypto.subtle),null);
  assert.equal(await verifySignedWhatsAppAction({token:'v1.abc.def',secret,now},webcrypto.subtle),null);
  await assert.rejects(signed({action:'contact_office'}));
- await assert.rejects(signed({expiresAt:new Date(now+8*86400000).toISOString()}));
+ await assert.rejects(signed({expiresAt:new Date(now+31*86400000).toISOString()}));
  await assert.rejects(createSignedWhatsAppAction({
   binding,nonce:'short',secret,issuedAt:now
  },webcrypto.subtle));
+});
+test('legacy signed 48-hour actions require authenticated callback scope and remain valid for at most 30 days',async()=>{
+ const historical=await signed({expiresAt:new Date(now+2*86400000).toISOString()});
+ assert.equal(await verifySignedWhatsAppAction({token:historical,secret,now:now+5*86400000},webcrypto.subtle),null);
+ const recovered=await verifySignedWhatsAppAction({token:historical,secret,now:now+5*86400000,allowHistoricalCallback:true},webcrypto.subtle);
+ assert.equal(recovered?.action,'assignment_approve');
+ assert.equal(await verifySignedWhatsAppAction({token:historical,secret,now:now+31*86400000,allowHistoricalCallback:true},webcrypto.subtle),null);
+ const oneDay=await signed();
+ assert.equal(await verifySignedWhatsAppAction({token:oneDay,secret,now:now+4*86400000,allowHistoricalCallback:true},webcrypto.subtle),null,'only the exact original 48h signature may use historical grace');
+ const thirty=await signed({expiresAt:new Date(now+30*86400000).toISOString()});
+ assert.equal((await verifySignedWhatsAppAction({token:thirty,secret,now:now+29*86400000},webcrypto.subtle))?.action,'assignment_approve');
+ assert.equal(await verifySignedWhatsAppAction({token:thirty,secret,now:now+31*86400000,allowHistoricalCallback:true},webcrypto.subtle),null);
 });
 test('distinct action tokens have independent authenticated nonces',async()=>{
  const first=await signed();
