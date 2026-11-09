@@ -9,7 +9,9 @@ Deno.serve(async (req)=>{
   {status:405,headers:{'Cache-Control':'no-store'}});
  try{
   const client=createClientFromRequest(req);
-  const user=await client.auth.me();
+  // A missing/expired login must be 401, not a generic 500. Never fall
+  // back to an admin/service-role event view for an unauthenticated request.
+  const user=await client.auth.me().catch(()=>null);
   if(!user)return Response.json({error:'Unauthorized'},
    {status:401,headers:{'Cache-Control':'no-store'}});
   const body=await req.json().catch(()=>({}));
