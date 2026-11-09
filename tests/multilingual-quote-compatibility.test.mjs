@@ -168,7 +168,8 @@ test('legacy service descriptions reused in package_description and Quill HTML v
  ]);
  assert.equal(l.indexedText(map,'package_description',source),translated);
  assert.equal(l.indexedText(map,'package_description',
-  '<p class="ql-align-right ql-direction-rtl">תיאור שירות ללקוח 4 נגנים במשך 45 דקות</p>'),translated);
+  '<p class="ql-align-right ql-direction-rtl">תיאור שירות ללקוח 4 נגנים במשך 45 דקות</p>'),
+  '<p class="ql-align-right ql-direction-rtl">Client service description with 4 musicians for 45 minutes</p>');
  assert.equal(l.indexedText(map,'package_description',
   '<p>תיאור שירות ללקוח 5 נגנים במשך 45 דקות</p>'),null);
 });
