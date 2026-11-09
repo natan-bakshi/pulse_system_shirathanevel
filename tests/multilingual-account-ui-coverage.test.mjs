@@ -28,7 +28,10 @@ test('language preference belongs to the authenticated user and never to the quo
 
 test('key administrator and supplier pages have no unlocalized fixed JSX text',()=>{
  const pages=['ServiceManagement','SupplierManagement','ClientManagement',
-   'EventManagement','SettingsPage','SupplierDashboard','MyTasks'];
+   'EventManagement','SettingsPage','SupplierDashboard','MyTasks',
+   'BarMitzvahCalculator','BillingDashboard','ContactDirectory','EventDetails',
+   'EventsBoardPage','MyNotificationSettings','QuoteTemplateManagement',
+   'SupplierEventView','UserManagement'];
  for(const name of pages){
   const code=read('src/pages/'+name+'.jsx');
   const ast=parser.parse(code,{sourceType:'module',plugins:['jsx','typescript']});
@@ -36,6 +39,26 @@ test('key administrator and supplier pages have no unlocalized fixed JSX text',(
   walk(ast,{JSXText(p){const s=p.node.value.trim();if(/[\u0590-\u05ff]/.test(s))missed.push(s);}});
   assert.deepEqual(missed,[],name+' has unlocalized fixed JSX');
  }
+});
+
+test('quotation configuration editors localize fixed text but preserve example variable identifiers',()=>{
+ const files=[
+  'src/components/event-details/EventQuoteEnglishDialog.jsx',
+  'src/components/quotes/OrganizerFieldsEditor.jsx',
+  'src/components/quotes/OrganizerBlocksEditor.jsx',
+  'src/components/quotes/OrganizerTypeEditor.jsx',
+  'src/components/quotes/OrganizerTypesTab.jsx',
+  'src/components/quotes/OrganizerContactsConfigEditor.jsx'
+ ];
+ for(const file of files){
+  const ast=parser.parse(read(file),{sourceType:'module',plugins:['jsx','typescript']});
+  const missed=[];
+  walk(ast,{JSXText(p){const s=p.node.value.replace(/\\s+/g,' ').trim();
+   if(/[\\u0590-\\u05ff]/.test(s)&&!s.startsWith('[')&&!s.startsWith('(('))missed.push(s);
+  }});
+  assert.deepEqual(missed,[],file+' must have translated labels');
+ }
+ assert.match(read('src/components/quotes/OrganizerTypeEditor.jsx'),/\\[שם_שדה\\]/);
 });
 
 test('curated fixed labels are English and do not contain customer data',async()=>{
