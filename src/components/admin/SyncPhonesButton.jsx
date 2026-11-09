@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function SyncPhonesButton() {
+  const {t: uiTranslate}=useLanguage();
     const [loading, setLoading] = useState(false);
 
     const handleSync = async () => {
@@ -41,7 +43,7 @@ export default function SyncPhonesButton() {
             className="gap-2"
         >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'מסנכרן...' : 'סנכרון טלפונים'}
+            {loading ? uiTranslate("מסנכרן...") : uiTranslate("סנכרון טלפונים")}
         </Button>
     );
 }

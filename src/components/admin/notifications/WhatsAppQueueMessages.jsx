@@ -143,7 +143,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
       <label className="flex gap-2 items-center text-sm"><Checkbox checked={showArchived}
         onCheckedChange={v=>setShowArchived(v===true)}/>{uiTranslate("הצג ארכיון")}</label>
       <Button variant="outline" size="sm" disabled={busy||loading} onClick={()=>fetchPage(0)}>
-        <RefreshCw className="h-4 w-4 ml-1"/>{loading?'טוען...':'רענן'}
+        <RefreshCw className="h-4 w-4 ml-1"/>{loading?uiTranslate("טוען..."):uiTranslate("רענן")}
       </Button>
     </div>
     <div className="flex flex-wrap gap-2">
@@ -207,7 +207,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
     </div>
     <Dialog open={!!dialog} onOpenChange={open=>{if(!open)close();}}>
       <DialogContent dir="rtl" className="max-w-xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{dialog?.action==='inspect'?'פרטי הודעת WhatsApp':(actions[dialog?.action]?.title||'ניהול הודעה')}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{dialog?.action==='inspect'?uiTranslate("פרטי הודעת WhatsApp"):(actions[dialog?.action]?.title||'ניהול הודעה')}</DialogTitle></DialogHeader>
         {dialog&&<div className="space-y-3 text-sm">
           <p><strong>{uiTranslate("מקור:")}</strong> {dialog.row.source} · <strong>{uiTranslate("מצב:")}</strong> {statusNames[dialog.row.status]||dialog.row.status} · <strong>{uiTranslate("ספק:")}</strong> {dialog.row.requestedProvider==='wasender'?'WasenderAPI':dialog.row.requestedProvider==='green'?'Green API':'לפי ברירת המחדל'}</p>
           {full&&<>
@@ -232,14 +232,14 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
                 </select>
               </label>}
             {dialogNeedsNote&&<label className="block space-y-1">
-              <Label>{uiTranslate("תיעוד סיבת הפעולה")} {dialog.row.status==='unknown'?'— חובה לפרט כיצד אומת שלא נשלחה':''}</Label>
+              <Label>{uiTranslate("תיעוד סיבת הפעולה")} {dialog.row.status==='unknown'?uiTranslate("— חובה לפרט כיצד אומת שלא נשלחה"):''}</Label>
               <Textarea value={note} onChange={e=>setNote(e.target.value)} rows={3} maxRows={6}
                 placeholder={uiTranslate("תיעוד לבדיקה ולביקורת...")} />
             </label>}
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={close} disabled={busy}>{uiTranslate("חזור")}</Button>
               <Button onClick={applyAction} disabled={!canApply}>
-                <Check className="h-4 w-4 ml-2"/>{busy?'שומר...':'אשר פעולה'}
+                <Check className="h-4 w-4 ml-2"/>{busy?uiTranslate("שומר..."):uiTranslate("אשר פעולה")}
               </Button>
             </div>
           </>}

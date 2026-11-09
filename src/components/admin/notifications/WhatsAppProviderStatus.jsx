@@ -95,22 +95,22 @@ export default function WhatsAppProviderStatus() {
             <SelectItem value="wasender">WasenderAPI</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-xs text-gray-500">{status ? `פעיל כרגע: ${titleFor(status.provider)}` : 'אין עדיין מידע על הספק הפעיל.'}</p>
+        <p className="text-xs text-gray-500">{status ? `פעיל כרגע: ${titleFor(status.provider)}` : uiTranslate("אין עדיין מידע על הספק הפעיל.")}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={save} disabled={loading || busy || checking || !status || choice === status.provider} size="sm">
-          <Save className="h-4 w-4 ml-2" />{busy ? 'שומר...' : 'שמור ספק ברירת מחדל'}
+          <Save className="h-4 w-4 ml-2" />{busy ? uiTranslate("שומר...") : uiTranslate("שמור ספק ברירת מחדל")}
         </Button>
         <Button type="button" onClick={check} variant="outline" size="sm" disabled={loading || busy || checking}>
-          <RefreshCw className="h-4 w-4 ml-2" />{checking ? 'בודק...' : 'בדוק חיבור'}
+          <RefreshCw className="h-4 w-4 ml-2" />{checking ? uiTranslate("בודק...") : uiTranslate("בדוק חיבור")}
         </Button>
       </div>
       {error && <p role="alert" className="flex items-start gap-2 text-sm text-red-700"><AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />{error}</p>}
       {notice && <p role="status" className="flex items-start gap-2 text-sm text-green-700"><CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />{notice}</p>}
       {status && (
         <div className="rounded-lg border bg-gray-50 p-3 text-sm space-y-1">
-          <p><MessageCircle className="inline h-4 w-4 ml-1" />Green API: {status.greenConfigured ? 'מפתחות מוגדרים' : 'מפתחות חסרים'}</p>
-          <p>WasenderAPI: {status.wasenderConfigured ? 'מפתח סשן הוגדר' : 'מפתח סשן חסר'}</p>
+          <p><MessageCircle className="inline h-4 w-4 ml-1" />Green API: {status.greenConfigured ? uiTranslate("מפתחות מוגדרים") : uiTranslate("מפתחות חסרים")}</p>
+          <p>WasenderAPI: {status.wasenderConfigured ? uiTranslate("מפתח סשן הוגדר") : uiTranslate("מפתח סשן חסר")}</p>
           {status.wasender && <p>{uiTranslate("מצב הסשן ב־WasenderAPI:")} <strong>{names[status.wasender.status] || status.wasender.status}</strong></p>}
           {!status.wasenderConfigured && <p className="text-amber-700">{uiTranslate("יש להדביק את מפתח הסשן ב־Base44 Secrets בשם WASENDER_API_KEY. אין להכניס מפתחות ל־GitHub או לצ'אט.")}</p>}
         </div>

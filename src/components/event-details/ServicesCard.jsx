@@ -825,7 +825,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                       return units.map((unit, uIdx) => (
                         <div key={uIdx} className="p-4 border-2 border-red-100 rounded-xl bg-red-50/20 space-y-4">
                           <h3 className="font-bold text-red-900 flex justify-between items-center text-sm">
-                            {units.length > 1 ? `רכב ${uIdx + 1}` : 'פרטי מסלול'}
+                            {units.length > 1 ? `רכב ${uIdx + 1}` : uiTranslate("פרטי מסלול")}
                           </h3>
 
                           {unit.pickupPoints.map((point, pIdx) => (
@@ -991,7 +991,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                   </div>
                 )}
                 <div className="text-xs text-gray-500 whitespace-nowrap">
-                  {service.includes_vat ? 'כולל מע"מ' : 'לא כולל מע"מ'}
+                  {service.includes_vat ? uiTranslate("כולל מע\"מ") : 'לא כולל מע"מ'}
                 </div>
               </div>
             )}
@@ -1050,7 +1050,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{service.is_external ? 'העבר להצעה (כלול במחיר)' : 'העבר לשירותים חיצוניים (לא כלול במחיר)'}</p>
+                        <p>{service.is_external ? uiTranslate("העבר להצעה (כלול במחיר)") : uiTranslate("העבר לשירותים חיצוניים (לא כלול במחיר)")}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1775,7 +1775,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateService} disabled={isSavingNewService}>
-              {isSavingNewService ? 'שומר...' : 'צור שירות'}
+              {isSavingNewService ? uiTranslate("שומר...") : uiTranslate("צור שירות")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1840,7 +1840,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier}>
-              {isSavingNewSupplier ? 'שומר...' : 'צור ספק'}
+              {isSavingNewSupplier ? uiTranslate("שומר...") : uiTranslate("צור ספק")}
             </Button>
           </DialogFooter>
         </DialogContent>

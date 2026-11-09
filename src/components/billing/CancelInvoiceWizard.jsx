@@ -34,8 +34,8 @@ export default function CancelInvoiceWizard({ document, step, onClose, onCredit,
         {isDone
           ? <Button onClick={onClose}>{uiTranslate("סגור")}</Button>
           : isRefundStep
-            ? <><Button variant="outline" onClick={onClose} disabled={loading}>{uiTranslate("דלג וסגור")}</Button><Button variant="destructive" onClick={() => onRefund(refundReason)} disabled={loading}>{loading ? "מפיק קבלה שלילית..." : "הפק קבלה שלילית"}</Button></>
-            : <><Button variant="outline" onClick={onClose} disabled={loading}>{uiTranslate("ביטול")}</Button><Button variant="destructive" onClick={() => onCredit(creditReason)} disabled={loading}>{loading ? "מפיק זיכוי..." : "הפק חשבונית זיכוי"}</Button></>}
+            ? <><Button variant="outline" onClick={onClose} disabled={loading}>{uiTranslate("דלג וסגור")}</Button><Button variant="destructive" onClick={() => onRefund(refundReason)} disabled={loading}>{loading ? uiTranslate("מפיק קבלה שלילית...") : uiTranslate("הפק קבלה שלילית")}</Button></>
+            : <><Button variant="outline" onClick={onClose} disabled={loading}>{uiTranslate("ביטול")}</Button><Button variant="destructive" onClick={() => onCredit(creditReason)} disabled={loading}>{loading ? uiTranslate("מפיק זיכוי...") : uiTranslate("הפק חשבונית זיכוי")}</Button></>}
       </DialogFooter>
     </DialogContent>
   </Dialog>;

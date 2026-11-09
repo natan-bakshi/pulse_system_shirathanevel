@@ -762,7 +762,7 @@ for (const serviceItem of servicesForSave) {
       >
         <DialogHeader className="p-4 sm:p-6 pb-0 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
           <DialogTitle className="text-lg sm:text-xl font-bold">
-            {event ? "עריכת אירוע" : "יצירת אירוע חדש"}
+            {event ? uiTranslate("עריכת אירוע") : uiTranslate("יצירת אירוע חדש")}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 p-3 sm:p-6">
@@ -1113,7 +1113,7 @@ for (const serviceItem of servicesForSave) {
               ) : (
                 <>
                   <Save className="h-4 w-4 ml-1 sm:ml-2" />
-                  {event ? "עדכן אירוע" : "צור אירוע"}
+                  {event ? uiTranslate("עדכן אירוע") : uiTranslate("צור אירוע")}
                 </>
               )}
             </Button>

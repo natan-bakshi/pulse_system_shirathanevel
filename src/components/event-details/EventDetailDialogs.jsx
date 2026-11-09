@@ -21,7 +21,7 @@ export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptio
             {Object.keys(exportOptions).map(key => (
               <div key={key} className="flex items-center gap-2">
                 <Checkbox checked={exportOptions[key]} onCheckedChange={(checked) => setExportOptions({ ...exportOptions, [key]: checked })} />
-                <Label>{key === 'eventDetails' ? 'פרטי אירוע' : key === 'familyDetails' ? 'פרטי משפחה' : key === 'services' ? 'שירותים' : key === 'suppliers' ? 'ספקים' : key === 'payments' ? 'תשלומים' : key === 'financials' ? 'סיכום פיננסי' : 'הערות'}</Label>
+                <Label>{key === 'eventDetails' ? uiTranslate("פרטי אירוע") : key === 'familyDetails' ? 'פרטי משפחה' : key === 'services' ? 'שירותים' : key === 'suppliers' ? 'ספקים' : key === 'payments' ? 'תשלומים' : key === 'financials' ? 'סיכום פיננסי' : 'הערות'}</Label>
               </div>
             ))}
           </div>
@@ -180,7 +180,7 @@ export function PackageDialog({ open, onOpenChange, form, setForm, searchTerm, s
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(""); }} disabled={isCreating}>{uiTranslate("ביטול")}</Button>
-          <Button onClick={onCreate} className="bg-red-800 hover:bg-red-700" disabled={isCreating}>{isCreating ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("יוצר חבילה...")}</> : 'צור חבילה'}</Button>
+          <Button onClick={onCreate} className="bg-red-800 hover:bg-red-700" disabled={isCreating}>{isCreating ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("יוצר חבילה...")}</> : uiTranslate("צור חבילה")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -223,7 +223,7 @@ export function EditPackageDialog({ open, onOpenChange, form, setForm, isSaving,
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>{uiTranslate("ביטול")}</Button>
-          <Button onClick={onSave} className="bg-red-800 hover:bg-red-700" disabled={isSaving}>{isSaving ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("שומר...")}</> : 'שמור שינויים'}</Button>
+          <Button onClick={onSave} className="bg-red-800 hover:bg-red-700" disabled={isSaving}>{isSaving ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("שומר...")}</> : uiTranslate("שמור שינויים")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -264,7 +264,7 @@ export function AddServiceDialog({ open, onOpenChange, searchTerm, setSearchTerm
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(""); }} disabled={isAdding}>{uiTranslate("ביטול")}</Button>
-          <Button onClick={onAdd} className="bg-green-600 hover:bg-green-700" disabled={isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : 'הוסף שירותים'}</Button>
+          <Button onClick={onAdd} className="bg-green-600 hover:bg-green-700" disabled={isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : uiTranslate("הוסף שירותים")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -297,7 +297,7 @@ export function AddExistingPackageDialog({ open, onOpenChange, searchTerm, setSe
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(""); }} disabled={isAdding}>{uiTranslate("ביטול")}</Button>
-          <Button onClick={onAdd} className="bg-purple-600 hover:bg-purple-700" disabled={!selected || isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : 'הוסף חבילה'}</Button>
+          <Button onClick={onAdd} className="bg-purple-600 hover:bg-purple-700" disabled={!selected || isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : uiTranslate("הוסף חבילה")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -348,7 +348,7 @@ export function AddToPackageDialog({ open, onOpenChange, searchTerm, setSearchTe
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(""); }} disabled={isAdding}>{uiTranslate("ביטול")}</Button>
-          <Button onClick={() => onAdd(saveGlobalPackage)} className="bg-red-800 hover:bg-red-700" disabled={isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : 'הוסף לחבילה'}</Button>
+          <Button onClick={() => onAdd(saveGlobalPackage)} className="bg-red-800 hover:bg-red-700" disabled={isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : uiTranslate("הוסף לחבילה")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -385,7 +385,7 @@ export function AddServiceToPackageDialog({ open, onOpenChange, searchTerm, setS
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(""); }} disabled={isAdding}>{uiTranslate("ביטול")}</Button>
-          <Button onClick={onAdd} className="bg-red-800 hover:bg-red-700" disabled={isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : 'הוסף שירות'}</Button>
+          <Button onClick={onAdd} className="bg-red-800 hover:bg-red-700" disabled={isAdding}>{isAdding ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("מוסיף...")}</> : uiTranslate("הוסף שירות")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

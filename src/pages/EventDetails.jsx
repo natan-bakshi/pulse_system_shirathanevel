@@ -2338,7 +2338,7 @@ function EventDetailsBody() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowNewServiceDialog(false); setNewServiceTargetPackageId(null); }} disabled={isSavingNewService}>{t("ביטול")}</Button>
-            <Button onClick={handleCreateService} disabled={isSavingNewService || !newService.service_name}>{isSavingNewService ? 'שומר...' : 'צור שירות'}</Button>
+            <Button onClick={handleCreateService} disabled={isSavingNewService || !newService.service_name}>{isSavingNewService ? uiTranslate("שומר...") : uiTranslate("צור שירות")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

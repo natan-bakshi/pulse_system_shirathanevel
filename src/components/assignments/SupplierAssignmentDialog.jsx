@@ -349,7 +349,7 @@ export default function SupplierAssignmentDialog({
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewSupplierDialog(false)} disabled={isSavingNewSupplier}>{uiTranslate("ביטול")}</Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier} className="bg-red-800 hover:bg-red-700">
-              {isSavingNewSupplier ? (<><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("שומר...")}</>) : ('צור ספק')}
+              {isSavingNewSupplier ? (<><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("שומר...")}</>) : (uiTranslate("צור ספק"))}
             </Button>
           </DialogFooter>
         </DialogContent>

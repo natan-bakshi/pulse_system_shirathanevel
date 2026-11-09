@@ -144,7 +144,7 @@ export default function NotificationTemplateForm({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {template.id ? 'עריכת תבנית התראה' : 'יצירת תבנית התראה חדשה'}
+            {template.id ? uiTranslate("עריכת תבנית התראה") : uiTranslate("יצירת תבנית התראה חדשה")}
           </DialogTitle>
           <DialogDescription>
             {uiTranslate("הגדר את פרטי התבנית, התזמון, התנאים וקהלי היעד")}

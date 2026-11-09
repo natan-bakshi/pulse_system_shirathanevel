@@ -73,7 +73,7 @@ export default function AdminRecipientsSelector({ template, onChange }) {
         <>
           <p className="text-xs text-gray-600 mb-2">
             {selectedIds.length === 0
-              ? '⚠️ לא נבחרו מנהלים - כל המנהלים יקבלו את ההתראה'
+              ? uiTranslate("⚠️ לא נבחרו מנהלים - כל המנהלים יקבלו את ההתראה")
               : `נבחרו ${selectedIds.length} מנהלים מתוך ${admins.length}`}
           </p>
           <div className="space-y-1.5 max-h-48 overflow-y-auto">

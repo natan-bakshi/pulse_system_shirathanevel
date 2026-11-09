@@ -15,6 +15,7 @@ const EXTRA_FIELD_TYPES = [
 ];
 
 export default function OrganizerContactsConfigEditor({ config, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const {t,dir}=useLanguage();
   const [showFieldDialog, setShowFieldDialog] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -140,7 +141,7 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
       <Dialog open={showFieldDialog} onOpenChange={setShowFieldDialog}>
         <DialogContent dir={dir} className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>{editingIndex !== null ? 'עריכת שדה' : 'שדה נוסף לאיש קשר'}</DialogTitle>
+            <DialogTitle>{editingIndex !== null ? uiTranslate("עריכת שדה") : uiTranslate("שדה נוסף לאיש קשר")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -177,7 +178,7 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowFieldDialog(false)}>{t("ביטול")}</Button>
             <Button onClick={saveField} disabled={!fieldForm.name.trim()}>
-              {editingIndex !== null ? 'עדכן' : 'הוסף'}
+              {editingIndex !== null ? uiTranslate("עדכן") : uiTranslate("הוסף")}
             </Button>
           </div>
         </DialogContent>

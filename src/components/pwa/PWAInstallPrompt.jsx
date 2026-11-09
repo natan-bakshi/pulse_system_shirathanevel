@@ -146,8 +146,8 @@ export default function PWAInstallPrompt() {
           <h3 className="font-bold text-gray-900 text-sm sm:text-base">{uiTranslate("התקן את האפליקציה")}</h3>
           <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
             {deferredPrompt
-              ? "התקן את האפליקציה למסך הבית לגישה מהירה"
-              : "הוסף את האפליקציה למסך הבית לחוויה מלאה"}
+              ? uiTranslate("התקן את האפליקציה למסך הבית לגישה מהירה")
+              : uiTranslate("הוסף את האפליקציה למסך הבית לחוויה מלאה")}
           </p>
           <div className="flex gap-2 mt-2">
             <Button
@@ -156,7 +156,7 @@ export default function PWAInstallPrompt() {
               className="bg-red-800 hover:bg-red-900 text-white text-xs sm:text-sm"
             >
               <Download className="h-3.5 w-3.5 ml-1" />
-              {deferredPrompt ? "התקן עכשיו" : "ראה הדרכה"}
+              {deferredPrompt ? uiTranslate("התקן עכשיו") : uiTranslate("ראה הדרכה")}
             </Button>
             <Button
               size="sm"

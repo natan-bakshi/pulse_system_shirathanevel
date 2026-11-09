@@ -135,7 +135,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
      <div className="flex flex-wrap justify-between gap-2 items-center">
       <div>
        <h4 className="font-medium">{t.name}</h4>
-       <p className="text-xs text-gray-500">{t.is_active?'התראה פעילה':'התראה כבויה'} · {t.type}</p>
+       <p className="text-xs text-gray-500">{t.is_active?uiTranslate("התראה פעילה"):uiTranslate("התראה כבויה")} · {t.type}</p>
       </div>
      </div>
      <label className="block space-y-1">

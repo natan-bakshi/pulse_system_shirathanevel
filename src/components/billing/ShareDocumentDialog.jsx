@@ -59,7 +59,7 @@ export default function ShareDocumentDialog({ document, onClose, onConfirm, load
           )}
 
           <div>
-            <Label htmlFor="share-recipient">{channel === "email" ? "כתובת אימייל נוספת" : "מספר טלפון נוסף"}</Label>
+            <Label htmlFor="share-recipient">{channel === "email" ? uiTranslate("כתובת אימייל נוספת") : uiTranslate("מספר טלפון נוסף")}</Label>
             <Input id="share-recipient" dir="ltr" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder={channel === "email" ? "client@example.com" : "0501234567"} />
           </div>
           <div>
@@ -70,7 +70,7 @@ export default function ShareDocumentDialog({ document, onClose, onConfirm, load
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>{uiTranslate("ביטול")}</Button>
           <Button onClick={() => onConfirm({ channel, recipients, message: message.trim() })} disabled={loading || recipients.length === 0}>
-            {loading ? "שולח..." : `שלח${recipients.length > 1 ? ` (${recipients.length})` : ""}`}
+            {loading ? uiTranslate("שולח...") : `שלח${recipients.length > 1 ? ` (${recipients.length})` : ""}`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -914,7 +914,7 @@ export default function EventServicesManager({
               {!allInclusive && (
                 <div className="text-sm text-gray-600">
                   {uiTranslate("מחיר:")} {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))}{((service.custom_price || 0) * (service.quantity || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  {service.includes_vat ? ' (כולל מע"מ)' : ' (לא כולל מע"מ)'}
+                  {service.includes_vat ? uiTranslate(" (כולל מע\"מ)") : uiTranslate(" (לא כולל מע\"מ)")}
                   {service.quantity > 1 && ` | כמות: ${service.quantity}`}
                 </div>
               )}
@@ -1208,7 +1208,7 @@ export default function EventServicesManager({
                           return units.map((unit, uIdx) => (
                               <div key={uIdx} className="p-3 border border-red-100 rounded-lg bg-red-50/10 space-y-3">
                                   <div className="flex justify-between items-center">
-                                      <span className="text-xs font-bold text-red-900">{units.length > 1 ? `רכב ${uIdx + 1}` : 'מסלול'}</span>
+                                      <span className="text-xs font-bold text-red-900">{units.length > 1 ? `רכב ${uIdx + 1}` : uiTranslate("מסלול")}</span>
                                   </div>
                                   {unit.pickupPoints.map((point, pIdx) => (
                                       <div key={pIdx} className="bg-white p-2 rounded border space-y-2">
@@ -1348,7 +1348,7 @@ export default function EventServicesManager({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{service.is_external ? 'העבר להצעה (כלול במחיר)' : 'העבר לשירותים חיצוניים (לא כלול במחיר)'}</p>
+                <p>{service.is_external ? uiTranslate("העבר להצעה (כלול במחיר)") : uiTranslate("העבר לשירותים חיצוניים (לא כלול במחיר)")}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -1411,7 +1411,7 @@ export default function EventServicesManager({
                 className="text-xs font-medium px-1.5 py-0.5 rounded border border-gray-300 hover:bg-white transition-colors"
                 title={uiTranslate("לחץ להחלפת מטבע (ימיר את כל המחירים)")}
               >
-                {getCurrencySymbol(primaryCurrency)} {primaryCurrency === 'ILS' ? 'שקל' : 'דולר'}
+                {getCurrencySymbol(primaryCurrency)} {primaryCurrency === 'ILS' ? uiTranslate("שקל") : uiTranslate("דולר")}
               </button>
             </div>
           )}
@@ -1895,7 +1895,7 @@ export default function EventServicesManager({
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddToPackageDialog(false)}>{uiTranslate("ביטול")}</Button>
             <Button onClick={handleAddServicesToPackage}>
-              {targetPackageId === 'new' ? 'צור חבילה והוסף שירותים' : 'הוסף לחבילה קיימת'}
+              {targetPackageId === 'new' ? uiTranslate("צור חבילה והוסף שירותים") : uiTranslate("הוסף לחבילה קיימת")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1984,7 +1984,7 @@ export default function EventServicesManager({
               {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateService} disabled={isSavingNewService}>
-              {isSavingNewService ? 'שומר...' : 'צור שירות'}
+              {isSavingNewService ? uiTranslate("שומר...") : uiTranslate("צור שירות")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2054,7 +2054,7 @@ export default function EventServicesManager({
               {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier}>
-              {isSavingNewSupplier ? 'שומר...' : 'צור ספק'}
+              {isSavingNewSupplier ? uiTranslate("שומר...") : uiTranslate("צור ספק")}
             </Button>
           </DialogFooter>
         </DialogContent>

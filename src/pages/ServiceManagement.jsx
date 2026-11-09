@@ -708,7 +708,7 @@ export default function ServiceManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t("ביטול")}</Button>
             <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : 'שמור'}
+              {isSaving ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : uiTranslate("שמור")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -821,7 +821,7 @@ export default function ServiceManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPackageDialogOpen(false)}>{t("ביטול")}</Button>
             <Button onClick={handleSavePackage} disabled={isSaving}>
-              {isSaving ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : 'שמור'}
+              {isSaving ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : uiTranslate("שמור")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -75,7 +75,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setSearchOpen(o => !o)}>
-              <Search className="h-4 w-4 ml-1" /> {linkedEvent ? 'שנה אירוע' : 'בחר אירוע קיים'}
+              <Search className="h-4 w-4 ml-1" /> {linkedEvent ? uiTranslate("שנה אירוע") : uiTranslate("בחר אירוע קיים")}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
               <CalendarPlus className="h-4 w-4 ml-1" /> {uiTranslate("צור אירוע חדש")}

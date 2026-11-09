@@ -310,7 +310,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
                             ) : (
                                 <>
-                                    {isDescriptionExpanded ? 'סגור עורך' : 'ערוך תיאור'}
+                                    {isDescriptionExpanded ? uiTranslate("סגור עורך") : uiTranslate("ערוך תיאור")}
                                     <Edit className="h-3 w-3 mr-1" />
                                 </>
                             )}
@@ -442,7 +442,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
               {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateService} disabled={isSavingService}>
-              {isSavingService ? 'שומר...' : 'צור שירות'}
+              {isSavingService ? uiTranslate("שומר...") : uiTranslate("צור שירות")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -493,7 +493,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
               {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingSupplier}>
-              {isSavingSupplier ? 'שומר...' : 'צור ספק'}
+              {isSavingSupplier ? uiTranslate("שומר...") : uiTranslate("צור ספק")}
             </Button>
           </DialogFooter>
         </DialogContent>

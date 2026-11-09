@@ -108,7 +108,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
               <div className="text-sm">
                 {changeContext.fields.filter(field => ['location', 'concept'].includes(field)).map(field => (
                   <div key={field}>
-                    <strong>{field === 'location' ? 'מיקום' : 'קונספט'}:</strong>{' '}
+                    <strong>{field === 'location' ? uiTranslate("מיקום") : uiTranslate("קונספט")}:</strong>{' '}
                     {changeContext.before?.[field] || '(ריק)'} ← {changeContext.after?.[field] || '(ריק)'}
                   </div>
                 ))}

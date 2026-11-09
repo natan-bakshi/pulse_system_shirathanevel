@@ -174,7 +174,7 @@ export default function WhatsAppCustomButtonEditor({
     </span>}
     {links.map((item,index)=><span key={index}
      className="rounded border px-3 py-2 text-xs bg-gray-50">
-     {item.label||'ללא שם'} · {item.kind==='copy_reference'?'העתקה':
+     {item.label||'ללא שם'} · {item.kind==='copy_reference'?uiTranslate("העתקה"):
       item.kind==='call_office'?'שיחת טלפון':'קישור'}
     </span>)}
    </div>

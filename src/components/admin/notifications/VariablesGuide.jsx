@@ -39,7 +39,7 @@ export default function VariablesGuide({ onInsert }) {
           <div>
             <h4 className="font-medium text-sm mb-1">{uiTranslate("משתנים זמינים")}</h4>
             <p className="text-xs text-gray-500">
-              {onInsert ? 'לחץ על משתנה כדי להוסיפו לטקסט' : 'לחץ כדי להעתיק'}
+              {onInsert ? uiTranslate("לחץ על משתנה כדי להוסיפו לטקסט") : uiTranslate("לחץ כדי להעתיק")}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-1.5 max-h-72 overflow-y-auto">

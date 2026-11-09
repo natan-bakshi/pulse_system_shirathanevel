@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
 import { billingText } from "@/components/billing/billingI18n";
 import { editDocumentUnitPrice, editDocumentVatRate, itemUnitGross, totalDocumentGross, totalDocumentNet } from "./documentAmountMath";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // עורך שורות הפריטים של מסמך ידני, כולל סיכום לפני מע״מ / מע״מ / סה״כ.
 export default function DocumentItemsEditor({ items, onChange, vatPercent = 18, symbol = "₪", lang = "he" }) {
+  const {t: uiTranslate}=useLanguage();
   const text = billingText(lang);
   const update = (index, key, value) => onChange(items.map((item, position) => (position === index ? { ...item, [key]: value } : item)));
   const updateUnit = (index, mode, value) => onChange(items.map((item, position) => position === index ? editDocumentUnitPrice(item, mode, value, vatPercent) : item));
@@ -39,11 +41,11 @@ export default function DocumentItemsEditor({ items, onChange, vatPercent = 18, 
               <Input type="number" inputMode="decimal" dir="ltr" value={item.quantity} onChange={(event) => update(index, "quantity", event.target.value)} />
             </div>
             <div className="sm:col-span-3">
-              <Label className="text-xs text-gray-500">{lang === "en" ? "Unit price before VAT" : "מחיר יחידה לפני מע״מ"}</Label>
+              <Label className="text-xs text-gray-500">{lang === "en" ? "Unit price before VAT" : uiTranslate("מחיר יחידה לפני מע״מ")}</Label>
               <Input type="number" min="0" step="0.01" inputMode="decimal" dir="ltr" value={item.price} onChange={(event) => updateUnit(index, "net", event.target.value)} />
             </div>
             <div className="sm:col-span-3">
-              <Label className="text-xs text-gray-500">{lang === "en" ? "Unit price including VAT" : "מחיר יחידה כולל מע״מ"}</Label>
+              <Label className="text-xs text-gray-500">{lang === "en" ? "Unit price including VAT" : uiTranslate("מחיר יחידה כולל מע״מ")}</Label>
               <Input type="number" min="0" step="0.01" inputMode="decimal" dir="ltr" value={item.grossPrice ?? itemUnitGross(item, vatPercent)} onChange={(event) => updateUnit(index, "gross", event.target.value)} />
             </div>
             <div className="sm:col-span-1">

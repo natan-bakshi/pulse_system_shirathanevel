@@ -61,7 +61,7 @@ export default function BillingConfiguration() {
         <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">{uiTranslate("נוהל סגירת האירוע וההסכם")}</summary><ClosingSettings settings={settings} onChange={change} /></details>
         <div className="flex items-center gap-3">
           <Button onClick={save} disabled={saving || !Object.keys(draft).length}>
-            {saving ? "שומר..." : <><Save className="ml-2 h-4 w-4" />{uiTranslate("שמור הגדרות חיוב")}</>}
+            {saving ? uiTranslate("שומר...") : <><Save className="ml-2 h-4 w-4" />{uiTranslate("שמור הגדרות חיוב")}</>}
           </Button>
           {Object.keys(draft).length > 0 && <span className="text-xs text-amber-600">{uiTranslate("יש שינויים שלא נשמרו")}</span>}
           {savedAt && !Object.keys(draft).length && <span className="text-xs text-green-600">{uiTranslate("ההגדרות נשמרו")}</span>}

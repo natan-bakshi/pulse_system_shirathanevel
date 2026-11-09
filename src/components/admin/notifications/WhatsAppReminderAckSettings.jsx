@@ -69,7 +69,7 @@ export default function WhatsAppReminderAckSettings(){
     <p className="font-medium flex items-center gap-2">
      {status.enabled?<CheckCircle2 size={17} className="text-green-700"/>:
       <PauseCircle size={17} className="text-gray-500"/>}
-     {status.enabled?'פעיל לתזכורות חדשות':'כבוי — תזכורות נשלחות כרגיל'}
+     {status.enabled?uiTranslate("פעיל לתזכורות חדשות"):uiTranslate("כבוי — תזכורות נשלחות כרגיל")}
     </p>
     {!status.ready&&<p className="text-xs text-amber-800">
      {uiTranslate("כדי להפעיל יש צורך בתור WhatsApp פעיל, ב־Green כספק הנבחר, בהפעלת הכפתורים הקיימים ובהגדרות תקינות. אין צורך בשינוי ידני של Webhook.")}

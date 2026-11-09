@@ -12,11 +12,13 @@ import { DOCUMENT_TYPE_LABELS_EN, PAYMENT_METHOD_LABELS_EN, billingText } from "
 import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS } from "@/components/billing/documentTypes";
 import { getEventContactList } from "@/lib/eventContactList";
 import { getCurrencySymbol } from "@/components/utils/currencyUtils";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const round2 = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
 // הפקת מסמך עבור תשלום שנרשם ידנית - כל הפרטים מולאו מראש מהתשלום ומהאירוע וניתנים לעריכה.
 export default function PaymentDocumentDialog({ open, onOpenChange, payment, event, documentType = "invoice_receipt", onCreated }) {
+  const {t: uiTranslate}=useLanguage();
   const [lang, setLang] = useState("he");
   const [customer, setCustomer] = useState({ name: "", identifier: "", phone: "", email: "" });
   const [item, setItem] = useState({ name: "", quantity: 1, price: "" });
@@ -122,9 +124,9 @@ export default function PaymentDocumentDialog({ open, onOpenChange, payment, eve
             <div className="grid gap-3 sm:grid-cols-4">
               <div className="sm:col-span-2"><Label className="text-xs text-gray-500">{text.itemDescription}</Label><Input value={item.name} onChange={(e) => setItem({ ...item, name: e.target.value })} placeholder={text.itemNamePlaceholder} /></div>
               <div><Label className="text-xs text-gray-500">{text.quantity}</Label><Input type="number" inputMode="decimal" dir="ltr" value={item.quantity} onChange={(e) => setItem({ ...item, quantity: e.target.value })} /></div>
-              <div><Label className="text-xs text-gray-500">{lang === "en" ? "Unit price (incl. VAT)" : "מחיר ליחידה (כולל מע״מ)"}</Label><Input type="number" inputMode="decimal" dir="ltr" value={item.price} onChange={(e) => setItem({ ...item, price: e.target.value })} /></div>
+              <div><Label className="text-xs text-gray-500">{lang === "en" ? "Unit price (incl. VAT)" : uiTranslate("מחיר ליחידה (כולל מע״מ)")}</Label><Input type="number" inputMode="decimal" dir="ltr" value={item.price} onChange={(e) => setItem({ ...item, price: e.target.value })} /></div>
             </div>
-            {totalMismatch && <p className="text-xs text-amber-600">{lang === "en" ? "The line total must match the payment amount" : "סך השורה חייב להיות זהה לסכום התשלום"} ({symbol}{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).</p>}
+            {totalMismatch && <p className="text-xs text-amber-600">{lang === "en" ? "The line total must match the payment amount" : uiTranslate("סך השורה חייב להיות זהה לסכום התשלום")} ({symbol}{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).</p>}
           </div>
 
           <div>
@@ -140,7 +142,7 @@ export default function PaymentDocumentDialog({ open, onOpenChange, payment, eve
           <div className="space-y-3 rounded-lg border border-gray-200 p-3">
             <label className="flex cursor-pointer items-center gap-2">
               <Checkbox checked={sendToClient} onCheckedChange={(checked) => setSendToClient(!!checked)} />
-              <span className="text-sm">{lang === "en" ? "Send the document to the customer after it is issued" : "שלח את המסמך ללקוח לאחר ההפקה"}</span>
+              <span className="text-sm">{lang === "en" ? "Send the document to the customer after it is issued" : uiTranslate("שלח את המסמך ללקוח לאחר ההפקה")}</span>
             </label>
             {sendToClient && (
               <div className="grid gap-3 sm:grid-cols-2">

@@ -117,7 +117,7 @@ export default function TaskFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
-          <DialogTitle>{initialData ? 'עריכת משימה' : 'משימה חדשה'}</DialogTitle>
+          <DialogTitle>{initialData ? uiTranslate("עריכת משימה") : uiTranslate("משימה חדשה")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -225,7 +225,7 @@ export default function TaskFormDialog({
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving}>
             {isSaving && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-            {initialData ? 'עדכן משימה' : 'צור משימה'}
+            {initialData ? uiTranslate("עדכן משימה") : uiTranslate("צור משימה")}
           </Button>
         </DialogFooter>
       </DialogContent>

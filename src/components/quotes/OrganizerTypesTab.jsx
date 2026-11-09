@@ -12,6 +12,7 @@ import OrganizerTypeEditor from "./OrganizerTypeEditor";
 
 import {useLanguage} from '@/i18n/LanguageProvider';
 export default function OrganizerTypesTab() {
+  const {t: uiTranslate}=useLanguage();
   const {t,dir}=useLanguage();
   const [editingType, setEditingType] = useState(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -157,10 +158,10 @@ export default function OrganizerTypesTab() {
                     )}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {fieldsCount > 0 ? `${fieldsCount} שדות` : 'שדות ברירת מחדל'}
+                    {fieldsCount > 0 ? `${fieldsCount} שדות` : uiTranslate("שדות ברירת מחדל")}
                     {' · '}
-                    {blocksCount > 0 ? `${blocksCount} בלוקים` : 'בלוקים ברירת מחדל'}
-                    {type.quote_main_title_template ? ' · כותרת מותאמת' : ''}
+                    {blocksCount > 0 ? `${blocksCount} בלוקים` : uiTranslate("בלוקים ברירת מחדל")}
+                    {type.quote_main_title_template ? uiTranslate(" · כותרת מותאמת") : ''}
                   </div>
                 </div>
               </div>

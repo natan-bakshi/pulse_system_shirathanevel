@@ -94,7 +94,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
           {/* Supplier list */}
           {filtered.length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">
-              {totalDeclines === 0 ? 'אין היסטוריית דחיות' : 'לא נמצאו תוצאות'}
+              {totalDeclines === 0 ? uiTranslate("אין היסטוריית דחיות") : uiTranslate("לא נמצאו תוצאות")}
             </div>
           ) : (
             <div className="space-y-3">

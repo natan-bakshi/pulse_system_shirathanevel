@@ -26,6 +26,7 @@ const EXTRA_SYSTEM_TYPES = [{ value:'concept', label:'בחירת קונספט' }
 const FIELD_TYPE_LABELS = [...FIELD_TYPES,...EXTRA_SYSTEM_TYPES].reduce((acc, ft) => { acc[ft.value] = ft.label; return acc; }, {});
 
 export default function OrganizerFieldsEditor({ fields, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const {t,dir}=useLanguage();
   const [showFieldDialog, setShowFieldDialog] = useState(false);
   const [showSystemDialog, setShowSystemDialog] = useState(false);
@@ -127,7 +128,7 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
                 {systemKey(field) && <Badge variant="outline" className="text-[10px]" dir="ltr">{systemKey(field)}</Badge>}
                 {field.type === 'select' && field.options ? <span>({Array.isArray(field.options) ? field.options.length : 0} {t("אפשרויות)")}</span> : null}
                 <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${field.category === 'organizer_details' ? 'border-purple-300 text-purple-600' : 'border-blue-300 text-blue-600'}`}>
-                  {field.category === 'organizer_details' ? 'פרטי מזמין/ה' : 'פרטי אירוע'}
+                  {field.category === 'organizer_details' ? uiTranslate("פרטי מזמין/ה") : uiTranslate("פרטי אירוע")}
                 </Badge>
               </div>
             </div>
@@ -171,7 +172,7 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
       <Dialog open={showFieldDialog} onOpenChange={setShowFieldDialog}>
         <DialogContent dir={dir} className="sm:max-w-[450px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>{editingFieldIndex !== null ? 'עריכת שדה' : 'שדה חדש'}</DialogTitle>
+            <DialogTitle>{editingFieldIndex !== null ? uiTranslate("עריכת שדה") : uiTranslate("שדה חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -236,7 +237,7 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowFieldDialog(false)}>{t("ביטול")}</Button>
             <Button onClick={saveField} disabled={!fieldForm.name.trim()}>
-              {editingFieldIndex !== null ? 'עדכן' : 'הוסף'}
+              {editingFieldIndex !== null ? uiTranslate("עדכן") : uiTranslate("הוסף")}
             </Button>
           </div>
         </DialogContent>

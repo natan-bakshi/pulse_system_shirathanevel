@@ -202,7 +202,7 @@ export default function WhatsAppQueueSettings(){
     </p>
     <Button size="sm" variant={view?.interactiveButtonsEnabled?'outline':'default'}
      disabled={busy||!view} onClick={()=>toggleButtons(!view.interactiveButtonsEnabled)}>
-     {view?.interactiveButtonsEnabled?'כבה כפתורים בהודעות חדשות':'הפעל כפתורים בהודעות חדשות'}
+     {view?.interactiveButtonsEnabled?uiTranslate("כבה כפתורים בהודעות חדשות"):uiTranslate("הפעל כפתורים בהודעות חדשות")}
     </Button>
     <p className="text-xs text-gray-600">{uiTranslate("לעריכת הכפתורים, מספר המשרד והקישורים לפי סוג הודעה: עבור ל״כפתורים בהודעות״ בלשונית ״ניהול התראות״.")}</p>
     <details className="rounded border p-3 text-sm">
@@ -210,7 +210,7 @@ export default function WhatsAppQueueSettings(){
      <div className="pt-3 space-y-2">
       <Button size="sm" variant="outline" disabled={busy} onClick={checkButtons}>{uiTranslate("בדוק מוכנות שליחה")}</Button>
       {productionCheck&&<p className={productionCheck.sendReady?'text-green-800':'text-amber-800'}>
-       {productionCheck.sendReady?'הכפתורים מוכנים.':'חסרים תנאים להפעלת הכפתורים.'}
+       {productionCheck.sendReady?uiTranslate("הכפתורים מוכנים."):uiTranslate("חסרים תנאים להפעלת הכפתורים.")}
        {!productionCheck.sendReady&&productionCheck.checks&&
         ' '+Object.entries(productionCheck.checks).filter(([,ok])=>!ok)
          .map(([key])=>({queue:'התור כבוי או מושהה',outboundOwnerSwitch:'כפתורים כבויים',
@@ -226,7 +226,7 @@ export default function WhatsAppQueueSettings(){
      <Button size="sm" variant="outline" aria-expanded={messagesOpen}
       aria-controls="whatsapp-queue-messages-panel"
       onClick={()=>setMessagesOpen(x=>!x)}>
-      {messagesOpen?'סגור רשימה':'פתח ניהול הודעות'}
+      {messagesOpen?uiTranslate("סגור רשימה"):uiTranslate("פתח ניהול הודעות")}
      </Button>
     </div>
     <p className="text-sm text-gray-600">{uiTranslate("צפייה בהודעות, ביטול הודעות ממתינות וטיפול בכשלים. ניסיון חוזר רק כשהמערכת מתירה זאת.")}</p>
@@ -272,9 +272,9 @@ export default function WhatsAppQueueSettings(){
       {greenConnection&&<p>{uiTranslate("מצב Green:")} <strong>{({authorized:'מחובר',notAuthorized:'לא מחובר',
        starting:'באתחול',sleepMode:'מצב שינה',blocked:'חסום',suspended:'מוגבל'})[greenConnection.state]||'לא ידוע'}</strong></p>}
       {greenWebhookSettings&&<div role="status" className="rounded bg-gray-50 p-3 space-y-1">
-       <p>Webhook: {greenWebhookSettings.webhookConfigured?'מוגדר':'חסר'}</p>
-       <p>{uiTranslate("קליטת תגובות:")} {greenWebhookSettings.incomingNotificationsEnabled?'פעילה':'לא מאומתת'}</p>
-       <p>{uiTranslate("אימות Webhook:")} {greenWebhookSettings.webhookTokenConfigured?'מוגדר':'חסר'}</p>
+       <p>Webhook: {greenWebhookSettings.webhookConfigured?uiTranslate("מוגדר"):uiTranslate("חסר")}</p>
+       <p>{uiTranslate("קליטת תגובות:")} {greenWebhookSettings.incomingNotificationsEnabled?uiTranslate("פעילה"):uiTranslate("לא מאומתת")}</p>
+       <p>{uiTranslate("אימות Webhook:")} {greenWebhookSettings.webhookTokenConfigured?uiTranslate("מוגדר"):uiTranslate("חסר")}</p>
       </div>}
       <p className="text-xs text-gray-600">{uiTranslate("הפעולות הן לקריאה בלבד, ללא שליחת הודעות או שינוי הגדרות.")}</p>
      </div>
@@ -291,8 +291,8 @@ export default function WhatsAppQueueSettings(){
       </div>
       {metrics&&<div className="border rounded p-3 space-y-1">
        <strong>{uiTranslate("ביצועי שליחה —")} {metrics.sampled||0} {uiTranslate("הודעות במדגם")}</strong>
-       <p>{uiTranslate("חציון המתנה:")} {metrics.timings?.queueWait?.p50Ms==null?'אין נתון':(metrics.timings.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</p>
-       <p>{uiTranslate("95% מהזמן לאחר מועד ההודעה:")} {metrics.timings?.afterDue?.p95Ms==null?'אין נתון':(metrics.timings.afterDue.p95Ms/1000).toFixed(1)+' שניות'}</p>
+       <p>{uiTranslate("חציון המתנה:")} {metrics.timings?.queueWait?.p50Ms==null?uiTranslate("אין נתון"):(metrics.timings.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</p>
+       <p>{uiTranslate("95% מהזמן לאחר מועד ההודעה:")} {metrics.timings?.afterDue?.p95Ms==null?uiTranslate("אין נתון"):(metrics.timings.afterDue.p95Ms/1000).toFixed(1)+' שניות'}</p>
       </div>}
       {sourceAudit&&<div className="border rounded p-3 space-y-1">
        <strong>{uiTranslate("התאמה בין הודעות למקור")}</strong>
@@ -314,7 +314,7 @@ export default function WhatsAppQueueSettings(){
       {unknownCallbackAudit&&<div className="border rounded p-3 space-y-2">
        <strong>{uiTranslate("תגובות לא מזוהות:")} {unknownCallbackAudit.pendingReview||0} {uiTranslate("ממתינות לבירור")}</strong>
        {(unknownCallbackAudit.list||[]).map(entry=><div className="border-t pt-2" key={entry.reference}>
-        <p className="text-xs">{entry.reference} · {entry.format==='unrecognized_interactive'?'כפתור לא מזוהה':'אירוע לא מזוהה'}</p>
+        <p className="text-xs">{entry.reference} · {entry.format==='unrecognized_interactive'?uiTranslate("כפתור לא מזוהה"):uiTranslate("אירוע לא מזוהה")}</p>
         {entry.encryptedRecoveryRecorded&&entry.reviewRecordId&&
          entry.encryptedRecoveryExpiresAt&&Date.parse(entry.encryptedRecoveryExpiresAt)>Date.now()&&
          <Button variant="outline" size="sm" disabled={busy}

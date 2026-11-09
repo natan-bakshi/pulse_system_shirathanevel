@@ -156,7 +156,7 @@ export default function PushNotificationPrompt({ user }) {
                   disabled={isLoading}
                   className="bg-blue-600 hover:bg-blue-700 text-xs"
                 >
-                  {isLoading ? 'טוען...' : 'הפעל עכשיו'}
+                  {isLoading ? uiTranslate("טוען...") : uiTranslate("הפעל עכשיו")}
                 </Button>
                 <Button
                   size="sm"

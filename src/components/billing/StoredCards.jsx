@@ -124,7 +124,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
     <CardHeader><CardTitle>{uiTranslate("הכרטיס השמור של הלקוח")}</CardTitle></CardHeader>
     <CardContent className="space-y-3">
       {isLoading ? <p>{uiTranslate("טוען...")}</p> : error ? <p role="alert" className="text-red-700">{errorText(error)}</p> : <>
-        <p>{customer ? customer.name + " — " + cardLabel(card) : "יש לקשר לקוח משלם כדי לשמור כרטיס משותף לאירועים שלו."}</p>
+        <p>{customer ? customer.name + " — " + cardLabel(card) : uiTranslate("יש לקשר לקוח משלם כדי לשמור כרטיס משותף לאירועים שלו.")}</p>
         {card?.environment === "qa" && <p className="text-amber-800">{uiTranslate("כרטיס בדיקה בסביבת QA")}</p>}
         {card?.cleanup_pending && <div className="rounded border border-amber-400 bg-amber-50 p-3">
           <p>{uiTranslate("האירועים הסתיימו והחובות סולקו. נדרש אישור להסרת הכרטיס.")}</p>
@@ -133,8 +133,8 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" disabled={busy || customer?.busy} onClick={() => run(async () => {
             setConsentImage(""); setConsent(false); setReference(""); setCustomerSearch(""); await loadCustomers(false, ""); setMode("customer");
-          })}>{customer ? "שינוי לקוח משלם" : "בחר לקוח משלם"}</Button>
-          {customer && <Button variant="outline" disabled={busy || customer.busy} onClick={() => { setConsent(false); setReference(""); setConsentImage(""); setMode("setup"); }}>{card ? "החלף כרטיס" : "הוסף כרטיס"}</Button>}
+          })}>{customer ? uiTranslate("שינוי לקוח משלם") : uiTranslate("בחר לקוח משלם")}</Button>
+          {customer && <Button variant="outline" disabled={busy || customer.busy} onClick={() => { setConsent(false); setReference(""); setConsentImage(""); setMode("setup"); }}>{card ? uiTranslate("החלף כרטיס") : uiTranslate("הוסף כרטיס")}</Button>}
           {card?.has_consent_image && <Button variant="outline" disabled={busy} onClick={()=>run(async()=>{const r=await storedCardAction("consent_document",{customerId:customer.id});window.open(r.signed_url,"_blank","noopener,noreferrer");})}>{uiTranslate("צפה באסמכתא להסכמה")}</Button>}
           {card?.state === "active" && <>
             <Button disabled={busy || customer?.busy} onClick={() => setMode("charge")}>{uiTranslate("חיוב מכרטיס שמור")}</Button>
@@ -155,7 +155,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
           {data.pending.url && <Button variant="outline" disabled={busy || !!data.pending.messageState} onClick={()=>run(async()=>{
             const result=await storedCardAction("send_setup_link",{customerId:customer.id,eventId:event.id});
             setMessage(result.manual_review_required?"תוצאת הודעת WhatsApp אינה ודאית; יש לבדוק את התור לפני ניסיון נוסף.":result.queued?"הקישור נשמר בתור WhatsApp וממתין לאישור הספק.":result.sent?"הקישור התקבל אצל ספק WhatsApp; מסירה ללקוח טרם אומתה.":result.warning||"לא אושרה קליטה לתור WhatsApp.");
-          })}>{data.pending.messageState==="accepted"?"התקבל אצל ספק WhatsApp":data.pending.messageState==="queued"?"ממתין בתור WhatsApp":data.pending.messageState?"נדרשת בדיקת שליחה":"שלח קישור בוואטסאפ"}</Button>}
+          })}>{data.pending.messageState==="accepted"?uiTranslate("התקבל אצל ספק WhatsApp"):data.pending.messageState==="queued"?"ממתין בתור WhatsApp":data.pending.messageState?"נדרשת בדיקת שליחה":"שלח קישור בוואטסאפ"}</Button>}
           {data.pending.canRecover && <Button variant="outline" disabled={busy} onClick={() => run(async () => {
             await storedCardAction("recover_setup", { customerId: customer.id }); setMessage("שמירת הכרטיס אומתה והושלמה"); await changed();
           })}>{uiTranslate("בדוק ואמת כרטיס מול הספק")}</Button>}
@@ -189,7 +189,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
       {message && <p role="status" className="text-sm whitespace-pre-line">{message}</p>}
       <Dialog open={!!mode} onOpenChange={open => { if (!open && !busy) setMode(null); }}>
         <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{mode === "customer" ? "לקוח משלם" : mode === "setup" ? "שמירת כרטיס ללקוח" : "חיוב כרטיס שמור"}</DialogTitle>
+          <DialogHeader><DialogTitle>{mode === "customer" ? uiTranslate("לקוח משלם") : mode === "setup" ? "שמירת כרטיס ללקוח" : "חיוב כרטיס שמור"}</DialogTitle>
             <DialogDescription>{uiTranslate("הכרטיס משותף לכל האירועים המשויכים ללקוח המשלם.")}</DialogDescription></DialogHeader>
           {mode === "customer" && <div className="space-y-3">
             <p className="text-sm text-gray-600">{uiTranslate("לקוחות קיימים מוצגים כאן רק אם כבר שמור להם כרטיס פעיל.")}</p>
@@ -205,7 +205,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
             {hasMore && <Button variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(true, customerSearch))}>{uiTranslate("טען לקוחות נוספים")}</Button>}
             <Button disabled={!selected || busy} onClick={() => run(() => bind(selected))}>{uiTranslate("קשר לאירוע")}</Button>
             <p className="font-semibold border-t pt-3">{uiTranslate("לקוח חדש + כרטיס")}</p>
-            <p className="text-sm text-amber-900">{form.email.trim()?"מייל הלקוח ישמש בסליקה.":fallbackEmail?"בהיעדר מייל ללקוח יישלח לספק מייל החברה: "+fallbackEmail:"נדרש מייל ללקוח או הגדרת מייל חברה חלופי בהגדרות התשלומים."}</p>
+            <p className="text-sm text-amber-900">{form.email.trim()?uiTranslate("מייל הלקוח ישמש בסליקה."):fallbackEmail?"בהיעדר מייל ללקוח יישלח לספק מייל החברה: "+fallbackEmail:"נדרש מייל ללקוח או הגדרת מייל חברה חלופי בהגדרות התשלומים."}</p>
             <p className="text-sm text-gray-600">{uiTranslate("הלקוח יישמר במערכת רק לאחר שהכרטיס יאומת בהצלחה.")}</p>
             {[["name", "שם מלא"], ["phone", "טלפון"], ["email", "אימייל"], ["identifier", "תעודת זהות / ח.פ. (רשות)"]].map(([field, label]) =>
               <label key={field} className="block">{label}<Input type={field === "email" ? "email" : "text"} value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} /></label>)}

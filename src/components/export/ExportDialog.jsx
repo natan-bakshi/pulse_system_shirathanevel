@@ -244,7 +244,7 @@ export default function ExportDialog({
                   size="sm" 
                   onClick={handleSelectAllRows}
                 >
-                  {selectedRows.size === data.length ? 'בטל הכל' : 'בחר הכל'}
+                  {selectedRows.size === data.length ? uiTranslate("בטל הכל") : uiTranslate("בחר הכל")}
                 </Button>
               </div>
               <div className="max-h-48 overflow-y-auto border rounded p-2 space-y-2">
@@ -271,7 +271,7 @@ export default function ExportDialog({
                   size="sm" 
                   onClick={handleSelectAllColumns}
                 >
-                  {selectedColumns.size === columns.length ? 'בטל הכל' : 'בחר הכל'}
+                  {selectedColumns.size === columns.length ? uiTranslate("בטל הכל") : uiTranslate("בחר הכל")}
                 </Button>
               </div>
               <div className="max-h-48 overflow-y-auto border rounded p-2 space-y-2">

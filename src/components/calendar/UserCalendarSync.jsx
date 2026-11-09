@@ -156,7 +156,7 @@ export default function UserCalendarSync({ user }) {
         {((syncApproved && !isConnected) || (!syncApproved && isConnected)) && (
           <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-            {syncApproved ? 'חבר יומן Google' : 'כבה וניתוק יומן'}
+            {syncApproved ? uiTranslate("חבר יומן Google") : uiTranslate("כבה וניתוק יומן")}
           </Button>
         )}
       </CardContent>

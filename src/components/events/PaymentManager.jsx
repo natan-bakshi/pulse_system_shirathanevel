@@ -98,7 +98,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                       onClick={() => updatePayment(payment.id, 'currency', (getEffectiveCurrency(payment.currency, eventPrimaryCurrency)) === 'ILS' ? 'USD' : 'ILS')}
                       className="flex items-center gap-1 text-sm h-9 px-3 rounded border border-gray-300 hover:bg-gray-50 w-full justify-center"
                     >
-                      {getCurrencySymbol(getEffectiveCurrency(payment.currency, eventPrimaryCurrency))} {getEffectiveCurrency(payment.currency, eventPrimaryCurrency) === 'ILS' ? 'שקל' : 'דולר'}
+                      {getCurrencySymbol(getEffectiveCurrency(payment.currency, eventPrimaryCurrency))} {getEffectiveCurrency(payment.currency, eventPrimaryCurrency) === 'ILS' ? uiTranslate("שקל") : uiTranslate("דולר")}
                     </button>
                     {(() => {
                       const paymentCurrency = getEffectiveCurrency(payment.currency, eventPrimaryCurrency);

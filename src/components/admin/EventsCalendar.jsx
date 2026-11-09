@@ -7,8 +7,10 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInte
 import { he } from "date-fns/locale";
 import { getEventDisplayName } from '@/lib/eventDisplayName';
 import { getSaturdayParasha } from '@/lib/barMitzvahCalculator';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function EventsCalendar({ events, initialDate, onDateClick, onEventClick }) {
+  const {t: uiTranslate}=useLanguage();
   const [currentDate, setCurrentDate] = useState(() => initialDate || new Date());
   const [holidays, setHolidays] = useState({}); // סטייט חדש לחגים
   const [expandedDays, setExpandedDays] = useState({}); // סטייט לניהול חשיפת אירועים נוספים
@@ -241,7 +243,7 @@ export default function EventsCalendar({ events, initialDate, onDateClick, onEve
                     }}
                     className="text-[8px] sm:text-[10px] text-blue-600 font-bold mt-0.5 sm:mt-1 hover:underline text-center"
                   >
-                    {isExpanded ? 'סגור' : `+${dayEvents.length - 2}`}
+                    {isExpanded ? uiTranslate("סגור") : `+${dayEvents.length - 2}`}
                   </div>
                 )}
               </div>
