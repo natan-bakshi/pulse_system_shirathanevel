@@ -17,6 +17,7 @@ import { AgreementError, audit, lockAgreement, settings, financials, deliver, no
 import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
+import {loadQuoteTranslations,isHebrew} from '../../shared/quoteLocalization.ts';
 import {customerMessageTemplate} from '../../shared/customerMessageTone.ts';
 
 import { closingClauses, withoutCardClauses } from "../../shared/closingClauses.ts";
@@ -65,20 +66,41 @@ async function preview(client,base44,eventId,config){
  const enTerms=String(config.closing_terms_text_en||"").trim();
  const existingDeposit=Math.min(f.finalTotal,firstCompletedPayment(f.payments,f.currency,Number(config.usd_ils_exchange_rate)||3.6));
  const deposit=existingDeposit||calculateAdvanceAmount(config,f.finalTotal);
- const codes=["terms","token","regular","exceptional","fee","changes"];
- const translations=Object.fromEntries(["he","en"].map(lang=>{
-  const en=lang==="en",copy=closingCopy[lang],compact=agreementQuote(event,f,lang);
+ const codes=['terms','token','regular','exceptional','fee','changes'];
+ const englishMissing=new Set<string>();
+ let englishIndex=new Map();
+ if(enTerms){
+  try{englishIndex=await loadQuoteTranslations(base44,'en');}
+  catch{englishMissing.add('translations.approved_catalog_unavailable');}
+ }
+ const englishBank=String(config.company_bank_details_en||'').trim();
+ const hebrewBank=String(config.company_bank_details||'').trim();
+ if(enTerms&&hebrewBank&&isHebrew(hebrewBank)&&!englishBank)
+  englishMissing.add('company_bank_details_en');
+ const translations=Object.fromEntries(['he','en'].map(lang=>{
+  const en=lang==='en',copy=closingCopy[lang],compact=agreementQuote(event,f,lang,
+    en?englishIndex:new Map(),englishMissing);
   const feeText=config.processing_fee_enabled==="true"
    ?(en?"Card payments incur a processing fee under the settings at the time of this agreement: ":"בתשלום באשראי תתווסף עלות סליקה לפי הגדרות הסליקה במועד הסכם זה: ")+config.processing_fee_value+(config.processing_fee_type==="fixed"?" "+f.currency+(en?" per charge.":" לכל חיוב."):en?"% of the charged amount.":"% מסכום החיוב.")
    :copy.fee;
   const texts=[copy.terms,copy.token,config[en?"closing_regular_text_en":"closing_regular_text"]||closingDefaults[en?"closing_regular_text_en":"closing_regular_text"],config[en?"closing_exceptional_text_en":"closing_exceptional_text"]||closingDefaults[en?"closing_exceptional_text_en":"closing_exceptional_text"],feeText,config[en?"closing_changes_text_en":"closing_changes_text"]||closingDefaults[en?"closing_changes_text_en":"closing_changes_text"]];
-  return [lang,{terms:en?enTerms:heTerms,clauses:codes.map((code,i)=>({code,label:copy.labels[i],text:texts[i]})),quote_text:compact.quote,pricing_note:compact.summary.pricing_note,milestones:defaultMilestones(f.finalTotal,deposit,event.event_date,undefined,lang)}];
+  return [lang,{terms:en?enTerms:heTerms,clauses:codes.map((code,i)=>({code,label:copy.labels[i],text:texts[i]})),
+   quote_text:compact.quote,quote_summary:compact.summary,quote_file:compact.quoteFile,
+   bank_details:en?(englishBank||(!isHebrew(hebrewBank)?hebrewBank:'')):hebrewBank,
+   pricing_note:compact.summary.pricing_note,
+   milestones:defaultMilestones(f.finalTotal,deposit,event.event_date,undefined,lang)}];
  }));
- const form_language=enTerms?agreementLanguage(config.closing_form_language):"he";
+ const englishReady=!!enTerms&&englishMissing.size===0;
+ const form_language=englishReady?agreementLanguage(config.closing_form_language):'he';
  const selected=translations[form_language];
- const compact=agreementQuote(event,f,form_language);
- const sourceHash=await digest(canonical({translations,quoteFile:compact.quoteFile,total:f.finalTotal,currency:f.currency,event_date:event.event_date,existingDeposit}));
- return {event,sourceHash,translations,available_languages:enTerms?["he","en"]:["he"],form_language,message_language:agreementLanguage(config.closing_message_language),quote:selected.quote_text,quote_summary:compact.summary,quote_file:compact.quoteFile,terms:selected.terms,total:f.finalTotal,currency:f.currency,deposit,existing_deposit:existingDeposit,bank_details:cleanText(config.company_bank_details,1000),contacts:getEventContacts(event).map(c=>({name:c.name||"",phone:c.phone||"",email:c.email||""})),
+ const sourceHash=await digest(canonical({translations,quoteFile:selected.quote_file,total:f.finalTotal,currency:f.currency,event_date:event.event_date,existingDeposit}));
+ return {event,sourceHash,translations,available_languages:englishReady?['he','en']:['he'],
+  english_missing:[...englishMissing].slice(0,60),english_terms_configured:!!enTerms,
+  english_pdf_missing:!!enTerms&&!translations.en.quote_file,
+  form_language,message_language:agreementLanguage(config.closing_message_language),
+  quote:selected.quote_text,quote_summary:selected.quote_summary,quote_file:selected.quote_file,
+  terms:selected.terms,total:f.finalTotal,currency:f.currency,deposit,existing_deposit:existingDeposit,
+  bank_details:selected.bank_details,contacts:getEventContacts(event).map(c=>({name:c.name||'',phone:c.phone||'',email:c.email||''})), 
  milestones:selected.milestones,regular_cap:existingDeposit>0?roundMoney(Math.max(0,f.balance)):roundMoney(f.finalTotal*Number(config.closing_regular_multiplier||1)),exceptional_cap:roundMoney(f.finalTotal*Number(config.closing_exceptional_multiplier||2)),
  clauses:selected.clauses,exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),require_token:config.closing_token_required!=="false",require_deposit:config.closing_deposit_required!=="false",
  send_copy:config.closing_send_copy!=="false",notifications:notifications({language:agreementLanguage(config.closing_message_language)},config)};
@@ -352,7 +374,8 @@ export default Deno.serve(async req=>{
    const executeCreate=async lockedId=>{
    if(body.sourceHash!==p.sourceHash)throw new AgreementError("פרטי האירוע השתנו מאז התצוגה; יש לפתוח טיוטה מחדש",409);
    const formLanguage=agreementLanguage(body.form_language);
-   if(formLanguage==="en"&&!p.available_languages.includes("en"))throw new AgreementError("יש להגדיר תנאי התקשרות באנגלית לפני בחירה בטופס באנגלית",409);
+   if(formLanguage==='en'&&!p.available_languages.includes('en'))
+    throw new AgreementError('כדי להנפיק הסכם באנגלית יש להשלים תרגומי שירותים ופרטי בנק ולהגדיר תנאי התקשרות באנגלית. חסרים: '+p.english_missing.join(', ').slice(0,900),409);
    const name=cleanText(body.name,120),phone=normalizeIsraeliPhone(body.phone),email=cleanText(body.email,200);
    if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new AgreementError("כתובת אימייל לא תקינה");
    if(!name||!phone)throw new AgreementError("נדרשים שם וטלפון תקינים");
@@ -392,8 +415,8 @@ export default Deno.serve(async req=>{
      milestones:milestones.map((m,i)=>({...m,label:cleanText(lang===formLanguage?m.label:(supplied.milestones?.[i]?.label||base.milestones[i]?.label),150)}))
     }];
    }));
-   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:p.quote_summary,quote_file:p.quote_file,terms,clauses,milestones,
-    deposit:milestones[0].amount,deposit_paid_at_creation:!!body.require_deposit&&p.existing_deposit>0,bank_details:p.bank_details,regular_cap:regular,regular_cap_paid_offset:p.existing_deposit>0?roundMoney(p.quote_summary.paid):0,exceptional_cap:exceptional,
+   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:baseVariant.quote_summary,quote_file:baseVariant.quote_file,terms,clauses,milestones,
+    deposit:milestones[0].amount,deposit_paid_at_creation:!!body.require_deposit&&p.existing_deposit>0,bank_details:baseVariant.bank_details,regular_cap:regular,regular_cap_paid_offset:p.existing_deposit>0?roundMoney(p.quote_summary.paid):0,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
     exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),
     require_token:!!body.require_token,require_deposit:!!body.require_deposit};
