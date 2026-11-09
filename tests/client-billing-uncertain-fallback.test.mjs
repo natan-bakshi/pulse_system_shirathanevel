@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {customerMessageTemplate,formatCustomerMessage} from '../base44/shared/customerMessageTone.ts';
 function setup(send){
  let emails=0;
  const code=esbuild.transformSync(fs.readFileSync('base44/shared/clientBillingMessages.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
@@ -11,6 +12,7 @@ function setup(send){
  vm.runInNewContext(code,{module,exports:module.exports,console:{warn:()=>{}},require:path=>{
   if(path.endsWith('whatsappSend.ts'))return {sendWhatsAppText:send};
   if(path.endsWith('whatsappReceipt.ts'))return {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed};
+  if(path.endsWith('customerMessageTone.ts'))return {customerMessageTemplate,formatCustomerMessage};
   throw Error('Unexpected import');
  }});
  const client={asServiceRole:{integrations:{Core:{SendEmail:async()=>{emails++;}}}}};
