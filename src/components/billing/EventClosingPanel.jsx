@@ -26,7 +26,8 @@ function Notifications({value:n,onChange}){
  </fieldset>;
 }
 export default function EventClosingPanel({event,onChanged}){
-  const {t: uiTranslate}=useLanguage();
+  const {t: uiTranslate,dir,locale}=useLanguage();
+  const status=state=>statusLabel(state,locale);
  const qc=useQueryClient(),detailsRef=useRef(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[url,setUrl]=useState(""),[draft,setDraft]=useState(null),[notification,setNotification]=useState(null),[amendment,setAmendment]=useState(null),[deliveryHealth,setDeliveryHealth]=useState(null);
  const {data,error:loadError,refetch}=useQuery({queryKey:["eventAgreement",event.id],queryFn:()=>agreementAction("list",{eventId:event.id}),staleTime:45000});
  const a=data?.current;
