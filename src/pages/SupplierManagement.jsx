@@ -409,7 +409,7 @@ export default function SupplierManagement() {
                 {supplier.whatsapp_enabled && (
                   <div className="pt-2 flex items-center gap-2 text-green-600 text-xs font-medium">
                     <MessageCircle className="h-3.5 w-3.5" />
-                    <span>{t("WhatsApp פעיל (")}{supplier.preferred_channel === 'group' ? 'קבוצה' : supplier.preferred_channel === 'both' ? 'קבוצה + פרטי' : 'פרטי'})</span>
+                    <span>{t("WhatsApp פעיל (")}{supplier.preferred_channel === 'group' ? t('קבוצה') : supplier.preferred_channel === 'both' ? t('קבוצה + פרטי') : t('פרטי')})</span>
                   </div>
                 )}
               </div>
@@ -426,7 +426,7 @@ export default function SupplierManagement() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingSupplier ? 'ערוך ספק' : 'הוסף ספק'}</DialogTitle>
+            <DialogTitle>{t(editingSupplier ? 'ערוך ספק' : 'הוסף ספק')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex items-center gap-2">
