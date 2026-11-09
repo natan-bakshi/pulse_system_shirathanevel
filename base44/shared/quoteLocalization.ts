@@ -42,6 +42,11 @@ export async function loadQuoteTranslations(client:any,locale:unknown){
   throw new Error('Approved translations exceed the verified pagination limit.');
 }
 export function translationPreservesProtectedContent(source:string,value:string):boolean{
+  // A previously approved English value can still contain Hebrew fragments
+  // (e.g. a bank beneficiary left untranslated inside translated payment terms).
+  // Reject it at its SOURCE field so the editor receives an actionable key,
+  // rather than failing later with only the generic document.visible_text error.
+  if(isHebrew(value))return false;
   if(/<\s*(script|iframe|object|embed|style)\b|\bon\w+\s*=|javascript\s*:/i.test(value))return false;
   const visible=(s:string)=>s.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
   const extract=(s:string,re:RegExp)=>(s.match(re)||[]).sort().join('|');
