@@ -16,7 +16,8 @@ async function load(path){
   Buffer.from(b.outputFiles[0].text).toString('base64'));
 }
 const {generateQuoteHtml}=await load('base44/shared/quoteHtml.ts');
-const {translationPreservesProtectedContent,visibleHebrewQuoteSnippets}=await load('base44/shared/quoteLocalization.ts');
+const {translationPreservesProtectedContent,visibleHebrewQuoteSnippets,translationIndex,
+  quoteVisibleFragmentField,applyReviewedEventQuoteFragments}=await load('base44/shared/quoteLocalization.ts');
 const original='<p>Bank 563 — חשבון 136610 — בעל החשבון אבי תמים הפקות</p>';
 const partial='<p>Bank 563 — account 136610 — Account holder: <span dir="rtl">אבי תמים הפקות</span></p>';
 
@@ -74,6 +75,29 @@ test('English PDF composer returns the actionable payment template ID instead of
  assert.equal(template.content,original,'Stored Hebrew source remains intact');
 });
 
+test('event-scoped approval repairs exactly one renderer-only text node, never HTML tags or other events',()=>{
+ const source='שם פרטי בחשבון',value='Official Account Holder';
+ const name=quoteVisibleFragmentField(source);
+ const row={source_entity:'Event',source_id:'ev1',locale:'en',status:'approved',
+   fields:{[name]:{source,value}}};
+ const approved=translationIndex([row]);
+ const html='<html><head><style>.x{content:"שם פרטי בחשבון"}</style></head>'+
+   '<body><!-- שם פרטי בחשבון --><div title="שם פרטי בחשבון">שם פרטי בחשבון</div>'+
+   '<p>שם פרטי בחשבון נוסף</p><p>Bank 136610</p></body></html>';
+ const result=applyReviewedEventQuoteFragments(html,approved,'ev1');
+ assert.ok(result.includes('<div title="שם פרטי בחשבון">Official Account Holder</div>'));
+ assert.ok(result.includes('<style>.x{content:"שם פרטי בחשבון"}</style>'));
+ assert.ok(result.includes('<!-- שם פרטי בחשבון -->'));
+ assert.ok(result.includes('<p>שם פרטי בחשבון נוסף</p>'));
+ assert.ok(result.includes('Bank 136610'));
+ assert.equal(applyReviewedEventQuoteFragments(html,approved,'other-event'),html);
+ assert.equal(quoteVisibleFragmentField('  שם פרטי בחשבון  '),name);
+ const unsafe=translationIndex([{...row,fields:{[name]:{source,value:'Other Account 889999'}}}]);
+ assert.equal(applyReviewedEventQuoteFragments(html,unsafe,'ev1'),html);
+ const injected=translationIndex([{...row,fields:{[name]:{source,value:'<script>alert(1)</script>'}}}]);
+ assert.equal(applyReviewedEventQuoteFragments(html,injected,'ev1'),html);
+});
+
 test('Quote edit UI exposes already translated templates, opens needed section and offers fragment repair',()=>{
  const src=fs.readFileSync('src/components/event-details/EventQuoteEnglishDialog.jsx','utf8');
  assert.match(src,/for\(const template of quoteTemplates\)/);
@@ -81,4 +105,6 @@ test('Quote edit UI exposes already translated templates, opens needed section a
  assert.match(src,/defaultOpen=\{Array\.isArray\(missingFields\)&&!showAll\}/);
  assert.match(src,/substituteExactHebrewTextNode\(val,fragment,fragmentInputs\[id\]\)/);
  assert.match(src,/QuoteTemplate\.get\(f\.id\)/);
+ assert.match(src,/quoteVisibleFragmentField\(sample\)/);
+ assert.match(src,/f\.key\.startsWith\('visible_fragment_'\)\?f\.source/);
 });
