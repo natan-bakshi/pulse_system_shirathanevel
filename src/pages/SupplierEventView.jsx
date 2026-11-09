@@ -9,8 +9,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
 // Safe, intentionally limited supplier view reached from a WhatsApp smart
 // event link. Never read raw Event/EventService entities in the browser.
 export default function SupplierEventView(){
-  const {t}=useLanguage();
- const {t,dir}=useLanguage();
+  const {t,dir}=useLanguage();
  const location=useLocation();
  const eventId=new URLSearchParams(location.search).get('id')||'';
  const valid=/^[A-Za-z0-9_-]{3,100}$/.test(eventId);
