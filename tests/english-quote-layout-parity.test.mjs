@@ -56,6 +56,8 @@ test('Hebrew quotation presentation is byte-identical; English mirrors right/lef
     '.box{padding-right:15px;margin-left:3px;border-right:2px solid #DAA520}'+
     '.summary-table .label{text-align:right}'+
     '.summary-table .value{text-align:left}</style></head><body>'+
+    '<p class="date">תאריך</p>'+ 
+    '<table class="summary-table"><tr><td class="label">תיאור</td><td class="value">120</td></tr></table>'+ 
     '<div class="intro-content"><strong>מרכז</strong></div>'+
     '<h2 class="section-title" style="text-align: right; font-weight: bold;">כותרת</h2>'+
     '<p style="text-align: center"><em>ממורכז</em></p>'+
