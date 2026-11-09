@@ -13,7 +13,10 @@ import EventForm from '../components/events/EventForm';
 
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 
+import {useLanguage} from '@/i18n/LanguageProvider';
+
 export default function EventManagement() {
+  const {t}=useLanguage();
     const [filteredEvents, setFilteredEvents] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
@@ -161,11 +164,11 @@ export default function EventManagement() {
             <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
                 <CardHeader className="p-3 sm:p-6">
                     <div className="flex justify-between items-center gap-2">
-                        <CardTitle className="text-xl sm:text-2xl">ניהול אירועים</CardTitle>
+                        <CardTitle className="text-xl sm:text-2xl">{t("ניהול אירועים")}</CardTitle>
                         <Button onClick={() => { setEditingEvent(null); setIsFormOpen(true); }} size="sm" className="sm:h-9 sm:px-4">
                             <PlusCircle className="ml-1 sm:ml-2 h-4 w-4" />
-                            <span className="hidden sm:inline">צור אירוע חדש</span>
-                            <span className="sm:hidden">חדש</span>
+                            <span className="hidden sm:inline">{t("צור אירוע חדש")}</span>
+                            <span className="sm:hidden">{t("חדש")}</span>
                         </Button>
                     </div>
                 </CardHeader>

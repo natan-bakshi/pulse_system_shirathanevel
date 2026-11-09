@@ -11,6 +11,8 @@ import TaskItem from '@/components/tasks/TaskItem';
 import TaskFormDialog from '@/components/tasks/TaskFormDialog';
 import useTaskActions from '@/components/tasks/useTaskActions';
 
+import {useLanguage} from '@/i18n/LanguageProvider';
+
 /**
  * דף "המשימות שלי" - מוצג רק למנהלים.
  * - לשונית "עבורי": משימות שהוקצו אישית למשתמש הנוכחי
@@ -19,6 +21,7 @@ import useTaskActions from '@/components/tasks/useTaskActions';
  * - מיון וסינון חכמים
  */
 export default function MyTasks() {
+  const {t}=useLanguage();
   const [activeTab, setActiveTab] = useState('mine');
   const [search, setSearch] = useState('');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -239,8 +242,8 @@ export default function MyTasks() {
         <Card className="bg-white/95 backdrop-blur-sm max-w-md mx-auto">
           <CardContent className="p-8">
             <AlertCircle className="h-12 w-12 mx-auto mb-3 text-red-600" />
-            <h2 className="text-xl font-bold mb-2">אין הרשאה</h2>
-            <p className="text-gray-600">דף זה זמין למנהלים בלבד.</p>
+            <h2 className="text-xl font-bold mb-2">{t("אין הרשאה")}</h2>
+            <p className="text-gray-600">{t("דף זה זמין למנהלים בלבד.")}</p>
           </CardContent>
         </Card>
       </div>
@@ -254,8 +257,8 @@ export default function MyTasks() {
         <Card className="bg-white/95 backdrop-blur-sm max-w-md mx-auto">
           <CardContent className="p-8">
             <AlertCircle className="h-12 w-12 mx-auto mb-3 text-amber-600" />
-            <h2 className="text-xl font-bold mb-2">מערכת המשימות מושבתת</h2>
-            <p className="text-gray-600">ניתן להפעיל אותה דרך דף ההגדרות.</p>
+            <h2 className="text-xl font-bold mb-2">{t("מערכת המשימות מושבתת")}</h2>
+            <p className="text-gray-600">{t("ניתן להפעיל אותה דרך דף ההגדרות.")}</p>
           </CardContent>
         </Card>
       </div>
@@ -269,13 +272,13 @@ export default function MyTasks() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2">
             <ListChecks className="h-7 w-7" />
-            המשימות שלי
+            {t("המשימות שלי")}
           </h1>
-          <p className="text-white/80 text-sm mt-1">ניהול כל המשימות שלך מכל האירועים</p>
+          <p className="text-white/80 text-sm mt-1">{t("ניהול כל המשימות שלך מכל האירועים")}</p>
         </div>
         <Button onClick={handleOpenNew} className="bg-red-800 hover:bg-red-700 text-white w-full sm:w-auto">
           <Plus className="h-4 w-4 ml-1" />
-          משימה חדשה
+          {t("משימה חדשה")}
         </Button>
       </div>
 
@@ -286,7 +289,7 @@ export default function MyTasks() {
           <div className="relative">
             <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="חיפוש משימה..."
+              placeholder={t("חיפוש משימה...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pr-9"
@@ -297,35 +300,35 @@ export default function MyTasks() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
-                <SelectValue placeholder="מיון" />
+                <SelectValue placeholder={t("מיון")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="smart">מיון חכם</SelectItem>
-                <SelectItem value="due_date">לפי תאריך יעד</SelectItem>
-                <SelectItem value="priority">לפי דחיפות</SelectItem>
-                <SelectItem value="created">לפי תאריך יצירה</SelectItem>
+                <SelectItem value="smart">{t("מיון חכם")}</SelectItem>
+                <SelectItem value="due_date">{t("לפי תאריך יעד")}</SelectItem>
+                <SelectItem value="priority">{t("לפי דחיפות")}</SelectItem>
+                <SelectItem value="created">{t("לפי תאריך יצירה")}</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filterPriority} onValueChange={setFilterPriority}>
               <SelectTrigger>
-                <SelectValue placeholder="דחיפות" />
+                <SelectValue placeholder={t("דחיפות")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">כל הדחיפויות</SelectItem>
-                <SelectItem value="high">גבוהה</SelectItem>
-                <SelectItem value="normal">רגילה</SelectItem>
-                <SelectItem value="low">נמוכה</SelectItem>
+                <SelectItem value="all">{t("כל הדחיפויות")}</SelectItem>
+                <SelectItem value="high">{t("גבוהה")}</SelectItem>
+                <SelectItem value="normal">{t("רגילה")}</SelectItem>
+                <SelectItem value="low">{t("נמוכה")}</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filterEvent} onValueChange={setFilterEvent}>
               <SelectTrigger>
-                <SelectValue placeholder="אירוע" />
+                <SelectValue placeholder={t("אירוע")} />
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
-                <SelectItem value="all">כל האירועים</SelectItem>
-                <SelectItem value="none">ללא שיוך לאירוע</SelectItem>
+                <SelectItem value="all">{t("כל האירועים")}</SelectItem>
+                <SelectItem value="none">{t("ללא שיוך לאירוע")}</SelectItem>
                 {events.map(ev => (
                   <SelectItem key={ev.id} value={ev.id}>
                     {ev.event_name || ev.family_name}
@@ -341,13 +344,13 @@ export default function MyTasks() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-3 w-full bg-white/80 backdrop-blur-sm">
           <TabsTrigger value="mine" className="text-xs sm:text-sm">
-            עבורי {counts.mine > 0 && <span className="mr-1 text-amber-700 font-bold">({counts.mine})</span>}
+            {t("עבורי")} {counts.mine > 0 && <span className="mr-1 text-amber-700 font-bold">({counts.mine})</span>}
           </TabsTrigger>
           <TabsTrigger value="unassigned" className="text-xs sm:text-sm">
-            ללא הקצאה {counts.unassigned > 0 && <span className="mr-1">({counts.unassigned})</span>}
+            {t("ללא הקצאה")} {counts.unassigned > 0 && <span className="mr-1">({counts.unassigned})</span>}
           </TabsTrigger>
           <TabsTrigger value="others" className="text-xs sm:text-sm">
-            מוקצות לאחרים {counts.others > 0 && <span className="mr-1">({counts.others})</span>}
+            {t("מוקצות לאחרים")} {counts.others > 0 && <span className="mr-1">({counts.others})</span>}
           </TabsTrigger>
         </TabsList>
 
@@ -363,7 +366,7 @@ export default function MyTasks() {
                   {openTasks.length === 0 && completedTasks.length === 0 ? (
                     <div className="text-center py-10 text-gray-500">
                       <ListChecks className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                      <p className="text-sm">אין משימות בלשונית זו</p>
+                      <p className="text-sm">{t("אין משימות בלשונית זו")}</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -387,7 +390,7 @@ export default function MyTasks() {
 
                       {openTasks.length === 0 && (
                         <p className="text-center text-sm text-gray-400 py-3">
-                          אין משימות פתוחות בלשונית זו
+                          {t("אין משימות פתוחות בלשונית זו")}
                         </p>
                       )}
                     </div>
@@ -403,7 +406,7 @@ export default function MyTasks() {
                         onClick={() => setShowCompleted(!showCompleted)}
                         className="w-full justify-between text-sm text-gray-600 hover:text-gray-900"
                       >
-                        <span>משימות שבוצעו ({completedTasks.length})</span>
+                        <span>{t("משימות שבוצעו (")}{completedTasks.length})</span>
                         {showCompleted ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </Button>
                       {showCompleted && (

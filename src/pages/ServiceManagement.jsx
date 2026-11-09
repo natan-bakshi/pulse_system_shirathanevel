@@ -23,7 +23,10 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
+
 export default function ServiceManagement() {
+  const {t}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -401,28 +404,28 @@ export default function ServiceManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">ניהול שירותים וחבילות</h1>
-          <p className="text-white/80 mt-1">הוסף, ערוך ונהל את כל השירותים והחבילות המוצעים</p>
+          <h1 className="text-3xl font-bold text-white">{t("ניהול שירותים וחבילות")}</h1>
+          <p className="text-white/80 mt-1">{t("הוסף, ערוך ונהל את כל השירותים והחבילות המוצעים")}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
             <Button onClick={() => setShowExportDialog(true)} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
               <Download className="h-4 w-4 ml-2" />
-              ייצא
+              {t("ייצא")}
             </Button>
             <Button onClick={() => setIsConceptsOpen(true)} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Settings className="h-4 w-4 ml-2" />
-                נהל ברירות מחדל
+                {t("נהל ברירות מחדל")}
             </Button>
             {activeTab === "services" && (
               <Button onClick={handleNew} className="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
                   <Plus className="h-4 w-4 ml-2" />
-                  שירות חדש
+                  {t("שירות חדש")}
               </Button>
             )}
             {activeTab === "packages" && (
               <Button onClick={handleNewPackage} className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg">
                   <Plus className="h-4 w-4 ml-2" />
-                  חבילה חדשה
+                  {t("חבילה חדשה")}
               </Button>
             )}
         </div>
@@ -433,7 +436,7 @@ export default function ServiceManagement() {
           <div className="relative">
             <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="חיפוש שירות או חבילה..."
+              placeholder={t("חיפוש שירות או חבילה...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pr-10"
@@ -444,13 +447,13 @@ export default function ServiceManagement() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 bg-white/95 backdrop-blur-sm">
-          <TabsTrigger value="services">שירותים</TabsTrigger>
-          <TabsTrigger value="packages">חבילות</TabsTrigger>
+          <TabsTrigger value="services">{t("שירותים")}</TabsTrigger>
+          <TabsTrigger value="packages">{t("חבילות")}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="services" className="mt-6">
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">💡 גרור ושחרר שירותים לשינוי סדר ברירת המחדל שלהם באירועים חדשים</p>
+            <p className="text-sm text-blue-800">{t("💡 גרור ושחרר שירותים לשינוי סדר ברירת המחדל שלהם באירועים חדשים")}</p>
           </div>
           
           <DragDropContext onDragEnd={handleServiceDragEnd}>
@@ -483,7 +486,7 @@ export default function ServiceManagement() {
                               variant="ghost"
                               size="icon"
                               onClick={() => toggleDefault(service)}
-                              title="סמן כשירות ברירת מחדל"
+                              title={t("סמן כשירות ברירת מחדל")}
                             >
                               <Star className={`h-5 w-5 transition-colors ${service.is_default ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`} />
                             </Button>
@@ -498,7 +501,7 @@ export default function ServiceManagement() {
                                       checked={service.default_includes_vat}
                                       onCheckedChange={() => toggleDefaultVat(service)}
                                   />
-                                  <Label htmlFor={`vat-toggle-${service.id}`} className="text-xs">כולל מע"מ</Label>
+                                  <Label htmlFor={`vat-toggle-${service.id}`} className="text-xs">{t("כולל מע\"מ")}</Label>
                               </div>
                             </div>
                             <div className="flex items-center justify-between mb-2">
@@ -515,16 +518,16 @@ export default function ServiceManagement() {
                                         }
                                       }}
                                   />
-                                  <Label htmlFor={`notif-toggle-${service.id}`} className="text-xs">שלח הודעות שיבוץ לספקים</Label>
+                                  <Label htmlFor={`notif-toggle-${service.id}`} className="text-xs">{t("שלח הודעות שיבוץ לספקים")}</Label>
                               </div>
                             </div>
                           </CardContent>
                           <div className="p-4 border-t flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleEdit(service)} className="flex-1">
-                              <Edit className="h-4 w-4 ml-1" /> ערוך
+                              <Edit className="h-4 w-4 ml-1" /> {t("ערוך")}
                             </Button>
                             <Button variant="destructive" size="sm" onClick={() => handleDelete(service.id)} className="flex-1">
-                              <Trash2 className="h-4 w-4 ml-1" /> מחק
+                              <Trash2 className="h-4 w-4 ml-1" /> {t("מחק")}
                             </Button>
                           </div>
                         </Card>
@@ -568,7 +571,7 @@ export default function ServiceManagement() {
                     </div>
                     
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium">שירותים בחבילה ({packageServices.length}):</h4>
+                      <h4 className="text-sm font-medium">{t("שירותים בחבילה (")}{packageServices.length}):</h4>
                       {packageServices.length > 0 ? (
                         <ul className="text-xs space-y-1">
                           {packageServices.slice(0, 5).map(service => (
@@ -578,20 +581,20 @@ export default function ServiceManagement() {
                             </li>
                           ))}
                           {packageServices.length > 5 && (
-                            <li className="text-gray-500">ועוד {packageServices.length - 5} שירותים...</li>
+                            <li className="text-gray-500">{t("ועוד")} {packageServices.length - 5} {t("שירותים...")}</li>
                           )}
                         </ul>
                       ) : (
-                        <p className="text-xs text-gray-400">אין שירותים בחבילה</p>
+                        <p className="text-xs text-gray-400">{t("אין שירותים בחבילה")}</p>
                       )}
                     </div>
                   </CardContent>
                   <div className="p-4 border-t flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleEditPackage(pkg)} className="flex-1">
-                      <Edit className="h-4 w-4 ml-1" /> ערוך
+                      <Edit className="h-4 w-4 ml-1" /> {t("ערוך")}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => handleDeletePackage(pkg.id)} className="flex-1">
-                      <Trash2 className="h-4 w-4 ml-1" /> מחק
+                      <Trash2 className="h-4 w-4 ml-1" /> {t("מחק")}
                     </Button>
                   </div>
                 </Card>
@@ -609,15 +612,15 @@ export default function ServiceManagement() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>שם השירות</Label>
+              <Label>{t("שם השירות")}</Label>
               <Input 
-                placeholder="שם השירות" 
+                placeholder={t("שם השירות")} 
                 value={formData.service_name} 
                 onChange={e => setFormData({ ...formData, service_name: e.target.value })} 
               />
             </div>
             <div>
-              <Label>תיאור השירות</Label>
+              <Label>{t("תיאור השירות")}</Label>
               <ReactQuill
                 value={formData.service_description}
                 onChange={(value) => setFormData({ ...formData, service_description: value })}
@@ -630,7 +633,7 @@ export default function ServiceManagement() {
                   clipboard: { matchVisual: false },
                 }}
                 formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
-                placeholder="תיאור מפורט של השירות"
+                placeholder={t("תיאור מפורט של השירות")}
               />
             </div>
             <CatalogEnglishFields loading={englishLoading}
@@ -639,10 +642,10 @@ export default function ServiceManagement() {
               values={englishValues} touched={englishTouched} onChange={changeEnglish}/>
             {englishError&&<p role="alert" className="text-sm text-red-700">{englishError}</p>}
             <div>
-              <Label>מחיר בסיס</Label>
+              <Label>{t("מחיר בסיס")}</Label>
               <Input 
                 type="number" 
-                placeholder="מחיר בסיס" 
+                placeholder={t("מחיר בסיס")} 
                 value={formData.base_price} 
                 onChange={e => setFormData({ ...formData, base_price: e.target.value })} 
               />
@@ -656,14 +659,14 @@ export default function ServiceManagement() {
             
             <div>
               <div className="flex items-center gap-1 mb-1">
-                <Label>מספר ספקים מינימלי (ברירת מחדל)</Label>
+                <Label>{t("מספר ספקים מינימלי (ברירת מחדל)")}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>מספר הספקים המינימלי שצריך לשבץ לשירות זה כדי שהאירוע ייחשב "תפור" (ברירת מחדל)</p>
+                      <p>{t("מספר הספקים המינימלי שצריך לשבץ לשירות זה כדי שהאירוע ייחשב \"תפור\" (ברירת מחדל)")}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -689,12 +692,12 @@ export default function ServiceManagement() {
                 checked={formData.default_includes_vat}
                 onCheckedChange={(checked) => setFormData({ ...formData, default_includes_vat: checked })}
               />
-              <Label htmlFor="default_includes_vat">ברירת מחדל: המחיר כולל מע"מ</Label>
+              <Label htmlFor="default_includes_vat">{t("ברירת מחדל: המחיר כולל מע\"מ")}</Label>
             </div>
             <div>
-              <Label>הערות מנהל (פנימי)</Label>
+              <Label>{t("הערות מנהל (פנימי)")}</Label>
               <Textarea 
-                placeholder="הערות פנימיות למנהל (לא יוצג ללקוחות)" 
+                placeholder={t("הערות פנימיות למנהל (לא יוצג ללקוחות)")} 
                 value={formData.admin_notes} 
                 onChange={e => setFormData({ ...formData, admin_notes: e.target.value })} 
                 rows={2}
@@ -702,7 +705,7 @@ export default function ServiceManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>ביטול</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t("ביטול")}</Button>
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : 'שמור'}
             </Button>
@@ -718,12 +721,12 @@ export default function ServiceManagement() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Input 
-              placeholder="שם החבילה" 
+              placeholder={t("שם החבילה")} 
               value={packageFormData.package_name} 
               onChange={e => setPackageFormData({ ...packageFormData, package_name: e.target.value })} 
             />
             <Textarea 
-              placeholder="תיאור החבילה (יוצג בהצעת המחיר)" 
+              placeholder={t("תיאור החבילה (יוצג בהצעת המחיר)")} 
               value={packageFormData.package_description} 
               onChange={e => setPackageFormData({ ...packageFormData, package_description: e.target.value })}
               rows={3}
@@ -736,12 +739,12 @@ export default function ServiceManagement() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input 
                 type="number" 
-                placeholder="מחיר החבילה" 
+                placeholder={t("מחיר החבילה")} 
                 value={packageFormData.package_price} 
                 onChange={e => setPackageFormData({ ...packageFormData, package_price: e.target.value })} 
               />
               <Input 
-                placeholder="קטגוריה" 
+                placeholder={t("קטגוריה")} 
                 value={packageFormData.category} 
                 onChange={e => setPackageFormData({ ...packageFormData, category: e.target.value })} 
               />
@@ -752,11 +755,11 @@ export default function ServiceManagement() {
                 checked={packageFormData.package_includes_vat}
                 onCheckedChange={(checked) => setPackageFormData({ ...packageFormData, package_includes_vat: checked })}
               />
-              <Label htmlFor="package_includes_vat">המחיר כולל מע"מ</Label>
+              <Label htmlFor="package_includes_vat">{t("המחיר כולל מע\"מ")}</Label>
             </div>
 
             <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">שירותים בחבילה</h3>
+              <h3 className="font-semibold mb-3">{t("שירותים בחבילה")}</h3>
               
               <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                   {packageFormData.service_ids.map(serviceId => {
@@ -777,15 +780,15 @@ export default function ServiceManagement() {
                     );
                   })}
                   {packageFormData.service_ids.length === 0 && (
-                      <p className="text-sm text-gray-500 italic">לא נבחרו שירותים</p>
+                      <p className="text-sm text-gray-500 italic">{t("לא נבחרו שירותים")}</p>
                   )}
               </div>
 
-              <Label className="mb-2 block">הוסף שירותים</Label>
+              <Label className="mb-2 block">{t("הוסף שירותים")}</Label>
               <div className="relative mb-2">
                 <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="חפש שירות להוספה..."
+                  placeholder={t("חפש שירות להוספה...")}
                   value={packageServiceSearchTerm}
                   onChange={(e) => setPackageServiceSearchTerm(e.target.value)}
                   className="pr-10"
@@ -809,13 +812,13 @@ export default function ServiceManagement() {
                     .filter(s => !packageFormData.service_ids.includes(s.id))
                     .filter(s => s.service_name.toLowerCase().includes(packageServiceSearchTerm.toLowerCase()))
                     .length === 0 && (
-                        <div className="text-center py-2 text-xs text-gray-400">לא נמצאו שירותים נוספים</div>
+                        <div className="text-center py-2 text-xs text-gray-400">{t("לא נמצאו שירותים נוספים")}</div>
                     )}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPackageDialogOpen(false)}>ביטול</Button>
+            <Button variant="outline" onClick={() => setIsPackageDialogOpen(false)}>{t("ביטול")}</Button>
             <Button onClick={handleSavePackage} disabled={isSaving}>
               {isSaving ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : 'שמור'}
             </Button>
@@ -835,7 +838,7 @@ export default function ServiceManagement() {
         onClose={() => setShowExportDialog(false)}
         data={filteredServices}
         columns={exportColumns}
-        title="רשימת שירותים"
+        title={t("רשימת שירותים")}
         exportTypes={['csv', 'html']}
       />
     </div>

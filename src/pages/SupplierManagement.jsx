@@ -24,7 +24,10 @@ import SupplierDeclineStatsDialog from "../components/suppliers/SupplierDeclineS
 import CategorySelector from "@/components/common/CategorySelector";
 import { getEventDisplayName } from "@/lib/eventDisplayName";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
+
 const SupplierEventsList = ({ supplierId }) => {
+  const {t}=useLanguage();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +87,7 @@ const SupplierEventsList = ({ supplierId }) => {
   }, [supplierId, loadSupplierEvents]);
 
   if (loading) return <div className="p-4 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div>;
-  if (events.length === 0) return <p className="p-4 text-sm text-gray-500">הספק אינו משובץ לאירועים.</p>;
+  if (events.length === 0) return <p className="p-4 text-sm text-gray-500">{t("הספק אינו משובץ לאירועים.")}</p>;
 
   return (
     <div className="space-y-2 mt-2">
@@ -98,10 +101,10 @@ const SupplierEventsList = ({ supplierId }) => {
               <Calendar className="h-3 w-3" />
               {format(new Date(event.event_date), 'dd/MM/yy')}
               <span className="text-gray-400">|</span>
-              <span>שירות: {event.serviceName}</span>
+              <span>{t("שירות:")} {event.serviceName}</span>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => removeSupplierFromEvent(event.eventServiceId)} title="הסר מהאירוע">
+          <Button variant="ghost" size="sm" onClick={() => removeSupplierFromEvent(event.eventServiceId)} title={t("הסר מהאירוע")}>
             <Trash2 className="h-4 w-4 text-red-500" />
           </Button>
         </div>
@@ -111,6 +114,7 @@ const SupplierEventsList = ({ supplierId }) => {
 };
 
 export default function SupplierManagement() {
+  const {t}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("supplier_name");
@@ -319,19 +323,19 @@ export default function SupplierManagement() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold text-white">ניהול ספקים</h1>
+        <h1 className="text-3xl font-bold text-white">{t("ניהול ספקים")}</h1>
         <div className="flex gap-2">
             <Button onClick={() => setShowDeclineStats(true)} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
               <TrendingDown className="h-4 w-4 ml-2" />
-              דחיות
+              {t("דחיות")}
             </Button>
             <Button onClick={() => setShowExportDialog(true)} variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
               <Download className="h-4 w-4 ml-2" />
-              ייצא
+              {t("ייצא")}
             </Button>
             <Button onClick={handleNew} className="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
               <Plus className="h-4 w-4 ml-2" />
-              הוסף ספק
+              {t("הוסף ספק")}
             </Button>
         </div>
       </div>
@@ -342,23 +346,23 @@ export default function SupplierManagement() {
             <div className="relative">
               <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="חיפוש ספקים..."
+                placeholder={t("חיפוש ספקים...")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
               />
             </div>
             <div className="flex items-center gap-2">
-              <Label htmlFor="sort-suppliers" className="whitespace-nowrap">מיין לפי:</Label>
+              <Label htmlFor="sort-suppliers" className="whitespace-nowrap">{t("מיין לפי:")}</Label>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger id="sort-suppliers" className="w-full">
-                  <SelectValue placeholder="בחר מיון" />
+                  <SelectValue placeholder={t("בחר מיון")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="supplier_name">שם ספק (א-ת)</SelectItem>
-                  <SelectItem value="-supplier_name">שם ספק (ת-א)</SelectItem>
-                  <SelectItem value="-created_date">תאריך הוספה (החדש ביותר)</SelectItem>
-                  <SelectItem value="created_date">תאריך הוספה (הישן ביותר)</SelectItem>
+                  <SelectItem value="supplier_name">{t("שם ספק (א-ת)")}</SelectItem>
+                  <SelectItem value="-supplier_name">{t("שם ספק (ת-א)")}</SelectItem>
+                  <SelectItem value="-created_date">{t("תאריך הוספה (החדש ביותר)")}</SelectItem>
+                  <SelectItem value="created_date">{t("תאריך הוספה (הישן ביותר)")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -385,7 +389,7 @@ export default function SupplierManagement() {
                     <EmailAddress key={email} email={email} />
                 ))}
                 <div className="pt-2">
-                    <h4 className="text-sm font-semibold mb-1">שירותים:</h4>
+                    <h4 className="text-sm font-semibold mb-1">{t("שירותים:")}</h4>
                     <div className="flex flex-wrap gap-2">
                         {(supplier.services_provided || []).map(service => (
                             <Badge key={service} variant="secondary">{service}</Badge>
@@ -394,7 +398,7 @@ export default function SupplierManagement() {
                 </div>
                 {(supplier.categories || []).length > 0 && (
                   <div className="pt-2">
-                    <h4 className="text-sm font-semibold mb-1">קטגוריות:</h4>
+                    <h4 className="text-sm font-semibold mb-1">{t("קטגוריות:")}</h4>
                     <div className="flex flex-wrap gap-2">
                       {(supplier.categories || []).map(category => (
                         <Badge key={category} variant="outline">{category}</Badge>
@@ -405,15 +409,15 @@ export default function SupplierManagement() {
                 {supplier.whatsapp_enabled && (
                   <div className="pt-2 flex items-center gap-2 text-green-600 text-xs font-medium">
                     <MessageCircle className="h-3.5 w-3.5" />
-                    <span>WhatsApp פעיל ({supplier.preferred_channel === 'group' ? 'קבוצה' : supplier.preferred_channel === 'both' ? 'קבוצה + פרטי' : 'פרטי'})</span>
+                    <span>{t("WhatsApp פעיל (")}{supplier.preferred_channel === 'group' ? 'קבוצה' : supplier.preferred_channel === 'both' ? 'קבוצה + פרטי' : 'פרטי'})</span>
                   </div>
                 )}
               </div>
               {expandedSuppliers[supplier.id] && <SupplierEventsList supplierId={supplier.id} />}
             </CardContent>
             <div className="border-t p-4 flex gap-2">
-                 <Button onClick={() => handleEdit(supplier)} variant="outline" size="sm" className="w-full"><Edit className="h-3 w-3 ml-1"/> עריכה</Button>
-                 <Button onClick={() => handleDelete(supplier.id)} variant="outline" size="sm" className="text-red-600 hover:text-red-700 w-full"><Trash2 className="h-3 w-3 ml-1"/> מחיקה</Button>
+                 <Button onClick={() => handleEdit(supplier)} variant="outline" size="sm" className="w-full"><Edit className="h-3 w-3 ml-1"/> {t("עריכה")}</Button>
+                 <Button onClick={() => handleDelete(supplier.id)} variant="outline" size="sm" className="text-red-600 hover:text-red-700 w-full"><Trash2 className="h-3 w-3 ml-1"/> {t("מחיקה")}</Button>
             </div>
           </Card>
         ))}
@@ -430,7 +434,7 @@ export default function SupplierManagement() {
                 id="s_name" 
                 value={formData.supplier_name} 
                 onChange={e => setFormData({...formData, supplier_name: e.target.value})}
-                placeholder="שם הספק"
+                placeholder={t("שם הספק")}
                 className="flex-1"
               />
               <ContactPicker
@@ -440,7 +444,7 @@ export default function SupplierManagement() {
               />
             </div>
             <p className="text-xs text-gray-600">
-              בבחירה מהטלפון: סמן ✓ ליד איש קשר אחד ואז לחץ אישור או שיתוף.
+              {t("בבחירה מהטלפון: סמן ✓ ליד איש קשר אחד ואז לחץ אישור או שיתוף.")}
             </p>
             {contactImportFeedback && (
               <p
@@ -451,19 +455,19 @@ export default function SupplierManagement() {
                 {contactImportFeedback.message}
               </p>
             )}
-            <div><Label htmlFor="s_contact">איש קשר</Label><Input id="s_contact" value={formData.contact_person} onChange={e => setFormData({...formData, contact_person: e.target.value})} /></div>
-            <div><Label htmlFor="s_phone">טלפון</Label><Input id="s_phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
-            <div><Label htmlFor="s_emails">אימיילים (מופרדים בפסיק)</Label><Input id="s_emails" value={formData.contact_emails} onChange={e => setFormData({...formData, contact_emails: e.target.value})} /></div>
+            <div><Label htmlFor="s_contact">{t("איש קשר")}</Label><Input id="s_contact" value={formData.contact_person} onChange={e => setFormData({...formData, contact_person: e.target.value})} /></div>
+            <div><Label htmlFor="s_phone">{t("טלפון")}</Label><Input id="s_phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
+            <div><Label htmlFor="s_emails">{t("אימיילים (מופרדים בפסיק)")}</Label><Input id="s_emails" value={formData.contact_emails} onChange={e => setFormData({...formData, contact_emails: e.target.value})} /></div>
             
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center gap-2 mb-4">
                 <MessageCircle className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-gray-900">הגדרות WhatsApp</h3>
+                <h3 className="font-semibold text-gray-900">{t("הגדרות WhatsApp")}</h3>
               </div>
               
               <div className="grid gap-4">
                 <div className="flex items-center justify-between border p-3 rounded-md bg-green-50/50">
-                  <Label htmlFor="s_wa_enabled" className="cursor-pointer flex-1">הפעל התראות WhatsApp</Label>
+                  <Label htmlFor="s_wa_enabled" className="cursor-pointer flex-1">{t("הפעל התראות WhatsApp")}</Label>
                   <Switch 
                     id="s_wa_enabled" 
                     checked={formData.whatsapp_enabled} 
@@ -474,24 +478,24 @@ export default function SupplierManagement() {
                 {formData.whatsapp_enabled && (
                   <>
                     <div>
-                      <Label htmlFor="s_wa_channel">ערוץ מועדף</Label>
+                      <Label htmlFor="s_wa_channel">{t("ערוץ מועדף")}</Label>
                       <Select 
                         value={formData.preferred_channel} 
                         onValueChange={val => setFormData({...formData, preferred_channel: val})}
                       >
                         <SelectTrigger id="s_wa_channel">
-                          <SelectValue placeholder="בחר ערוץ" />
+                          <SelectValue placeholder={t("בחר ערוץ")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="phone">טלפון ישיר</SelectItem>
-                          <SelectItem value="group">קבוצת WhatsApp</SelectItem>
-                          <SelectItem value="both">גם וגם</SelectItem>
+                          <SelectItem value="phone">{t("טלפון ישיר")}</SelectItem>
+                          <SelectItem value="group">{t("קבוצת WhatsApp")}</SelectItem>
+                          <SelectItem value="both">{t("גם וגם")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div>
-                      <Label htmlFor="s_wa_group">קישור לקבוצת WhatsApp</Label>
+                      <Label htmlFor="s_wa_group">{t("קישור לקבוצת WhatsApp")}</Label>
                       <div className="relative">
                         <LinkIcon className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
                         <Input 
@@ -508,7 +512,7 @@ export default function SupplierManagement() {
               </div>
             </div>
 
-            <div className="mt-4"><Label htmlFor="s_services">שירותים (מופרדים בפסיק)</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
+            <div className="mt-4"><Label htmlFor="s_services">{t("שירותים (מופרדים בפסיק)")}</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
             <CategorySelector
               label="קטגוריות שיבוץ"
               options={supplierCategoryOptions}
@@ -523,7 +527,7 @@ export default function SupplierManagement() {
                 <h3 className="font-semibold text-gray-900">Google Calendar</h3>
               </div>
               <div>
-                <Label htmlFor="s_gcal_id">מזהה יומן Google (Calendar ID)</Label>
+                <Label htmlFor="s_gcal_id">{t("מזהה יומן Google (Calendar ID)")}</Label>
                 <Input 
                   id="s_gcal_id" 
                   value={formData.google_calendar_id || ''} 
@@ -531,15 +535,15 @@ export default function SupplierManagement() {
                   placeholder="example@gmail.com או Calendar ID"
                   className="dir-ltr text-left"
                 />
-                <p className="text-xs text-gray-500 mt-1">מזהה יומן Google לסנכרון אירועים</p>
+                <p className="text-xs text-gray-500 mt-1">{t("מזהה יומן Google לסנכרון אירועים")}</p>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>ביטול</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>{t("ביטול")}</Button>
             <Button onClick={handleSaveSupplier} disabled={isSaving}>
               {isSaving ? <Loader2 className="animate-spin h-4 w-4 ml-2" /> : <Save className="h-4 w-4 ml-2"/>}
-              שמור
+              {t("שמור")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -549,7 +553,7 @@ export default function SupplierManagement() {
         onClose={() => setShowExportDialog(false)}
         data={filteredSuppliers}
         columns={exportColumns}
-        title="רשימת ספקים"
+        title={t("רשימת ספקים")}
         exportTypes={['csv', 'html']}
       />
       <SupplierDeclineStatsDialog

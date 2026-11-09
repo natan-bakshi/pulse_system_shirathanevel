@@ -14,6 +14,8 @@ import { he } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { getEventDisplayName, getEventTitle } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
+
 const YEARS = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
 const MONTHS = [
   { value: 0, label: "ינואר" }, { value: 1, label: "פברואר" }, { value: 2, label: "מרץ" },
@@ -23,6 +25,7 @@ const MONTHS = [
 ];
 
 export default function SupplierDashboard() {
+  const {t}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [timeFilter, setTimeFilter] = useState("future");
@@ -101,8 +104,8 @@ export default function SupplierDashboard() {
 
   if (feedError) {
     return <div className="max-w-xl mx-auto bg-white rounded-xl p-6 text-center space-y-3">
-      <p role="alert">לא ניתן לטעון כרגע את השיבוצים שלך. הנתונים לא הוחלפו ברשימה לא מאומתת.</p>
-      <Button onClick={() => reload()}>נסה שוב</Button>
+      <p role="alert">{t("לא ניתן לטעון כרגע את השיבוצים שלך. הנתונים לא הוחלפו ברשימה לא מאומתת.")}</p>
+      <Button onClick={() => reload()}>{t("נסה שוב")}</Button>
     </div>;
   }
 
@@ -110,12 +113,12 @@ export default function SupplierDashboard() {
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">שלום {user?.full_name || "ספק"}</h1>
+          <h1 className="text-3xl font-bold text-white mb-4">{t("שלום")} {user?.full_name || "ספק"}</h1>
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl max-w-md mx-auto">
             <CardContent className="p-6 text-center">
               <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-              <p className="text-gray-600">לא נמצא פרופיל ספק התואם למשתמש זה.</p>
-              <p className="text-sm text-gray-500 mt-2">אנא פנה למנהל המערכת לעדכון הפרטים.</p>
+              <p className="text-gray-600">{t("לא נמצא פרופיל ספק התואם למשתמש זה.")}</p>
+              <p className="text-sm text-gray-500 mt-2">{t("אנא פנה למנהל המערכת לעדכון הפרטים.")}</p>
             </CardContent>
           </Card>
         </div>
@@ -126,10 +129,10 @@ export default function SupplierDashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">שלום {user?.full_name || supplier?.supplier_name || "ספק"}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">{t("שלום")} {user?.full_name || supplier?.supplier_name || "ספק"}</h1>
         {filteredEvents.length > 0 && (
           <p className="text-white/80">
-            יש לך {filteredEvents.filter(e => e.assignmentStatus === 'pending').length} שיבוצים ממתינים לאישור
+            {t("יש לך")} {filteredEvents.filter(e => e.assignmentStatus === 'pending').length} {t("שיבוצים ממתינים לאישור")}
           </p>
         )}
       </div>
@@ -139,7 +142,7 @@ export default function SupplierDashboard() {
           <div className="relative">
             <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="חיפוש..."
+              placeholder={t("חיפוש...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pr-10"
@@ -147,20 +150,20 @@ export default function SupplierDashboard() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
             <div className="flex bg-gray-100 p-1 rounded-lg">
-              <Button onClick={() => setTimeFilter('future')} variant={timeFilter === 'future' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white text-xs sm:text-sm h-8 sm:h-9">עתידיים</Button>
-              <Button onClick={() => setTimeFilter('past')} variant={timeFilter === 'past' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white text-xs sm:text-sm h-8 sm:h-9">עבר</Button>
+              <Button onClick={() => setTimeFilter('future')} variant={timeFilter === 'future' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white text-xs sm:text-sm h-8 sm:h-9">{t("עתידיים")}</Button>
+              <Button onClick={() => setTimeFilter('past')} variant={timeFilter === 'past' ? 'primary' : 'ghost'} className="flex-1 bg-red-800 text-white text-xs sm:text-sm h-8 sm:h-9">{t("עבר")}</Button>
             </div>
             <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger><SelectValue placeholder="כל השנים" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("כל השנים")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">כל השנים</SelectItem>
+                <SelectItem value="all">{t("כל השנים")}</SelectItem>
                 {YEARS.map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger><SelectValue placeholder="כל החודשים" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("כל החודשים")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">כל החודשים</SelectItem>
+                <SelectItem value="all">{t("כל החודשים")}</SelectItem>
                 {MONTHS.map(month => <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -173,8 +176,8 @@ export default function SupplierDashboard() {
         <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
           <CardContent className="p-12 text-center">
             <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-gray-600 mb-4">לא נמצאו אירועים</h2>
-            <p className="text-gray-500">נסה לשנות את אפשרויות הסינון</p>
+            <h2 className="text-2xl font-bold text-gray-600 mb-4">{t("לא נמצאו אירועים")}</h2>
+            <p className="text-gray-500">{t("נסה לשנות את אפשרויות הסינון")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -188,10 +191,10 @@ export default function SupplierDashboard() {
                       {getEventTitle(event)}
                     </CardTitle>
                     <p className="text-gray-600 mt-1">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
-                    <p className="text-lg font-semibold text-red-800 mt-2">שירות: {event.serviceName}</p>
+                    <p className="text-lg font-semibold text-red-800 mt-2">{t("שירות:")} {event.serviceName}</p>
                     {event.supplierNote && (
                       <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm font-medium text-yellow-800">הערה עבורך:</p>
+                        <p className="text-sm font-medium text-yellow-800">{t("הערה עבורך:")}</p>
                         <p className="text-yellow-700">{event.supplierNote}</p>
                       </div>
                     )}
@@ -212,9 +215,9 @@ export default function SupplierDashboard() {
                     <span>
                       {event.supplier_arrival_time ? (
                         <>
-                          <span className="font-semibold">שעת התייצבות: {event.event_time}</span>
+                          <span className="font-semibold">{t("שעת התייצבות:")} {event.event_time}</span>
                           {event.original_event_time && event.original_event_time !== event.event_time && (
-                            <span className="text-xs text-gray-500 mr-2">(האירוע מתחיל בשעה {event.original_event_time})</span>
+                            <span className="text-xs text-gray-500 mr-2">{t("(האירוע מתחיל בשעה")} {event.original_event_time})</span>
                           )}
                         </>
                       ) : (
@@ -228,7 +231,7 @@ export default function SupplierDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-gray-500" />
-                    <span>{event.guest_count} אורחים</span>
+                    <span>{event.guest_count} {t("אורחים")}</span>
                   </div>
                 </div>
                 {event.serviceDescription && (
@@ -244,7 +247,7 @@ export default function SupplierDashboard() {
                   onClick={() => navigate(createPageUrl('SupplierEventView') + `?id=${event.id}`)}
                   className="border-red-200 text-red-800 hover:bg-red-50 text-xs sm:text-sm"
                 >
-                  צפה בפרטים
+                  {t("צפה בפרטים")}
                 </Button>}
                 <div className="flex gap-1 sm:gap-2">
                   {event.assignmentStatus !== 'confirmed' && (
@@ -253,7 +256,7 @@ export default function SupplierDashboard() {
                       onClick={() => handleStatusChange(event.eventServiceId, 'confirmed')}
                       className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
                     >
-                      אשר
+                      {t("אשר")}
                     </Button>
                   )}
                   {event.assignmentStatus !== 'rejected' && (
@@ -263,7 +266,7 @@ export default function SupplierDashboard() {
                       onClick={() => handleStatusChange(event.eventServiceId, 'rejected')}
                       className="border-red-500 text-red-600 hover:bg-red-50 text-xs sm:text-sm"
                     >
-                      דחה
+                      {t("דחה")}
                     </Button>
                   )}
                 </div>

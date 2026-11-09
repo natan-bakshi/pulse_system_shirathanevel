@@ -17,6 +17,8 @@ import PhoneNumber from "../components/ui/PhoneNumber";
 import EmailAddress from "../components/ui/EmailAddress";
 import { getEventDisplayName } from "@/lib/eventDisplayName";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
+
 const ParentInfo = ({ parent }) => {
     return (
          <div className="flex flex-col text-sm border-b border-gray-200 py-2 last:border-b-0">
@@ -28,6 +30,7 @@ const ParentInfo = ({ parent }) => {
 };
 
 export default function ClientManagement() {
+  const {t}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("-event_date");
@@ -83,14 +86,14 @@ export default function ClientManagement() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold text-white">ניהול לקוחות</h1>
+        <h1 className="text-3xl font-bold text-white">{t("ניהול לקוחות")}</h1>
         <Button 
           onClick={() => setShowExportDialog(true)} 
           variant="outline"
           className="bg-white/10 border-white/20 text-white hover:bg-white/20"
         >
           <Download className="h-4 w-4 ml-2" />
-          ייצא לקוחות
+          {t("ייצא לקוחות")}
         </Button>
       </div>
 
@@ -100,23 +103,23 @@ export default function ClientManagement() {
             <div className="relative">
               <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="חיפוש לקוחות..."
+                placeholder={t("חיפוש לקוחות...")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
               />
             </div>
              <div className="flex items-center gap-2">
-              <Label htmlFor="sort-clients" className="whitespace-nowrap">מיין לפי:</Label>
+              <Label htmlFor="sort-clients" className="whitespace-nowrap">{t("מיין לפי:")}</Label>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger id="sort-clients" className="w-full">
-                  <SelectValue placeholder="בחר מיון" />
+                  <SelectValue placeholder={t("בחר מיון")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="-event_date">תאריך אירוע (האחרון קודם)</SelectItem>
-                  <SelectItem value="event_date">תאריך אירוע (הקרוב קודם)</SelectItem>
-                  <SelectItem value="event_name">שם אירוע (א-ת)</SelectItem>
-                  <SelectItem value="-event_name">שם אירוע (ת-א)</SelectItem>
+                  <SelectItem value="-event_date">{t("תאריך אירוע (האחרון קודם)")}</SelectItem>
+                  <SelectItem value="event_date">{t("תאריך אירוע (הקרוב קודם)")}</SelectItem>
+                  <SelectItem value="event_name">{t("שם אירוע (א-ת)")}</SelectItem>
+                  <SelectItem value="-event_name">{t("שם אירוע (ת-א)")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -137,7 +140,7 @@ export default function ClientManagement() {
                 <Link to={createPageUrl(`EventDetails?id=${event.id}`)}>
                     <CardTitle>{getEventDisplayName(event)}</CardTitle>
                     {event.family_name && event.family_name !== getEventDisplayName(event) && (
-                      <p className="text-sm text-gray-600">משפחה: {event.family_name}</p>
+                      <p className="text-sm text-gray-600">{t("משפחה:")} {event.family_name}</p>
                     )}
                 </Link>
               </CardHeader>
@@ -157,7 +160,7 @@ export default function ClientManagement() {
                   <span>{format(new Date(event.event_date), "dd/MM/yyyy", { locale: he })}</span>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm mt-2 mb-1">הורים:</h4>
+                  <h4 className="font-semibold text-sm mt-2 mb-1">{t("הורים:")}</h4>
                   {parentsToShow.map((parent, index) => (
                     <ParentInfo key={index} parent={parent} />
                   ))}
@@ -183,7 +186,7 @@ export default function ClientManagement() {
         onClose={() => setShowExportDialog(false)}
         data={filteredClients}
         columns={exportColumns}
-        title="רשימת לקוחות"
+        title={t("רשימת לקוחות")}
         exportTypes={['csv', 'html']}
       />
     </div>

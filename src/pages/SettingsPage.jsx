@@ -17,6 +17,8 @@ import ContactSettingsEditor from "@/components/contact/ContactSettingsEditor";
 import BillingSettings from "@/components/billing/BillingSettings";
 import BusinessDetailsFields from "@/components/settings/BusinessDetailsFields";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
+
 const settingKeys = [
     'background_image_url', 
     'background_image_dark_url',
@@ -65,6 +67,7 @@ const settingKeys = [
     ];
 
 export default function SettingsPage() {
+  const {t}=useLanguage();
     const [isCreator, setIsCreator] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -246,8 +249,8 @@ export default function SettingsPage() {
         return (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center text-white">
             <Lock className="h-16 w-16 mb-4" />
-            <h1 className="text-2xl font-bold">הגישה נדחתה</h1>
-            <p>רק יוצר המערכת הראשי או מנהל מורשה לגשת לדף ההגדרות.</p>
+            <h1 className="text-2xl font-bold">{t("הגישה נדחתה")}</h1>
+            <p>{t("רק יוצר המערכת הראשי או מנהל מורשה לגשת לדף ההגדרות.")}</p>
           </div>
         );
     }
@@ -255,50 +258,50 @@ export default function SettingsPage() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-white">הגדרות מערכת</h1>
+                <h1 className="text-3xl font-bold text-white">{t("הגדרות מערכת")}</h1>
                 {activeTab === 'general' && (
                     <Button onClick={handleSaveSettings} disabled={isSaving}>
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-                        שמור הגדרות
+                        {t("שמור הגדרות")}
                     </Button>
                 )}
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="general">הגדרות כלליות</TabsTrigger>
+                    <TabsTrigger value="general">{t("הגדרות כלליות")}</TabsTrigger>
                     <TabsTrigger value="notifications" className="flex items-center gap-1">
                         <Bell className="h-4 w-4" />
-                        ניהול התראות
+                        {t("ניהול התראות")}
                     </TabsTrigger>
-                    <TabsTrigger value="backup">גיבוי ושחזור</TabsTrigger>
+                    <TabsTrigger value="backup">{t("גיבוי ושחזור")}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-6 mt-6">
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><Building className="h-5 w-5" />פרטים כלליים</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Building className="h-5 w-5" />{t("פרטים כלליים")}</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="company_name">שם החברה</Label>
+                                <Label htmlFor="company_name">{t("שם החברה")}</Label>
                                 <Input id="company_name" value={settings.company_name} onChange={e => handleSettingChange('company_name', e.target.value)} />
                             </div>
                             <div>
-                                <Label htmlFor="logo-upload">לוגו (URL או העלאה)</Label>
+                                <Label htmlFor="logo-upload">{t("לוגו (URL או העלאה)")}</Label>
                                 <div className="mt-2 flex items-center gap-4">
-                                    <Input id="company_logo_url" value={settings.company_logo_url} onChange={e => handleSettingChange('company_logo_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
+                                    <Input id="company_logo_url" value={settings.company_logo_url} onChange={e => handleSettingChange('company_logo_url', e.target.value)} placeholder={t("הדבק URL או העלה קובץ")} />
                                     <Input id="logo-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'company_logo_url')} disabled={isUploading} className="hidden" />
                                     <Label htmlFor="logo-upload" className="cursor-pointer">
                                         {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
                                     </Label>
                                 </div>
-                                {settings.company_logo_url && <img src={settings.company_logo_url} alt="לוגו" className="h-16 w-auto mt-2 rounded border" />}
+                                {settings.company_logo_url && <img src={settings.company_logo_url} alt={t("לוגו")} className="h-16 w-auto mt-2 rounded border" />}
                             </div>
                             <BusinessDetailsFields settings={settings} onChange={handleSettingChange} />
                         </CardContent>
                     </Card>
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><PhoneCall className="h-5 w-5" />צור קשר ללקוחות וספקים</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><PhoneCall className="h-5 w-5" />{t("צור קשר ללקוחות וספקים")}</CardTitle></CardHeader>
                         <CardContent>
                             <ContactSettingsEditor
                                 value={settings.contact_entries}
@@ -308,39 +311,39 @@ export default function SettingsPage() {
                     </Card>
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><Image className="h-5 w-5" />הגדרות תצוגה</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Image className="h-5 w-5" />{t("הגדרות תצוגה")}</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="bg-upload">תמונת רקע - מצב בהיר</Label>
+                                <Label htmlFor="bg-upload">{t("תמונת רקע - מצב בהיר")}</Label>
                                 <div className="mt-2 flex items-center gap-4">
-                                    <Input id="background_image_url" value={settings.background_image_url} onChange={e => handleSettingChange('background_image_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
+                                    <Input id="background_image_url" value={settings.background_image_url} onChange={e => handleSettingChange('background_image_url', e.target.value)} placeholder={t("הדבק URL או העלה קובץ")} />
                                      <Input id="bg-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'background_image_url')} disabled={isUploading} className="hidden" />
                                      <Label htmlFor="bg-upload" className="cursor-pointer">
                                         {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
                                     </Label>
                                 </div>
-                                {settings.background_image_url && <img src={settings.background_image_url} alt="רקע בהיר" className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
+                                {settings.background_image_url && <img src={settings.background_image_url} alt={t("רקע בהיר")} className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
                             </div>
                             <div>
-                                <Label htmlFor="bg-dark-upload">תמונת רקע - מצב כהה</Label>
+                                <Label htmlFor="bg-dark-upload">{t("תמונת רקע - מצב כהה")}</Label>
                                 <div className="mt-2 flex items-center gap-4">
-                                    <Input id="background_image_dark_url" value={settings.background_image_dark_url} onChange={e => handleSettingChange('background_image_dark_url', e.target.value)} placeholder="הדבק URL או העלה קובץ" />
+                                    <Input id="background_image_dark_url" value={settings.background_image_dark_url} onChange={e => handleSettingChange('background_image_dark_url', e.target.value)} placeholder={t("הדבק URL או העלה קובץ")} />
                                      <Input id="bg-dark-upload" type="file" accept="image/*" onChange={e => handleFileChange(e, 'background_image_dark_url')} disabled={isUploading} className="hidden" />
                                      <Label htmlFor="bg-dark-upload" className="cursor-pointer">
                                         {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
                                     </Label>
                                 </div>
-                                {settings.background_image_dark_url && <img src={settings.background_image_dark_url} alt="רקע כהה" className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
-                                <p className="text-xs text-gray-500 mt-1">אם לא תוגדר תמונה למצב כהה, תשמש תמונת הרקע של מצב בהיר</p>
+                                {settings.background_image_dark_url && <img src={settings.background_image_dark_url} alt={t("רקע כהה")} className="h-32 w-auto mt-2 rounded-lg object-cover border" />}
+                                <p className="text-xs text-gray-500 mt-1">{t("אם לא תוגדר תמונה למצב כהה, תשמש תמונת הרקע של מצב בהיר")}</p>
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" />הגדרות פיננסיות</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" />{t("הגדרות פיננסיות")}</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="vat_rate">אחוז מע"מ (%)</Label>
+                                <Label htmlFor="vat_rate">{t("אחוז מע\"מ (%)")}</Label>
                                 <Input 
                                     id="vat_rate" 
                                     type="number" 
@@ -351,10 +354,10 @@ export default function SettingsPage() {
                                     onChange={e => handleSettingChange('vat_rate', e.target.value)} 
                                     placeholder="18"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">אחוז המע"מ שישמש בכל חישובי המערכת (ברירת מחדל: 18%)</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("אחוז המע\"מ שישמש בכל חישובי המערכת (ברירת מחדל: 18%)")}</p>
                             </div>
                             <div>
-                                <Label htmlFor="usd_ils_exchange_rate">שער חליפין דולר/שקל</Label>
+                                <Label htmlFor="usd_ils_exchange_rate">{t("שער חליפין דולר/שקל")}</Label>
                                 <Input 
                                     id="usd_ils_exchange_rate" 
                                     type="number" 
@@ -364,7 +367,7 @@ export default function SettingsPage() {
                                     onChange={e => handleSettingChange('usd_ils_exchange_rate', e.target.value)} 
                                     placeholder="3.6"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">שער המרה דולר לשקל. משמש לחישוב מחירים באירועים עם מטבעות מעורבים</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("שער המרה דולר לשקל. משמש לחישוב מחירים באירועים עם מטבעות מעורבים")}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -372,10 +375,10 @@ export default function SettingsPage() {
                     <BillingSettings settings={settings} onChange={handleSettingChange} />
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />הגדרות הצעת מחיר</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />{t("הגדרות הצעת מחיר")}</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="quote_body_font_size">גודל פונט גוף הטקסט (px)</Label>
+                                <Label htmlFor="quote_body_font_size">{t("גודל פונט גוף הטקסט (px)")}</Label>
                                 <Input 
                                     id="quote_body_font_size" 
                                     type="number" 
@@ -386,10 +389,10 @@ export default function SettingsPage() {
                                     onChange={e => handleSettingChange('quote_body_font_size', e.target.value)} 
                                     placeholder="15"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">גודל הפונט של תוכן ההצעה (ברירת מחדל: 15px, מומלץ: 8-72)</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("גודל הפונט של תוכן ההצעה (ברירת מחדל: 15px, מומלץ: 8-72)")}</p>
                             </div>
                             <div>
-                                <Label htmlFor="quote_title_font_size">גודל פונט כותרות (px)</Label>
+                                <Label htmlFor="quote_title_font_size">{t("גודל פונט כותרות (px)")}</Label>
                                 <Input 
                                     id="quote_title_font_size" 
                                     type="number" 
@@ -400,64 +403,64 @@ export default function SettingsPage() {
                                     onChange={e => handleSettingChange('quote_title_font_size', e.target.value)} 
                                     placeholder="16"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">גודל הפונט של כותרות בהצעה (ברירת מחדל: 16px, מומלץ: 8-72)</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("גודל הפונט של כותרות בהצעה (ברירת מחדל: 16px, מומלץ: 8-72)")}</p>
                             </div>
 
                             <div className="border-t pt-4 mt-4">
-                                <h3 className="text-sm font-semibold mb-3">שוליים - תצוגת מחשב (mm)</h3>
+                                <h3 className="text-sm font-semibold mb-3">{t("שוליים - תצוגת מחשב (mm)")}</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <Label htmlFor="quote_html_desktop_margin_top">למעלה</Label>
+                                        <Label htmlFor="quote_html_desktop_margin_top">{t("למעלה")}</Label>
                                         <Input id="quote_html_desktop_margin_top" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_top} onChange={e => handleSettingChange('quote_html_desktop_margin_top', e.target.value)} placeholder="20" />
                                     </div>
                                     <div>
-                                        <Label htmlFor="quote_html_desktop_margin_bottom">למטה</Label>
+                                        <Label htmlFor="quote_html_desktop_margin_bottom">{t("למטה")}</Label>
                                         <Input id="quote_html_desktop_margin_bottom" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_bottom} onChange={e => handleSettingChange('quote_html_desktop_margin_bottom', e.target.value)} placeholder="20" />
                                     </div>
                                     <div>
-                                        <Label htmlFor="quote_html_desktop_margin_right">ימין</Label>
+                                        <Label htmlFor="quote_html_desktop_margin_right">{t("ימין")}</Label>
                                         <Input id="quote_html_desktop_margin_right" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_right} onChange={e => handleSettingChange('quote_html_desktop_margin_right', e.target.value)} placeholder="20" />
                                     </div>
                                     <div>
-                                        <Label htmlFor="quote_html_desktop_margin_left">שמאל</Label>
+                                        <Label htmlFor="quote_html_desktop_margin_left">{t("שמאל")}</Label>
                                         <Input id="quote_html_desktop_margin_left" type="number" min="0" max="100" step="1" value={settings.quote_html_desktop_margin_left} onChange={e => handleSettingChange('quote_html_desktop_margin_left', e.target.value)} placeholder="20" />
                                     </div>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">שוליים לתצוגת הצעת מחיר ב-HTML במחשב (ברירת מחדל: 20mm לכל צד)</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("שוליים לתצוגת הצעת מחיר ב-HTML במחשב (ברירת מחדל: 20mm לכל צד)")}</p>
                             </div>
 
                             <div className="border-t pt-4 mt-4">
-                                <h3 className="text-sm font-semibold mb-3">שוליים - תצוגת מובייל (mm)</h3>
+                                <h3 className="text-sm font-semibold mb-3">{t("שוליים - תצוגת מובייל (mm)")}</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <Label htmlFor="quote_html_mobile_margin_top">למעלה</Label>
+                                        <Label htmlFor="quote_html_mobile_margin_top">{t("למעלה")}</Label>
                                         <Input id="quote_html_mobile_margin_top" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_top} onChange={e => handleSettingChange('quote_html_mobile_margin_top', e.target.value)} placeholder="8" />
                                     </div>
                                     <div>
-                                        <Label htmlFor="quote_html_mobile_margin_bottom">למטה</Label>
+                                        <Label htmlFor="quote_html_mobile_margin_bottom">{t("למטה")}</Label>
                                         <Input id="quote_html_mobile_margin_bottom" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_bottom} onChange={e => handleSettingChange('quote_html_mobile_margin_bottom', e.target.value)} placeholder="8" />
                                     </div>
                                     <div>
-                                        <Label htmlFor="quote_html_mobile_margin_right">ימין</Label>
+                                        <Label htmlFor="quote_html_mobile_margin_right">{t("ימין")}</Label>
                                         <Input id="quote_html_mobile_margin_right" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_right} onChange={e => handleSettingChange('quote_html_mobile_margin_right', e.target.value)} placeholder="6" />
                                     </div>
                                     <div>
-                                        <Label htmlFor="quote_html_mobile_margin_left">שמאל</Label>
+                                        <Label htmlFor="quote_html_mobile_margin_left">{t("שמאל")}</Label>
                                         <Input id="quote_html_mobile_margin_left" type="number" min="0" max="100" step="1" value={settings.quote_html_mobile_margin_left} onChange={e => handleSettingChange('quote_html_mobile_margin_left', e.target.value)} placeholder="6" />
                                     </div>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">שוליים לתצוגת הצעת מחיר ב-HTML במובייל (ברירת מחדל: 8mm למעלה/למטה, 6mm לצדדים)</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("שוליים לתצוגת הצעת מחיר ב-HTML במובייל (ברירת מחדל: 8mm למעלה/למטה, 6mm לצדדים)")}</p>
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><LayoutGrid className="h-5 w-5" />הגדרות ממשק</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><LayoutGrid className="h-5 w-5" />{t("הגדרות ממשק")}</CardTitle></CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex items-center justify-between pb-4 border-b">
                                 <div>
-                                    <Label htmlFor="show_events_board_tab">הצגת לשונית לוח אירועים</Label>
-                                    <p className="text-xs text-gray-500 mt-1">הפעל תצוגת לוח שיבוצים טבלאי בעמוד ניהול אירועים</p>
+                                    <Label htmlFor="show_events_board_tab">{t("הצגת לשונית לוח אירועים")}</Label>
+                                    <p className="text-xs text-gray-500 mt-1">{t("הפעל תצוגת לוח שיבוצים טבלאי בעמוד ניהול אירועים")}</p>
                                 </div>
                                 <Switch 
                                     id="show_events_board_tab"
@@ -468,8 +471,8 @@ export default function SettingsPage() {
 
                             <div className="flex items-center justify-between pb-4 border-b">
                                 <div>
-                                    <Label htmlFor="manual_quote_creation_enabled">יצירת הצעת מחיר ידנית</Label>
-                                    <p className="text-xs text-gray-500 mt-1">הפעל אפשרות ליצירת הצעות מחיר ידניות חופשיות (עורך טקסט עשיר עם שיוך לאירוע, פתיחים, שירותים וסיכום כספי)</p>
+                                    <Label htmlFor="manual_quote_creation_enabled">{t("יצירת הצעת מחיר ידנית")}</Label>
+                                    <p className="text-xs text-gray-500 mt-1">{t("הפעל אפשרות ליצירת הצעות מחיר ידניות חופשיות (עורך טקסט עשיר עם שיוך לאירוע, פתיחים, שירותים וסיכום כספי)")}</p>
                                 </div>
                                 <Switch
                                     id="manual_quote_creation_enabled"
@@ -482,9 +485,9 @@ export default function SettingsPage() {
                                 <div>
                                     <Label htmlFor="tasks_system_enabled" className="flex items-center gap-2">
                                         <ListChecks className="h-4 w-4" />
-                                        מערכת ניהול משימות
+                                        {t("מערכת ניהול משימות")}
                                     </Label>
-                                    <p className="text-xs text-gray-500 mt-1">כיבוי כללי של מערכת המשימות. כאשר כבוי - לא תוצג לשונית "משימות לביצוע" בכרטיסיית האירוע, פריט "המשימות שלי" בתפריט הצדדי יוסתר, וההתראות היומיות על משימות יושבתו</p>
+                                    <p className="text-xs text-gray-500 mt-1">{t("כיבוי כללי של מערכת המשימות. כאשר כבוי - לא תוצג לשונית \"משימות לביצוע\" בכרטיסיית האירוע, פריט \"המשימות שלי\" בתפריט הצדדי יוסתר, וההתראות היומיות על משימות יושבתו")}</p>
                                 </div>
                                 <Switch
                                     id="tasks_system_enabled"
@@ -496,20 +499,20 @@ export default function SettingsPage() {
                     </Card>
 
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" />סנכרון Google Calendar</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" />{t("סנכרון Google Calendar")}</CardTitle></CardHeader>
                         <CardContent className="space-y-6">
                             {/* סטטוס חיבור */}
                             <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
                                 <div className="h-3 w-3 bg-green-500 rounded-full"></div>
                                 <div>
-                                    <p className="text-green-800 font-medium text-sm">Google Calendar מחובר (אינטגרציה מובנית)</p>
-                                    <p className="text-green-600 text-xs">החיבור מנוהל דרך הפלטפורמה - אין צורך בהגדרה נוספת</p>
+                                    <p className="text-green-800 font-medium text-sm">{t("Google Calendar מחובר (אינטגרציה מובנית)")}</p>
+                                    <p className="text-green-600 text-xs">{t("החיבור מנוהל דרך הפלטפורמה - אין צורך בהגדרה נוספת")}</p>
                                 </div>
                             </div>
 
                             {/* מזהה יומן המנהל */}
                             <div className="pb-4 border-b">
-                                <Label htmlFor="admin_google_calendar_id">מזהה יומן המנהל הראשי</Label>
+                                <Label htmlFor="admin_google_calendar_id">{t("מזהה יומן המנהל הראשי")}</Label>
                                 <Input 
                                     id="admin_google_calendar_id" 
                                     value={settings.admin_google_calendar_id} 
@@ -517,14 +520,14 @@ export default function SettingsPage() {
                                     placeholder="primary"
                                     className="dir-ltr text-left mt-2"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">ברירת מחדל: primary (היומן הראשי). ניתן לשנות ל-Calendar ID ספציפי מהגדרות יומן Google.</p>
+                                <p className="text-xs text-gray-500 mt-1">{t("ברירת מחדל: primary (היומן הראשי). ניתן לשנות ל-Calendar ID ספציפי מהגדרות יומן Google.")}</p>
                             </div>
 
                             {/* Toggle מנהלים */}
                             <div className="flex items-center justify-between pb-4 border-b">
                                 <div>
-                                    <Label htmlFor="google_calendar_admin_sync_enabled">סנכרון למנהל</Label>
-                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, אירועים סגורים/תפורים/שעברו יסונכרנו ליומן Google של המנהל</p>
+                                    <Label htmlFor="google_calendar_admin_sync_enabled">{t("סנכרון למנהל")}</Label>
+                                    <p className="text-xs text-gray-500 mt-1">{t("כאשר מופעל, אירועים סגורים/תפורים/שעברו יסונכרנו ליומן Google של המנהל")}</p>
                                 </div>
                                 <Switch 
                                     id="google_calendar_admin_sync_enabled"
@@ -536,8 +539,8 @@ export default function SettingsPage() {
                             {/* Toggle ספקים */}
                             <div className="flex items-center justify-between pb-4 border-b">
                                 <div>
-                                    <Label htmlFor="google_calendar_supplier_sync_enabled">סנכרון לספקים</Label>
-                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, ספקים מאושרים יקבלו אירועים ביומן Google שלהם (נדרש Calendar ID בכרטיס הספק)</p>
+                                    <Label htmlFor="google_calendar_supplier_sync_enabled">{t("סנכרון לספקים")}</Label>
+                                    <p className="text-xs text-gray-500 mt-1">{t("כאשר מופעל, ספקים מאושרים יקבלו אירועים ביומן Google שלהם (נדרש Calendar ID בכרטיס הספק)")}</p>
                                 </div>
                                 <Switch 
                                     id="google_calendar_supplier_sync_enabled"
@@ -549,8 +552,8 @@ export default function SettingsPage() {
                             {/* Toggle לקוחות */}
                             <div className="flex items-center justify-between pb-4 border-b">
                                 <div>
-                                    <Label htmlFor="google_calendar_client_sync_enabled">סנכרון ללקוחות</Label>
-                                    <p className="text-xs text-gray-500 mt-1">כאשר מופעל, לקוחות שאישרו סנכרון יקבלו אירועים ביומן Google שלהם</p>
+                                    <Label htmlFor="google_calendar_client_sync_enabled">{t("סנכרון ללקוחות")}</Label>
+                                    <p className="text-xs text-gray-500 mt-1">{t("כאשר מופעל, לקוחות שאישרו סנכרון יקבלו אירועים ביומן Google שלהם")}</p>
                                 </div>
                                 <Switch 
                                     id="google_calendar_client_sync_enabled"
@@ -561,8 +564,8 @@ export default function SettingsPage() {
 
                             {/* כפתורי סנכרון מיידי */}
                             <div className="border-t pt-4 mt-2">
-                                <Label className="text-sm font-semibold">סנכרון מיידי</Label>
-                                <p className="text-xs text-gray-500 mb-3">לחץ לסנכרון מיידי של כל האירועים הרלוונטיים ליומן Google</p>
+                                <Label className="text-sm font-semibold">{t("סנכרון מיידי")}</Label>
+                                <p className="text-xs text-gray-500 mb-3">{t("לחץ לסנכרון מיידי של כל האירועים הרלוונטיים ליומן Google")}</p>
                                 <div className="flex flex-wrap gap-3">
                                     <Button
                                         variant="outline"
@@ -581,7 +584,7 @@ export default function SettingsPage() {
                                         }}
                                     >
                                         {isSyncingAdmin ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <RefreshCw className="h-4 w-4 ml-2" />}
-                                        סנכרן יומן מנהל
+                                        {t("סנכרן יומן מנהל")}
                                     </Button>
                                     <Button
                                         variant="outline"
@@ -600,7 +603,7 @@ export default function SettingsPage() {
                                         }}
                                     >
                                         {isSyncingSupplier ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <RefreshCw className="h-4 w-4 ml-2" />}
-                                        סנכרן יומן ספקים
+                                        {t("סנכרן יומן ספקים")}
                                     </Button>
                                     <Button
                                         variant="outline"
@@ -616,23 +619,23 @@ export default function SettingsPage() {
                                         }}
                                     >
                                         <RefreshCw className="h-4 w-4 ml-2" />
-                                        סנכרן יומן לקוחות
+                                        {t("סנכרן יומן לקוחות")}
                                     </Button>
                                 </div>
                                 {settings.google_calendar_admin_sync_enabled !== "true" && settings.google_calendar_supplier_sync_enabled !== "true" && (
-                                    <p className="text-xs text-amber-600 mt-2">הפעל לפחות טוגל אחד כדי לבצע סנכרון</p>
+                                    <p className="text-xs text-amber-600 mt-2">{t("הפעל לפחות טוגל אחד כדי לבצע סנכרון")}</p>
                                 )}
                             </div>
 
                             <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-2">
-                                <p className="font-medium">איך זה עובד?</p>
+                                <p className="font-medium">{t("איך זה עובד?")}</p>
                                 <ul className="list-disc mr-5 space-y-1 text-xs">
-                                    <li><strong>מנהל:</strong> אירועים בסטטוס סגור/תפור/עבר יסונכרנו אוטומטית ליומן Google שהוגדר למעלה</li>
-                                    <li><strong>ספקים:</strong> ספקים מאושרים שאישרו סנכרון יקבלו אירועים ביומן שלהם</li>
-                                    <li><strong>לקוחות:</strong> לקוחות שאישרו סנכרון יקבלו אירועים ביומן שלהם</li>
-                                    <li>שינוי סטטוס לסטטוס שלא מסונכרן (כמו הצעה/ביטול) ימחק את האירוע מהיומן</li>
-                                    <li>כל סנכרון צורך קרדיט אינטגרציה אחד בלבד - גם אם מסנכרן למנהל ולכל הספקים ביחד</li>
-                                    <li>כל משתמש יכול לאשר/לבטל סנכרון בדף הגדרות משתמש</li>
+                                    <li><strong>{t("מנהל:")}</strong> {t("אירועים בסטטוס סגור/תפור/עבר יסונכרנו אוטומטית ליומן Google שהוגדר למעלה")}</li>
+                                    <li><strong>{t("ספקים:")}</strong> {t("ספקים מאושרים שאישרו סנכרון יקבלו אירועים ביומן שלהם")}</li>
+                                    <li><strong>{t("לקוחות:")}</strong> {t("לקוחות שאישרו סנכרון יקבלו אירועים ביומן שלהם")}</li>
+                                    <li>{t("שינוי סטטוס לסטטוס שלא מסונכרן (כמו הצעה/ביטול) ימחק את האירוע מהיומן")}</li>
+                                    <li>{t("כל סנכרון צורך קרדיט אינטגרציה אחד בלבד - גם אם מסנכרן למנהל ולכל הספקים ביחד")}</li>
+                                    <li>{t("כל משתמש יכול לאשר/לבטל סנכרון בדף הגדרות משתמש")}</li>
                                 </ul>
                             </div>
                         </CardContent>
@@ -648,7 +651,7 @@ export default function SettingsPage() {
 
                 <TabsContent value="backup" className="mt-6">
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
-                        <CardHeader><CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" />גיבוי ושחזור</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" />{t("גיבוי ושחזור")}</CardTitle></CardHeader>
                         <CardContent>
                             <BackupManager />
                         </CardContent>
