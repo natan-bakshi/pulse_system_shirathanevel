@@ -9,9 +9,11 @@ import ReportCharts from "@/components/billing/reports/ReportCharts";
 import ReportDetailTable from "@/components/billing/reports/ReportDetailTable";
 import OpenBalancesTable from "@/components/billing/reports/OpenBalancesTable";
 import { buildReportRows, buildStats, byStatusSeries, byTypeSeries, defaultFilters, downloadCsv, filterDocuments, monthlySeries, topEventsSeries } from "@/components/billing/reports/billingReportUtils";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // דוחות וסטטיסטיקות כספיות - מבוססים על המסמכים הפיננסיים והסליקות הקיימים.
 export default function BillingReports({ documents = [], events = [], eventsById, generalPayments = [], eventServices = [], allPayments = [], vatRate = 0.18, exchangeRate = 3.6, balancesLoading = false }) {
+  const {t: uiTranslate}=useLanguage();
   const [filters, setFilters] = useState(defaultFilters);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
@@ -47,12 +49,12 @@ export default function BillingReports({ documents = [], events = [], eventsById
         <CardContent className="space-y-4 p-4">
           <ReportFilters filters={filters} onChange={setFilters} events={events} />
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={exportCsv} disabled={rows.length <= 1}><Download className="ml-2 h-4 w-4" />ייצוא ל-CSV</Button>
+            <Button variant="outline" onClick={exportCsv} disabled={rows.length <= 1}><Download className="ml-2 h-4 w-4" />{uiTranslate("ייצוא ל-CSV")}</Button>
             <Button variant="outline" onClick={exportSheets} disabled={exporting || rows.length <= 1}>
-              {exporting ? <><Loader2 className="ml-2 h-4 w-4 animate-spin" />מייצא...</> : <><Table2 className="ml-2 h-4 w-4" />ייצוא ל-Google Sheets</>}
+              {exporting ? <><Loader2 className="ml-2 h-4 w-4 animate-spin" />{uiTranslate("מייצא...")}</> : <><Table2 className="ml-2 h-4 w-4" />{uiTranslate("ייצוא ל-Google Sheets")}</>}
             </Button>
-            <Button variant="ghost" onClick={() => setFilters(defaultFilters())}>אפס סינון</Button>
-            {exportMessage && <a href={exportMessage} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">הגיליון נוצר - לחץ לצפייה</a>}
+            <Button variant="ghost" onClick={() => setFilters(defaultFilters())}>{uiTranslate("אפס סינון")}</Button>
+            {exportMessage && <a href={exportMessage} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">{uiTranslate("הגיליון נוצר - לחץ לצפייה")}</a>}
           </div>
         </CardContent>
       </Card>

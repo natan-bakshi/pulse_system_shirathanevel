@@ -59,22 +59,22 @@ export default function QuickEventCreateDialog({ open, onOpenChange, onCreated }
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent dir="rtl" className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>יצירת אירוע חדש מהצעה</DialogTitle>
+          <DialogTitle>{uiTranslate("יצירת אירוע חדש מהצעה")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <Label>שם האירוע *</Label>
+            <Label>{uiTranslate("שם האירוע *")}</Label>
             <Input value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="לדוגמה: בר מצווה של מיכאל" disabled={isSaving} />
           </div>
           <div>
-            <Label>תאריך האירוע *</Label>
+            <Label>{uiTranslate("תאריך האירוע *")}</Label>
             <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} disabled={isSaving} />
           </div>
           <div>
-            <Label>שם משפחה (אופציונלי)</Label>
+            <Label>{uiTranslate("שם משפחה (אופציונלי)")}</Label>
             <Input value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="ניתן להשאיר ריק" disabled={isSaving} />
             <p className="text-xs text-gray-500 mt-1">
-              ניתן להשלים פרטים נוספים (שירותים, חבילות, וכו') בעריכת האירוע לאחר היצירה.
+              {uiTranslate("ניתן להשלים פרטים נוספים (שירותים, חבילות, וכו') בעריכת האירוע לאחר היצירה.")}
             </p>
           </div>
         </div>
@@ -82,7 +82,7 @@ export default function QuickEventCreateDialog({ open, onOpenChange, onCreated }
           <Button variant="outline" onClick={handleClose} disabled={isSaving}>{uiTranslate("ביטול")}</Button>
           <Button onClick={handleCreate} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
-            צור אירוע ושייך
+            {uiTranslate("צור אירוע ושייך")}
           </Button>
         </DialogFooter>
       </DialogContent>

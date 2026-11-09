@@ -236,7 +236,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
             <SelectItem value="__new_service__" className="font-semibold text-blue-600">
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
-                <span>+ צור שירות חדש</span>
+                <span>{uiTranslate("+ צור שירות חדש")}</span>
               </div>
             </SelectItem>
             <div className="border-t my-1"></div>
@@ -298,7 +298,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                     <>
                       <div className="mt-3">
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-gray-500">תיאור השירות:</p>
+                          <p className="text-xs text-gray-500">{uiTranslate("תיאור השירות:")}</p>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -348,7 +348,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                             type="number"
                             value={service.custom_price || ''}
                             onChange={(e) => handleServiceChange(service.service_id, 'custom_price', e.target.value)}
-                            placeholder="מחיר"
+                            placeholder={uiTranslate("מחיר")}
                           />
                         </div>
                         <div className="flex items-center space-x-2 space-x-reverse pt-5">

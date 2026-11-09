@@ -250,7 +250,7 @@ export default function WhatsAppQueueSettings(){
       </div>
       {officeLookup&&<div role="status" className="border rounded p-3 space-y-1">
        <p><strong>{uiTranslate("אירוע:")}</strong> {officeLookup.eventName||'לא ידוע'}</p>
-       <p><strong>תאריך:</strong> {officeLookup.eventDate||'לא זמין'}</p>
+       <p><strong>{uiTranslate("תאריך:")}</strong> {officeLookup.eventDate||'לא זמין'}</p>
        <p><strong>{uiTranslate("שירות:")}</strong> {officeLookup.serviceName||'לא ידוע'}</p>
        <p><strong>{uiTranslate("ספק:")}</strong> {officeLookup.supplierName||'לא ידוע'}</p>
        <p><strong>{uiTranslate("מצב השיבוץ:")}</strong> {({pending:'ממתין',approved:'מאושר',rejected:'נדחה'})[officeLookup.supplierStatus]||'לא ידוע'}</p>

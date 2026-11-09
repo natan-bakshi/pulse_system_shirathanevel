@@ -81,19 +81,16 @@ export default function AdvancedLinksTab({ template, onChange }) {
             <SelectValue placeholder="בחר סוג קישור" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">ללא / ידני</SelectItem>
-            <SelectItem value="event_page" disabled={!hasSmartRole}>כרטיסיית אירוע</SelectItem>
-            <SelectItem value="payment_page" disabled={!notificationLinkPreset("payment_page",template?.target_audiences)}>דף תשלומים</SelectItem>
-            <SelectItem value="assignment_page" disabled={!notificationLinkPreset("assignment_page",template?.target_audiences)}>דף שיבוצים/ספק</SelectItem>
+            <SelectItem value="none">{uiTranslate("ללא / ידני")}</SelectItem>
+            <SelectItem value="event_page" disabled={!hasSmartRole}>{uiTranslate("כרטיסיית אירוע")}</SelectItem>
+            <SelectItem value="payment_page" disabled={!notificationLinkPreset("payment_page",template?.target_audiences)}>{uiTranslate("דף תשלומים")}</SelectItem>
+            <SelectItem value="assignment_page" disabled={!notificationLinkPreset("assignment_page",template?.target_audiences)}>{uiTranslate("דף שיבוצים/ספק")}</SelectItem>
             <SelectItem value="calendar_page" disabled={!notificationLinkPreset("calendar_page",template?.target_audiences)}>{uiTranslate("לוח אירועים")}</SelectItem>
             <SelectItem value="settings_page">{uiTranslate("הגדרות")}</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-gray-500 mt-1">
-          הקישור נפתח רק לפי הרשאות הנמען. כדי למפות דף אירוע או תשלום נכון,
-          בחר קהל יעד אחד בתנאים וקהלים. אם התבנית מיועדת למספר סוגי נמענים,
-          אין לבחור יעד עסקי משותף שעלול להפנות לדף לא נכון.
-          כפתורי WhatsApp מותאמים מוגדרים בלשונית כפתורים.
+          {uiTranslate("הקישור נפתח רק לפי הרשאות הנמען. כדי למפות דף אירוע או תשלום נכון, בחר קהל יעד אחד בתנאים וקהלים. אם התבנית מיועדת למספר סוגי נמענים, אין לבחור יעד עסקי משותף שעלול להפנות לדף לא נכון. כפתורי WhatsApp מותאמים מוגדרים בלשונית כפתורים.")}
         </p>
       </div>
       
@@ -104,7 +101,7 @@ export default function AdvancedLinksTab({ template, onChange }) {
             tooltip="בחר דף מתוך הדפים הזמינים לקהל היעד הנבחר"
           />
           <div className="text-xs text-gray-500 mb-1">
-            הדפים מוצגים בהתאם לקהלי היעד שנבחרו ({template.target_audiences?.map(a => AUDIENCES[a]?.label).join(', ')})
+            {uiTranslate("הדפים מוצגים בהתאם לקהלי היעד שנבחרו (")}{template.target_audiences?.map(a => AUDIENCES[a]?.label).join(', ')})
           </div>
           <Select 
             value={template.deep_link_base || ''} 

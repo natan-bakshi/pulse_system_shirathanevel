@@ -1,16 +1,18 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const palette = ["#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#7f1d1d", "#450a0a"];
 const money = (value) => `₪${Number(value).toLocaleString()}`;
 
 function ChartCard({ title, children, empty }) {
+  const {t: uiTranslate}=useLanguage();
   return (
     <Card className="bg-white/95">
       <CardHeader className="pb-2"><CardTitle className="text-base">{title}</CardTitle></CardHeader>
       <CardContent className="h-72">
-        {empty ? <p className="flex h-full items-center justify-center text-sm text-gray-500">אין נתונים להצגה בתקופה זו</p> : <ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer>}
+        {empty ? <p className="flex h-full items-center justify-center text-sm text-gray-500">{uiTranslate("אין נתונים להצגה בתקופה זו")}</p> : <ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer>}
       </CardContent>
     </Card>
   );

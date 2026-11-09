@@ -23,6 +23,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
  * שמירה מלאה על כל הפונקציונליות הקיימת.
  */
 export default function EventDetailsTabs(props) {
+  const {t: uiTranslate}=useLanguage();
   const {t,dir}=useLanguage();
   const {
     // משותפים
@@ -257,7 +258,7 @@ export default function EventDetailsTabs(props) {
         {(isAdmin || isClient) && billingEnabled && (
           <EventDocumentsCard eventId={event?.id} isAdmin={isAdmin} event={event} />
         )}
-        {isAdmin && <Suspense fallback={<p>טוען סגירת אירוע…</p>}><EventClosingPanel event={event} onChanged={loadEventData}/></Suspense>}
+        {isAdmin && <Suspense fallback={<p>{uiTranslate("טוען סגירת אירוע…")}</p>}><EventClosingPanel event={event} onChanged={loadEventData}/></Suspense>}
         {isAdmin && billingEnabled && <Suspense fallback={null}><StoredCardPanel event={event} onChanged={loadEventData}/></Suspense>}
       </TabsContent>
 

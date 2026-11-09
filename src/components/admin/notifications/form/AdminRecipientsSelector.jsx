@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Users } from "lucide-react";
 import FieldLabel from "../FieldLabel";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * בורר מנהלים שיקבלו את ההתראה.
@@ -11,6 +12,7 @@ import FieldLabel from "../FieldLabel";
  * אם נבחרו ספציפיים - רק הם יקבלו.
  */
 export default function AdminRecipientsSelector({ template, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const { data: admins = [], isLoading } = useQuery({
     queryKey: ['adminUsersForTemplate'],
     queryFn: async () => {
@@ -52,7 +54,7 @@ export default function AdminRecipientsSelector({ template, onChange }) {
             onClick={clearAll}
             className="text-xs text-blue-600 hover:underline"
           >
-            נקה בחירה (כל המנהלים יקבלו)
+            {uiTranslate("נקה בחירה (כל המנהלים יקבלו)")}
           </button>
         )}
       </div>
@@ -60,12 +62,12 @@ export default function AdminRecipientsSelector({ template, onChange }) {
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Loader2 className="h-4 w-4 animate-spin" />
-          טוען רשימת מנהלים...
+          {uiTranslate("טוען רשימת מנהלים...")}
         </div>
       ) : admins.length === 0 ? (
         <div className="text-sm text-gray-500 italic flex items-center gap-2">
           <Users className="h-4 w-4" />
-          לא נמצאו מנהלים במערכת
+          {uiTranslate("לא נמצאו מנהלים במערכת")}
         </div>
       ) : (
         <>

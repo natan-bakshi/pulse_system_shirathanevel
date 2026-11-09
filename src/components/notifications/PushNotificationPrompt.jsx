@@ -144,10 +144,10 @@ export default function PushNotificationPrompt({ user }) {
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-semibold text-gray-900 text-sm mb-1">
-                הפעל התראות
+                {uiTranslate("הפעל התראות")}
               </h4>
               <p className="text-xs text-gray-600 mb-3">
-                קבל עדכונים חשובים על אירועים ושיבוצים ישירות למכשיר שלך
+                {uiTranslate("קבל עדכונים חשובים על אירועים ושיבוצים ישירות למכשיר שלך")}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -165,7 +165,7 @@ export default function PushNotificationPrompt({ user }) {
                   disabled={isLoading}
                   className="text-xs text-gray-500"
                 >
-                  לא עכשיו
+                  {uiTranslate("לא עכשיו")}
                 </Button>
               </div>
             </div>

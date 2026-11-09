@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * פלטת צבעים שתואמת את צבעי ההצעה הרגילה (generateQuotePdf).
@@ -25,6 +26,7 @@ const DEFAULT_COLORS = [
 ];
 
 export default function ColorPalettePopover({ icon, tooltip, active = false, onPickColor, onClear }) {
+  const {t: uiTranslate}=useLanguage();
   const customInputRef = useRef(null);
 
   const handlePick = (color) => {
@@ -53,7 +55,7 @@ export default function ColorPalettePopover({ icon, tooltip, active = false, onP
         </Tooltip>
       </TooltipProvider>
       <PopoverContent dir="rtl" className="w-56 p-2" align="start">
-        <div className="text-xs font-semibold text-gray-600 px-1 pb-2 border-b mb-2">צבעי המערכת</div>
+        <div className="text-xs font-semibold text-gray-600 px-1 pb-2 border-b mb-2">{uiTranslate("צבעי המערכת")}</div>
         <div className="grid grid-cols-7 gap-1.5">
           {DEFAULT_COLORS.map(c => (
             <button
@@ -74,7 +76,7 @@ export default function ColorPalettePopover({ icon, tooltip, active = false, onP
             className="h-7 text-xs flex-1"
             onClick={() => customInputRef.current?.click()}
           >
-            צבע מותאם...
+            {uiTranslate("צבע מותאם...")}
           </Button>
           <input
             ref={customInputRef}
@@ -90,7 +92,7 @@ export default function ColorPalettePopover({ icon, tooltip, active = false, onP
               className="h-7 text-xs"
               onClick={onClear}
             >
-              נקה
+              {uiTranslate("נקה")}
             </Button>
           )}
         </div>

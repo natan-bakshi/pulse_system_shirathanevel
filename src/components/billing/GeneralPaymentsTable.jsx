@@ -9,7 +9,7 @@ const statusLabels = { completed: "הושלם", pending: "ממתין", failed: "
 // תיעוד סליקות כלליות (ללא שיוך לאירוע) בלשונית התשלומים.
 export default function GeneralPaymentsTable({ payments, documentsById }) {
   const {t: uiTranslate}=useLanguage();
-  if (payments.length === 0) return <p className="py-6 text-center text-gray-500">אין סליקות כלליות להצגה</p>;
+  if (payments.length === 0) return <p className="py-6 text-center text-gray-500">{uiTranslate("אין סליקות כלליות להצגה")}</p>;
 
   return (
     <div className="overflow-x-auto">
@@ -18,9 +18,9 @@ export default function GeneralPaymentsTable({ payments, documentsById }) {
           <tr className="text-right text-gray-500">
             <th className="p-2">{uiTranslate("תאריך")}</th>
             <th className="p-2">{uiTranslate("סכום")}</th>
-            <th className="p-2">משלם</th>
+            <th className="p-2">{uiTranslate("משלם")}</th>
             <th className="p-2">{uiTranslate("סטטוס")}</th>
-            <th className="p-2">מסמך</th>
+            <th className="p-2">{uiTranslate("מסמך")}</th>
             <th className="p-2"></th>
           </tr>
         </thead>

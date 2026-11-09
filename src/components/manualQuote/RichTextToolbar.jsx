@@ -156,13 +156,13 @@ export default function RichTextToolbar({ editor }) {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="p">פסקה</SelectItem>
-          <SelectItem value="h1">כותרת 1</SelectItem>
+          <SelectItem value="p">{uiTranslate("פסקה")}</SelectItem>
+          <SelectItem value="h1">{uiTranslate("כותרת 1")}</SelectItem>
           <SelectItem value="h2">{uiTranslate("כותרת 2")}</SelectItem>
           <SelectItem value="h3">{uiTranslate("כותרת 3")}</SelectItem>
           <SelectItem value="h4">{uiTranslate("כותרת 4")}</SelectItem>
-          <SelectItem value="h5">כותרת 5</SelectItem>
-          <SelectItem value="h6">כותרת 6</SelectItem>
+          <SelectItem value="h5">{uiTranslate("כותרת 5")}</SelectItem>
+          <SelectItem value="h6">{uiTranslate("כותרת 6")}</SelectItem>
         </SelectContent>
       </Select>
 

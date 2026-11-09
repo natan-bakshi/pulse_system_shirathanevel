@@ -59,7 +59,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <LinkIcon className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-semibold">שיוך אירוע:</span>
+            <span className="text-sm font-semibold">{uiTranslate("שיוך אירוע:")}</span>
             {linkedEvent ? (
               <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 px-2 py-1">
                 {linkedEvent.event_name} • {linkedEvent.event_date}
@@ -71,7 +71,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
           <div className="flex gap-2 flex-wrap">
             {linkedEvent && (
               <Button variant="ghost" size="sm" onClick={() => onChange('')} className="text-red-600 hover:bg-red-50">
-                <X className="h-4 w-4 ml-1" /> נתק שיוך
+                <X className="h-4 w-4 ml-1" /> {uiTranslate("נתק שיוך")}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setSearchOpen(o => !o)}>

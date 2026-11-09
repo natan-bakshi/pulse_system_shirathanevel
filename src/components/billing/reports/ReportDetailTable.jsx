@@ -1,16 +1,18 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // טבלת הפירוט המלאה של המסמכים המסוננים (שורת הכותרת מגיעה מ-buildReportRows).
 export default function ReportDetailTable({ rows }) {
+  const {t: uiTranslate}=useLanguage();
   const [headers, ...dataRows] = rows;
 
   return (
     <Card className="bg-white/95">
-      <CardHeader className="pb-2"><CardTitle className="text-base">פירוט מסמכים ({dataRows.length})</CardTitle></CardHeader>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{uiTranslate("פירוט מסמכים (")}{dataRows.length})</CardTitle></CardHeader>
       <CardContent>
         {dataRows.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-500">אין מסמכים התואמים לסינון</p>
+          <p className="py-8 text-center text-sm text-gray-500">{uiTranslate("אין מסמכים התואמים לסינון")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">

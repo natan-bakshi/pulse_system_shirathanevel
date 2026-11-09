@@ -8,6 +8,7 @@ import {
   selectDeviceContact,
   parseVCardContact,
 } from '@/lib/contactPickerUtils';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // A single contact-import path shared by supplier forms, event contacts and
 // pickup-point contacts. The selected data is processed only in the browser.
@@ -17,6 +18,7 @@ export default function ContactPicker({
   className = 'ml-2',
   disabled = false,
 }) {
+  const {t: uiTranslate}=useLanguage();
   const contactApi = typeof navigator !== 'undefined' ? navigator.contacts : null;
   const nativeSupported = typeof contactApi?.select === 'function';
   const [availableFields, setAvailableFields] = React.useState(CONTACT_FIELDS);
@@ -135,7 +137,7 @@ export default function ContactPicker({
           className="shrink-0 px-2"
         >
           <FileUser className="h-4 w-4" />
-          <span className="sr-only">ייבוא קובץ VCF</span>
+          <span className="sr-only">{uiTranslate("ייבוא קובץ VCF")}</span>
         </Button>
       )}
       <input

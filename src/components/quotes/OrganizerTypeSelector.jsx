@@ -73,7 +73,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Label className="text-sm font-medium whitespace-nowrap">סוג הזמנה:</Label>
+      <Label className="text-sm font-medium whitespace-nowrap">{uiTranslate("סוג הזמנה:")}</Label>
       <Select
         value={value || ''}
         onValueChange={(v) => {
@@ -93,12 +93,12 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
             <SelectItem key={type.id} value={type.type_name}>
               <span className="flex items-center gap-2">
                 {type.type_name}
-                {type.is_default && <span className="text-xs text-amber-600">(ברירת מחדל)</span>}
+                {type.is_default && <span className="text-xs text-amber-600">{uiTranslate("(ברירת מחדל)")}</span>}
               </span>
             </SelectItem>
           ))}
           <SelectItem value="__new__" className="text-blue-600 font-medium border-t mt-1 pt-1">
-            + הוסף סוג הזמנה חדש
+            {uiTranslate("+ הוסף סוג הזמנה חדש")}
           </SelectItem>
         </SelectContent>
       </Select>
@@ -125,7 +125,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
             <Button variant="outline" onClick={() => setShowNewDialog(false)}>{uiTranslate("ביטול")}</Button>
             <Button onClick={handleCreate} disabled={!newTypeName.trim() || isCreating}>
               {isCreating && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
-              צור
+              {uiTranslate("צור")}
             </Button>
           </div>
         </DialogContent>

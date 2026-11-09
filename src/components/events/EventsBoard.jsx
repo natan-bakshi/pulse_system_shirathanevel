@@ -890,7 +890,7 @@ export default function EventsBoard() {
                     <>
                         <div className="space-y-2 bg-gray-50 p-3 rounded-lg"><div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("אירוע:")}</span> {editingService.eventName}</div><div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("שירות:")}</span> {editingService.serviceName}</div></div>
                         <div className="space-y-2"><Label>{uiTranslate("שיבוצים נדרשים")}</Label><Select value={String(editingService.minSuppliers || 0)} onValueChange={(v) => setEditingService(p => ({ ...p, minSuppliers: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (<SelectItem key={n} value={String(n)}>{n}</SelectItem>))}</SelectContent></Select></div>
-                        <div className="space-y-2"><Label>הערות לשירות</Label><Textarea value={editingService.serviceNotes} onChange={(e) => setEditingService(p => ({ ...p, serviceNotes: e.target.value }))} className="resize-none" /></div>
+                        <div className="space-y-2"><Label>{uiTranslate("הערות לשירות")}</Label><Textarea value={editingService.serviceNotes} onChange={(e) => setEditingService(p => ({ ...p, serviceNotes: e.target.value }))} className="resize-none" /></div>
                         <div className="border-t pt-4">
                             <Label className="font-semibold mb-3 block">{uiTranslate("שיבוץ ספקים")}</Label>
                             
@@ -1001,7 +1001,7 @@ export default function EventsBoard() {
                                             <div className="space-y-1"><Label className="text-xs">{uiTranslate("מקום איסוף")}</Label><Input value={point.location} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].location = e.target.value; setEditingService(p => ({ ...p, units: u })); }} /></div>
                                         </div>
                                         <div className="space-y-1"><Label className="text-xs">{uiTranslate("איש קשר במקום")}</Label><div className="flex gap-2">
-                                            <Input placeholder="שם" value={point.contact?.name || ''} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact.name = e.target.value; setEditingService(p => ({ ...p, units: u })); }} />
+                                            <Input placeholder={uiTranslate("שם")} value={point.contact?.name || ''} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact.name = e.target.value; setEditingService(p => ({ ...p, units: u })); }} />
                                             <Input placeholder={uiTranslate("טלפון")} value={point.contact?.phone || ''} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact.phone = e.target.value; setEditingService(p => ({ ...p, units: u })); }} />
                                             <ContactPicker onContactSelect={(c) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact = { name: c.name || '', phone: c.phone || '' }; setEditingService(p => ({ ...p, units: u })); }} />
                                         </div></div>

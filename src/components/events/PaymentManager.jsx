@@ -92,7 +92,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                     />
                   </div>
                   <div>
-                    <Label>מטבע</Label>
+                    <Label>{uiTranslate("מטבע")}</Label>
                     <button
                       type="button"
                       onClick={() => updatePayment(payment.id, 'currency', (getEffectiveCurrency(payment.currency, eventPrimaryCurrency)) === 'ILS' ? 'USD' : 'ILS')}
@@ -186,13 +186,13 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
           ))}
           
           {localPayments.length === 0 && (
-            <p className="text-center text-gray-500 py-4">לא נוספו תשלומים</p>
+            <p className="text-center text-gray-500 py-4">{uiTranslate("לא נוספו תשלומים")}</p>
           )}
           
           {localPayments.length > 0 && (
             <div className="border-t pt-4">
               <div className="flex justify-between items-center font-bold text-lg">
-                <span>סה"כ שולם:</span>
+                <span>{uiTranslate("סה\"כ שולם:")}</span>
                 <span className="text-green-600">{getCurrencySymbol(eventPrimaryCurrency)}{totalPaid.toLocaleString()}</span>
               </div>
             </div>

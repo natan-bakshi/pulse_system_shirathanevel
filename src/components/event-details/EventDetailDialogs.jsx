@@ -15,7 +15,7 @@ export function ExportDialog({ open, onOpenChange, exportOptions, setExportOptio
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>ייצוא אירוע</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{uiTranslate("ייצוא אירוע")}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
             {Object.keys(exportOptions).map(key => (
@@ -40,11 +40,11 @@ export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm,
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>הוספת תשלום</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{uiTranslate("הוספת תשלום")}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div><Label>{uiTranslate("סכום")}</Label><Input type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" /></div>
           <div>
-            <Label>מטבע</Label>
+            <Label>{uiTranslate("מטבע")}</Label>
             <Select value={paymentForm.currency || eventPrimaryCurrency || 'ILS'} onValueChange={(value) => setPaymentForm({ ...paymentForm, currency: value })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -162,7 +162,7 @@ export function PackageDialog({ open, onOpenChange, form, setForm, searchTerm, s
           <div><Label>{uiTranslate("שם החבילה")}</Label><Input value={form.package_name} onChange={(e) => setForm({ ...form, package_name: e.target.value })} /></div>
           <div><Label>{uiTranslate("תיאור")}</Label><Textarea value={form.package_description} onChange={(e) => setForm({ ...form, package_description: e.target.value })} /></div>
           <div className="grid grid-cols-2 gap-2">
-            <div><Label>מחיר</Label><Input type="number" value={form.package_price} onChange={(e) => setForm({ ...form, package_price: e.target.value })} /></div>
+            <div><Label>{uiTranslate("מחיר")}</Label><Input type="number" value={form.package_price} onChange={(e) => setForm({ ...form, package_price: e.target.value })} /></div>
             <div className="flex items-center gap-2 pt-6"><Checkbox checked={form.package_includes_vat} onCheckedChange={(checked) => setForm({ ...form, package_includes_vat: checked })} /><Label>{uiTranslate("כולל מע\"מ")}</Label></div>
           </div>
           <div>
@@ -198,7 +198,7 @@ export function EditPackageDialog({ open, onOpenChange, form, setForm, isSaving,
           <div><Label>{uiTranslate("תיאור")}</Label><Textarea value={form.package_description} onChange={(e) => setForm({ ...form, package_description: e.target.value })} /></div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>מחיר</Label>
+              <Label>{uiTranslate("מחיר")}</Label>
               <div className="relative">
                 <Input type="number" value={form.package_price} onChange={(e) => setForm({ ...form, package_price: e.target.value })} className="pl-10" />
                 <button

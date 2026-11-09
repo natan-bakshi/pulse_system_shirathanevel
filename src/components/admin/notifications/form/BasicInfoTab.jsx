@@ -93,7 +93,7 @@ export default function BasicInfoTab({ template, onChange }) {
                 update('allowed_channels', Array.from(channels));
               }}
             />
-            <Label htmlFor="channel-push">Push / אפליקציה</Label>
+            <Label htmlFor="channel-push">{uiTranslate("Push / אפליקציה")}</Label>
           </div>
           <div className="flex items-center space-x-2 space-x-reverse">
             <Switch
@@ -117,8 +117,8 @@ export default function BasicInfoTab({ template, onChange }) {
           onCheckedChange={(checked) => update('is_active', checked)}
         />
         <div>
-          <Label>התראה פעילה</Label>
-          <p className="text-xs text-gray-500">כבה כדי להשבית זמנית את ההתראה מבלי למחוק אותה</p>
+          <Label>{uiTranslate("התראה פעילה")}</Label>
+          <p className="text-xs text-gray-500">{uiTranslate("כבה כדי להשבית זמנית את ההתראה מבלי למחוק אותה")}</p>
         </div>
       </div>
     </div>

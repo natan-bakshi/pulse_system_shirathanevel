@@ -32,7 +32,7 @@ function TourTooltip({ continuous, index, step, backProps, closeProps, primaryPr
           {...skipProps}
           className="text-gray-400 text-xs hover:text-gray-600 transition-colors"
         >
-          דלג על הסיור
+          {uiTranslate("דלג על הסיור")}
         </button>
         <div className="flex gap-2">
           {index > 0 && (

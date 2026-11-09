@@ -76,7 +76,7 @@ function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoadi
   if (confirmDelete) {
     return (
       <div className="flex items-center justify-between py-2.5 px-3 border-b border-gray-100 last:border-b-0 bg-red-50 rounded text-sm animate-in fade-in duration-200">
-        <span className="text-red-700 font-medium text-xs">למחוק הצעה זו?</span>
+        <span className="text-red-700 font-medium text-xs">{uiTranslate("למחוק הצעה זו?")}</span>
         <div className="flex gap-2 shrink-0">
           <button onClick={handleConfirmYes} className="px-3 py-1 rounded bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors">
             {uiTranslate("מחק")}
@@ -266,7 +266,7 @@ export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose,
       {/* Compact inline list */}
       <div className="py-1">
         <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 border-b border-gray-100">
-          היסטוריה ({sorted.length})
+          {uiTranslate("היסטוריה (")}{sorted.length})
         </div>
         {compactItems.map((item, idx) => (
           <QuoteHistoryItem
@@ -286,7 +286,7 @@ export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose,
             className="w-full flex items-center justify-center gap-1 py-2 text-xs text-red-800 hover:bg-red-50 transition-colors font-medium"
           >
             <ChevronDown className="h-3 w-3" />
-            הצג הכל ({sorted.length})
+            {uiTranslate("הצג הכל (")}{sorted.length})
           </button>
         )}
       </div>
@@ -297,7 +297,7 @@ export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose,
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              היסטוריית הצעות מחיר ({sorted.length})
+              {uiTranslate("היסטוריית הצעות מחיר (")}{sorted.length})
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-0 max-h-[60vh] overflow-y-auto">

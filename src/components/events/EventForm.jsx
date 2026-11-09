@@ -788,7 +788,7 @@ for (const serviceItem of servicesForSave) {
                   <Label htmlFor="price_per_guest_toggle" className="text-sm cursor-pointer">{uiTranslate("מחיר למשתתף")}</Label>
                   {formData.is_price_per_guest && formData.price_per_guest > 0 && (
                     <span className="text-sm text-blue-700 font-medium">
-                      ({getCurrencySymbol(formData.primary_currency)}{formData.price_per_guest.toLocaleString(undefined, { maximumFractionDigits: 2 })} למשתתף)
+                      ({getCurrencySymbol(formData.primary_currency)}{formData.price_per_guest.toLocaleString(undefined, { maximumFractionDigits: 2 })} {uiTranslate("למשתתף)")}
                     </span>
                   )}
                 </div>

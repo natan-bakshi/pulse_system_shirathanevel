@@ -866,7 +866,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                               <div className="space-y-1">
                               <Label className="text-xs">{t('איש קשר')}</Label>
                               <div className="flex gap-2">
-                               <Input placeholder="שם" value={point.contact?.name || ''} onChange={(e) => {
+                               <Input placeholder={uiTranslate("שם")} value={point.contact?.name || ''} onChange={(e) => {
                                  const newUnits = JSON.parse(JSON.stringify(units));
                                  if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
                                  newUnits[uIdx].pickupPoints[pIdx].contact.name = e.target.value;

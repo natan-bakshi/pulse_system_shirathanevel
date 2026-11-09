@@ -9,12 +9,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import UserNotificationPreferences from "./UserNotificationPreferences";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * A button that opens a dialog with user notification preferences
  * Can be placed anywhere in the app (sidebar, settings, dashboards)
  */
 export default function NotificationPreferencesButton({ user, variant = "outline", size = "default", showIcon = true, showText = true }) {
+  const {t: uiTranslate}=useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
   if (!user) return null;
@@ -31,7 +33,7 @@ export default function NotificationPreferencesButton({ user, variant = "outline
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            הגדרות התראות אישיות
+            {uiTranslate("הגדרות התראות אישיות")}
           </DialogTitle>
         </DialogHeader>
         <UserNotificationPreferences user={user} onClose={() => setIsOpen(false)} />

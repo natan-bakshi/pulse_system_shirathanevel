@@ -154,7 +154,7 @@ export default function TaskItem({
             {assigneeNames.length === 0 ? (
               <Badge variant="outline" className="text-xs h-5 px-1.5 gap-1">
                 <Users className="h-3 w-3" />
-                לכל המנהלים
+                {uiTranslate("לכל המנהלים")}
               </Badge>
             ) : (
               <Badge variant="outline" className="text-xs h-5 px-1.5 gap-1">
@@ -198,7 +198,7 @@ export default function TaskItem({
 
               {assigneeNames.length > 1 && (
                 <div>
-                  <div className="text-xs font-medium text-gray-500 mb-1">הוקצו</div>
+                  <div className="text-xs font-medium text-gray-500 mb-1">{uiTranslate("הוקצו")}</div>
                   <div className="flex flex-wrap gap-1">
                     {assigneeNames.map((name, i) => (
                       <Badge key={i} variant="outline" className="text-xs">{name}</Badge>
@@ -210,13 +210,13 @@ export default function TaskItem({
               <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  נוצר ב-{createdStr || '—'}
+                  {uiTranslate("נוצר ב-")}{createdStr || '—'}
                 </span>
                 {task.created_by && (
-                  <span>על ידי: <span className="font-medium">{task.created_by}</span></span>
+                  <span>{uiTranslate("על ידי:")} <span className="font-medium">{task.created_by}</span></span>
                 )}
                 {isCompleted && completionStr && (
-                  <span className="text-green-700">בוצע ב-{completionStr}{task.completed_by_user_name ? ` ע״י ${task.completed_by_user_name}` : ''}</span>
+                  <span className="text-green-700">{uiTranslate("בוצע ב-")}{completionStr}{task.completed_by_user_name ? ` ע״י ${task.completed_by_user_name}` : ''}</span>
                 )}
               </div>
 

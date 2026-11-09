@@ -27,22 +27,22 @@ export default function ShareDocumentDialog({ document, onClose, onConfirm, load
   return (
     <Dialog open={!!document} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>שיתוף מסמך {document?.document_number || ""}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{uiTranslate("שיתוף מסמך")} {document?.document_number || ""}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>ערוץ שליחה</Label>
+            <Label>{uiTranslate("ערוץ שליחה")}</Label>
             <Select value={channel} onValueChange={setChannel}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="email">{uiTranslate("אימייל")}</SelectItem>
-                <SelectItem value="whatsapp">וואטסאפ</SelectItem>
+                <SelectItem value="whatsapp">{uiTranslate("וואטסאפ")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {available.length > 0 && (
             <div>
-              <Label>אנשי הקשר של האירוע</Label>
+              <Label>{uiTranslate("אנשי הקשר של האירוע")}</Label>
               <div className="mt-2 space-y-2 rounded border border-gray-200 p-3">
                 {available.map((contact) => {
                   const value = valueOf(contact);
@@ -63,7 +63,7 @@ export default function ShareDocumentDialog({ document, onClose, onConfirm, load
             <Input id="share-recipient" dir="ltr" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder={channel === "email" ? "client@example.com" : "0501234567"} />
           </div>
           <div>
-            <Label htmlFor="share-message">הודעה נלווית (אופציונלי)</Label>
+            <Label htmlFor="share-message">{uiTranslate("הודעה נלווית (אופציונלי)")}</Label>
             <Textarea id="share-message" value={message} onChange={(e) => setMessage(e.target.value)} />
           </div>
         </div>

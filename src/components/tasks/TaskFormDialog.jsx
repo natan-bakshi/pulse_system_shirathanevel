@@ -123,7 +123,7 @@ export default function TaskFormDialog({
         <div className="space-y-4 py-2">
           {/* כותרת */}
           <div className="space-y-1.5">
-            <Label htmlFor="task-title">כותרת המשימה *</Label>
+            <Label htmlFor="task-title">{uiTranslate("כותרת המשימה *")}</Label>
             <Input
               id="task-title"
               value={form.title}
@@ -134,7 +134,7 @@ export default function TaskFormDialog({
 
           {/* תיאור */}
           <div className="space-y-1.5">
-            <Label htmlFor="task-desc">תיאור (אופציונלי)</Label>
+            <Label htmlFor="task-desc">{uiTranslate("תיאור (אופציונלי)")}</Label>
             <Textarea
               id="task-desc"
               value={form.description}
@@ -147,7 +147,7 @@ export default function TaskFormDialog({
           {/* אירוע - אם זמין */}
           {!lockEvent && (
             <div className="space-y-1.5">
-              <Label>אירוע משויך (אופציונלי)</Label>
+              <Label>{uiTranslate("אירוע משויך (אופציונלי)")}</Label>
               <Select
                 value={form.event_id || 'none'}
                 onValueChange={(v) => setForm({ ...form, event_id: v === 'none' ? '' : v })}
@@ -170,7 +170,7 @@ export default function TaskFormDialog({
           {/* תאריך + שעת יעד */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="task-due-date">תאריך יעד</Label>
+              <Label htmlFor="task-due-date">{uiTranslate("תאריך יעד")}</Label>
               <Input
                 id="task-due-date"
                 type="date"
@@ -179,7 +179,7 @@ export default function TaskFormDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="task-due-time">שעת יעד</Label>
+              <Label htmlFor="task-due-time">{uiTranslate("שעת יעד")}</Label>
               <Input
                 id="task-due-time"
                 type="time"
@@ -210,7 +210,7 @@ export default function TaskFormDialog({
 
           {/* הקצאה למנהלים */}
           <div className="space-y-1.5">
-            <Label>הקצאה למנהלים</Label>
+            <Label>{uiTranslate("הקצאה למנהלים")}</Label>
             <AdminMultiSelect
               admins={admins}
               selectedIds={form.assignee_ids}

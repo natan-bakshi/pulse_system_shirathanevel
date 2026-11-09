@@ -63,7 +63,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingDown className="h-5 w-5 text-red-600" />
-            סטטיסטיקת דחיות ספקים
+            {uiTranslate("סטטיסטיקת דחיות ספקים")}
           </DialogTitle>
         </DialogHeader>
 
@@ -72,11 +72,11 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
           <div className="flex gap-3 text-sm">
             <div className="bg-red-50 rounded-lg px-3 py-2 flex-1 text-center">
               <div className="text-xl font-bold text-red-700">{totalDeclines}</div>
-              <div className="text-xs text-red-600">דחיות סה"כ</div>
+              <div className="text-xs text-red-600">{uiTranslate("דחיות סה\"כ")}</div>
             </div>
             <div className="bg-orange-50 rounded-lg px-3 py-2 flex-1 text-center">
               <div className="text-xl font-bold text-orange-700">{declineStats.length}</div>
-              <div className="text-xs text-orange-600">ספקים שדחו</div>
+              <div className="text-xs text-orange-600">{uiTranslate("ספקים שדחו")}</div>
             </div>
           </div>
 
@@ -123,7 +123,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
                         <div className="text-gray-500 mr-4">{uiTranslate("שירות:")} {d.service_name}</div>
                         {d.declined_date && (
                           <div className="text-gray-400 mr-4">
-                            נדחה בתאריך: {format(new Date(d.declined_date), 'dd/MM/yy')}
+                            {uiTranslate("נדחה בתאריך:")} {format(new Date(d.declined_date), 'dd/MM/yy')}
                           </div>
                         )}
                         {d.reason && (

@@ -86,24 +86,23 @@ export default function WhatsAppLiveButtonSettings({active=false}){
    setOpen(value);
    if(value&&!draft&&!busy)void load();
   }}>
-  <summary className="cursor-pointer font-medium">מספר המשרד וכיתוב הכפתורים</summary>
+  <summary className="cursor-pointer font-medium">{uiTranslate("מספר המשרד וכיתוב הכפתורים")}</summary>
   <div className="pt-3 space-y-3">
    <p className="text-xs text-gray-600">
-    שינוי מספר המשרד משפיע על כפתור ״פנייה למשרד״ בהודעות חדשות.
-    מספר זה אינו בהכרח המספר שממנו Green שולח הודעות.
+    {uiTranslate("שינוי מספר המשרד משפיע על כפתור ״פנייה למשרד״ בהודעות חדשות. מספר זה אינו בהכרח המספר שממנו Green שולח הודעות.")}
    </p>
    {draft&&<>
     <div className="max-w-sm space-y-1">
-     <Label htmlFor="wa-live-office-number">WhatsApp של המשרד</Label>
+     <Label htmlFor="wa-live-office-number">{uiTranslate("WhatsApp של המשרד")}</Label>
      <Input id="wa-live-office-number" dir="ltr" inputMode="numeric"
       maxLength={15} disabled={busy} value={draft.officeNumber}
       placeholder="972501234567"
       onChange={e=>setDraft(s=>({...s,officeNumber:e.target.value.trim()}))}/>
-     <p className="text-xs text-gray-500">מספר בינלאומי בספרות בלבד. הודעות שכבר נשלחו לא ישתנו.</p>
+     <p className="text-xs text-gray-500">{uiTranslate("מספר בינלאומי בספרות בלבד. הודעות שכבר נשלחו לא ישתנו.")}</p>
     </div>
     <details open={editLabels} onToggle={e=>setEditLabels(e.currentTarget.open)}
      className="rounded border p-2">
-     <summary className="cursor-pointer text-xs font-medium">עריכת שמות הכפתורים</summary>
+     <summary className="cursor-pointer text-xs font-medium">{uiTranslate("עריכת שמות הכפתורים")}</summary>
      <div className="pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
       {REQUIRED.map(item=><div className="space-y-1" key={item.action}>
        <Label htmlFor={'wa-label-'+item.action}>{item.title}</Label>
@@ -116,7 +115,7 @@ export default function WhatsAppLiveButtonSettings({active=false}){
    </>}
    <div className="flex flex-wrap gap-2">
     <Button type="button" variant="outline" size="sm" disabled={busy}
-     onClick={load}><RefreshCw className="h-4 w-4 ml-1"/>רענן הגדרות</Button>
+     onClick={load}><RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן הגדרות")}</Button>
     <Button type="button" size="sm" disabled={busy||!draft||!saved||
       JSON.stringify({officeNumber:draft.officeNumber,policy:draft.policy})===
       JSON.stringify({officeNumber:saved.officeNumber,policy:saved.policy})}

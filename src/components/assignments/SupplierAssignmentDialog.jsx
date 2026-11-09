@@ -223,7 +223,7 @@ export default function SupplierAssignmentDialog({
             </div>
             
             <div className="space-y-2">
-              <Label>הערות לשירות</Label>
+              <Label>{uiTranslate("הערות לשירות")}</Label>
               <Textarea 
                 value={editingService.serviceNotes} 
                 onChange={(e) => setEditingService(p => ({ ...p, serviceNotes: e.target.value }))} 

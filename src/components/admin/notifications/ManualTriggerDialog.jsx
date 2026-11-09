@@ -68,7 +68,7 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
         <DialogHeader>
           <DialogTitle>{uiTranslate("שליחה ידנית:")} {template?.name}</DialogTitle>
           <DialogDescription>
-            בחר אירוע לשליחת ההתראה. הפעולה תשלח הודעות מיידית לכל הנמענים הרלוונטיים (עוקף תזמון ושעות שקט).
+            {uiTranslate("בחר אירוע לשליחת ההתראה. הפעולה תשלח הודעות מיידית לכל הנמענים הרלוונטיים (עוקף תזמון ושעות שקט).")}
           </DialogDescription>
         </DialogHeader>
         

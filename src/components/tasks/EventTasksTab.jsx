@@ -128,8 +128,8 @@ export default function EventTasksTab({ eventId, currentUser }) {
             {openTasks.length === 0 && completedTasks.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <ListChecks className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">אין משימות עדיין</p>
-                <p className="text-xs mt-1">לחץ על "משימה חדשה" כדי להוסיף</p>
+                <p className="text-sm">{uiTranslate("אין משימות עדיין")}</p>
+                <p className="text-xs mt-1">{uiTranslate("לחץ על \"משימה חדשה\" כדי להוסיף")}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -149,7 +149,7 @@ export default function EventTasksTab({ eventId, currentUser }) {
 
                 {openTasks.length === 0 && (
                   <p className="text-center text-sm text-gray-400 py-3">
-                    אין משימות פתוחות. כל הכבוד! 🎉
+                    {uiTranslate("אין משימות פתוחות. כל הכבוד! 🎉")}
                   </p>
                 )}
               </div>

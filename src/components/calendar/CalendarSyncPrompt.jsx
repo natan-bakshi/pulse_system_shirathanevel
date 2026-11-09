@@ -62,8 +62,7 @@ export default function CalendarSyncPrompt({ user }) {
             </div>
             <div className="p-4 space-y-3" dir="rtl">
               <p className="text-sm text-gray-700 leading-relaxed">
-                היי! 👋 האם תרצה לסנכרן את האירועים שלך עם יומן Google? 
-                כך תוכל לראות את כל האירועים שלך ישירות ביומן הטלפון.
+                {uiTranslate("היי! 👋 האם תרצה לסנכרן את האירועים שלך עם יומן Google? כך תוכל לראות את כל האירועים שלך ישירות ביומן הטלפון.")}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -71,7 +70,7 @@ export default function CalendarSyncPrompt({ user }) {
                   className="flex-1 bg-red-800 hover:bg-red-700 text-white text-sm"
                   size="sm"
                 >
-                  אני אשמח! 🎉
+                  {uiTranslate("אני אשמח! 🎉")}
                 </Button>
                 <Button
                   onClick={handleDismiss}
@@ -79,7 +78,7 @@ export default function CalendarSyncPrompt({ user }) {
                   className="flex-1 text-sm border-gray-300"
                   size="sm"
                 >
-                  לא כרגע, תודה!
+                  {uiTranslate("לא כרגע, תודה!")}
                 </Button>
               </div>
             </div>
@@ -94,7 +93,7 @@ export default function CalendarSyncPrompt({ user }) {
             <div className="bg-gradient-to-l from-amber-600 to-amber-500 px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-white" />
-                <span className="text-white font-bold text-sm">לידיעתך</span>
+                <span className="text-white font-bold text-sm">{uiTranslate("לידיעתך")}</span>
               </div>
               <button onClick={handleCloseFollowUp} className="text-white/80 hover:text-white">
                 <X className="h-4 w-4" />
@@ -102,8 +101,7 @@ export default function CalendarSyncPrompt({ user }) {
             </div>
             <div className="p-4" dir="rtl">
               <p className="text-sm text-gray-700 leading-relaxed">
-                אין בעיה! כרגע האירועים שלך לא יסונכרנו ליומן Google. 
-                אם תשנה את דעתך בעתיד, תמיד תוכל להפעיל סנכרון דרך <strong>{uiTranslate("הגדרות משתמש")}</strong> 📱
+                {uiTranslate("אין בעיה! כרגע האירועים שלך לא יסונכרנו ליומן Google. אם תשנה את דעתך בעתיד, תמיד תוכל להפעיל סנכרון דרך")} <strong>{uiTranslate("הגדרות משתמש")}</strong> 📱
               </p>
               <Button
                 onClick={handleCloseFollowUp}
@@ -111,7 +109,7 @@ export default function CalendarSyncPrompt({ user }) {
                 className="mt-3 w-full text-sm"
                 size="sm"
               >
-                הבנתי, תודה!
+                {uiTranslate("הבנתי, תודה!")}
               </Button>
             </div>
           </div>

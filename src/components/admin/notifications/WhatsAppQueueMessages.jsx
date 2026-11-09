@@ -187,7 +187,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
             <td className="p-2">{row.attemptCount||0}</td>
             <td className="p-2"><div className="flex gap-1 flex-wrap">
               <Button variant="ghost" size="sm" onClick={()=>openAction(row,'inspect')} disabled={busy}><Eye className="h-4 w-4 ml-1"/>{uiTranslate("פרטים")}</Button>
-              {row.canCancel&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'cancel')} disabled={busy}>בטל</Button>}
+              {row.canCancel&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'cancel')} disabled={busy}>{uiTranslate("בטל")}</Button>}
               {row.canRetry&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'retry')} disabled={busy}><RotateCcw className="h-3 w-3 ml-1"/>{uiTranslate("נסה שוב")}</Button>}
               {row.canResolve&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'resolve')} disabled={busy}>{uiTranslate("טופל ידנית")}</Button>}
               {row.canArchive&&!row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'archive')} disabled={busy}>{uiTranslate("ארכיון")}</Button>}

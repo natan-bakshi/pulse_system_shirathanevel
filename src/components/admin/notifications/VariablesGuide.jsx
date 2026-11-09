@@ -5,9 +5,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Copy, Variable } from "lucide-react";
 import { toast } from "sonner";
 import { AVAILABLE_VARIABLES } from "./constants";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // Popover עם רשימת המשתנים - מוצג ליד שדה טקסט
 export default function VariablesGuide({ onInsert }) {
+  const {t: uiTranslate}=useLanguage();
   const handleClick = (variable) => {
     const text = `{{${variable}}}`;
     if (onInsert) {
@@ -29,13 +31,13 @@ export default function VariablesGuide({ onInsert }) {
           title="הצג רשימת משתנים זמינים"
         >
           <Variable className="h-3.5 w-3.5 ml-1" />
-          משתנים זמינים
+          {uiTranslate("משתנים זמינים")}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3" side="top" align="end">
         <div className="space-y-2">
           <div>
-            <h4 className="font-medium text-sm mb-1">משתנים זמינים</h4>
+            <h4 className="font-medium text-sm mb-1">{uiTranslate("משתנים זמינים")}</h4>
             <p className="text-xs text-gray-500">
               {onInsert ? 'לחץ על משתנה כדי להוסיפו לטקסט' : 'לחץ כדי להעתיק'}
             </p>
@@ -56,7 +58,7 @@ export default function VariablesGuide({ onInsert }) {
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p className="font-medium text-xs">{info.description}</p>
-                    <p className="text-[10px] text-gray-400">דוגמה: {info.example}</p>
+                    <p className="text-[10px] text-gray-400">{uiTranslate("דוגמה:")} {info.example}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

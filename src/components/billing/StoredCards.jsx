@@ -123,7 +123,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
   return <Card dir="rtl" className="bg-white">
     <CardHeader><CardTitle>{uiTranslate("הכרטיס השמור של הלקוח")}</CardTitle></CardHeader>
     <CardContent className="space-y-3">
-      {isLoading ? <p>טוען...</p> : error ? <p role="alert" className="text-red-700">{errorText(error)}</p> : <>
+      {isLoading ? <p>{uiTranslate("טוען...")}</p> : error ? <p role="alert" className="text-red-700">{errorText(error)}</p> : <>
         <p>{customer ? customer.name + " — " + cardLabel(card) : "יש לקשר לקוח משלם כדי לשמור כרטיס משותף לאירועים שלו."}</p>
         {card?.environment === "qa" && <p className="text-amber-800">{uiTranslate("כרטיס בדיקה בסביבת QA")}</p>}
         {card?.cleanup_pending && <div className="rounded border border-amber-400 bg-amber-50 p-3">
@@ -197,7 +197,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
               <Input aria-label={uiTranslate("חיפוש לקוח משלם")} value={customerSearch} onChange={e => setCustomerSearch(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") run(() => loadCustomers(false, customerSearch)); }}
                 placeholder={uiTranslate("חיפוש לפי שם, טלפון, אימייל או מזהה")} />
-              <Button type="button" variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(false, customerSearch))}>חפש</Button>
+              <Button type="button" variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(false, customerSearch))}>{uiTranslate("חפש")}</Button>
             </div>
             <label className="block">{uiTranslate("לקוח קיים")}<select className={inputClass} value={selected} onChange={e => setSelected(e.target.value)}>
               <option value="">{uiTranslate("בחר לקוח")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>)}
@@ -332,7 +332,7 @@ export function StoredCardsManager() {
     <div className="flex gap-2">
       <Input aria-label={uiTranslate("חיפוש ברשימת לקוחות משלמים")} value={searchInput} onChange={e => setSearchInput(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter") runSearch(); }} placeholder={uiTranslate("חיפוש לפי שם, טלפון, אימייל או מזהה")} />
-      <Button type="button" variant="outline" disabled={busy} onClick={runSearch}>חפש</Button>
+      <Button type="button" variant="outline" disabled={busy} onClick={runSearch}>{uiTranslate("חפש")}</Button>
     </div>
     <div className="flex flex-wrap gap-2">
       <Button variant="outline" disabled={busy} onClick={selectAll}>{uiTranslate("בחר את כל התוצאות")}</Button>
@@ -341,7 +341,7 @@ export function StoredCardsManager() {
       <Button variant="outline" className="text-red-700 border-red-300" disabled={busy || !selected.size} onClick={deleteSelected}>{uiTranslate("מחק")} {selected.size} {uiTranslate("לקוחות")}</Button>
       <Button variant="ghost" disabled={busy} onClick={() => refetch()}>{uiTranslate("רענן")}</Button>
     </div>
-    {isLoading && <p>טוען...</p>}{error && <p role="alert">{errorText(error)}</p>}
+    {isLoading && <p>{uiTranslate("טוען...")}</p>}{error && <p role="alert">{errorText(error)}</p>}
     <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th>{uiTranslate("בחירה")}</th><th>{uiTranslate("לקוח")}</th><th>{uiTranslate("כרטיס")}</th><th>{uiTranslate("אירועים")}</th><th>{uiTranslate("מצב כרטיס")}</th></tr></thead>
       <tbody>{data?.rows.map(row => <tr key={row.customer.id} className="border-t"><td className="py-3"><input aria-label={"בחר " + row.customer.name} type="checkbox" disabled={busy} checked={selected.has(row.customer.id)} onChange={() => toggle(row)} /></td>
         <td>{row.customer.name}</td><td>{cardLabel(row.card)}{row.card?.environment === "qa" && " (QA)"}</td>

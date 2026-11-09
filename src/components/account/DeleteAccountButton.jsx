@@ -31,7 +31,7 @@ export default function DeleteAccountButton() {
         onClick={() => setShowDialog(true)}
       >
         <Trash2 className="h-4 w-4 ml-2" />
-        מחק חשבון
+        {uiTranslate("מחק חשבון")}
       </Button>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -39,12 +39,12 @@ export default function DeleteAccountButton() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-700">
               <AlertTriangle className="h-5 w-5" />
-              מחיקת חשבון
+              {uiTranslate("מחיקת חשבון")}
             </DialogTitle>
             <DialogDescription className="text-right pt-2">
-              פעולה זו תמחק את החשבון שלך לצמיתות. לא ניתן לבטל פעולה זו.
+              {uiTranslate("פעולה זו תמחק את החשבון שלך לצמיתות. לא ניתן לבטל פעולה זו.")}
               <br />
-              נתוני האירועים והשיבוצים שלך לא ימחקו.
+              {uiTranslate("נתוני האירועים והשיבוצים שלך לא ימחקו.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -53,7 +53,7 @@ export default function DeleteAccountButton() {
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Trash2 className="h-4 w-4 ml-2" />}
-              מחק את החשבון שלי
+              {uiTranslate("מחק את החשבון שלי")}
             </Button>
           </DialogFooter>
         </DialogContent>

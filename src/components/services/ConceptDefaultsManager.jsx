@@ -106,7 +106,7 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices, a
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>ניהול ברירות מחדל לפי קונספט</DialogTitle>
+          <DialogTitle>{uiTranslate("ניהול ברירות מחדל לפי קונספט")}</DialogTitle>
         </DialogHeader>
         {loading ? (
           <div className="flex-grow flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -132,7 +132,7 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices, a
                   </div>
                   {allPackages.length > 0 && (
                     <>
-                      <Label className="flex items-center gap-1"><PackageIcon className="h-4 w-4 text-purple-600" />בחר חבילות:</Label>
+                      <Label className="flex items-center gap-1"><PackageIcon className="h-4 w-4 text-purple-600" />{uiTranslate("בחר חבילות:")}</Label>
                       <div className="max-h-32 overflow-y-auto border rounded-md p-2 mt-1 mb-3 space-y-1 bg-purple-50/50">
                           {allPackages.map(pkg => (
                             <div key={pkg.id} className="flex items-center space-x-2 space-x-reverse">
@@ -149,7 +149,7 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices, a
                       </div>
                     </>
                   )}
-                  <Label>בחר שירותים בודדים:</Label>
+                  <Label>{uiTranslate("בחר שירותים בודדים:")}</Label>
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2 mt-1 space-y-1">
                       {allServices.map(service => (
                         <div key={service.id} className="flex items-center space-x-2 space-x-reverse">

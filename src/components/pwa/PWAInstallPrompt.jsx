@@ -49,6 +49,7 @@ function getDeviceInfo() {
 }
 
 export default function PWAInstallPrompt() {
+  const {t: uiTranslate}=useLanguage();
   const [visible, setVisible] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
@@ -142,7 +143,7 @@ export default function PWAInstallPrompt() {
           <Download className="h-6 w-6 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 text-sm sm:text-base">התקן את האפליקציה</h3>
+          <h3 className="font-bold text-gray-900 text-sm sm:text-base">{uiTranslate("התקן את האפליקציה")}</h3>
           <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
             {deferredPrompt
               ? "התקן את האפליקציה למסך הבית לגישה מהירה"
@@ -163,7 +164,7 @@ export default function PWAInstallPrompt() {
               onClick={handleDismiss}
               className="text-gray-500 text-xs sm:text-sm"
             >
-              לא עכשיו
+              {uiTranslate("לא עכשיו")}
             </Button>
           </div>
         </div>
@@ -213,7 +214,7 @@ function ManualInstallGuide({ deviceInfo, step, setStep, onClose }) {
             ) : (
               <Monitor className="h-5 w-5" />
             )}
-            <h2 className="font-bold text-base">התקנת האפליקציה</h2>
+            <h2 className="font-bold text-base">{uiTranslate("התקנת האפליקציה")}</h2>
           </div>
           <button onClick={onClose} className="text-white/80 hover:text-white p-1">
             <X className="h-5 w-5" />
@@ -243,7 +244,7 @@ function ManualInstallGuide({ deviceInfo, step, setStep, onClose }) {
               {steps[step]?.icon}
             </div>
             <h3 className="font-bold text-gray-900 text-lg mb-2">
-              שלב {step + 1}: {steps[step]?.title}
+              {uiTranslate("שלב")} {step + 1}: {steps[step]?.title}
             </h3>
             <p className="text-gray-600 text-sm leading-relaxed">
               {steps[step]?.description}
@@ -283,7 +284,7 @@ function ManualInstallGuide({ deviceInfo, step, setStep, onClose }) {
               onClick={onClose}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
-              הבנתי, תודה!
+              {uiTranslate("הבנתי, תודה!")}
             </Button>
           )}
         </div>

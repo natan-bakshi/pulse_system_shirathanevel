@@ -12,7 +12,7 @@ export default function ManualDocumentButton({ paymentId, onCreate, loading }) {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="ml-2" disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Receipt className="h-4 w-4 ml-2" />}
-          הפק מסמך
+          {uiTranslate("הפק מסמך")}
           <ChevronDown className="h-4 w-4 mr-1" />
         </Button>
       </DropdownMenuTrigger>

@@ -75,7 +75,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
           <MessageSquare className="h-3.5 w-3.5" />
-          <span>הערות ({(notes || []).length})</span>
+          <span>{uiTranslate("הערות (")}{(notes || []).length})</span>
         </div>
         {!isAdding && (
           <Button
@@ -86,7 +86,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
             className="h-7 text-xs"
           >
             <Plus className="h-3 w-3 ml-1" />
-            הוסף הערה
+            {uiTranslate("הוסף הערה")}
           </Button>
         )}
       </div>
@@ -128,7 +128,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
 
       {/* רשימת הערות קיימות */}
       {(notes || []).length === 0 && !isAdding ? (
-        <p className="text-xs text-gray-400 italic py-1">אין הערות עדיין</p>
+        <p className="text-xs text-gray-400 italic py-1">{uiTranslate("אין הערות עדיין")}</p>
       ) : (
         <div className="space-y-2">
           {(notes || []).map(note => (
@@ -176,7 +176,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
                       <span className="mx-1">·</span>
                       <span>{formatDate(note.created_at)}</span>
                       {note.updated_at && note.updated_at !== note.created_at && (
-                        <span className="mr-1 italic">(עודכן)</span>
+                        <span className="mr-1 italic">{uiTranslate("(עודכן)")}</span>
                       )}
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -30,7 +30,7 @@ export default function AddServiceToPackageDraftDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>הוספת שירות לחבילה{packageName ? `: ${packageName}` : ''}</DialogTitle>
+          <DialogTitle>{uiTranslate("הוספת שירות לחבילה")}{packageName ? `: ${packageName}` : ''}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
@@ -46,7 +46,7 @@ export default function AddServiceToPackageDraftDialog({
             </div>
             <div className="space-y-2 max-h-64 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y border rounded p-2">
               {filteredServices.length === 0 ? (
-                <div className="text-center text-gray-500 text-sm py-3">לא נמצאו שירותים זמינים</div>
+                <div className="text-center text-gray-500 text-sm py-3">{uiTranslate("לא נמצאו שירותים זמינים")}</div>
               ) : (
                 filteredServices.map(service => (
                   <div key={service.id} className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export default function AddServiceToPackageDraftDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(''); }}>{uiTranslate("ביטול")}</Button>
-          <Button onClick={onAdd} disabled={selected.length === 0} className="bg-red-800 hover:bg-red-700">הוסף לחבילה</Button>
+          <Button onClick={onAdd} disabled={selected.length === 0} className="bg-red-800 hover:bg-red-700">{uiTranslate("הוסף לחבילה")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

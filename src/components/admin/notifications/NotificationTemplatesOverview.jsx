@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Bell } from "lucide-react";
 import NotificationTemplateCard from "./NotificationTemplateCard";
 import { CATEGORIES } from "./constants";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // סקירה כללית של כל התבניות - מקובצות לפי קטגוריה
 export default function NotificationTemplatesOverview({ 
@@ -14,6 +15,7 @@ export default function NotificationTemplatesOverview({
   onManualTrigger,
   onEditButtons
 }) {
+  const {t: uiTranslate}=useLanguage();
   // קיבוץ לפי קטגוריה
   const groupedTemplates = templates.reduce((acc, t) => {
     const cat = t.category || 'system';
@@ -35,7 +37,7 @@ export default function NotificationTemplatesOverview({
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
         <CardContent className="py-8 text-center text-gray-500">
           <Bell className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p>אין תבניות התראה. לחץ על "תבנית חדשה" ליצירת תבנית ראשונה.</p>
+          <p>{uiTranslate("אין תבניות התראה. לחץ על \"תבנית חדשה\" ליצירת תבנית ראשונה.")}</p>
         </CardContent>
       </Card>
     );

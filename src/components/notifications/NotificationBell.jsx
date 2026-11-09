@@ -151,7 +151,7 @@ export default function NotificationBell({ user }) {
           <span className="font-semibold text-sm">{uiTranslate("התראות")}</span>
           {unreadCount > 0 && (
             <Badge variant="secondary" className="text-xs">
-              {unreadCount} חדשות
+              {unreadCount} {uiTranslate("חדשות")}
             </Badge>
           )}
         </div>
@@ -159,12 +159,12 @@ export default function NotificationBell({ user }) {
         <ScrollArea className="h-[350px]">
           {isLoading ? (
             <div className="p-4 text-center text-gray-500 text-sm">
-              טוען התראות...
+              {uiTranslate("טוען התראות...")}
             </div>
           ) : notifications.length === 0 ? (
             <div className="p-6 text-center text-gray-500">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">אין התראות</p>
+              <p className="text-sm">{uiTranslate("אין התראות")}</p>
             </div>
           ) : (
             notifications.map((notification) => (
@@ -231,7 +231,7 @@ export default function NotificationBell({ user }) {
                 {unreadCount === 0 ? (
                   <span className="flex items-center justify-center gap-1">
                     <Check className="h-3 w-3" />
-                    כל ההתראות נקראו
+                    {uiTranslate("כל ההתראות נקראו")}
                   </span>
                 ) : (
                   `לחיצה על הפעמון מסמנת הכל כנקרא`

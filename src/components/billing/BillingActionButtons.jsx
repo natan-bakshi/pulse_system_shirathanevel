@@ -13,7 +13,7 @@ export default function BillingActionButtons({ onImmediateClearing, onPaymentLin
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button className="bg-red-800 text-white hover:bg-red-900">
-            <CreditCard className="ml-2 h-4 w-4" />סליקה<ChevronDown className="mr-1 h-4 w-4" />
+            <CreditCard className="ml-2 h-4 w-4" />{uiTranslate("סליקה")}<ChevronDown className="mr-1 h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[240px]">
@@ -25,7 +25,7 @@ export default function BillingActionButtons({ onImmediateClearing, onPaymentLin
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button className="bg-red-800 text-white hover:bg-red-900">
-            <FilePlus className="ml-2 h-4 w-4" />הפקת מסמך<ChevronDown className="mr-1 h-4 w-4" />
+            <FilePlus className="ml-2 h-4 w-4" />{uiTranslate("הפקת מסמך")}<ChevronDown className="mr-1 h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[220px]">

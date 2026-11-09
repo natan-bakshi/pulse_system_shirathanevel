@@ -88,7 +88,7 @@ export default function CalendarSettings({ onSettingsChange, onClose }) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <Label>בחר אילו סטטוסי אירועים יוצגו בדשבורד ובלוח השנה:</Label>
+          <Label>{uiTranslate("בחר אילו סטטוסי אירועים יוצגו בדשבורד ובלוח השנה:")}</Label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {EVENT_STATUS_OPTIONS.map(option => (
               <div key={option.value} className="flex items-center space-x-2 space-x-reverse">

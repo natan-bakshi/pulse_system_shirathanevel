@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle, CheckCircle, MessageCircle, RefreshCw, Save } from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const names = {
   connected: 'מחובר', connecting: 'בתהליך התחברות', need_scan: 'ממתין לסריקת QR',
@@ -16,6 +17,7 @@ const titleFor = provider => provider === 'wasender' ? 'WasenderAPI' : 'Green AP
 // Used only in the protected system settings page. Switching requires explicit save,
 // and the server independently verifies authorization, credentials and session status.
 export default function WhatsAppProviderStatus() {
+  const {t: uiTranslate}=useLanguage();
   const [status, setStatus] = useState(null);
   const [choice, setChoice] = useState('green');
   const [busy, setBusy] = useState(false);
@@ -83,9 +85,9 @@ export default function WhatsAppProviderStatus() {
 
   return (
     <section className="space-y-4" dir="rtl" aria-label="ספק WhatsApp">
-      <p className="text-sm text-gray-600">הבחירה כאן משפיעה על שליחת הודעות שיבוץ, התראות, קישורים וחשבוניות — כולל תהליכים אוטומטיים. לא מתבצע מעבר אוטומטי בעקבות כשל, כדי למנוע הודעות כפולות.</p>
+      <p className="text-sm text-gray-600">{uiTranslate("הבחירה כאן משפיעה על שליחת הודעות שיבוץ, התראות, קישורים וחשבוניות — כולל תהליכים אוטומטיים. לא מתבצע מעבר אוטומטי בעקבות כשל, כדי למנוע הודעות כפולות.")}</p>
       <div className="space-y-2 max-w-sm">
-        <Label htmlFor="whatsapp-default-provider">ספק WhatsApp ברירת המחדל</Label>
+        <Label htmlFor="whatsapp-default-provider">{uiTranslate("ספק WhatsApp ברירת המחדל")}</Label>
         <Select value={choice} onValueChange={value => { setChoice(value); setError(''); setNotice(''); }} disabled={loading || busy}>
           <SelectTrigger id="whatsapp-default-provider"><SelectValue placeholder={loading ? 'טוען...' : 'בחר ספק'} /></SelectTrigger>
           <SelectContent>
@@ -109,12 +111,12 @@ export default function WhatsAppProviderStatus() {
         <div className="rounded-lg border bg-gray-50 p-3 text-sm space-y-1">
           <p><MessageCircle className="inline h-4 w-4 ml-1" />Green API: {status.greenConfigured ? 'מפתחות מוגדרים' : 'מפתחות חסרים'}</p>
           <p>WasenderAPI: {status.wasenderConfigured ? 'מפתח סשן הוגדר' : 'מפתח סשן חסר'}</p>
-          {status.wasender && <p>מצב הסשן ב־WasenderAPI: <strong>{names[status.wasender.status] || status.wasender.status}</strong></p>}
-          {!status.wasenderConfigured && <p className="text-amber-700">יש להדביק את מפתח הסשן ב־Base44 Secrets בשם WASENDER_API_KEY. אין להכניס מפתחות ל־GitHub או לצ'אט.</p>}
+          {status.wasender && <p>{uiTranslate("מצב הסשן ב־WasenderAPI:")} <strong>{names[status.wasender.status] || status.wasender.status}</strong></p>}
+          {!status.wasenderConfigured && <p className="text-amber-700">{uiTranslate("יש להדביק את מפתח הסשן ב־Base44 Secrets בשם WASENDER_API_KEY. אין להכניס מפתחות ל־GitHub או לצ'אט.")}</p>}
         </div>
       )}
-      <p className="text-xs text-gray-600">ויסות הקצב מנוהל במנגנון תור WhatsApp המרכזי שמתחת. בחירת ספק משנה את יעד השליחה בלבד, לא את הגדרות ההמתנה.</p>
-      <p className="text-xs text-gray-500">בחירת הספק נשמרת כאן מיד בלחיצה על ״שמור ספק ברירת מחדל״ — אין צורך בלחצן השמירה הכללי. שינוי הספק אינו שולח מחדש הודעות שכבר נכשלו ואינו מנתק מכשירים.</p>
+      <p className="text-xs text-gray-600">{uiTranslate("ויסות הקצב מנוהל במנגנון תור WhatsApp המרכזי שמתחת. בחירת ספק משנה את יעד השליחה בלבד, לא את הגדרות ההמתנה.")}</p>
+      <p className="text-xs text-gray-500">{uiTranslate("בחירת הספק נשמרת כאן מיד בלחיצה על ״שמור ספק ברירת מחדל״ — אין צורך בלחצן השמירה הכללי. שינוי הספק אינו שולח מחדש הודעות שכבר נכשלו ואינו מנתק מכשירים.")}</p>
     </section>
   );
 }

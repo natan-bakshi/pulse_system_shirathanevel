@@ -87,7 +87,7 @@ export default function AdminMultiSelect({ admins = [], selectedIds = [], onChan
           </div>
           <div className="max-h-[240px] overflow-y-auto">
             {filteredAdmins.length === 0 ? (
-              <div className="p-4 text-center text-sm text-gray-500">לא נמצאו מנהלים</div>
+              <div className="p-4 text-center text-sm text-gray-500">{uiTranslate("לא נמצאו מנהלים")}</div>
             ) : (
               filteredAdmins.map(admin => (
                 <div
@@ -117,14 +117,14 @@ export default function AdminMultiSelect({ admins = [], selectedIds = [], onChan
                 onClick={() => onChange([])}
                 className="text-xs h-7"
               >
-                נקה
+                {uiTranslate("נקה")}
               </Button>
             </div>
           )}
         </PopoverContent>
       </Popover>
       <p className="text-xs text-gray-500">
-        ללא בחירה - המשימה תופיע לכל המנהלים
+        {uiTranslate("ללא בחירה - המשימה תופיע לכל המנהלים")}
       </p>
     </div>
   );

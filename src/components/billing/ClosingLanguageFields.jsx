@@ -24,8 +24,8 @@ export default function ClosingLanguageFields({ settings, onChange }) {
       <Switch aria-label="החלפת שפת עריכת נוסח הסגירה" checked={english} onCheckedChange={checked => setLanguage(checked ? "en" : "he")} />
       <span className={english ? "font-semibold" : "text-gray-500"}>English</span>
     </div>
-    <p className="text-sm text-gray-600">המתג משנה רק את שפת העריכה כאן; שפת הטופס וההודעות כברירת מחדל נקבעת בבחירות שלמעלה. כל נוסח נשמר בנפרד בלחיצה על „שמור הגדרות חיוב”.</p>
-    <p className="text-sm text-gray-600">תנאי ההתקשרות הם נוסח ההסכם; הרשאות הגבייה והשינויים הם סעיפים שהלקוח מאשר; התזכורת, ההזמנה וקוד האימות הם הודעות ללקוח; כותרת העותק החתום מופיעה בהודעה המצורפת למסמך.</p>
+    <p className="text-sm text-gray-600">{uiTranslate("המתג משנה רק את שפת העריכה כאן; שפת הטופס וההודעות כברירת מחדל נקבעת בבחירות שלמעלה. כל נוסח נשמר בנפרד בלחיצה על „שמור הגדרות חיוב”.")}</p>
+    <p className="text-sm text-gray-600">{uiTranslate("תנאי ההתקשרות הם נוסח ההסכם; הרשאות הגבייה והשינויים הם סעיפים שהלקוח מאשר; התזכורת, ההזמנה וקוד האימות הם הודעות ללקוח; כותרת העותק החתום מופיעה בהודעה המצורפת למסמך.")}</p>
     <p className="text-sm text-gray-600">{english ? "English terms must be reviewed and saved before the English form can be used." : "אם תנאי ההתקשרות בעברית ריקים, תוצג תבנית ההסכם הקיימת."}</p>
     {fields.map(([base, heLabel, enLabel, linked]) => {
       const key = base + (english ? "_en" : "");
@@ -35,7 +35,7 @@ export default function ClosingLanguageFields({ settings, onChange }) {
         ? <ClosingLinkedField key={key} label={label} dir={english ? "ltr" : "rtl"} value={value} onChange={v => onChange(key, v)} />
         : <label key={key} className="block">{label}<textarea dir={english ? "ltr" : "rtl"} rows={3} className="block w-full border rounded p-2 bg-white mt-1" value={value} onChange={e => onChange(key, e.target.value)} /></label>;
     })}
-    <p className="text-xs break-words">משתני תזכורת: {"{{customer_name}}, {{event_name}}, {{amount}}, {{currency}}, {{due_date}}, {{business_phone}}"}</p>
-    <p className="text-xs break-words">משתני הודעות: {"{{customer_name}}, {{event_name}}, {{link}}, {{code}}"}</p>
+    <p className="text-xs break-words">{uiTranslate("משתני תזכורת:")} {"{{customer_name}}, {{event_name}}, {{amount}}, {{currency}}, {{due_date}}, {{business_phone}}"}</p>
+    <p className="text-xs break-words">{uiTranslate("משתני הודעות:")} {"{{customer_name}}, {{event_name}}, {{link}}, {{code}}"}</p>
   </div>;
 }

@@ -431,7 +431,7 @@ export default function AdminDashboard() {
                   <Calendar className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Events Board':<>לוח<br/>{uiTranslate("אירועים")}</>}</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Events Board':<>{uiTranslate("לוח")}<br/>{uiTranslate("אירועים")}</>}</span>
             </button>
 
             {/* My Tasks */}
@@ -444,7 +444,7 @@ export default function AdminDashboard() {
                   <ListChecks className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'My Tasks':<>המשימות<br/>שלי</>}</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'My Tasks':<>{uiTranslate("המשימות")}<br/>{uiTranslate("שלי")}</>}</span>
             </button>
             
             {/* Bar Mitzvah Calculator */}
@@ -457,7 +457,7 @@ export default function AdminDashboard() {
                   <Calculator className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Bar Mitzvah Calculator':<>מחשבון<br/>{uiTranslate("בר מצווה")}</>}</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Bar Mitzvah Calculator':<>{uiTranslate("מחשבון")}<br/>{uiTranslate("בר מצווה")}</>}</span>
             </button>
 
             {/* Dashboard Settings */}

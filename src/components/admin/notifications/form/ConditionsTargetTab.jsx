@@ -76,7 +76,7 @@ export default function ConditionsTargetTab({ template, onChange }) {
       <div className="border rounded-lg p-3 bg-gray-50">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <h4 className="font-medium text-sm text-gray-700">תנאים נוספים</h4>
+            <h4 className="font-medium text-sm text-gray-700">{uiTranslate("תנאים נוספים")}</h4>
             <div className="flex bg-gray-100 rounded p-0.5">
               <button
                 type="button"
@@ -87,7 +87,7 @@ export default function ConditionsTargetTab({ template, onChange }) {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                גם (AND)
+                {uiTranslate("גם (AND)")}
               </button>
               <button
                 type="button"
@@ -98,7 +98,7 @@ export default function ConditionsTargetTab({ template, onChange }) {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                או (OR)
+                {uiTranslate("או (OR)")}
               </button>
             </div>
           </div>
@@ -110,13 +110,13 @@ export default function ConditionsTargetTab({ template, onChange }) {
             onClick={() => updateConditions([...conditions, { field: 'status', operator: 'equals', value: '' }])}
           >
             <Plus className="h-3 w-3 ml-1" />
-            הוסף תנאי
+            {uiTranslate("הוסף תנאי")}
           </Button>
         </div>
         
         <div className="space-y-2">
           {conditions.length === 0 && (
-            <p className="text-xs text-gray-400 italic">לא הוגדרו תנאים נוספים</p>
+            <p className="text-xs text-gray-400 italic">{uiTranslate("לא הוגדרו תנאים נוספים")}</p>
           )}
           
           {conditions.map((condition, idx) => (

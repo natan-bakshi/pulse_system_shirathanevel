@@ -52,8 +52,8 @@ export default function ContactSettingsEditor({ value, onChange }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">אנשי קשר שיופיעו ללקוחות וספקים</h3>
-          <p className="text-xs text-gray-500">כל אייקון יוצג רק אם הופעל כאן וקיים עבורו מספר או מייל.</p>
+          <h3 className="text-sm font-semibold text-gray-900">{uiTranslate("אנשי קשר שיופיעו ללקוחות וספקים")}</h3>
+          <p className="text-xs text-gray-500">{uiTranslate("כל אייקון יוצג רק אם הופעל כאן וקיים עבורו מספר או מייל.")}</p>
         </div>
         <div className="flex items-center gap-2">
           <ContactPicker
@@ -61,12 +61,12 @@ export default function ContactSettingsEditor({ value, onChange }) {
             className="h-9 w-9 border border-red-200 text-red-800 hover:bg-red-50"
           />
           <Button type="button" variant="outline" onClick={addContact} className="border-red-200 text-red-800 hover:bg-red-50">
-            <Plus className="h-4 w-4 ml-2" />הוסף איש קשר
+            <Plus className="h-4 w-4 ml-2" />{uiTranslate("הוסף איש קשר")}
           </Button>
         </div>
       </div>
 
-      {contacts.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-500">לא הוגדרו אנשי קשר להצגה.</div>}
+      {contacts.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-500">{uiTranslate("לא הוגדרו אנשי קשר להצגה.")}</div>}
 
       {contacts.map((contact, index) => {
         const isExpanded = expandedContactId === contact.id;
@@ -91,11 +91,11 @@ export default function ContactSettingsEditor({ value, onChange }) {
               <div className="border-t p-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor={`contact-name-${contact.id}`}>שם</Label>
+                    <Label htmlFor={`contact-name-${contact.id}`}>{uiTranslate("שם")}</Label>
                     <Input id={`contact-name-${contact.id}`} value={contact.name} onChange={e => updateContact(contact.id, { name: e.target.value })} />
                   </div>
                   <div>
-                    <Label htmlFor={`contact-role-${contact.id}`}>תפקיד / תיאור קצר</Label>
+                    <Label htmlFor={`contact-role-${contact.id}`}>{uiTranslate("תפקיד / תיאור קצר")}</Label>
                     <Input id={`contact-role-${contact.id}`} value={contact.role} onChange={e => updateContact(contact.id, { role: e.target.value })} />
                   </div>
                   <div>
@@ -103,13 +103,13 @@ export default function ContactSettingsEditor({ value, onChange }) {
                     <Input id={`contact-phone-${contact.id}`} value={contact.phone} onChange={e => updateContact(contact.id, { phone: e.target.value })} dir="ltr" />
                   </div>
                   <div>
-                    <Label htmlFor={`contact-email-${contact.id}`}>מייל</Label>
+                    <Label htmlFor={`contact-email-${contact.id}`}>{uiTranslate("מייל")}</Label>
                     <Input id={`contact-email-${contact.id}`} value={contact.email} onChange={e => updateContact(contact.id, { email: e.target.value })} dir="ltr" />
                   </div>
                 </div>
 
                 <ToggleGroup title={uiTranslate("טלפון")} items={phoneToggles} contact={contact} onChange={updateContact} />
-                <ToggleGroup title="מייל" items={emailToggles} contact={contact} onChange={updateContact} />
+                <ToggleGroup title={uiTranslate("מייל")} items={emailToggles} contact={contact} onChange={updateContact} />
               </div>
             )}
           </div>

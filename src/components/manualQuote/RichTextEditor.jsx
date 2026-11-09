@@ -35,12 +35,14 @@ import Highlight from '@tiptap/extension-highlight';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import RichTextToolbar from './RichTextToolbar';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * עורך טקסט עשיר מבוסס Tiptap, עם תמיכה מלאה ב-RTL/LTR ובכל יכולות העיצוב.
  * כל ה-extensions מוגדרים פעם אחת ברשימה אחת מסודרת.
  */
 export default function RichTextEditor({ value, onChange, placeholder = 'הקלד כאן...', minHeight = 200 }) {
+  const {t: uiTranslate}=useLanguage();
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -92,7 +94,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'הקל�
   if (!editor) {
     return (
       <div className="border rounded-lg p-3 bg-gray-50 text-gray-400 text-center">
-        טוען עורך...
+        {uiTranslate("טוען עורך...")}
       </div>
     );
   }

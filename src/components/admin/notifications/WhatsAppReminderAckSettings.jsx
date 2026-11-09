@@ -51,20 +51,18 @@ export default function WhatsAppReminderAckSettings(){
    if(e.currentTarget.open&&!status&&!busy)void load();
   }}>
   <summary className="cursor-pointer font-semibold text-base">
-   אישור קבלת תזכורת — כפתור ״קיבלתי״
+   {uiTranslate("אישור קבלת תזכורת — כפתור ״קיבלתי״")}
   </summary>
   <div className="space-y-3 pt-3">
    <p className="text-gray-600">
-    בתזכורות אירוע לספקים אפשר להוסיף ״קיבלתי״ לצד הכניסה למערכת והפנייה למשרד.
-    בלחיצה, המערכת רושמת שהתזכורת התקבלה ושולחת אישור חוזר ב־WhatsApp.
-    הכפתור אינו מאשר או דוחה שיבוץ.
+    {uiTranslate("בתזכורות אירוע לספקים אפשר להוסיף ״קיבלתי״ לצד הכניסה למערכת והפנייה למשרד. בלחיצה, המערכת רושמת שהתזכורת התקבלה ושולחת אישור חוזר ב־WhatsApp. הכפתור אינו מאשר או דוחה שיבוץ.")}
    </p>
    <div className="rounded-md bg-gray-50 p-3 flex flex-wrap gap-2 items-center">
     <span className="rounded border px-3 py-2 bg-white text-xs">{uiTranslate("קיבלתי")}</span>
     <span className="rounded border px-3 py-2 bg-white text-xs">{uiTranslate("כניסה למערכת")}</span>
     <span className="rounded border px-3 py-2 bg-white text-xs">{uiTranslate("פנייה למשרד")}</span>
     <p className="w-full text-xs text-gray-600">
-     תצוגה לדוגמה בלבד. הכפתורים בפועל כפופים להגדרות כל תבנית והודעה.
+     {uiTranslate("תצוגה לדוגמה בלבד. הכפתורים בפועל כפופים להגדרות כל תבנית והודעה.")}
     </p>
    </div>
    {status&&<div className="space-y-1">
@@ -74,12 +72,11 @@ export default function WhatsAppReminderAckSettings(){
      {status.enabled?'פעיל לתזכורות חדשות':'כבוי — תזכורות נשלחות כרגיל'}
     </p>
     {!status.ready&&<p className="text-xs text-amber-800">
-     כדי להפעיל יש צורך בתור WhatsApp פעיל, ב־Green כספק הנבחר,
-     בהפעלת הכפתורים הקיימים ובהגדרות תקינות. אין צורך בשינוי ידני של Webhook.
+     {uiTranslate("כדי להפעיל יש צורך בתור WhatsApp פעיל, ב־Green כספק הנבחר, בהפעלת הכפתורים הקיימים ובהגדרות תקינות. אין צורך בשינוי ידני של Webhook.")}
     </p>}
     {status.historicalInboundEnabled&&!status.enabled&&
      <p className="text-xs text-gray-600">
-      לחיצות על תזכורות שכבר נשלחו נשארות מאובטחות וניתנות לקליטה.
+      {uiTranslate("לחיצות על תזכורות שכבר נשלחו נשארות מאובטחות וניתנות לקליטה.")}
      </p>}
    </div>}
    <div className="flex flex-wrap gap-2">
@@ -89,9 +86,9 @@ export default function WhatsAppReminderAckSettings(){
     </Button>
     {status&&(status.enabled?
      <Button type="button" size="sm" variant="outline" disabled={busy}
-      onClick={()=>change(false)}>כבה בתזכורות חדשות</Button>:
+      onClick={()=>change(false)}>{uiTranslate("כבה בתזכורות חדשות")}</Button>:
      <Button type="button" size="sm" disabled={busy||!status.ready}
-      onClick={()=>change(true)}>הפעל ״קיבלתי״ בתזכורות</Button>)}
+      onClick={()=>change(true)}>{uiTranslate("הפעל ״קיבלתי״ בתזכורות")}</Button>)}
    </div>
    {error&&<p role="alert" className="text-red-700">{error}</p>}
    {notice&&<p role="status" className="text-green-700">{notice}</p>}

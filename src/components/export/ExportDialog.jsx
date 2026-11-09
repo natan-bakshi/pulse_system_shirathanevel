@@ -214,22 +214,22 @@ export default function ExportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            ייצוא {title}
+            {uiTranslate("ייצוא")} {title}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* בחירת סוג ייצוא */}
           <div>
-            <Label>סוג ייצוא</Label>
+            <Label>{uiTranslate("סוג ייצוא")}</Label>
             <Select value={exportType} onValueChange={setExportType}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {exportTypes.includes('csv') && <SelectItem value="csv">CSV (אקסל)</SelectItem>}
+                {exportTypes.includes('csv') && <SelectItem value="csv">{uiTranslate("CSV (אקסל)")}</SelectItem>}
                 {exportTypes.includes('html') && <SelectItem value="html">HTML</SelectItem>}
-                {exportTypes.includes('pdf') && <SelectItem value="pdf">PDF (הדפסה)</SelectItem>}
+                {exportTypes.includes('pdf') && <SelectItem value="pdf">{uiTranslate("PDF (הדפסה)")}</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -238,7 +238,7 @@ export default function ExportDialog({
             {/* בחירת שורות */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Label>בחירת שורות ({selectedRows.size}/{data.length})</Label>
+                <Label>{uiTranslate("בחירת שורות (")}{selectedRows.size}/{data.length})</Label>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -265,7 +265,7 @@ export default function ExportDialog({
             {/* בחירת עמודות */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Label>בחירת עמודות ({selectedColumns.size}/{columns.length})</Label>
+                <Label>{uiTranslate("בחירת עמודות (")}{selectedColumns.size}/{columns.length})</Label>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -298,7 +298,7 @@ export default function ExportDialog({
             disabled={selectedRows.size === 0 || selectedColumns.size === 0}
           >
             <Download className="h-4 w-4 ml-2" />
-            ייצא ({selectedRows.size} שורות)
+            {uiTranslate("ייצא (")}{selectedRows.size} {uiTranslate("שורות)")}
           </Button>
         </DialogFooter>
       </DialogContent>

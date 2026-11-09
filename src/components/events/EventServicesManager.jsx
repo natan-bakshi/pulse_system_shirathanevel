@@ -997,7 +997,7 @@ export default function EventServicesManager({
                       type="number"
                       value={service.custom_price || ''}
                       onChange={(e) => handleServiceChange(service.id, 'custom_price', e.target.value)}
-                      placeholder="מחיר"
+                      placeholder={uiTranslate("מחיר")}
                       className="text-sm h-8 pl-10"
                     />
                     <button
@@ -2087,7 +2087,7 @@ export default function EventServicesManager({
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>מחיר</Label>
+                <Label>{uiTranslate("מחיר")}</Label>
                 <Input 
                   type="number" 
                   value={packageForm.package_price} 
@@ -2225,7 +2225,7 @@ export default function EventServicesManager({
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>מחיר</Label>
+                <Label>{uiTranslate("מחיר")}</Label>
                 <div className="relative">
                   <Input 
                     type="number" 

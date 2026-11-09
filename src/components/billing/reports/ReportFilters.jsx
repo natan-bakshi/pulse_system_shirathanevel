@@ -12,14 +12,14 @@ export default function ReportFilters({ filters, onChange, events = [] }) {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-      <div><Label className="text-xs text-gray-500">מתאריך</Label><Input type="date" dir="ltr" value={filters.from} onChange={(event) => set("from", event.target.value)} /></div>
-      <div><Label className="text-xs text-gray-500">עד תאריך</Label><Input type="date" dir="ltr" value={filters.to} onChange={(event) => set("to", event.target.value)} /></div>
+      <div><Label className="text-xs text-gray-500">{uiTranslate("מתאריך")}</Label><Input type="date" dir="ltr" value={filters.from} onChange={(event) => set("from", event.target.value)} /></div>
+      <div><Label className="text-xs text-gray-500">{uiTranslate("עד תאריך")}</Label><Input type="date" dir="ltr" value={filters.to} onChange={(event) => set("to", event.target.value)} /></div>
       <div>
-        <Label className="text-xs text-gray-500">סוג מסמך</Label>
+        <Label className="text-xs text-gray-500">{uiTranslate("סוג מסמך")}</Label>
         <Select value={filters.type} onValueChange={(value) => set("type", value)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">כל הסוגים</SelectItem>
+            <SelectItem value="all">{uiTranslate("כל הסוגים")}</SelectItem>
             {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -29,7 +29,7 @@ export default function ReportFilters({ filters, onChange, events = [] }) {
         <Select value={filters.status} onValueChange={(value) => set("status", value)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">כל הסטטוסים</SelectItem>
+            <SelectItem value="all">{uiTranslate("כל הסטטוסים")}</SelectItem>
             {Object.entries(DOCUMENT_STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
           </SelectContent>
         </Select>
