@@ -834,7 +834,7 @@ export default function EventsBoard() {
                                                                                                                     {unit.pickupPoints.map((point, pIdx) => (
                                                                                                                         <div key={pIdx} className="leading-tight">
                                                                                                                             {point.time && <span className="font-semibold">{point.time} </span>}
-                                                                                                                            {point.location && <span>מ{point.location} </span>}
+                                                                                                                            {point.location && <span>{uiTranslate("מ")}{point.location} </span>}
                                                                                                                         </div>
                                                                                                                     ))}
                                                                                                                 </div>
