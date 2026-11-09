@@ -297,12 +297,27 @@ export function localizeEventQuoteData(input:{
      notes:field('Event',event.id,'schedule_'+i+'_notes',item.notes,'event.schedule_'+i+'_notes')
    }));
  }
- if(Array.isArray(event.parents)&&options.includeContacts!==false){
-   e.parents=event.parents.map((p:any,i:number)=>{
-     const id=String(p.id||i);
-     return {...p,name:field('Event',event.id,'contact_'+id+'_name',p.name,
-       'event.contact_'+id+'_name')};
-   });
+ if(options.includeContacts!==false){
+   if(Array.isArray(event.parents)){
+     e.parents=event.parents.map((p:any,i:number)=>{
+       const id=String(p.id||i);
+       return {...p,name:field('Event',event.id,'contact_'+id+'_name',p.name,
+         'event.contact_'+id+'_name')};
+     });
+   }
+   if(event.contacts_schema_version!==2&&event.organizer_contacts){
+     try{
+       const contacts=typeof event.organizer_contacts==='string'?
+         JSON.parse(event.organizer_contacts):event.organizer_contacts;
+       if(Array.isArray(contacts)){
+         const translated=contacts.map((p:any,i:number)=>({...p,
+           name:field('Event',event.id,'organizer_contact_'+String(p.id||i)+'_name',p.name,
+             'event.organizer_contact_'+String(p.id||i)+'_name')
+         }));
+         e.organizer_contacts=JSON.stringify(translated);
+       }
+     }catch{missing.add('event.organizer_contacts');}
+   }
  }
  // Old events may still render extra organizer_contacts alongside parents.
  // Those contact names must also be translated before an English quote is issued.
