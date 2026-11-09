@@ -176,3 +176,46 @@ test('an unapproved service USED in an English quote fails closed',async()=>{
   language:'en',includeIntro:false,includePaymentTerms:false
  }),e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
 });
+
+test('English quote with external service does not expose private supplier notes',async()=>{
+ const {client,event,entities}=fixture();
+ entities.EventService.filter=async()=>[{
+  id:'es-external',event_id:event.id,service_id:'s1',is_external:true,
+  service_name:'Extra Transfer',service_description:'Optional Transport',
+  notes:'הערה פנימית לספק בלבד',
+  client_notes:'',quantity:1,custom_price:1500,price_display_mode:'default'
+ }];
+ const result=await generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includePaymentTerms:false,includeExternalServices:true
+ });
+ assert.ok(result.html.includes('Optional Transport'));
+ assert.equal(result.html.includes('הערה פנימית לספק בלבד'),false);
+ assert.deepEqual(hebrewTextNodes(result.html),[]);
+});
+test('hiding external services cannot block English generation due to their custom title',async()=>{
+ const {client,event,entities}=fixture();
+ event.external_services_title='כותרת לקוח מיוחדת לשירות חיצוני';
+ entities.EventService.filter=async()=>[{
+  id:'es-external',event_id:event.id,service_id:'s1',is_external:true,
+  service_name:'Extra Transfer',service_description:'Optional Transport',
+  quantity:1,custom_price:1500
+ }];
+ const result=await generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includePaymentTerms:false,includeExternalServices:false
+ });
+ assert.ok(!result.html.includes('Extra Transfer'));
+ assert.deepEqual(hebrewTextNodes(result.html),[]);
+});
+test('unknown Hebrew concept in an English organizer title must not silently appear',async()=>{
+ const {client,event,entities}=fixture();
+ event.concept='מסלול חגיגי בהתאמה';
+ event.organizer_type='organization';
+ entities.QuoteOrganizerType.list=async()=>[{
+  id:'org1',type_name:'organization',is_active:true,
+  quote_main_title_template:'Celebration: [concept]'
+ }];
+ await assert.rejects(generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includePaymentTerms:false
+ }),e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE'&&
+   (e.fields?.includes('event.concept')||e.fields?.includes('document.visible_text')));
+});
