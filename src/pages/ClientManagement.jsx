@@ -147,7 +147,7 @@ export default function ClientManagement() {
               <CardContent className="space-y-2 flex-grow">
                 <div className="flex items-center gap-2 text-sm">
                   <UserIcon className="h-4 w-4 text-gray-500" />
-                  <span>{event.child_name || 'לא צוין'}</span>
+                  <span>{event.child_name || t('לא צוין')}</span>
                 </div>
                 {event.city && (
                   <div className="flex items-center gap-2 text-sm">
@@ -171,7 +171,7 @@ export default function ClientManagement() {
                       onClick={() => toggleCardExpansion(event.id)} 
                       className="p-0 h-auto text-xs"
                     >
-                      {isExpanded ? 'הצג פחות...' : `הצג עוד ${parents.length - 2} הורים...`}
+                      {isExpanded ? t('הצג פחות...') : `${t('הצג עוד')} ${parents.length - 2} ${t('הורים...')}`}
                     </Button>
                   )}
                 </div>
