@@ -5,12 +5,14 @@ import { Bell, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import UserNotificationPreferences from "@/components/notifications/UserNotificationPreferences";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * Personal notification settings page
  * Accessible by all users (suppliers, clients, admins)
  */
 export default function MyNotificationSettings() {
+  const {t}=useLanguage();
   const { data: user, isLoading } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me()
@@ -35,14 +37,14 @@ export default function MyNotificationSettings() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Bell className="h-6 w-6" />
-          הגדרות התראות
+          {t("הגדרות התראות")}
         </h1>
         <Link 
           to={dashboardUrl}
           className="flex items-center gap-1 text-white/80 hover:text-white transition-colors text-sm"
         >
           <ArrowRight className="h-4 w-4" />
-          חזרה לדשבורד
+          {t("חזרה לדשבורד")}
         </Link>
       </div>
 

@@ -2071,7 +2071,7 @@ function EventDetailsBody() {
   }
 
   if (!event) {
-    return <div className="text-center py-12">אירוע לא נמצא</div>;
+    return <div className="text-center py-12">{t("אירוע לא נמצא")}</div>;
   }
 
   // Filtered lists for dialogs (using debounced search terms)
@@ -2128,7 +2128,7 @@ function EventDetailsBody() {
                 <label htmlFor="event-quote-language" className="text-xs text-gray-600">{t('שפת הצעת המחיר')}</label>
                 <select id="event-quote-language" value={quoteLanguage} onChange={e=>setQuoteLanguage(e.target.value)}
                   onClick={e=>e.stopPropagation()} className="bg-background border rounded-md text-xs px-2 py-1.5">
-                  <option value="he">עברית</option><option value="en">English</option>
+                  <option value="he">{t("עברית")}</option><option value="en">English</option>
                 </select>
               </div>
               {(() => {
@@ -2224,7 +2224,7 @@ function EventDetailsBody() {
             className="border-amber-500 text-amber-700 hover:bg-amber-50"
           >
             <Download className="h-4 w-4 ml-2" />
-            ייצא אירוע
+            {t("ייצא אירוע")}
           </Button>
         </div>
       )}
@@ -2327,16 +2327,16 @@ function EventDetailsBody() {
       <SupplierAssignDialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog} searchTerm={supplierSearchTerm} setSearchTerm={setSupplierSearchTerm} filteredSuppliers={filteredSuppliersForDialog} formData={supplierFormData} setFormData={setSupplierFormData} onAssign={handleAssignSuppliers} isSaving={assignmentSaving} />
       <Dialog open={showNewServiceDialog} onOpenChange={(open) => { setShowNewServiceDialog(open); if (!open) setNewServiceTargetPackageId(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>יצירת שירות חדש</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("יצירת שירות חדש")}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>שם השירות</Label><Input value={newService.service_name} onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))} placeholder="שם השירות" /></div>
-            <div><Label>תיאור השירות</Label><Textarea value={newService.service_description} onChange={(e) => setNewService(prev => ({ ...prev, service_description: e.target.value }))} placeholder="תיאור מפורט של השירות" /></div>
-            <div><Label>קטגוריה</Label><Input value={newService.category} onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))} placeholder="קטגורית השירות" /></div>
-            <div><Label>מחיר בסיס</Label><Input type="number" value={newService.base_price} onChange={(e) => setNewService(prev => ({ ...prev, base_price: e.target.value }))} placeholder="0" /></div>
-            <div className="flex items-center gap-2"><Checkbox id="new-service-vat-event-details" checked={newService.default_includes_vat} onCheckedChange={(checked) => setNewService(prev => ({ ...prev, default_includes_vat: checked }))} /><Label htmlFor="new-service-vat-event-details">כולל מע״מ כברירת מחדל</Label></div>
+            <div><Label>{t("שם השירות")}</Label><Input value={newService.service_name} onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))} placeholder={t("שם השירות")} /></div>
+            <div><Label>{t("תיאור השירות")}</Label><Textarea value={newService.service_description} onChange={(e) => setNewService(prev => ({ ...prev, service_description: e.target.value }))} placeholder={t("תיאור מפורט של השירות")} /></div>
+            <div><Label>{t("קטגוריה")}</Label><Input value={newService.category} onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))} placeholder="קטגורית השירות" /></div>
+            <div><Label>{t("מחיר בסיס")}</Label><Input type="number" value={newService.base_price} onChange={(e) => setNewService(prev => ({ ...prev, base_price: e.target.value }))} placeholder="0" /></div>
+            <div className="flex items-center gap-2"><Checkbox id="new-service-vat-event-details" checked={newService.default_includes_vat} onCheckedChange={(checked) => setNewService(prev => ({ ...prev, default_includes_vat: checked }))} /><Label htmlFor="new-service-vat-event-details">{t("כולל מע״מ כברירת מחדל")}</Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowNewServiceDialog(false); setNewServiceTargetPackageId(null); }} disabled={isSavingNewService}>ביטול</Button>
+            <Button variant="outline" onClick={() => { setShowNewServiceDialog(false); setNewServiceTargetPackageId(null); }} disabled={isSavingNewService}>{t("ביטול")}</Button>
             <Button onClick={handleCreateService} disabled={isSavingNewService || !newService.service_name}>{isSavingNewService ? 'שומר...' : 'צור שירות'}</Button>
           </DialogFooter>
         </DialogContent>
@@ -2395,17 +2395,17 @@ export default function EventDetails(){
    return response.data;
   }
  });
- if(isLoading)return <div role="status" className="p-8 text-white">מאמת הרשאות…</div>;
- if(!user)return <div role="alert" className="p-8 text-white">נדרשת התחברות כדי לצפות באירוע.</div>;
+ if(isLoading)return <div role="status" className="p-8 text-white">{t("מאמת הרשאות…")}</div>;
+ if(!user)return <div role="alert" className="p-8 text-white">{t("נדרשת התחברות כדי לצפות באירוע.")}</div>;
  if(user.role!=='admin'&&user.user_type==='supplier')
   return <Navigate replace to={'/SupplierEventView?id='+encodeURIComponent(eventId)}/>;
  if(user.role!=='admin'&&user.user_type!=='client')
-  return <div role="alert" className="p-8 text-white">אין הרשאה לצפות באירוע.</div>;
+  return <div role="alert" className="p-8 text-white">{t("אין הרשאה לצפות באירוע.")}</div>;
  if(isClient&&!validEventId)
-  return <div role="alert" className="p-8 text-white">קישור האירוע אינו תקין.</div>;
+  return <div role="alert" className="p-8 text-white">{t("קישור האירוע אינו תקין.")}</div>;
  if(isClient&&checkingClient)
-  return <div role="status" className="p-8 text-white">בודקים הרשאה לאירוע…</div>;
+  return <div role="status" className="p-8 text-white">{t("בודקים הרשאה לאירוע…")}</div>;
  if(isClient&&(clientViewError||!clientView?.event))
-  return <div role="alert" className="p-8 text-white">האירוע אינו זמין בחשבונך.</div>;
+  return <div role="alert" className="p-8 text-white">{t("האירוע אינו זמין בחשבונך.")}</div>;
  return <EventDetailsBody/>;
 }

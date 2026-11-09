@@ -168,7 +168,7 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
             />
           </div>
           <details className="rounded-lg border p-3">
-            <summary className="cursor-pointer font-medium text-sm">English · תרגום באנגלית</summary>
+            <summary className="cursor-pointer font-medium text-sm">{t("English · תרגום באנגלית")}</summary>
             <p className="text-xs text-gray-500 mt-2">The original Hebrew is unchanged. English text is used only for English proposals. Review and save when the Hebrew source changes.</p>
             {englishLoading?<p className="text-sm mt-2">Loading English text…</p>:<div className="space-y-3 mt-3" dir="ltr">
               {template.template_type==='concept_intro'&&<div>
@@ -458,15 +458,15 @@ function QuoteSettings({ isSaving, setIsSaving }) {
 
                     {/* Intro */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
-                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">פתיח (קונספט)</div>
+                        <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">{t("פתיח (קונספט)")}</div>
                         <div className="md:col-span-2 flex items-center text-sm text-gray-500 italic">
-                            הגדרות גודל פונט ומרווח שורות עבור הפתיח נמצאות כעת בתוך עריכת כל פתיח בנפרד (בלשונית פתיחים).
+                            {t("הגדרות גודל פונט ומרווח שורות עבור הפתיח נמצאות כעת בתוך עריכת כל פתיח בנפרד (בלשונית פתיחים).")}
                         </div>
                     </div>
 
                     {/* Summary Table */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">סיכום כספי ותנאי תשלום</div>
+                            <div className="md:col-span-1 font-semibold text-gray-700 flex items-center">{t("סיכום כספי ותנאי תשלום")}</div>
                             <div>
                                 <Label>{t('גודל פונט (px)')}</Label>
                                 <Input type="number" value={localSettings.quote_summary_font_size} onChange={(e) => handleSettingChange('quote_summary_font_size', e.target.value)} />
@@ -480,7 +480,7 @@ function QuoteSettings({ isSaving, setIsSaving }) {
 
                     {/* Footer Settings */}
                     <div className="space-y-4 border p-4 rounded-lg bg-gray-50/50">
-                        <h3 className="font-bold text-lg text-gray-800 border-b pb-2">כותרת תחתונה (Footer)</h3>
+                        <h3 className="font-bold text-lg text-gray-800 border-b pb-2">{t("כותרת תחתונה (Footer)")}</h3>
                         <div className="flex items-center gap-2 mb-4">
                             <input
                                 type="checkbox"
@@ -489,12 +489,12 @@ function QuoteSettings({ isSaving, setIsSaving }) {
                                 onChange={(e) => handleSettingChange('quote_show_footer', e.target.checked)}
                                 className="h-4 w-4"
                             />
-                            <Label htmlFor="quote_show_footer">הצג כותרת תחתונה</Label>
+                            <Label htmlFor="quote_show_footer">{t("הצג כותרת תחתונה")}</Label>
                         </div>
 
                         {localSettings.quote_show_footer && (
                             <div>
-                                <Label>טקסט כותרת תחתונה</Label>
+                                <Label>{t("טקסט כותרת תחתונה")}</Label>
                                 <Input 
                                     value={localSettings.quote_footer_text} 
                                     onChange={(e) => handleSettingChange('quote_footer_text', e.target.value)} 
@@ -508,7 +508,7 @@ function QuoteSettings({ isSaving, setIsSaving }) {
             <CardFooter>
                 <Button onClick={handleSaveSettings} disabled={isSaving}>
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-                    שמור הגדרות
+                    {t("שמור הגדרות")}
                 </Button>
             </CardFooter>
         </Card>
@@ -729,7 +729,7 @@ export default function QuoteTemplateManagement() {
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
                         <CardHeader>
                             <div className="flex justify-between items-center">
-                                <CardTitle>תנאי תשלום</CardTitle>
+                                <CardTitle>{t("תנאי תשלום")}</CardTitle>
                                 {paymentTermsTemplates.length === 0 && (
                                     <Button onClick={() => setEditingTemplate({ template_type: 'payment_terms', identifier: 'default', content: '' })}>
                                         <Plus className="h-4 w-4 ml-2" />
@@ -743,7 +743,7 @@ export default function QuoteTemplateManagement() {
                                 {paymentTermsTemplates.map(template => (
                                     <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg">
                                         <div>
-                                            <h3 className="font-medium">תנאי תשלום</h3>
+                                            <h3 className="font-medium">{t("תנאי תשלום")}</h3>
                                         </div>
                                         <div className="flex gap-2">
                                             <Button variant="outline" size="sm" onClick={() => setEditingTemplate(template)}>
@@ -777,7 +777,7 @@ export default function QuoteTemplateManagement() {
                     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
                         <CardHeader>
                             <div className="flex justify-between items-center">
-                                <CardTitle>תנאי התקשרות</CardTitle>
+                                <CardTitle>{t("תנאי התקשרות")}</CardTitle>
                                 {agreementTemplates.length === 0 && (
                                     <Button onClick={() => setEditingTemplate({ template_type: 'agreement_disclaimer', identifier: 'default', content: '' })}>
                                         <Plus className="h-4 w-4 ml-2" />
@@ -788,13 +788,13 @@ export default function QuoteTemplateManagement() {
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-gray-500 mb-4">
-                                מקטע זה מופיע תמיד בהצעת המחיר אחרי תנאי התשלום (גם אם תנאי התשלום לא נכללים). ללא כותרת נפרדת, כהמשך ויזואלי חלק.
+                                {t("מקטע זה מופיע תמיד בהצעת המחיר אחרי תנאי התשלום (גם אם תנאי התשלום לא נכללים). ללא כותרת נפרדת, כהמשך ויזואלי חלק.")}
                             </p>
                             <div className="space-y-4">
                                 {agreementTemplates.map(template => (
                                     <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg">
                                         <div>
-                                            <h3 className="font-medium">תנאי התקשרות</h3>
+                                            <h3 className="font-medium">{t("תנאי התקשרות")}</h3>
                                         </div>
                                         <div className="flex gap-2">
                                             <Button variant="outline" size="sm" onClick={() => setEditingTemplate(template)}>

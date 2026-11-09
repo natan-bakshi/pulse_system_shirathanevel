@@ -8,6 +8,7 @@ import GeneralPaymentsTable from "@/components/billing/GeneralPaymentsTable";
 import BillingActionButtons from "@/components/billing/BillingActionButtons";
 import { getEventContactList } from "@/lib/eventContactList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // טעינה עצלה: הדוחות, ההגדרות והדיאלוגים נטענים רק כשנפתחים בפועל,
 // כך שכניסה ללשונית התשלומים נשארת מהירה.
@@ -24,6 +25,7 @@ const Loading = () => <div className="flex justify-center py-10"><Loader2 classN
 const cache = { staleTime: 3 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 
 export default function BillingDashboard() {
+  const {t}=useLanguage();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get("tab") === "cards" ? "cards" : "documents");
   const [documentToCredit, setDocumentToCredit] = useState(null);
@@ -120,36 +122,36 @@ export default function BillingDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white">תשלומים וחשבוניות</h1>
-          <p className="mt-1 text-white/80">ניהול המסמכים הפיננסיים שהופקו דרך המערכת.</p>
+          <h1 className="text-3xl font-bold text-white">{t("תשלומים וחשבוניות")}</h1>
+          <p className="mt-1 text-white/80">{t("ניהול המסמכים הפיננסיים שהופקו דרך המערכת.")}</p>
         </div>
         <BillingActionButtons onImmediateClearing={() => setShowGeneralClearing(true)} onPaymentLink={() => setShowPaymentLink(true)} onCreateDocument={setManualDocumentType} />
       </div>
 
       <Tabs value={tab === "cards" && settings.stored_cards_enabled !== "true" ? "documents" : tab} onValueChange={setTab}>
         <TabsList className={"grid w-full max-w-lg " + (settings.stored_cards_enabled === "true" ? "grid-cols-4" : "grid-cols-3")}>
-          <TabsTrigger value="documents">מסמכים</TabsTrigger>
-          <TabsTrigger value="reports">דוחות</TabsTrigger>
-          <TabsTrigger value="settings">הגדרות</TabsTrigger>
-          {settings.stored_cards_enabled === "true" && <TabsTrigger value="cards">כרטיסי לקוחות</TabsTrigger>}
+          <TabsTrigger value="documents">{t("מסמכים")}</TabsTrigger>
+          <TabsTrigger value="reports">{t("דוחות")}</TabsTrigger>
+          <TabsTrigger value="settings">{t("הגדרות")}</TabsTrigger>
+          {settings.stored_cards_enabled === "true" && <TabsTrigger value="cards">{t("כרטיסי לקוחות")}</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="documents" className="mt-6 space-y-6">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="bg-white/95"><CardContent className="flex items-center gap-3 p-5"><FileText className="h-8 w-8 text-red-800" /><div><p className="text-sm text-gray-500">מסמכים</p><p className="text-2xl font-bold">{documents.length}</p></div></CardContent></Card>
-            <Card className="bg-white/95"><CardContent className="flex items-center gap-3 p-5"><CreditCard className="h-8 w-8 text-red-800" /><div><p className="text-sm text-gray-500">מסמכים פתוחים</p><p className="text-2xl font-bold">{openDocuments.length}</p></div></CardContent></Card>
-            <Card className="bg-white/95"><CardContent className="flex items-center gap-3 p-5"><Landmark className="h-8 w-8 text-red-800" /><div><p className="text-sm text-gray-500">סך מסמכים פתוחים</p><p className="text-2xl font-bold">₪{openTotal.toLocaleString()}</p></div></CardContent></Card>
+            <Card className="bg-white/95"><CardContent className="flex items-center gap-3 p-5"><FileText className="h-8 w-8 text-red-800" /><div><p className="text-sm text-gray-500">{t("מסמכים")}</p><p className="text-2xl font-bold">{documents.length}</p></div></CardContent></Card>
+            <Card className="bg-white/95"><CardContent className="flex items-center gap-3 p-5"><CreditCard className="h-8 w-8 text-red-800" /><div><p className="text-sm text-gray-500">{t("מסמכים פתוחים")}</p><p className="text-2xl font-bold">{openDocuments.length}</p></div></CardContent></Card>
+            <Card className="bg-white/95"><CardContent className="flex items-center gap-3 p-5"><Landmark className="h-8 w-8 text-red-800" /><div><p className="text-sm text-gray-500">{t("סך מסמכים פתוחים")}</p><p className="text-2xl font-bold">₪{openTotal.toLocaleString()}</p></div></CardContent></Card>
           </div>
 
           <Card className="bg-white/95">
-            <CardHeader><CardTitle>מסמכים פיננסיים</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("מסמכים פיננסיים")}</CardTitle></CardHeader>
             <CardContent>
-              {isLoading ? <p className="py-8 text-center text-gray-500">טוען מסמכים...</p> : <FinancialDocumentsTable documents={documents} eventsById={eventsById} onDetach={detachDocument} onCredit={startCancelWizard} onRefreshPdf={refreshDocumentPdf} onShare={setDocumentToShare} refreshingPdfId={refreshingPdfId} />}
+              {isLoading ? <p className="py-8 text-center text-gray-500">{t("טוען מסמכים...")}</p> : <FinancialDocumentsTable documents={documents} eventsById={eventsById} onDetach={detachDocument} onCredit={startCancelWizard} onRefreshPdf={refreshDocumentPdf} onShare={setDocumentToShare} refreshingPdfId={refreshingPdfId} />}
             </CardContent>
           </Card>
 
           <Card className="bg-white/95">
-            <CardHeader><CardTitle>סליקות כלליות</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("סליקות כלליות")}</CardTitle></CardHeader>
             <CardContent><GeneralPaymentsTable payments={generalPayments} documentsById={documentsById} /></CardContent>
           </Card>
         </TabsContent>

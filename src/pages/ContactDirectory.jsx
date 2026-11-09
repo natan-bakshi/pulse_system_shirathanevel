@@ -5,8 +5,10 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ContactCard from '@/components/contact/ContactCard';
 import { parseContactSettings } from '@/lib/contactSettings';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ContactDirectory() {
+  const {t}=useLanguage();
   const { data: appSettings = [], isLoading } = useQuery({
     queryKey: ['appSettings'],
     queryFn: () => base44.entities.AppSettings.list(),
@@ -28,16 +30,16 @@ export default function ContactDirectory() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-2 text-white">
         <PhoneCall className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">צור קשר</h1>
+        <h1 className="text-2xl font-bold">{t("צור קשר")}</h1>
       </div>
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
         <CardHeader>
-          <CardTitle className="text-lg">משרד ומנהלים</CardTitle>
+          <CardTitle className="text-lg">{t("משרד ומנהלים")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {contacts.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-gray-500">לא הוגדרו אנשי קשר זמינים.</div>
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-gray-500">{t("לא הוגדרו אנשי קשר זמינים.")}</div>
           ) : (
             contacts.map(contact => <ContactCard key={contact.id} contact={contact} />)
           )}

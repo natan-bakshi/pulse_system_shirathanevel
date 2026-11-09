@@ -9,8 +9,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function BarMitzvahCalculator() {
+  const {t}=useLanguage();
   const navigate = useNavigate();
   const [birthDate, setBirthDate] = useState('');
   const [type, setType] = useState('bar');
@@ -53,8 +55,8 @@ export default function BarMitzvahCalculator() {
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-200 ring-1 ring-amber-200/30">
             <Calculator className="h-6 w-6" />
           </div>
-          <h1 className="text-2xl font-bold">מחשבון בר/בת מצווה</h1>
-          <p className="mt-1 text-sm text-white/75">גיל עברי, תאריך לועזי ופרשת השבוע</p>
+          <h1 className="text-2xl font-bold">{t("מחשבון בר/בת מצווה")}</h1>
+          <p className="mt-1 text-sm text-white/75">{t("גיל עברי, תאריך לועזי ופרשת השבוע")}</p>
         </div>
 
         <CardContent className="p-5 sm:p-7 lg:p-10">
@@ -74,19 +76,19 @@ export default function BarMitzvahCalculator() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="birth-date" className="text-sm font-semibold text-gray-700">תאריך לידה לועזי</Label>
+            <Label htmlFor="birth-date" className="text-sm font-semibold text-gray-700">{t("תאריך לידה לועזי")}</Label>
             <Input id="birth-date" type="date" value={birthDate} onChange={(event) => { setBirthDate(event.target.value); setResult(null); }} className="h-12 text-base" />
           </div>
 
           <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-amber-100 bg-amber-50/60 px-3 text-sm text-gray-700">
             <Checkbox checked={isAfterSunset} onCheckedChange={setIsAfterSunset} />
-            <span>הלידה הייתה אחרי השקיעה</span>
+            <span>{t("הלידה הייתה אחרי השקיעה")}</span>
           </label>
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800">{error}</p>}
 
           <Button onClick={handleCalculate} className="h-12 w-full bg-red-800 text-base hover:bg-red-700">
-            <Sparkles className="ml-2 h-5 w-5" />חשב תאריך {title}
+            <Sparkles className="ml-2 h-5 w-5" />{t("חשב תאריך")} {title}
           </Button>
 
             </div>

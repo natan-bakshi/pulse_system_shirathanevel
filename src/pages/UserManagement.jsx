@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SyncPhonesButton from "@/components/admin/SyncPhonesButton";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function UserManagement() {
+  const {t}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -116,8 +118,8 @@ export default function UserManagement() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">ניהול משתמשים</h1>
-          <p className="text-white/80 mt-1">נהל את סוגי המשתמשים והרשאותיהם במערכת</p>
+          <h1 className="text-3xl font-bold text-white">{t("ניהול משתמשים")}</h1>
+          <p className="text-white/80 mt-1">{t("נהל את סוגי המשתמשים והרשאותיהם במערכת")}</p>
         </div>
         <SyncPhonesButton />
       </div>
@@ -162,11 +164,11 @@ export default function UserManagement() {
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Settings className="h-4 w-4" />
-                <span>שפה: {user.language === 'he' ? 'עברית' : 'אנגלית'}</span>
+                <span>{t("שפה:")} {user.language === 'he' ? 'עברית' : 'אנגלית'}</span>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={() => handleEditUser(user)} className="flex-1">
-                  <Edit className="h-4 w-4 ml-1" /> ערוך הרשאות
+                  <Edit className="h-4 w-4 ml-1" /> {t("ערוך הרשאות")}
                 </Button>
               </div>
             </CardContent>
@@ -178,27 +180,27 @@ export default function UserManagement() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>ערוך הרשאות משתמש</DialogTitle>
+            <DialogTitle>{t("ערוך הרשאות משתמש")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="user_type" className="text-right">
-                סוג משתמש
+                {t("סוג משתמש")}
               </Label>
               <Select value={userFormData.user_type} onValueChange={(value) => setUserFormData({...userFormData, user_type: value})}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="בחר סוג משתמש" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">מנהל</SelectItem>
-                  <SelectItem value="client">לקוח</SelectItem>
-                  <SelectItem value="supplier">ספק</SelectItem>
+                  <SelectItem value="admin">{t("מנהל")}</SelectItem>
+                  <SelectItem value="client">{t("לקוח")}</SelectItem>
+                  <SelectItem value="supplier">{t("ספק")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="phone" className="text-right">
-                טלפון
+                {t("טלפון")}
               </Label>
               <Input
                 id="phone"
@@ -209,21 +211,21 @@ export default function UserManagement() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="language" className="text-right">
-                שפה
+                {t("שפה")}
               </Label>
               <Select value={userFormData.language} onValueChange={(value) => setUserFormData({...userFormData, language: value})}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="בחר שפה" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="he">עברית</SelectItem>
+                  <SelectItem value="he">{t("עברית")}</SelectItem>
                   <SelectItem value="en">English</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSaveUser}>שמור שינויים</Button>
+            <Button onClick={handleSaveUser}>{t("שמור שינויים")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
