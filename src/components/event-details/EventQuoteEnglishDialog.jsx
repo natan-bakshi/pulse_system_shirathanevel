@@ -36,7 +36,7 @@ function liveValue(f,event,services){
  }
  return event[f.key]||'';
 }
-function collect(event,services,catalog,rows){
+function collect(event,services,catalog,rows,missingFields=[]){
  if(!event)return [];
  const fields=[];
  const add=(entity,id,key,source,label,group)=>{
@@ -59,6 +59,13 @@ function collect(event,services,catalog,rows){
   add('Event',event.id,'schedule_'+i+'_activity',s.activity,'Schedule activity '+(i+1),'event');
   add('Event',event.id,'schedule_'+i+'_notes',s.notes,'Schedule notes '+(i+1),'event');
  });
+ for(const catalogService of catalog){
+  if(!missingFields.some(key=>key.startsWith('catalog.'+catalogService.id+'.')))continue;
+  add('Service',catalogService.id,'service_name',catalogService.service_name,
+    'Catalog Service Name','catalog');
+  add('Service',catalogService.id,'service_description',catalogService.service_description,
+    'Catalog Service Description','catalog');
+ }
  for(const service of services){
   for(const [key,label] of Object.entries(serviceFields)){
    const source=service[key];
@@ -88,9 +95,11 @@ function collect(event,services,catalog,rows){
  }
  return fields;
 }
-export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[]}){
+export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],missingFields=null,onSaved}){
  const [rows,setRows]=useState([]),[draft,setDraft]=useState({});
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
+ const [showAll,setShowAll]=useState(false);
+ useEffect(()=>{if(open)setShowAll(false);},[open,missingFields]);
  useEffect(()=>{
   if(!open)return;
   let active=true;setLoading(true);setError('');setDraft({});
@@ -100,19 +109,34 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[open,event?.id]);
- const fields=useMemo(()=>collect(event,eventServices,allServices,rows),
-  [event,eventServices,allServices,rows]);
+ const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[]),
+  [event,eventServices,allServices,rows,missingFields]);
  const map=useMemo(()=>new Map(rows.map(row=>[row.source_entity+':'+row.source_id,row])),[rows]);
  const changed=fields.filter(f=>Object.prototype.hasOwnProperty.call(draft,f.hash));
- const grouped=fields.reduce((o,f)=>((o[f.group]??=[]).push(f),o),{});
+ const needed=new Set(missingFields||[]);
+ const issueKey=f=>f.entity==='Event'?'event.'+f.key:
+   f.entity==='Service'?'catalog.'+f.id+'.'+f.key:'service.'+f.id+'.'+f.key;
+ const matchesMissing=f=>needed.has(issueKey(f))||
+   needed.has('service.'+f.key)||needed.has('catalog.'+f.key);
+ const displayedFields=Array.isArray(missingFields)&&!showAll?
+   fields.filter(matchesMissing):fields;
+ const grouped=displayedFields.reduce((o,f)=>((o[f.group]??=[]).push(f),o),{});
+ const matchedIssueKeys=new Set(fields.filter(matchesMissing).map(issueKey));
+ const unmatched=Array.isArray(missingFields)?missingFields.filter(k=>
+   !matchedIssueKeys.has(k)&&!fields.some(f=>k==='service.'+f.key||k==='catalog.'+f.key)):[];
  const save=async()=>{
   if(!changed.length){onOpenChange(false);return;}
   setSaving(true);setError('');
   try{
    const latestEvent=await base44.entities.Event.get(event.id);
    const latestServices=await base44.entities.EventService.filter({event_id:event.id});
+   const latestCatalog=changed.some(f=>f.entity==='Service')?
+     await Promise.all(changed.filter(f=>f.entity==='Service').map(f=>
+       base44.entities.Service.get(f.id))):[];
    for(const f of changed){
-    if(String(liveValue(f,latestEvent,latestServices))!==f.source)
+    const liveSource=f.entity==='Service'?latestCatalog.find(x=>x.id===f.id)?.[f.key]:
+      liveValue(f,latestEvent,latestServices);
+    if(String(liveSource??'')!==f.source)
      throw Error('The original Hebrew text changed. Reopen this editor to review it.');
     if(draft[f.hash]&&!translationPreservesProtectedContent(f.source,draft[f.hash]))
      throw Error('English text changed a number, URL, placeholder, or contains unsafe markup: '+f.label);
@@ -139,6 +163,7 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
      status:'approved',provenance:'human_reviewed'
     });
    }
+   onSaved?.();
    onOpenChange(false);
   }catch(e){setError(e.message||'Could not save translations.');}
   finally{setSaving(false);}
@@ -164,8 +189,13 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
  };
  return <Dialog open={open} onOpenChange={onOpenChange}>
   <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto" dir="ltr">
-   <DialogHeader><DialogTitle>English Event Content</DialogTitle></DialogHeader>
-   <p className="text-sm text-muted-foreground">Approved catalog translations are reused automatically. Add English spellings for names and translations for custom event text here. Hebrew records and prices remain unchanged.</p>
+   <DialogHeader><DialogTitle>השלמת תוכן להצעת מחיר באנגלית</DialogTitle></DialogHeader>
+   <p className="text-sm text-muted-foreground" dir="rtl">השדות שכבר תורגמו בקטלוג משמשים אוטומטית. כאן אפשר לאשר נוסח אנגלי רק עבור שדות שדורשים השלמה, בלי לשנות את העברית או את המחירים.</p>
+   {Array.isArray(missingFields)&&<div dir="rtl" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 space-y-2">
+     <p className="font-semibold">נדרשת השלמה של {missingFields.length} שדות לפני הנפקה באנגלית</p>
+     <label className="inline-flex items-center gap-2"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/>הצג גם שדות שכבר תורגמו</label>
+     <p className="text-xs">הנוסח באנגלית נשמר לשימוש חוזר. לאחר השמירה אפשר להפיק מחדש את ההצעה.</p>
+   </div>}
    {loading?<p role="status">Loading English content…</p>:<>
     {grouped.event&&<div className="space-y-4 border rounded-lg p-3">
       <h3 className="font-semibold">Event & family details</h3>{grouped.event.map(editor)}
@@ -176,13 +206,17 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
         {eventServices.find(s=>s.id===key)?.service_name||'Service'} — {list.length} English fields
        </summary><div className="space-y-3 mt-4">{list.map(editor)}</div>
       </details>)}
-    {!fields.length&&<p className="text-sm">No event-specific Hebrew content was found for translation.</p>}
+    {!displayedFields.length&&<p className="text-sm" dir="rtl">לא נמצאו שדות נוספים לעריכה בתצוגה הזאת.</p>}
+    {unmatched.length>0&&<div dir="rtl" className="border rounded-lg p-3 text-sm">
+      <p className="font-semibold mb-2">שדות נוספים שדורשים בדיקה בהגדרות התבניות או בפרטי האירוע:</p>
+      <div className="text-xs text-muted-foreground space-y-1">{unmatched.map(x=><div key={x}>{x}</div>)}</div>
+    </div>}
    </>}
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
    <DialogFooter className="flex gap-2 flex-wrap">
     <Button variant="outline" disabled={saving} onClick={()=>onOpenChange(false)}>Cancel</Button>
     <Button disabled={saving||loading} onClick={save}>
-     {saving?'Saving…':'Save English Content'+(changed.length?' ('+changed.length+')':'')}
+     {saving?'שומר…':'שמור תרגומים'+(changed.length?' ('+changed.length+')':'')}
     </Button>
    </DialogFooter>
   </DialogContent>
