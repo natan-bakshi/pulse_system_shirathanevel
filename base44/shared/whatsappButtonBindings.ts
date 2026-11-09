@@ -154,7 +154,10 @@ export async function resolveVerifiedGreenActionForButton(job:any,click:{
  const candidate=resolveSignedActionForGreenButton(job,click);
  if(!candidate||!(await verifyFutureButtonSnapshotMac(
    job.interactive_button_bindings_json,secret,subtle)))return null;
- const bound=await verifySignedWhatsAppAction({token:candidate,secret,now},subtle);
+ // This resolver is used only after a Green button callback has been
+ // authenticated and matched to the one accepted immutable original Outbox.
+ const bound=await verifySignedWhatsAppAction({token:candidate,secret,now,
+  allowHistoricalCallback:true},subtle);
  if(!bound||bound.companyId!=='shirat_hanevel'||bound.provider!=='green'||
   bound.senderAccountId!==job.sender_account_id||
   bound.outboxJobId!==job.id||bound.eventServiceId!==job.event_service_id||
