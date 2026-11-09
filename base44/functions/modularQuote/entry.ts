@@ -11,13 +11,18 @@ export default async function(req) {
       const quotes = await client.asServiceRole.entities.ModularQuote.filter({share_token:body.token},'-created_date',1);
       const quote = quotes[0];
       if (!quote) return Response.json({error:'ההצעה אינה זמינה או שהקישור בוטל'},{status:404,headers});
+      const documentLanguage=quote.content?.document_language==='en'?'en':'he';
+      // Legacy PDFs without an explicit language are treated as Hebrew only;
+      // never offer an old Hebrew file as the current English quotation.
+      const storedPdfLanguage=quote.last_pdf_language==='en'?'en':'he';
+      const matchingPdf=!!quote.last_pdf_uri&&storedPdfLanguage===documentLanguage;
       if (body.action === 'download') {
-        if (!quote.last_pdf_uri) return Response.json({error:'טרם הופק PDF להצעה'},{status:404,headers});
+        if (!matchingPdf) return Response.json({error:'טרם הופק PDF להצעה בשפה שנבחרה'},{status:404,headers});
         const result = await client.asServiceRole.integrations.Core.CreateFileSignedUrl({file_uri:quote.last_pdf_uri,expires_in:300});
         return Response.json({signed_url:result.signed_url},{headers});
       }
       const result = await composeModularQuoteHtml(quote,client);
-      return Response.json({html:result.html,has_pdf:!!quote.last_pdf_uri},{headers});
+      return Response.json({html:result.html,has_pdf:matchingPdf,document_language:documentLanguage},{headers});
     }
     const user = await client.auth.me();
     if (user?.role !== 'admin') return Response.json({error:'למנהלים בלבד'},{status:403,headers});
