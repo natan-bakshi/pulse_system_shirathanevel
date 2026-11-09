@@ -87,7 +87,9 @@ export function indexedText(index:Map<string,any>,field:string,source:unknown){
 const labels=new Map<string,string>([
   ['תאריך הפקה','Issue Date'],['כמות','Quantity'],
   ['כמות משתתפים','Number of Guests'],['כמות מוזמנים','Number of Guests'],
-  ['שמות ההורים',"Parents' Names"],['עיר מגורים','City of Residence'],
+  ['שמות ההורים',"Parents' Names"],['פרטי ההורים',"Parents' Details"],
+  ['אנשי קשר','Contacts'],['פרטי אנשי קשר','Contact Details'],
+  ['עיר מגורים','City of Residence'],
   ['אירוע ב','Event at '],['סיכום כספי','Financial Summary'],
   ['תנאי תשלום','Payment Terms'],['תנאי התקשרות','Terms & Conditions'],
   ['תשלום ישיר','Paid Directly'],['מחיר מוערך','Estimated Price'],
