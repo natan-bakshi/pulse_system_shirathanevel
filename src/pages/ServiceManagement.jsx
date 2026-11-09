@@ -382,15 +382,15 @@ export default function ServiceManagement() {
   }, [services]);
   
   const exportColumns = useMemo(() => [
-    { key: 'service_name', title: 'שם השירות' },
-    { key: 'service_description', title: 'תיאור' },
-    { key: 'base_price', title: 'מחיר בסיס' },
-    { key: 'category', title: 'קטגוריה' },
-    { key: 'is_default', title: 'ברירת מחדל', render: (val) => val ? 'כן' : 'לא' },
-    { key: 'default_includes_vat', title: 'כולל מע"מ כברירת מחדל', render: (val) => val ? 'כן' : 'לא' },
-    { key: 'default_min_suppliers', title: 'מינימום ספקים' },
-    { key: 'admin_notes', title: 'הערות מנהל' },
-  ], []);
+    { key: 'service_name', title: t("שם השירות") },
+    { key: 'service_description', title: t("תיאור") },
+    { key: 'base_price', title: t("מחיר בסיס") },
+    { key: 'category', title: t("קטגוריה") },
+    { key: 'is_default', title: t("ברירת מחדל"), render: (val) => val ? t('כן') : t('לא') },
+    { key: 'default_includes_vat', title: t("כולל מע\"מ כברירת מחדל"), render: (val) => val ? t('כן') : t('לא') },
+    { key: 'default_min_suppliers', title: t("מינימום ספקים") },
+    { key: 'admin_notes', title: t("הערות מנהל") },
+  ], [t]);
 
   if (loading) {
     return (

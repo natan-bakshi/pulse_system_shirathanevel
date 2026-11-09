@@ -67,21 +67,21 @@ export default function ClientManagement() {
 
   // עמודות לייצוא לקוחות
   const exportColumns = useMemo(() => [
-    { key: 'family_name', title: 'שם משפחה' },
-    { key: 'child_name', title: 'שם ילד/ה' },
-    { key: 'city', title: 'עיר מגורים' },
-    { key: 'event_name', title: 'אירוע' },
-    { key: 'event_date', title: 'תאריך אירוע', render: (value) => format(new Date(value), "dd/MM/yyyy", { locale: he }) },
-    { key: 'location', title: 'מיקום' },
-    { key: 'guest_count', title: 'מספר אורחים' },
-    { key: 'parent1_name', title: 'הורה 1 - שם', render: (value, row) => getEventContacts(row)?.[0]?.name || '' },
-    { key: 'parent1_phone', title: 'הורה 1 - טלפון', render: (value, row) => getEventContacts(row)?.[0]?.phone || '' },
-    { key: 'parent1_email', title: 'הורה 1 - אימייל', render: (value, row) => getEventContacts(row)?.[0]?.email || '' },
-    { key: 'parent2_name', title: 'הורה 2 - שם', render: (value, row) => getEventContacts(row)?.[1]?.name || '' },
-    { key: 'parent2_phone', title: 'הורה 2 - טלפון', render: (value, row) => getEventContacts(row)?.[1]?.phone || '' },
-    { key: 'parent2_email', title: 'הורה 2 - אימייל', render: (value, row) => getEventContacts(row)?.[1]?.email || '' },
-    { key: 'notes', title: 'הערות' }
-  ], []);
+    { key: 'family_name', title: t("שם משפחה") },
+    { key: 'child_name', title: t("שם ילד/ה") },
+    { key: 'city', title: t("עיר מגורים") },
+    { key: 'event_name', title: t("אירוע") },
+    { key: 'event_date', title: t("תאריך אירוע"), render: (value) => format(new Date(value), "dd/MM/yyyy", { locale: he }) },
+    { key: 'location', title: t("מיקום") },
+    { key: 'guest_count', title: t("מספר אורחים") },
+    { key: 'parent1_name', title: t("הורה 1 - שם"), render: (value, row) => getEventContacts(row)?.[0]?.name || '' },
+    { key: 'parent1_phone', title: t("הורה 1 - טלפון"), render: (value, row) => getEventContacts(row)?.[0]?.phone || '' },
+    { key: 'parent1_email', title: t("הורה 1 - אימייל"), render: (value, row) => getEventContacts(row)?.[0]?.email || '' },
+    { key: 'parent2_name', title: t("הורה 2 - שם"), render: (value, row) => getEventContacts(row)?.[1]?.name || '' },
+    { key: 'parent2_phone', title: t("הורה 2 - טלפון"), render: (value, row) => getEventContacts(row)?.[1]?.phone || '' },
+    { key: 'parent2_email', title: t("הורה 2 - אימייל"), render: (value, row) => getEventContacts(row)?.[1]?.email || '' },
+    { key: 'notes', title: t("הערות") }
+  ], [t]);
 
   return (
     <div className="space-y-6">

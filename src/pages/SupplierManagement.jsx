@@ -312,13 +312,13 @@ export default function SupplierManagement() {
   }, [servicesForCategories, suppliers]);
   
   const exportColumns = useMemo(() => [
-    { key: 'supplier_name', title: 'שם ספק' },
-    { key: 'contact_person', title: 'איש קשר' },
-    { key: 'phone', title: 'טלפון' },
-    { key: 'contact_emails', title: 'אימיילים', render: (val) => Array.isArray(val) ? val.join(', ') : '' },
-    { key: 'services_provided', title: 'שירותים', render: (val) => Array.isArray(val) ? val.join(', ') : '' },
-    { key: 'categories', title: 'קטגוריות', render: (val) => Array.isArray(val) ? val.join(', ') : '' },
-  ], []);
+    { key: 'supplier_name', title: t("שם ספק") },
+    { key: 'contact_person', title: t("איש קשר") },
+    { key: 'phone', title: t("טלפון") },
+    { key: 'contact_emails', title: t("אימיילים"), render: (val) => Array.isArray(val) ? val.join(', ') : '' },
+    { key: 'services_provided', title: t("שירותים"), render: (val) => Array.isArray(val) ? val.join(', ') : '' },
+    { key: 'categories', title: t("קטגוריות"), render: (val) => Array.isArray(val) ? val.join(', ') : '' },
+  ], [t]);
 
   return (
     <div className="space-y-6">
