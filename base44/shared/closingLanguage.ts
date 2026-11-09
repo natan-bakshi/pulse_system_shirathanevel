@@ -31,5 +31,7 @@ export function localizedAgreement(snapshot, language) {
   const lang = agreementLanguage(language);
   const version = snapshot?.translations?.[lang];
   if (!version) return snapshot;
-  return {...snapshot, ...version, quote_summary: {...snapshot.quote_summary, pricing_note: version.pricing_note ?? snapshot.quote_summary?.pricing_note}};
+  return {...snapshot,...version,
+   quote_summary:{...snapshot.quote_summary,...version.quote_summary,
+    pricing_note:version.pricing_note??version.quote_summary?.pricing_note??snapshot.quote_summary?.pricing_note}};
 }
