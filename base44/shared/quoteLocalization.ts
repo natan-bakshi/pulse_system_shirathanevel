@@ -264,6 +264,53 @@ export function visibleHebrewQuoteSnippets(html:string):string[]{
   }
   return [...found];
 }
+// An unrecognized visible fragment cannot always be mapped back to a quote
+// field (e.g. text injected by a legacy composer). An administrator may
+// approve an event-scoped replacement for that exact full visible text node.
+// Stored on the Event's existing ContentTranslation row, not on the event.
+export function quoteVisibleFragmentField(source:string):string{
+  const text=String(source||'').replace(/\s+/g,' ').trim().normalize('NFC');
+  let hash=2166136261;
+  for(let i=0;i<text.length;i++){
+    hash=Math.imul(hash^text.charCodeAt(i),16777619)>>>0;
+  }
+  return 'visible_fragment_'+text.length+'_'+hash.toString(36);
+}
+export function applyReviewedEventQuoteFragments(html:string,index:Map<string,any>,eventId:string):string{
+  const fields=index.get('Event:'+String(eventId))?.fields||{};
+  const normalize=(s:string)=>String(s||'')
+    .replace(/&(?:nbsp|rlm|lrm);/gi,' ').replace(/&amp;/gi,'&')
+    .replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'")
+    .replace(/&#(?:x([0-9a-f]+)|(\d+));/gi,(_m,hex,dec)=>{
+      const code=parseInt(hex||dec,hex?16:10);
+      return code>0&&code<=0x10ffff?String.fromCodePoint(code):'';
+    }).replace(/\s+/g,' ').trim().normalize('NFC');
+  const candidates=new Map<string,string>();
+  const ambiguous=new Set<string>();
+  for(const [field,pair] of Object.entries(fields)){
+    if(!field.startsWith('visible_fragment_'))continue;
+    const source=(pair as any)?.source,value=(pair as any)?.value;
+    if(typeof source!=='string'||typeof value!=='string'||!isHebrew(source)||
+      field!==quoteVisibleFragmentField(source)||
+      !translationPreservesProtectedContent(source,value))continue;
+    const key=normalize(source);
+    if(candidates.has(key)&&candidates.get(key)!==value)ambiguous.add(key);
+    else candidates.set(key,value);
+  }
+  if(candidates.size===0)return html;
+  const protectedRanges=[...html.matchAll(/<!--[\s\S]*?-->|<(style|script|template)\b[^>]*>[\s\S]*?<\/\2\s*>/gi)]
+    .map(m=>[m.index||0,(m.index||0)+m[0].length]);
+  return html.replace(/>([^<>]*)</g,(full,text,offset)=>{
+    if(protectedRanges.some(([start,end])=>offset>=start&&offset<end))return full;
+    const key=normalize(text);
+    if(ambiguous.has(key)||!isHebrew(key)||!candidates.has(key))return full;
+    const replacement=candidates.get(key)!.replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const leading=text.match(/^\s*/)?.[0]||'';
+    const trailing=text.match(/\s*$/)?.[0]||'';
+    return '>'+leading+replacement+trailing+'<';
+  });
+}
 export function ensureNoVisibleHebrewInEnglishQuote(html:string):void{
   const samples=visibleHebrewQuoteSnippets(html);
   if(!samples.length)return;
