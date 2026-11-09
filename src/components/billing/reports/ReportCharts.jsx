@@ -30,8 +30,8 @@ export default function ReportCharts({ monthly, byType, byStatus, topEvents }) {
           <YAxis tick={{ fontSize: 11 }} width={70} />
           <Tooltip formatter={money} />
           <Legend />
-          <Area type="monotone" dataKey="revenue" name="הכנסות" stroke="#991b1b" fill="#991b1b" fillOpacity={0.25} />
-          <Area type="monotone" dataKey="vat" name="מע״מ" stroke="#f87171" fill="#f87171" fillOpacity={0.25} />
+          <Area type="monotone" dataKey="revenue" name={uiTranslate("הכנסות")} stroke="#991b1b" fill="#991b1b" fillOpacity={0.25} />
+          <Area type="monotone" dataKey="vat" name={uiTranslate("מע״מ")} stroke="#f87171" fill="#f87171" fillOpacity={0.25} />
         </AreaChart>
       </ChartCard>
 
@@ -50,7 +50,7 @@ export default function ReportCharts({ monthly, byType, byStatus, topEvents }) {
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={40} />
           <Tooltip />
-          <Bar dataKey="count" name="מסמכים" fill="#991b1b" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="count" name={uiTranslate("מסמכים")} fill="#991b1b" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ChartCard>
 
@@ -60,7 +60,7 @@ export default function ReportCharts({ monthly, byType, byStatus, topEvents }) {
           <XAxis type="number" tick={{ fontSize: 11 }} />
           <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} />
           <Tooltip formatter={money} />
-          <Bar dataKey="value" name="הכנסות" fill="#b91c1c" radius={[0, 6, 6, 0]} />
+          <Bar dataKey="value" name={uiTranslate("הכנסות")} fill="#b91c1c" radius={[0, 6, 6, 0]} />
         </BarChart>
       </ChartCard>
     </div>
