@@ -23,7 +23,7 @@ async function bundle(path,{manual=false}={}) {
 }
 const {mirrorQuoteHtmlPresentation,mirrorQuoteCssDeclarations}=
   await bundle('base44/shared/quoteLayoutMirror.ts');
-const {applyDocumentDirection}=await bundle('base44/shared/quoteLocalization.ts');
+const {applyDocumentDirection,translationPreservesProtectedContent,preserveSourceQuoteParagraphPresentation}=await bundle('base44/shared/quoteLocalization.ts');
 const {quoteDocumentStyle}=await bundle('base44/shared/quoteDocumentStyle.ts');
 const {generateQuoteHtml}=await bundle('base44/shared/quoteHtml.ts');
 const {composeModularQuoteHtml}=await bundle('base44/shared/modularQuote.ts');
