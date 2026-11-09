@@ -17,6 +17,7 @@ import { AgreementError, audit, lockAgreement, settings, financials, deliver, no
 import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
+import {customerMessageTemplate} from '../../shared/customerMessageTone.ts';
 
 import { closingClauses, withoutCardClauses } from "../../shared/closingClauses.ts";
 import { reminderTime } from "../../shared/agreementReminderTime.ts";
@@ -49,7 +50,9 @@ function notifications(body,config){
  days:Math.min(60,Math.max(0,Math.floor(Number(body?.days??config.closing_reminder_days??3)||0))),
  time:/^([01]\d|2[0-3]):[0-5]\d$/.test(body?.time||"")?body.time:(config.closing_reminder_time||"09:00"),
  language:agreementLanguage(body?.language||config.closing_message_language),
- template:cleanText(body?.template||config[(body?.language||config.closing_message_language)==="en"?"closing_message_template_en":"closing_message_template"]||closingDefaults[(body?.language||config.closing_message_language)==="en"?"closing_message_template_en":"closing_message_template"],4000),
+ template:cleanText(customerMessageTemplate('milestone',
+  body?.language||config.closing_message_language,
+  body?.template||config[(body?.language||config.closing_message_language)==="en"?'closing_message_template_en':'closing_message_template']),4000),
  notify_admin:bool(body?.notify_admin,config.closing_notify_admin!=="false")};
 }
 async function preview(client,base44,eventId,config){
