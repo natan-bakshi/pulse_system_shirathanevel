@@ -75,8 +75,16 @@ async function preview(client,base44,eventId,config){
  }
  const englishBank=String(config.company_bank_details_en||'').trim();
  const hebrewBank=String(config.company_bank_details||'').trim();
+ if(enTerms&&isHebrew(enTerms))englishMissing.add('closing_terms_text_en.contains_hebrew');
  if(enTerms&&hebrewBank&&isHebrew(hebrewBank)&&!englishBank)
   englishMissing.add('company_bank_details_en');
+ // Account, branch and bank numbers are never translated. Check their
+ // digit sequence before an English bank instruction is offered to clients.
+ const numberTokens=(s:string)=>(s.match(/\d+/g)||[]).sort().join('|');
+ if(enTerms&&hebrewBank&&englishBank&&numberTokens(hebrewBank)!==numberTokens(englishBank))
+  englishMissing.add('company_bank_details_en.account_numbers_mismatch');
+ for(const key of ['closing_regular_text_en','closing_exceptional_text_en','closing_changes_text_en'])
+  if(enTerms&&isHebrew(config[key]||''))englishMissing.add(key+'.contains_hebrew');
  const translations=Object.fromEntries(['he','en'].map(lang=>{
   const en=lang==='en',copy=closingCopy[lang],compact=agreementQuote(event,f,lang,
     en?englishIndex:new Map(),englishMissing);
@@ -96,7 +104,7 @@ async function preview(client,base44,eventId,config){
  const sourceHash=await digest(canonical({translations,quoteFile:selected.quote_file,total:f.finalTotal,currency:f.currency,event_date:event.event_date,existingDeposit}));
  return {event,sourceHash,translations,available_languages:englishReady?['he','en']:['he'],
   english_missing:[...englishMissing].slice(0,60),english_terms_configured:!!enTerms,
-  english_pdf_missing:!!enTerms&&!translations.en.quote_file,
+  english_pdf_missing:!!enTerms&&!!(event.quote_history||[]).length&&!translations.en.quote_file,
   form_language,message_language:agreementLanguage(config.closing_message_language),
   quote:selected.quote_text,quote_summary:selected.quote_summary,quote_file:selected.quote_file,
   terms:selected.terms,total:f.finalTotal,currency:f.currency,deposit,existing_deposit:existingDeposit,
