@@ -197,11 +197,11 @@ export default function SettingsPage() {
             const response = await base44.integrations.Core.UploadFile({ file });
             if (response?.file_url) {
                 setSettings(prev => ({ ...prev, [key]: response.file_url }));
-                alert("התמונה עודכנה. התצוגה המקדימה תתעדכן לאחר שמירה.");
+                alert(t("התמונה עודכנה. התצוגה המקדימה תתעדכן לאחר שמירה."));
             }
         } catch (error) {
             console.error("Failed to upload file:", error);
-            alert("שגיאה בהעלאת התמונה.");
+            alert(t("שגיאה בהעלאת התמונה."));
         } finally {
             setIsUploading(false);
         }
@@ -232,10 +232,10 @@ export default function SettingsPage() {
             // Invalidate app settings cache to refresh across the app
             queryClient.invalidateQueries({ queryKey: ['appSettings'] });
             
-            alert("ההגדרות נשמרו בהצלחה!");
+            alert(t("ההגדרות נשמרו בהצלחה!"));
         } catch (error) {
             console.error("Failed to save settings:", error);
-            alert("שגיאה בשמירת ההגדרות.");
+            alert(t("שגיאה בשמירת ההגדרות."));
         } finally {
             setIsSaving(false);
         }

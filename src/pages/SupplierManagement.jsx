@@ -67,7 +67,7 @@ const SupplierEventsList = ({ supplierId }) => {
   }, [loadSupplierEvents]);
 
   const removeSupplierFromEvent = useCallback(async (eventServiceId) => {
-    if (!window.confirm("האם להסיר את הספק מהאירוע?")) return;
+    if (!window.confirm(t("האם להסיר את הספק מהאירוע?"))) return;
     try {
       const eventService = await base44.entities.EventService.get(eventServiceId);
       let supplierIds = [];
@@ -82,7 +82,7 @@ const SupplierEventsList = ({ supplierId }) => {
       loadSupplierEvents();
     } catch(error) {
       console.error("Failed to remove supplier from event:", error);
-      alert("שגיאה בהסרת הספק מהאירוע.");
+      alert(t("שגיאה בהסרת הספק מהאירוע."));
     }
   }, [supplierId, loadSupplierEvents]);
 
@@ -230,7 +230,7 @@ export default function SupplierManagement() {
   }, []);
 
   const handleDelete = useCallback(async (supplierId) => {
-    if(window.confirm("האם למחוק ספק זה?")) {
+    if(window.confirm(t("האם למחוק ספק זה?"))) {
       try {
         await base44.entities.Supplier.delete(supplierId);
         await refreshEventStatus(undefined, { supplierId });

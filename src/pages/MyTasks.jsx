@@ -216,7 +216,7 @@ export default function MyTasks() {
       setEditingTask(null);
     } catch (err) {
       console.error('Failed to save task', err);
-      alert('שגיאה בשמירת המשימה');
+      alert(t("שגיאה בשמירת המשימה"));
     }
   };
 

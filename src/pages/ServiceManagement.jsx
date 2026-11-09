@@ -240,7 +240,7 @@ export default function ServiceManagement() {
       englishTouched,englishValues,englishRecord,englishLoading,englishError]);
 
   const handleDelete = useCallback(async (serviceId) => {
-    if (window.confirm("האם אתה בטוח שברצונך למחוק שירות זה?")) {
+    if (window.confirm(t("האם אתה בטוח שברצונך למחוק שירות זה?"))) {
       try {
         await base44.entities.Service.delete(serviceId);
         await refreshEventStatus(undefined, { serviceId });
@@ -336,7 +336,7 @@ export default function ServiceManagement() {
       englishTouched,englishValues,englishRecord,englishLoading,englishError]);
 
   const handleDeletePackage = useCallback(async (packageId) => {
-    if (window.confirm("האם אתה בטוח שברצונך למחוק חבילה זו?")) {
+    if (window.confirm(t("האם אתה בטוח שברצונך למחוק חבילה זו?"))) {
       try {
         await base44.entities.Package.delete(packageId);
         

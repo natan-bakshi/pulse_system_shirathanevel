@@ -139,7 +139,7 @@ export default function EventManagement() {
     }, []);
     
     const handleDelete = useCallback(async (eventId) => {
-        if (window.confirm("האם אתה בטוח שברצונך למחוק אירוע זה?")) {
+        if (window.confirm(t("האם אתה בטוח שברצונך למחוק אירוע זה?"))) {
             try {
                 await base44.entities.Event.delete(eventId);
             } catch (error) {
@@ -147,7 +147,7 @@ export default function EventManagement() {
                 const errorMsg = error.message || JSON.stringify(error);
                 if (!errorMsg.includes("not found")) {
                     console.error("Failed to delete event:", error);
-                    alert("שגיאה במחיקת האירוע");
+                    alert(t("שגיאה במחיקת האירוע"));
                 }
             } finally {
                 await loadEvents();
