@@ -123,7 +123,7 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
               <div className="flex-1 min-w-0">
                 <span className="font-medium text-sm">{field.name}</span>
                 <span className="text-xs text-gray-500 mr-2">
-                  ({EXTRA_FIELD_TYPES.find(t => t.value === field.type)?.label || field.type})
+                  ({t(EXTRA_FIELD_TYPES.find(ft => ft.value === field.type)?.label || field.type)})
                 </span>
               </div>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditField(index)}>
@@ -138,7 +138,7 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
       </div>
 
       <Dialog open={showFieldDialog} onOpenChange={setShowFieldDialog}>
-        <DialogContent dir="rtl" className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
+        <DialogContent dir={dir} className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{editingIndex !== null ? 'עריכת שדה' : 'שדה נוסף לאיש קשר'}</DialogTitle>
           </DialogHeader>
@@ -158,7 +158,7 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {EXTRA_FIELD_TYPES.map(ft => (
-                    <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+                    <SelectItem key={ft.value} value={ft.value}>{t(ft.label)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
