@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label';
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function BarMitzvahCalculator() {
-  const {t}=useLanguage();
   const {t,dir}=useLanguage();
   const navigate = useNavigate();
   const [birthDate, setBirthDate] = useState('');
