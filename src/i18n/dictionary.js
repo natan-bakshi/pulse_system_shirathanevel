@@ -610,6 +610,7 @@ export const interfaceLabels = Object.freeze({
   "הודעת קוד אימות": "Verification code message",
   "כותרת עותק חתום": "Signed copy message",
   "כתובת מייל החברה אינה תקינה": "The company email address is invalid",
+  "עמלת סליקה": "Processing fee",
   ...pageLabels,
   ...componentLabels
 });
