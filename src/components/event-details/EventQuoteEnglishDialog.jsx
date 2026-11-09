@@ -362,7 +362,7 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
       <h3 className="font-semibold">Event & family details</h3>{grouped.event.map(editor)}
     </div>}
     {Object.entries(grouped).filter(([key])=>key!=='event').map(([key,list])=>
-      <details key={key} defaultOpen={Array.isArray(missingFields)&&!showAll} className="border rounded-lg p-3">
+      <details key={key} open={Array.isArray(missingFields)&&!showAll} className="border rounded-lg p-3">
        <summary className="cursor-pointer font-medium text-sm" dir={locale==='en'?'ltr':'rtl'}>
         {t(key==='organizer'?'כותרות של סוג ההזמנה':key==='templates'?'תבניות הצעת מחיר':
          key==='catalog'?'שירותים מהקטלוג':key==='settings'?'הגדרות הצעת מחיר':
