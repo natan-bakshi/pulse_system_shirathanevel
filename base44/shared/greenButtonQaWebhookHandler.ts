@@ -203,8 +203,8 @@ export async function handleGreenButtonQaWebhook(request:any,opts:{
   if(plan.plannedHttpStatus!==200)
    console.warn('[GreenButtonWebhook] signed callback not acknowledged',{
     status:plan.plannedHttpStatus,
-    stage:typeof processed?.stage==='string'?processed.stage:'unknown',
-    reason:typeof processed?.reason==='string'?processed.reason:'unknown'
+    stage:/^[a-z_]{3,64}$/.test(processed?.stage||'')?processed.stage:'unknown',
+    reason:/^[a-z_]{3,64}$/.test(processed?.reason||'')?processed.reason:'unknown'
    });
   return result(plan.plannedHttpStatus,plan.acknowledgeCandidate);
  }catch{
