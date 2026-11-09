@@ -228,6 +228,35 @@ export function applyDocumentDirection(html:string,locale:unknown):string{
     '<html'+attrs.replace(/\s+dir="[^"]*"/,'').replace(/\s+lang="[^"]*"/,'')+' lang="en" dir="ltr">')
     .replace('</head>',ltrCss+'</head>'));
 }
+// Final outgoing-document guard. An approved source can still leak Hebrew if
+// a renderer later inserts an unlocalized fallback, label or contact. Inspect
+// visible text nodes only: CSS, script, template and comments are not printed.
+// This is independent of the translation catalog and never rewrites the PDF.
+export function visibleHebrewQuoteSnippets(html:string):string[]{
+  const withoutNonVisible=String(html||'')
+    .replace(/<!--[\s\S]*?-->/g,'')
+    .replace(/<(style|script|template)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,'');
+  const found=new Set<string>();
+  for(const match of withoutNonVisible.matchAll(/>([^<>]*)</g)){
+    const text=match[1].replace(/&(?:nbsp|rlm|lrm);/gi,' ')
+      .replace(/&#(?:x([0-9a-f]+)|(\d+));/gi,(_m,hex,dec)=>{
+        const code=parseInt(hex||dec,hex?16:10);
+        return code>0&&code<=0x10ffff?String.fromCodePoint(code):'';
+      }).replace(/\s+/g,' ').trim();
+    if(isHebrew(text))found.add(text.slice(0,180));
+    if(found.size>=12)break;
+  }
+  return [...found];
+}
+export function ensureNoVisibleHebrewInEnglishQuote(html:string):void{
+  const samples=visibleHebrewQuoteSnippets(html);
+  if(!samples.length)return;
+  const error:any=new Error('The English quote contains visible text that was not translated. Review the highlighted original text before generating or sharing the quote.');
+  error.code='ENGLISH_TRANSLATION_INCOMPLETE';
+  error.fields=['document.visible_text'];
+  error.samples=samples;
+  throw error;
+}
 export function translateOrMissing(index:Map<string,any>,entity:string,id:string,field:string,
  source:unknown,missing:Set<string>,label?:string){
   if(typeof source!=='string'||!source.trim()||!isHebrew(source))return source;
