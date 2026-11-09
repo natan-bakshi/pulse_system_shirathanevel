@@ -218,3 +218,26 @@ test('English quote raises only client-visible fields and includes exact source 
  assert.equal(visible.missing.has('service.es-hidden.client_notes'),true);
  assert.equal(visible.missing.has('service.es-hidden.price_display_text'),false);
 });
+
+test('only visible package description is required; hidden snapshots never block a quote',()=>{
+ const event={id:'ev',family_name:'Family',child_name:'David',event_name:'Family',
+   event_date:'2027-01-01'};
+ const services=[{id:'s',service_name:'Band',service_description:'English Description'}];
+ const eventServices=[
+  {id:'standalone',service_id:'s',service_name:'Band',
+   service_description:'English Description',
+   package_description:'תיאור חבילה ישן ונסתר'},
+  {id:'child',service_id:'s',service_name:'Band',
+   parent_package_event_service_id:'main',
+   service_description:'English Description',
+   package_description:'עוד תיאור חבילה נסתר'},
+  {id:'main',service_id:'s',is_package_main_item:true,
+   package_name:'Production Package',service_name:'שם שירות נסתר',
+   package_description:'תיאור החבילה שמוצג ללקוח'}
+ ];
+ const translated=l.localizeEventQuoteData({event,services,eventServices,
+  templates:[],index:new Map()});
+ assert.deepEqual([...translated.missing],['service.main.package_description']);
+ assert.equal(translated.eventServices[0].package_description,'תיאור חבילה ישן ונסתר');
+ assert.equal(translated.eventServices[1].package_description,'עוד תיאור חבילה נסתר');
+});
