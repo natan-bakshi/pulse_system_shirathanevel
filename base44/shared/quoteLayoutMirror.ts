@@ -44,12 +44,12 @@ export function mirrorQuoteCssDeclarations(css: string): string {
 
 function mirrorTagAttributes(tag: string): string {
   return tag
-    .replace(/(\bstyle\s*=\s*)(["'])([\s\S]*?)\2/gi,
+    .replace(/(\s+style\s*=\s*)(["'])([\s\S]*?)\2/gi,
       (_full, prefix, quote, value) =>
         prefix + quote + mirrorQuoteCssDeclarations(value) + quote)
-    .replace(/(\balign\s*=\s*)(["'])(left|right)\2/gi,
+    .replace(/(\s+align\s*=\s*)(["'])(left|right)\2/gi,
       (_full, prefix, quote, side) => prefix + quote + flipSide(side) + quote)
-    .replace(/(\bdir\s*=\s*)(["'])rtl\2/gi,
+    .replace(/(\s+dir\s*=\s*)(["'])rtl\2/gi,
       (_full, prefix, quote) => prefix + quote + 'ltr' + quote);
 }
 
