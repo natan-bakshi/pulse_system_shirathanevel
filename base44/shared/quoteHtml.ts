@@ -1,5 +1,5 @@
 import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, systemKey } from './eventFields.js';
-import { getEventDisplayName } from './eventName.ts';
+import { getEventDisplayName, getEnglishQuoteEventTitle } from './eventName.ts';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
 import {loadQuoteTranslations,localizeEventQuoteData,translateOrganizerQuoteFields,ensureCompleteEnglish,applyDocumentDirection,ensureNoVisibleHebrewInEnglishQuote,applyReviewedEventQuoteFragments,approvedField,isHebrew,fixedEnglishLabel} from './quoteLocalization.ts';
@@ -556,7 +556,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     const eventIdentityName = getEventDisplayName(event);
     const typeName=options.language==='en'?({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event'):getEventType(event.event_type);
     const familyDetailsLine = options.language==='en'
-        ? `${typeName}${event.child_name?` for ${event.child_name}`:''} — ${eventIdentityName}`.trim()
+        ? getEnglishQuoteEventTitle(event)
         : event.child_name
         ? `${typeName} של ${event.child_name} ${eventIdentityName}`.trim()
         : `${typeName} ${eventIdentityName}`.trim();
