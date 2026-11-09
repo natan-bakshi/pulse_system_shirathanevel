@@ -273,3 +273,25 @@ test('final English guard does not misread invisible CSS, scripts or comments',(
  assert.doesNotThrow(()=>l.ensureNoVisibleHebrewInEnglishQuote(html));
  assert.deepEqual(l.visibleHebrewQuoteSnippets(html),[]);
 });
+
+test('catalog Hebrew not displayed in a custom English event service does not block quote',()=>{
+ const event={id:'e',family_name:'Family',event_name:'Family',child_name:'David'};
+ const service={id:'catalogHebrew',service_name:'שם מקורי לקטלוג',
+  service_description:'תיאור מקורי שאינו מופיע במסמך'};
+ const snapshot={id:'snapshot',service_id:'catalogHebrew',
+  service_name:'Custom English Service',service_description:'Custom English Description'};
+ const out=l.localizeEventQuoteData({event,services:[service],
+  eventServices:[snapshot],templates:[],index:new Map()});
+ assert.equal(out.missing.size,0);
+ assert.equal(out.eventServices[0].service_name,'Custom English Service');
+});
+test('real catalog text required for a missing event service name still blocks an English quote',()=>{
+ const event={id:'e',family_name:'Family',event_name:'Family',child_name:'David'};
+ const service={id:'catalogHebrew',service_name:'שם מקורי לקטלוג',
+  service_description:'תיאור מקורי שאינו מופיע במסמך'};
+ const snapshot={id:'snapshot',service_id:'catalogHebrew',service_name:'',
+  service_description:''};
+ const out=l.localizeEventQuoteData({event,services:[service],
+  eventServices:[snapshot],templates:[],index:new Map()});
+ assert.equal(out.missing.has('catalog.catalogHebrew.service_name'),true);
+});
