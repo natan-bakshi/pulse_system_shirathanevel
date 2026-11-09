@@ -503,9 +503,13 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
       if(template)requiredTemplateIds.add(template.id);
     }
     if(event){
+      const servicesBlock=blocks.find(b=>b.type==='services');
       const localized=localizeEventQuoteData({event,services:allServices,
         eventServices,templates,index:translations,
         options:{requiredTemplateIds:[...requiredTemplateIds],
+          includeDescriptions:servicesBlock?.options?.showDescriptions!==false,
+          includeClientNotes:servicesBlock?.options?.showClientNotes!==false,
+          includeTransportDetails:servicesBlock?.options?.showTransportDetails!==false,
           includeServices:blocks.some(b=>b.type==='services'),
           includeFinancialSummary:blocks.some(b=>b.type==='financial_summary'),
           includeEventHeader:blocks.some(b=>b.type==='event_details'),
