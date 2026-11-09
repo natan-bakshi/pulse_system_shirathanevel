@@ -520,6 +520,8 @@ export const interfaceLabels = Object.freeze({
   "יש להשלים תרגומים מאושרים לשמות השירותים או לפרטי הבנק. אפשר לעשות זאת בכרטיס האירוע ובמסך התרגומים, ולאחר מכן לפתוח טיוטה חדשה.": "Complete the reviewed English service names or bank details in the event card and translation editor, then prepare a new draft.",
   "לא נמצאה בהיסטוריה הצעת מחיר שמסומנת כמסמך אנגלי. טופס אנגלי יכול להציג תמצית שירותים מתורגמת, אך כדי לצרף PDF באנגלית יש להפיק הצעה אנגלית חדשה לפני שליחת הטופס. אין לצרף PDF עברי כאילו היה באנגלית.": "No verified English quotation PDF was found in history. The English form can show the translated service summary. To attach an English PDF, generate an English quotation before sending the form. A Hebrew PDF will not be attached as though it were English.",
   "הודעת קישור לתשלום (עברית)": "Payment link message (Hebrew)",
+  "פרטי בנק באנגלית להעברה בנקאית": "Bank transfer details in English",
+  "יש להזין את אותם מספרי חשבון וסניף מאומתים. טופס אנגלי דורש פרטי בנק באנגלית כשהוראות הבנק בעברית. אין לנחש את איות שם בעל החשבון.": "Use the same verified account and branch numbers. An English form requires English bank instructions when the original is in Hebrew. Do not guess the account holder's spelling.",
   ...pageLabels,
   ...componentLabels
 });
