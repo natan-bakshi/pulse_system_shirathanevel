@@ -1109,7 +1109,7 @@ export const componentLabels=Object.freeze({
   "(עודכן)": "(Updated)",
   "ייבוא קובץ VCF": "Import VCF File",
   "לוח": "Board",
-  "המשימות": "My",
-  "שלי": "Tasks",
+  "המשימות": "Tasks",
+  "שלי": "Mine",
   "מחשבון": "Calculator"
 });
