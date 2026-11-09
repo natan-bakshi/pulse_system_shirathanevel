@@ -484,6 +484,13 @@ export const interfaceLabels = Object.freeze({
   'המסמך מוכן — לחץ לשיתוף': 'Document Ready — Select to Share',
   'שירותים וחבילות': 'Services & Packages',
   'שירותים לחבילה': 'Services to Package',
+  'יעד Webhook של כפתורי השיבוץ:': 'Assignment Button Webhook Target:',
+  'מפתח אימות Webhook:': 'Webhook Authentication Key:',
+  'תואם': 'Matches',
+  'לא תואם': 'Does Not Match',
+  'לא נבדק': 'Not Checked',
+  'קליטת הלחיצות אינה מאומתת. יש לבדוק את הגדרות Green לפני שינוי כלשהו. הפעולה כאן היא לקריאה בלבד.': 'Button callbacks are not verified. Please review the Green settings before making changes. This check is read-only.',
+  'כתובת הקליטה, מפתח האימות והרשאת הודעות נכנסות תואמים להגדרות השרת. נדרשת עדיין לחיצת ספק אמיתית להוכחת העיבוד.': 'The webhook target, authentication key and incoming notifications match the server configuration. A real supplier button press is still needed to verify processing.',
   ...pageLabels,
   ...componentLabels
 });
