@@ -4,6 +4,7 @@ import React,{useEffect,useRef,useState} from "react";
 import { useQuery,useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { agreementAction,agreementError,statusLabel } from "@/lib/agreementApi";
+import {localizeClosingError} from './closingErrors';
 import { Button } from "@/components/ui/button";
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from "@/components/ui/dialog";
 import AgreementView from "./AgreementView";
@@ -34,12 +35,12 @@ export default function EventClosingPanel({event,onChanged}){
  const [editingMilestones,setEditingMilestones]=useState(false);
  useEffect(()=>{if(error||loadError)detailsRef.current?.setAttribute("open","");},[error,loadError]);
  useEffect(()=>{const stop=base44.entities.EventAgreement.subscribe(c=>{if(c.data?.event_id===event.id||c.id===a?.id)qc.invalidateQueries({queryKey:["eventAgreement",event.id]});});return()=>stop();},[event.id,a?.id,qc]);
- const run=async fn=>{setBusy(true);setError("");setMessage("");try{await fn();await refetch();if(onChanged)await onChanged();}catch(e){setError(agreementError(e));}finally{setBusy(false);}};
+ const run=async fn=>{setBusy(true);setError('');setMessage('');try{await fn();await refetch();if(onChanged)await onChanged();}catch(e){setError(localizeClosingError(agreementError(e),locale));}finally{setBusy(false);}};
  const openDraft=()=>run(async()=>{const p=await agreementAction("preview",{eventId:event.id});setDraft({...p,name:"",phone:"",email:"",send_whatsapp:true});});
  useEffect(()=>{const open=e=>{if(e.detail===event.id)openDraft();};window.addEventListener("open-event-closing",open);return()=>window.removeEventListener("open-event-closing",open);},[event.id]);
- const receiptMessage=state=>state==='accepted'
-   ?"ההודעה התקבלה אצל ספק WhatsApp. מסירה לנמען טרם אומתה."
-   :"ההודעה נשמרה בתור WhatsApp וממתינה לאישור הספק. ניתן לבדוק את התקדמותה במעקב.";
+ const receiptMessage=state=>uiTranslate(state==='accepted'
+   ?'ההודעה התקבלה אצל ספק WhatsApp. מסירה לנמען טרם אומתה.'
+   :'ההודעה נשמרה בתור WhatsApp וממתינה לאישור הספק. ניתן לבדוק את התקדמותה במעקב.');
  const inspectDelivery=async()=>{
   if(!a?.id)return;
   setBusy(true);setError("");setMessage("");
@@ -47,7 +48,7 @@ export default function EventClosingPanel({event,onChanged}){
    const info=await agreementAction("delivery_health",{agreementId:a.id});
    setDeliveryHealth(info);
    setMessage(uiTranslate("בדיקת WhatsApp הושלמה. לא בוצעה שליחה ללקוח."));
-  }catch(e){setError(agreementError(e));}
+  }catch(e){setError(localizeClosingError(agreementError(e),locale));}
   finally{setBusy(false);}
  };
  const issue=send=>{
@@ -63,7 +64,7 @@ export default function EventClosingPanel({event,onChanged}){
    const r=await agreementAction("issue",{agreementId:a.id,send,
      confirmPriorUncertain:previousAmbiguous});
    setUrl(r.url);
-   setMessage(r.warning||(send?receiptMessage(r.delivery_state):"הקישור מוכן להעתקה."));
+   setMessage(r.warning?localizeClosingError(r.warning,locale):(send?receiptMessage(r.delivery_state):uiTranslate('הקישור מוכן להעתקה.')));
    if(send&&!r.warning)toast.success(r.delivery_state==='accepted'?"התקבל אצל ספק WhatsApp":"נשמר בתור WhatsApp",
      {description:receiptMessage(r.delivery_state)});
  });
@@ -76,11 +77,11 @@ export default function EventClosingPanel({event,onChanged}){
   try{
    const r=await agreementAction("issue",{agreementId:created.id,send:true});
    setUrl(r.url);
-   if(r.warning){setMessage("הטופס נשמר, אך שליחת הקישור לא אושרה: "+r.warning);return;}
+   if(r.warning){setMessage(uiTranslate('הטופס נשמר, אך שליחת הקישור לא אושרה: ')+localizeClosingError(r.warning,locale));return;}
    setMessage(receiptMessage(r.delivery_state));
    toast.success(r.delivery_state==='accepted'?"התקבל אצל ספק WhatsApp":"נשמר בתור WhatsApp",
      {description:receiptMessage(r.delivery_state)});
-  }catch(e){throw new Error("הטופס נשמר, אך מצב שליחת הקישור לא אומת. יש לבדוק את המעקב לפני שליחה חוזרת. "+agreementError(e));}
+  }catch(e){throw new Error(uiTranslate('הטופס נשמר, אך מצב שליחת הקישור לא אומת. יש לבדוק את המעקב לפני שליחה חוזרת. ')+localizeClosingError(agreementError(e),locale));}
  });
  const openPdf=(id,kind="signed")=>run(async()=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await agreementAction("pdf",{agreementId:id,kind});if(tab)tab.location.replace(r.url);else window.location.assign(r.url);}catch(e){tab?.close();throw e;}});
  const change=(key,value)=>setDraft(d=>({...d,[key]:value}));
@@ -107,7 +108,7 @@ export default function EventClosingPanel({event,onChanged}){
  return <section dir={dir} className="rounded-xl border bg-white p-5 space-y-4">
   <div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-semibold">{uiTranslate("סגירת אירוע לפי הנוהל")}</h2><div className="flex gap-2"><Button disabled={busy} onClick={openDraft}>{a?uiTranslate("הכן גרסה חדשה"):uiTranslate("הכן טופס לסגירת אירוע")}</Button><Button disabled={busy} variant="outline" onClick={()=>run(()=>refetch())}>{uiTranslate("רענן")}</Button></div></div>
   <p className="text-sm text-gray-600">{uiTranslate("חתימה, כרטיס מאומת ומקדמה לפי דרישות המנהל. שינוי סטטוס ידני של האירוע נשאר זמין ללא תנאים.")}</p>
-  <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-2"><p className="font-medium">{uiTranslate("סגירה על בסיס תשלום בלבד — אישור מנהל")}</p><p className="text-sm">{uiTranslate("פטור מפורש גם מחתימה וגם מכרטיס לביטחון. לאחר אישור זה, תשלום שנקלט יספיק לסגירה אוטומטית. יצירת טופס חדש מחזירה את דרישות הנוהל.")}</p><Button variant="outline" disabled={busy} onClick={()=>{const approved=!event.closing_payment_only_approved;if(approved&&!window.confirm(uiTranslate("לאשר לאירוע זה פטור גם מחתימה וגם מכרטיס לביטחון? אם כבר נקלט תשלום, האירוע יוכל להיסגר מיד.")))return;run(async()=>{await agreementAction("payment_only_policy",{eventId:event.id,approved});setMessage(approved?"נשמר פטור מחתימה ומכרטיס":"בוטל הפטור. סטטוס שכבר עודכן אינו משתנה למפרע.");});}}>{event.closing_payment_only_approved?uiTranslate("בטל פטור מחתימה ומכרטיס"):uiTranslate("אשר פטור מחתימה ומכרטיס")}</Button>{event.closing_payment_only_approved&&<p className="text-sm">{uiTranslate("הפטור אושר ב־")}{israelDateTime(event.closing_payment_only_approved_at)}</p>}</div>
+  <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-2"><p className="font-medium">{uiTranslate("סגירה על בסיס תשלום בלבד — אישור מנהל")}</p><p className="text-sm">{uiTranslate("פטור מפורש גם מחתימה וגם מכרטיס לביטחון. לאחר אישור זה, תשלום שנקלט יספיק לסגירה אוטומטית. יצירת טופס חדש מחזירה את דרישות הנוהל.")}</p><Button variant="outline" disabled={busy} onClick={()=>{const approved=!event.closing_payment_only_approved;if(approved&&!window.confirm(uiTranslate("לאשר לאירוע זה פטור גם מחתימה וגם מכרטיס לביטחון? אם כבר נקלט תשלום, האירוע יוכל להיסגר מיד.")))return;run(async()=>{await agreementAction("payment_only_policy",{eventId:event.id,approved});setMessage(uiTranslate(approved?'נשמר פטור מחתימה ומכרטיס':'בוטל הפטור. סטטוס שכבר עודכן אינו משתנה למפרע.'));});}}>{event.closing_payment_only_approved?uiTranslate("בטל פטור מחתימה ומכרטיס"):uiTranslate("אשר פטור מחתימה ומכרטיס")}</Button>{event.closing_payment_only_approved&&<p className="text-sm">{uiTranslate("הפטור אושר ב־")}{israelDateTime(event.closing_payment_only_approved_at)}</p>}</div>
   <details ref={detailsRef} className="rounded border p-3"><summary className="cursor-pointer font-medium">{uiTranslate("פרטי סגירת האירוע")}</summary><div className="space-y-4 pt-4">
   {a&&<>
    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[["הסכם",status(a.state)],["חתימה",a.signed_at?israelDateTime(a.signed_at):uiTranslate('ממתינה')],["כרטיס",status(a.token_state)+(a.require_token?'':uiTranslate(' · רשות'))],["מקדמה",status(a.deposit_state)+(a.require_deposit?'':uiTranslate(' · רשות'))]].map(([k,v])=><div key={k} className="bg-stone-50 rounded p-3"><p className="text-xs text-gray-600">{uiTranslate(k)}</p><p>{v}</p></div>)}</div>
