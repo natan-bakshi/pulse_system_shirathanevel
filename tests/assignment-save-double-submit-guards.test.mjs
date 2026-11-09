@@ -35,5 +35,5 @@ for(const [file,guard,handler,disabled] of surfaces){
 test('EventDetails supplier modal forwards active-save state to its actual save button',()=>{
  const src=fs.readFileSync('src/components/event-details/EventDetailDialogs.jsx','utf8');
  assert.match(src,/SupplierAssignDialog\(\{[^\n]*isSaving=false/);
- assert.match(src,/<Button onClick=\{onAssign\} disabled=\{isSaving\}>שמור<\/Button>/);
+ assert.match(src,/<Button onClick=\{onAssign\} disabled=\{isSaving\}>(?:שמור|\{uiTranslate\("שמור"\)\})<\/Button>/);
 });
