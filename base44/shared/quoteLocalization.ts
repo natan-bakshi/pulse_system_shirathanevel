@@ -49,7 +49,7 @@ export function translationPreservesProtectedContent(source:string,value:string)
   // Protected organizer lookup IDs may themselves be Hebrew (e.g.
   // [סוג_האירוע_123]); they are identifiers replaced at render time, not
   // visible English wording. Reject only Hebrew that would actually render.
-  const targetVisible=value.replace(/<!--[\s\S]*?-->/g,'')
+  const targetContentVisible=value.replace(/<!--[\s\S]*?-->/g,'')
     .replace(/<[^>]*>/g,' ')
     .replace(/\[[^\[\]<>]{1,150}\]/g,' ')
     .replace(/\{\{[^{}]+\}\}/g,' ')
@@ -57,7 +57,7 @@ export function translationPreservesProtectedContent(source:string,value:string)
       const n=parseInt(hex||dec,hex?16:10);
       return n>0&&n<=0x10ffff?String.fromCodePoint(n):'';
     });
-  if(isHebrew(targetVisible))return false;
+  if(isHebrew(targetContentVisible))return false;
   if(/<\s*(script|iframe|object|embed|style)\b|\bon\w+\s*=|javascript\s*:/i.test(value))return false;
   const visible=(s:string)=>s.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
   const extract=(s:string,re:RegExp)=>(s.match(re)||[]).sort().join('|');
