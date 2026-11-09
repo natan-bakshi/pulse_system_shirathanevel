@@ -4,7 +4,7 @@ export function englishQuoteVisibleSamplesFromError(error) {
   const samples=payload?.samples;
   if(!Array.isArray(samples))return [];
   return [...new Set(samples.filter(x=>typeof x==='string'&&
-    /[\u0590-\u05ff]/.test(x)).map(x=>x.slice(0,180)))].slice(0,12);
+    /[\u0590-\u05ff]/.test(x)).map(x=>x.slice(0,640)))].slice(0,12);
 }
 export function englishQuoteIssuesFromError(error) {
   const candidates=[error?.response?.data,error?.data,error?.response,error];
