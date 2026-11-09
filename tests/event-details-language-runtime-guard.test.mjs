@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import parser from '@babel/parser';
-import traverse from '@babel/traverse';
+import traverseModule from '@babel/traverse';
+const traverse=traverseModule.default||traverseModule;
 
 function files(dir) {
   const out=[];
