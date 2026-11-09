@@ -225,3 +225,9 @@ Payment creation/callbacks, invoice amounts/VAT behavior, WhatsApp queues/button
 7. Only after build + complete test gate + manual/noncustomer QA, checkpoint, publish one safe release and verify production revision + read-only event card smoke (previous blank-screen incident).
 
 **Urgent interruption:** On 2026-11-09 owner reported: Green API WhatsApp Approve and Reject buttons do nothing; webhook apparently broken; no success/failure WhatsApp response. Highest-priority work is to diagnose webhook registration, provider health, inbound callback acceptance, event matching, HMAC/signing, state changes, feedback enqueue/delivery and production release. Absolutely no real supplier status mutation or spontaneous WhatsApp send as part of diagnostics. Return to this section only after functional fix/verification.
+
+### 2026-11-09 — URGENT WhatsApp button interruption investigation
+- Retained exact pending bilingual closing/payment-message resume plan in the preceding PAUSED section. Do not resume translation until owner confirms this incident is resolved.
+- Confirmed deterministic 48-hour signing bug in Green supplier buttons: 42 of 44 accepted interactive snapshots already expired at Nov9; corrected issue and protected historical callback acceptance for up to 30 days while retaining all HMAC/Outbox/supplier/status/revision/CAS checks. Two fresh Nov9 button messages are not expired and have no durable reply receipt, so Green webhook delivery remains a separate open acceptance risk.
+- Added exact endpoint/Bearer match read-only UI to the existing owner-only Green GetSettings action; generic admin browser test could not access that owner-only page and never contacted Green.
+- Full engineering evidence, paths, rollback and remaining owner verification are in \`docs/pulse-urgent-green-assignment-buttons-2026-11-09.md\`. No provider settings, supplier records or customer messages altered.
