@@ -8,7 +8,7 @@ import {Label} from '@/components/ui/label';
 import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 import {externalEnglishEnabled} from '@/i18n/futureTranslationClient';
 import {useLanguage} from '@/i18n/LanguageProvider';
-import {isHebrew,translationPreservesProtectedContent} from '../../../base44/shared/quoteLocalization.ts';
+import {isHebrew,translationPreservesProtectedContent,quoteVisibleFragmentField} from '../../../base44/shared/quoteLocalization.ts';
 import {matchesResidualEnglishSample,hebrewTextNodesInTranslation,substituteExactHebrewTextNode} from '@/i18n/quoteEnglishReviewHelpers';
 
 const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes',discount_reason:'Discount Reason'};
@@ -55,7 +55,7 @@ function liveValue(f,event,services){
  }
  return event[f.key]||'';
 }
-function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],organizerTypes=[],appSettings=[]){
+function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],organizerTypes=[],appSettings=[],visibleTextSamples=[]){
  if(!event)return [];
  const fields=[];
  const add=(entity,id,key,source,label,group)=>{
@@ -145,6 +145,23 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],
        'Pickup Location / Transport Details',service.id);
   }
  }
+ // Last-resort repair for genuine renderer-only text. Scoped to this event,
+ // exact visible text nodes, and never changing the original event or catalog.
+ // The error adapter truncates snippets at 180 characters; longer fragments
+ // cannot be safely matched and therefore must NOT be offered as overrides.
+ if(missingFields.includes('document.visible_text')){
+  for(const raw of visibleTextSamples){
+   const sample=String(raw||'').replace(/\s+/g,' ').trim();
+   if(!isHebrew(sample)||!sample||sample.length>=180)continue;
+   const covered=fields.some(f=>{
+    const entry=rows.find(r=>r.source_entity===f.entity&&r.source_id===f.id&&r.locale==='en');
+    return matchesResidualEnglishSample(entry?.fields?.[f.key]?.value,[sample])||
+      matchesResidualEnglishSample(f.source,[sample]);
+   });
+   if(!covered)add('Event',event.id,quoteVisibleFragmentField(sample),sample,
+     'Text found only in generated document','document');
+  }
+ }
  return fields;
 }
 export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],quoteTemplates=[],missingFields=null,visibleTextSamples=[],onSaved}){
@@ -188,8 +205,8 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[open,event?.id,visibleTextSamples.length]);
- const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[],quoteTemplates,organizers,footerSettings),
-  [event,eventServices,allServices,rows,missingFields,quoteTemplates,organizers,footerSettings]);
+ const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[],quoteTemplates,organizers,footerSettings,visibleTextSamples),
+  [event,eventServices,allServices,rows,missingFields,quoteTemplates,organizers,footerSettings,visibleTextSamples]);
  const map=useMemo(()=>new Map(rows.map(row=>[row.source_entity+':'+row.source_id,row])),[rows]);
  const changed=fields.filter(f=>Object.prototype.hasOwnProperty.call(draft,f.hash));
  const needed=new Set(missingFields||[]);
@@ -244,6 +261,7 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
       f.entity==='QuoteTemplate'?latestTemplates.find(x=>x.id===f.id)?.[f.key]:
       f.entity==='QuoteOrganizerType'?organizerFieldValue(latestOrganizers.find(x=>x.id===f.id),f.key):
       f.entity==='AppSettings'?latestSettings.find(x=>x.id===f.id)?.setting_value:
+      f.entity==='Event'&&f.key.startsWith('visible_fragment_')?f.source:
       liveValue(f,latestEvent,latestServices);
     if(String(liveSource??'')!==f.source)
      throw Error('The original Hebrew text changed. Reopen this editor to review it.');
@@ -348,6 +366,7 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
        <summary className="cursor-pointer font-medium text-sm" dir={locale==='en'?'ltr':'rtl'}>
         {t(key==='organizer'?'כותרות של סוג ההזמנה':key==='templates'?'תבניות הצעת מחיר':
          key==='catalog'?'שירותים מהקטלוג':key==='settings'?'הגדרות הצעת מחיר':
+         key==='document'?(locale==='en'?'Other Text in the Document':'טקסט נוסף במסמך'):
          eventServices.find(s=>s.id===key)?.service_name||'שירות')} — {list.length} {t("שדות לתרגום")}
        </summary><div className="space-y-3 mt-4">{list.map(editor)}</div>
       </details>)}
