@@ -120,7 +120,13 @@ function supplierOwnNote(raw:any,supplierId:string){
 export function allowedSupplierEventView(event:any,services:any[],supplierId:string,
  catalogs:Map<string,any>=new Map()){
  if(!event||!ID.test(event.id||'')||!Array.isArray(services)||
-  !services.some(s=>supplierIsActivelyAssigned(s,supplierId)))throw denied();
+  !services.some(s=>s?.event_id===event.id&&
+   supplierIsActivelyAssigned(s,supplierId)))throw denied();
+ const own=services.filter(s=>s?.event_id===event.id&&
+  supplierIsActivelyAssigned(s,supplierId));
+ // Do not silently truncate assigned services if a malformed data set grows
+ // beyond a safe bounded event card. It needs an operator review instead.
+ if(own.length>120)throw Object.assign(new Error('Event card too large'),{status:503});
  return {
   id:event.id,
   eventName:text(event.event_name,140),
@@ -132,7 +138,7 @@ export function allowedSupplierEventView(event:any,services:any[],supplierId:str
   time:text(event.event_time,40),
   location:text(event.location,180),
   city:text(event.city,90),
-  services:services.filter(s=>supplierIsActivelyAssigned(s,supplierId)).slice(0,60).map(s=>{
+  services:own.map(s=>{
    const catalog=catalogs.get(s.service_id);
    const points=supplierMeetingPoints(s);
    return {
@@ -163,11 +169,12 @@ export async function readSupplierEventView(client:any,user:any,eventId:unknown)
  const assignments=await db.EventService.filter({event_id:eventId});
  if(!Array.isArray(assignments))throw denied();
  const supplier=matches.find((row:any)=>assignments.some((assignment:any)=>
-  supplierIsActivelyAssigned(assignment,row.id)));
+  assignment?.event_id===eventId&&supplierIsActivelyAssigned(assignment,row.id)));
  if(!supplier)throw denied();
  const event=await db.Event.get(eventId).catch(()=>null);
  if(!event)throw denied();
- const own=assignments.filter((row:any)=>supplierIsActivelyAssigned(row,supplier.id));
+ const own=assignments.filter((row:any)=>row?.event_id===eventId&&
+  supplierIsActivelyAssigned(row,supplier.id));
  const catalogs=new Map<string,any>();
  if(typeof db.Service?.get==='function'){
   // Optional global service fallback ONLY for own assigned services missing
