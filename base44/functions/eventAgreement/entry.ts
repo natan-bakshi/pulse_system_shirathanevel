@@ -17,7 +17,7 @@ import { AgreementError, audit, lockAgreement, settings, financials, deliver, no
 import { completeAgreementDeposit } from "../../shared/agreementDeposit.ts";
 import { persistAgreementPdf } from "../../shared/agreementPdf.ts";
 import { agreementLanguage, closingCopy, localizedAgreement, renderClosingMessage } from "../../shared/closingLanguage.ts";
-import {loadQuoteTranslations,isHebrew} from '../../shared/quoteLocalization.ts';
+import {loadQuoteTranslations,isHebrew,translateOrMissing} from '../../shared/quoteLocalization.ts';
 import {customerMessageTemplate} from '../../shared/customerMessageTone.ts';
 
 import { closingClauses, withoutCardClauses } from "../../shared/closingClauses.ts";
@@ -88,11 +88,13 @@ async function preview(client,base44,eventId,config){
  const translations=Object.fromEntries(['he','en'].map(lang=>{
   const en=lang==='en',copy=closingCopy[lang],compact=agreementQuote(event,f,lang,
     en?englishIndex:new Map(),englishMissing);
+  const eventName=en&&enTerms?translateOrMissing(englishIndex,'Event',event.id,
+   'event_name',event.event_name,englishMissing,'event.event_name'):event.event_name;
   const feeText=config.processing_fee_enabled==="true"
    ?(en?"Card payments incur a processing fee under the settings at the time of this agreement: ":"בתשלום באשראי תתווסף עלות סליקה לפי הגדרות הסליקה במועד הסכם זה: ")+config.processing_fee_value+(config.processing_fee_type==="fixed"?" "+f.currency+(en?" per charge.":" לכל חיוב."):en?"% of the charged amount.":"% מסכום החיוב.")
    :copy.fee;
   const texts=[copy.terms,copy.token,config[en?"closing_regular_text_en":"closing_regular_text"]||closingDefaults[en?"closing_regular_text_en":"closing_regular_text"],config[en?"closing_exceptional_text_en":"closing_exceptional_text"]||closingDefaults[en?"closing_exceptional_text_en":"closing_exceptional_text"],feeText,config[en?"closing_changes_text_en":"closing_changes_text"]||closingDefaults[en?"closing_changes_text_en":"closing_changes_text"]];
-  return [lang,{terms:en?enTerms:heTerms,clauses:codes.map((code,i)=>({code,label:copy.labels[i],text:texts[i]})),
+  return [lang,{event_name:eventName,terms:en?enTerms:heTerms,clauses:codes.map((code,i)=>({code,label:copy.labels[i],text:texts[i]})),
    quote_text:compact.quote,quote_summary:compact.summary,quote_file:compact.quoteFile,
    bank_details:en?(englishBank||(!isHebrew(hebrewBank)?hebrewBank:'')):hebrewBank,
    pricing_note:compact.summary.pricing_note,
@@ -139,7 +141,7 @@ async function finishDocument(client,a,backendClient=null){
   try{
    // Store the private file URI in the outbox. The worker creates a fresh signed
    // URL at dispatch, so a long queue cannot expire an agreement attachment.
-   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy",renderClosingMessage(await settings(client),"signed",a.notifications?.language||a.snapshot.message_language,{event_name:a.snapshot.event_name,customer_name:a.recipient_name}),{uri:a.pdf_uri,name:"agreement-"+a.id+".pdf"},{},backendClient);
+   const d=await deliver(client,a,"signed_copy",a.id+":signed_copy",renderClosingMessage(await settings(client),"signed",a.notifications?.language||a.snapshot.message_language,{event_name:localizedAgreement(a.snapshot,a.notifications?.language||a.snapshot.message_language).event_name,customer_name:a.recipient_name}),{uri:a.pdf_uri,name:"agreement-"+a.id+".pdf"},{},backendClient);
    a=await client.entities.EventAgreement.update(a.id,{copy_state:d.state});
   }catch{a=await client.entities.EventAgreement.update(a.id,{copy_state:"unknown"});}
  }
@@ -423,7 +425,7 @@ export default Deno.serve(async req=>{
      milestones:milestones.map((m,i)=>({...m,label:cleanText(lang===formLanguage?m.label:(supplied.milestones?.[i]?.label||base.milestones[i]?.label),150)}))
     }];
    }));
-   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:p.event.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:baseVariant.quote_summary,quote_file:baseVariant.quote_file,terms,clauses,milestones,
+   const snapshot={recipient_name:name,recipient_phone:phone,recipient_email:email,event_id:body.eventId,event_name:baseVariant.event_name,event_date:p.event.event_date,total:p.total,currency:p.currency,form_language:formLanguage,message_language:notification.language,translations,quote_text:baseVariant.quote_text,quote_summary:baseVariant.quote_summary,quote_file:baseVariant.quote_file,terms,clauses,milestones,
     deposit:milestones[0].amount,deposit_paid_at_creation:!!body.require_deposit&&p.existing_deposit>0,bank_details:baseVariant.bank_details,regular_cap:regular,regular_cap_paid_offset:p.existing_deposit>0?roundMoney(p.quote_summary.paid):0,exceptional_cap:exceptional,
     fee_config:Object.fromEntries(["processing_fee_enabled","processing_fee_type","processing_fee_value","processing_fee_label"].map(k=>[k,config[k]||""])),
     exceptional_notice:config.closing_exceptional_notice!=="false",exceptional_notice_days:Math.max(0,Number(config.closing_exceptional_notice_days)||0),
@@ -484,7 +486,7 @@ export default Deno.serve(async req=>{
      try{
       const delivery=await deliver(client,a,"invitation",a.id+":invitation:"+a.revision,
        renderClosingMessage(config,"invitation",a.notifications?.language||a.snapshot.message_language,
-       {customer_name:a.recipient_name,event_name:a.snapshot.event_name,link:url}),null,{},base44);
+       {customer_name:a.recipient_name,event_name:localizedAgreement(a.snapshot,a.notifications?.language||a.snapshot.message_language).event_name,link:url}),null,{},base44);
       // "Queued" is not "accepted by provider". Never tell the administrator
       // that the customer has received an invitation on enqueue alone.
       if(!['queued','accepted'].includes(delivery.state))
