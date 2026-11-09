@@ -1255,5 +1255,8 @@ export const componentLabels=Object.freeze({
   "שלח וואטסאפ": "Send WhatsApp",
   "שלבי סגירת האירוע": "Event Closure Steps",
   "טקסט חופשי...": "Free Text…",
-  "example@gmail.com או Calendar ID": "example@gmail.com or Calendar ID"
+  "example@gmail.com או Calendar ID": "example@gmail.com or Calendar ID",
+  "ברוכים הבאים ל": "Welcome to ",
+  "מ": "From ",
+  "הכנסות": "Revenue"
 });
