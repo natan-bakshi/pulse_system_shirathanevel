@@ -9,7 +9,16 @@ import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 import {isHebrew,translationPreservesProtectedContent} from '../../../base44/shared/quoteLocalization.ts';
 
 const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes',discount_reason:'Discount Reason'};
-const serviceFields={service_name:'Service name',service_description:'Description',package_name:'Package name',package_description:'Package description',client_notes:'Client-facing notes',price_display_text:'Custom price label',notes:'Other notes'};
+const serviceFields={service_name:'Service name',service_description:'Description',package_name:'Package name',package_description:'Package description',client_notes:'Client-facing notes',price_display_text:'Custom price label'};
+function organizerFieldValue(record,key){
+ if(!record)return '';
+ if(key==='contacts_label'){
+  try{return JSON.parse(record.contacts_config||'{}').label||'';}catch{return '';}
+ }
+ const match=key.match(/^block_(\d+)_subtitle_title$/);
+ if(match){try{return JSON.parse(record.quote_blocks||'[]')[Number(match[1])]?.subtitle_title||'';}catch{return '';}}
+ return record[key]||'';
+}
 function liveValue(f,event,services){
  if(f.entity==='EventService'){
   const service=services.find(s=>s.id===f.id);
@@ -43,7 +52,7 @@ function liveValue(f,event,services){
  }
  return event[f.key]||'';
 }
-function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[]){
+function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],organizerTypes=[],appSettings=[]){
  if(!event)return [];
  const fields=[];
  const add=(entity,id,key,source,label,group)=>{
@@ -73,6 +82,21 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[])
   add('Event',event.id,'schedule_'+i+'_activity',s.activity,'Schedule activity '+(i+1),'event');
   add('Event',event.id,'schedule_'+i+'_notes',s.notes,'Schedule notes '+(i+1),'event');
  });
+ for(const organizer of organizerTypes){
+  if(organizer.type_name!==event.organizer_type)continue;
+  for(const key of ['quote_main_title_template','contacts_label'])
+   add('QuoteOrganizerType',organizer.id,key,organizerFieldValue(organizer,key),
+    key==='contacts_label'?'Event Contacts Heading':'Custom Quote Title','organizer');
+  let blocks=[];
+  try{blocks=JSON.parse(organizer.quote_blocks||'[]');}catch{}
+  if(Array.isArray(blocks))blocks.forEach((block,i)=>
+   add('QuoteOrganizerType',organizer.id,'block_'+i+'_subtitle_title',block.subtitle_title,
+    'Section '+(i+1)+' Heading','organizer'));
+ }
+ if(missingFields.includes('footer'))for(const setting of appSettings){
+  if(setting.setting_key==='quote_footer_text')
+   add('AppSettings',setting.id,'setting_value',setting.setting_value,'Quote Footer','settings');
+ }
  for(const template of quoteTemplates){
   if(!missingFields.includes('template.'+template.id+'.content'))continue;
   add('QuoteTemplate',template.id,'content',template.content,
@@ -116,26 +140,39 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[])
 }
 export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],quoteTemplates=[],missingFields=null,onSaved}){
  const [rows,setRows]=useState([]),[draft,setDraft]=useState({});
+ const [organizers,setOrganizers]=useState([]),[footerSettings,setFooterSettings]=useState([]);
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [showAll,setShowAll]=useState(false);
  useEffect(()=>{if(open)setShowAll(false);},[open,missingFields]);
  useEffect(()=>{
   if(!open)return;
   let active=true;setLoading(true);setError('');setDraft({});
-  base44.entities.ContentTranslation.list('-updated_date',500)
-   .then(data=>{if(active)setRows(Array.isArray(data)?data:[]);})
-   .catch(()=>{if(active)setError('Could not load English translations.');})
+  const readOrganizer=Array.isArray(missingFields)&&missingFields.some(k=>k.startsWith('organizer.'));
+  const readFooter=Array.isArray(missingFields)&&missingFields.includes('footer');
+  Promise.all([
+   base44.entities.ContentTranslation.list('-updated_date',500),
+   readOrganizer?base44.entities.QuoteOrganizerType.list():Promise.resolve([]),
+   readFooter?base44.entities.AppSettings.filter({setting_key:'quote_footer_text'}):Promise.resolve([])
+  ])
+   .then(([translations,types,settings])=>{
+    if(active){setRows(Array.isArray(translations)?translations:[]);
+      setOrganizers(Array.isArray(types)?types:[]);
+      setFooterSettings(Array.isArray(settings)?settings:[]);}
+   })
+   .catch(()=>{if(active)setError('Could not load English translations or quote settings.');})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[open,event?.id]);
- const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[],quoteTemplates),
-  [event,eventServices,allServices,rows,missingFields,quoteTemplates]);
+ const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[],quoteTemplates,organizers,footerSettings),
+  [event,eventServices,allServices,rows,missingFields,quoteTemplates,organizers,footerSettings]);
  const map=useMemo(()=>new Map(rows.map(row=>[row.source_entity+':'+row.source_id,row])),[rows]);
  const changed=fields.filter(f=>Object.prototype.hasOwnProperty.call(draft,f.hash));
  const needed=new Set(missingFields||[]);
  const issueKey=f=>f.entity==='Event'?'event.'+f.key:
    f.entity==='Service'?'catalog.'+f.id+'.'+f.key:
-   f.entity==='QuoteTemplate'?'template.'+f.id+'.'+f.key:'service.'+f.id+'.'+f.key;
+   f.entity==='QuoteTemplate'?'template.'+f.id+'.'+f.key:
+   f.entity==='QuoteOrganizerType'?'organizer.'+f.key:
+   f.entity==='AppSettings'?'footer':'service.'+f.id+'.'+f.key;
  const matchesMissing=f=>needed.has(issueKey(f))||
    needed.has('service.'+f.key)||needed.has('catalog.'+f.key);
  const displayedFields=Array.isArray(missingFields)&&!showAll?
@@ -156,9 +193,17 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
    const latestTemplates=changed.some(f=>f.entity==='QuoteTemplate')?
      await Promise.all(changed.filter(f=>f.entity==='QuoteTemplate').map(f=>
        base44.entities.QuoteTemplate.get(f.id))):[];
+   const latestOrganizers=changed.some(f=>f.entity==='QuoteOrganizerType')?
+     await Promise.all([...new Set(changed.filter(f=>f.entity==='QuoteOrganizerType').map(f=>f.id))]
+       .map(id=>base44.entities.QuoteOrganizerType.get(id))):[];
+   const latestSettings=changed.some(f=>f.entity==='AppSettings')?
+     await Promise.all([...new Set(changed.filter(f=>f.entity==='AppSettings').map(f=>f.id))]
+       .map(id=>base44.entities.AppSettings.get(id))):[];
    for(const f of changed){
     const liveSource=f.entity==='Service'?latestCatalog.find(x=>x.id===f.id)?.[f.key]:
       f.entity==='QuoteTemplate'?latestTemplates.find(x=>x.id===f.id)?.[f.key]:
+      f.entity==='QuoteOrganizerType'?organizerFieldValue(latestOrganizers.find(x=>x.id===f.id),f.key):
+      f.entity==='AppSettings'?latestSettings.find(x=>x.id===f.id)?.setting_value:
       liveValue(f,latestEvent,latestServices);
     if(String(liveSource??'')!==f.source)
      throw Error('The original Hebrew text changed. Reopen this editor to review it.');
@@ -226,8 +271,10 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
     </div>}
     {Object.entries(grouped).filter(([key])=>key!=='event').map(([key,list])=>
       <details key={key} className="border rounded-lg p-3">
-       <summary className="cursor-pointer font-medium text-sm">
-        {eventServices.find(s=>s.id===key)?.service_name||'Service'} — {list.length} English fields
+       <summary className="cursor-pointer font-medium text-sm" dir="rtl">
+        {key==='organizer'?'כותרות של סוג ההזמנה':key==='templates'?'תבניות הצעת מחיר':
+         key==='catalog'?'שירותים מהקטלוג':key==='settings'?'הגדרות הצעת מחיר':
+         eventServices.find(s=>s.id===key)?.service_name||'שירות'} — {list.length} שדות לתרגום
        </summary><div className="space-y-3 mt-4">{list.map(editor)}</div>
       </details>)}
     {!displayedFields.length&&<p className="text-sm" dir="rtl">לא נמצאו שדות נוספים לעריכה בתצוגה הזאת.</p>}
