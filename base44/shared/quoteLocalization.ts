@@ -252,6 +252,9 @@ export function ensureCompleteEnglish(missing:Iterable<string>){
 
 const places=new Map([
  ['ירושלים','Jerusalem'],['הכותל המערבי','Western Wall'],
+ ['רחבת הכותל המערבי','Western Wall Plaza'],['רחבת הכותל','Western Wall Plaza'],
+ ['בית הכנסת רבן יוחנן בן זכאי','Rabban Yochanan Ben Zakkai Synagogue'],
+ ['בית הכנסת ריבז','RYBZ Synagogue'],['העיר העתיקה','Old City of Jerusalem'],
  ['ממילא','Mamilla'],['יפו העתיקה','Old Jaffa'],
  ['זכרון יעקב','Zichron Yaakov'],['הר ציון','Mount Zion'],
  ['קבר דוד המלך',"King David's Tomb"],['הרובע היהודי','Jewish Quarter'],
