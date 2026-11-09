@@ -9,13 +9,13 @@ Read-only production verification after owner reported recovery:
 - No new Green GetSettings, webhook provisioning, restart, retry, synthetic send or mutation was performed. A fresh *successful supplier reject* click was not sampled, so do not claim newly exercised reject success beyond previous verified functionality.
 
 ## Implemented, no old agreement mutation
-1. Introduced base44/shared/customerMessageTone.ts with friendly bilingual owner-reviewed default COPY for:
+1. Introduced base44/shared/customerMessageTone.ts with friendly bilingual assistant-authored default COPY for:
    - Customer agreement invitation, OTP verification, signed agreement PDF caption;
    - Agreement milestone reminders (amount, currency, agreed due date, office contact);
    - New hosted payment link, link-expiry reminder, payment receipt;
    - New payment link and reminder email SUBJECTS.
    Original legal clauses on card authorizations, service fees, timing/caps, deposits, provider verification and signed document are left intact.
-2. Normalized two EXACT harsh 48-hour era saved PaymentMilestone defaults at time-of-send only (not when reading/updating signed snapshots). All operator-edited templates remain intact. English message preference does not send a Hebrew fallback template: it uses reviewed English text.
+2. Normalized two EXACT legacy harsh saved PaymentMilestone defaults at time-of-send only (not when reading/updating signed snapshots). All operator-edited templates remain intact. English message preference does not send a Hebrew fallback template: it uses reviewed English text.
 3. Wired reusable copy to base44/shared/{closingLanguage.ts,agreementRules.ts,agreementLifecycle.ts,clientBillingMessages.ts}, Base44 functions eventAgreement, invoice4uCreateClearingRequest, processPaymentLinkLifecycle, and collapsed admin editors (ClosingSettings, BillingPaymentLinkSettings, BillingLifecycleSettings). Did not alter any job schedules, queue idempotency keys, retries, cards, invoice prices, user data or money.
 4. Public EventClosing view:
    - Language choices on authenticated-link **open**, before OTP. English OTP when user selects English and the snapshot has approved English legal text.
