@@ -2,7 +2,7 @@ import { buildQuoteFieldValues, getEventContacts, getEventFields, getField, syst
 import { getEventDisplayName } from './eventName.ts';
 import { quoteDocumentStyle } from './quoteDocumentStyle.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from './quoteServicePresentation.ts';
-import {loadQuoteTranslations,localizeEventQuoteData,translateOrganizerQuoteFields,ensureCompleteEnglish,applyDocumentDirection,approvedField,isHebrew,fixedEnglishLabel} from './quoteLocalization.ts';
+import {loadQuoteTranslations,localizeEventQuoteData,translateOrganizerQuoteFields,ensureCompleteEnglish,applyDocumentDirection,ensureNoVisibleHebrewInEnglishQuote,approvedField,isHebrew,fixedEnglishLabel} from './quoteLocalization.ts';
 
 // Import helper functions
 function formatDate(dateStringOrDate) {
@@ -922,5 +922,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
       </html>
     `;
 
-    return { html: applyDocumentDirection(html,options.language), fileAndTitleName, margins };
+    const localizedHtml=applyDocumentDirection(html,options.language);
+    if(options.language==='en')ensureNoVisibleHebrewInEnglishQuote(localizedHtml);
+    return { html: localizedHtml, fileAndTitleName, margins };
 }
