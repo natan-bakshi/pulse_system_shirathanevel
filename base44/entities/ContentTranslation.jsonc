@@ -13,7 +13,8 @@
         "AppSettings",
         "ModularQuote",
         "ManualQuote",
-        "QuoteOrganizerType"
+        "QuoteOrganizerType",
+        "QuotePhrase"
       ]
     },
     "source_id": {
