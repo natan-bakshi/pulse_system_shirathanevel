@@ -34,7 +34,7 @@ Read-only production verification after owner reported recovery:
 7. Security and reliability:
    - No new unauthenticated public endpoint or foreign translation service.
    - No email, WhatsApp, signature, approval, bank/payment charge or invoice was sent/created by testing.
-   - Disabled CLIENT_PAYMENT_REMINDER NotificationTemplate was not activated or modified. If this old separate feature is activated later, it still requires a bilingual, friendly template audit to avoid the legacy hard wording. The active milestone and link reminder sources have been updated.
+   - The separate CLIENT_PAYMENT_REMINDER NotificationTemplate was kept **inactive**, with its scheduling, allowed channels, reminder interval, frequency and maximum sends unchanged. After release, its Hebrew title, body and WhatsApp text were updated once in production data using exact-current-value conditional filtering to softer "תזכורת קטנה" wording, preserving all three placeholders (event_name, event_date, balance). Read-only re-query confirmed is_active=false, unchanged 7-day interval and max 4. This disabled legacy route still needs an explicit English-recipient language setting and English template variants **before any future activation**. The active milestone and payment-link reminders are independently bilingual.
    - No Cloudflare/free external Worker deployed: remains an explicit separate integration dependency.
 
 ## Verification
@@ -49,4 +49,4 @@ Read-only production verification after owner reported recovery:
 - Confirm deployment's exact checkpoint/commit and app status, anonymous no-leak route smoke + read-only admin event card.
 - Authenticated owner test of English EventClosing in a disposable/noncustomer event, including comparison of bilingual signed PDF, bank instruction styling and no physical-page overflow; do not charge or send.
 - Complete app-wide L60 localization outside the closing modules and preexisting fixed UI. Cloudflare future-translation Worker L70 cannot go live until protected account, KV, team allowlist, quota and authentication are configured and authorized.
-- Later optional: expand bilingual user notification preferences and update the still-disabled legacy CLIENT_PAYMENT_REMINDER template in both languages only with explicit enabled-flow parity tests and without changing is_active.
+- Later optional: expand bilingual user notification preferences and add English variants to the still-disabled legacy CLIENT_PAYMENT_REMINDER template, with explicit enabled-flow parity tests before any future activation. The Hebrew inactive copy has already been softened without activating any notification automation.
