@@ -13,6 +13,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function BarMitzvahCalculator() {
   const {t}=useLanguage();
+  const {t,dir}=useLanguage();
   const navigate = useNavigate();
   const [birthDate, setBirthDate] = useState('');
   const [type, setType] = useState('bar');
@@ -46,10 +47,10 @@ export default function BarMitzvahCalculator() {
     navigate(`/AdminDashboard?month=${month}`);
   };
 
-  const title = type === 'bat' ? 'בת מצווה' : 'בר מצווה';
+  const title = t(type === 'bat' ? 'בת מצווה' : 'בר מצווה');
 
   return (
-    <div className="mx-auto w-full max-w-md py-2 sm:py-6 lg:max-w-5xl" dir="rtl">
+    <div className="mx-auto w-full max-w-md py-2 sm:py-6 lg:max-w-5xl" dir={dir}>
       <Card className="overflow-hidden border-white/40 bg-white/95 shadow-2xl backdrop-blur-sm">
         <div className="bg-gradient-to-l from-red-950 via-red-900 to-red-800 px-5 py-6 text-white sm:px-7 lg:px-10 lg:py-8">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-200 ring-1 ring-amber-200/30">
@@ -70,7 +71,7 @@ export default function BarMitzvahCalculator() {
                 onClick={() => { setType(option); setResult(null); }}
                 className={`min-h-11 rounded-lg text-sm font-semibold transition-colors ${type === option ? 'bg-white text-red-900 shadow-sm' : 'text-gray-500'}`}
               >
-                {option === 'bar' ? 'בר מצווה' : 'בת מצווה'}
+                {t(option === 'bar' ? 'בר מצווה' : 'בת מצווה')}
               </button>
             ))}
           </div>
