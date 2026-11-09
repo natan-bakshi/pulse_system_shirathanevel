@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Edit, Star, GripVertical } from "lucide-react";
+import { Plus, Trash2, Edit, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import {useLanguage} from '@/i18n/LanguageProvider';
