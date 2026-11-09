@@ -1,6 +1,6 @@
 import { subscribeToEventStatus } from '@/lib/eventStatus';
 import {canMountPulsePage} from '@/lib/routeRoleAccess';
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
@@ -35,7 +35,6 @@ import { Toaster as SonnerToaster } from "sonner";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import UserOnboardingTour from "@/components/onboarding/UserOnboardingTour";
 import CalendarSyncPrompt from "@/components/calendar/CalendarSyncPrompt";
-import LanguageSwitch from '@/i18n/LanguageSwitch';
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 
@@ -102,8 +101,9 @@ const commonNavItems = [];
 
 
 export default function Layout({ children }) {
-  const {t,locale,dir}=useLanguage();
+  const {t,locale,dir,setLocale}=useLanguage();
   const [user, setUser] = useState(null);
+  const hydratedLanguageUserId=useRef(null);
   const [loading, setLoading] = useState(true);
 
   // Read the persisted status when another user confirms/removes an assignment; no polling.
@@ -303,6 +303,15 @@ export default function Layout({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  // Apply each account's saved interface language once, without changing
+  // quote/document language or reopening the user fetch on navigation.
+  useEffect(() => {
+    if (!user?.id || hydratedLanguageUserId.current===user.id) return;
+    hydratedLanguageUserId.current=user.id;
+    if (user.preferred_language==='he'||user.preferred_language==='en')
+      setLocale(user.preferred_language);
+  }, [user?.id,user?.preferred_language,setLocale]);
 
   useEffect(() => {
     if (loading) return;
@@ -1075,8 +1084,6 @@ export default function Layout({ children }) {
           </div>
 
 
-          {/* Small native language control. No change to existing actions. */}
-          <LanguageSwitch />
           {/* פעמון התראות */}
           <div data-tour="notification-bell">
             <NotificationBell user={user} />
