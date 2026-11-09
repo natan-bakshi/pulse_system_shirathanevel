@@ -134,10 +134,10 @@ export default function UserNotificationPreferences({ user, onClose }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
-          הגדרות התראות
+          {t("הגדרות התראות")}
         </CardTitle>
         <CardDescription>
-          התאם אילו התראות תרצה לקבל ומתי
+          {t("התאם אילו התראות תרצה לקבל ומתי")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -159,7 +159,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
 
         {/* Notification Types Section */}
         <div className="space-y-4">
-          <div className="text-sm font-medium">סוגי התראות</div>
+          <div className="text-sm font-medium">{t("סוגי התראות")}</div>
           
           {Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
             <div key={category} className="space-y-3">
@@ -195,7 +195,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
         <div className="flex justify-end gap-2 pt-4">
           {onClose && (
             <Button variant="outline" onClick={onClose}>
-              ביטול
+              {t("ביטול")}
             </Button>
           )}
           <Button 
@@ -207,7 +207,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
             ) : (
               <Save className="h-4 w-4 ml-2" />
             )}
-            שמור הגדרות
+            {t("שמור הגדרות")}
           </Button>
         </div>
       </CardContent>
