@@ -98,6 +98,40 @@ test('event-scoped approval repairs exactly one renderer-only text node, never H
  assert.equal(applyReviewedEventQuoteFragments(html,injected,'ev1'),html);
 });
 
+test('fallback source approved for one event repairs encoded visible Hebrew from a legacy renderer',async()=>{
+ const event={id:'ev-legacy',family_name:'Family',event_name:'Family',child_name:'David',
+  event_date:'2027-09-10',event_type:'bar_mitzvah',location:'Jerusalem',
+  schedule:[],parents:[],concept:'',status:'quote',guest_count:20};
+ const template={id:'legacy-payment',template_type:'payment_terms',
+  identifier:'default',content:'<p>Bank 136610 owner: &#1488;&#1489;</p>'};
+ const fields={};
+ const entities={
+  Event:{get:async()=>event},EventService:{filter:async()=>[]},
+  Service:{list:async()=>[]},Payment:{filter:async()=>[]},
+  QuoteTemplate:{list:async()=>[template]},
+  AppSettings:{list:async()=>[{setting_key:'vat_rate',setting_value:'18'}]},
+  QuoteOrganizerType:{list:async()=>[]},
+  ContentTranslation:{filter:async()=>[]}
+ };
+ const client={asServiceRole:{entities}};
+ await assert.rejects(generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includeSchedule:false
+ }),e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE'&&
+  e.fields.includes('document.visible_text')&&
+  e.samples.some(s=>s.includes('Bank 136610 owner: אב')));
+ const snippet='Bank 136610 owner: אב';
+ fields[quoteVisibleFragmentField(snippet)]={source:snippet,value:'Bank 136610 owner: AB'};
+ entities.ContentTranslation.filter=async()=>[{
+  source_entity:'Event',source_id:event.id,status:'approved',locale:'en',fields
+ }];
+ const result=await generateQuoteHtml(event.id,client,{
+  language:'en',includeIntro:false,includeSchedule:false
+ });
+ assert.ok(result.html.includes('Bank 136610 owner: AB'));
+ assert.deepEqual(visibleHebrewQuoteSnippets(result.html),[]);
+ assert.equal(template.content,'<p>Bank 136610 owner: &#1488;&#1489;</p>');
+});
+
 test('Quote edit UI exposes already translated templates, opens needed section and offers fragment repair',()=>{
  const src=fs.readFileSync('src/components/event-details/EventQuoteEnglishDialog.jsx','utf8');
  assert.match(src,/for\(const template of quoteTemplates\)/);
