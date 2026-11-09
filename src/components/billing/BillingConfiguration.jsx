@@ -31,7 +31,7 @@ export default function BillingConfiguration() {
   const save = async () => {
     setSaveError("");
     const email=String(settings.billing_fallback_email||"").trim();
-    if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setSaveError("כתובת מייל החברה אינה תקינה");return;}
+    if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setSaveError(uiTranslate('כתובת מייל החברה אינה תקינה'));return;}
     setSaving(true);
     try {
       const entries = Object.entries(draft).filter(([key]) => key in defaults);
