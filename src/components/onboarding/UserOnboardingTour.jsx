@@ -47,7 +47,7 @@ function TourTooltip({ continuous, index, step, backProps, closeProps, primaryPr
             {...primaryProps}
             className="px-4 py-1.5 text-sm bg-red-800 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
           >
-            {continuous ? (index === size - 1 ? "סיים" : "הבא") : "סגור"}
+            {uiTranslate(continuous ? (index === size - 1 ? "סיים" : "הבא") : "סגור")}
           </button>
         </div>
       </div>
