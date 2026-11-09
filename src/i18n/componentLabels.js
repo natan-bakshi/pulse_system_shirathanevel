@@ -1418,5 +1418,16 @@ export const componentLabels=Object.freeze({
   "בחר אירוע קיים": "Select Existing Event",
   "הפעל עכשיו": "Enable Now",
   "אין היסטוריית דחיות": "No Decline History",
-  "לא נמצאו תוצאות": "No Results Found"
+  "לא נמצאו תוצאות": "No Results Found",
+  "ברוכים הבאים לשירת הנבל": "Welcome to Shirat HaNevel",
+  "נא לקרוא ולאשר את ההסכם המלא": "Please Read and Accept the Full Agreement",
+  "הסכם התקשרות": "Service Agreement",
+  "מדיניות פרטיות": "Privacy Policy",
+  "כתב ויתור": "Disclaimer",
+  "⬇ גלול למטה כדי לקרוא את כל התנאים ⬇": "⬇ Scroll Down to Read All Terms ⬇",
+  "שומר חתימה...": "Saving Signature…",
+  "נא לקרוא את כל ההסכם": "Please Read the Entire Agreement",
+  "נא לאשר את ההסכם": "Please Accept the Agreement",
+  "אני מסכים/ה וחותם/ת דיגיטלית": "I Agree and Sign Electronically",
+  "הנוסח המשפטי המחייב מוצג בעברית בלבד. אין עדיין גרסה אנגלית משפטית מאושרת. לפני חתימה, ודאו שאתם מבינים את המסמך ופנו למשרד אם נדרש תרגום מאושר.": "The legally binding agreement is currently provided in Hebrew only. A legally reviewed English version is not yet available. Before signing, make sure you understand the document and contact the office if you need an approved translation."
 });
