@@ -56,19 +56,29 @@ export function indexedText(index:Map<string,any>,field:string,source:unknown){
     package_description:['service_description','package_description']
   };
   const candidateFields=semanticGroup[field]||[field];
+  // HTML produced by older rich-text editors may have different Quill classes,
+  // whitespace and wrappers while showing the exact same customer-facing text.
+  // Normalize presentation only, never the actual words, amounts or placeholders.
+  const canonical=(s:string)=>s.replace(/<[^>]*>/g,' ')
+    .replace(/&nbsp;|&#160;/gi,' ').replace(/&amp;/gi,'&')
+    .replace(/&quot;/gi,'\"').replace(/&#39;|&apos;/gi,"'")
+    .replace(/[\u200e\u200f]/g,'').replace(/\s+/g,' ').trim().normalize('NFC');
+  const sourceText=canonical(source);
   const matches=new Set<string>();
   for(const [key,row] of index){
     if(!/^(Service|Package|QuoteTemplate|QuotePhrase):/.test(key))continue;
     for(const k of candidateFields){
       const pair=row?.fields?.[k];
-      if(pair?.source===source&&typeof pair.value==='string'&&pair.value.trim()&&
+      if(typeof pair?.source==='string'&&canonical(pair.source)===sourceText&&
+        typeof pair.value==='string'&&pair.value.trim()&&
         translationPreservesProtectedContent(source,pair.value))matches.add(pair.value);
     }
     // Reusable administrator-reviewed phrases can be used in any quote field
     // if the Hebrew source is identical; never copy a translation to changed text.
     if(key.startsWith('QuotePhrase:')){
       const phrase=row?.fields?.text;
-      if(phrase?.source===source&&typeof phrase.value==='string'&&phrase.value.trim()&&
+      if(typeof phrase?.source==='string'&&canonical(phrase.source)===sourceText&&
+        typeof phrase.value==='string'&&phrase.value.trim()&&
         translationPreservesProtectedContent(source,phrase.value))matches.add(phrase.value);
     }
   }
