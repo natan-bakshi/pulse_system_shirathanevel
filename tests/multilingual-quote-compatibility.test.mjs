@@ -257,3 +257,19 @@ test('verified event locations/cities resolve without personal name transliterat
  assert.equal(l.approvedPlace('גן הוורדים / מליאו'),'Rose Garden / Malio');
  assert.equal(l.approvedPlace('שם פרטי של לקוח לא מוכר'),null);
 });
+
+test('final output guard refuses visible Hebrew from an unlocalized renderer',()=>{
+ const markup='<html lang="en"><head><style>/* טקסט CSS בלבד */</style></head>'+
+  '<body><div>Proposal</div><p>שם שירות בעברית</p><p>&#x5d4;&#x5e2;&#x5e8;&#x5d4;</p></body></html>';
+ assert.deepEqual(l.visibleHebrewQuoteSnippets(markup),['שם שירות בעברית','הערה']);
+ assert.throws(()=>l.ensureNoVisibleHebrewInEnglishQuote(markup),e=>
+  e.code==='ENGLISH_TRANSLATION_INCOMPLETE'&&
+  e.fields.includes('document.visible_text')&&e.samples.length===2);
+});
+test('final English guard does not misread invisible CSS, scripts or comments',()=>{
+ const html='<html><head><style>body:before{content:"כותרת לא מוצגת"}</style>'+
+  '<script>const x="הערה לא מוצגת";</script></head>'+
+  '<body><!-- הערת מפתח --><p>Event at Jerusalem</p><div>₪1,500</div></body></html>';
+ assert.doesNotThrow(()=>l.ensureNoVisibleHebrewInEnglishQuote(html));
+ assert.deepEqual(l.visibleHebrewQuoteSnippets(html),[]);
+});
