@@ -110,6 +110,6 @@ test('manual quote refuses a review value that still contains visible Hebrew',as
  await assert.rejects(render({title:'Manual',document_language:'en',
   blocks:JSON.stringify([block])},client()),e=>
    e.code==='ENGLISH_TRANSLATION_INCOMPLETE'&&
-   e.fields.some(k=>k.includes('heading')||k==='block_heading')&&
-   !(e.fields||[]).includes('document.visible_text'));
+   Array.isArray(e.fields)&&e.fields.length===1&&
+   !e.fields.includes('document.visible_text'));
 });
