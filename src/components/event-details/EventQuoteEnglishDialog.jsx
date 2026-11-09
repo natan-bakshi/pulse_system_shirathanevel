@@ -7,6 +7,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {Label} from '@/components/ui/label';
 import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 import {externalEnglishEnabled} from '@/i18n/futureTranslationClient';
+import {useLanguage} from '@/i18n/LanguageProvider';
 import {isHebrew,translationPreservesProtectedContent} from '../../../base44/shared/quoteLocalization.ts';
 
 const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes',discount_reason:'Discount Reason'};
@@ -140,6 +141,7 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],
  return fields;
 }
 export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],quoteTemplates=[],missingFields=null,onSaved}){
+ const {locale}=useLanguage();
  const [rows,setRows]=useState([]),[draft,setDraft]=useState({});
  const [organizers,setOrganizers]=useState([]),[footerSettings,setFooterSettings]=useState([]);
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
@@ -196,7 +198,13 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
  const unmatched=Array.isArray(missingFields)?missingFields.filter(k=>
    !matchedIssueKeys.has(k)&&!fields.some(f=>k==='service.'+f.key||k==='catalog.'+f.key)):[];
  const save=async()=>{
-  if(!changed.length){onOpenChange(false);return;}
+  if(!changed.length){
+   if(Array.isArray(missingFields)&&missingFields.length){
+    setError(locale==='en'?'Enter and approve at least one of the missing English translations.':'כדי להמשיך, יש להזין ולאשר לפחות אחד מהתרגומים החסרים.');
+    return;
+   }
+   onOpenChange(false);return;
+  }
   setSaving(true);setError('');
   try{
    const latestEvent=await base44.entities.Event.get(event.id);
@@ -271,8 +279,8 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
   </div>;
  };
  return <Dialog open={open} onOpenChange={onOpenChange}>
-  <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto" dir="rtl">
-   <DialogHeader><DialogTitle>השלמת תוכן להצעת מחיר באנגלית</DialogTitle></DialogHeader>
+  <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto" dir={locale==='en'?'ltr':'rtl'}>
+   <DialogHeader><DialogTitle>{locale==='en'?'Complete English Quote Content':'השלמת תוכן להצעת מחיר באנגלית'}</DialogTitle></DialogHeader>
    <p className="text-sm text-muted-foreground" dir="rtl">השדות שכבר תורגמו בקטלוג משמשים אוטומטית. כאן אפשר לאשר נוסח אנגלי רק עבור שדות שדורשים השלמה, בלי לשנות את העברית או את המחירים.</p>
    {!externalEnglishEnabled()&&<p dir="rtl" className="text-xs text-amber-800 border rounded-md p-2">
      המתרגם האוטומטי לשינויים חדשים עדיין אינו מחובר לשירות חיצוני פעיל. אפשר לערוך ולשמור כאן תרגומים באנגלית ידנית; לא יתבצע תרגום אוטומטי ללא חיבור מאובטח.
