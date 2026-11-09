@@ -72,11 +72,11 @@ export default function UserManagement() {
   const getUserTypeText = useCallback((userType) => {
     const types = {
       admin: "מנהל",
-      client: "לקוח", 
+      client: "לקוח",
       supplier: "ספק",
     };
-    return types[userType] || "לא מוגדר";
-  }, []);
+    return t(types[userType] || "לא מוגדר");
+  }, [t]);
 
   const getUserTypeColor = useCallback((userType) => {
     const colors = {
@@ -130,7 +130,7 @@ export default function UserManagement() {
           <div className="relative">
             <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="חיפוש משתמש לפי שם, אימייל או טלפון..."
+              placeholder={t("חיפוש משתמש לפי שם, אימייל או טלפון...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pr-10"
@@ -146,7 +146,7 @@ export default function UserManagement() {
             <CardHeader>
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg font-bold text-gray-900">
-                  {user.full_name || "משתמש"}
+                  {user.full_name || t('משתמש')}
                 </CardTitle>
                 <Badge className={getUserTypeColor(user.user_type)}>
                   {getUserTypeText(user.user_type)}
@@ -160,11 +160,11 @@ export default function UserManagement() {
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Phone className="h-4 w-4" />
-                <span>{user.phone || "לא צוין"}</span>
+                <span>{user.phone || t('לא צוין')}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Settings className="h-4 w-4" />
-                <span>{t("שפה:")} {user.language === 'he' ? 'עברית' : 'אנגלית'}</span>
+                <span>{t("שפה:")} {t(user.language === 'he' ? 'עברית' : 'אנגלית')}</span>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={() => handleEditUser(user)} className="flex-1">
@@ -189,7 +189,7 @@ export default function UserManagement() {
               </Label>
               <Select value={userFormData.user_type} onValueChange={(value) => setUserFormData({...userFormData, user_type: value})}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="בחר סוג משתמש" />
+                  <SelectValue placeholder={t("בחר סוג משתמש")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">{t("מנהל")}</SelectItem>
@@ -215,7 +215,7 @@ export default function UserManagement() {
               </Label>
               <Select value={userFormData.language} onValueChange={(value) => setUserFormData({...userFormData, language: value})}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="בחר שפה" />
+                  <SelectValue placeholder={t("בחר שפה")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="he">{t("עברית")}</SelectItem>
