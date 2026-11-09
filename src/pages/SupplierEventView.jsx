@@ -10,6 +10,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
 // event link. Never read raw Event/EventService entities in the browser.
 export default function SupplierEventView(){
   const {t}=useLanguage();
+ const {t,dir}=useLanguage();
  const location=useLocation();
  const eventId=new URLSearchParams(location.search).get('id')||'';
  const valid=/^[A-Za-z0-9_-]{3,100}$/.test(eventId);
@@ -25,7 +26,7 @@ export default function SupplierEventView(){
   staleTime:15000,retry:false
  });
  const e=data;
- return <div className="max-w-3xl mx-auto px-3 sm:px-5 py-6 space-y-5" dir="rtl">
+ return <div className="max-w-3xl mx-auto px-3 sm:px-5 py-6 space-y-5" dir={dir}>
   <Link className="inline-flex items-center gap-1 text-sm underline text-white"
    to={createPageUrl('SupplierCalendarDashboard')}>
    <ArrowRight className="w-4 h-4"/>{t("חזרה ללוח האירועים שלי")}
@@ -44,21 +45,21 @@ export default function SupplierEventView(){
     <p className="text-sm flex gap-2 items-center text-gray-500">
      <ShieldCheck className="w-4 h-4"/>{t("פרטי אירוע המורשים לצפייה כספק")}
     </p>
-    <h1 className="text-2xl font-bold">{e.eventName||'אירוע'}</h1>
+    <h1 className="text-2xl font-bold">{e.eventName||t('אירוע')}</h1>
     {e.familyName&&<p className="text-sm">{t("משפחת")} {e.familyName}</p>}
    </div>
    <div className="grid sm:grid-cols-2 gap-3 text-sm">
     <div className="flex items-start gap-2">
      <CalendarDays className="w-4 h-4 mt-0.5 text-gray-500"/>
-     <span>{e.date||'התאריך טרם נקבע'}</span>
+     <span>{e.date||t('התאריך טרם נקבע')}</span>
     </div>
     <div className="flex items-start gap-2">
      <Clock3 className="w-4 h-4 mt-0.5 text-gray-500"/>
-     <span>{e.time||'שעת האירוע טרם נקבעה'}</span>
+     <span>{e.time||t('שעת האירוע טרם נקבעה')}</span>
     </div>
     <div className="flex items-start gap-2 sm:col-span-2">
      <MapPin className="w-4 h-4 mt-0.5 text-gray-500"/>
-     <span>{[e.location,e.city].filter(Boolean).join(' · ')||'מיקום טרם נקבע'}</span>
+     <span>{[e.location,e.city].filter(Boolean).join(' · ')||t('מיקום טרם נקבע')}</span>
     </div>
    </div>
    <div className="border-t pt-4 space-y-2">
@@ -66,7 +67,7 @@ export default function SupplierEventView(){
      <Briefcase className="w-4 h-4"/>{t("השירותים שלי באירוע")}
     </h2>
     {(e.services||[]).map((s,i)=><div key={i} className="rounded-md border p-3 text-sm">
-     <strong>{s.serviceName||'שירות'}</strong>
+     <strong>{s.serviceName||t('שירות')}</strong>
      {s.arrivalTime&&<p className="text-gray-600 mt-1">
       {t("שעת התייצבות:")} {s.arrivalTime}
      </p>}
