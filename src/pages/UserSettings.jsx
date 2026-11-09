@@ -10,6 +10,7 @@ import DeleteAccountButton from "@/components/account/DeleteAccountButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {useLanguage} from "@/i18n/LanguageProvider";
+import LanguageSwitch from "@/i18n/LanguageSwitch";
 
 export default function UserSettings() {
   const {t}=useLanguage();
@@ -51,6 +52,17 @@ export default function UserSettings() {
           {t("הגדרות משתמש")}
         </h1>
       </div>
+
+      {/* User-specific interface language; quotation language is independent. */}
+      <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-lg">{t("שפת המערכת")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <LanguageSwitch />
+          <p className="text-sm text-gray-500">{t("שפת המערכת משנה את התפריטים והמסכים בלבד. שפת הצעת המחיר נבחרת בנפרד בעת הפקתה.")}</p>
+        </CardContent>
+      </Card>
 
       {/* Dark Mode / Theme Selection */}
       <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
