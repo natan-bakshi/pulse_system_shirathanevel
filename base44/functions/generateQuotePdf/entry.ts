@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
                             file_name: fileName,
                             created_at: new Date().toISOString(),
                             created_by_user_name: user.full_name || 'לא ידוע',
-                            event_status: currentEvent?.status || 'quote'
+                            event_status: currentEvent?.status || 'quote',
+                            document_language: body.language === 'en' ? 'en' : 'he'
                         };
 
                         await base44.asServiceRole.entities.Event.update(eventId, {
