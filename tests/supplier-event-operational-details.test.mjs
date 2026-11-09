@@ -83,6 +83,14 @@ test('supplier event card includes complete authorized operational data but neve
   assert.ok(!JSON.stringify(data).includes(excluded),'unexpected disclosure '+excluded);
  }
 });
+test('a provider returning a service from another event cannot grant or expand event access',()=>{
+ const foreignSameSupplier={...own,id:'foreign-same-supplier',event_id:'another-event',
+  service_name:'PRIVATE_FOREIGN_EVENT_SERVICE'};
+ assert.throws(()=>allowedSupplierEventView(event,[foreignSameSupplier],MINE),/Not found/);
+ const safe=allowedSupplierEventView(event,[own,foreignSameSupplier],MINE);
+ assert.equal(safe.services.length,1);
+ assert.ok(!JSON.stringify(safe).includes('PRIVATE_FOREIGN_EVENT_SERVICE'));
+});
 test('legacy parent/schedule JSON and legacy plain meeting place work with only allowed subfields',()=>{
  const e={...event,parents:JSON.stringify(event.parents),schedule:JSON.stringify(event.schedule)};
  const s={...own,pickup_point:'Entrance B',standing_time:'09:05',
