@@ -246,7 +246,15 @@ export function applyDocumentDirection(html:string,locale:unknown):string{
   // right/left alignments and asymmetric spacing swap sides.  Colors, weight,
   // typography, background, section order and explicit rich-text markup stay.
   const mirrored=mirrorQuoteHtmlPresentation(html);
-  const baseDirection='<style data-quote-locale="en">html,body{direction:ltr}.page-content{direction:ltr}</style>';
+  const baseDirection='<style data-quote-locale="en">'+
+    'html,body{direction:ltr}.page-content{direction:ltr}'+
+    // Legacy Quill alignments exist in approved HTML translations and do not
+    // use inline styles. Preserve their visual intent without flattening them.
+    '.ql-align-center,.text-center{text-align:center}'+
+    '.ql-align-right,.text-right{text-align:left}'+
+    '.ql-align-left,.text-left{text-align:right}'+
+    '.ql-align-justify{text-align:justify}'+
+    '.ql-direction-rtl{direction:ltr}</style>';
   return localizeVisibleHtmlLabels(mirrored.replace(/<html([^>]*)>/i,(_x,attrs)=>
     '<html'+attrs.replace(/\s+dir="[^"]*"/,'').replace(/\s+lang="[^"]*"/,'')+' lang="en" dir="ltr">')
     .replace(/<\/head\s*>/i,baseDirection+'</head>'));
