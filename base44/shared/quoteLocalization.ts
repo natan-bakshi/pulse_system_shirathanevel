@@ -87,8 +87,12 @@ export function translationPreservesProtectedContent(source:string,value:string)
   // Losing an empty <p><br></p> can change pagination even if all words
   // were translated correctly. Inspect only markup; do not touch the words.
   const structuralTags=/<(?!\/)(p|span|div|strong|b|em|i|u|s|del|mark|br|blockquote|ul|ol|li|img|h[1-6]|table|tbody|thead|tr|td|th|a|hr|pre|code|sup|sub|figure|figcaption)(?=[\s/>])/gi;
-  const markupSequence=(s:string)=>(s.match(structuralTags)||[])
-    .map(tag=>tag.toLowerCase()).join('|');
+  const markupSequence=(s:string)=>s
+    // A direction-only span has no visible format of its own in the LTR
+    // document. Permit legacy named-person spans without weakening the
+    // structural checks on real colored, bold or styled spans.
+    .replace(/<span\s+dir\s*=\s*(["'])(?:rtl|ltr)\1\s*>([\s\S]*?)<\/span>/gi,'$2')
+    .match(structuralTags)?.map(tag=>tag.toLowerCase()).join('|')||'';
   if(markupSequence(source)!==markupSequence(value))return false;
   const quillPresentation=(s:string)=>(s.match(/\bql-(?:align-(?:left|right|center|justify)|direction-(?:rtl|ltr))\b/g)||[])
     .sort().join('|');
@@ -104,6 +108,27 @@ export function approvedField(index:Map<string,any>,entity:string,id:string,fiel
   const x=index.get(entity+':'+id)?.fields?.[field];
   return x?.source===source && typeof x?.value==='string' && x.value.trim() &&
     translationPreservesProtectedContent(source,x.value)?x.value:null;
+}
+// Older event-service snapshots may contain an alignment class absent from
+// the source text in the global catalog. Reuse the manually reviewed English
+// wording, but apply the actual event source's paragraph presentation so
+// centered, right and left alignment still match this particular quote.
+export function preserveSourceQuoteParagraphPresentation(source:string,english:string):string{
+  if(typeof source!=='string'||typeof english!=='string'||!source.includes('<p'))return english;
+  const paragraphs=(s:string)=>[...s.matchAll(/<p\b[^>]*>/gi)];
+  const original=paragraphs(source),translated=paragraphs(english);
+  if(!original.length||original.length!==translated.length)return english;
+  const attrs=/\s+(?:class|style|dir|align|data-text-align)\s*=\s*(?:"[^"]*"|'[^']*')/gi;
+  let result=english;
+  for(let i=translated.length-1;i>=0;i--){
+    const originalPresentation=(original[i][0].match(attrs)||[]).join('');
+    const targetTag=translated[i][0];
+    const adapted=targetTag.replace(attrs,'').replace(/>$/,originalPresentation+'>');
+    if(adapted===targetTag)continue;
+    const start=translated[i].index!;
+    result=result.slice(0,start)+adapted+result.slice(start+targetTag.length);
+  }
+  return result;
 }
 export function indexedText(index:Map<string,any>,field:string,source:unknown){
   if(typeof source!=='string'||!source.trim())return null;
@@ -133,7 +158,8 @@ export function indexedText(index:Map<string,any>,field:string,source:unknown){
       const pair=row?.fields?.[k];
       if(typeof pair?.source==='string'&&canonical(pair.source)===sourceText&&
         typeof pair.value==='string'&&pair.value.trim()&&
-        translationPreservesProtectedContent(source,pair.value))matches.add(pair.value);
+        translationPreservesProtectedContent(source,preserveSourceQuoteParagraphPresentation(source,pair.value)))
+        matches.add(preserveSourceQuoteParagraphPresentation(source,pair.value));
     }
     // Reusable administrator-reviewed phrases can be used in any quote field
     // if the Hebrew source is identical; never copy a translation to changed text.
@@ -144,7 +170,8 @@ export function indexedText(index:Map<string,any>,field:string,source:unknown){
       const phrase=row?.fields?.text;
       if(typeof phrase?.source==='string'&&canonical(phrase.source)===sourceText&&
         typeof phrase.value==='string'&&phrase.value.trim()&&
-        translationPreservesProtectedContent(source,phrase.value))matches.add(phrase.value);
+        translationPreservesProtectedContent(source,preserveSourceQuoteParagraphPresentation(source,phrase.value)))
+        matches.add(preserveSourceQuoteParagraphPresentation(source,phrase.value));
     }
   }
   return matches.size===1?[...matches][0]:null;
