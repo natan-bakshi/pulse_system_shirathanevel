@@ -241,3 +241,19 @@ test('only visible package description is required; hidden snapshots never block
  assert.equal(translated.eventServices[0].package_description,'תיאור חבילה ישן ונסתר');
  assert.equal(translated.eventServices[1].package_description,'עוד תיאור חבילה נסתר');
 });
+
+test('real existing quote section headings with colons translate without custom records',()=>{
+ assert.equal(l.fixedEnglishLabel('חבילות ושירותים הכלולים בהצעה:'),
+  'Packages & Services Included in This Quote:');
+ assert.equal(l.fixedEnglishLabel('שירותים אופציונליים בתוספת תשלום:'),
+  'Optional Services for an Extra Charge:');
+ assert.equal(l.fixedEnglishLabel('שירותים שאינם כלולים בחבילה:'),
+  'Services Not Included in the Package:');
+});
+test('verified event locations/cities resolve without personal name transliteration',()=>{
+ assert.equal(l.approvedPlace('הר ציון ירושלים'),'Mount Zion, Jerusalem');
+ assert.equal(l.approvedPlace('משכנות שאננים ירושלים'),"Mishkenot Sha'ananim, Jerusalem");
+ assert.equal(l.approvedPlace('פתח תקווה'),'Petah Tikva');
+ assert.equal(l.approvedPlace('גן הוורדים / מליאו'),'Rose Garden / Malio');
+ assert.equal(l.approvedPlace('שם פרטי של לקוח לא מוכר'),null);
+});
