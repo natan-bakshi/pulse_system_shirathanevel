@@ -6,18 +6,15 @@ import { sendWhatsAppText } from "../../shared/whatsappSend.ts";
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from "../../shared/whatsappReceipt.ts";
 
 import { reserveHostedPayment } from "../../shared/storedCards.ts";
+import {customerMessageTemplate,formatCustomerMessage,customerBusinessName} from '../../shared/customerMessageTone.ts';
 
 const appUrl = "https://pulse-system.base44.app";
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
-const defaultLinkTemplate = "שלום {{name}},\nהתקבלה עבורך דרישת תשלום מ{{business_name}}.\n\n{{description}}\nסכום לתשלום: {{amount}}\n\nלתשלום מאובטח בכרטיס אשראי:\n{{link}}";
-const defaultLinkTemplateEn = "Hello {{name}},\nYou have received a payment request from {{business_name}}.\n\n{{description}}\nAmount due: {{amount}}\n\nPay securely by credit card:\n{{link}}";
-
 // בונה את הודעת דרישת התשלום מתבנית ההגדרות (או מתבנית ברירת המחדל) לפי שפת הבקשה.
 function renderLinkMessage(config, values, language = "he") {
   const configured = language === "en" ? config.payment_link_message_template_en : config.payment_link_message_template;
-  const template = String(configured || "").trim() || (language === "en" ? defaultLinkTemplateEn : defaultLinkTemplate);
-  return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value ?? "")), template);
+  return formatCustomerMessage(customerMessageTemplate('payment_link',language,configured),values);
 }
 
 export default async function(req) {
@@ -159,7 +156,7 @@ export default async function(req) {
       : null;
     await base44.asServiceRole.entities.Payment.update(payment.id, { payment_link_url: redirectUrl, ...(expiresAt ? { link_expires_at: expiresAt } : {}) });
 
-    const businessName = config.business_name || config.company_name || "המערכת";
+    const businessName = customerBusinessName(config,docLanguage);
     const currencySymbol = currency === "USD" ? "$" : "₪";
     const messageBody = renderLinkMessage(config, {
       name: payer.fullName,
@@ -188,7 +185,7 @@ export default async function(req) {
             manualReviewVia.push('whatsapp');
           }
         }else{
-          await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === "en" ? `Payment request - ${subject}` : `דרישת תשלום - ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
+          await base44.asServiceRole.integrations.Core.SendEmail({ to: linkEmail, subject: docLanguage === 'en' ? `Your payment details — ${subject}` : `פרטי התשלום שלכם — ${subject}`, body: messageBody.replaceAll("\n", "<br>"), from_name: businessName });
           sentVia.push('email');
         }
       } catch (sendError) {
