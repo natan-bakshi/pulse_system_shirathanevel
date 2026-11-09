@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, Shield, AlertCircle, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { signAgreement } from '@/functions/signAgreement';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function TermsPopup({ user }) {
+  const {t,locale}=useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('terms');
   const [hasScrolled, setHasScrolled] = useState(false);
@@ -157,8 +159,8 @@ export default function TermsPopup({ user }) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden" dir="rtl">
         {/* Header */}
         <div className="bg-gradient-to-r from-[#820C24] to-[#FFE6B1] text-white p-3 sm:p-4 md:p-6 rounded-t-2xl flex-shrink-0">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-center">ברוכים הבאים לשירת הנבל</h2>
-          <p className="text-center mt-1 sm:mt-2 opacity-90 text-xs sm:text-sm md:text-base">נא לקרוא ולאשר את ההסכם המלא</p>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-center">{t('ברוכים הבאים לשירת הנבל')}</h2>
+          <p className="text-center mt-1 sm:mt-2 opacity-90 text-xs sm:text-sm md:text-base">{t('נא לקרוא ולאשר את ההסכם המלא')}</p>
         </div>
 
         {/* Tabs */}
@@ -176,13 +178,16 @@ export default function TermsPopup({ user }) {
                 }`}
               >
                 <Icon size={16} className="sm:w-[18px] sm:h-[18px]" />
-                {tab.label}
+                {t(tab.label)}
               </button>
             );
           })}
         </div>
 
         {/* Content */}
+        {locale==='en'&&<p dir="ltr" role="note" className="bg-amber-50 text-amber-950 border-b border-amber-300 px-4 py-3 text-sm leading-relaxed">
+          {t('הנוסח המשפטי המחייב מוצג בעברית בלבד. אין עדיין גרסה אנגלית משפטית מאושרת. לפני חתימה, ודאו שאתם מבינים את המסמך ופנו למשרד אם נדרש תרגום מאושר.')}
+        </p>}
         <div 
           className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 text-right"
           onScroll={handleScroll}
@@ -572,7 +577,7 @@ export default function TermsPopup({ user }) {
           {/* Scroll indicator */}
           {!hasScrolled && (
             <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-8 pb-4 text-center">
-              <p className="text-sm text-gray-500 animate-bounce">⬇ גלול למטה כדי לקרוא את כל התנאים ⬇</p>
+              <p className="text-sm text-gray-500 animate-bounce">{t('⬇ גלול למטה כדי לקרוא את כל התנאים ⬇')}</p>
             </div>
           )}
         </div>
@@ -607,14 +612,14 @@ export default function TermsPopup({ user }) {
               {isSigning ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  שומר חתימה...
+                  {t('שומר חתימה...')}
                 </span>
               ) : !hasScrolled ? (
-                'נא לקרוא את כל ההסכם'
+                t('נא לקרוא את כל ההסכם')
               ) : !accepted ? (
-                'נא לאשר את ההסכם'
+                t('נא לאשר את ההסכם')
               ) : (
-                'אני מסכים/ה וחותם/ת דיגיטלית'
+                t('אני מסכים/ה וחותם/ת דיגיטלית')
               )}
             </button>
           </div>
