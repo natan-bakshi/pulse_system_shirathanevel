@@ -159,3 +159,34 @@ test('manually approved English cannot change a financial number in modular quot
  await assert.rejects(composeModularQuoteHtml({content},client()),
   e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
 });
+
+test('legacy service descriptions reused in package_description and Quill HTML variants',()=>{
+ const source='<p>תיאור שירות ללקוח 4 נגנים במשך 45 דקות</p>';
+ const translated='<p>Client service description with 4 musicians for 45 minutes</p>';
+ const map=l.translationIndex([
+  approved('Service','service-legacy',{service_description:[source,translated]})
+ ]);
+ assert.equal(l.indexedText(map,'package_description',source),translated);
+ assert.equal(l.indexedText(map,'package_description',
+  '<p class="ql-align-right ql-direction-rtl">תיאור שירות ללקוח 4 נגנים במשך 45 דקות</p>'),translated);
+ assert.equal(l.indexedText(map,'package_description',
+  '<p>תיאור שירות ללקוח 5 נגנים במשך 45 דקות</p>'),null);
+});
+test('reusable reviewed QuotePhrase is source-specific and preserves business amounts',()=>{
+ const map=l.translationIndex([approved('QuotePhrase','phrase1',{
+  text:['מחיר ינתן בנפרד 750 ש"ח','Separate quote: 750 NIS']
+ })]);
+ assert.equal(l.indexedText(map,'price_display_text','מחיר ינתן בנפרד 750 ש"ח'),'Separate quote: 750 NIS');
+ assert.equal(l.indexedText(map,'price_display_text','מחיר ינתן בנפרד 850 ש"ח'),null);
+});
+test('English translation omits internal notes and hidden custom prices',()=>{
+ const index=new Map();
+ const base={id:'ev',event_name:'Family',family_name:'Family',child_name:'David'};
+ const service={id:'es',service_id:'s',service_name:'Band',notes:'הערות פנימיות לספק',
+   admin_notes:'מידע פנימי',price_display_text:'מחיר מותאם',price_display_mode:'default'};
+ const r=l.localizeEventQuoteData({event:base,services:[{id:'s',service_name:'Band'}],
+  eventServices:[service],templates:[],index});
+ assert.equal(r.missing.size,0);
+ assert.equal(r.eventServices[0].notes,'הערות פנימיות לספק');
+ assert.equal(r.eventServices[0].price_display_text,'מחיר מותאם');
+});
