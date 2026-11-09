@@ -186,14 +186,18 @@ export default Deno.serve(async req=>{
     }
     if(action==="open"){
      if(!a.opened_at){await client.entities.EventAgreement.update(a.id,{opened_at:new Date().toISOString()});await audit(client,a,"opened","link");}
-     return Response.json({id:a.id,phone:"••••"+a.recipient_phone.slice(-4),signed:!!a.signed_at});
+     return Response.json({id:a.id,phone:"••••"+a.recipient_phone.slice(-4),signed:!!a.signed_at,
+      form_language:a.signature?.language||a.snapshot?.form_language||'he',
+      available_languages:a.snapshot?.translations?.en?.terms?.trim()?['he','en']:['he']});
     }
     if(action==="otp"){
      if((a.otp_sends||0)>=3||(a.otp_attempts||0)>=5)throw new AgreementError("מכסת האימות מוצתה. יש לבקש קישור חדש מהמנהל.",429);
      if(a.otp_sent_at&&Date.now()-Date.parse(a.otp_sent_at)<60000)throw new AgreementError("ניתן לשלוח קוד נוסף לאחר דקה",429);
      const n=crypto.getRandomValues(new Uint32Array(1))[0]%1000000,code=String(n).padStart(6,"0");
      await client.entities.EventAgreement.update(a.id,{otp_hash:await digest(a.id+":"+code),otp_sent_at:new Date().toISOString(),otp_expires_at:new Date(Date.now()+600000).toISOString(),otp_sends:(a.otp_sends||0)+1});
-     await deliver(client,a,"verification",a.id+":otp:"+((a.otp_sends||0)+1),renderClosingMessage(await settings(client),"otp",a.notifications?.language||a.snapshot.message_language,{code,customer_name:a.recipient_name,event_name:a.snapshot.event_name}),null,{},base44);
+     const otpLanguage=body.language==='en'&&a.snapshot?.translations?.en?.terms?.trim()?'en':
+      (body.language==='he'?'he':(a.notifications?.language||a.snapshot.message_language));
+     await deliver(client,a,"verification",a.id+":otp:"+((a.otp_sends||0)+1),renderClosingMessage(await settings(client),"otp",otpLanguage,{code,customer_name:a.recipient_name,event_name:a.snapshot.event_name}),null,{},base44);
      await audit(client,a,"verification_sent","customer");return Response.json({sent:true});
     }
     if(action==="admin_verify"){
