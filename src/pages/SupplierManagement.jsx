@@ -84,7 +84,7 @@ const SupplierEventsList = ({ supplierId }) => {
       console.error("Failed to remove supplier from event:", error);
       alert(t("שגיאה בהסרת הספק מהאירוע."));
     }
-  }, [supplierId, loadSupplierEvents]);
+  }, [supplierId, loadSupplierEvents,t]);
 
   if (loading) return <div className="p-4 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div>;
   if (events.length === 0) return <p className="p-4 text-sm text-gray-500">{t("הספק אינו משובץ לאירועים.")}</p>;
@@ -239,7 +239,7 @@ export default function SupplierManagement() {
         console.error("Failed to delete supplier:", error);
       }
     }
-  }, [refetch]);
+  }, [refetch,t]);
   
   const handleSaveSupplier = useCallback(async () => {
     if (isSaving) return;
@@ -250,7 +250,7 @@ export default function SupplierManagement() {
         !String(formData.contact_emails || '').trim()) {
       setContactImportFeedback({
         kind: 'error',
-        message: 'פרטי איש הקשר לא נקלטו. כדי למנוע יצירת ספק בלי פרטי קשר, יש להזין טלפון/מייל או לנסות ייבוא VCF לפני השמירה.'
+        message: t('פרטי איש הקשר לא נקלטו. כדי למנוע יצירת ספק בלי פרטי קשר, יש להזין טלפון/מייל או לנסות ייבוא VCF לפני השמירה.')
       });
       return;
     }
@@ -279,7 +279,7 @@ export default function SupplierManagement() {
       console.error("Failed to save supplier:", error);
       setContactImportFeedback({
         kind: 'error',
-        message: 'שמירת הספק נכשלה. הפרטים לא נשמרו; אפשר לנסות שוב.'
+        message: t('שמירת הספק נכשלה. הפרטים לא נשמרו; אפשר לנסות שוב.')
       });
     } finally {
       setIsSaving(false);
