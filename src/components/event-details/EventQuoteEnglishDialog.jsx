@@ -151,7 +151,20 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
   const readOrganizer=Array.isArray(missingFields)&&missingFields.some(k=>k.startsWith('organizer.'));
   const readFooter=Array.isArray(missingFields)&&missingFields.includes('footer');
   Promise.all([
-   base44.entities.ContentTranslation.list('-updated_date',500),
+   (async()=>{
+     const found=[],seen=new Set();
+     for(let offset=0;offset<15000;offset+=500){
+       const page=await base44.entities.ContentTranslation.list('-updated_date',500,offset);
+       if(!Array.isArray(page))break;
+       let added=0;
+       for(const row of page){
+         const id=String(row.id||row.source_entity+':'+row.source_id);
+         if(!seen.has(id)){found.push(row);seen.add(id);added++;}
+       }
+       if(page.length<500||added===0)break;
+     }
+     return found;
+   })(),
    readOrganizer?base44.entities.QuoteOrganizerType.list():Promise.resolve([]),
    readFooter?base44.entities.AppSettings.filter({setting_key:'quote_footer_text'}):Promise.resolve([])
   ])
