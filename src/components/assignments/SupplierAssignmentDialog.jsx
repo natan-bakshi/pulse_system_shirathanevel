@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Save, X, Plus, Search } from 'lucide-react';
 import ContactPicker from '@/components/ui/ContactPicker';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function SupplierAssignmentDialog({
   isOpen,
@@ -24,6 +25,7 @@ export default function SupplierAssignmentDialog({
   suppliers,
   onSaved
 }) {
+  const {t: uiTranslate}=useLanguage();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
   const savingAssignmentRef = React.useRef(false);
@@ -201,15 +203,15 @@ export default function SupplierAssignmentDialog({
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>ניהול שיבוץ ספקים</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{uiTranslate("ניהול שיבוץ ספקים")}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2 bg-gray-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-700"><span className="font-semibold">אירוע:</span> {editingService.eventName}</div>
-              <div className="text-sm text-gray-700"><span className="font-semibold">שירות:</span> {editingService.serviceName}</div>
+              <div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("אירוע:")}</span> {editingService.eventName}</div>
+              <div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("שירות:")}</span> {editingService.serviceName}</div>
             </div>
             
             <div className="space-y-2">
-              <Label>שיבוצים נדרשים</Label>
+              <Label>{uiTranslate("שיבוצים נדרשים")}</Label>
               <Select value={String(editingService.minSuppliers || 0)} onValueChange={(v) => setEditingService(p => ({ ...p, minSuppliers: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -230,19 +232,19 @@ export default function SupplierAssignmentDialog({
             </div>
             
             <div className="border-t pt-4">
-              <Label className="font-semibold mb-3 block">שיבוץ ספקים</Label>
+              <Label className="font-semibold mb-3 block">{uiTranslate("שיבוץ ספקים")}</Label>
               
               <div className="flex gap-2 mb-3">
                 <div className="relative flex-1">
                   <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                   <Input 
-                    placeholder="חיפוש ספקים..." 
+                    placeholder={uiTranslate("חיפוש ספקים...")} 
                     value={supplierSearchInDialog} 
                     onChange={(e) => setSupplierSearchInDialog(e.target.value)}
                     className="pr-9 h-9"
                   />
                 </div>
-                <Button size="icon" className="h-9 w-9" onClick={() => setShowNewSupplierDialog(true)} title="צור ספק חדש">
+                <Button size="icon" className="h-9 w-9" onClick={() => setShowNewSupplierDialog(true)} title={uiTranslate("צור ספק חדש")}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -251,7 +253,7 @@ export default function SupplierAssignmentDialog({
                 {/* Assigned Suppliers */}
                 {suppliers.filter(s => editingService.supplierIds.includes(s.id)).length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-xs text-gray-500 font-medium">ספקים משובצים</Label>
+                    <Label className="text-xs text-gray-500 font-medium">{uiTranslate("ספקים משובצים")}</Label>
                     {suppliers.filter(s => editingService.supplierIds.includes(s.id)).map(s => {
                       const hasDeclined = declinedSuppliers.some(d => d.supplier_id === s.id);
                       return (
@@ -259,14 +261,14 @@ export default function SupplierAssignmentDialog({
                         <div className="p-2 rounded-lg border bg-green-50 border-green-200 flex items-center justify-between group">
                           <div className="text-sm font-medium text-green-900 flex items-center gap-1.5">
                             {s.supplier_name}
-                            {hasDeclined && <span className="text-[10px] text-red-500 bg-white/70 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}
+                            {hasDeclined && <span className="text-[10px] text-red-500 bg-white/70 px-1.5 py-0.5 rounded font-medium">{uiTranslate("דחה בעבר")}</span>}
                           </div>
-                          <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
+                          <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title={uiTranslate("הסר שיבוץ")}>
                             <X className="h-4 w-4" />
                           </button>
                         </div>
                         <Input
-                          placeholder="הערה לספק..."
+                          placeholder={uiTranslate("הערה לספק...")}
                           value={editingService.supplierNotes[s.id] || ''}
                           onChange={(e) => setEditingService(p => ({ ...p, supplierNotes: { ...p.supplierNotes, [s.id]: e.target.value } }))}
                           className="text-xs h-7"
@@ -278,9 +280,9 @@ export default function SupplierAssignmentDialog({
 
                 {/* Available Suppliers */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 font-medium">ספקים זמינים</Label>
+                  <Label className="text-xs text-gray-500 font-medium">{uiTranslate("ספקים זמינים")}</Label>
                   {filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).length === 0 ? (
-                    <div className="text-sm text-gray-400 italic text-center py-4 border border-dashed rounded-lg">לא נמצאו ספקים</div>
+                    <div className="text-sm text-gray-400 italic text-center py-4 border border-dashed rounded-lg">{uiTranslate("לא נמצאו ספקים")}</div>
                   ) : (
                     filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).map(s => {
                       const hasDeclined = declinedSuppliers.some(d => d.supplier_id === s.id);
@@ -290,7 +292,7 @@ export default function SupplierAssignmentDialog({
                           <Label htmlFor={`sup-${s.id}`} className="text-sm cursor-pointer flex-1 py-1 flex items-center gap-1.5">
                             {s.supplier_name}
                             {hasDeclined && (
-                              <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>
+                              <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">{uiTranslate("דחה בעבר")}</span>
                             )}
                           </Label>
                         </div>
@@ -302,10 +304,10 @@ export default function SupplierAssignmentDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={onClose}>ביטול</Button>
+            <Button variant="outline" onClick={onClose}>{uiTranslate("ביטול")}</Button>
             <Button onClick={handleSaveService} disabled={isSaving} className="bg-red-800 hover:bg-red-700">
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
-              שמור שינויים
+              {uiTranslate("שמור שינויים")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -314,12 +316,12 @@ export default function SupplierAssignmentDialog({
       {/* New Supplier Dialog */}
       <Dialog open={showNewSupplierDialog} onOpenChange={setShowNewSupplierDialog}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>יצירת ספק חדש</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{uiTranslate("יצירת ספק חדש")}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Label>שם הספק</Label>
-                <Input value={newSupplier.supplier_name} onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))} placeholder="שם הספק" />
+                <Label>{uiTranslate("שם הספק")}</Label>
+                <Input value={newSupplier.supplier_name} onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))} placeholder={uiTranslate("שם הספק")} />
               </div>
               <ContactPicker onContactSelect={(contactData) => { 
                 setNewSupplier(prev => ({ 
@@ -332,22 +334,22 @@ export default function SupplierAssignmentDialog({
               }} className="mb-1" />
             </div>
             <div>
-              <Label>איש קשר</Label>
-              <Input value={newSupplier.contact_person} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_person: e.target.value }))} placeholder="שם איש הקשר" />
+              <Label>{uiTranslate("איש קשר")}</Label>
+              <Input value={newSupplier.contact_person} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_person: e.target.value }))} placeholder={uiTranslate("שם איש הקשר")} />
             </div>
             <div>
-              <Label>טלפון</Label>
-              <Input value={newSupplier.phone} onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))} placeholder="מספר טלפון" />
+              <Label>{uiTranslate("טלפון")}</Label>
+              <Input value={newSupplier.phone} onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))} placeholder={uiTranslate("מספר טלפון")} />
             </div>
             <div>
-              <Label>אימייל</Label>
-              <Input type="email" value={newSupplier.contact_emails[0]} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_emails: [e.target.value] }))} placeholder="כתובת אימייל" />
+              <Label>{uiTranslate("אימייל")}</Label>
+              <Input type="email" value={newSupplier.contact_emails[0]} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_emails: [e.target.value] }))} placeholder={uiTranslate("כתובת אימייל")} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewSupplierDialog(false)} disabled={isSavingNewSupplier}>ביטול</Button>
+            <Button variant="outline" onClick={() => setShowNewSupplierDialog(false)} disabled={isSavingNewSupplier}>{uiTranslate("ביטול")}</Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier} className="bg-red-800 hover:bg-red-700">
-              {isSavingNewSupplier ? (<><Loader2 className="h-4 w-4 ml-2 animate-spin" />שומר...</>) : ('צור ספק')}
+              {isSavingNewSupplier ? (<><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("שומר...")}</>) : ('צור ספק')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -16,6 +16,7 @@ import { buildBlocksFromEvent } from '@/components/manualQuote/buildBlocksFromEv
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ManualQuoteEditor() {
+  const {t: uiTranslate}=useLanguage();
   const {t,locale}=useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -387,7 +388,7 @@ export default function ManualQuoteEditor() {
             <select id="manual-quote-document-language" value={documentLanguage}
               onChange={e=>{setDocumentLanguage(e.target.value);setLastPdfUri('');setLastPdfName('');}}
               className="rounded-md border px-3 py-2 bg-background text-sm">
-              <option value="he">עברית</option><option value="en">English</option>
+              <option value="he">{uiTranslate("עברית")}</option><option value="en">English</option>
             </select>
             {documentLanguage==='en'&&<p className="text-xs text-gray-600">{t('הטקסטים הקבועים יתורגמו אוטומטית. תוכן חופשי דורש נוסח אנגלי מאושר לפני הפקה.')}</p>}
           </div>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export async function storedCardAction(action, body = {}) {
   const { data } = await base44.functions.invoke("invoice4uStoredCards", { ...body, action });
@@ -16,21 +17,22 @@ const errorText = e => e.response?.data?.error || e.message || "הפעולה ל�
 const cardLabel = c => c ? ((c.brand || "כרטיס") + " •••• " + (c.card_suffix || "")) : "אין כרטיס שמור";
 const inputClass = "w-full rounded border p-2 bg-white";
 export function StoredCardSettings({ settings, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   return <fieldset className="space-y-3 rounded-lg border p-4" dir="rtl">
-    <legend className="font-semibold px-2">כרטיסים שמורים ללקוחות</legend>
-    <label className="flex gap-2 items-center"><input type="checkbox" checked={settings.stored_cards_enabled === "true"} onChange={e => onChange("stored_cards_enabled", String(e.target.checked))} />אפשר ניהול כרטיסים שמורים</label>
-    <label className="block">סביבת כרטיסים שמורים
+    <legend className="font-semibold px-2">{uiTranslate("כרטיסים שמורים ללקוחות")}</legend>
+    <label className="flex gap-2 items-center"><input type="checkbox" checked={settings.stored_cards_enabled === "true"} onChange={e => onChange("stored_cards_enabled", String(e.target.checked))} />{uiTranslate("אפשר ניהול כרטיסים שמורים")}</label>
+    <label className="block">{uiTranslate("סביבת כרטיסים שמורים")}
       <select className={inputClass} value={settings.stored_cards_env || "qa"} onChange={e => onChange("stored_cards_env", e.target.value)}>
-        <option value="qa">בדיקות QA — נפרד מהסליקה הרגילה</option><option value="production">ייצור</option>
+        <option value="qa">{uiTranslate("בדיקות QA — נפרד מהסליקה הרגילה")}</option><option value="production">{uiTranslate("ייצור")}</option>
       </select>
     </label>
-    <label className="block">לאחר שכל אירועי הלקוח הסתיימו והחובות סולקו
+    <label className="block">{uiTranslate("לאחר שכל אירועי הלקוח הסתיימו והחובות סולקו")}
       <select className={inputClass} value={settings.stored_cards_cleanup || "off"} onChange={e => onChange("stored_cards_cleanup", e.target.value)}>
-        <option value="off">הסרה ידנית בלבד</option><option value="approval">בקש אישור מנהל להסרה</option><option value="automatic">הסר באופן אוטומטי</option>
+        <option value="off">{uiTranslate("הסרה ידנית בלבד")}</option><option value="approval">{uiTranslate("בקש אישור מנהל להסרה")}</option><option value="automatic">{uiTranslate("הסר באופן אוטומטי")}</option>
       </select>
     </label>
-    <p className="text-sm text-gray-600">הכרטיס משותף לכל אירועי הלקוח. אירוע פעיל, חוב או תשלום בטיפול מונעים הסרה אוטומטית. הפעלת המדיניות אינה מוחקת כרטיסים קיימים מיד; ניתן לטפל בהם ברשימה המרוכזת.</p>
-    <p className="text-sm text-amber-800">הפעלה בייצור זמינה רק לאחר אימות החיבור לספק הסליקה. בדיקות נעשות עם מפתח QA נפרד.</p>
+    <p className="text-sm text-gray-600">{uiTranslate("הכרטיס משותף לכל אירועי הלקוח. אירוע פעיל, חוב או תשלום בטיפול מונעים הסרה אוטומטית. הפעלת המדיניות אינה מוחקת כרטיסים קיימים מיד; ניתן לטפל בהם ברשימה המרוכזת.")}</p>
+    <p className="text-sm text-amber-800">{uiTranslate("הפעלה בייצור זמינה רק לאחר אימות החיבור לספק הסליקה. בדיקות נעשות עם מפתח QA נפרד.")}</p>
   </fieldset>;
 }
 export default function StoredCardPanel({ event, onChanged }) {
@@ -40,6 +42,7 @@ export default function StoredCardPanel({ event, onChanged }) {
   return enabled && event?.id ? <CardPanel event={event} onChanged={onChanged} fallbackEmail={fallbackEmail} /> : null;
 }
 function CardPanel({ event, onChanged, fallbackEmail }) {
+  const {t: uiTranslate}=useLanguage();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -53,7 +56,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
   const [reference, setReference] = useState("");
   const [providerPaymentId, setProviderPaymentId] = useState("");
   const [consentImage,setConsentImage]=useState("");
-  const evidenceInput=<label className="block">צילום תכתובת או אישור (במקום מספר או בנוסף לו)<input className={inputClass} type="file" accept="image/png,image/jpeg" onChange={async e=>{const f=e.target.files?.[0];setConsentImage("");if(!f)return;if(f.size>2*1024*1024||!["image/png","image/jpeg"].includes(f.type)){setMessage("יש לבחור PNG או JPEG עד 2MB");e.target.value="";return;}const r=new FileReader();r.onload=()=>setConsentImage(String(r.result));r.readAsDataURL(f);}}/><span className="text-xs text-gray-600">צילום ההסכמה נשמר באופן פרטי. אין לצרף צילום כרטיס אשראי או פרטי אשראי.</span></label>;
+  const evidenceInput=<label className="block">{uiTranslate("צילום תכתובת או אישור (במקום מספר או בנוסף לו)")}<input className={inputClass} type="file" accept="image/png,image/jpeg" onChange={async e=>{const f=e.target.files?.[0];setConsentImage("");if(!f)return;if(f.size>2*1024*1024||!["image/png","image/jpeg"].includes(f.type)){setMessage("יש לבחור PNG או JPEG עד 2MB");e.target.value="";return;}const r=new FileReader();r.onload=()=>setConsentImage(String(r.result));r.readAsDataURL(f);}}/><span className="text-xs text-gray-600">{uiTranslate("צילום ההסכמה נשמר באופן פרטי. אין לצרף צילום כרטיס אשראי או פרטי אשראי.")}</span></label>;
   const key = ["storedCard", event.id];
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: key, queryFn: () => storedCardAction("status", { eventId: event.id }), staleTime: 30000
@@ -118,36 +121,36 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
     });
   };
   return <Card dir="rtl" className="bg-white">
-    <CardHeader><CardTitle>הכרטיס השמור של הלקוח</CardTitle></CardHeader>
+    <CardHeader><CardTitle>{uiTranslate("הכרטיס השמור של הלקוח")}</CardTitle></CardHeader>
     <CardContent className="space-y-3">
       {isLoading ? <p>טוען...</p> : error ? <p role="alert" className="text-red-700">{errorText(error)}</p> : <>
         <p>{customer ? customer.name + " — " + cardLabel(card) : "יש לקשר לקוח משלם כדי לשמור כרטיס משותף לאירועים שלו."}</p>
-        {card?.environment === "qa" && <p className="text-amber-800">כרטיס בדיקה בסביבת QA</p>}
+        {card?.environment === "qa" && <p className="text-amber-800">{uiTranslate("כרטיס בדיקה בסביבת QA")}</p>}
         {card?.cleanup_pending && <div className="rounded border border-amber-400 bg-amber-50 p-3">
-          <p>האירועים הסתיימו והחובות סולקו. נדרש אישור להסרת הכרטיס.</p>
-          <Button disabled={busy || customer?.busy} className="mt-2 bg-red-800" onClick={() => remove(true)}>הסר כרטיס</Button>
+          <p>{uiTranslate("האירועים הסתיימו והחובות סולקו. נדרש אישור להסרת הכרטיס.")}</p>
+          <Button disabled={busy || customer?.busy} className="mt-2 bg-red-800" onClick={() => remove(true)}>{uiTranslate("הסר כרטיס")}</Button>
         </div>}
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" disabled={busy || customer?.busy} onClick={() => run(async () => {
             setConsentImage(""); setConsent(false); setReference(""); setCustomerSearch(""); await loadCustomers(false, ""); setMode("customer");
           })}>{customer ? "שינוי לקוח משלם" : "בחר לקוח משלם"}</Button>
           {customer && <Button variant="outline" disabled={busy || customer.busy} onClick={() => { setConsent(false); setReference(""); setConsentImage(""); setMode("setup"); }}>{card ? "החלף כרטיס" : "הוסף כרטיס"}</Button>}
-          {card?.has_consent_image && <Button variant="outline" disabled={busy} onClick={()=>run(async()=>{const r=await storedCardAction("consent_document",{customerId:customer.id});window.open(r.signed_url,"_blank","noopener,noreferrer");})}>צפה באסמכתא להסכמה</Button>}
+          {card?.has_consent_image && <Button variant="outline" disabled={busy} onClick={()=>run(async()=>{const r=await storedCardAction("consent_document",{customerId:customer.id});window.open(r.signed_url,"_blank","noopener,noreferrer");})}>{uiTranslate("צפה באסמכתא להסכמה")}</Button>}
           {card?.state === "active" && <>
-            <Button disabled={busy || customer?.busy} onClick={() => setMode("charge")}>חיוב מכרטיס שמור</Button>
-            <Button variant="outline" disabled={busy || customer?.busy} onClick={() => remove(false)}>הסר כרטיס בלבד</Button>
+            <Button disabled={busy || customer?.busy} onClick={() => setMode("charge")}>{uiTranslate("חיוב מכרטיס שמור")}</Button>
+            <Button variant="outline" disabled={busy || customer?.busy} onClick={() => remove(false)}>{uiTranslate("הסר כרטיס בלבד")}</Button>
           </>}
           {customer && <>
-            <Button variant="outline" disabled={busy || customer.busy} onClick={unlinkCustomer}>נתק מהאירוע בלבד</Button>
-            <Button variant="outline" className="text-red-700 border-red-300" disabled={busy || customer.busy} onClick={deleteCustomer}>מחק לקוח משלם</Button>
+            <Button variant="outline" disabled={busy || customer.busy} onClick={unlinkCustomer}>{uiTranslate("נתק מהאירוע בלבד")}</Button>
+            <Button variant="outline" className="text-red-700 border-red-300" disabled={busy || customer.busy} onClick={deleteCustomer}>{uiTranslate("מחק לקוח משלם")}</Button>
           </>}
-          <Button variant="ghost" disabled={busy} onClick={() => refetch()}>רענן</Button>
+          <Button variant="ghost" disabled={busy} onClick={() => refetch()}>{uiTranslate("רענן")}</Button>
         </div>
         {data?.pending?.kind === "setup" && <div className="rounded bg-blue-50 p-3 space-y-2">
-          <p>ממתין לאימות שמירת הכרטיס מול הספק. הקישור בתוקף עד {israelDateTime(data.pending.expiresAt)} (שעון ישראל).</p>
+          <p>{uiTranslate("ממתין לאימות שמירת הכרטיס מול הספק. הקישור בתוקף עד")} {israelDateTime(data.pending.expiresAt)} {uiTranslate("(שעון ישראל).")}</p>
           {data.pending.url && <div className="flex gap-2">
-            <a href={data.pending.url} target="_blank" rel="noopener noreferrer" className="underline">פתח דף שמירת כרטיס</a>
-            <Button variant="outline" disabled={busy} onClick={() => run(async () => { await navigator.clipboard.writeText(data.pending.url); setMessage("הקישור הועתק"); })}>העתק קישור ללקוח</Button>
+            <a href={data.pending.url} target="_blank" rel="noopener noreferrer" className="underline">{uiTranslate("פתח דף שמירת כרטיס")}</a>
+            <Button variant="outline" disabled={busy} onClick={() => run(async () => { await navigator.clipboard.writeText(data.pending.url); setMessage("הקישור הועתק"); })}>{uiTranslate("העתק קישור ללקוח")}</Button>
           </div>}
           {data.pending.url && <Button variant="outline" disabled={busy || !!data.pending.messageState} onClick={()=>run(async()=>{
             const result=await storedCardAction("send_setup_link",{customerId:customer.id,eventId:event.id});
@@ -155,23 +158,23 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
           })}>{data.pending.messageState==="accepted"?"התקבל אצל ספק WhatsApp":data.pending.messageState==="queued"?"ממתין בתור WhatsApp":data.pending.messageState?"נדרשת בדיקת שליחה":"שלח קישור בוואטסאפ"}</Button>}
           {data.pending.canRecover && <Button variant="outline" disabled={busy} onClick={() => run(async () => {
             await storedCardAction("recover_setup", { customerId: customer.id }); setMessage("שמירת הכרטיס אומתה והושלמה"); await changed();
-          })}>בדוק ואמת כרטיס מול הספק</Button>}
-          <Button variant="outline" disabled={busy || !data.pending.canCancel} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>בטל בקשת שמירה</Button>
+          })}>{uiTranslate("בדוק ואמת כרטיס מול הספק")}</Button>}
+          <Button variant="outline" disabled={busy || !data.pending.canCancel} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>{uiTranslate("בטל בקשת שמירה")}</Button>
         </div>}
         {customer?.busy && !data?.pending && <div className="rounded bg-amber-50 p-3 space-y-2">
-          <p>פעולה בטיפול. אם הנעילה נקטעה, ניתן לבדוק אם מותר לשחררה.</p>
-          <Button variant="outline" disabled={busy} onClick={() => run(async () => { await storedCardAction("force_release", { customerId: customer.id }); setMessage("הנעילה שוחררה"); await changed(); })}>בדוק ושחרר נעילה תקועה</Button>
+          <p>{uiTranslate("פעולה בטיפול. אם הנעילה נקטעה, ניתן לבדוק אם מותר לשחררה.")}</p>
+          <Button variant="outline" disabled={busy} onClick={() => run(async () => { await storedCardAction("force_release", { customerId: customer.id }); setMessage("הנעילה שוחררה"); await changed(); })}>{uiTranslate("בדוק ושחרר נעילה תקועה")}</Button>
         </div>}
         {data?.pending?.kind === "charge" && <div className="rounded bg-amber-50 p-3">
-          <p>חיוב בטיפול או בבירור. אין לבצע חיוב נוסף לפני קבלת תוצאה.</p>
-          <p className="text-xs break-all">מזהה פעולה לבירור: {data.pending.id}</p>
+          <p>{uiTranslate("חיוב בטיפול או בבירור. אין לבצע חיוב נוסף לפני קבלת תוצאה.")}</p>
+          <p className="text-xs break-all">{uiTranslate("מזהה פעולה לבירור:")} {data.pending.id}</p>
           <Button variant="outline" disabled={busy} onClick={() => run(async () => {
             const result = await storedCardAction("reconcile", { customerId: customer.id, operationId: data.pending.id });
             setMessage(result.state === "completed" ? "החיוב אומת ונרשם" : "הפעולה עדיין בבירור"); await changed();
-          })}>ברר תוצאה מול הספק</Button>
+          })}>{uiTranslate("ברר תוצאה מול הספק")}</Button>
           {data.pending.state === "unknown" && <div className="space-y-2 pt-2 border-t">
-            <p className="text-sm">אם הספק אישר את החיוב אך מספר העסקה לא התקבל במערכת, הזן את מזהה העסקה המדויק מ-Invoice4U. המערכת תאמת אותו מול הספק ולא תבצע חיוב נוסף.</p>
-            <Input aria-label="מזהה עסקה אצל ספק הסליקה" value={providerPaymentId} onChange={e => setProviderPaymentId(e.target.value)} placeholder="מזהה עסקה אצל הספק" />
+            <p className="text-sm">{uiTranslate("אם הספק אישר את החיוב אך מספר העסקה לא התקבל במערכת, הזן את מזהה העסקה המדויק מ-Invoice4U. המערכת תאמת אותו מול הספק ולא תבצע חיוב נוסף.")}</p>
+            <Input aria-label={uiTranslate("מזהה עסקה אצל ספק הסליקה")} value={providerPaymentId} onChange={e => setProviderPaymentId(e.target.value)} placeholder={uiTranslate("מזהה עסקה אצל הספק")} />
             <Button variant="outline" disabled={busy || !providerPaymentId.trim()} onClick={() => {
               if (!window.confirm("לאשר שיוך של העסקה הזו לתשלום הממתין? הפעולה אינה מחייבת שוב, אך לאחר האימות התשלום ייחשב כשולם.")) return;
               run(async () => {
@@ -179,7 +182,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
                 setMessage(result.state === "completed" ? "העסקה אומתה ונרשמה כתשלום שהושלם" : "הפעולה עדיין בבירור");
                 setProviderPaymentId(""); await changed();
               });
-            }}>אמת עסקה ורשום תשלום</Button>
+            }}>{uiTranslate("אמת עסקה ורשום תשלום")}</Button>
           </div>}
         </div>}
       </>}
@@ -187,28 +190,28 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
       <Dialog open={!!mode} onOpenChange={open => { if (!open && !busy) setMode(null); }}>
         <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{mode === "customer" ? "לקוח משלם" : mode === "setup" ? "שמירת כרטיס ללקוח" : "חיוב כרטיס שמור"}</DialogTitle>
-            <DialogDescription>הכרטיס משותף לכל האירועים המשויכים ללקוח המשלם.</DialogDescription></DialogHeader>
+            <DialogDescription>{uiTranslate("הכרטיס משותף לכל האירועים המשויכים ללקוח המשלם.")}</DialogDescription></DialogHeader>
           {mode === "customer" && <div className="space-y-3">
-            <p className="text-sm text-gray-600">לקוחות קיימים מוצגים כאן רק אם כבר שמור להם כרטיס פעיל.</p>
+            <p className="text-sm text-gray-600">{uiTranslate("לקוחות קיימים מוצגים כאן רק אם כבר שמור להם כרטיס פעיל.")}</p>
             <div className="flex gap-2">
-              <Input aria-label="חיפוש לקוח משלם" value={customerSearch} onChange={e => setCustomerSearch(e.target.value)}
+              <Input aria-label={uiTranslate("חיפוש לקוח משלם")} value={customerSearch} onChange={e => setCustomerSearch(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") run(() => loadCustomers(false, customerSearch)); }}
-                placeholder="חיפוש לפי שם, טלפון, אימייל או מזהה" />
+                placeholder={uiTranslate("חיפוש לפי שם, טלפון, אימייל או מזהה")} />
               <Button type="button" variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(false, customerSearch))}>חפש</Button>
             </div>
-            <label className="block">לקוח קיים<select className={inputClass} value={selected} onChange={e => setSelected(e.target.value)}>
-              <option value="">בחר לקוח</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>)}
+            <label className="block">{uiTranslate("לקוח קיים")}<select className={inputClass} value={selected} onChange={e => setSelected(e.target.value)}>
+              <option value="">{uiTranslate("בחר לקוח")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>)}
             </select></label>
-            {hasMore && <Button variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(true, customerSearch))}>טען לקוחות נוספים</Button>}
-            <Button disabled={!selected || busy} onClick={() => run(() => bind(selected))}>קשר לאירוע</Button>
-            <p className="font-semibold border-t pt-3">לקוח חדש + כרטיס</p>
+            {hasMore && <Button variant="outline" disabled={busy} onClick={() => run(() => loadCustomers(true, customerSearch))}>{uiTranslate("טען לקוחות נוספים")}</Button>}
+            <Button disabled={!selected || busy} onClick={() => run(() => bind(selected))}>{uiTranslate("קשר לאירוע")}</Button>
+            <p className="font-semibold border-t pt-3">{uiTranslate("לקוח חדש + כרטיס")}</p>
             <p className="text-sm text-amber-900">{form.email.trim()?"מייל הלקוח ישמש בסליקה.":fallbackEmail?"בהיעדר מייל ללקוח יישלח לספק מייל החברה: "+fallbackEmail:"נדרש מייל ללקוח או הגדרת מייל חברה חלופי בהגדרות התשלומים."}</p>
-            <p className="text-sm text-gray-600">הלקוח יישמר במערכת רק לאחר שהכרטיס יאומת בהצלחה.</p>
+            <p className="text-sm text-gray-600">{uiTranslate("הלקוח יישמר במערכת רק לאחר שהכרטיס יאומת בהצלחה.")}</p>
             {[["name", "שם מלא"], ["phone", "טלפון"], ["email", "אימייל"], ["identifier", "תעודת זהות / ח.פ. (רשות)"]].map(([field, label]) =>
               <label key={field} className="block">{label}<Input type={field === "email" ? "email" : "text"} value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })} /></label>)}
-            <label className="block">אסמכתא להסכמת הלקוח<Input value={reference} onChange={e => setReference(e.target.value)} placeholder="מספר הסכם או הפניה להסכמה מתועדת" /></label>
+            <label className="block">{uiTranslate("אסמכתא להסכמת הלקוח")}<Input value={reference} onChange={e => setReference(e.target.value)} placeholder={uiTranslate("מספר הסכם או הפניה להסכמה מתועדת")} /></label>
             {evidenceInput}
-            <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם</label>
+            <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />{uiTranslate("התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם")}</label>
             <Button disabled={busy || !form.name.trim() || !form.phone.trim() || !(form.email.trim() || fallbackEmail) || !consent || (!reference.trim() && !consentImage)} onClick={() => run(async () => {
               const result = await storedCardAction("create_customer_and_setup", {
                 eventId: event.id, ...form, consentConfirmed: consent, consentReference: reference, consentImage
@@ -218,18 +221,18 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
               setMessage("הלקוח נוצר זמנית והקישור המאובטח מוכן. לאחר אימות הכרטיס הלקוח יישמר סופית.");
               await changed();
               if (result.redirectUrl) await navigator.clipboard.writeText(result.redirectUrl).catch(() => {});
-            })}>הוסף לקוח וצור קישור לכרטיס</Button>
+            })}>{uiTranslate("הוסף לקוח וצור קישור לכרטיס")}</Button>
           </div>}
           {mode === "setup" && <div className="space-y-3">
-            <p>פרטי הכרטיס יוזנו בדף המאובטח של Invoice4U. הבקשה מיועדת לשמירה ללא חיוב.</p>
+            <p>{uiTranslate("פרטי הכרטיס יוזנו בדף המאובטח של Invoice4U. הבקשה מיועדת לשמירה ללא חיוב.")}</p>
             <p className="text-sm text-amber-900">{customer.email?"מייל הלקוח לסליקה: "+customer.email:fallbackEmail?"מייל החברה שישמש בסליקה: "+fallbackEmail:"חסר מייל ללקוח. יש להגדיר מייל חברה חלופי בהגדרות התשלומים לפני יצירת הקישור."}</p>
-            <label className="block">אסמכתא להסכמת הלקוח<Input value={reference} onChange={e => setReference(e.target.value)} placeholder="מספר הסכם או הפניה להסכמה מתועדת" /></label>
+            <label className="block">{uiTranslate("אסמכתא להסכמת הלקוח")}<Input value={reference} onChange={e => setReference(e.target.value)} placeholder={uiTranslate("מספר הסכם או הפניה להסכמה מתועדת")} /></label>
             {evidenceInput}
-            <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם</label>
+            <label className="flex gap-2"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />{uiTranslate("התקבלה הסכמת הלקוח לשמירת הכרטיס ולחיובים בהתאם להסכם")}</label>
             <Button disabled={busy || !(customer?.email || fallbackEmail) || !consent || (!reference.trim() && !consentImage)} onClick={() => run(async () => {
               await storedCardAction("setup", { eventId: event.id, customerId: customer.id, consentConfirmed: consent, consentReference: reference, consentImage });
               setMode(null); await changed();
-            })}>צור קישור לשמירת כרטיס</Button>
+            })}>{uiTranslate("צור קישור לשמירת כרטיס")}</Button>
           </div>}
           {mode === "charge" && customer && card && <AgreementChargeForm event={event} customer={customer} card={card} onFinished={async result=>{
             setMessage(result.state === "completed" ? "החיוב הושלם ונרשם" : result.message || "הפעולה בבירור; אין לחייב שוב");
@@ -242,6 +245,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
   </Card>;
 }
 export function StoredCardsManager() {
+  const {t: uiTranslate}=useLanguage();
   const [skip, setSkip] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -323,27 +327,27 @@ export function StoredCardsManager() {
     } finally { setBusy(false); await refetch(); }
   };
   const selectedCardCount = [...selected.values()].filter(item => item.cardId).length;
-  return <Card dir="rtl"><CardHeader><CardTitle>ניהול לקוחות משלמים וכרטיסים</CardTitle></CardHeader><CardContent className="space-y-4">
-    <p>ניתן לבחור כל לקוח, עם כרטיס או בלעדיו. הסרת כרטיס בלבד כפופה למדיניות הסיום והחובות; מחיקת לקוח מנתקת אותו מכל האירועים.</p>
+  return <Card dir="rtl"><CardHeader><CardTitle>{uiTranslate("ניהול לקוחות משלמים וכרטיסים")}</CardTitle></CardHeader><CardContent className="space-y-4">
+    <p>{uiTranslate("ניתן לבחור כל לקוח, עם כרטיס או בלעדיו. הסרת כרטיס בלבד כפופה למדיניות הסיום והחובות; מחיקת לקוח מנתקת אותו מכל האירועים.")}</p>
     <div className="flex gap-2">
-      <Input aria-label="חיפוש ברשימת לקוחות משלמים" value={searchInput} onChange={e => setSearchInput(e.target.value)}
-        onKeyDown={e => { if (e.key === "Enter") runSearch(); }} placeholder="חיפוש לפי שם, טלפון, אימייל או מזהה" />
+      <Input aria-label={uiTranslate("חיפוש ברשימת לקוחות משלמים")} value={searchInput} onChange={e => setSearchInput(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") runSearch(); }} placeholder={uiTranslate("חיפוש לפי שם, טלפון, אימייל או מזהה")} />
       <Button type="button" variant="outline" disabled={busy} onClick={runSearch}>חפש</Button>
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" disabled={busy} onClick={selectAll}>בחר את כל התוצאות</Button>
-      <Button variant="outline" disabled={busy || !selected.size} onClick={() => setSelected(new Map())}>נקה בחירה</Button>
-      <Button disabled={busy || !selectedCardCount} onClick={removeSelected}>הסר {selectedCardCount} כרטיסים</Button>
-      <Button variant="outline" className="text-red-700 border-red-300" disabled={busy || !selected.size} onClick={deleteSelected}>מחק {selected.size} לקוחות</Button>
-      <Button variant="ghost" disabled={busy} onClick={() => refetch()}>רענן</Button>
+      <Button variant="outline" disabled={busy} onClick={selectAll}>{uiTranslate("בחר את כל התוצאות")}</Button>
+      <Button variant="outline" disabled={busy || !selected.size} onClick={() => setSelected(new Map())}>{uiTranslate("נקה בחירה")}</Button>
+      <Button disabled={busy || !selectedCardCount} onClick={removeSelected}>{uiTranslate("הסר")} {selectedCardCount} {uiTranslate("כרטיסים")}</Button>
+      <Button variant="outline" className="text-red-700 border-red-300" disabled={busy || !selected.size} onClick={deleteSelected}>{uiTranslate("מחק")} {selected.size} {uiTranslate("לקוחות")}</Button>
+      <Button variant="ghost" disabled={busy} onClick={() => refetch()}>{uiTranslate("רענן")}</Button>
     </div>
     {isLoading && <p>טוען...</p>}{error && <p role="alert">{errorText(error)}</p>}
-    <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th>בחירה</th><th>לקוח</th><th>כרטיס</th><th>אירועים</th><th>מצב כרטיס</th></tr></thead>
+    <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th>{uiTranslate("בחירה")}</th><th>{uiTranslate("לקוח")}</th><th>{uiTranslate("כרטיס")}</th><th>{uiTranslate("אירועים")}</th><th>{uiTranslate("מצב כרטיס")}</th></tr></thead>
       <tbody>{data?.rows.map(row => <tr key={row.customer.id} className="border-t"><td className="py-3"><input aria-label={"בחר " + row.customer.name} type="checkbox" disabled={busy} checked={selected.has(row.customer.id)} onChange={() => toggle(row)} /></td>
         <td>{row.customer.name}</td><td>{cardLabel(row.card)}{row.card?.environment === "qa" && " (QA)"}</td>
         <td>{row.customer.linked_event_count || 0}</td><td>{row.reason}</td></tr>)}</tbody>
     </table></div>
-    <div className="flex gap-2"><Button variant="outline" disabled={busy || !skip} onClick={() => setSkip(Math.max(0, skip - 20))}>הקודם</Button><Button variant="outline" disabled={busy || !data?.hasMore} onClick={() => setSkip(skip + 20)}>הבא</Button></div>
+    <div className="flex gap-2"><Button variant="outline" disabled={busy || !skip} onClick={() => setSkip(Math.max(0, skip - 20))}>{uiTranslate("הקודם")}</Button><Button variant="outline" disabled={busy || !data?.hasMore} onClick={() => setSkip(skip + 20)}>{uiTranslate("הבא")}</Button></div>
     {message && <p role="status">{message}</p>}
   </CardContent></Card>;
 }

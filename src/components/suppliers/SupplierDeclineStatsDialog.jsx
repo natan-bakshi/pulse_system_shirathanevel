@@ -6,8 +6,10 @@ import { Search, TrendingDown, Calendar, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { getEventDisplayName } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServices = [], allSuppliers = [], allServices = [], allEvents = [] }) {
+  const {t: uiTranslate}=useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Build decline stats from all EventServices
@@ -101,7 +103,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
                   <div className="bg-gray-50 px-3 py-2 flex items-center justify-between">
                     <span className="font-medium text-sm">{supplier.supplier_name}</span>
                     <Badge variant="outline" className="text-red-600 border-red-200 text-xs">
-                      {supplier.declines.length} דחיות
+                      {supplier.declines.length} {uiTranslate("דחיות")}
                     </Badge>
                   </div>
                   <div className="divide-y">
@@ -118,7 +120,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
                             </span>
                           )}
                         </div>
-                        <div className="text-gray-500 mr-4">שירות: {d.service_name}</div>
+                        <div className="text-gray-500 mr-4">{uiTranslate("שירות:")} {d.service_name}</div>
                         {d.declined_date && (
                           <div className="text-gray-400 mr-4">
                             נדחה בתאריך: {format(new Date(d.declined_date), 'dd/MM/yy')}

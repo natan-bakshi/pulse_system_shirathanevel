@@ -5,6 +5,7 @@ import {Input} from '@/components/ui/input';
 import {Save,RefreshCw} from 'lucide-react';
 import WhatsAppCustomButtonEditor,{newCustomSupplierButtons}
  from './WhatsAppCustomButtonEditor';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // Actual NotificationTemplate overrides. Custom HTTPS links are validated on
 // save and send; there is no support for user-supplied functions or handlers.
@@ -57,6 +58,7 @@ function toButtons(mode,previous){
   office:mode==='office'||mode==='both'};
 }
 export default function WhatsAppTemplateButtonSettings({templates=[],focusTemplateId=''}){
+  const {t: uiTranslate}=useLanguage();
  const supportedTemplates=templates.filter(supported);
  const [stored,setStored]=useState(null),[draft,setDraft]=useState(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
@@ -192,7 +194,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
    </p>
    <div className="flex flex-wrap gap-2">
     <Button size="sm" variant="outline" disabled={busy} onClick={load}>
-     <RefreshCw className="h-4 w-4 ml-1"/>רענן
+     <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן")}
     </Button>
     <Button size="sm" disabled={busy||!dirty} onClick={save}>
      <Save className="h-4 w-4 ml-1"/>שמור כפתורים לתבניות

@@ -5,9 +5,11 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import FieldLabel from "../FieldLabel";
 import { CATEGORIES } from "../constants";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // טאב 1: פרטים כלליים - קוד זיהוי, שם, תיאור, קטגוריה, ערוצים, מצב פעיל
 export default function BasicInfoTab({ template, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const update = (field, value) => onChange({ ...template, [field]: value });
 
   return (
@@ -35,7 +37,7 @@ export default function BasicInfoTab({ template, onChange }) {
           <Input
             value={template.name || ''}
             onChange={(e) => update('name', e.target.value)}
-            placeholder="שיבוץ חדש לספק"
+            placeholder={uiTranslate("שיבוץ חדש לספק")}
             className="mt-1"
           />
         </div>

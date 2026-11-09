@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ShareDocumentDialog({ document, onClose, onConfirm, loading, contacts = [] }) {
+  const {t: uiTranslate}=useLanguage();
   const [channel, setChannel] = useState("email");
   const [selected, setSelected] = useState([]);
   const [recipient, setRecipient] = useState("");
@@ -32,7 +34,7 @@ export default function ShareDocumentDialog({ document, onClose, onConfirm, load
             <Select value={channel} onValueChange={setChannel}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="email">אימייל</SelectItem>
+                <SelectItem value="email">{uiTranslate("אימייל")}</SelectItem>
                 <SelectItem value="whatsapp">וואטסאפ</SelectItem>
               </SelectContent>
             </Select>
@@ -66,7 +68,7 @@ export default function ShareDocumentDialog({ document, onClose, onConfirm, load
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>ביטול</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>{uiTranslate("ביטול")}</Button>
           <Button onClick={() => onConfirm({ channel, recipients, message: message.trim() })} disabled={loading || recipients.length === 0}>
             {loading ? "שולח..." : `שלח${recipients.length > 1 ? ` (${recipients.length})` : ""}`}
           </Button>

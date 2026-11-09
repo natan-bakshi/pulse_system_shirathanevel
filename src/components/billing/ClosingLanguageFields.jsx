@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import ClosingLinkedField from "./ClosingLinkedField";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const fields = [
   ["closing_terms_text", "תנאי ההתקשרות", "Terms of engagement", true],
@@ -14,11 +15,12 @@ const fields = [
 ];
 
 export default function ClosingLanguageFields({ settings, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const [language, setLanguage] = useState("he");
   const english = language === "en";
   return <div className="space-y-4 border-t pt-4">
     <div className="flex items-center gap-3">
-      <span className={!english ? "font-semibold" : "text-gray-500"}>עברית</span>
+      <span className={!english ? "font-semibold" : "text-gray-500"}>{uiTranslate("עברית")}</span>
       <Switch aria-label="החלפת שפת עריכת נוסח הסגירה" checked={english} onCheckedChange={checked => setLanguage(checked ? "en" : "he")} />
       <span className={english ? "font-semibold" : "text-gray-500"}>English</span>
     </div>

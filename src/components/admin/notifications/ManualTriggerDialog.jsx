@@ -8,9 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { getEventTitle } from "@/lib/eventDisplayName";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // דיאלוג שליחה ידנית של תבנית התראה לאירוע ספציפי
 export default function ManualTriggerDialog({ open, onOpenChange, template }) {
+  const {t: uiTranslate}=useLanguage();
   const [selectedEventId, setSelectedEventId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -64,7 +66,7 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]" dir="rtl">
         <DialogHeader>
-          <DialogTitle>שליחה ידנית: {template?.name}</DialogTitle>
+          <DialogTitle>{uiTranslate("שליחה ידנית:")} {template?.name}</DialogTitle>
           <DialogDescription>
             בחר אירוע לשליחת ההתראה. הפעולה תשלח הודעות מיידית לכל הנמענים הרלוונטיים (עוקף תזמון ושעות שקט).
           </DialogDescription>
@@ -72,7 +74,7 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
         
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label>בחר אירוע</Label>
+            <Label>{uiTranslate("בחר אירוע")}</Label>
             <Select value={selectedEventId} onValueChange={setSelectedEventId}>
               <SelectTrigger>
                 <SelectValue placeholder="חפש אירוע..." />
@@ -89,14 +91,14 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{uiTranslate("ביטול")}</Button>
           <Button 
             onClick={handleTrigger} 
             disabled={!selectedEventId || isSubmitting}
             className="bg-red-600 hover:bg-red-700 text-white"
           >
             {isSubmitting ? <span className="animate-spin ml-2">⏳</span> : <Send className="ml-2 h-4 w-4" />}
-            שלח עכשיו
+            {uiTranslate("שלח עכשיו")}
           </Button>
         </DialogFooter>
       </DialogContent>

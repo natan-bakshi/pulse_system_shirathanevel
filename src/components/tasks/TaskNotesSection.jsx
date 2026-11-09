@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit2, Trash2, Save, X, MessageSquare } from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * רכיב לניהול הערות בתוך משימה
@@ -10,6 +11,7 @@ import { Plus, Edit2, Trash2, Save, X, MessageSquare } from 'lucide-react';
  * - כל הערה ניתנת לעריכה ולמחיקה
  */
 export default function TaskNotesSection({ notes = [], currentUser, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const [isAdding, setIsAdding] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -108,7 +110,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
               onClick={() => { setIsAdding(false); setNewNoteText(''); }}
               className="h-7 text-xs"
             >
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button
               type="button"
@@ -118,7 +120,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
               className="h-7 text-xs"
             >
               <Save className="h-3 w-3 ml-1" />
-              שמור
+              {uiTranslate("שמור")}
             </Button>
           </div>
         </div>
@@ -149,7 +151,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
                       className="h-7 text-xs"
                     >
                       <X className="h-3 w-3 ml-1" />
-                      ביטול
+                      {uiTranslate("ביטול")}
                     </Button>
                     <Button
                       type="button"
@@ -159,7 +161,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
                       className="h-7 text-xs"
                     >
                       <Save className="h-3 w-3 ml-1" />
-                      שמור
+                      {uiTranslate("שמור")}
                     </Button>
                   </div>
                 </div>
@@ -184,7 +186,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
                         variant="ghost"
                         onClick={() => handleStartEdit(note)}
                         className="h-6 w-6 p-0"
-                        title="עריכה"
+                        title={uiTranslate("עריכה")}
                       >
                         <Edit2 className="h-3 w-3" />
                       </Button>
@@ -194,7 +196,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
                         variant="ghost"
                         onClick={() => handleDelete(note.id)}
                         className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                        title="מחיקה"
+                        title={uiTranslate("מחיקה")}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

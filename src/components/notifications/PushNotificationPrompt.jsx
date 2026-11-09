@@ -3,12 +3,14 @@ import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { base44 } from "@/api/base44Client";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const FIREBASE_PROXY_URL = 'https://pulse-notifications-6886e.web.app';
 const PROMPT_DISMISSED_KEY = 'push_prompt_dismissed';
 const PROMPT_DISMISSED_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export default function PushNotificationPrompt({ user }) {
+  const {t: uiTranslate}=useLanguage();
   const [showPrompt, setShowPrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -170,7 +172,7 @@ export default function PushNotificationPrompt({ user }) {
             <button
               onClick={handleDismiss}
               className="text-gray-400 hover:text-gray-600 p-1"
-              aria-label="סגור"
+              aria-label={uiTranslate("סגור")}
             >
               <X className="h-4 w-4" />
             </button>

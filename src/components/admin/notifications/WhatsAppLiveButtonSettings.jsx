@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Save,RefreshCw} from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // The production worker reads this existing policy, even though the stored
 // policy.enabled flag is intentionally false: ONLY the owner's separate
@@ -15,6 +16,7 @@ const REQUIRED=[
  {action:'contact_office',title:'פנייה למשרד'}
 ];
 export default function WhatsAppLiveButtonSettings({active=false}){
+  const {t: uiTranslate}=useLanguage();
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
  const [saved,setSaved]=useState(null),[draft,setDraft]=useState(null);
  const [error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -118,7 +120,7 @@ export default function WhatsAppLiveButtonSettings({active=false}){
     <Button type="button" size="sm" disabled={busy||!draft||!saved||
       JSON.stringify({officeNumber:draft.officeNumber,policy:draft.policy})===
       JSON.stringify({officeNumber:saved.officeNumber,policy:saved.policy})}
-     onClick={save}><Save className="h-4 w-4 ml-1"/>שמור שינויים</Button>
+     onClick={save}><Save className="h-4 w-4 ml-1"/>{uiTranslate("שמור שינויים")}</Button>
    </div>
    {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
    {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}

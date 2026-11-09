@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import AdminMultiSelect from './AdminMultiSelect';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * דיאלוג ליצירה/עריכה של משימה
@@ -24,6 +25,7 @@ export default function TaskFormDialog({
   isSaving = false,
   lockEvent = false,
 }) {
+  const {t: uiTranslate}=useLanguage();
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -151,10 +153,10 @@ export default function TaskFormDialog({
                 onValueChange={(v) => setForm({ ...form, event_id: v === 'none' ? '' : v })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="ללא שיוך לאירוע" />
+                  <SelectValue placeholder={uiTranslate("ללא שיוך לאירוע")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  <SelectItem value="none">ללא שיוך לאירוע</SelectItem>
+                  <SelectItem value="none">{uiTranslate("ללא שיוך לאירוע")}</SelectItem>
                   {sortedEvents.map(ev => (
                     <SelectItem key={ev.id} value={ev.id}>
                       {ev.event_name || ev.family_name} - {ev.event_date ? new Date(ev.event_date).toLocaleDateString('he-IL') : ''}
@@ -190,7 +192,7 @@ export default function TaskFormDialog({
 
           {/* דחיפות */}
           <div className="space-y-1.5">
-            <Label>דחיפות</Label>
+            <Label>{uiTranslate("דחיפות")}</Label>
             <Select
               value={form.priority}
               onValueChange={(v) => setForm({ ...form, priority: v })}
@@ -199,9 +201,9 @@ export default function TaskFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">נמוכה</SelectItem>
-                <SelectItem value="normal">רגילה</SelectItem>
-                <SelectItem value="high">גבוהה</SelectItem>
+                <SelectItem value="low">{uiTranslate("נמוכה")}</SelectItem>
+                <SelectItem value="normal">{uiTranslate("רגילה")}</SelectItem>
+                <SelectItem value="high">{uiTranslate("גבוהה")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -219,7 +221,7 @@ export default function TaskFormDialog({
 
         <DialogFooter className="gap-2 flex-col sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-            ביטול
+            {uiTranslate("ביטול")}
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving}>
             {isSaving && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}

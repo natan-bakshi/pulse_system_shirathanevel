@@ -6,6 +6,7 @@ import { confirmReassignAfterDateChange } from '@/functions/confirmReassignAfter
 import { cancelAssignmentsAfterDateChange } from '@/functions/cancelAssignmentsAfterDateChange';
 import { clearDateChangePendingAction } from '@/functions/clearDateChangePendingAction';
 import { toast } from 'sonner';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * Dialog shown to admin when an event's date/time changed and there are assigned suppliers.
@@ -15,6 +16,7 @@ import { toast } from 'sonner';
  *  - Do nothing (just clear the flag, change is internal-only)
  */
 export default function DateChangeDecisionDialog({ open, event, onResolved }) {
+  const {t: uiTranslate}=useLanguage();
   const [loadingAction, setLoadingAction] = useState(null); // 'reassign' | 'notice' | 'cancel' | 'nothing' | null
   let changeContext = null;
   try { changeContext = JSON.parse(event?.supplier_event_change_context || 'null'); } catch {}
@@ -91,7 +93,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
           </DialogTitle>
           <DialogDescription className="text-right pt-2 space-y-2">
             <div>
-              פרטי האירוע <strong>{event?.event_name}</strong> עודכנו.
+              {uiTranslate("פרטי האירוע")} <strong>{event?.event_name}</strong> עודכנו.
             </div>
             {(Array.isArray(changeContext?.fields) ? changeContext.fields.some(field => ['event_date', 'event_time'].includes(field)) : event?.previous_event_date) && (
               <div className="text-sm">

@@ -5,8 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2 } from "lucide-react";
 import ContactPicker from "../ui/ContactPicker";
 import { contactExtraValue } from "@/lib/eventFields";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function OrganizerContactsSection({ contacts, onChange, config, disabled }) {
+  const {t: uiTranslate}=useLanguage();
   // Don't render if no contacts_config is defined for this organizer type
   // (config is null when no specific configuration exists)
   if (!config) return null;
@@ -48,7 +50,7 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
       <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
         <h3 className="text-base sm:text-lg font-semibold">{label}</h3>
         <Button type="button" variant="outline" size="sm" onClick={addContact} disabled={disabled}>
-          <Plus className="h-4 w-4 ml-1" />הוסף {itemLabel}
+          <Plus className="h-4 w-4 ml-1" />{uiTranslate("הוסף")} {itemLabel}
         </Button>
       </div>
       <div className="space-y-3">
@@ -74,7 +76,7 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
                 <Input
                   value={contact.name || ""}
                   onChange={(e) => handleChange(index, "name", e.target.value)}
-                  placeholder="שם מלא"
+                  placeholder={uiTranslate("שם מלא")}
                   disabled={disabled}
                 />
               </div>
@@ -82,7 +84,7 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
                 <Input
                   value={contact.phone || ""}
                   onChange={(e) => handleChange(index, "phone", e.target.value)}
-                  placeholder="טלפון"
+                  placeholder={uiTranslate("טלפון")}
                   disabled={disabled}
                 />
               </div>
@@ -91,7 +93,7 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
                   type="email"
                   value={contact.email || ""}
                   onChange={(e) => handleChange(index, "email", e.target.value)}
-                  placeholder="אימייל"
+                  placeholder={uiTranslate("אימייל")}
                   disabled={disabled}
                 />
               </div>

@@ -22,6 +22,7 @@ import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 import { DEFAULT_EVENT_FIELDS, getField } from '@/lib/eventFields';
 import SectionTitleEditor from '@/components/events/SectionTitleEditor';
 import AddServiceToPackageDraftDialog from '@/components/events/AddServiceToPackageDraftDialog';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function EventServicesManager({
   fieldConfig = DEFAULT_EVENT_FIELDS,
@@ -44,6 +45,7 @@ export default function EventServicesManager({
   externalServicesTitle = '',
   onExternalServicesTitleChange
 }) {
+  const {t: uiTranslate}=useLanguage();
   const field = key => getField(fieldConfig, key);
   const [expandedServices, setExpandedServices] = useState({});
   const [copiedId, setCopiedId] = useState(null);
@@ -911,19 +913,19 @@ export default function EventServicesManager({
             <div className="mr-6 space-y-1 min-w-0">
               {!allInclusive && (
                 <div className="text-sm text-gray-600">
-                  מחיר: {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))}{((service.custom_price || 0) * (service.quantity || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {uiTranslate("מחיר:")} {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))}{((service.custom_price || 0) * (service.quantity || 1)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   {service.includes_vat ? ' (כולל מע"מ)' : ' (לא כולל מע"מ)'}
                   {service.quantity > 1 && ` | כמות: ${service.quantity}`}
                 </div>
               )}
               {allInclusive && service.quantity > 1 && (
-                <div className="text-sm text-gray-600">כמות: {service.quantity}</div>
+                <div className="text-sm text-gray-600">{uiTranslate("כמות:")} {service.quantity}</div>
               )}
               {(service.service_description || serviceDetails?.service_description) && (
                 <div className="text-xs text-gray-500 break-words" dangerouslySetInnerHTML={{ __html: service.service_description || serviceDetails.service_description }} />
               )}
               {service.client_notes && (
-                <div className="text-xs text-gray-500 italic break-words">הערה: {service.client_notes}</div>
+                <div className="text-xs text-gray-500 italic break-words">{uiTranslate("הערה:")} {service.client_notes}</div>
               )}
                           {/* Transport Details - Read Only Formatted */}
             {isTransportService && (
@@ -950,18 +952,18 @@ export default function EventServicesManager({
                         return units.map((unit, uIdx) => (
                             <div key={uIdx} className={uIdx > 0 ? "border-t border-blue-200 pt-2 mt-2" : ""}>
                                 {units.length > 1 && (
-                                    <div className="font-bold underline mb-1">נסיעה {uIdx + 1}</div>
+                                    <div className="font-bold underline mb-1">{uiTranslate("נסיעה")} {uIdx + 1}</div>
                                 )}
                                 {unit.pickupPoints.map((point, pIdx) => (
                                     <div key={pIdx} className="mb-1 last:mb-0">
                                         {unit.pickupPoints.length > 1 && (
-                                            <span className="font-semibold ml-1">נקודה {pIdx + 1}:</span>
+                                            <span className="font-semibold ml-1">{uiTranslate("נקודה")} {pIdx + 1}:</span>
                                         )}
-                                        {point.time && <span className="ml-2"><strong>שעה:</strong> {point.time}</span>}
-                                        {point.location && <span className="ml-2"><strong>מיקום:</strong> {point.location}</span>}
+                                        {point.time && <span className="ml-2"><strong>{uiTranslate("שעה:")}</strong> {point.time}</span>}
+                                        {point.location && <span className="ml-2"><strong>{uiTranslate("מיקום:")}</strong> {point.location}</span>}
                                         {point.contact?.name && (
                                             <span className="block mt-0.5 text-[11px] text-blue-800">
-                                                <strong>איש קשר:</strong> {point.contact.name} {point.contact.phone ? `(${point.contact.phone})` : ''}
+                                                <strong>{uiTranslate("איש קשר:")}</strong> {point.contact.name} {point.contact.phone ? `(${point.contact.phone})` : ''}
                                             </span>
                                         )}
                                     </div>
@@ -978,18 +980,18 @@ export default function EventServicesManager({
           {isExpanded && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mr-6 mt-2">
               <div className="col-span-full">
-                <Label className="text-xs">שם השירות באירוע זה</Label>
+                <Label className="text-xs">{uiTranslate("שם השירות באירוע זה")}</Label>
                 <Input
                   value={service.service_name || serviceDetails?.service_name || ''}
                   onChange={(e) => handleServiceChange(service.id, 'service_name', e.target.value)}
-                  placeholder="שם השירות באירוע"
+                  placeholder={uiTranslate("שם השירות באירוע")}
                   className="text-sm h-8"
                 />
-                <div className="text-xs text-blue-600 italic mt-1">שינוי כאן ישפיע רק על אירוע זה ולא על השירות הגלובלי</div>
+                <div className="text-xs text-blue-600 italic mt-1">{uiTranslate("שינוי כאן ישפיע רק על אירוע זה ולא על השירות הגלובלי")}</div>
               </div>
               {!allInclusive && (
                 <div>
-                  <Label className="text-xs">מחיר ליחידה</Label>
+                  <Label className="text-xs">{uiTranslate("מחיר ליחידה")}</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -1011,7 +1013,7 @@ export default function EventServicesManager({
                         onServicesChange(updatedServices);
                       }}
                       className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
-                      title="לחץ להחלפת מטבע"
+                      title={uiTranslate("לחץ להחלפת מטבע")}
                     >
                       {getCurrencySymbol(getEffectiveCurrency(service.currency, primaryCurrency))}
                     </button>
@@ -1019,25 +1021,25 @@ export default function EventServicesManager({
                 </div>
               )}
               <div>
-                <Label className="text-xs">כמות</Label>
+                <Label className="text-xs">{uiTranslate("כמות")}</Label>
                 <Input
                   type="number"
                   value={service.quantity || ''}
                   onChange={(e) => handleServiceChange(service.id, 'quantity', e.target.value)}
-                  placeholder="כמות"
+                  placeholder={uiTranslate("כמות")}
                   className="text-sm h-8"
                 />
               </div>
               <div>
                 <div className="flex items-center gap-1 mb-1">
-                  <Label className="text-xs">שיבוצים נדרשים</Label>
+                  <Label className="text-xs">{uiTranslate("שיבוצים נדרשים")}</Label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>מספר הספקים המינימלי שצריך לשבץ לשירות זה כדי שהאירוע ייחשב "תפור"</p>
+                        <p>{uiTranslate("מספר הספקים המינימלי שצריך לשבץ לשירות זה כדי שהאירוע ייחשב \"תפור\"")}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1064,14 +1066,14 @@ export default function EventServicesManager({
                       checked={service.includes_vat}
                       onCheckedChange={(checked) => handleServiceChange(service.id, 'includes_vat', checked)}
                     />
-                    <Label htmlFor={`vat-${service.id}`} className="text-xs">כולל מע"מ</Label>
+                    <Label htmlFor={`vat-${service.id}`} className="text-xs">{uiTranslate("כולל מע\"מ")}</Label>
                   </div>
                 </div>
               )}
 
               {/* תצוגת מחיר בהצעה */}
               <div className="col-span-full">
-                <Label className="text-xs font-semibold text-gray-500">תצוגת מחיר בהצעת מחיר</Label>
+                <Label className="text-xs font-semibold text-gray-500">{uiTranslate("תצוגת מחיר בהצעת מחיר")}</Label>
                 <div className="flex flex-wrap items-center gap-3 mt-1 p-2 bg-gray-50 rounded border">
                   <div className="flex items-center gap-1.5">
                     <Checkbox
@@ -1079,10 +1081,10 @@ export default function EventServicesManager({
                       checked={service.show_price_in_quote !== false}
                       onCheckedChange={(checked) => handleServiceChange(service.id, 'show_price_in_quote', checked)}
                     />
-                    <Label htmlFor={`show-price-${service.id}`} className="text-xs cursor-pointer">הצג מחיר</Label>
+                    <Label htmlFor={`show-price-${service.id}`} className="text-xs cursor-pointer">{uiTranslate("הצג מחיר")}</Label>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Label className="text-xs text-gray-500 whitespace-nowrap">כיתוב נוסף:</Label>
+                    <Label className="text-xs text-gray-500 whitespace-nowrap">{uiTranslate("כיתוב נוסף:")}</Label>
                     <Select
                       value={service.price_display_mode || 'default'}
                       onValueChange={(value) => handleServiceChange(service.id, 'price_display_mode', value)}
@@ -1091,10 +1093,10 @@ export default function EventServicesManager({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default">ללא כיתוב נוסף</SelectItem>
-                        <SelectItem value="direct_payment">תשלום ישיר</SelectItem>
-                        <SelectItem value="estimated_price">מחיר מוערך</SelectItem>
-                        <SelectItem value="custom_text">טקסט חופשי</SelectItem>
+                        <SelectItem value="default">{uiTranslate("ללא כיתוב נוסף")}</SelectItem>
+                        <SelectItem value="direct_payment">{uiTranslate("תשלום ישיר")}</SelectItem>
+                        <SelectItem value="estimated_price">{uiTranslate("מחיר מוערך")}</SelectItem>
+                        <SelectItem value="custom_text">{uiTranslate("טקסט חופשי")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1103,7 +1105,7 @@ export default function EventServicesManager({
                       <Input
                         value={service.price_display_text || ''}
                         onChange={(e) => handleServiceChange(service.id, 'price_display_text', e.target.value)}
-                        placeholder="הזן טקסט חופשי..."
+                        placeholder={uiTranslate("הזן טקסט חופשי...")}
                         className="h-7 text-xs"
                       />
                     </div>
@@ -1113,14 +1115,14 @@ export default function EventServicesManager({
               {/* שעת התייצבות לספק - אופציונלי */}
               <div>
                 <div className="flex items-center gap-1 mb-1">
-                  <Label className="text-xs">שעת התייצבות לספק</Label>
+                  <Label className="text-xs">{uiTranslate("שעת התייצבות לספק")}</Label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="max-w-xs">אופציונלי. אם הוגדרה - היא תופיע לספק במקום שעת האירוע (ביומן, התראות, הודעות וממשק). אם תישאר ריקה - הספק יראה את שעת האירוע הרגילה.</p>
+                        <p className="max-w-xs">{uiTranslate("אופציונלי. אם הוגדרה - היא תופיע לספק במקום שעת האירוע (ביומן, התראות, הודעות וממשק). אם תישאר ריקה - הספק יראה את שעת האירוע הרגילה.")}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1133,7 +1135,7 @@ export default function EventServicesManager({
                 />
               </div>
               <div className="col-span-full">
-                <Label className="text-xs">תיאור השירות</Label>
+                <Label className="text-xs">{uiTranslate("תיאור השירות")}</Label>
                 <ReactQuill
                   value={service.service_description || ''}
                   onChange={(value) => handleServiceChange(service.id, 'service_description', value)}
@@ -1146,16 +1148,16 @@ export default function EventServicesManager({
                     clipboard: { matchVisual: false },
                   }}
                   formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
-                  placeholder="תיאור מפורט של השירות"
+                  placeholder={uiTranslate("תיאור מפורט של השירות")}
                   className="bg-white"
                 />
               </div>
               <div className="col-span-full">
-                <Label className="text-xs">הערה ללקוח (יוצג בהצעה)</Label>
+                <Label className="text-xs">{uiTranslate("הערה ללקוח (יוצג בהצעה)")}</Label>
                 <Input
                   value={service.client_notes || ''}
                   onChange={(e) => handleServiceChange(service.id, 'client_notes', e.target.value)}
-                  placeholder="הערה שתוצג בהצעת המחיר"
+                  placeholder={uiTranslate("הערה שתוצג בהצעת המחיר")}
                   className="text-sm"
                 />
               </div>
@@ -1163,7 +1165,7 @@ export default function EventServicesManager({
               {/* Transport Fields */}
                   {isTransportService && (
                     <div className="col-span-full space-y-4">
-                      <Label className="text-xs font-semibold text-gray-500">פרטי נסיעה</Label>
+                      <Label className="text-xs font-semibold text-gray-500">{uiTranslate("פרטי נסיעה")}</Label>
                       
                       {(() => {
                           let units = [];
@@ -1211,7 +1213,7 @@ export default function EventServicesManager({
                                   {unit.pickupPoints.map((point, pIdx) => (
                                       <div key={pIdx} className="bg-white p-2 rounded border space-y-2">
                                           <div className="flex justify-between">
-                                               <Label className="text-[10px] text-gray-500">נקודה {pIdx + 1}</Label>
+                                               <Label className="text-[10px] text-gray-500">{uiTranslate("נקודה")} {pIdx + 1}</Label>
                                                {pIdx > 0 && <Trash2 className="h-3 w-3 text-red-500 cursor-pointer" onClick={() => {
                                                    const newUnits = [...units];
                                                    newUnits[uIdx].pickupPoints.splice(pIdx, 1);
@@ -1224,20 +1226,20 @@ export default function EventServicesManager({
                                                   newUnits[uIdx].pickupPoints[pIdx].time = e.target.value;
                                                   updateTransport(newUnits);
                                               }} className="h-7 text-xs" />
-                                              <Input value={point.location} placeholder="מיקום" onChange={(e) => {
+                                              <Input value={point.location} placeholder={uiTranslate("מיקום")} onChange={(e) => {
                                                   const newUnits = [...units];
                                                   newUnits[uIdx].pickupPoints[pIdx].location = e.target.value;
                                                   updateTransport(newUnits);
                                               }} className="h-7 text-xs" />
                                           </div>
                                            <div className="flex gap-1">
-                                              <Input value={point.contact?.name || ''} placeholder="איש קשר" onChange={(e) => {
+                                              <Input value={point.contact?.name || ''} placeholder={uiTranslate("איש קשר")} onChange={(e) => {
                                                   const newUnits = [...units];
                                                   if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
                                                   newUnits[uIdx].pickupPoints[pIdx].contact.name = e.target.value;
                                                   updateTransport(newUnits);
                                               }} className="h-7 text-xs" />
-                                               <Input value={point.contact?.phone || ''} placeholder="טלפון" onChange={(e) => {
+                                               <Input value={point.contact?.phone || ''} placeholder={uiTranslate("טלפון")} onChange={(e) => {
                                                   const newUnits = [...units];
                                                   if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
                                                   newUnits[uIdx].pickupPoints[pIdx].contact.phone = e.target.value;
@@ -1250,7 +1252,7 @@ export default function EventServicesManager({
                                       const newUnits = [...units];
                                       newUnits[uIdx].pickupPoints.push({ time: '', location: '', contact: { name: '', phone: '' } });
                                       updateTransport(newUnits);
-                                  }}>+ הוסף נקודה</Button>
+                                  }}>{uiTranslate("+ הוסף נקודה")}</Button>
                               </div>
                           ));
                       })()}
@@ -1262,7 +1264,7 @@ export default function EventServicesManager({
           {/* Assigned suppliers display */}
           {assignedSuppliers.length > 0 && (
             <div className="mt-2 mr-6">
-              <div className="text-xs text-gray-500 mb-1">ספקים משובצים:</div>
+              <div className="text-xs text-gray-500 mb-1">{uiTranslate("ספקים משובצים:")}</div>
               <div className="flex flex-wrap gap-1">
                 {assignedSuppliers.map(sup => (
                   <Badge key={sup.id} variant="secondary" className="text-xs">
@@ -1281,17 +1283,17 @@ export default function EventServicesManager({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button type="button" variant="outline" size="sm" className="text-xs">
-                      שבץ ספק
+                      {uiTranslate("שבץ ספק")}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => handleOpenSupplierDialog(service)}>
-                      בחר מרשימת ספקים
+                      {uiTranslate("בחר מרשימת ספקים")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TooltipTrigger>
-              <TooltipContent><p>שבץ ספק לשירות זה</p></TooltipContent>
+              <TooltipContent><p>{uiTranslate("שבץ ספק לשירות זה")}</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -1303,7 +1305,7 @@ export default function EventServicesManager({
                     <LogOut className="h-4 w-4 text-orange-500" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>הוצא שירות זה מהחבילה והפוך אותו לשירות עצמאי</p></TooltipContent>
+                <TooltipContent><p>{uiTranslate("הוצא שירות זה מהחבילה והפוך אותו לשירות עצמאי")}</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -1358,7 +1360,7 @@ export default function EventServicesManager({
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>מחק שירות זה מהאירוע</p></TooltipContent>
+              <TooltipContent><p>{uiTranslate("מחק שירות זה מהאירוע")}</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
@@ -1375,7 +1377,7 @@ export default function EventServicesManager({
             checked={allInclusive} 
             onCheckedChange={(checked) => onAllInclusiveChange({ all_inclusive: checked })} 
           />
-          <Label>חבילת הכל כלול</Label>
+          <Label>{uiTranslate("חבילת הכל כלול")}</Label>
           {onPrimaryCurrencyChange && field('primary_currency') && (
             <div className="flex items-center gap-1 mr-auto">
               <span className="text-xs text-gray-500">{field('primary_currency')?.name}:</span>
@@ -1407,7 +1409,7 @@ export default function EventServicesManager({
                   onPrimaryCurrencyChange(newCurrency);
                 }}
                 className="text-xs font-medium px-1.5 py-0.5 rounded border border-gray-300 hover:bg-white transition-colors"
-                title="לחץ להחלפת מטבע (ימיר את כל המחירים)"
+                title={uiTranslate("לחץ להחלפת מטבע (ימיר את כל המחירים)")}
               >
                 {getCurrencySymbol(primaryCurrency)} {primaryCurrency === 'ILS' ? 'שקל' : 'דולר'}
               </button>
@@ -1418,7 +1420,7 @@ export default function EventServicesManager({
           <div className="grid grid-cols-2 gap-2">
             <Input 
               type="number" 
-              placeholder="מחיר החבילה" 
+              placeholder={uiTranslate("מחיר החבילה")} 
               value={allInclusivePrice || ''} 
               onChange={(e) => onAllInclusiveChange({ all_inclusive_price: e.target.value })} 
             />
@@ -1427,7 +1429,7 @@ export default function EventServicesManager({
                 checked={allInclusiveIncludesVat} 
                 onCheckedChange={(checked) => onAllInclusiveChange({ all_inclusive_includes_vat: checked })} 
               />
-              <Label>כולל מע"מ</Label>
+              <Label>{uiTranslate("כולל מע\"מ")}</Label>
             </div>
           </div>
         )}
@@ -1437,7 +1439,7 @@ export default function EventServicesManager({
       <SectionTitleEditor
         value={servicesSectionTitle || ''}
         fallback="חבילת ההפקה כוללת"
-        placeholder="ברירת מחדל: חבילת ההפקה כוללת"
+        placeholder={uiTranslate("ברירת מחדל: חבילת ההפקה כוללת")}
         label={field('services_section_title')?.name}
         onChange={field('services_section_title') ? onServicesSectionTitleChange : undefined}
         color="red"
@@ -1457,10 +1459,10 @@ export default function EventServicesManager({
                     onClick={handleDeleteSelectedServices}
                   >
                     <Trash2 className="h-4 w-4 ml-2" />
-                    מחק {selectedServicesForAction.length}
+                    {uiTranslate("מחק")} {selectedServicesForAction.length}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>מחק שירותים נבחרים</TooltipContent>
+                <TooltipContent>{uiTranslate("מחק שירותים נבחרים")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -1474,10 +1476,10 @@ export default function EventServicesManager({
                     className="bg-amber-600 hover:bg-amber-700"
                   >
                     <PackageIcon className="h-4 w-4 ml-2" />
-                    אגד לחבילה
+                    {uiTranslate("אגד לחבילה")}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>צור חבילה מהשירותים שנבחרו</TooltipContent>
+                <TooltipContent>{uiTranslate("צור חבילה מהשירותים שנבחרו")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </>
@@ -1487,7 +1489,7 @@ export default function EventServicesManager({
           <DropdownMenuTrigger asChild>
             <Button className="bg-green-600 hover:bg-green-700 text-white border-0">
               <Plus className="h-4 w-4 ml-2" />
-              הוסף שירות
+              {uiTranslate("הוסף שירות")}
               <ChevronDown className="h-4 w-4 mr-1 opacity-70" />
             </Button>
           </DropdownMenuTrigger>
@@ -1497,7 +1499,7 @@ export default function EventServicesManager({
               <Search className="h-4 w-4 text-gray-400 ml-2" />
               <input 
                 className="flex-1 outline-none text-sm bg-transparent border-none p-0 focus:ring-0"
-                placeholder="חפש שירות..."
+                placeholder={uiTranslate("חפש שירות...")}
                 value={serviceSearchTerm}
                 onChange={e => setServiceSearchTerm(e.target.value)}
                 onClick={e => e.stopPropagation()}
@@ -1517,14 +1519,14 @@ export default function EventServicesManager({
                 onClick={() => setShowNewServiceDialog(true)}
               >
                 <Plus className="h-4 w-4 ml-2" />
-                צור שירות חדש
+                {uiTranslate("צור שירות חדש")}
               </div>
               
               <div className="border-t my-1"></div>
 
               {/* Service List */}
               {filteredServicesForAdd.length === 0 ? (
-                <div className="text-center text-gray-400 text-xs py-2">לא נמצאו שירותים</div>
+                <div className="text-center text-gray-400 text-xs py-2">{uiTranslate("לא נמצאו שירותים")}</div>
               ) : (
                 filteredServicesForAdd.map(service => {
                   const isSelected = servicesToMultiAdd.includes(service.id);
@@ -1562,7 +1564,7 @@ export default function EventServicesManager({
                     checked={addAsExternal}
                     className="pointer-events-none"
                   />
-                  <span className="text-xs text-orange-800">הוסף כשירות חיצוני (לא כלול בחישוב הכספי)</span>
+                  <span className="text-xs text-orange-800">{uiTranslate("הוסף כשירות חיצוני (לא כלול בחישוב הכספי)")}</span>
                 </div>
               </div>
             )}
@@ -1574,7 +1576,7 @@ export default function EventServicesManager({
                   className="w-full bg-green-600 hover:bg-green-700 h-9 text-xs font-medium shadow-sm"
                   onClick={handleAddMultipleServices}
                 >
-                  הוסף {servicesToMultiAdd.length} שירותים נבחרים
+                  {uiTranslate("הוסף")} {servicesToMultiAdd.length} {uiTranslate("שירותים נבחרים")}
                 </Button>
               </div>
             )}
@@ -1585,10 +1587,10 @@ export default function EventServicesManager({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button type="button" size="sm" onClick={() => setShowAddExistingPackageDialog(true)} className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="h-4 w-4 ml-2" />הוסף חבילה קיימת
+                <Plus className="h-4 w-4 ml-2" />{uiTranslate("הוסף חבילה קיימת")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>הוסף חבילה מוכנה מראש מהמאגר</TooltipContent>
+            <TooltipContent>{uiTranslate("הוסף חבילה מוכנה מראש מהמאגר")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
         
@@ -1596,10 +1598,10 @@ export default function EventServicesManager({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button type="button" size="sm" onClick={() => setShowPackageDialog(true)} className="bg-red-800 hover:bg-red-700">
-                צור חבילה
+                {uiTranslate("צור חבילה")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>צור חבילה חדשה ריקה</TooltipContent>
+            <TooltipContent>{uiTranslate("צור חבילה חדשה ריקה")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
@@ -1632,10 +1634,10 @@ export default function EventServicesManager({
                 </div>
                 <div className="flex gap-2">
                   <Button type="button" size="sm" variant="outline" onClick={() => handleOpenEditPackage(pkg)}>
-                    <Edit className="h-4 w-4 ml-1" />ערוך
+                    <Edit className="h-4 w-4 ml-1" />{uiTranslate("ערוך")}
                   </Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => handleOpenDirectPackageServiceDialog(pkg)}>
-                    <Plus className="h-4 w-4 ml-1" />הוסף שירות
+                    <Plus className="h-4 w-4 ml-1" />{uiTranslate("הוסף שירות")}
                   </Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => handleDeletePackage(pkg.package_id)}>
                     <Trash2 className="h-4 w-4 text-red-500" />
@@ -1669,7 +1671,7 @@ export default function EventServicesManager({
                   <SectionTitleEditor
                     value={standaloneServicesTitle || ''}
                     fallback="שירותים בודדים"
-                    placeholder="אופציונלי — כותרת לפני שירותים בודדים"
+                    placeholder={uiTranslate("אופציונלי — כותרת לפני שירותים בודדים")}
                     label={field('standalone_services_title')?.name}
         onChange={field('standalone_services_title') ? onStandaloneServicesTitleChange : undefined}
                     color="purple"
@@ -1709,7 +1711,7 @@ export default function EventServicesManager({
                 />
               )}
             </div>
-            <Badge className="bg-orange-100 text-orange-700 text-xs shrink-0">לא כלול בסיכום הכספי</Badge>
+            <Badge className="bg-orange-100 text-orange-700 text-xs shrink-0">{uiTranslate("לא כלול בסיכום הכספי")}</Badge>
           </div>
 
           <div className="space-y-2">
@@ -1738,14 +1740,14 @@ export default function EventServicesManager({
       <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>שיבוץ ספקים</DialogTitle>
+            <DialogTitle>{uiTranslate("שיבוץ ספקים")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="חיפוש ספקים..."
+                  placeholder={uiTranslate("חיפוש ספקים...")}
                   value={supplierSearchTerm}
                   onChange={(e) => setSupplierSearchTerm(e.target.value)}
                   className="pr-10"
@@ -1790,15 +1792,15 @@ export default function EventServicesManager({
                     <Label className="flex items-center gap-1.5">
                       {supplier.supplier_name}
                       {hasDeclined && (
-                        <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>
+                        <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">{uiTranslate("דחה בעבר")}</span>
                       )}
                     </Label>
                   </div>
                   {supplierFormData.supplierIds.includes(supplier.id) && (
                     <div className="mr-6">
-                      <Label className="text-xs">הערה לספק</Label>
+                      <Label className="text-xs">{uiTranslate("הערה לספק")}</Label>
                       <Input
-                        placeholder="הערה ספציפית לספק זה..."
+                        placeholder={uiTranslate("הערה ספציפית לספק זה...")}
                         value={supplierFormData.notes[supplier.id] || ''}
                         onChange={(e) => {
                           setSupplierFormData({
@@ -1819,8 +1821,8 @@ export default function EventServicesManager({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowSupplierDialog(false); setSupplierSearchTerm(""); }}>ביטול</Button>
-            <Button onClick={handleAssignSuppliers}>שמור</Button>
+            <Button variant="outline" onClick={() => { setShowSupplierDialog(false); setSupplierSearchTerm(""); }}>{uiTranslate("ביטול")}</Button>
+            <Button onClick={handleAssignSuppliers}>{uiTranslate("שמור")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1834,17 +1836,17 @@ export default function EventServicesManager({
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>הוספת שירותים לחבילה</DialogTitle>
+            <DialogTitle>{uiTranslate("הוספת שירותים לחבילה")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>בחר יעד</Label>
+              <Label>{uiTranslate("בחר יעד")}</Label>
               <Select value={targetPackageId} onValueChange={setTargetPackageId}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="new">חבילה חדשה</SelectItem>
+                  <SelectItem value="new">{uiTranslate("חבילה חדשה")}</SelectItem>
                   {groupedServices.packages.map(pkg => (
                     <SelectItem key={pkg.package_id} value={pkg.package_id}>
                       {pkg.package_name}
@@ -1857,15 +1859,15 @@ export default function EventServicesManager({
             {targetPackageId === 'new' && (
               <>
                 <div>
-                  <Label>שם החבילה</Label>
+                  <Label>{uiTranslate("שם החבילה")}</Label>
                   <Input 
                     value={newPackageData.name} 
                     onChange={(e) => setNewPackageData({...newPackageData, name: e.target.value})}
-                    placeholder="שם החבילה החדשה"
+                    placeholder={uiTranslate("שם החבילה החדשה")}
                   />
                 </div>
                 <div>
-                  <Label>מחיר החבילה</Label>
+                  <Label>{uiTranslate("מחיר החבילה")}</Label>
                   <Input 
                     type="number"
                     value={newPackageData.price} 
@@ -1878,10 +1880,10 @@ export default function EventServicesManager({
                     checked={newPackageData.includes_vat}
                     onCheckedChange={(checked) => setNewPackageData({...newPackageData, includes_vat: checked})}
                   />
-                  <Label>כולל מע"מ</Label>
+                  <Label>{uiTranslate("כולל מע\"מ")}</Label>
                 </div>
                 <div>
-                  <Label>תיאור</Label>
+                  <Label>{uiTranslate("תיאור")}</Label>
                   <Textarea 
                     value={newPackageData.description} 
                     onChange={(e) => setNewPackageData({...newPackageData, description: e.target.value})}
@@ -1891,7 +1893,7 @@ export default function EventServicesManager({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddToPackageDialog(false)}>ביטול</Button>
+            <Button variant="outline" onClick={() => setShowAddToPackageDialog(false)}>{uiTranslate("ביטול")}</Button>
             <Button onClick={handleAddServicesToPackage}>
               {targetPackageId === 'new' ? 'צור חבילה והוסף שירותים' : 'הוסף לחבילה קיימת'}
             </Button>
@@ -1907,19 +1909,19 @@ export default function EventServicesManager({
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>יצירת שירות חדש</DialogTitle>
+            <DialogTitle>{uiTranslate("יצירת שירות חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>שם השירות</Label>
+              <Label>{uiTranslate("שם השירות")}</Label>
               <Input
                 value={newService.service_name}
                 onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))}
-                placeholder="שם השירות"
+                placeholder={uiTranslate("שם השירות")}
               />
             </div>
             <div>
-              <Label>תיאור השירות</Label>
+              <Label>{uiTranslate("תיאור השירות")}</Label>
               <ReactQuill
                 value={newService.service_description}
                 onChange={(value) => setNewService(prev => ({ ...prev, service_description: value }))}
@@ -1932,19 +1934,19 @@ export default function EventServicesManager({
                   clipboard: { matchVisual: false },
                 }}
                 formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
-                placeholder="תיאור מפורט של השירות"
+                placeholder={uiTranslate("תיאור מפורט של השירות")}
               />
             </div>
             <div>
-              <Label>קטגוריה</Label>
+              <Label>{uiTranslate("קטגוריה")}</Label>
               <Input
                 value={newService.category}
                 onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))}
-                placeholder="קטגורית השירות"
+                placeholder={uiTranslate("קטגורית השירות")}
               />
             </div>
             <div>
-              <Label>מחיר בסיס</Label>
+              <Label>{uiTranslate("מחיר בסיס")}</Label>
               <Input
                 type="number"
                 value={newService.base_price}
@@ -1953,7 +1955,7 @@ export default function EventServicesManager({
               />
             </div>
             <div>
-              <Label>מספר ספקים מינימלי</Label>
+              <Label>{uiTranslate("מספר ספקים מינימלי")}</Label>
               <Select
                 value={String(newService.default_min_suppliers)}
                 onValueChange={(value) => setNewService(prev => ({ ...prev, default_min_suppliers: parseInt(value) }))}
@@ -1974,12 +1976,12 @@ export default function EventServicesManager({
                 checked={newService.default_includes_vat}
                 onCheckedChange={(checked) => setNewService(prev => ({ ...prev, default_includes_vat: checked }))}
               />
-              <Label htmlFor="new-service-vat">כולל מע"מ כברירת מחדל</Label>
+              <Label htmlFor="new-service-vat">{uiTranslate("כולל מע\"מ כברירת מחדל")}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewServiceDialog(false)} disabled={isSavingNewService}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateService} disabled={isSavingNewService}>
               {isSavingNewService ? 'שומר...' : 'צור שירות'}
@@ -1996,16 +1998,16 @@ export default function EventServicesManager({
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>יצירת ספק חדש</DialogTitle>
+            <DialogTitle>{uiTranslate("יצירת ספק חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Label>שם הספק</Label>
+                <Label>{uiTranslate("שם הספק")}</Label>
                 <Input
                   value={newSupplier.supplier_name}
                   onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))}
-                  placeholder="שם הספק"
+                  placeholder={uiTranslate("שם הספק")}
                 />
               </div>
               <ContactPicker 
@@ -2022,34 +2024,34 @@ export default function EventServicesManager({
               />
             </div>
             <div>
-              <Label>איש קשר</Label>
+              <Label>{uiTranslate("איש קשר")}</Label>
               <Input
                 value={newSupplier.contact_person}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_person: e.target.value }))}
-                placeholder="שם איש הקשר"
+                placeholder={uiTranslate("שם איש הקשר")}
               />
             </div>
             <div>
-              <Label>טלפון</Label>
+              <Label>{uiTranslate("טלפון")}</Label>
               <Input
                 value={newSupplier.phone}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="מספר טלפון"
+                placeholder={uiTranslate("מספר טלפון")}
               />
             </div>
             <div>
-              <Label>אימייל</Label>
+              <Label>{uiTranslate("אימייל")}</Label>
               <Input
                 type="email"
                 value={newSupplier.contact_emails[0]}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_emails: [e.target.value] }))}
-                placeholder="כתובת אימייל"
+                placeholder={uiTranslate("כתובת אימייל")}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewSupplierDialog(false)} disabled={isSavingNewSupplier}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier}>
               {isSavingNewSupplier ? 'שומר...' : 'צור ספק'}
@@ -2066,18 +2068,18 @@ export default function EventServicesManager({
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>יצירת חבילה חדשה</DialogTitle>
+            <DialogTitle>{uiTranslate("יצירת חבילה חדשה")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>שם החבילה</Label>
+              <Label>{uiTranslate("שם החבילה")}</Label>
               <Input 
                 value={packageForm.package_name} 
                 onChange={(e) => setPackageForm({ ...packageForm, package_name: e.target.value })} 
               />
             </div>
             <div>
-              <Label>תיאור</Label>
+              <Label>{uiTranslate("תיאור")}</Label>
               <Textarea 
                 value={packageForm.package_description} 
                 onChange={(e) => setPackageForm({ ...packageForm, package_description: e.target.value })} 
@@ -2097,15 +2099,15 @@ export default function EventServicesManager({
                   checked={packageForm.package_includes_vat} 
                   onCheckedChange={(checked) => setPackageForm({ ...packageForm, package_includes_vat: checked })} 
                 />
-                <Label>כולל מע"מ</Label>
+                <Label>{uiTranslate("כולל מע\"מ")}</Label>
               </div>
             </div>
             <div>
-              <Label>בחר שירותים</Label>
+              <Label>{uiTranslate("בחר שירותים")}</Label>
               <div className="relative mb-2">
                 <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="חיפוש שירותים..."
+                  placeholder={uiTranslate("חיפוש שירותים...")}
                   value={packageServiceSearchTerm}
                   onChange={(e) => setPackageServiceSearchTerm(e.target.value)}
                   className="pr-10"
@@ -2140,14 +2142,14 @@ export default function EventServicesManager({
                     const name = s.service_name || serviceDetails?.service_name || '';
                     return name.toLowerCase().includes(packageServiceSearchTerm.toLowerCase());
                 }).length === 0 && (
-                    <div className="text-center text-gray-500 text-sm py-2">לא נמצאו שירותים</div>
+                    <div className="text-center text-gray-500 text-sm py-2">{uiTranslate("לא נמצאו שירותים")}</div>
                 )}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPackageDialog(false)}>ביטול</Button>
-            <Button onClick={handleCreatePackage}>צור חבילה</Button>
+            <Button variant="outline" onClick={() => setShowPackageDialog(false)}>{uiTranslate("ביטול")}</Button>
+            <Button onClick={handleCreatePackage}>{uiTranslate("צור חבילה")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2160,11 +2162,11 @@ export default function EventServicesManager({
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>הוספת חבילה קיימת</DialogTitle>
+            <DialogTitle>{uiTranslate("הוספת חבילה קיימת")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>בחר חבילה</Label>
+              <Label>{uiTranslate("בחר חבילה")}</Label>
               <div className="space-y-2 max-h-64 overflow-y-auto overscroll-y-contain touch-pan-y border rounded p-2">
                 {allPackages.map(pkg => (
                   <div key={pkg.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
@@ -2190,8 +2192,8 @@ export default function EventServicesManager({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddExistingPackageDialog(false)}>ביטול</Button>
-            <Button onClick={handleAddExistingPackage} disabled={!selectedExistingPackage}>הוסף חבילה</Button>
+            <Button variant="outline" onClick={() => setShowAddExistingPackageDialog(false)}>{uiTranslate("ביטול")}</Button>
+            <Button onClick={handleAddExistingPackage} disabled={!selectedExistingPackage}>{uiTranslate("הוסף חבילה")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2204,18 +2206,18 @@ export default function EventServicesManager({
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>עריכת פרטי חבילה</DialogTitle>
+            <DialogTitle>{uiTranslate("עריכת פרטי חבילה")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>שם החבילה</Label>
+              <Label>{uiTranslate("שם החבילה")}</Label>
               <Input 
                 value={editPackageForm.package_name} 
                 onChange={(e) => setEditPackageForm({ ...editPackageForm, package_name: e.target.value })} 
               />
             </div>
             <div>
-              <Label>תיאור</Label>
+              <Label>{uiTranslate("תיאור")}</Label>
               <Textarea 
                 value={editPackageForm.package_description} 
                 onChange={(e) => setEditPackageForm({ ...editPackageForm, package_description: e.target.value })} 
@@ -2241,7 +2243,7 @@ export default function EventServicesManager({
                       setEditPackageForm({ ...editPackageForm, package_price: convertedPrice, package_currency: newCurrency });
                     }}
                     className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
-                    title="לחץ להחלפת מטבע"
+                    title={uiTranslate("לחץ להחלפת מטבע")}
                   >
                     {getCurrencySymbol(editPackageForm.package_currency || primaryCurrency)}
                   </button>
@@ -2252,13 +2254,13 @@ export default function EventServicesManager({
                   checked={editPackageForm.package_includes_vat} 
                   onCheckedChange={(checked) => setEditPackageForm({ ...editPackageForm, package_includes_vat: checked })} 
                 />
-                <Label>כולל מע"מ</Label>
+                <Label>{uiTranslate("כולל מע\"מ")}</Label>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditPackageDialog(false)}>ביטול</Button>
-            <Button onClick={handleSavePackageEdit}>שמור שינויים</Button>
+            <Button variant="outline" onClick={() => setShowEditPackageDialog(false)}>{uiTranslate("ביטול")}</Button>
+            <Button onClick={handleSavePackageEdit}>{uiTranslate("שמור שינויים")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

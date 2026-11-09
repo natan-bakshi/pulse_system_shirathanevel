@@ -4,8 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { deleteMyAccount } from '@/functions/deleteMyAccount';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function DeleteAccountButton() {
+  const {t: uiTranslate}=useLanguage();
   const [showDialog, setShowDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -47,7 +49,7 @@ export default function DeleteAccountButton() {
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isDeleting}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Trash2 className="h-4 w-4 ml-2" />}

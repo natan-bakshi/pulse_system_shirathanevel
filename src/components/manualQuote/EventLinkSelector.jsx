@@ -8,12 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Link as LinkIcon, X, Plus, Search, CalendarPlus } from 'lucide-react';
 import QuickEventCreateDialog from './QuickEventCreateDialog';
 import { getEventDisplayName } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * בורר שיוך אירוע להצעת מחיר ידנית.
  * מציג את האירוע המשויך הנוכחי, מאפשר חיפוש/בחירה, ניתוק, או יצירה מהירה.
  */
 export default function EventLinkSelector({ linkedEventId, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -63,7 +65,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
                 {linkedEvent.event_name} • {linkedEvent.event_date}
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-gray-500">לא משויך</Badge>
+              <Badge variant="outline" className="text-gray-500">{uiTranslate("לא משויך")}</Badge>
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -76,7 +78,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
               <Search className="h-4 w-4 ml-1" /> {linkedEvent ? 'שנה אירוע' : 'בחר אירוע קיים'}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-              <CalendarPlus className="h-4 w-4 ml-1" /> צור אירוע חדש
+              <CalendarPlus className="h-4 w-4 ml-1" /> {uiTranslate("צור אירוע חדש")}
             </Button>
           </div>
         </div>
@@ -92,7 +94,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
             />
             <div className="max-h-64 overflow-y-auto space-y-1">
               {filteredEvents.length === 0 ? (
-                <div className="text-center text-gray-500 py-4 text-sm">לא נמצאו אירועים</div>
+                <div className="text-center text-gray-500 py-4 text-sm">{uiTranslate("לא נמצאו אירועים")}</div>
               ) : filteredEvents.map(ev => (
                 <button
                   key={ev.id}

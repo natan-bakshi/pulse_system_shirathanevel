@@ -55,6 +55,7 @@ function getLocalOverrides(localService, serverService) {
 }
 
 function EventDetailsBody() {
+  const {t: uiTranslate}=useLanguage();
   const {t}=useLanguage();
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
@@ -2331,7 +2332,7 @@ function EventDetailsBody() {
           <div className="space-y-4">
             <div><Label>{t("שם השירות")}</Label><Input value={newService.service_name} onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))} placeholder={t("שם השירות")} /></div>
             <div><Label>{t("תיאור השירות")}</Label><Textarea value={newService.service_description} onChange={(e) => setNewService(prev => ({ ...prev, service_description: e.target.value }))} placeholder={t("תיאור מפורט של השירות")} /></div>
-            <div><Label>{t("קטגוריה")}</Label><Input value={newService.category} onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))} placeholder="קטגורית השירות" /></div>
+            <div><Label>{t("קטגוריה")}</Label><Input value={newService.category} onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))} placeholder={uiTranslate("קטגורית השירות")} /></div>
             <div><Label>{t("מחיר בסיס")}</Label><Input type="number" value={newService.base_price} onChange={(e) => setNewService(prev => ({ ...prev, base_price: e.target.value }))} placeholder="0" /></div>
             <div className="flex items-center gap-2"><Checkbox id="new-service-vat-event-details" checked={newService.default_includes_vat} onCheckedChange={(checked) => setNewService(prev => ({ ...prev, default_includes_vat: checked }))} /><Label htmlFor="new-service-vat-event-details">{t("כולל מע״מ כברירת מחדל")}</Label></div>
           </div>

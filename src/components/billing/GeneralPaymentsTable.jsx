@@ -2,11 +2,13 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { format } from "date-fns";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const statusLabels = { completed: "הושלם", pending: "ממתין", failed: "נכשל", cancelled: "בוטל" };
 
 // תיעוד סליקות כלליות (ללא שיוך לאירוע) בלשונית התשלומים.
 export default function GeneralPaymentsTable({ payments, documentsById }) {
+  const {t: uiTranslate}=useLanguage();
   if (payments.length === 0) return <p className="py-6 text-center text-gray-500">אין סליקות כלליות להצגה</p>;
 
   return (
@@ -14,10 +16,10 @@ export default function GeneralPaymentsTable({ payments, documentsById }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="text-right text-gray-500">
-            <th className="p-2">תאריך</th>
+            <th className="p-2">{uiTranslate("תאריך")}</th>
             <th className="p-2">סכום</th>
             <th className="p-2">משלם</th>
-            <th className="p-2">סטטוס</th>
+            <th className="p-2">{uiTranslate("סטטוס")}</th>
             <th className="p-2">מסמך</th>
             <th className="p-2"></th>
           </tr>

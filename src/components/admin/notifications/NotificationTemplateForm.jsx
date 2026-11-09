@@ -14,6 +14,7 @@ import TriggerTimingTab from "./form/TriggerTimingTab";
 import ConditionsTargetTab from "./form/ConditionsTargetTab";
 import AdvancedLinksTab from "./form/AdvancedLinksTab";
 import WhatsAppTemplateButtonsTab from './WhatsAppTemplateButtonsTab';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // טופס עריכה/יצירה של תבנית התראה - מאורגן בטאבים
 export default function NotificationTemplateForm({ 
@@ -25,6 +26,7 @@ export default function NotificationTemplateForm({
   isSaving,
   initialTab='basic'
 }) {
+  const {t: uiTranslate}=useLanguage();
   const [activeTab, setActiveTab] = useState('basic');
   const [sendingTest, setSendingTest] = useState(false);
   const [testPhoneNumber, setTestPhoneNumber] = useState('');
@@ -153,13 +155,13 @@ export default function NotificationTemplateForm({
           <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto">
             <TabsTrigger value="basic" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <FileText className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">פרטים כלליים</span>
+              <span className="hidden sm:inline">{uiTranslate("פרטים כלליים")}</span>
               <span className="sm:hidden">כללי</span>
             </TabsTrigger>
             <TabsTrigger value="content" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <MessageSquare className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">תוכן ההתראה</span>
-              <span className="sm:hidden">תוכן</span>
+              <span className="sm:hidden">{uiTranslate("תוכן")}</span>
             </TabsTrigger>
             <TabsTrigger value="trigger" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <Clock className="h-3.5 w-3.5" />
@@ -229,7 +231,7 @@ export default function NotificationTemplateForm({
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <Button variant="outline" onClick={() => changeOpen(false)}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button onClick={saveForm} disabled={isSaving||savingButtons}>
               {isSaving||savingButtons ? (
@@ -237,7 +239,7 @@ export default function NotificationTemplateForm({
               ) : (
                 <Save className="h-4 w-4 ml-2" />
               )}
-              שמור
+              {uiTranslate("שמור")}
             </Button>
           </div>
         </DialogFooter>

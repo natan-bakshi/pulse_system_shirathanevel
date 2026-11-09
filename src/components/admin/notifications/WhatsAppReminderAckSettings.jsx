@@ -2,11 +2,13 @@ import React,{useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {Button} from '@/components/ui/button';
 import {RefreshCw,CheckCircle2,PauseCircle} from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // One owner-only, real production switch for additional supplier-reminder
 // acknowledgement reply. NO testing controls, staging enrollment, API keys,
 // webhooks, arbitrary handlers or manual provider sends in this UI.
 export default function WhatsAppReminderAckSettings(){
+  const {t: uiTranslate}=useLanguage();
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
  const [status,setStatus]=useState(null),[error,setError]=useState('');
  const [notice,setNotice]=useState('');
@@ -83,7 +85,7 @@ export default function WhatsAppReminderAckSettings(){
    <div className="flex flex-wrap gap-2">
     <Button type="button" size="sm" variant="outline" onClick={load}
      disabled={busy}>
-     <RefreshCw className="h-4 w-4 ml-1"/>רענן מצב
+     <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן מצב")}
     </Button>
     {status&&(status.enabled?
      <Button type="button" size="sm" variant="outline" disabled={busy}

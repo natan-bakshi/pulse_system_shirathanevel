@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Settings, Save } from "lucide-react";
 import { AppSettings } from "@/entities/AppSettings";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const EVENT_STATUS_OPTIONS = [
   { value: "quote", label: "הצעת מחיר" },
@@ -17,6 +18,7 @@ const EVENT_STATUS_OPTIONS = [
 const DEFAULT_VISIBLE_STATUSES = ["confirmed", "in_progress"];
 
 export default function CalendarSettings({ onSettingsChange, onClose }) {
+  const {t: uiTranslate}=useLanguage();
   const [visibleStatuses, setVisibleStatuses] = useState(DEFAULT_VISIBLE_STATUSES);
   const [loading, setLoading] = useState(true);
 
@@ -81,7 +83,7 @@ export default function CalendarSettings({ onSettingsChange, onClose }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings className="h-5 w-5" />
-          הגדרות דשבורד
+          {uiTranslate("הגדרות דשבורד")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -100,7 +102,7 @@ export default function CalendarSettings({ onSettingsChange, onClose }) {
           </div>
           <Button onClick={saveSettings} className="w-full">
             <Save className="h-4 w-4 ml-2" />
-            שמור הגדרות
+            {uiTranslate("שמור הגדרות")}
           </Button>
         </div>
       </CardContent>

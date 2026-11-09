@@ -6,6 +6,7 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {RefreshCw,Save,Play,AlertTriangle} from 'lucide-react';
 import WhatsAppQueueMessages from './WhatsAppQueueMessages';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // Production operations only. Previous pilot receiver/records are preserved
 // server-side for valid historical replies, with no active QA controls here.
@@ -14,8 +15,9 @@ const count=v=>Number(v)||0;
 const showDate=value=>value&&Number.isFinite(Date.parse(value))?new Date(value).toLocaleString('he-IL'):'לא זמין';
 const Header=({children})=><h3 className="font-semibold">{children}</h3>;
 function IntervalEditor({name,value,onChange,disabled}){
+  const {t: uiTranslate}=useLanguage();
  return <label className="block space-y-1 text-sm">
-  <span className="font-medium">{name} — מרווח בין הודעות (שניות)</span>
+  <span className="font-medium">{name} {uiTranslate("— מרווח בין הודעות (שניות)")}</span>
   <Input aria-label={'מרווח '+name} type="number" min="0" max="300" step="0.1"
    disabled={disabled} value={value/1000} onChange={e=>{
     const number=Number(e.target.value);
@@ -24,6 +26,7 @@ function IntervalEditor({name,value,onChange,disabled}){
  </label>;
 }
 export default function WhatsAppQueueSettings(){
+  const {t: uiTranslate}=useLanguage();
  const reviewDeepLink=typeof window!=='undefined'&&
   new URLSearchParams(window.location.search).get('whatsappQueue')==='review';
  const [expanded,setExpanded]=useState(reviewDeepLink);
@@ -130,15 +133,15 @@ export default function WhatsAppQueueSettings(){
  const dirty=!!view&&JSON.stringify(form)!==JSON.stringify(view.config);
  return <details id="whatsapp-queue" open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}
   className="rounded-lg border bg-white p-4" dir="rtl">
-  <summary className="cursor-pointer font-semibold text-base">WhatsApp — ניהול שליחה והודעות</summary>
+  <summary className="cursor-pointer font-semibold text-base">{uiTranslate("WhatsApp — ניהול שליחה והודעות")}</summary>
   <div className="pt-4 space-y-5">
    {error&&<p role="alert" className="text-sm text-red-700 border rounded p-2">{error}</p>}
    {notice&&<p role="status" className="text-sm text-green-800">{notice}</p>}
-   <section className="space-y-3" aria-label="מצב WhatsApp">
+   <section className="space-y-3" aria-label={uiTranslate("מצב WhatsApp")}>
     <div className="flex justify-between items-center gap-2">
-     <Header>מצב המערכת</Header>
+     <Header>{uiTranslate("מצב המערכת")}</Header>
      <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('status')}>
-      <RefreshCw className="h-4 w-4 ml-1"/>רענן מצב
+      <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן מצב")}
      </Button>
     </div>
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
@@ -149,27 +152,27 @@ export default function WhatsAppQueueSettings(){
       </div>)}
     </div>
     {view&&<div className="text-xs text-gray-600 flex flex-wrap gap-3">
-     <span>אושרו אצל ספק השליחה: {count(totals.accepted)}</span>
-     <span>עבודה אחרונה: {showDate(view.lastWorkerAt)}</span>
-     <span>מוכנות כעת: {count(view.dueReadyCount)} · מתוזמנות לעתיד: {count(view.scheduledForFutureCount)}</span>
-     {view.dueReadyCount>0&&view.nextAllowedInMs>0&&<span>מרווח שליחה שנותר: {(view.nextAllowedInMs/1000).toFixed(1)} שניות</span>}
-     {view.watchdogLate&&<span className="text-amber-800">התאוששות התור מתעכבת</span>}
-     {view.lastError&&<span className="text-red-700">שגיאה: {view.lastError}</span>}
+     <span>{uiTranslate("אושרו אצל ספק השליחה:")} {count(totals.accepted)}</span>
+     <span>{uiTranslate("עבודה אחרונה:")} {showDate(view.lastWorkerAt)}</span>
+     <span>{uiTranslate("מוכנות כעת:")} {count(view.dueReadyCount)} {uiTranslate("· מתוזמנות לעתיד:")} {count(view.scheduledForFutureCount)}</span>
+     {view.dueReadyCount>0&&view.nextAllowedInMs>0&&<span>{uiTranslate("מרווח שליחה שנותר:")} {(view.nextAllowedInMs/1000).toFixed(1)} {uiTranslate("שניות")}</span>}
+     {view.watchdogLate&&<span className="text-amber-800">{uiTranslate("התאוששות התור מתעכבת")}</span>}
+     {view.lastError&&<span className="text-red-700">{uiTranslate("שגיאה:")} {view.lastError}</span>}
     </div>}
     {view?.duplicateAssignmentVersions?.count>0&&<p role="alert" className="text-xs text-amber-800">
-     נמצאו {view.duplicateAssignmentVersions.count} שיבוצים כפולים במדגם. ניתן לבדוק אותם בכלים המתקדמים בלי שליחה נוספת.
+     {uiTranslate("נמצאו")} {view.duplicateAssignmentVersions.count} {uiTranslate("שיבוצים כפולים במדגם. ניתן לבדוק אותם בכלים המתקדמים בלי שליחה נוספת.")}
     </p>}
    </section>
-   <section className="border-t pt-4 space-y-3" aria-label="שליחה וקצב">
-    <Header>שליחה וקצב</Header>
+   <section className="border-t pt-4 space-y-3" aria-label={uiTranslate("שליחה וקצב")}>
+    <Header>{uiTranslate("שליחה וקצב")}</Header>
     <div className="flex flex-wrap gap-5 text-sm">
      <label className="flex gap-2 items-center">
       <Switch checked={!!form.enabled} disabled={busy||!view}
-       onCheckedChange={enabled=>setForm(p=>({...p,enabled}))}/>הפעל תור הודעות
+       onCheckedChange={enabled=>setForm(p=>({...p,enabled}))}/>{uiTranslate("הפעל תור הודעות")}
      </label>
      <label className="flex gap-2 items-center">
       <Switch checked={!!form.paused} disabled={busy||!view}
-       onCheckedChange={paused=>setForm(p=>({...p,paused}))}/>השהה שליחות חדשות
+       onCheckedChange={paused=>setForm(p=>({...p,paused}))}/>{uiTranslate("השהה שליחות חדשות")}
      </label>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -179,34 +182,33 @@ export default function WhatsAppQueueSettings(){
       onChange={value=>setForm(p=>({...p,wasenderIntervalMs:value}))}/>
     </div>
     <details className="rounded border p-3 text-sm">
-     <summary className="cursor-pointer font-medium">מגבלת עומס לעובד התור</summary>
+     <summary className="cursor-pointer font-medium">{uiTranslate("מגבלת עומס לעובד התור")}</summary>
      <div className="space-y-1 max-w-xs pt-3">
-      <Label htmlFor="wa-batch">מספר הודעות מרבי בריצה</Label>
+      <Label htmlFor="wa-batch">{uiTranslate("מספר הודעות מרבי בריצה")}</Label>
       <Input id="wa-batch" type="number" min="1" max="30" step="1"
        value={form.maxMessagesPerRun} disabled={busy||!view}
        onChange={e=>setForm(p=>({...p,maxMessagesPerRun:Number(e.target.value)}))}/>
      </div>
     </details>
     <Button size="sm" disabled={busy||!dirty} onClick={saveQueue}>
-     <Save className="h-4 w-4 ml-1"/>שמור הגדרות שליחה
+     <Save className="h-4 w-4 ml-1"/>{uiTranslate("שמור הגדרות שליחה")}
     </Button>
-    {dirty&&<p className="text-xs text-amber-800">יש שינויים שלא נשמרו.</p>}
+    {dirty&&<p className="text-xs text-amber-800">{uiTranslate("יש שינויים שלא נשמרו.")}</p>}
    </section>
    <section className="border-t pt-4 space-y-3" aria-label="כפתורי WhatsApp">
-    <div className="flex justify-between items-center"><Header>כפתורי WhatsApp לספקים</Header><strong className="text-sm">{buttonStatus}</strong></div>
+    <div className="flex justify-between items-center"><Header>{uiTranslate("כפתורי WhatsApp לספקים")}</Header><strong className="text-sm">{buttonStatus}</strong></div>
     <p className="text-sm text-gray-600">
-     שיבוצים: אישור, דחייה ופנייה למשרד; קישור ללוח הספק בגוף ההודעה.
-     בהודעות אחרות לספק ניתן לבחור כפתורי כניסה למערכת ופנייה למשרד לכל סוג הודעה בנפרד.
+     {uiTranslate("שיבוצים: אישור, דחייה ופנייה למשרד; קישור ללוח הספק בגוף ההודעה. בהודעות אחרות לספק ניתן לבחור כפתורי כניסה למערכת ופנייה למשרד לכל סוג הודעה בנפרד.")}
     </p>
     <Button size="sm" variant={view?.interactiveButtonsEnabled?'outline':'default'}
      disabled={busy||!view} onClick={()=>toggleButtons(!view.interactiveButtonsEnabled)}>
      {view?.interactiveButtonsEnabled?'כבה כפתורים בהודעות חדשות':'הפעל כפתורים בהודעות חדשות'}
     </Button>
-    <p className="text-xs text-gray-600">לעריכת הכפתורים, מספר המשרד והקישורים לפי סוג הודעה: עבור ל״כפתורים בהודעות״ בלשונית ״ניהול התראות״.</p>
+    <p className="text-xs text-gray-600">{uiTranslate("לעריכת הכפתורים, מספר המשרד והקישורים לפי סוג הודעה: עבור ל״כפתורים בהודעות״ בלשונית ״ניהול התראות״.")}</p>
     <details className="rounded border p-3 text-sm">
-     <summary className="cursor-pointer font-medium">בדיקת מוכנות הכפתורים</summary>
+     <summary className="cursor-pointer font-medium">{uiTranslate("בדיקת מוכנות הכפתורים")}</summary>
      <div className="pt-3 space-y-2">
-      <Button size="sm" variant="outline" disabled={busy} onClick={checkButtons}>בדוק מוכנות שליחה</Button>
+      <Button size="sm" variant="outline" disabled={busy} onClick={checkButtons}>{uiTranslate("בדוק מוכנות שליחה")}</Button>
       {productionCheck&&<p className={productionCheck.sendReady?'text-green-800':'text-amber-800'}>
        {productionCheck.sendReady?'הכפתורים מוכנים.':'חסרים תנאים להפעלת הכפתורים.'}
        {!productionCheck.sendReady&&productionCheck.checks&&
@@ -218,130 +220,130 @@ export default function WhatsAppQueueSettings(){
      </div>
     </details>
    </section>
-   <section className="border-t pt-4 space-y-2" aria-label="ניהול הודעות">
+   <section className="border-t pt-4 space-y-2" aria-label={uiTranslate("ניהול הודעות")}>
     <div className="flex justify-between items-center gap-2">
-     <Header>הודעות ותקלות</Header>
+     <Header>{uiTranslate("הודעות ותקלות")}</Header>
      <Button size="sm" variant="outline" aria-expanded={messagesOpen}
       aria-controls="whatsapp-queue-messages-panel"
       onClick={()=>setMessagesOpen(x=>!x)}>
       {messagesOpen?'סגור רשימה':'פתח ניהול הודעות'}
      </Button>
     </div>
-    <p className="text-sm text-gray-600">צפייה בהודעות, ביטול הודעות ממתינות וטיפול בכשלים. ניסיון חוזר רק כשהמערכת מתירה זאת.</p>
+    <p className="text-sm text-gray-600">{uiTranslate("צפייה בהודעות, ביטול הודעות ממתינות וטיפול בכשלים. ניסיון חוזר רק כשהמערכת מתירה זאת.")}</p>
     {messagesOpen&&<div id="whatsapp-queue-messages-panel">
      <WhatsAppQueueMessages refreshSignal={refreshSignal}/>
     </div>}
    </section>
    <section className="border-t pt-4 space-y-2">
     <details className="border rounded p-3 text-sm">
-     <summary className="cursor-pointer font-medium">איתור שיבוץ לפי אסמכתא שהתקבלה במשרד</summary>
+     <summary className="cursor-pointer font-medium">{uiTranslate("איתור שיבוץ לפי אסמכתא שהתקבלה במשרד")}</summary>
      <div className="pt-3 space-y-3">
       <div className="flex flex-wrap items-end gap-2">
        <div className="max-w-sm flex-1 min-w-[200px] space-y-1">
-        <Label htmlFor="wa-office-reference">אסמכתת ההודעה</Label>
+        <Label htmlFor="wa-office-reference">{uiTranslate("אסמכתת ההודעה")}</Label>
         <Input id="wa-office-reference" maxLength={128} value={officeReference}
-         disabled={busy} placeholder="הדבק אסמכתא"
+         disabled={busy} placeholder={uiTranslate("הדבק אסמכתא")}
          onChange={e=>{setOfficeReference(e.target.value.trim());setOfficeLookup(null);}}/>
        </div>
        <Button size="sm" variant="outline" disabled={busy||!/^[A-Za-z0-9_-]{3,128}$/.test(officeReference)}
-        onClick={()=>run('officeReferenceLookup',{reference:officeReference})}>מצא שיבוץ</Button>
+        onClick={()=>run('officeReferenceLookup',{reference:officeReference})}>{uiTranslate("מצא שיבוץ")}</Button>
       </div>
       {officeLookup&&<div role="status" className="border rounded p-3 space-y-1">
-       <p><strong>אירוע:</strong> {officeLookup.eventName||'לא ידוע'}</p>
+       <p><strong>{uiTranslate("אירוע:")}</strong> {officeLookup.eventName||'לא ידוע'}</p>
        <p><strong>תאריך:</strong> {officeLookup.eventDate||'לא זמין'}</p>
-       <p><strong>שירות:</strong> {officeLookup.serviceName||'לא ידוע'}</p>
-       <p><strong>ספק:</strong> {officeLookup.supplierName||'לא ידוע'}</p>
-       <p><strong>מצב השיבוץ:</strong> {({pending:'ממתין',approved:'מאושר',rejected:'נדחה'})[officeLookup.supplierStatus]||'לא ידוע'}</p>
-       {officeLookup.originState!=='current_revision'&&<p className="text-amber-800">ייתכן שמדובר באסמכתא ישנה.</p>}
+       <p><strong>{uiTranslate("שירות:")}</strong> {officeLookup.serviceName||'לא ידוע'}</p>
+       <p><strong>{uiTranslate("ספק:")}</strong> {officeLookup.supplierName||'לא ידוע'}</p>
+       <p><strong>{uiTranslate("מצב השיבוץ:")}</strong> {({pending:'ממתין',approved:'מאושר',rejected:'נדחה'})[officeLookup.supplierStatus]||'לא ידוע'}</p>
+       {officeLookup.originState!=='current_revision'&&<p className="text-amber-800">{uiTranslate("ייתכן שמדובר באסמכתא ישנה.")}</p>}
       </div>}
      </div>
     </details>
    </section>
-   <section className="border-t pt-4 space-y-3" aria-label="ניהול מתקדם">
+   <section className="border-t pt-4 space-y-3" aria-label={uiTranslate("ניהול מתקדם")}>
     <details className="rounded border p-3 text-sm">
-     <summary className="cursor-pointer font-medium">חיבור Green וקליטת תגובות</summary>
+     <summary className="cursor-pointer font-medium">{uiTranslate("חיבור Green וקליטת תגובות")}</summary>
      <div className="pt-3 space-y-3">
       <div className="flex gap-2 flex-wrap">
        <Button size="sm" variant="outline" disabled={busy}
-        onClick={()=>run('greenInstanceStateAudit')}>בדוק חיבור Green</Button>
+        onClick={()=>run('greenInstanceStateAudit')}>{uiTranslate("בדוק חיבור Green")}</Button>
        <Button size="sm" variant="outline" disabled={busy}
-        onClick={()=>run('greenWebhookSettingsAudit')}>בדוק קליטת תגובות (Webhook)</Button>
+        onClick={()=>run('greenWebhookSettingsAudit')}>{uiTranslate("בדוק קליטת תגובות (Webhook)")}</Button>
       </div>
-      {greenConnection&&<p>מצב Green: <strong>{({authorized:'מחובר',notAuthorized:'לא מחובר',
+      {greenConnection&&<p>{uiTranslate("מצב Green:")} <strong>{({authorized:'מחובר',notAuthorized:'לא מחובר',
        starting:'באתחול',sleepMode:'מצב שינה',blocked:'חסום',suspended:'מוגבל'})[greenConnection.state]||'לא ידוע'}</strong></p>}
       {greenWebhookSettings&&<div role="status" className="rounded bg-gray-50 p-3 space-y-1">
        <p>Webhook: {greenWebhookSettings.webhookConfigured?'מוגדר':'חסר'}</p>
-       <p>קליטת תגובות: {greenWebhookSettings.incomingNotificationsEnabled?'פעילה':'לא מאומתת'}</p>
-       <p>אימות Webhook: {greenWebhookSettings.webhookTokenConfigured?'מוגדר':'חסר'}</p>
+       <p>{uiTranslate("קליטת תגובות:")} {greenWebhookSettings.incomingNotificationsEnabled?'פעילה':'לא מאומתת'}</p>
+       <p>{uiTranslate("אימות Webhook:")} {greenWebhookSettings.webhookTokenConfigured?'מוגדר':'חסר'}</p>
       </div>}
-      <p className="text-xs text-gray-600">הפעולות הן לקריאה בלבד, ללא שליחת הודעות או שינוי הגדרות.</p>
+      <p className="text-xs text-gray-600">{uiTranslate("הפעולות הן לקריאה בלבד, ללא שליחת הודעות או שינוי הגדרות.")}</p>
      </div>
     </details>
     <details className="rounded border p-3 text-sm">
-     <summary className="cursor-pointer font-medium">אבחון תקלות וביצועים</summary>
+     <summary className="cursor-pointer font-medium">{uiTranslate("אבחון תקלות וביצועים")}</summary>
      <div className="pt-3 space-y-3">
       <div className="flex flex-wrap gap-2">
-       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>בדוק תקינות התור</Button>
-       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>זמני שליחה</Button>
-       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>בדוק כפילויות ותזכורות</Button>
-       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>תגובות ספקים</Button>
-       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('unknownCallbackAudit')}>תגובות לא מזוהות</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('diagnose')}>{uiTranslate("בדוק תקינות התור")}</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('metrics')}>{uiTranslate("זמני שליחה")}</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('sourceAudit')}>{uiTranslate("בדוק כפילויות ותזכורות")}</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('inboundAudit')}>{uiTranslate("תגובות ספקים")}</Button>
+       <Button size="sm" variant="outline" disabled={busy} onClick={()=>run('unknownCallbackAudit')}>{uiTranslate("תגובות לא מזוהות")}</Button>
       </div>
       {metrics&&<div className="border rounded p-3 space-y-1">
-       <strong>ביצועי שליחה — {metrics.sampled||0} הודעות במדגם</strong>
-       <p>חציון המתנה: {metrics.timings?.queueWait?.p50Ms==null?'אין נתון':(metrics.timings.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</p>
-       <p>95% מהזמן לאחר מועד ההודעה: {metrics.timings?.afterDue?.p95Ms==null?'אין נתון':(metrics.timings.afterDue.p95Ms/1000).toFixed(1)+' שניות'}</p>
+       <strong>{uiTranslate("ביצועי שליחה —")} {metrics.sampled||0} {uiTranslate("הודעות במדגם")}</strong>
+       <p>{uiTranslate("חציון המתנה:")} {metrics.timings?.queueWait?.p50Ms==null?'אין נתון':(metrics.timings.queueWait.p50Ms/1000).toFixed(1)+' שניות'}</p>
+       <p>{uiTranslate("95% מהזמן לאחר מועד ההודעה:")} {metrics.timings?.afterDue?.p95Ms==null?'אין נתון':(metrics.timings.afterDue.p95Ms/1000).toFixed(1)+' שניות'}</p>
       </div>}
       {sourceAudit&&<div className="border rounded p-3 space-y-1">
-       <strong>התאמה בין הודעות למקור</strong>
-       <p>כפילויות שיבוץ במדגם: {sourceAudit.duplicateAssignments?.length||0}</p>
-       <p>תוצאות לא ידועות שסומנו כנשלחו: {sourceAudit.unknownWithSentMirror?.length||0}</p>
-       <p>תזכורות WhatsApp שממתינות במקור: {sourceAudit.businessReminders?.whatsappWaiting??'לא זמין'}</p>
+       <strong>{uiTranslate("התאמה בין הודעות למקור")}</strong>
+       <p>{uiTranslate("כפילויות שיבוץ במדגם:")} {sourceAudit.duplicateAssignments?.length||0}</p>
+       <p>{uiTranslate("תוצאות לא ידועות שסומנו כנשלחו:")} {sourceAudit.unknownWithSentMirror?.length||0}</p>
+       <p>{uiTranslate("תזכורות WhatsApp שממתינות במקור:")} {sourceAudit.businessReminders?.whatsappWaiting??'לא זמין'}</p>
       </div>}
       {inboundAudit&&<div className="border rounded p-3 space-y-2">
-       <strong>תגובות ספקים — {inboundAudit.sampleCount||0} במדגם</strong>
-       <p>בוצעו: {inboundAudit.totals?.applied||0} · נדחו: {inboundAudit.totals?.rejected||0} · דורשות בירור: {inboundAudit.totals?.needs_review||0}</p>
-       {inboundAudit.registrationBlocked&&<p className="text-amber-800">קליטת תגובות חסומה — נדרש בירור.</p>}
+       <strong>{uiTranslate("תגובות ספקים —")} {inboundAudit.sampleCount||0} {uiTranslate("במדגם")}</strong>
+       <p>{uiTranslate("בוצעו:")} {inboundAudit.totals?.applied||0} {uiTranslate("· נדחו:")} {inboundAudit.totals?.rejected||0} {uiTranslate("· דורשות בירור:")} {inboundAudit.totals?.needs_review||0}</p>
+       {inboundAudit.registrationBlocked&&<p className="text-amber-800">{uiTranslate("קליטת תגובות חסומה — נדרש בירור.")}</p>}
        {(inboundAudit.review||[]).map(entry=><div key={entry.id} className="flex gap-2 items-center">
         <span className="text-xs">{entry.id} · {entry.reason}</span>
         <Button size="sm" variant="outline" disabled={busy}
-         onClick={()=>run('inboundInspect',{id:entry.id})}>פרטי תגובה</Button>
+         onClick={()=>run('inboundInspect',{id:entry.id})}>{uiTranslate("פרטי תגובה")}</Button>
        </div>)}
-       {inboundDetail&&<p className="text-xs">רשומה {inboundDetail.receiptId}: {inboundDetail.state}, שיבוץ {inboundDetail.currentStatus}</p>}
+       {inboundDetail&&<p className="text-xs">{uiTranslate("רשומה")} {inboundDetail.receiptId}: {inboundDetail.state}{uiTranslate(", שיבוץ")} {inboundDetail.currentStatus}</p>}
       </div>}
       {unknownCallbackAudit&&<div className="border rounded p-3 space-y-2">
-       <strong>תגובות לא מזוהות: {unknownCallbackAudit.pendingReview||0} ממתינות לבירור</strong>
+       <strong>{uiTranslate("תגובות לא מזוהות:")} {unknownCallbackAudit.pendingReview||0} {uiTranslate("ממתינות לבירור")}</strong>
        {(unknownCallbackAudit.list||[]).map(entry=><div className="border-t pt-2" key={entry.reference}>
         <p className="text-xs">{entry.reference} · {entry.format==='unrecognized_interactive'?'כפתור לא מזוהה':'אירוע לא מזוהה'}</p>
         {entry.encryptedRecoveryRecorded&&entry.reviewRecordId&&
          entry.encryptedRecoveryExpiresAt&&Date.parse(entry.encryptedRecoveryExpiresAt)>Date.now()&&
          <Button variant="outline" size="sm" disabled={busy}
-          onClick={()=>run('unknownRecoveryStructureReview',{id:entry.reviewRecordId,reference:entry.reference})}>בדוק מבנה ללא תוכן אישי</Button>}
+          onClick={()=>run('unknownRecoveryStructureReview',{id:entry.reviewRecordId,reference:entry.reference})}>{uiTranslate("בדוק מבנה ללא תוכן אישי")}</Button>}
        </div>)}
-       {unknownRecoveryReview&&<p className="text-xs">מבנה: {unknownRecoveryReview.class}</p>}
+       {unknownRecoveryReview&&<p className="text-xs">{uiTranslate("מבנה:")} {unknownRecoveryReview.class}</p>}
        <details className="border rounded p-2">
-        <summary className="cursor-pointer text-xs">תחזוקת רשומות מוצפנות שפג תוקפן</summary>
+        <summary className="cursor-pointer text-xs">{uiTranslate("תחזוקת רשומות מוצפנות שפג תוקפן")}</summary>
         <div className="pt-2 space-y-2">
-         <p className="text-xs text-gray-600">ניקוי שדות מוצפנים ברשומות שפג תוקפן בלבד. אינו משנה שיבוצים.</p>
+         <p className="text-xs text-gray-600">{uiTranslate("ניקוי שדות מוצפנים ברשומות שפג תוקפן בלבד. אינו משנה שיבוצים.")}</p>
          <Button size="sm" variant="outline" disabled={busy}
-          onClick={()=>window.confirm('לנקות עד 20 רשומות מוצפנות שפג תוקפן? הפעולה בלתי הפיכה ברשומה הפעילה.')&&run('unknownRecoveryExpiryCleanup')}>נקה רשומות שפג תוקפן</Button>
-         {unknownRecoveryCleanup&&<p>נוקו: {unknownRecoveryCleanup.scrubbed||0}</p>}
+          onClick={()=>window.confirm('לנקות עד 20 רשומות מוצפנות שפג תוקפן? הפעולה בלתי הפיכה ברשומה הפעילה.')&&run('unknownRecoveryExpiryCleanup')}>{uiTranslate("נקה רשומות שפג תוקפן")}</Button>
+         {unknownRecoveryCleanup&&<p>{uiTranslate("נוקו:")} {unknownRecoveryCleanup.scrubbed||0}</p>}
         </div>
        </details>
       </div>}
      </div>
     </details>
     <details className="rounded border p-3 text-sm">
-     <summary className="cursor-pointer font-medium">הפעלה ידנית של עובד התור</summary>
-     <p className="text-xs text-gray-600 pt-2">לשימוש כשיש הודעות שממתינות. הפעולה יכולה לשלוח הודעות אמיתיות.</p>
+     <summary className="cursor-pointer font-medium">{uiTranslate("הפעלה ידנית של עובד התור")}</summary>
+     <p className="text-xs text-gray-600 pt-2">{uiTranslate("לשימוש כשיש הודעות שממתינות. הפעולה יכולה לשלוח הודעות אמיתיות.")}</p>
      <Button size="sm" variant="outline" disabled={busy||!view?.config?.enabled||view?.config?.paused}
       onClick={()=>window.confirm('להפעיל עובד תור עכשיו? הודעות אמיתיות עשויות להישלח.')&&run('kick')}>
-      <Play className="h-4 w-4 ml-1"/>הפעל עובד תור
+      <Play className="h-4 w-4 ml-1"/>{uiTranslate("הפעל עובד תור")}
      </Button>
     </details>
    </section>
    {count(totals.unknown)>0&&<p className="text-sm text-amber-800 flex gap-2 items-center">
-    <AlertTriangle className="h-4 w-4"/>הודעות במצב לא ידוע אינן נשלחות שוב אוטומטית. נדרש אימות מול ספק השליחה.
+    <AlertTriangle className="h-4 w-4"/>{uiTranslate("הודעות במצב לא ידוע אינן נשלחות שוב אוטומטית. נדרש אימות מול ספק השליחה.")}
    </p>}
   </div>
  </details>;

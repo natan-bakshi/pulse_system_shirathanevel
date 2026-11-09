@@ -107,6 +107,7 @@ export default function ServicesCard({
   exchangeRate = 3.6,
   onPrimaryCurrencyChange
 }) {
+  const {t: uiTranslate}=useLanguage();
   const {t,locale}=useLanguage();
   const [expandedServices, setExpandedServices] = useState({});
   const [showNewServiceDialog, setShowNewServiceDialog] = useState(false);
@@ -412,7 +413,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                   <div className="text-xs text-gray-500 break-words" dangerouslySetInnerHTML={{ __html: service.service_description || serviceDetails.service_description }} />
                 )}
                 {service.client_notes && (
-                  <div className="text-xs text-gray-500 italic mt-1 break-words">הערה: {service.client_notes}</div>
+                  <div className="text-xs text-gray-500 italic mt-1 break-words">{uiTranslate("הערה:")} {service.client_notes}</div>
                 )}
                 {isAdmin && service.price_display_mode && service.price_display_mode !== 'default' && (
                   <div className="text-xs text-purple-600 mt-1">
@@ -424,7 +425,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 )}
                 {!isSupplier && service.quantity > 1 && (
                   <div className="text-sm text-gray-600">
-                    כמות: {service.quantity}
+                    {uiTranslate("כמות:")} {service.quantity}
                   </div>
                 )}
                 {/* תצוגת פרטי נסיעות - לקריאה בלבד */}
@@ -454,18 +455,18 @@ const handleCopyTransport = (service, serviceDetails) => {
                       return units.map((unit, uIdx) => (
                         <div key={uIdx} className={uIdx > 0 ? "border-t border-blue-200 pt-2 mt-2" : ""}>
                           {units.length > 1 && (
-                            <div className="font-bold underline mb-1">נסיעה {uIdx + 1}</div>
+                            <div className="font-bold underline mb-1">{uiTranslate("נסיעה")} {uIdx + 1}</div>
                           )}
                           {unit.pickupPoints.map((point, pIdx) => (
                             <div key={pIdx} className="mb-1 last:mb-0">
                               {unit.pickupPoints.length > 1 && (
-                                <span className="font-semibold ml-1">נקודה {pIdx + 1}:</span>
+                                <span className="font-semibold ml-1">{uiTranslate("נקודה")} {pIdx + 1}:</span>
                               )}
-                              {point.time && <span className="ml-2"><strong>שעה:</strong> {point.time}</span>}
-                              {point.location && <span className="ml-2"><strong>מיקום:</strong> {point.location}</span>}
+                              {point.time && <span className="ml-2"><strong>{uiTranslate("שעה:")}</strong> {point.time}</span>}
+                              {point.location && <span className="ml-2"><strong>{uiTranslate("מיקום:")}</strong> {point.location}</span>}
                               {point.contact?.name && (
                                 <span className="block mt-0.5 text-[11px] text-blue-800">
-                                  <strong>איש קשר:</strong> {point.contact.name} {point.contact.phone ? `(${point.contact.phone})` : ''}
+                                  <strong>{uiTranslate("איש קשר:")}</strong> {point.contact.name} {point.contact.phone ? `(${point.contact.phone})` : ''}
                                 </span>
                               )}
                             </div>
@@ -500,7 +501,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                       <Loader2 className="h-3 w-3 animate-spin absolute left-2 top-2.5 text-gray-400" />
                     )}
                   </div>
-                  <div className="text-xs text-blue-600 italic mt-1">שינוי כאן ישפיע רק על אירוע זה ולא על השירות הגלובלי</div>
+                  <div className="text-xs text-blue-600 italic mt-1">{uiTranslate("שינוי כאן ישפיע רק על אירוע זה ולא על השירות הגלובלי")}</div>
                 </div>
                 {!event.all_inclusive && (
                   <>
@@ -535,7 +536,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                             handleUpdateServiceField(service.id, 'custom_price', convertedPrice);
                           }}
                           className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
-                          title="לחץ להחלפת מטבע"
+                          title={uiTranslate("לחץ להחלפת מטבע")}
                         >
                           {getCurrencySymbol(getEffectiveCurrency(editableService.currency, event?.primary_currency))}
                         </button>
@@ -578,7 +579,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                           <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>כמות הספקים המינימלית הנדרשת לשירות זה</p>
+                          <p>{uiTranslate("כמות הספקים המינימלית הנדרשת לשירות זה")}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -638,10 +639,10 @@ const handleCopyTransport = (service, serviceDetails) => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="default">ללא כיתוב נוסף</SelectItem>
-                          <SelectItem value="direct_payment">תשלום ישיר</SelectItem>
-                          <SelectItem value="estimated_price">מחיר מוערך</SelectItem>
-                          <SelectItem value="custom_text">טקסט חופשי</SelectItem>
+                          <SelectItem value="default">{uiTranslate("ללא כיתוב נוסף")}</SelectItem>
+                          <SelectItem value="direct_payment">{uiTranslate("תשלום ישיר")}</SelectItem>
+                          <SelectItem value="estimated_price">{uiTranslate("מחיר מוערך")}</SelectItem>
+                          <SelectItem value="custom_text">{uiTranslate("טקסט חופשי")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -656,7 +657,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                             setEditableServices(updatedServices);
                           }}
                           onBlur={(e) => handleUpdateServiceField(service.id, 'price_display_text', e.target.value)}
-                          placeholder="הזן טקסט חופשי..."
+                          placeholder={uiTranslate("הזן טקסט חופשי...")}
                           className="h-7 text-xs"
                         />
                       </div>
@@ -674,7 +675,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                           <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="max-w-xs">אופציונלי. אם הוגדרה - היא תופיע לספק במקום שעת האירוע (ביומן, התראות, הודעות וממשק). אם תישאר ריקה - הספק יראה את שעת האירוע הרגילה.</p>
+                          <p className="max-w-xs">{uiTranslate("אופציונלי. אם הוגדרה - היא תופיע לספק במקום שעת האירוע (ביומן, התראות, הודעות וממשק). אם תישאר ריקה - הספק יראה את שעת האירוע הרגילה.")}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -739,14 +740,14 @@ const handleCopyTransport = (service, serviceDetails) => {
                     )}
                   </div>
                   <div className="flex justify-between items-center mt-1">
-                    <div className="text-xs text-blue-600 italic">שינוי כאן ישפיע רק על אירוע זה</div>
+                    <div className="text-xs text-blue-600 italic">{uiTranslate("שינוי כאן ישפיע רק על אירוע זה")}</div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       className="text-xs h-6 text-purple-700 hover:text-purple-900 hover:bg-purple-50"
                       onClick={() => handleSaveGlobalServiceDescription(service.service_id, editableService.service_description)}
                     >
-                      עדכן כברירת מחדל גלובלית
+                      {uiTranslate("עדכן כברירת מחדל גלובלית")}
                       <Save className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
@@ -830,7 +831,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                           {unit.pickupPoints.map((point, pIdx) => (
                             <div key={pIdx} className="bg-white p-3 rounded-lg border shadow-sm space-y-3">
                               <div className="flex justify-between items-center">
-                                <Label className="text-xs font-bold text-gray-500">נקודה {pIdx + 1}</Label>
+                                <Label className="text-xs font-bold text-gray-500">{uiTranslate("נקודה")} {pIdx + 1}</Label>
                                 {pIdx > 0 && (
                                   <Button type="button" variant="ghost" size="sm" className="text-red-500 h-6 w-6 p-0" onClick={() => {
                                     const newUnits = [...units];
@@ -871,7 +872,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                                  newUnits[uIdx].pickupPoints[pIdx].contact.name = e.target.value;
                                  handleUnitsChange(newUnits);
                                }} onBlur={() => saveTransportChanges(JSON.parse(JSON.stringify(units)))} className="text-sm h-8" />
-                               <Input placeholder="טלפון" value={point.contact?.phone || ''} onChange={(e) => {
+                               <Input placeholder={uiTranslate("טלפון")} value={point.contact?.phone || ''} onChange={(e) => {
                                  const newUnits = JSON.parse(JSON.stringify(units));
                                  if (!newUnits[uIdx].pickupPoints[pIdx].contact) newUnits[uIdx].pickupPoints[pIdx].contact = {};
                                  newUnits[uIdx].pickupPoints[pIdx].contact.phone = e.target.value;
@@ -897,7 +898,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                             saveTransportChanges(newUnits);
                           }}>
                             <Plus className="h-3 w-3 ml-1" />
-                            הוסף נקודה
+                            {uiTranslate("הוסף נקודה")}
                           </Button>
                         </div>
                       ));
@@ -909,7 +910,7 @@ const handleCopyTransport = (service, serviceDetails) => {
 
             {currentSupplierNote && (
               <div className="text-sm text-blue-600 font-medium mr-6 mt-2">
-                הערה עבורך: {currentSupplierNote}
+                {uiTranslate("הערה עבורך:")} {currentSupplierNote}
               </div>
             )}
             
@@ -939,9 +940,9 @@ const handleCopyTransport = (service, serviceDetails) => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => updateSupplierStatus(service.id, sup.id, 'pending')}>בהמתנה</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSupplierStatus(service.id, sup.id, 'confirmed')}>אושר</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSupplierStatus(service.id, sup.id, 'rejected')}>נדחה</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateSupplierStatus(service.id, sup.id, 'pending')}>{uiTranslate("בהמתנה")}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateSupplierStatus(service.id, sup.id, 'confirmed')}>{uiTranslate("אושר")}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateSupplierStatus(service.id, sup.id, 'rejected')}>{uiTranslate("נדחה")}</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           ) : (
@@ -1004,23 +1005,23 @@ const handleCopyTransport = (service, serviceDetails) => {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="text-xs">
-                            שבץ ספק
+                            {uiTranslate("שבץ ספק")}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           <DropdownMenuItem onClick={() => setShowNewSupplierDialog(service.id)}>
                             <Plus className="h-3 w-3 ml-2" />
-                            צור ספק חדש
+                            {uiTranslate("צור ספק חדש")}
                           </DropdownMenuItem>
                           <div className="border-t my-1"></div>
                           <DropdownMenuItem onClick={() => handleOpenLocalSupplierDialog(service)}>
-                            בחר מרשימת ספקים
+                            {uiTranslate("בחר מרשימת ספקים")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>שבץ ספק לשירות זה</p>
+                      <p>{uiTranslate("שבץ ספק לשירות זה")}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1034,7 +1035,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>הוצא שירות זה מהחבילה והפוך אותו לשירות עצמאי</p>
+                        <p>{uiTranslate("הוצא שירות זה מהחבילה והפוך אותו לשירות עצמאי")}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1308,7 +1309,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 <SectionTitleEditor
                   value={servicesTitleInput}
                   fallback="חבילת ההפקה כוללת"
-                  placeholder="ברירת מחדל: חבילת ההפקה כוללת"
+                  placeholder={uiTranslate("ברירת מחדל: חבילת ההפקה כוללת")}
                   label={field('services_section_title')?.name}
                   onChange={isAdmin && field('services_section_title') ? setServicesTitleInput : undefined}
                   onBlur={isAdmin ? () => handleSaveServicesSectionTitle && handleSaveServicesSectionTitle(servicesTitleInput) : undefined}
@@ -1431,7 +1432,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                         <SectionTitleEditor
                           value={standaloneTitleInput}
                           fallback="שירותים בודדים"
-                          placeholder="אופציונלי — כותרת לפני שירותים בודדים"
+                          placeholder={uiTranslate("אופציונלי — כותרת לפני שירותים בודדים")}
                           label={field('standalone_services_title')?.name}
                   onChange={isAdmin && field('standalone_services_title') ? setStandaloneTitleInput : undefined}
                           onBlur={isAdmin ? () => handleSaveStandaloneServicesTitle && handleSaveStandaloneServicesTitle(standaloneTitleInput) : undefined}
@@ -1487,7 +1488,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                                             />
                                           </TooltipTrigger>
                                           <TooltipContent>
-                                            <p>סמן שירות לפעולות מרובות (כמו הוספה לחבילה)</p>
+                                            <p>{uiTranslate("סמן שירות לפעולות מרובות (כמו הוספה לחבילה)")}</p>
                                           </TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
@@ -1530,7 +1531,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                   />
                 )}
               </div>
-              <Badge className="bg-orange-100 text-orange-700 text-xs shrink-0">לא כלול בסיכום הכספי</Badge>
+              <Badge className="bg-orange-100 text-orange-700 text-xs shrink-0">{uiTranslate("לא כלול בסיכום הכספי")}</Badge>
             </div>
 
             <DragDropContext onDragEnd={handleDragEnd}>
@@ -1630,13 +1631,13 @@ const handleCopyTransport = (service, serviceDetails) => {
       <Dialog open={showLocalSupplierDialog} onOpenChange={setShowLocalSupplierDialog}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>שיבוץ ספקים</DialogTitle>
+            <DialogTitle>{uiTranslate("שיבוץ ספקים")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="חיפוש ספקים..."
+                placeholder={uiTranslate("חיפוש ספקים...")}
                 value={localSupplierSearchTerm}
                 onChange={(e) => setLocalSupplierSearchTerm(e.target.value)}
                 className="pr-10"
@@ -1678,7 +1679,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                     <Label className={hasDeclined ? 'flex items-center gap-1.5' : ''}>
                       {supplier.supplier_name}
                       {hasDeclined && (
-                        <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>
+                        <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">{uiTranslate("דחה בעבר")}</span>
                       )}
                     </Label>
                   </div>
@@ -1686,7 +1687,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                     <div className="mr-6">
                       <Label className="text-xs">{t('הערה לספק')}</Label>
                       <Input
-                        placeholder="הערה ספציפית לספק זה..."
+                        placeholder={uiTranslate("הערה ספציפית לספק זה...")}
                         value={localSupplierFormData.notes[supplier.id] || ''}
                         onChange={(e) => {
                           setLocalSupplierFormData({
@@ -1715,7 +1716,7 @@ const handleCopyTransport = (service, serviceDetails) => {
       <Dialog open={showNewServiceDialog} onOpenChange={setShowNewServiceDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>יצירת שירות חדש</DialogTitle>
+            <DialogTitle>{uiTranslate("יצירת שירות חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1723,7 +1724,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               <Input
                 value={newService.service_name}
                 onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))}
-                placeholder="שם השירות"
+                placeholder={uiTranslate("שם השירות")}
               />
             </div>
             <div>
@@ -1740,7 +1741,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                   clipboard: { matchVisual: false },
                 }}
                 formats={['bold', 'italic', 'underline', 'list', 'bullet', 'header', 'align', 'link']}
-                placeholder="תיאור מפורט של השירות"
+                placeholder={uiTranslate("תיאור מפורט של השירות")}
               />
             </div>
             <div>
@@ -1748,7 +1749,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               <Input
                 value={newService.category}
                 onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))}
-                placeholder="קטגורית השירות"
+                placeholder={uiTranslate("קטגורית השירות")}
               />
             </div>
             <div>
@@ -1771,7 +1772,7 @@ const handleCopyTransport = (service, serviceDetails) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewServiceDialog(false)} disabled={isSavingNewService}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateService} disabled={isSavingNewService}>
               {isSavingNewService ? 'שומר...' : 'צור שירות'}
@@ -1783,7 +1784,7 @@ const handleCopyTransport = (service, serviceDetails) => {
       <Dialog open={!!showNewSupplierDialog} onOpenChange={(open) => !open && setShowNewSupplierDialog(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>יצירת ספק חדש</DialogTitle>
+            <DialogTitle>{uiTranslate("יצירת ספק חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-end gap-2">
@@ -1792,7 +1793,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                 <Input
                   value={newSupplier.supplier_name}
                   onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))}
-                  placeholder="שם הספק"
+                  placeholder={uiTranslate("שם הספק")}
                 />
               </div>
               <ContactPicker 
@@ -1809,11 +1810,11 @@ const handleCopyTransport = (service, serviceDetails) => {
               />
             </div>
             <div>
-              <Label>איש קשר</Label>
+              <Label>{uiTranslate("איש קשר")}</Label>
               <Input
                 value={newSupplier.contact_person}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_person: e.target.value }))}
-                placeholder="שם איש הקשר"
+                placeholder={uiTranslate("שם איש הקשר")}
               />
             </div>
             <div>
@@ -1821,7 +1822,7 @@ const handleCopyTransport = (service, serviceDetails) => {
               <Input
                 value={newSupplier.phone}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="מספר טלפון"
+                placeholder={uiTranslate("מספר טלפון")}
               />
             </div>
             <div>
@@ -1830,13 +1831,13 @@ const handleCopyTransport = (service, serviceDetails) => {
                 type="email"
                 value={newSupplier.contact_emails[0]}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_emails: [e.target.value] }))}
-                placeholder="כתובת אימייל"
+                placeholder={uiTranslate("כתובת אימייל")}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewSupplierDialog(null)} disabled={isSavingNewSupplier}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier}>
               {isSavingNewSupplier ? 'שומר...' : 'צור ספק'}

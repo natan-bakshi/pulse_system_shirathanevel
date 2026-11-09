@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Switch} from '@/components/ui/switch';
 import {Save,RefreshCw} from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // These are editable DRAFTS only. Live interactive sends stay fail-closed
 // until provider signatures, inbound idempotency and supplier identity are ready.
@@ -14,6 +15,7 @@ const ACTIONS=[
 ];
 const emptyDraft={officeNumber:'',policy:{enabled:false,quoteAssignment:false,buttons:[]}};
 export default function WhatsAppInteractiveDraftSettings(){
+  const {t: uiTranslate}=useLanguage();
   const [expanded,setExpanded]=useState(false);
   const [provider,setProvider]=useState('green');
   const [draft,setDraft]=useState(null);
@@ -87,7 +89,7 @@ export default function WhatsAppInteractiveDraftSettings(){
       והשלמת מניעת תגובות כפולות ושיבוצים לא מעודכנים.
     </p>
     <div className="space-y-4 mt-3">
-      <label className="block text-sm font-medium" htmlFor="interactive-wa-provider">ספק הודעות</label>
+      <label className="block text-sm font-medium" htmlFor="interactive-wa-provider">{uiTranslate("ספק הודעות")}</label>
       <select id="interactive-wa-provider" value={provider} disabled={busy} onChange={e=>changeProvider(e.target.value)}
         className="border rounded-md px-3 py-2 text-sm">
         <option value="green">Green API</option>

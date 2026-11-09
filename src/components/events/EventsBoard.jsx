@@ -23,9 +23,11 @@ import { createPageUrl } from '@/utils';
 import ContactPicker from '@/components/ui/ContactPicker';
 import { prioritizeSuppliers } from '@/lib/supplierPrioritization';
 import { getEventDisplayName } from '@/lib/eventDisplayName';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 
 export default function EventsBoard() {
+  const {t: uiTranslate}=useLanguage();
     const currentDate = new Date();
     const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
     const [collapsedMonths, setCollapsedMonths] = useState({});
@@ -656,9 +658,9 @@ export default function EventsBoard() {
         return (
             <div className="text-center py-16">
                 <Settings className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">לא נבחרו עמודות ללוח</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{uiTranslate("לא נבחרו עמודות ללוח")}</h3>
                 <p className="text-gray-600 mb-4">
-                    עבור לעמוד ההגדרות כדי לבחור אילו שירותים יוצגו כעמודות בלוח האירועים
+                    {uiTranslate("עבור לעמוד ההגדרות כדי לבחור אילו שירותים יוצגו כעמודות בלוח האירועים")}
                 </p>
             </div>
         );
@@ -669,9 +671,9 @@ export default function EventsBoard() {
             <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 max-w-full">
                 <div className="flex flex-col md:flex-row gap-4 items-end">
                     <div className="flex-1 w-full">
-                        <Label className="text-xs text-gray-600 mb-1">חיפוש</Label>
+                        <Label className="text-xs text-gray-600 mb-1">{uiTranslate("חיפוש")}</Label>
                         <Input
-                            placeholder="חיפוש לפי שם משפחה, אירוע או ילד..."
+                            placeholder={uiTranslate("חיפוש לפי שם משפחה, אירוע או ילד...")}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="text-sm"
@@ -679,10 +681,10 @@ export default function EventsBoard() {
                     </div>
                     <div className="flex items-end">
                         <div className="flex flex-col gap-1">
-                            <Label className="text-xs text-gray-600">הגדרות</Label>
+                            <Label className="text-xs text-gray-600">{uiTranslate("הגדרות")}</Label>
                             <Button variant="outline" onClick={() => setIsSettingsOpen(true)} className="h-10 px-3">
                                 <Settings className="h-4 w-4 ml-2" />
-                                ניהול לוח
+                                {uiTranslate("ניהול לוח")}
                             </Button>
                         </div>
                     </div>
@@ -691,18 +693,18 @@ export default function EventsBoard() {
 
             <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader><DialogTitle>הגדרות לוח אירועים</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>{uiTranslate("הגדרות לוח אירועים")}</DialogTitle></DialogHeader>
                     <div className="space-y-6 py-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border">
-                                <Label htmlFor="sticky-mode" className="font-semibold flex items-center gap-2"><Table2 className="h-4 w-4" />הקפאת עמודות</Label>
+                                <Label htmlFor="sticky-mode" className="font-semibold flex items-center gap-2"><Table2 className="h-4 w-4" />{uiTranslate("הקפאת עמודות")}</Label>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-600">הקפא את עמודות התאריך והשם בגלילה</span>
+                                    <span className="text-sm text-gray-600">{uiTranslate("הקפא את עמודות התאריך והשם בגלילה")}</span>
                                     <Switch id="sticky-mode" checked={isStickyEnabled} onCheckedChange={setIsStickyEnabled} />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border">
-                                <Label className="font-semibold flex items-center gap-2"><Filter className="h-4 w-4" />סינון לפי סטטוס</Label>
+                                <Label className="font-semibold flex items-center gap-2"><Filter className="h-4 w-4" />{uiTranslate("סינון לפי סטטוס")}</Label>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between text-right font-normal bg-white">
@@ -711,7 +713,7 @@ export default function EventsBoard() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent className="w-[240px]" align="end">
-                                        <DropdownMenuLabel>בחר סטטוסים להצגה</DropdownMenuLabel>
+                                        <DropdownMenuLabel>{uiTranslate("בחר סטטוסים להצגה")}</DropdownMenuLabel>
                                         <DropdownMenuSeparator />
                                         {[{ value: 'quote', label: 'הצעת מחיר' }, { value: 'confirmed', label: 'אירוע סגור' }, { value: 'in_progress', label: 'אירוע תפור' }, { value: 'completed', label: 'אירוע עבר' }, { value: 'cancelled', label: 'אירוע בוטל' }].map((status) => (
                                             <div key={status.value} className="flex items-center px-2 py-1.5 hover:bg-gray-100 cursor-pointer" onClick={(e) => {
@@ -723,22 +725,22 @@ export default function EventsBoard() {
                                             </div>
                                         ))}
                                         {statusFilters.length > 0 && (
-                                            <><DropdownMenuSeparator /><div className="p-2 text-center text-xs text-red-600 cursor-pointer hover:bg-red-50" onClick={() => setStatusFilters([])}>נקה הכל</div></>
+                                            <><DropdownMenuSeparator /><div className="p-2 text-center text-xs text-red-600 cursor-pointer hover:bg-red-50" onClick={() => setStatusFilters([])}>{uiTranslate("נקה הכל")}</div></>
                                         )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
                         </div>
                         <div>
-                            <Label className="mb-3 block font-semibold">קטגוריות להצגה</Label>
-                            {availableCategories.length === 0 ? (<p className="text-sm text-gray-400 py-4 bg-gray-50 rounded text-center">לא נמצאו קטגוריות.</p>) : (
+                            <Label className="mb-3 block font-semibold">{uiTranslate("קטגוריות להצגה")}</Label>
+                            {availableCategories.length === 0 ? (<p className="text-sm text-gray-400 py-4 bg-gray-50 rounded text-center">{uiTranslate("לא נמצאו קטגוריות.")}</p>) : (
                                 <><div className="mb-4 p-4 bg-gray-50 rounded-lg border"><div className="flex flex-wrap gap-2">{availableCategories.filter(cat => !tempCategories.includes(cat)).map(category => (<Badge key={category} variant="outline" className="cursor-pointer hover:bg-blue-50 transition-colors px-3 py-1.5 text-sm bg-white" onClick={() => toggleCategory(category)}><Plus className="h-3 w-3 mr-1" />{category}</Badge>))}</div></div>
                                     {tempCategories.length > 0 && (<div className="p-4 bg-blue-50/50 rounded-lg border border-blue-100"><DragDropContext onDragEnd={handleDragEnd}><Droppable droppableId="categories">{(provided) => (<div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">{tempCategories.map((category, index) => (<Draggable key={category} draggableId={category} index={index}>{(provided, snapshot) => (<div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`flex items-center gap-3 p-3 bg-white rounded-lg border transition-all ${snapshot.isDragging ? 'shadow-lg border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'}`}><GripVertical className="h-5 w-5 text-gray-400 cursor-grab" /><span className="flex-1 font-medium">{category}</span><Badge variant="secondary" className="text-xs">{index + 1}</Badge><button onClick={() => toggleCategory(category)} className="p-1.5 hover:bg-red-50 rounded-full transition-colors text-gray-400 hover:text-red-500"><X className="h-4 w-4" /></button></div>)}</Draggable>))}{provided.placeholder}</div>)}</Droppable></DragDropContext></div>)}
                                 </>
                             )}
                         </div>
                     </div>
-                    <DialogFooter><Button variant="outline" onClick={() => setIsSettingsOpen(false)} disabled={isSavingSettings}>ביטול</Button><Button onClick={handleSaveBoardSettings} disabled={isSavingSettings} className="bg-red-800 hover:bg-red-700">{isSavingSettings ? (<Loader2 className="h-4 w-4 ml-2 animate-spin" />) : (<Save className="h-4 w-4 ml-2" />)}שמור הגדרות</Button></DialogFooter>
+                    <DialogFooter><Button variant="outline" onClick={() => setIsSettingsOpen(false)} disabled={isSavingSettings}>{uiTranslate("ביטול")}</Button><Button onClick={handleSaveBoardSettings} disabled={isSavingSettings} className="bg-red-800 hover:bg-red-700">{isSavingSettings ? (<Loader2 className="h-4 w-4 ml-2 animate-spin" />) : (<Save className="h-4 w-4 ml-2" />)}{uiTranslate("שמור הגדרות")}</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
 
@@ -769,15 +771,15 @@ export default function EventsBoard() {
 
                                 {!isCollapsed && (
                                     monthEvents.length === 0 ? (
-                                        <div className="p-8 text-center text-gray-400 text-sm bg-gray-50"><div className="inline-block px-4 py-2 rounded-lg bg-white border border-gray-200">אין אירועים לחודש זה</div></div>
+                                        <div className="p-8 text-center text-gray-400 text-sm bg-gray-50"><div className="inline-block px-4 py-2 rounded-lg bg-white border border-gray-200">{uiTranslate("אין אירועים לחודש זה")}</div></div>
                                     ) : (
                                         <div className="relative w-full border-t border-gray-100" style={{ maxWidth: '100vw' }}>
                                             <div className="overflow-x-auto overflow-y-auto max-h-[70vh]" style={{ scrollbarWidth: 'thin', scrollbarColor: '#e53e3e #fee2e2', direction: 'rtl', maxWidth: 'calc(100vw - 3rem)' }}>
                                                 <table className="border-collapse" style={{ minWidth: 'max-content', borderSpacing: 0, zoom: zoomLevel }}>
                                                     <thead className="bg-gradient-to-b from-red-50 via-red-50 to-red-100/50 border-b-2 border-red-200 sticky top-0 z-30">
                                                         <tr>
-                                                            <th className={`px-4 py-3 text-right text-xs font-bold text-red-900 border-l border-red-200 bg-red-50 w-[80px] ${isStickyEnabled ? 'sticky right-0 z-40 shadow-[2px_0_8px_-2px_rgba(185,28,28,0.15)]' : ''}`}>תאריך</th>
-                                                            <th className={`px-4 py-3 text-right text-xs font-bold text-red-900 border-l border-red-200 bg-red-50 w-[140px] ${isStickyEnabled ? 'sticky right-[80px] z-40 shadow-[2px_0_8px_-2px_rgba(185,28,28,0.15)]' : ''}`}>משפחה</th>
+                                                            <th className={`px-4 py-3 text-right text-xs font-bold text-red-900 border-l border-red-200 bg-red-50 w-[80px] ${isStickyEnabled ? 'sticky right-0 z-40 shadow-[2px_0_8px_-2px_rgba(185,28,28,0.15)]' : ''}`}>{uiTranslate("תאריך")}</th>
+                                                            <th className={`px-4 py-3 text-right text-xs font-bold text-red-900 border-l border-red-200 bg-red-50 w-[140px] ${isStickyEnabled ? 'sticky right-[80px] z-40 shadow-[2px_0_8px_-2px_rgba(185,28,28,0.15)]' : ''}`}>{uiTranslate("משפחה")}</th>
                                                             {boardColumns.map(category => (<th key={category} className="px-4 py-3 text-center text-xs font-bold text-red-900 border-l border-red-200 min-w-[200px] bg-gradient-to-b from-red-50 via-red-50 to-red-100/50">{category}</th>))}
                                                         </tr>
                                                     </thead>
@@ -803,7 +805,7 @@ export default function EventsBoard() {
                                                                                                     <button onClick={() => handleOpenServiceEdit(service.eventServiceData, event.event_name, category)} className="text-xs font-bold text-gray-900 hover:text-red-700 transition-colors text-right flex-1">{service.serviceName}</button>
                                                                                                     <div className="flex items-center gap-1 shrink-0 mr-2">
                                                                                                         {category === 'נסיעות' && (
-                                                                                                            <button onClick={(e) => { e.stopPropagation(); handleCopyTransportDetails(service, event); }} className="p-1 hover:bg-gray-100 rounded" title="העתק פרטי נסיעה">
+                                                                                                            <button onClick={(e) => { e.stopPropagation(); handleCopyTransportDetails(service, event); }} className="p-1 hover:bg-gray-100 rounded" title={uiTranslate("העתק פרטי נסיעה")}>
                                                                                                                 {copiedId === service.eventServiceData.id ? (<Check className="h-3.5 w-3.5 text-green-600 animate-in zoom-in" />) : (<Copy className="h-3.5 w-3.5 text-gray-400 hover:text-blue-600 transition-colors" />)}
                                                                                                             </button>
                                                                                                         )}
@@ -828,7 +830,7 @@ export default function EventsBoard() {
                                                                                                         <div className="text-[10px] text-indigo-800 px-2 py-1.5 bg-indigo-50 rounded-md mt-1 border-r-2 border-indigo-400 space-y-1.5 max-w-[180px]">
                                                                                                             {displayUnits.map((unit, uIdx) => (
                                                                                                                 <div key={uIdx} className={uIdx > 0 ? "pt-1 border-t border-indigo-200" : ""}>
-                                                                                                                    {displayUnits.length > 1 && <div className="font-bold underline mb-0.5">רכב {uIdx + 1}:</div>}
+                                                                                                                    {displayUnits.length > 1 && <div className="font-bold underline mb-0.5">{uiTranslate("רכב")} {uIdx + 1}:</div>}
                                                                                                                     {unit.pickupPoints.map((point, pIdx) => (
                                                                                                                         <div key={pIdx} className="leading-tight">
                                                                                                                             {point.time && <span className="font-semibold">{point.time} </span>}
@@ -841,8 +843,8 @@ export default function EventsBoard() {
                                                                                                     );
                                                                                                 })()}
 
-                                                                                                {service.suppliers.length === 0 && missingCount === 0 ? (<div className="text-xs text-gray-400 italic text-center py-2 bg-gray-50 rounded-md border border-gray-100">לא נדרש שיבוץ</div>) : null}
-                                                                                                {missingCount > 0 && (<div className="flex items-center gap-1 mb-1.5 px-1 bg-amber-50 rounded border border-amber-100 py-1" title="נדרש שיבוץ"><UserPlus className="h-3.5 w-3.5 text-amber-600" /><span className="text-[10px] text-amber-700 font-medium">חסרים {missingCount}</span></div>)}
+                                                                                                {service.suppliers.length === 0 && missingCount === 0 ? (<div className="text-xs text-gray-400 italic text-center py-2 bg-gray-50 rounded-md border border-gray-100">{uiTranslate("לא נדרש שיבוץ")}</div>) : null}
+                                                                                                {missingCount > 0 && (<div className="flex items-center gap-1 mb-1.5 px-1 bg-amber-50 rounded border border-amber-100 py-1" title={uiTranslate("נדרש שיבוץ")}><UserPlus className="h-3.5 w-3.5 text-amber-600" /><span className="text-[10px] text-amber-700 font-medium">{uiTranslate("חסרים")} {missingCount}</span></div>)}
                                                                                                 {service.suppliers.length > 0 ? (<div className="space-y-1.5">{service.suppliers.map(supplier => (<div key={supplier.id} className="space-y-1"><button onClick={() => handleEditAssignment(service.eventServiceData, supplier, event.event_name, service.serviceName)} className={`w-full text-xs px-2.5 py-2 rounded-md text-center transition-all hover:scale-[1.03] hover:shadow-md font-semibold ${getStatusColor(supplier.status)}`}>{supplier.name}</button>{supplier.notes && (<div className="text-xs text-amber-800 px-2 py-1 bg-amber-50 rounded-md border-r-2 border-amber-400">{supplier.notes}</div>)}</div>))}</div>) : null}
                                                                                                 {service.eventServiceData.client_notes && (<div className="text-xs text-blue-800 px-2 py-1.5 bg-blue-50 rounded-md mt-2 border-r-2 border-blue-400">📌 {service.eventServiceData.client_notes}</div>)}
                                                                                             </div>
@@ -868,41 +870,41 @@ export default function EventsBoard() {
             )}
 
             {editingAssignment && (
-                <Dialog open={!!editingAssignment} onOpenChange={() => setEditingAssignment(null)}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>עריכת שיבוץ ספק</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2 bg-gray-50 p-3 rounded-lg"><div className="text-sm text-gray-700"><span className="font-semibold">אירוע:</span> {editingAssignment.eventName}</div><div className="text-sm text-gray-700"><span className="font-semibold">שירות:</span> {editingAssignment.serviceName}</div><div className="text-sm text-gray-700 flex items-center gap-1.5"><span className="font-semibold">ספק:</span> {editingAssignment.supplierName}{editingAssignment.declineRecord && <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}</div></div><div className="space-y-2"><Label htmlFor="status">סטטוס שיבוץ</Label><Select value={editingAssignment.currentStatus} onValueChange={(value) => setEditingAssignment(prev => ({ ...prev, currentStatus: value }))}><SelectTrigger id="status"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pending"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-400"></div><span>ממתין לאישור</span></div></SelectItem><SelectItem value="confirmed"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500"></div><span>אושר</span></div></SelectItem><SelectItem value="rejected"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500"></div><span>נדחה</span></div></SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="notes">הערות שיבוץ</Label><Textarea id="notes" value={editingAssignment.currentNotes} onChange={(e) => setEditingAssignment(prev => ({ ...prev, currentNotes: e.target.value }))} placeholder="הוסף הערות לשיבוץ זה..." rows={4} className="resize-none" /></div></div><DialogFooter><Button variant="outline" onClick={() => setEditingAssignment(null)} disabled={isSaving}><X className="h-4 w-4 ml-2" />ביטול</Button><Button onClick={handleSaveAssignment} disabled={isSaving} className="bg-red-800 hover:bg-red-700">{isSaving ? (<Loader2 className="h-4 w-4 ml-2 animate-spin" />) : (<Save className="h-4 w-4 ml-2" />)}שמור שינויים</Button></DialogFooter></DialogContent></Dialog>
+                <Dialog open={!!editingAssignment} onOpenChange={() => setEditingAssignment(null)}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{uiTranslate("עריכת שיבוץ ספק")}</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2 bg-gray-50 p-3 rounded-lg"><div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("אירוע:")}</span> {editingAssignment.eventName}</div><div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("שירות:")}</span> {editingAssignment.serviceName}</div><div className="text-sm text-gray-700 flex items-center gap-1.5"><span className="font-semibold">{uiTranslate("ספק:")}</span> {editingAssignment.supplierName}{editingAssignment.declineRecord && <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">{uiTranslate("דחה בעבר")}</span>}</div></div><div className="space-y-2"><Label htmlFor="status">{uiTranslate("סטטוס שיבוץ")}</Label><Select value={editingAssignment.currentStatus} onValueChange={(value) => setEditingAssignment(prev => ({ ...prev, currentStatus: value }))}><SelectTrigger id="status"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pending"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-400"></div><span>{uiTranslate("ממתין לאישור")}</span></div></SelectItem><SelectItem value="confirmed"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500"></div><span>{uiTranslate("אושר")}</span></div></SelectItem><SelectItem value="rejected"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500"></div><span>{uiTranslate("נדחה")}</span></div></SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="notes">{uiTranslate("הערות שיבוץ")}</Label><Textarea id="notes" value={editingAssignment.currentNotes} onChange={(e) => setEditingAssignment(prev => ({ ...prev, currentNotes: e.target.value }))} placeholder={uiTranslate("הוסף הערות לשיבוץ זה...")} rows={4} className="resize-none" /></div></div><DialogFooter><Button variant="outline" onClick={() => setEditingAssignment(null)} disabled={isSaving}><X className="h-4 w-4 ml-2" />{uiTranslate("ביטול")}</Button><Button onClick={handleSaveAssignment} disabled={isSaving} className="bg-red-800 hover:bg-red-700">{isSaving ? (<Loader2 className="h-4 w-4 ml-2 animate-spin" />) : (<Save className="h-4 w-4 ml-2" />)}{uiTranslate("שמור שינויים")}</Button></DialogFooter></DialogContent></Dialog>
             )}
 
-            <Dialog open={showNewSupplierDialog} onOpenChange={setShowNewSupplierDialog}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>יצירת ספק חדש</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-end gap-2"><div className="flex-1"><Label>שם הספק</Label><Input value={newSupplier.supplier_name} onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))} placeholder="שם הספק" /></div><ContactPicker onContactSelect={(contactData) => { setNewSupplier(prev => ({ ...prev, supplier_name: contactData.name || prev.supplier_name, contact_person: contactData.name || prev.contact_person, phone: contactData.phone || prev.phone, contact_emails: contactData.email ? [contactData.email] : prev.contact_emails })); }} className="mb-1" /></div><div><Label>איש קשר</Label><Input value={newSupplier.contact_person} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_person: e.target.value }))} placeholder="שם איש הקשר" /></div><div><Label>טלפון</Label><Input value={newSupplier.phone} onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))} placeholder="מספר טלפון" /></div><div><Label>אימייל</Label><Input type="email" value={newSupplier.contact_emails[0]} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_emails: [e.target.value] }))} placeholder="כתובת אימייל" /></div></div><DialogFooter><Button variant="outline" onClick={() => setShowNewSupplierDialog(false)} disabled={isSavingNewSupplier}>ביטול</Button><Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier} className="bg-red-800 hover:bg-red-700">{isSavingNewSupplier ? (<><Loader2 className="h-4 w-4 ml-2 animate-spin" />שומר...</>) : ('צור ספק')}</Button></DialogFooter></DialogContent></Dialog>
+            <Dialog open={showNewSupplierDialog} onOpenChange={setShowNewSupplierDialog}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{uiTranslate("יצירת ספק חדש")}</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-end gap-2"><div className="flex-1"><Label>{uiTranslate("שם הספק")}</Label><Input value={newSupplier.supplier_name} onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))} placeholder={uiTranslate("שם הספק")} /></div><ContactPicker onContactSelect={(contactData) => { setNewSupplier(prev => ({ ...prev, supplier_name: contactData.name || prev.supplier_name, contact_person: contactData.name || prev.contact_person, phone: contactData.phone || prev.phone, contact_emails: contactData.email ? [contactData.email] : prev.contact_emails })); }} className="mb-1" /></div><div><Label>{uiTranslate("איש קשר")}</Label><Input value={newSupplier.contact_person} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_person: e.target.value }))} placeholder={uiTranslate("שם איש הקשר")} /></div><div><Label>{uiTranslate("טלפון")}</Label><Input value={newSupplier.phone} onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))} placeholder={uiTranslate("מספר טלפון")} /></div><div><Label>{uiTranslate("אימייל")}</Label><Input type="email" value={newSupplier.contact_emails[0]} onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_emails: [e.target.value] }))} placeholder={uiTranslate("כתובת אימייל")} /></div></div><DialogFooter><Button variant="outline" onClick={() => setShowNewSupplierDialog(false)} disabled={isSavingNewSupplier}>{uiTranslate("ביטול")}</Button><Button onClick={handleCreateSupplier} disabled={isSavingNewSupplier} className="bg-red-800 hover:bg-red-700">{isSavingNewSupplier ? (<><Loader2 className="h-4 w-4 ml-2 animate-spin" />{uiTranslate("שומר...")}</>) : ('צור ספק')}</Button></DialogFooter></DialogContent></Dialog>
 
             {editingService && (
     <Dialog open={!!editingService} onOpenChange={() => setEditingService(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>ניהול שירות ופרטי נסיעה</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{uiTranslate("ניהול שירות ופרטי נסיעה")}</DialogTitle></DialogHeader>
             <div className="flex border-b mb-4">
-                <button onClick={() => setActiveTab('assignment')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'assignment' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>ניהול שיבוץ</button>
+                <button onClick={() => setActiveTab('assignment')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'assignment' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>{uiTranslate("ניהול שיבוץ")}</button>
                 {editingService.category === 'נסיעות' && (
-                    <button onClick={() => setActiveTab('transport')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'transport' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>פרטי נסיעה</button>
+                    <button onClick={() => setActiveTab('transport')} className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'transport' ? 'border-red-800 text-red-800' : 'border-transparent text-gray-500'}`}>{uiTranslate("פרטי נסיעה")}</button>
                 )}
             </div>
             <div className="space-y-4 py-2">
                 {activeTab === 'assignment' ? (
                     <>
-                        <div className="space-y-2 bg-gray-50 p-3 rounded-lg"><div className="text-sm text-gray-700"><span className="font-semibold">אירוע:</span> {editingService.eventName}</div><div className="text-sm text-gray-700"><span className="font-semibold">שירות:</span> {editingService.serviceName}</div></div>
-                        <div className="space-y-2"><Label>שיבוצים נדרשים</Label><Select value={String(editingService.minSuppliers || 0)} onValueChange={(v) => setEditingService(p => ({ ...p, minSuppliers: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (<SelectItem key={n} value={String(n)}>{n}</SelectItem>))}</SelectContent></Select></div>
+                        <div className="space-y-2 bg-gray-50 p-3 rounded-lg"><div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("אירוע:")}</span> {editingService.eventName}</div><div className="text-sm text-gray-700"><span className="font-semibold">{uiTranslate("שירות:")}</span> {editingService.serviceName}</div></div>
+                        <div className="space-y-2"><Label>{uiTranslate("שיבוצים נדרשים")}</Label><Select value={String(editingService.minSuppliers || 0)} onValueChange={(v) => setEditingService(p => ({ ...p, minSuppliers: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (<SelectItem key={n} value={String(n)}>{n}</SelectItem>))}</SelectContent></Select></div>
                         <div className="space-y-2"><Label>הערות לשירות</Label><Textarea value={editingService.serviceNotes} onChange={(e) => setEditingService(p => ({ ...p, serviceNotes: e.target.value }))} className="resize-none" /></div>
                         <div className="border-t pt-4">
-                            <Label className="font-semibold mb-3 block">שיבוץ ספקים</Label>
+                            <Label className="font-semibold mb-3 block">{uiTranslate("שיבוץ ספקים")}</Label>
                             
                             <div className="flex gap-2 mb-3">
                                 <div className="relative flex-1">
                                     <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                                     <Input 
-                                        placeholder="חיפוש ספקים..." 
+                                        placeholder={uiTranslate("חיפוש ספקים...")} 
                                         value={supplierSearchInDialog} 
                                         onChange={(e) => setSupplierSearchInDialog(e.target.value)}
                                         className="pr-9 h-9"
                                     />
                                 </div>
-                                <Button size="icon" className="h-9 w-9" onClick={() => setShowNewSupplierDialog(true)} title="צור ספק חדש">
+                                <Button size="icon" className="h-9 w-9" onClick={() => setShowNewSupplierDialog(true)} title={uiTranslate("צור ספק חדש")}>
                                     <Plus className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -911,7 +913,7 @@ export default function EventsBoard() {
                                 {/* Assigned Suppliers */}
                                 {suppliers.filter(s => editingService.supplierIds.includes(s.id)).length > 0 && (
                                     <div className="space-y-2">
-                                        <Label className="text-xs text-gray-500 font-medium">ספקים משובצים</Label>
+                                        <Label className="text-xs text-gray-500 font-medium">{uiTranslate("ספקים משובצים")}</Label>
                                         {suppliers.filter(s => editingService.supplierIds.includes(s.id)).map(s => {
                                             const supplierStatus = editingService.supplierStatuses[s.id] || 'pending';
                                             const statusBg = supplierStatus === 'confirmed' ? 'bg-green-50 border-green-200' : supplierStatus === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200';
@@ -923,7 +925,7 @@ export default function EventsBoard() {
                                                     <div className={`p-2 rounded-lg border ${statusBg} flex items-center justify-between group`}>
                                                         <div className={`text-sm font-medium ${statusTextColor} flex items-center gap-1.5`}>
                                                             {s.supplier_name}
-                                                            {hasDeclined && <span className="text-[10px] text-red-500 bg-white/70 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}
+                                                            {hasDeclined && <span className="text-[10px] text-red-500 bg-white/70 px-1.5 py-0.5 rounded font-medium">{uiTranslate("דחה בעבר")}</span>}
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <DropdownMenu>
@@ -933,18 +935,18 @@ export default function EventsBoard() {
                                                                     </button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent>
-                                                                    <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'pending' } }))}>בהמתנה</DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'confirmed' } }))}>אושר</DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'rejected' } }))}>נדחה</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'pending' } }))}>{uiTranslate("בהמתנה")}</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'confirmed' } }))}>{uiTranslate("אושר")}</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => setEditingService(p => ({ ...p, supplierStatuses: { ...p.supplierStatuses, [s.id]: 'rejected' } }))}>{uiTranslate("נדחה")}</DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
-                                                            <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title="הסר שיבוץ">
+                                                            <button onClick={() => handleToggleSupplier(s.id)} className="p-1 hover:bg-red-100 text-red-500 rounded-full transition-colors" title={uiTranslate("הסר שיבוץ")}>
                                                                 <X className="h-4 w-4" />
                                                             </button>
                                                         </div>
                                                     </div>
                                                     <Input
-                                                        placeholder="הערה לספק..."
+                                                        placeholder={uiTranslate("הערה לספק...")}
                                                         value={editingService.supplierNotes[s.id] || ''}
                                                         onChange={(e) => setEditingService(p => ({ ...p, supplierNotes: { ...p.supplierNotes, [s.id]: e.target.value } }))}
                                                         className="text-xs h-7"
@@ -957,9 +959,9 @@ export default function EventsBoard() {
 
                                 {/* Available Suppliers */}
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-gray-500 font-medium">ספקים זמינים</Label>
+                                    <Label className="text-xs text-gray-500 font-medium">{uiTranslate("ספקים זמינים")}</Label>
                                     {filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).length === 0 ? (
-                                        <div className="text-sm text-gray-400 italic text-center py-4 border border-dashed rounded-lg">לא נמצאו ספקים</div>
+                                        <div className="text-sm text-gray-400 italic text-center py-4 border border-dashed rounded-lg">{uiTranslate("לא נמצאו ספקים")}</div>
                                     ) : (
                                         filteredSuppliersInDialog.filter(s => !editingService.supplierIds.includes(s.id)).map(s => {
                                             const declineRecord = (editingService.declinedSuppliers || []).find(d => d.supplier_id === s.id);
@@ -977,7 +979,7 @@ export default function EventsBoard() {
                                                 <Checkbox id={`sup-${s.id}`} checked={false} onCheckedChange={toggleSupplier} />
                                                 <Label htmlFor={`sup-${s.id}`} className="text-sm cursor-pointer flex-1 py-1 flex items-center gap-1.5">
                                                     {s.supplier_name}
-                                                    {hasDeclined && <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">דחה בעבר</span>}
+                                                    {hasDeclined && <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">{uiTranslate("דחה בעבר")}</span>}
                                                 </Label>
                                             </div>
                                         );})
@@ -993,25 +995,25 @@ export default function EventsBoard() {
                                 <h3 className="font-bold text-red-900">{editingService.units.length > 1 ? `רכב ${uIdx + 1}` : 'פרטי נסיעה'}</h3>
                                 {unit.pickupPoints.map((point, pIdx) => (
                                     <div key={pIdx} className="bg-white p-3 rounded-lg border shadow-sm space-y-3">
-                                        <div className="flex justify-between items-center"><Label className="text-xs font-bold text-gray-500">נקודת איסוף {pIdx + 1}</Label>{pIdx > 0 && <Button variant="ghost" size="sm" className="text-red-500" onClick={() => { const u = [...editingService.units]; u[uIdx].pickupPoints.splice(pIdx, 1); setEditingService(p => ({ ...p, units: u })); }}><Trash2 className="h-4 w-4" /></Button>}</div>
+                                        <div className="flex justify-between items-center"><Label className="text-xs font-bold text-gray-500">{uiTranslate("נקודת איסוף")} {pIdx + 1}</Label>{pIdx > 0 && <Button variant="ghost" size="sm" className="text-red-500" onClick={() => { const u = [...editingService.units]; u[uIdx].pickupPoints.splice(pIdx, 1); setEditingService(p => ({ ...p, units: u })); }}><Trash2 className="h-4 w-4" /></Button>}</div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1"><Label className="text-xs">התייצבות</Label><Input type="time" value={point.time} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].time = e.target.value; setEditingService(p => ({ ...p, units: u })); }} /></div>
-                                            <div className="space-y-1"><Label className="text-xs">מקום איסוף</Label><Input value={point.location} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].location = e.target.value; setEditingService(p => ({ ...p, units: u })); }} /></div>
+                                            <div className="space-y-1"><Label className="text-xs">{uiTranslate("התייצבות")}</Label><Input type="time" value={point.time} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].time = e.target.value; setEditingService(p => ({ ...p, units: u })); }} /></div>
+                                            <div className="space-y-1"><Label className="text-xs">{uiTranslate("מקום איסוף")}</Label><Input value={point.location} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].location = e.target.value; setEditingService(p => ({ ...p, units: u })); }} /></div>
                                         </div>
-                                        <div className="space-y-1"><Label className="text-xs">איש קשר במקום</Label><div className="flex gap-2">
+                                        <div className="space-y-1"><Label className="text-xs">{uiTranslate("איש קשר במקום")}</Label><div className="flex gap-2">
                                             <Input placeholder="שם" value={point.contact?.name || ''} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact.name = e.target.value; setEditingService(p => ({ ...p, units: u })); }} />
-                                            <Input placeholder="טלפון" value={point.contact?.phone || ''} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact.phone = e.target.value; setEditingService(p => ({ ...p, units: u })); }} />
+                                            <Input placeholder={uiTranslate("טלפון")} value={point.contact?.phone || ''} onChange={(e) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact.phone = e.target.value; setEditingService(p => ({ ...p, units: u })); }} />
                                             <ContactPicker onContactSelect={(c) => { const u = [...editingService.units]; u[uIdx].pickupPoints[pIdx].contact = { name: c.name || '', phone: c.phone || '' }; setEditingService(p => ({ ...p, units: u })); }} />
                                         </div></div>
                                     </div>
                                 ))}
-                                <Button variant="outline" size="sm" className="w-full border-dashed border-red-200 text-red-800" onClick={() => { const u = [...editingService.units]; u[uIdx].pickupPoints.push({ time: '', location: '', contact: { name: '', phone: '' } }); setEditingService(p => ({ ...p, units: u })); }}><Plus className="h-4 w-4 ml-1" />הוסף נקודת איסוף לרכב זה</Button>
+                                <Button variant="outline" size="sm" className="w-full border-dashed border-red-200 text-red-800" onClick={() => { const u = [...editingService.units]; u[uIdx].pickupPoints.push({ time: '', location: '', contact: { name: '', phone: '' } }); setEditingService(p => ({ ...p, units: u })); }}><Plus className="h-4 w-4 ml-1" />{uiTranslate("הוסף נקודת איסוף לרכב זה")}</Button>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
-            <DialogFooter><Button variant="outline" onClick={() => setEditingService(null)}>ביטול</Button><Button onClick={handleSaveService} disabled={isSaving} className="bg-red-800 hover:bg-red-700">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}שמור שינויים</Button></DialogFooter>
+            <DialogFooter><Button variant="outline" onClick={() => setEditingService(null)}>{uiTranslate("ביטול")}</Button><Button onClick={handleSaveService} disabled={isSaving} className="bg-red-800 hover:bg-red-700">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}{uiTranslate("שמור שינויים")}</Button></DialogFooter>
         </DialogContent>
     </Dialog>
 )}

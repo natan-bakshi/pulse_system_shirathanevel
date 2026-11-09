@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, FileText, Table } from "lucide-react";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ExportDialog({ 
   isOpen, 
@@ -14,6 +15,7 @@ export default function ExportDialog({
   title, 
   exportTypes = ['csv', 'pdf', 'html'] 
 }) {
+  const {t: uiTranslate}=useLanguage();
   const [selectedRows, setSelectedRows] = useState(new Set(data.map((_, index) => index)));
   const [selectedColumns, setSelectedColumns] = useState(new Set(columns.map(col => col.key)));
   const [exportType, setExportType] = useState('csv');
@@ -289,7 +291,7 @@ export default function ExportDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            ביטול
+            {uiTranslate("ביטול")}
           </Button>
           <Button 
             onClick={handleExport} 

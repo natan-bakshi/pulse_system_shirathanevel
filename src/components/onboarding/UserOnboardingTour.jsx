@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import Joyride, { STATUS, ACTIONS, EVENTS } from "react-joyride";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const CURRENT_TOUR_VERSION = "v1.0";
 
 // Custom tooltip component for RTL support
 function TourTooltip({ continuous, index, step, backProps, closeProps, primaryProps, skipProps, tooltipProps, size }) {
+  const {t: uiTranslate}=useLanguage();
   return (
     <div {...tooltipProps} dir="rtl" className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-sm overflow-hidden">
       {/* Header */}
@@ -38,7 +40,7 @@ function TourTooltip({ continuous, index, step, backProps, closeProps, primaryPr
               {...backProps}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
             >
-              הקודם
+              {uiTranslate("הקודם")}
             </button>
           )}
           <button

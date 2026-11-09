@@ -9,8 +9,10 @@ import { Plus, Trash2, CreditCard } from "lucide-react";
 import { getCurrencySymbol, getEffectiveCurrency, convertCurrency } from "@/components/utils/currencyUtils";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function PaymentManager({ payments = [], onPaymentsChange, isReadOnly = false, eventPrimaryCurrency = 'ILS', exchangeRate = 3.6 }) {
+  const {t: uiTranslate}=useLanguage();
   const [localPayments, setLocalPayments] = useState(payments);
 
   const addPayment = () => {
@@ -64,12 +66,12 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            תשלומים
+            {uiTranslate("תשלומים")}
           </CardTitle>
           {!isReadOnly && (
             <Button type="button" onClick={addPayment} size="sm">
               <Plus className="h-4 w-4 ml-2" />
-              הוסף תשלום
+              {uiTranslate("הוסף תשלום")}
             </Button>
           )}
         </div>
@@ -113,7 +115,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                     })()}
                   </div>
                   <div>
-                    <Label>תאריך תשלום</Label>
+                    <Label>{uiTranslate("תאריך תשלום")}</Label>
                     <Input
                       type="date"
                       value={payment.payment_date}
@@ -121,7 +123,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                     />
                   </div>
                   <div>
-                    <Label>אמצעי תשלום</Label>
+                    <Label>{uiTranslate("אמצעי תשלום")}</Label>
                     <Select
                       value={payment.payment_method}
                       onValueChange={(value) => updatePayment(payment.id, 'payment_method', value)}
@@ -130,10 +132,10 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">מזומן</SelectItem>
-                        <SelectItem value="bank_transfer">העברה בנקאית</SelectItem>
-                        <SelectItem value="check">צ'ק</SelectItem>
-                        <SelectItem value="credit_card">כרטיס אשראי</SelectItem>
+                        <SelectItem value="cash">{uiTranslate("מזומן")}</SelectItem>
+                        <SelectItem value="bank_transfer">{uiTranslate("העברה בנקאית")}</SelectItem>
+                        <SelectItem value="check">{uiTranslate("צ'ק")}</SelectItem>
+                        <SelectItem value="credit_card">{uiTranslate("כרטיס אשראי")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -148,7 +150,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                     </Button>
                   </div>
                   <div className="md:col-span-2">
-                    <Label>הערות</Label>
+                    <Label>{uiTranslate("הערות")}</Label>
                     <Textarea
                       value={payment.notes || ''}
                       onChange={(e) => updatePayment(payment.id, 'notes', e.target.value)}

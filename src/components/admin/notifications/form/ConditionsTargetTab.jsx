@@ -7,9 +7,11 @@ import { Plus, Trash2 } from "lucide-react";
 import FieldLabel from "../FieldLabel";
 import { AUDIENCES, CONDITION_FIELDS, OPERATORS } from "../constants";
 import AdminRecipientsSelector from "./AdminRecipientsSelector";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // טאב 4: תנאים וקהלי יעד
 export default function ConditionsTargetTab({ template, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const update = (field, value) => onChange({ ...template, [field]: value });
 
   // Helper to parse conditions safely
@@ -125,7 +127,7 @@ export default function ConditionsTargetTab({ template, onChange }) {
                   <Input
                     list={`fields-list-${idx}`}
                     className="h-8 text-xs pr-2"
-                    placeholder="שדה"
+                    placeholder={uiTranslate("שדה")}
                     value={condition.field}
                     onChange={(e) => {
                       const newConds = [...conditions];

@@ -2,9 +2,11 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Loader2, Receipt } from "lucide-react";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // בחירת סוג המסמך שיופק עבור תשלום שנרשם ידנית: חשבונית מס/קבלה או קבלה בלבד.
 export default function ManualDocumentButton({ paymentId, onCreate, loading }) {
+  const {t: uiTranslate}=useLanguage();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -15,8 +17,8 @@ export default function ManualDocumentButton({ paymentId, onCreate, loading }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onCreate(paymentId, "invoice_receipt")}>חשבונית מס/קבלה</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onCreate(paymentId, "receipt")}>קבלה</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onCreate(paymentId, "invoice_receipt")}>{uiTranslate("חשבונית מס/קבלה")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onCreate(paymentId, "receipt")}>{uiTranslate("קבלה")}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

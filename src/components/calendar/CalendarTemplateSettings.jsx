@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Save, Loader2, Info, Calendar } from "lucide-react";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // Available template variables with Hebrew descriptions
 const TEMPLATE_VARIABLES = [
@@ -66,6 +67,7 @@ const USER_TYPE_LABELS = {
 };
 
 export default function CalendarTemplateSettings() {
+  const {t: uiTranslate}=useLanguage();
   const [selectedUserType, setSelectedUserType] = useState('admin');
   const [templates, setTemplates] = useState({});
   const [supplierCategories, setSupplierCategories] = useState([]);
@@ -190,9 +192,9 @@ export default function CalendarTemplateSettings() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="admin">מנהל</SelectItem>
-              <SelectItem value="supplier">ספק</SelectItem>
-              <SelectItem value="client">לקוח</SelectItem>
+              <SelectItem value="admin">{uiTranslate("מנהל")}</SelectItem>
+              <SelectItem value="supplier">{uiTranslate("ספק")}</SelectItem>
+              <SelectItem value="client">{uiTranslate("לקוח")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -202,7 +204,7 @@ export default function CalendarTemplateSettings() {
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium mb-1">איך זה עובד?</p>
+              <p className="font-medium mb-1">{uiTranslate("איך זה עובד?")}</p>
               <ul className="list-disc mr-4 space-y-1 text-xs">
                 <li>הכנס טקסט חופשי ומשתנים בפורמט <code dir="ltr" className="bg-blue-100 px-1 rounded">{'{{variable}}'}</code></li>
                 <li>טקסט מותנה: עטוף ב-<code dir="ltr" className="bg-blue-100 px-1 rounded">{'[[ text {{variable}} ]]'}</code> - יוצג רק אם המשתנה קיים באירוע</li>

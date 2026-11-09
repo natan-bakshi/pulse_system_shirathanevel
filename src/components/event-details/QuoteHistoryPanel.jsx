@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, Eye, Clock, Loader2, ChevronDown, Trash2 } from "lucide-react";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const STATUS_LABELS = {
   quote: "הצעת מחיר",
@@ -26,6 +27,7 @@ function formatDateTime(isoString) {
 const SWIPE_THRESHOLD = 120;
 
 function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoading, loadingAction }) {
+  const {t: uiTranslate}=useLanguage();
   const [offsetX, setOffsetX] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -77,10 +79,10 @@ function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoadi
         <span className="text-red-700 font-medium text-xs">למחוק הצעה זו?</span>
         <div className="flex gap-2 shrink-0">
           <button onClick={handleConfirmYes} className="px-3 py-1 rounded bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors">
-            מחק
+            {uiTranslate("מחק")}
           </button>
           <button onClick={handleConfirmNo} className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-300 transition-colors">
-            ביטול
+            {uiTranslate("ביטול")}
           </button>
         </div>
       </div>
@@ -132,7 +134,7 @@ function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoadi
             onClick={() => { if (!isDraggingRef.current) onView(item); }}
             disabled={isLoading}
             className="p-1.5 rounded hover:bg-blue-50 text-blue-600 transition-colors disabled:opacity-50"
-            title="צפייה"
+            title={uiTranslate("צפייה")}
           >
             {loadingAction === "view" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
           </button>
@@ -140,7 +142,7 @@ function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoadi
             onClick={() => { if (!isDraggingRef.current) onDownload(item); }}
             disabled={isLoading}
             className="p-1.5 rounded hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50"
-            title="הורדה"
+            title={uiTranslate("הורדה")}
           >
             {loadingAction === "download" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
           </button>
@@ -148,7 +150,7 @@ function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoadi
             onClick={() => { if (!isDraggingRef.current) onShare(item); }}
             disabled={isLoading}
             className="p-1.5 rounded hover:bg-purple-50 text-purple-600 transition-colors disabled:opacity-50"
-            title="שיתוף"
+            title={uiTranslate("שיתוף")}
           >
             {loadingAction === "share" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
           </button>
@@ -159,6 +161,7 @@ function QuoteHistoryItem({ item, onView, onDownload, onShare, onDelete, isLoadi
 }
 
 export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose, onDelete }) {
+  const {t: uiTranslate}=useLanguage();
   const [showFullDialog, setShowFullDialog] = useState(false);
   const [loadingItem, setLoadingItem] = useState(null);
   const [loadingAction, setLoadingAction] = useState(null);
@@ -313,7 +316,7 @@ export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose,
           </div>
           <div className="flex justify-end pt-2">
             <Button variant="outline" size="sm" onClick={() => setShowFullDialog(false)}>
-              סגור
+              {uiTranslate("סגור")}
             </Button>
           </div>
         </DialogContent>

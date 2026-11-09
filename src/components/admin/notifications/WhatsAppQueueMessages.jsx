@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Archive, Ban, Check, Eye, RefreshCw, RotateCcw } from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const statusNames={
   queued:'ממתין לשליחה',retry_wait:'ממתין לניסיון חוזר',
@@ -28,6 +29,7 @@ const toLocale = value => {
 };
 
 export default function WhatsAppQueueMessages({refreshSignal=0}){
+  const {t: uiTranslate}=useLanguage();
   const [rows,setRows]=useState([]);
   const [status,setStatus]=useState(()=>{
     if(typeof window==='undefined')return 'all';
@@ -149,7 +151,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
         onClick={()=>setSelected(new Set(rows.filter(r=>r.canCancel).map(r=>r.id)))}>בחר הודעות שניתן לבטל</Button>
       <Button size="sm" variant="outline" disabled={!rows.some(r=>r.canArchive)||busy}
         onClick={()=>setSelected(new Set(rows.filter(r=>r.canArchive).map(r=>r.id)))}>בחר הודעות שטופלו</Button>
-      <Button size="sm" variant="outline" onClick={()=>setSelected(new Set())} disabled={!selected.size||busy}>נקה בחירה</Button>
+      <Button size="sm" variant="outline" onClick={()=>setSelected(new Set())} disabled={!selected.size||busy}>{uiTranslate("נקה בחירה")}</Button>
       <Button size="sm" variant="outline" onClick={()=>bulk('bulkCancel')} disabled={!allowedSelected('bulkCancel').length||busy}>
         <Ban className="h-4 w-4 ml-1"/>בטל מסומנות ({allowedSelected('bulkCancel').length})
       </Button>
@@ -164,7 +166,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
         <thead className="bg-gray-50"><tr>
           <th className="p-2">בחר</th><th className="p-2">מקור</th><th className="p-2">מועד יצירה</th>
           <th className="p-2">נמען</th><th className="p-2">ספק שליחה</th><th className="p-2">מצב</th><th className="p-2">ניסיונות</th>
-          <th className="p-2">פעולות</th>
+          <th className="p-2">{uiTranslate("פעולות")}</th>
         </tr></thead>
         <tbody>
           {rows.map(row=><tr key={row.id} className="border-t align-middle">
@@ -184,9 +186,9 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
             </td>
             <td className="p-2">{row.attemptCount||0}</td>
             <td className="p-2"><div className="flex gap-1 flex-wrap">
-              <Button variant="ghost" size="sm" onClick={()=>openAction(row,'inspect')} disabled={busy}><Eye className="h-4 w-4 ml-1"/>פרטים</Button>
+              <Button variant="ghost" size="sm" onClick={()=>openAction(row,'inspect')} disabled={busy}><Eye className="h-4 w-4 ml-1"/>{uiTranslate("פרטים")}</Button>
               {row.canCancel&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'cancel')} disabled={busy}>בטל</Button>}
-              {row.canRetry&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'retry')} disabled={busy}><RotateCcw className="h-3 w-3 ml-1"/>נסה שוב</Button>}
+              {row.canRetry&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'retry')} disabled={busy}><RotateCcw className="h-3 w-3 ml-1"/>{uiTranslate("נסה שוב")}</Button>}
               {row.canResolve&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'resolve')} disabled={busy}>טופל ידנית</Button>}
               {row.canArchive&&!row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'archive')} disabled={busy}>ארכיון</Button>}
               {row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'unarchive')} disabled={busy}>שחזר</Button>}
@@ -199,15 +201,15 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
     <div className="flex items-center justify-between">
       <span className="text-xs text-gray-500">מוצגות {rows.length} הודעות; נתוני שגיאה זמינים בכל הודעה.</span>
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" disabled={loading||busy||!offset} onClick={()=>fetchPage(Math.max(0,offset-60))}>הקודם</Button>
-        <Button size="sm" variant="outline" disabled={loading||busy||nextOffset===null} onClick={()=>fetchPage(nextOffset)}>הבא</Button>
+        <Button size="sm" variant="outline" disabled={loading||busy||!offset} onClick={()=>fetchPage(Math.max(0,offset-60))}>{uiTranslate("הקודם")}</Button>
+        <Button size="sm" variant="outline" disabled={loading||busy||nextOffset===null} onClick={()=>fetchPage(nextOffset)}>{uiTranslate("הבא")}</Button>
       </div>
     </div>
     <Dialog open={!!dialog} onOpenChange={open=>{if(!open)close();}}>
       <DialogContent dir="rtl" className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{dialog?.action==='inspect'?'פרטי הודעת WhatsApp':(actions[dialog?.action]?.title||'ניהול הודעה')}</DialogTitle></DialogHeader>
         {dialog&&<div className="space-y-3 text-sm">
-          <p><strong>מקור:</strong> {dialog.row.source} · <strong>מצב:</strong> {statusNames[dialog.row.status]||dialog.row.status} · <strong>ספק:</strong> {dialog.row.requestedProvider==='wasender'?'WasenderAPI':dialog.row.requestedProvider==='green'?'Green API':'לפי ברירת המחדל'}</p>
+          <p><strong>מקור:</strong> {dialog.row.source} · <strong>מצב:</strong> {statusNames[dialog.row.status]||dialog.row.status} · <strong>{uiTranslate("ספק:")}</strong> {dialog.row.requestedProvider==='wasender'?'WasenderAPI':dialog.row.requestedProvider==='green'?'Green API':'לפי ברירת המחדל'}</p>
           {full&&<>
             <p><strong>נמען:</strong> <span dir="ltr">{full.chatId}</span></p>
             {full.fileName&&<p><strong>שם מסמך:</strong> {full.fileName}</p>}
@@ -241,7 +243,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
               </Button>
             </div>
           </>}
-          {dialog.action==='inspect'&&<Button variant="outline" onClick={close}>סגור</Button>}
+          {dialog.action==='inspect'&&<Button variant="outline" onClick={close}>{uiTranslate("סגור")}</Button>}
         </div>}
       </DialogContent>
     </Dialog>

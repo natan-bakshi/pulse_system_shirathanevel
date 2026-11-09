@@ -18,6 +18,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
  * התוכן עצמו נבנה בצד השרת בעת ייצוא PDF.
  */
 export default function BlockEditor({ block, index, total, onChange, onRemove, onMoveUp, onMoveDown, linkedEventId, templates, linkedEvent, documentLanguage='he' }) {
+  const {t: uiTranslate}=useLanguage();
   const {t,locale}=useLanguage();
   const update = (patch) => onChange({ ...block, ...patch });
   const updateOptions = (patch) => onChange({ ...block, options: { ...(block.options || {}), ...patch } });
@@ -164,7 +165,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               block={block}
               updateOptions={updateOptions}
               label="ערוך טקסט פתיח רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
-              placeholder="טקסט פתיח מותאם להצעה זו..."
+              placeholder={uiTranslate("טקסט פתיח מותאם להצעה זו...")}
               defaultContent={getCurrentTemplateContent()}
             />
           </div>
@@ -244,7 +245,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               block={block}
               updateOptions={updateOptions}
               label="ערוך תנאי תשלום רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
-              placeholder="תנאי תשלום מותאמים להצעה זו..."
+              placeholder={uiTranslate("תנאי תשלום מותאמים להצעה זו...")}
               defaultContent={getCurrentTemplateContent()}
             />
           </div>
@@ -267,7 +268,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
               block={block}
               updateOptions={updateOptions}
               label="ערוך תנאי התקשרות רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
-              placeholder="תנאי התקשרות מותאמים להצעה זו..."
+              placeholder={uiTranslate("תנאי התקשרות מותאמים להצעה זו...")}
               defaultContent={getCurrentTemplateContent()}
             />
           </div>

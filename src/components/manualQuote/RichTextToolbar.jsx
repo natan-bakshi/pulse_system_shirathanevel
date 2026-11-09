@@ -13,6 +13,7 @@ import {
   Highlighter, Palette, Type
 } from 'lucide-react';
 import ColorPalettePopover from './ColorPalettePopover';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const FONT_FAMILIES = [
   { label: 'ברירת מחדל', value: '' },
@@ -73,6 +74,7 @@ function Divider() {
 }
 
 export default function RichTextToolbar({ editor }) {
+  const {t: uiTranslate}=useLanguage();
   const [fontSize, setFontSize] = useState('');
   const [fontFamily, setFontFamily] = useState('');
 
@@ -156,9 +158,9 @@ export default function RichTextToolbar({ editor }) {
         <SelectContent>
           <SelectItem value="p">פסקה</SelectItem>
           <SelectItem value="h1">כותרת 1</SelectItem>
-          <SelectItem value="h2">כותרת 2</SelectItem>
-          <SelectItem value="h3">כותרת 3</SelectItem>
-          <SelectItem value="h4">כותרת 4</SelectItem>
+          <SelectItem value="h2">{uiTranslate("כותרת 2")}</SelectItem>
+          <SelectItem value="h3">{uiTranslate("כותרת 3")}</SelectItem>
+          <SelectItem value="h4">{uiTranslate("כותרת 4")}</SelectItem>
           <SelectItem value="h5">כותרת 5</SelectItem>
           <SelectItem value="h6">כותרת 6</SelectItem>
         </SelectContent>
@@ -184,7 +186,7 @@ export default function RichTextToolbar({ editor }) {
           <SelectValue placeholder="גודל" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__default_size__">ברירת מחדל</SelectItem>
+          <SelectItem value="__default_size__">{uiTranslate("ברירת מחדל")}</SelectItem>
           {FONT_SIZES.map(s => (
             <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
           ))}

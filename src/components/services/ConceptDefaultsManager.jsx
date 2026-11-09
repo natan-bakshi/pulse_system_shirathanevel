@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus, Trash2, Loader2, Save, Package as PackageIcon } from "lucide-react";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const SETTING_KEY = "concept_defaults";
 
 export default function ConceptDefaultsManager({ isOpen, onClose, allServices, allPackages = [] }) {
+  const {t: uiTranslate}=useLanguage();
   const [concepts, setConcepts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -116,7 +118,7 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices, a
                 value={newConceptName}
                 onChange={(e) => setNewConceptName(e.target.value)}
               />
-              <Button onClick={handleAddConcept}><Plus className="h-4 w-4 ml-1" />הוסף</Button>
+              <Button onClick={handleAddConcept}><Plus className="h-4 w-4 ml-1" />{uiTranslate("הוסף")}</Button>
             </div>
             
             <div className="space-y-4">
@@ -168,10 +170,10 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices, a
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>ביטול</Button>
+          <Button variant="outline" onClick={onClose}>{uiTranslate("ביטול")}</Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-            שמור שינויים
+            {uiTranslate("שמור שינויים")}
           </Button>
         </DialogFooter>
       </DialogContent>

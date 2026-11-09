@@ -1,9 +1,11 @@
 import React,{useEffect,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {Button} from '@/components/ui/button';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // Public quote viewer follows the QUOTE language, not the viewer's UI setting.
 export default function ModularQuoteView() {
+  const {t: uiTranslate}=useLanguage();
   const token=new URLSearchParams(window.location.search).get('quote');
   const [data,setData]=useState(null);
   const [error,setError]=useState('');
@@ -39,7 +41,7 @@ export default function ModularQuoteView() {
   }
 
   return <div dir={english?'ltr':'rtl'} lang={english?'en':'he'} className="min-h-screen bg-background text-foreground">
-    {!data&&!error&&<p className="text-center p-8" role="status">טוען הצעה…</p>}
+    {!data&&!error&&<p className="text-center p-8" role="status">{uiTranslate("טוען הצעה…")}</p>}
     {error&&<p className="text-center p-6 text-destructive" role="alert">{error}</p>}
     {data&&<>
       {data.has_pdf&&<div className="max-w-4xl mx-auto p-3 flex justify-end">

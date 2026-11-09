@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { X, Download, Share, MoreVertical, Plus, ArrowUp, Monitor, Smartphone, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const STORAGE_KEY = "pwa_install_dismissed";
 const DISMISS_DAYS = 7; // Show again after 7 days if dismissed
@@ -191,6 +192,7 @@ export default function PWAInstallPrompt() {
 // Manual Installation Guide Component
 // =============================================
 function ManualInstallGuide({ deviceInfo, step, setStep, onClose }) {
+  const {t: uiTranslate}=useLanguage();
   const steps = getGuideSteps(deviceInfo);
 
   return (
@@ -259,7 +261,7 @@ function ManualInstallGuide({ deviceInfo, step, setStep, onClose }) {
             className="text-gray-500"
           >
             <ChevronRight className="h-4 w-4 ml-1" />
-            הקודם
+            {uiTranslate("הקודם")}
           </Button>
 
           <span className="text-xs text-gray-400">
@@ -272,7 +274,7 @@ function ManualInstallGuide({ deviceInfo, step, setStep, onClose }) {
               onClick={() => setStep(step + 1)}
               className="bg-red-800 hover:bg-red-900 text-white"
             >
-              הבא
+              {uiTranslate("הבא")}
               <ChevronLeft className="h-4 w-4 mr-1" />
             </Button>
           ) : (

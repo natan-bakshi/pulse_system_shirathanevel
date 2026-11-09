@@ -33,8 +33,10 @@ import GuestCountChangeDialog from "./GuestCountChangeDialog";
 import { toast } from "sonner";
 import { getField, getEventContacts, prepareContacts, validateEventFields, normalizeEventValues } from "@/lib/eventFields";
 import { useOrganizerConfig } from "@/hooks/useOrganizerConfig";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
+  const {t: uiTranslate}=useLanguage();
   const [allServices, setAllServices] = useState([]);
   const [allSuppliers, setAllSuppliers] = useState([]);
   const [allPackages, setAllPackages] = useState([]);
@@ -783,7 +785,7 @@ for (const serviceItem of servicesForSave) {
                     onCheckedChange={handleTogglePricePerGuest}
                     disabled={isSaving}
                   />
-                  <Label htmlFor="price_per_guest_toggle" className="text-sm cursor-pointer">מחיר למשתתף</Label>
+                  <Label htmlFor="price_per_guest_toggle" className="text-sm cursor-pointer">{uiTranslate("מחיר למשתתף")}</Label>
                   {formData.is_price_per_guest && formData.price_per_guest > 0 && (
                     <span className="text-sm text-blue-700 font-medium">
                       ({getCurrencySymbol(formData.primary_currency)}{formData.price_per_guest.toLocaleString(undefined, { maximumFractionDigits: 2 })} למשתתף)
@@ -814,16 +816,16 @@ for (const serviceItem of servicesForSave) {
 
             <div className="flex gap-2 mb-4">
               <Button type="button" variant="outline" size="sm" onClick={addScheduleItem} disabled={isSaving} className="flex-1">
-                <Plus className="h-4 w-4 ml-1" />הוסף ידנית
+                <Plus className="h-4 w-4 ml-1" />{uiTranslate("הוסף ידנית")}
               </Button>
               
               <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
                 <Button type="button" variant="secondary" size="sm" className="flex-1" onClick={() => setIsImportOpen(true)}>
-                  <ClipboardPaste className="h-4 w-4 ml-1" />טעינה חכמה
+                  <ClipboardPaste className="h-4 w-4 ml-1" />{uiTranslate("טעינה חכמה")}
                 </Button>
                 <DialogContent dir="rtl" className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.stopPropagation()}>
                   <DialogHeader>
-                    <DialogTitle>ייבוא לו"ז מהיר</DialogTitle>
+                    <DialogTitle>{uiTranslate("ייבוא לו\"ז מהיר")}</DialogTitle>
                   </DialogHeader>
                   <div className="py-4">
                     <Textarea 
@@ -834,8 +836,8 @@ for (const serviceItem of servicesForSave) {
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsImportOpen(false)}>ביטול</Button>
-                    <Button type="button" onClick={processBulkImport}>הוסף ללו"ז</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsImportOpen(false)}>{uiTranslate("ביטול")}</Button>
+                    <Button type="button" onClick={processBulkImport}>{uiTranslate("הוסף ללו\"ז")}</Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -865,7 +867,7 @@ for (const serviceItem of servicesForSave) {
                             <Input
                               value={item.activity}
                               onChange={(e) => handleScheduleChange(index, "activity", e.target.value)}
-                              placeholder="פעילות"
+                              placeholder={uiTranslate("פעילות")}
                               className="flex-1"
                               disabled={isSaving}
                             />
@@ -891,7 +893,7 @@ for (const serviceItem of servicesForSave) {
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
-              <h3 className="text-base sm:text-lg font-semibold">שירותים</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{uiTranslate("שירותים")}</h3>
               {!event && (
                 <Button
                   type="button"
@@ -902,7 +904,7 @@ for (const serviceItem of servicesForSave) {
                   className="text-purple-700 border-purple-200 hover:bg-purple-50"
                 >
                   <Sparkles className="h-4 w-4 ml-1" />
-                  טען שירותים מוגדרים מראש
+                  {uiTranslate("טען שירותים מוגדרים מראש")}
                 </Button>
               )}
             </div>
@@ -931,7 +933,7 @@ for (const serviceItem of servicesForSave) {
 
           {!formData.all_inclusive && (
             <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
-              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">סיכום כספי</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">{uiTranslate("סיכום כספי")}</h3>
               
               {(() => {
                 // Calculate financials on the fly using the utility
@@ -950,11 +952,11 @@ for (const serviceItem of servicesForSave) {
                     {/* Total Override Section */}
                     <div className="p-4 bg-white rounded border border-gray-200">
                       <div className="flex items-center gap-2 mb-2">
-                        <Label className="font-semibold text-blue-800">דריסת מחיר כולל (אופציונלי)</Label>
+                        <Label className="font-semibold text-blue-800">{uiTranslate("דריסת מחיר כולל (אופציונלי)")}</Label>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs text-gray-500 mb-1">מחיר סופי ידני</Label>
+                          <Label className="text-xs text-gray-500 mb-1">{uiTranslate("מחיר סופי ידני")}</Label>
                           <Input
                             type="number"
                             value={formData.total_override || ''}
@@ -970,7 +972,7 @@ for (const serviceItem of servicesForSave) {
                               checked={formData.total_override_includes_vat}
                               onCheckedChange={(checked) => handleInputChange("total_override_includes_vat", checked)}
                             />
-                            <Label htmlFor="override_vat" className="text-sm">המחיר הידני כולל מע"מ</Label>
+                            <Label htmlFor="override_vat" className="text-sm">{uiTranslate("המחיר הידני כולל מע\"מ")}</Label>
                           </div>
                         </div>
                       </div>
@@ -982,15 +984,15 @@ for (const serviceItem of servicesForSave) {
                       {!formData.total_override && (
                         <div className="space-y-2 pb-3 border-b mb-3">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">סה"כ לפני מע"מ:</span>
+                            <span className="text-gray-600">{uiTranslate("סה\"כ לפני מע\"מ:")}</span>
                             <span>{getCurrencySymbol(formData.primary_currency)}{financials.totalCostWithoutVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">מע"מ (18%):</span>
+                            <span className="text-gray-600">{uiTranslate("מע\"מ (18%):")}</span>
                             <span>{getCurrencySymbol(formData.primary_currency)}{financials.vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                           <div className="flex justify-between font-semibold">
-                            <span>סה"כ כולל מע"מ:</span>
+                            <span>{uiTranslate("סה\"כ כולל מע\"מ:")}</span>
                             <span>{getCurrencySymbol(formData.primary_currency)}{financials.totalCostWithVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                         </div>
@@ -1000,7 +1002,7 @@ for (const serviceItem of servicesForSave) {
                       <div className="space-y-3 pb-3 border-b mb-3">
                         <div className="flex flex-col sm:flex-row gap-4">
                           <div className="flex-1">
-                            <Label className="text-xs mb-1">סכום הנחה</Label>
+                            <Label className="text-xs mb-1">{uiTranslate("סכום הנחה")}</Label>
                             <Input 
                               type="number" 
                               value={formData.discount_amount || ''}
@@ -1010,7 +1012,7 @@ for (const serviceItem of servicesForSave) {
                             />
                           </div>
                           <div className="flex-1">
-                            <Label className="text-xs mb-1">סיבת ההנחה</Label>
+                            <Label className="text-xs mb-1">{uiTranslate("סיבת ההנחה")}</Label>
                             <Input 
                               value={formData.discount_reason || ''}
                               onChange={(e) => handleInputChange("discount_reason", e.target.value)}
@@ -1024,7 +1026,7 @@ for (const serviceItem of servicesForSave) {
                             checked={formData.discount_before_vat}
                             onCheckedChange={(checked) => handleInputChange("discount_before_vat", checked)}
                           />
-                          <Label htmlFor="discount_before_vat" className="text-xs text-gray-600">הנחה לפני מע"מ (משפיעה על חישוב המע"מ)</Label>
+                          <Label htmlFor="discount_before_vat" className="text-xs text-gray-600">{uiTranslate("הנחה לפני מע\"מ (משפיעה על חישוב המע\"מ)")}</Label>
                         </div>
                         {formData.is_price_per_guest && (
                           <div className="flex items-center space-x-2 space-x-reverse">
@@ -1034,9 +1036,9 @@ for (const serviceItem of servicesForSave) {
                               onCheckedChange={(checked) => handleInputChange("discount_type", checked ? 'per_guest' : 'fixed')}
                             />
                             <Label htmlFor="discount_per_guest" className="text-xs text-gray-600">
-                              הנחה למשתתף (תוכפל ב-{parseInt(formData.guest_count) || 0} משתתפים
+                              {uiTranslate("הנחה למשתתף (תוכפל ב-")}{parseInt(formData.guest_count) || 0} {uiTranslate("משתתפים")}
                               {formData.discount_type === 'per_guest' && Number(formData.discount_amount) > 0 && (
-                                <> = סה"כ {getCurrencySymbol(formData.primary_currency)}{((Number(formData.discount_amount) || 0) * (parseInt(formData.guest_count) || 0)).toLocaleString()}</>
+                                <> {uiTranslate("= סה\"כ")} {getCurrencySymbol(formData.primary_currency)}{((Number(formData.discount_amount) || 0) * (parseInt(formData.guest_count) || 0)).toLocaleString()}</>
                               )})
                             </Label>
                           </div>
@@ -1046,7 +1048,7 @@ for (const serviceItem of servicesForSave) {
                       {/* Price Per Guest Info */}
                       {financials.isPricePerGuest && financials.effectivePricePerGuest > 0 && (
                         <div className="flex justify-between items-center bg-blue-50 p-3 rounded border border-blue-200 mb-2">
-                          <span className="text-sm font-medium text-blue-800">מחיר למשתתף ({financials.guestCount} משתתפים):</span>
+                          <span className="text-sm font-medium text-blue-800">{uiTranslate("מחיר למשתתף (")}{financials.guestCount} {uiTranslate("משתתפים):")}</span>
                           <span className="text-sm font-bold text-blue-700">
                             {getCurrencySymbol(formData.primary_currency)}{financials.effectivePricePerGuest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                           </span>
@@ -1055,7 +1057,7 @@ for (const serviceItem of servicesForSave) {
 
                       {/* Final Total */}
                       <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
-                        <span className="text-lg font-bold text-gray-900">לתשלום:</span>
+                        <span className="text-lg font-bold text-gray-900">{uiTranslate("לתשלום:")}</span>
                         <span className="text-xl font-bold text-green-700">
                           {getCurrencySymbol(formData.primary_currency)}{financials.finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </span>
@@ -1068,8 +1070,8 @@ for (const serviceItem of servicesForSave) {
           )}
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">תשלומים</h3>
-            {formData.payments.some(p => p.stored_card_operation_id) && <p className="text-sm mb-2">תשלומים בכרטיס שמור נשמרים בהיסטוריית האירוע ומוצגים בכרטיסיית הכספים.</p>}
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">{uiTranslate("תשלומים")}</h3>
+            {formData.payments.some(p => p.stored_card_operation_id) && <p className="text-sm mb-2">{uiTranslate("תשלומים בכרטיס שמור נשמרים בהיסטוריית האירוע ומוצגים בכרטיסיית הכספים.")}</p>}
             <PaymentManager
               payments={formData.payments.filter(p => !p.stored_card_operation_id)}
               onPaymentsChange={handlePaymentsChange}
@@ -1080,18 +1082,18 @@ for (const serviceItem of servicesForSave) {
           </div>
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
-              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">סטטוס אירוע</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 border-b pb-2">{uiTranslate("סטטוס אירוע")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                      <Label htmlFor="status">סטטוס</Label>
+                      <Label htmlFor="status">{uiTranslate("סטטוס")}</Label>
                       <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)} disabled={isSaving}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                          <SelectItem value="quote">הצעת מחיר</SelectItem>
-                          <SelectItem value="confirmed">אירוע סגור</SelectItem>
-                          <SelectItem value="in_progress" disabled>אירוע תפור — נקבע לפי השיבוצים והאישורים</SelectItem>
-                          <SelectItem value="completed">אירוע עבר</SelectItem>
-                          <SelectItem value="cancelled">אירוע בוטל</SelectItem>
+                          <SelectItem value="quote">{uiTranslate("הצעת מחיר")}</SelectItem>
+                          <SelectItem value="confirmed">{uiTranslate("אירוע סגור")}</SelectItem>
+                          <SelectItem value="in_progress" disabled>{uiTranslate("אירוע תפור — נקבע לפי השיבוצים והאישורים")}</SelectItem>
+                          <SelectItem value="completed">{uiTranslate("אירוע עבר")}</SelectItem>
+                          <SelectItem value="cancelled">{uiTranslate("אירוע בוטל")}</SelectItem>
                       </SelectContent>
                       </Select>
                   </div>
@@ -1100,13 +1102,13 @@ for (const serviceItem of servicesForSave) {
 
           <CardFooter className="flex justify-end gap-2 sm:gap-3 p-3 sm:p-0 pt-4 sm:pt-6 sticky bottom-0 bg-white/95 backdrop-blur-sm z-10 border-t sm:border-t-0">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} size="sm" className="sm:h-9 sm:px-4">
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button type="submit" disabled={isSaving} size="sm" className="sm:h-9 sm:px-4">
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                  שומר...
+                  {uiTranslate("שומר...")}
                 </>
               ) : (
                 <>

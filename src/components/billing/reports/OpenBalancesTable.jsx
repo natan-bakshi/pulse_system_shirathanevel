@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { ChevronDown, ChevronsUpDown, Link2 } from "lucide-react";
 import { calculateEventFinancials } from "@/components/utils/eventFinancials";
 import { getEventDisplayName } from "@/lib/eventDisplayName";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // סטטוסי האירוע בעברית המלאה - זהים לתוויות בכרטיסיות ובסינון האירועים.
 const STATUS_OPTIONS = [
@@ -21,6 +22,7 @@ const DEFAULT_STATUSES = ["confirmed", "in_progress", "completed"];
 
 // "מי לא שילם" - יתרות פתוחות לפי אירוע, עם קיצור לשליחת דרישת תשלום.
 export default function OpenBalancesTable({ events = [], eventServices = [], payments = [], vatRate = 0.18, exchangeRate = 3.6, loading = false }) {
+  const {t: uiTranslate}=useLanguage();
   const [open, setOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState(DEFAULT_STATUSES);
 
@@ -96,11 +98,11 @@ export default function OpenBalancesTable({ events = [], eventServices = [], pay
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-center text-xs text-gray-500">
-                      <th className="p-2 text-center">אירוע</th>
-                      <th className="p-2 text-center">תאריך</th>
+                      <th className="p-2 text-center">{uiTranslate("אירוע")}</th>
+                      <th className="p-2 text-center">{uiTranslate("תאריך")}</th>
                       <th className="p-2 text-center">סה״כ</th>
-                      <th className="p-2 text-center">שולם</th>
-                      <th className="p-2 text-center">יתרה</th>
+                      <th className="p-2 text-center">{uiTranslate("שולם")}</th>
+                      <th className="p-2 text-center">{uiTranslate("יתרה")}</th>
                       <th className="p-2 text-center"></th>
                     </tr>
                   </thead>

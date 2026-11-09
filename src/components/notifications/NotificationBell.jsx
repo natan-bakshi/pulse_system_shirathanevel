@@ -15,8 +15,10 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link } from "react-router-dom";
 import { markNotificationsAsRead } from "@/functions/markNotificationsAsRead";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function NotificationBell({ user }) {
+  const {t: uiTranslate}=useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -128,7 +130,7 @@ export default function NotificationBell({ user }) {
             position: 'relative'
           }}
           className="rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0"
-          aria-label="התראות"
+          aria-label={uiTranslate("התראות")}
         >
           <Bell className="h-6 w-6 pointer-events-none" />
           {unreadCount > 0 && (
@@ -146,7 +148,7 @@ export default function NotificationBell({ user }) {
         dir="rtl"
       >
         <div className="flex items-center justify-between px-3 py-2 border-b">
-          <span className="font-semibold text-sm">התראות</span>
+          <span className="font-semibold text-sm">{uiTranslate("התראות")}</span>
           {unreadCount > 0 && (
             <Badge variant="secondary" className="text-xs">
               {unreadCount} חדשות

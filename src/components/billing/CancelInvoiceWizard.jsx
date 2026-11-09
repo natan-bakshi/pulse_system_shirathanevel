@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Check } from "lucide-react";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // ויזארד ביטול מסמך דו-שלבי: (1) חשבונית זיכוי, (2) קבלה שלילית (החזר כספי).
 export default function CancelInvoiceWizard({ document, step, onClose, onCredit, onRefund, loading }) {
+  const {t: uiTranslate}=useLanguage();
   const [creditReason, setCreditReason] = useState("");
   const [refundReason, setRefundReason] = useState("");
   const number = document?.document_number || "—";
@@ -30,10 +32,10 @@ export default function CancelInvoiceWizard({ document, step, onClose, onCredit,
       {isDone && <p className="flex items-center gap-2 text-sm text-green-700"><Check className="h-4 w-4" />תהליך הביטול הושלם: הופקו חשבונית זיכוי וקבלה שלילית.</p>}
       <DialogFooter>
         {isDone
-          ? <Button onClick={onClose}>סגור</Button>
+          ? <Button onClick={onClose}>{uiTranslate("סגור")}</Button>
           : isRefundStep
             ? <><Button variant="outline" onClick={onClose} disabled={loading}>דלג וסגור</Button><Button variant="destructive" onClick={() => onRefund(refundReason)} disabled={loading}>{loading ? "מפיק קבלה שלילית..." : "הפק קבלה שלילית"}</Button></>
-            : <><Button variant="outline" onClick={onClose} disabled={loading}>ביטול</Button><Button variant="destructive" onClick={() => onCredit(creditReason)} disabled={loading}>{loading ? "מפיק זיכוי..." : "הפק חשבונית זיכוי"}</Button></>}
+            : <><Button variant="outline" onClick={onClose} disabled={loading}>{uiTranslate("ביטול")}</Button><Button variant="destructive" onClick={() => onCredit(creditReason)} disabled={loading}>{loading ? "מפיק זיכוי..." : "הפק חשבונית זיכוי"}</Button></>}
       </DialogFooter>
     </DialogContent>
   </Dialog>;

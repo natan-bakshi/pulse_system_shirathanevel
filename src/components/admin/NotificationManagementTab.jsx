@@ -19,6 +19,7 @@ import WhatsAppQueueSettings from "./notifications/WhatsAppQueueSettings";
 import WhatsAppLiveButtonSettings from "./notifications/WhatsAppLiveButtonSettings";
 import WhatsAppSupplierNoticeButtons from "./notifications/WhatsAppSupplierNoticeButtons";
 import WhatsAppReminderAckSettings from "./notifications/WhatsAppReminderAckSettings";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * רכיב ניהול התראות מרכזי - מתאם בין כל תת-הקומפוננטות:
@@ -28,6 +29,7 @@ import WhatsAppReminderAckSettings from "./notifications/WhatsAppReminderAckSett
  * - ManualSendersSection: שולחי Push ו-WhatsApp ידניים
  */
 export default function NotificationManagementTab() {
+  const {t: uiTranslate}=useLanguage();
   const queryClient = useQueryClient();
   const location = useLocation();
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -135,25 +137,25 @@ export default function NotificationManagementTab() {
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            ניהול התראות
+            {uiTranslate("ניהול התראות")}
           </h2>
           <p className="text-gray-500 text-sm mt-1">
-            סוגי התראות, כפתורים, WhatsApp ותזמונים — במקום אחד
+            {uiTranslate("סוגי התראות, כפתורים, WhatsApp ותזמונים — במקום אחד")}
           </p>
         </div>
         {section === "templates" && <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 ml-2" />
-          תבנית חדשה
+          {uiTranslate("תבנית חדשה")}
         </Button>}
       </div>
 
       {/* One clear place for all notification & WhatsApp controls. */}
       <Tabs value={section} onValueChange={setSection} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto gap-1">
-          <TabsTrigger value="templates" className="text-xs sm:text-sm">סוגי התראות</TabsTrigger>
-          <TabsTrigger value="buttons" className="text-xs sm:text-sm">כפתורים בהודעות</TabsTrigger>
-          <TabsTrigger value="whatsapp" className="text-xs sm:text-sm">חיבור ושליחת WhatsApp</TabsTrigger>
-          <TabsTrigger value="stats" className="text-xs sm:text-sm">סטטיסטיקות</TabsTrigger>
+          <TabsTrigger value="templates" className="text-xs sm:text-sm">{uiTranslate("סוגי התראות")}</TabsTrigger>
+          <TabsTrigger value="buttons" className="text-xs sm:text-sm">{uiTranslate("כפתורים בהודעות")}</TabsTrigger>
+          <TabsTrigger value="whatsapp" className="text-xs sm:text-sm">{uiTranslate("חיבור ושליחת WhatsApp")}</TabsTrigger>
+          <TabsTrigger value="stats" className="text-xs sm:text-sm">{uiTranslate("סטטיסטיקות")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="templates" className="space-y-4 mt-4">
@@ -161,11 +163,11 @@ export default function NotificationManagementTab() {
       <Alert className="bg-blue-50 border-blue-200">
         <Info className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-800 text-sm">
-          <strong>איך המערכת מזהה את הנמענים?</strong>
+          <strong>{uiTranslate("איך המערכת מזהה את הנמענים?")}</strong>
           <ul className="mt-2 list-disc mr-4 space-y-1">
-            <li><strong>ספקים:</strong> המערכת מזהה את הספקים המשובצים לאירוע הרלוונטי לפי השיבוצים ב-EventService</li>
-            <li><strong>לקוחות:</strong> המערכת מזהה את הלקוח לפי שדה parents באירוע או לפי המשתמש שיצר את האירוע</li>
-            <li><strong>התראות על יתרות:</strong> נשלחות ללקוחות שיש להם אירועים עם יתרה פתוחה לאחר שהאירוע הושלם</li>
+            <li><strong>{uiTranslate("ספקים:")}</strong> {uiTranslate("המערכת מזהה את הספקים המשובצים לאירוע הרלוונטי לפי השיבוצים ב-EventService")}</li>
+            <li><strong>{uiTranslate("לקוחות:")}</strong> {uiTranslate("המערכת מזהה את הלקוח לפי שדה parents באירוע או לפי המשתמש שיצר את האירוע")}</li>
+            <li><strong>{uiTranslate("התראות על יתרות:")}</strong> {uiTranslate("נשלחות ללקוחות שיש להם אירועים עם יתרה פתוחה לאחר שהאירוע הושלם")}</li>
           </ul>
         </AlertDescription>
       </Alert>
@@ -188,36 +190,32 @@ export default function NotificationManagementTab() {
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
             <CardHeader>
               <CardTitle className="flex gap-2 items-center text-lg">
-                <MessageSquare className="h-5 w-5" />כפתורים בהודעות WhatsApp
+                <MessageSquare className="h-5 w-5" />{uiTranslate("כפתורים בהודעות WhatsApp")}
               </CardTitle>
               <CardDescription>
-                בוחרים מה יופיע בכל סוג הודעה ומה יקרה בלחיצה, בלי להתעסק בקישורים או בקוד.
+                {uiTranslate("בוחרים מה יופיע בכל סוג הודעה ומה יקרה בלחיצה, בלי להתעסק בקישורים או בקוד.")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg border p-4 space-y-2">
-                <h3 className="font-semibold">שיבוץ חדש לספק</h3>
+                <h3 className="font-semibold">{uiTranslate("שיבוץ חדש לספק")}</h3>
                 <p className="text-sm text-gray-600">
-                  אישור שיבוץ — מעדכן את השיבוץ במערכת; דחיית שיבוץ — מעדכנת דחייה;
-                  פנייה למשרד — פותחת שיחת WhatsApp עם פרטי השיבוץ.
-                  קישור ליומן הספק מצורף גם להודעה. אישור ודחייה מתוך Pulse ממשיכים לעבוד כרגיל.
+                  {uiTranslate("אישור שיבוץ — מעדכן את השיבוץ במערכת; דחיית שיבוץ — מעדכנת דחייה; פנייה למשרד — פותחת שיחת WhatsApp עם פרטי השיבוץ. קישור ליומן הספק מצורף גם להודעה. אישור ודחייה מתוך Pulse ממשיכים לעבוד כרגיל.")}
                 </p>
                 <WhatsAppLiveButtonSettings active={true}/>
               </div>
               <WhatsAppSupplierNoticeButtons active={true}/>
               <WhatsAppReminderAckSettings />
               <div className="border rounded-lg p-4 text-sm space-y-2">
-                <strong>כפתורים לפי תבנית התראה</strong>
+                <strong>{uiTranslate("כפתורים לפי תבנית התראה")}</strong>
                 <p className="text-gray-600">
-                  התאמת הכפתורים נמצאת עכשיו בתוך כל תבנית: סוגי התראות ← עריכת תבנית ← כפתורים.
-                  הגדרות הספק והכפתורים הכלליים נשארו כאן.
+                  {uiTranslate("התאמת הכפתורים נמצאת עכשיו בתוך כל תבנית: סוגי התראות ← עריכת תבנית ← כפתורים. הגדרות הספק והכפתורים הכלליים נשארו כאן.")}
                 </p>
                 <Button type="button" size="sm" variant="outline"
-                  onClick={()=>setSection('templates')}>עבור לתבניות ההתראות</Button>
+                  onClick={()=>setSection('templates')}>{uiTranslate("עבור לתבניות ההתראות")}</Button>
               </div>
               <p className="text-xs text-gray-600">
-                הכפתורים האפשריים כרגע מותאמים להודעות לספקים שנשלחות בפרטי דרך Green API.
-                כפתורים חדשים שמשנים מידע במערכת יופיעו לבחירה רק לאחר שתמומש עבורם פעולה מאובטחת.
+                {uiTranslate("הכפתורים האפשריים כרגע מותאמים להודעות לספקים שנשלחות בפרטי דרך Green API. כפתורים חדשים שמשנים מידע במערכת יופיעו לבחירה רק לאחר שתמומש עבורם פעולה מאובטחת.")}
               </p>
             </CardContent>
           </Card>
@@ -227,10 +225,10 @@ export default function NotificationManagementTab() {
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
             <CardHeader>
               <CardTitle className="flex gap-2 items-center text-lg">
-                <Settings2 className="h-5 w-5" />WhatsApp — חיבור ושליחה
+                <Settings2 className="h-5 w-5" />{uiTranslate("WhatsApp — חיבור ושליחה")}
               </CardTitle>
               <CardDescription>
-                בוחרים את ספק WhatsApp ומנהלים את שליחת ההודעות. כלים מתקדמים לתקלות מקופלים כברירת מחדל.
+                {uiTranslate("בוחרים את ספק WhatsApp ומנהלים את שליחת ההודעות. כלים מתקדמים לתקלות מקופלים כברירת מחדל.")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -243,32 +241,32 @@ export default function NotificationManagementTab() {
         <TabsContent value="stats" className="mt-4">
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
             <CardHeader>
-              <CardTitle>סטטיסטיקות התראות</CardTitle>
-              <CardDescription>סקירת פעילות מערכת ההתראות</CardDescription>
+              <CardTitle>{uiTranslate("סטטיסטיקות התראות")}</CardTitle>
+              <CardDescription>{uiTranslate("סקירת פעילות מערכת ההתראות")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-blue-50 rounded-lg text-center">
                   <p className="text-2xl font-bold text-blue-600">{templates.length}</p>
-                  <p className="text-sm text-gray-600">תבניות</p>
+                  <p className="text-sm text-gray-600">{uiTranslate("תבניות")}</p>
                 </div>
                 <div className="p-4 bg-green-50 rounded-lg text-center">
                   <p className="text-2xl font-bold text-green-600">
                     {templates.filter(t => t.is_active).length}
                   </p>
-                  <p className="text-sm text-gray-600">פעילות</p>
+                  <p className="text-sm text-gray-600">{uiTranslate("פעילות")}</p>
                 </div>
                 <div className="p-4 bg-yellow-50 rounded-lg text-center">
                   <p className="text-2xl font-bold text-yellow-600">
                     {templates.filter(t => t.trigger_type === 'scheduled_check').length}
                   </p>
-                  <p className="text-sm text-gray-600">מתוזמנות</p>
+                  <p className="text-sm text-gray-600">{uiTranslate("מתוזמנות")}</p>
                 </div>
                 <div className="p-4 bg-purple-50 rounded-lg text-center">
                   <p className="text-2xl font-bold text-purple-600">
                     {templates.filter(t => ['entity_create', 'entity_update'].includes(t.trigger_type)).length}
                   </p>
-                  <p className="text-sm text-gray-600">מונחות אירועים</p>
+                  <p className="text-sm text-gray-600">{uiTranslate("מונחות אירועים")}</p>
                 </div>
               </div>
             </CardContent>

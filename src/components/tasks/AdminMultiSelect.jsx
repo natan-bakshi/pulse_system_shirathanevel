@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, X, ChevronDown } from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * רכיב בחירת מנהלים - בחירה מרובה
  * מקבל רשימה של מנהלים (admins) ומחזיר את ה-IDs שנבחרו
  */
 export default function AdminMultiSelect({ admins = [], selectedIds = [], onChange, placeholder = "בחר מנהלים..." }) {
+  const {t: uiTranslate}=useLanguage();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -107,7 +109,7 @@ export default function AdminMultiSelect({ admins = [], selectedIds = [], onChan
           </div>
           {selectedIds.length > 0 && (
             <div className="p-2 border-t flex justify-between items-center">
-              <span className="text-xs text-gray-500">{selectedIds.length} נבחרו</span>
+              <span className="text-xs text-gray-500">{selectedIds.length} {uiTranslate("נבחרו")}</span>
               <Button
                 type="button"
                 variant="ghost"

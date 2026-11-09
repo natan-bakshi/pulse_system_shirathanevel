@@ -7,6 +7,7 @@ import { Plus, Loader2, ChevronDown, ChevronUp, ListChecks } from 'lucide-react'
 import TaskItem from './TaskItem';
 import TaskFormDialog from './TaskFormDialog';
 import useTaskActions from './useTaskActions';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * לשונית "משימות לביצוע" בכרטיסיית האירוע.
@@ -15,6 +16,7 @@ import useTaskActions from './useTaskActions';
  * - מציגה משימות פתוחות + רשימה מתקפלת של משימות שבוצעו
  */
 export default function EventTasksTab({ eventId, currentUser }) {
+  const {t: uiTranslate}=useLanguage();
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -105,11 +107,11 @@ export default function EventTasksTab({ eventId, currentUser }) {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-red-800" />
-            <h3 className="text-lg font-semibold">משימות לביצוע</h3>
+            <h3 className="text-lg font-semibold">{uiTranslate("משימות לביצוע")}</h3>
           </div>
           <Button onClick={handleOpenNew} className="bg-red-800 hover:bg-red-700 text-white">
             <Plus className="h-4 w-4 ml-1" />
-            משימה חדשה
+            {uiTranslate("משימה חדשה")}
           </Button>
         </div>
 
@@ -163,7 +165,7 @@ export default function EventTasksTab({ eventId, currentUser }) {
                   onClick={() => setShowCompleted(!showCompleted)}
                   className="w-full justify-between text-sm text-gray-600 hover:text-gray-900"
                 >
-                  <span>משימות שבוצעו ({completedTasks.length})</span>
+                  <span>{uiTranslate("משימות שבוצעו (")}{completedTasks.length})</span>
                   {showCompleted ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
 

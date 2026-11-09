@@ -3,6 +3,7 @@ import {base44} from '@/api/base44Client';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Save,RefreshCw} from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // A friendly editor over the existing four SERVER-ALLOWLISTED Green sources.
 // This is NOT one setting per NotificationTemplate record. That requires an
@@ -35,6 +36,7 @@ function modeButtons(mode){
   office:mode==='office'||mode==='both'};
 }
 export default function WhatsAppSupplierNoticeButtons({active=false}){
+  const {t: uiTranslate}=useLanguage();
  const [saved,setSaved]=useState(null),[draft,setDraft]=useState(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
 
@@ -154,7 +156,7 @@ export default function WhatsAppSupplierNoticeButtons({active=false}){
   </p>
   <div className="flex flex-wrap gap-2">
    <Button size="sm" variant="outline" disabled={busy} onClick={load}>
-    <RefreshCw className="h-4 w-4 ml-1"/>רענן
+    <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן")}
    </Button>
    <Button size="sm" disabled={busy||!dirty} onClick={save}>
     <Save className="h-4 w-4 ml-1"/>שמור בחירת כפתורים

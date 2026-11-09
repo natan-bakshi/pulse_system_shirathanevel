@@ -9,6 +9,7 @@ import AdminClosingVerification from "@/components/billing/AdminClosingVerificat
 import ClosingStatus from "@/components/billing/ClosingStatus";
 import { closingText,localizedSnapshot } from "@/components/billing/closingI18n";
 import { Button } from "@/components/ui/button";
+import {useLanguage} from '@/i18n/LanguageProvider';
 const field="w-full rounded-md border p-3 bg-white";
 function SignaturePad({onChange,clearLabel="נקה חתימה"}) {
  const canvas=useRef(null),lines=useRef([]),drawing=useRef(false);
@@ -22,6 +23,7 @@ function SignaturePad({onChange,clearLabel="נקה חתימה"}) {
  <Button type="button" variant="ghost" onClick={()=>{lines.current=[];repaint();onChange([]);}}>{clearLabel}</Button></div>;
 }
 export default function EventClosing(){
+  const {t: uiTranslate}=useLanguage();
  const id=new URLSearchParams(location.search).get("id")||"";
  const auth=useRef(null);
  if(!auth.current){
@@ -84,7 +86,7 @@ export default function EventClosing(){
    <div className="flex flex-wrap justify-between gap-2"><Button variant="link" onClick={()=>setIntroSeen(false)}>{language==="en"?"What does this process include?":"מה כולל התהליך?"}</Button></div>
    {incomplete&&<aside role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7"><strong>{language==="en"?"Still needed to complete the process:":"להשלמת התהליך עדיין נדרשים:"}</strong><ul className="list-disc list-inside">{outstanding.map(step=><li key={step}>{step}</li>)}</ul>{agreement.deposit_method==="bank"&&<p>{language==="en"?"You may return after the transfer is recorded; your saved signature is retained.":"אפשר לחזור לאחר רישום ההעברה; החתימה שנשמרה נשארת בתוקף."}</p>}</aside>}
    {agreement.require_token&&<aside className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 text-sm leading-7"><h2 className="font-bold text-red-950 mb-2">{language==="en"?"The card is security for the agreement":"הכרטיס הוא ביטחון לקיום ההסכם"}</h2>{securityExplanation[language]||securityExplanation.he}</aside>}
-   <div className="flex justify-end"><label className="text-sm">{language==="en"?"Form language":"שפת הטופס"}<select aria-label={language==="en"?"Form language":"שפת הטופס"} className="ms-2 rounded border p-2" value={language} disabled={!!agreement.signed_at} onChange={e=>{userSelectedLanguage.current=true;setLanguage(e.target.value);setAccepted({});}}><option value="he">עברית</option>{agreement.snapshot.translations?.en?.terms&&<option value="en">English</option>}</select></label></div>
+   <div className="flex justify-end"><label className="text-sm">{language==="en"?"Form language":"שפת הטופס"}<select aria-label={language==="en"?"Form language":"שפת הטופס"} className="ms-2 rounded border p-2" value={language} disabled={!!agreement.signed_at} onChange={e=>{userSelectedLanguage.current=true;setLanguage(e.target.value);setAccepted({});}}><option value="he">{uiTranslate("עברית")}</option>{agreement.snapshot.translations?.en?.terms&&<option value="en">English</option>}</select></label></div>
    <p className="text-sm text-slate-600">{t.version} {agreement.version} · {t.state}: {statusLabel(agreement.state,language)}</p>
    <AgreementView snapshot={agreement.snapshot} currentMilestones={agreement.payment_schedule?.milestones} effectiveDeposit={agreement.effective_deposit} language={language} paidAmount={agreement.deposit_received} busy={busy} onOpenQuote={()=>run(()=>pdf("quote"))}/>
    <section className="space-y-4"><h2 className="text-xl font-semibold">{t.consents}</h2>{view.clauses.map(c=><label key={c.code} className="block border border-stone-200 rounded-xl p-5 bg-stone-50/50">

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Search } from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function AddServiceToPackageDraftDialog({
   open,
@@ -17,6 +18,7 @@ export default function AddServiceToPackageDraftDialog({
   setSelected,
   onAdd
 }) {
+  const {t: uiTranslate}=useLanguage();
   // Nested inside modal EventForm. Radix must treat this dialog as the top
   // active modal so the parent's scroll lock won't intercept its list swipes.
   return (
@@ -32,11 +34,11 @@ export default function AddServiceToPackageDraftDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>בחר שירותים להוספה</Label>
+            <Label>{uiTranslate("בחר שירותים להוספה")}</Label>
             <div className="relative mb-2">
               <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="חיפוש שירותים..."
+                placeholder={uiTranslate("חיפוש שירותים...")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -63,7 +65,7 @@ export default function AddServiceToPackageDraftDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(''); }}>ביטול</Button>
+          <Button variant="outline" onClick={() => { onOpenChange(false); setSearchTerm(''); }}>{uiTranslate("ביטול")}</Button>
           <Button onClick={onAdd} disabled={selected.length === 0} className="bg-red-800 hover:bg-red-700">הוסף לחבילה</Button>
         </DialogFooter>
       </DialogContent>

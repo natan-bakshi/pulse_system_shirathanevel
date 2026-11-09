@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * Dropdown selector for organizer type.
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
  * Loads default type when value is empty.
  */
 export default function OrganizerTypeSelector({ value, onChange, disabled, className = "" }) {
+  const {t: uiTranslate}=useLanguage();
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -105,11 +107,11 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
         <DialogContent dir="rtl" className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>סוג הזמנה חדש</DialogTitle>
+            <DialogTitle>{uiTranslate("סוג הזמנה חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>שם סוג ההזמנה</Label>
+              <Label>{uiTranslate("שם סוג ההזמנה")}</Label>
               <Input
                 value={newTypeName}
                 onChange={(e) => setNewTypeName(e.target.value)}
@@ -120,7 +122,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowNewDialog(false)}>ביטול</Button>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>{uiTranslate("ביטול")}</Button>
             <Button onClick={handleCreate} disabled={!newTypeName.trim() || isCreating}>
               {isCreating && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
               צור

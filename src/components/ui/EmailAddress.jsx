@@ -1,9 +1,11 @@
 import React from "react";
 import { Mail, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function EmailAddress({ email, className = "" }) {
-    if (!email) return <span className={className}>לא צוין</span>;
+  const {t: uiTranslate}=useLanguage();
+    if (!email) return <span className={className}>{uiTranslate("לא צוין")}</span>;
     
     const copyToClipboard = () => {
         navigator.clipboard.writeText(email);

@@ -3,9 +3,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from "@/components/billing/documentTypes";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // שורת הסינון הגלובלית של הדוחות הכספיים.
 export default function ReportFilters({ filters, onChange, events = [] }) {
+  const {t: uiTranslate}=useLanguage();
   const set = (key, value) => onChange({ ...filters, [key]: value });
 
   return (
@@ -23,7 +25,7 @@ export default function ReportFilters({ filters, onChange, events = [] }) {
         </Select>
       </div>
       <div>
-        <Label className="text-xs text-gray-500">סטטוס</Label>
+        <Label className="text-xs text-gray-500">{uiTranslate("סטטוס")}</Label>
         <Select value={filters.status} onValueChange={(value) => set("status", value)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -33,16 +35,16 @@ export default function ReportFilters({ filters, onChange, events = [] }) {
         </Select>
       </div>
       <div>
-        <Label className="text-xs text-gray-500">אירוע</Label>
+        <Label className="text-xs text-gray-500">{uiTranslate("אירוע")}</Label>
         <Select value={filters.eventId} onValueChange={(value) => set("eventId", value)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent className="max-h-64">
-            <SelectItem value="all">כל האירועים</SelectItem>
+            <SelectItem value="all">{uiTranslate("כל האירועים")}</SelectItem>
             {events.map((event) => <SelectItem key={event.id} value={event.id}>{event.event_name || event.family_name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
-      <div><Label className="text-xs text-gray-500">חיפוש</Label><Input value={filters.search} onChange={(event) => set("search", event.target.value)} placeholder="מספר מסמך או לקוח" /></div>
+      <div><Label className="text-xs text-gray-500">{uiTranslate("חיפוש")}</Label><Input value={filters.search} onChange={(event) => set("search", event.target.value)} placeholder="מספר מסמך או לקוח" /></div>
     </div>
   );
 }

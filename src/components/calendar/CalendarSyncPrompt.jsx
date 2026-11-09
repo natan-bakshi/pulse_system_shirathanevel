@@ -4,8 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Calendar, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function CalendarSyncPrompt({ user }) {
+  const {t: uiTranslate}=useLanguage();
   const [visible, setVisible] = useState(false);
   const [showFollowUp, setShowFollowUp] = useState(false);
   const navigate = useNavigate();
@@ -101,7 +103,7 @@ export default function CalendarSyncPrompt({ user }) {
             <div className="p-4" dir="rtl">
               <p className="text-sm text-gray-700 leading-relaxed">
                 אין בעיה! כרגע האירועים שלך לא יסונכרנו ליומן Google. 
-                אם תשנה את דעתך בעתיד, תמיד תוכל להפעיל סנכרון דרך <strong>הגדרות משתמש</strong> 📱
+                אם תשנה את דעתך בעתיד, תמיד תוכל להפעיל סנכרון דרך <strong>{uiTranslate("הגדרות משתמש")}</strong> 📱
               </p>
               <Button
                 onClick={handleCloseFollowUp}

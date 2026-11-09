@@ -1,9 +1,11 @@
 import React from "react";
 import { Phone, MessageCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function PhoneNumber({ phone, className = "" }) {
-    if (!phone) return <span className={className}>לא צוין</span>;
+  const {t: uiTranslate}=useLanguage();
+    if (!phone) return <span className={className}>{uiTranslate("לא צוין")}</span>;
     
     const phoneNumber = phone.replace(/[^0-9]/g, '');
     const whatsappLink = `https://wa.me/972${phoneNumber.substring(1)}`;

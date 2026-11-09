@@ -26,6 +26,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
 const DEFAULT_VISIBLE_STATUSES = ["confirmed", "in_progress"];
 
 export default function AdminDashboard() {
+  const {t: uiTranslate}=useLanguage();
   const {t,locale}=useLanguage();
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
@@ -417,7 +418,7 @@ export default function AdminDashboard() {
                   <Plus className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'New Event':<>אירוע<br/>חדש</>}</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'New Event':<>{uiTranslate("אירוע")}<br/>{uiTranslate("חדש")}</>}</span>
             </button>
 
             {/* Events Board */}
@@ -430,7 +431,7 @@ export default function AdminDashboard() {
                   <Calendar className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Events Board':<>לוח<br/>אירועים</>}</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Events Board':<>לוח<br/>{uiTranslate("אירועים")}</>}</span>
             </button>
 
             {/* My Tasks */}
@@ -456,7 +457,7 @@ export default function AdminDashboard() {
                   <Calculator className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Bar Mitzvah Calculator':<>מחשבון<br/>בר מצווה</>}</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Bar Mitzvah Calculator':<>מחשבון<br/>{uiTranslate("בר מצווה")}</>}</span>
             </button>
 
             {/* Dashboard Settings */}
@@ -469,7 +470,7 @@ export default function AdminDashboard() {
                   <Settings className="h-6 w-6 text-gray-700" />
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Dashboard Settings':<>הגדרות<br/>דשבורד</>}</span>
+              <span className="text-[11px] font-medium text-white/90 leading-tight text-center w-full">{locale==='en'?'Dashboard Settings':<>{uiTranslate("הגדרות")}<br/>{uiTranslate("דשבורד")}</>}</span>
             </button>
 
           </div>
@@ -486,10 +487,10 @@ export default function AdminDashboard() {
       </div>
 
       <div data-tour="admin-stats-cards" className="grid grid-cols-4 gap-1.5 sm:gap-3 md:gap-6">
-        <StatCard title="אירועים עתידיים" value={stats.futureEvents} icon={Calendar} color="wine" />
-        <StatCard title="אירועים החודש" value={stats.thisMonthEvents} icon={Clock} color="gold" />
-        <StatCard title="שיבוצים ממתינים" value={stats.pendingAssignments} icon={Clock} color="wine" />
-        <StatCard title="שיבוצים שנדחו" value={stats.rejectedAssignments} icon={AlertTriangle} color="gold" />
+        <StatCard title={uiTranslate("אירועים עתידיים")} value={stats.futureEvents} icon={Calendar} color="wine" />
+        <StatCard title={uiTranslate("אירועים החודש")} value={stats.thisMonthEvents} icon={Clock} color="gold" />
+        <StatCard title={uiTranslate("שיבוצים ממתינים")} value={stats.pendingAssignments} icon={Clock} color="wine" />
+        <StatCard title={uiTranslate("שיבוצים שנדחו")} value={stats.rejectedAssignments} icon={AlertTriangle} color="gold" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">

@@ -5,6 +5,7 @@ import {Input} from '@/components/ui/input';
 import {RefreshCw,Save} from 'lucide-react';
 import WhatsAppCustomButtonEditor,{newCustomSupplierButtons}
  from './WhatsAppCustomButtonEditor';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const choices=[
  {value:'inherit',label:'כמו ברירת המחדל לסוג ההתראה'},
@@ -42,6 +43,7 @@ function messageOf(error){
 const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab({
  template
 },ref){
+  const {t: uiTranslate}=useLanguage();
  const [stored,setStored]=useState(null);
  const [value,setValue]=useState(null);
  const [busy,setBusy]=useState(false);
@@ -144,7 +146,7 @@ const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab(
     template={template} value={value} busy={busy}
     onChange={setValue}/>}
    {!['custom','inherit'].includes(modeOf(value))&&<div className="rounded-md border p-3 space-y-2 bg-gray-50">
-    <p className="text-xs font-medium">תצוגה מקדימה</p>
+    <p className="text-xs font-medium">{uiTranslate("תצוגה מקדימה")}</p>
     <div className="flex flex-wrap gap-2">
      {value?.portal&&<span className="rounded border bg-white px-3 py-2 text-xs">
       {value.portalLabel||'כניסה למערכת'}
@@ -185,7 +187,7 @@ const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab(
      <Save className="h-4 w-4 ml-1"/>שמור כפתורים
     </Button>
     <Button type="button" size="sm" variant="outline" disabled={busy} onClick={load}>
-     <RefreshCw className="h-4 w-4 ml-1"/>רענן
+     <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן")}
     </Button>
     {dirty&&<Button type="button" size="sm" variant="ghost"
      disabled={busy} onClick={()=>setValue(initial)}>בטל שינויי כפתורים</Button>}

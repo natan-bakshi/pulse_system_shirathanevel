@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import ContactPicker from '@/components/ui/ContactPicker';
 import { normalizeContact, parseContactSettings, stringifyContactSettings } from '@/lib/contactSettings';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const phoneToggles = [
   ['show_phone', 'הצג מספר'],
@@ -21,6 +22,7 @@ const emailToggles = [
 ];
 
 export default function ContactSettingsEditor({ value, onChange }) {
+  const {t: uiTranslate}=useLanguage();
   const [expandedContactId, setExpandedContactId] = React.useState(null);
   const contacts = parseContactSettings(value);
 
@@ -97,7 +99,7 @@ export default function ContactSettingsEditor({ value, onChange }) {
                     <Input id={`contact-role-${contact.id}`} value={contact.role} onChange={e => updateContact(contact.id, { role: e.target.value })} />
                   </div>
                   <div>
-                    <Label htmlFor={`contact-phone-${contact.id}`}>מספר טלפון</Label>
+                    <Label htmlFor={`contact-phone-${contact.id}`}>{uiTranslate("מספר טלפון")}</Label>
                     <Input id={`contact-phone-${contact.id}`} value={contact.phone} onChange={e => updateContact(contact.id, { phone: e.target.value })} dir="ltr" />
                   </div>
                   <div>
@@ -106,7 +108,7 @@ export default function ContactSettingsEditor({ value, onChange }) {
                   </div>
                 </div>
 
-                <ToggleGroup title="טלפון" items={phoneToggles} contact={contact} onChange={updateContact} />
+                <ToggleGroup title={uiTranslate("טלפון")} items={phoneToggles} contact={contact} onChange={updateContact} />
                 <ToggleGroup title="מייל" items={emailToggles} contact={contact} onChange={updateContact} />
               </div>
             )}

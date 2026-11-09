@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Pencil, Trash2, Clock, Zap, Cog, MessageSquare } from "lucide-react";
 import { TRIGGER_TYPES, AUDIENCES, TIMING_UNITS } from "./constants";
 import { getSystemTemplateInfo } from "./systemTemplatesInfo";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 // כרטיס תבנית התראה בודדת - מציג את הפרטים החשובים וכפתורי פעולה
 export default function NotificationTemplateCard({ 
@@ -16,6 +17,7 @@ export default function NotificationTemplateCard({
   onManualTrigger,
   onEditButtons
 }) {
+  const {t: uiTranslate}=useLanguage();
   const canManualTrigger = ['scheduled_check', 'event_status_change'].includes(template.trigger_type);
   const systemInfo = getSystemTemplateInfo(template.type);
   const supportsButtonEditor = template.allowed_channels?.includes('whatsapp') &&
@@ -52,7 +54,7 @@ export default function NotificationTemplateCard({
                 <TooltipTrigger asChild>
                   <Badge variant="outline" className="text-xs border-purple-200 text-purple-700 bg-purple-50 flex items-center gap-1 cursor-help">
                     <Cog className="h-3 w-3" />
-                    תבנית מערכת
+                    {uiTranslate("תבנית מערכת")}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">

@@ -15,8 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ManualPushSender() {
+  const {t: uiTranslate}=useLanguage();
   const [selectedUserId, setSelectedUserId] = useState('');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -114,7 +116,7 @@ export default function ManualPushSender() {
       <CardContent className="space-y-4">
         {/* User Selection */}
         <div>
-          <Label>בחר נמען</Label>
+          <Label>{uiTranslate("בחר נמען")}</Label>
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="בחר משתמש..." />
@@ -184,7 +186,7 @@ export default function ManualPushSender() {
 
         {/* Message */}
         <div>
-          <Label>תוכן ההודעה</Label>
+          <Label>{uiTranslate("תוכן ההודעה")}</Label>
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -219,7 +221,7 @@ export default function ManualPushSender() {
             <AlertDescription className="text-sm">
               {sendResult.success ? (
                 <div>
-                  <div className="font-medium text-green-800">התראה נוצרה בהצלחה</div>
+                  <div className="font-medium text-green-800">{uiTranslate("התראה נוצרה בהצלחה")}</div>
                   <div className="text-xs text-green-700 mt-1">
                     <div>Notification ID: {sendResult.notification_id}</div>
                     {sendResult.push?.sent ? (
@@ -235,7 +237,7 @@ export default function ManualPushSender() {
                 </div>
               ) : (
                 <div className="text-red-800">
-                  שגיאה: {sendResult.error}
+                  {uiTranslate("שגיאה:")} {sendResult.error}
                 </div>
               )}
             </AlertDescription>

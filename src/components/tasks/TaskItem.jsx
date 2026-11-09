@@ -7,6 +7,7 @@ import {
   Users, User as UserIcon, Clock
 } from 'lucide-react';
 import TaskNotesSection from './TaskNotesSection';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const PRIORITY_LABELS = {
   high: { label: 'גבוהה', cls: 'bg-red-100 text-red-800 border-red-200' },
@@ -34,6 +35,7 @@ export default function TaskItem({
   onDelete,
   onUpdateNotes,
 }) {
+  const {t: uiTranslate}=useLanguage();
   const [expanded, setExpanded] = useState(false);
 
   const isCompleted = !!task.is_completed;
@@ -177,7 +179,7 @@ export default function TaskItem({
 
             {highlightForCurrentUser && !isCompleted && (
               <Badge className="text-xs h-5 px-1.5 bg-amber-200 text-amber-900 border-amber-300">
-                עבורי
+                {uiTranslate("עבורי")}
               </Badge>
             )}
           </div>
@@ -187,7 +189,7 @@ export default function TaskItem({
             <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
               {task.description && (
                 <div>
-                  <div className="text-xs font-medium text-gray-500 mb-1">תיאור</div>
+                  <div className="text-xs font-medium text-gray-500 mb-1">{uiTranslate("תיאור")}</div>
                   <p className={`text-sm whitespace-pre-wrap break-words ${isCompleted ? 'text-gray-400' : 'text-gray-800'}`}>
                     {task.description}
                   </p>

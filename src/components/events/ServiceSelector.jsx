@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const quillModules = {
   toolbar: [
@@ -30,6 +31,7 @@ const quillModules = {
 };
 
 export default function ServiceSelector({ selectedServices, onServicesChange, concept }) {
+  const {t: uiTranslate}=useLanguage();
   const [allServices, setAllServices] = useState([]);
   const [allSuppliers, setAllSuppliers] = useState([]);
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
@@ -225,7 +227,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">בחירת שירותים</h3>
+        <h3 className="text-lg font-semibold">{uiTranslate("בחירת שירותים")}</h3>
         <Select onValueChange={handleAddService}>
           <SelectTrigger className="w-64">
             <SelectValue placeholder="הוסף שירות חדש" />
@@ -240,7 +242,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
             <div className="border-t my-1"></div>
             <div className="p-2">
               <Input
-                placeholder="חפש שירות..."
+                placeholder={uiTranslate("חפש שירות...")}
                 onChange={(e) => {
                   const searchTerm = e.target.value.toLowerCase();
                   const options = e.currentTarget.closest('[data-radix-popper-content]')
@@ -341,7 +343,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                       
                       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
                         <div>
-                          <Label className="text-xs">מחיר ליחידה</Label>
+                          <Label className="text-xs">{uiTranslate("מחיר ליחידה")}</Label>
                           <Input
                             type="number"
                             value={service.custom_price || ''}
@@ -355,20 +357,20 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                             checked={service.includes_vat}
                             onCheckedChange={(checked) => handleServiceChange(service.service_id, 'includes_vat', checked)}
                           />
-                          <Label htmlFor={`vat-${service.service_id}`} className="text-xs">כולל מע"מ</Label>
+                          <Label htmlFor={`vat-${service.service_id}`} className="text-xs">{uiTranslate("כולל מע\"מ")}</Label>
                         </div>
                         <div>
-                          <Label className="text-xs">כמות</Label>
+                          <Label className="text-xs">{uiTranslate("כמות")}</Label>
                           <Input
                             type="number"
                             value={service.quantity || ''}
                             onChange={(e) => handleServiceChange(service.service_id, 'quantity', e.target.value)}
-                            placeholder="כמות"
+                            placeholder={uiTranslate("כמות")}
                           />
                         </div>
                       </div>
                       <div className="mt-3">
-                         <Label className="text-xs">הערה ללקוח (יוצג בהצעה)</Label>
+                         <Label className="text-xs">{uiTranslate("הערה ללקוח (יוצג בהצעה)")}</Label>
                          <Input
                             value={service.client_notes || ''}
                             onChange={(e) => handleServiceChange(service.service_id, 'client_notes', e.target.value)}
@@ -390,35 +392,35 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
       <Dialog open={showNewServiceDialog} onOpenChange={setShowNewServiceDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>יצירת שירות חדש</DialogTitle>
+            <DialogTitle>{uiTranslate("יצירת שירות חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>שם השירות</Label>
+              <Label>{uiTranslate("שם השירות")}</Label>
               <Input
                 value={newService.service_name}
                 onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))}
-                placeholder="שם השירות"
+                placeholder={uiTranslate("שם השירות")}
               />
             </div>
             <div>
-              <Label>תיאור השירות</Label>
+              <Label>{uiTranslate("תיאור השירות")}</Label>
               <Textarea
                 value={newService.service_description}
                 onChange={(e) => setNewService(prev => ({ ...prev, service_description: e.target.value }))}
-                placeholder="תיאור מפורט של השירות"
+                placeholder={uiTranslate("תיאור מפורט של השירות")}
               />
             </div>
             <div>
-              <Label>קטגוריה</Label>
+              <Label>{uiTranslate("קטגוריה")}</Label>
               <Input
                 value={newService.category}
                 onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))}
-                placeholder="קטגורית השירות"
+                placeholder={uiTranslate("קטגורית השירות")}
               />
             </div>
             <div>
-              <Label>מחיר בסיס</Label>
+              <Label>{uiTranslate("מחיר בסיס")}</Label>
               <Input
                 type="number"
                 value={newService.base_price}
@@ -432,12 +434,12 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                 checked={newService.default_includes_vat}
                 onCheckedChange={(checked) => setNewService(prev => ({ ...prev, default_includes_vat: checked }))}
               />
-              <Label htmlFor="new-service-vat">כולל מע"מ כברירת מחדל</Label>
+              <Label htmlFor="new-service-vat">{uiTranslate("כולל מע\"מ כברירת מחדל")}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewServiceDialog(false)} disabled={isSavingService}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateService} disabled={isSavingService}>
               {isSavingService ? 'שומר...' : 'צור שירות'}
@@ -449,46 +451,46 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
       <Dialog open={showNewSupplierDialog} onOpenChange={setShowNewSupplierDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>יצירת ספק חדש</DialogTitle>
+            <DialogTitle>{uiTranslate("יצירת ספק חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>שם הספק</Label>
+              <Label>{uiTranslate("שם הספק")}</Label>
               <Input
                 value={newSupplier.supplier_name}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, supplier_name: e.target.value }))}
-                placeholder="שם הספק"
+                placeholder={uiTranslate("שם הספק")}
               />
             </div>
             <div>
-              <Label>איש קשר</Label>
+              <Label>{uiTranslate("איש קשר")}</Label>
               <Input
                 value={newSupplier.contact_person}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_person: e.target.value }))}
-                placeholder="שם איש הקשר"
+                placeholder={uiTranslate("שם איש הקשר")}
               />
             </div>
             <div>
-              <Label>טלפון</Label>
+              <Label>{uiTranslate("טלפון")}</Label>
               <Input
                 value={newSupplier.phone}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="מספר טלפון"
+                placeholder={uiTranslate("מספר טלפון")}
               />
             </div>
             <div>
-              <Label>אימייל</Label>
+              <Label>{uiTranslate("אימייל")}</Label>
               <Input
                 type="email"
                 value={newSupplier.contact_emails[0]}
                 onChange={(e) => setNewSupplier(prev => ({ ...prev, contact_emails: [e.target.value] }))}
-                placeholder="כתובת אימייל"
+                placeholder={uiTranslate("כתובת אימייל")}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewSupplierDialog(false)} disabled={isSavingSupplier}>
-              ביטול
+              {uiTranslate("ביטול")}
             </Button>
             <Button onClick={handleCreateSupplier} disabled={isSavingSupplier}>
               {isSavingSupplier ? 'שומר...' : 'צור ספק'}

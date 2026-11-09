@@ -31,8 +31,10 @@ import { createBackup } from "@/functions/createBackup";
 import { createGoogleSheetBackup } from "@/functions/createGoogleSheetBackup";
 import { listBackups } from "@/functions/listBackups";
 import { restoreFromBackup } from "@/functions/restoreFromBackup";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function BackupManager() {
+  const {t: uiTranslate}=useLanguage();
     const [isBackingUp, setIsBackingUp] = useState(false);
     const [isCreatingSheet, setIsCreatingSheet] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
@@ -159,7 +161,7 @@ export default function BackupManager() {
                         disabled={isLoadingBackups}
                     >
                         <RefreshCw className={`h-4 w-4 ml-1 ${isLoadingBackups ? 'animate-spin' : ''}`} />
-                        רענן
+                        {uiTranslate("רענן")}
                     </Button>
                     <Button 
                         onClick={handleCreateSheet}
@@ -399,7 +401,7 @@ export default function BackupManager() {
                             onClick={() => setShowRestoreDialog(false)}
                             disabled={isRestoring}
                         >
-                            ביטול
+                            {uiTranslate("ביטול")}
                         </Button>
                         <Button
                             variant="destructive"

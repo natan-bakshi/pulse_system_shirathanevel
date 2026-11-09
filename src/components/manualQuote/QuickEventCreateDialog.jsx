@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Save } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * דיאלוג מינימלי ליצירת אירוע חדש מתוך הצעת מחיר ידנית.
  * חובה: שם אירוע + תאריך. שאר השדות אופציונליים — נטענים אחר כך דרך עריכת אירוע.
  */
 export default function QuickEventCreateDialog({ open, onOpenChange, onCreated }) {
+  const {t: uiTranslate}=useLanguage();
   const [eventName, setEventName] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [familyName, setFamilyName] = useState('');
@@ -77,7 +79,7 @@ export default function QuickEventCreateDialog({ open, onOpenChange, onCreated }
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={isSaving}>ביטול</Button>
+          <Button variant="outline" onClick={handleClose} disabled={isSaving}>{uiTranslate("ביטול")}</Button>
           <Button onClick={handleCreate} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
             צור אירוע ושייך
