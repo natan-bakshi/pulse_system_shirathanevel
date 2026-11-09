@@ -271,10 +271,13 @@ export default function WhatsAppQueueSettings(){
       </div>
       {greenConnection&&<p>{uiTranslate("מצב Green:")} <strong>{({authorized:'מחובר',notAuthorized:'לא מחובר',
        starting:'באתחול',sleepMode:'מצב שינה',blocked:'חסום',suspended:'מוגבל'})[greenConnection.state]||'לא ידוע'}</strong></p>}
-      {greenWebhookSettings&&<div role="status" className="rounded bg-gray-50 p-3 space-y-1">
+      {greenWebhookSettings&&<div role="status" className="rounded bg-gray-50 p-3 space-y-2">
        <p>Webhook: {greenWebhookSettings.webhookConfigured?uiTranslate("מוגדר"):uiTranslate("חסר")}</p>
        <p>{uiTranslate("קליטת תגובות:")} {greenWebhookSettings.incomingNotificationsEnabled?uiTranslate("פעילה"):uiTranslate("לא מאומתת")}</p>
        <p>{uiTranslate("אימות Webhook:")} {greenWebhookSettings.webhookTokenConfigured?uiTranslate("מוגדר"):uiTranslate("חסר")}</p>
+       <p>יעד Webhook של כפתורי השיבוץ: <strong>{greenWebhookSettings.qaWebhookTargetMatches===true?'תואם':greenWebhookSettings.qaWebhookTargetMatches===false?'לא תואם':'לא נבדק'}</strong></p>
+       <p>מפתח אימות Webhook: <strong>{greenWebhookSettings.qaWebhookBearerMatches===true?'תואם':greenWebhookSettings.qaWebhookBearerMatches===false?'לא תואם':'לא נבדק'}</strong></p>
+       {greenWebhookSettings.qaWebhookTargetMatches!==true||greenWebhookSettings.qaWebhookBearerMatches!==true||!greenWebhookSettings.incomingNotificationsEnabled?<p className="text-amber-800 font-medium">קליטת הלחיצות אינה מאומתת. יש לבדוק את הגדרות Green לפני שינוי כלשהו. הפעולה כאן היא לקריאה בלבד.</p>:<p className="text-green-800">כתובת הקליטה, מפתח האימות והרשאת הודעות נכנסות תואמים להגדרות השרת. נדרשת עדיין לחיצת ספק אמיתית להוכחת העיבוד.</p>}
       </div>}
       <p className="text-xs text-gray-600">{uiTranslate("הפעולות הן לקריאה בלבד, ללא שליחת הודעות או שינוי הגדרות.")}</p>
      </div>
