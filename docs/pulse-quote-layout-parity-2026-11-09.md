@@ -45,3 +45,12 @@ Read-only audit after the corrections: **729/729 approved field pairs inspected,
 - Historical Hebrew document generation remains byte-identical in the direction helper. No real API2PDF, customer charge, WhatsApp delivery, document signature or event data mutation occurred as part of test execution.
 - Visual layout is consistent by computed-style tests, but real PDF pagination can naturally vary if English wording occupies more or fewer lines than Hebrew. Final physical PDF visual check with a noncustomer test event and API2PDF remains an acceptance step that requires an authenticated browser / authorized PDF operation.
 - Preserve previously fixed EventDetails authentication hook, and perform a read-only event-card smoke check after deploying this checkpoint to ensure the white-screen incident has not returned.
+
+## Verified production release and fresh smoke test
+- Release checkpoint: `6af1b051fde3e8ef0ac0f4ce`, exact published git commit: `bc792787c48f350dcc2398f4ab8e24234950868e`.
+- Base44 deployment at `2026-11-09T11:37:22.586337Z`; verified independent published URL `https://pulse-system.base44.app` and app status `ready` at the exact same commit.
+- A prior test agent run reused a cached result (0 credits, no session start). That was not accepted as this release's smoke test.
+- Created a NEW read-only administrator browser test (flow `6af1b0a8a8cede3632bd7d20`, execution `6af1b0a98a480d3ff0e80991`), and ran it on the current production commit. It started `2026-11-09T11:38:22.622Z`, completed `2026-11-09T11:40:00.546Z`, billed 2.1 test credits, status `success`, `goal_accomplished=true`.
+- Fresh browser opened an existing family event card and confirmed EventDetails visibly rendered its name, date, location and functional tabs. No blank-white-screen regression, no edits/sends/payments.
+- Secondary observation for future UX investigation: the browser test still saw a faint grey overlay it could not dismiss; the event details did render and navigation worked. This was also noted in older testing results and is not evidence of a quote-layout failure. Keep separate from the language/quotation scope.
+- HTML/CSS and source translations were tested and visually compared via DOM computed-style regression, but a genuine production API2PDF page-by-page visual comparison was not performed. Different text lengths may alter physical page breaks without changing template layout.
