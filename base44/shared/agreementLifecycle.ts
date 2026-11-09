@@ -1,5 +1,6 @@
 import { readAll } from "./eventReadiness.ts";
 import {customerMessageTemplate} from './customerMessageTone.ts';
+import {localizedAgreement} from './closingLanguage.ts';
 import { loadMilestonePaymentBalance } from "./milestonePaymentBalance.ts";
 import { calculateEventBalance } from "./eventBilling.ts";
 import { canClose, milestoneState, formatMessage, closingDefaults, roundMoney, firstCompletedPayment, effectiveDeposit, effectiveMilestones, milestoneDeliveryKey } from "./agreementRules.ts";
@@ -45,7 +46,7 @@ export async function deliver(client,a,kind,key,message,file=null,config={},back
   if(!balance.shouldSend)return {id:"",state:balance.paid?"skipped_paid":"skipped_inactive",balance};
   // Render using the fresh outstanding balance, not the earlier loop's snapshot.
   message=formatMessage(customerMessageTemplate('milestone',a.notifications?.language,
-   balance.milestone.template||closingDefaults[a.notifications?.language==="en"?'closing_message_template_en':'closing_message_template']),{customer_name:a.recipient_name,event_name:(await client.entities.Event.get(a.event_id)).event_name,amount:balance.outstanding,currency:balance.currency,due_date:balance.milestone.due_date,business_phone:config.business_phone||""});
+   balance.milestone.template||closingDefaults[a.notifications?.language==="en"?'closing_message_template_en':'closing_message_template']),{customer_name:a.recipient_name,event_name:localizedAgreement(a.snapshot,a.notifications?.language).event_name||(await client.entities.Event.get(a.event_id)).event_name,amount:balance.outstanding,currency:balance.currency,due_date:balance.milestone.due_date,business_phone:config.business_phone||""});
  }
  const db=client.entities;
  const linkedOutbox=async(row:any)=>{
@@ -217,7 +218,7 @@ export async function processAgreementMilestones(client,config) {
      const outstanding=balance.outstanding;
      await client.entities.PaymentMilestone.update(m.id,{message_state:"dispatching"});
      const body=formatMessage(customerMessageTemplate('milestone',current.notifications?.language,
-      m.template||closingDefaults[current.notifications?.language==="en"?'closing_message_template_en':'closing_message_template']),{customer_name:current.recipient_name,event_name:event.event_name,amount:outstanding,currency:a.snapshot.currency,due_date:m.due_date,business_phone:config.business_phone||""});
+      m.template||closingDefaults[current.notifications?.language==="en"?'closing_message_template_en':'closing_message_template']),{customer_name:current.recipient_name,event_name:localizedAgreement(current.snapshot,current.notifications?.language).event_name||event.event_name,amount:outstanding,currency:a.snapshot.currency,due_date:m.due_date,business_phone:config.business_phone||""});
      try{
       const delivery=await deliver(client,current,"milestone",milestoneDeliveryKey(current,m),body,null,config);
       if(delivery.state==="deferred"){await client.entities.PaymentMilestone.update(m.id,{message_state:"pending"});continue;}
