@@ -107,3 +107,17 @@ test('moving WhatsApp administration does not alter existing NotificationTemplat
   'src/components/admin/notifications/WhatsAppReminderAckSettings.jsx'
  ])esbuild.transformSync(read(path),{loader:'jsx',target:'es2022'});
 });
+
+test('read-only Green callback audit shows exact webhook endpoint and bearer matches, not just their presence',()=>{
+ const panel=queue();
+ assert.match(panel,/run\('greenWebhookSettingsAudit'\)/);
+ assert.match(panel,/qaWebhookTargetMatches===true/);
+ assert.match(panel,/qaWebhookBearerMatches===true/);
+ assert.match(panel,/incomingNotificationsEnabled/);
+ assert.match(panel,/uiTranslate\('קליטת הלחיצות אינה מאומתת/);
+ assert.doesNotMatch(panel,/onClick=\{\(\)=>run\('greenButtonQaProvisionWebhook'/);
+ const audit=read('base44/shared/greenWebhookSettingsAudit.ts');
+ assert.match(audit,/payload\.webhookUrl===expected!\.url/);
+ assert.match(audit,/payload\.webhookUrlToken===expected!\.bearer/);
+ assert.match(audit,/noMessagesSent:true/);
+});
