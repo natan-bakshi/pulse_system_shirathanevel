@@ -283,13 +283,35 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
   const pair=map.get(f.entity+':'+f.id)?.fields?.[f.key];
   const val=Object.prototype.hasOwnProperty.call(draft,f.hash)?draft[f.hash]:(pair?.value||'');
   const stale=pair?.value && pair.source!==f.source;
-  return <div key={f.hash} className="space-y-1">
+  const fragments=hebrewTextNodesInTranslation(val);
+  return <div key={f.hash} className="space-y-2">
    <Label className="text-xs">{f.label}</Label>
    <p dir="rtl" className="text-xs text-muted-foreground break-words">
      {f.source.replace(/<[^>]*>/g,' ').slice(0,350)}
    </p>
-   {f.rich?<Textarea rows={3} dir="ltr" lang="en" value={val}
-       onChange={e=>setDraft(d=>({...d,[f.hash]:e.target.value}))}/>:
+   {fragments.length>0&&<div className="rounded-md border border-amber-300 bg-amber-50 p-3 space-y-3" role="group">
+     <p className="font-medium text-sm text-amber-950">{locale==='en'?'Untranslated Hebrew found inside an existing English translation. Fix just the marked text below, or edit the full text.':'נמצא טקסט בעברית בתוך תרגום אנגלי קיים. אפשר לתקן רק את הקטע המסומן, בלי לערוך את המסמך כולו.'}</p>
+     {fragments.map((fragment,i)=>{
+       const id=f.hash+':'+i;
+       return <div key={id} className="space-y-2">
+         <p dir="rtl" className="text-sm font-semibold text-amber-950 break-words">{fragment}</p>
+         <div className="flex flex-col sm:flex-row gap-2">
+           <Input dir="ltr" lang="en" aria-label={locale==='en'?'English replacement for Hebrew text':'תרגום אנגלי לקטע בעברית'}
+             value={fragmentInputs[id]||''} onChange={e=>setFragmentInputs(p=>({...p,[id]:e.target.value}))}
+             placeholder={locale==='en'?'Enter exact English wording':'הקלד כאן נוסח אנגלי מדויק'}/>
+           <Button type="button" variant="outline" disabled={!String(fragmentInputs[id]||'').trim()}
+             onClick={()=>{
+               const next=substituteExactHebrewTextNode(val,fragment,fragmentInputs[id]);
+               if(!next){setError(locale==='en'?'Replace the full Hebrew phrase with safe English text.':'יש להזין נוסח אנגלי תקין במקום הקטע המלא בעברית.');return;}
+               setDraft(d=>({...d,[f.hash]:next}));setError('');
+             }}>{locale==='en'?'Apply to Draft':'החלף בטיוטה'}</Button>
+         </div>
+       </div>;
+     })}
+     <p className="text-xs text-amber-800">{locale==='en'?'The original Hebrew and protected bank numbers stay unchanged. Save the reviewed English draft below.':'המקור בעברית ומספרי חשבון הבנק נשארים ללא שינוי. לאחר ההחלפה יש לשמור את התרגום.'}</p>
+   </div>}
+   {f.rich?<Textarea rows={7} dir="ltr" lang="en" value={val}
+       onChange={e=>setDraft(d=>({...d,[f.hash]:e.target.value}))} className="text-xs sm:text-sm"/>:
     <Input dir="ltr" lang="en" value={val}
        onChange={e=>setDraft(d=>({...d,[f.hash]:e.target.value}))}/>}
    <EnglishDraftButton source={f.source} kind={f.key.includes('description')?'service_description':
@@ -322,7 +344,7 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
       <h3 className="font-semibold">Event & family details</h3>{grouped.event.map(editor)}
     </div>}
     {Object.entries(grouped).filter(([key])=>key!=='event').map(([key,list])=>
-      <details key={key} className="border rounded-lg p-3">
+      <details key={key} defaultOpen={Array.isArray(missingFields)&&!showAll} className="border rounded-lg p-3">
        <summary className="cursor-pointer font-medium text-sm" dir={locale==='en'?'ltr':'rtl'}>
         {t(key==='organizer'?'כותרות של סוג ההזמנה':key==='templates'?'תבניות הצעת מחיר':
          key==='catalog'?'שירותים מהקטלוג':key==='settings'?'הגדרות הצעת מחיר':
