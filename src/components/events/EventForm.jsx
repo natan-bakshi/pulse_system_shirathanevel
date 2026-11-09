@@ -829,7 +829,7 @@ for (const serviceItem of servicesForSave) {
                   </DialogHeader>
                   <div className="py-4">
                     <Textarea 
-                      placeholder="הדבק כאן... (למשל: 10.14 הליכה בחוף 11:45 מסעדה)&#10;המערכת תפריד זמנים ופעילויות באופן אוטומטי." 
+                      placeholder={uiTranslate("הדבק כאן... (למשל: 10.14 הליכה בחוף 11:45 מסעדה) המערכת תפריד זמנים ופעילויות באופן אוטומטי.")} 
                       className="h-64 font-mono text-sm" 
                       value={importText}
                       onChange={(e) => setImportText(e.target.value)}
