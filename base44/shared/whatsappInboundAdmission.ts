@@ -40,8 +40,11 @@ export async function preflightWhatsAppAssignmentResponse(input:{
  if(!authenticateWhatsAppProviderCallback({
   provider:input.provider,headers:input.headers,webhookSecret:input.webhookSecret
  }))return rejected('provider_authentication_failed');
+ // The provider's authenticated callback + durable original Outbox and
+ // revision checks below also protect formerly 48-hour signed buttons.
  const signed=await verifySignedWhatsAppAction({
-  token:input.actionToken,secret:input.actionSigningSecret,now:input.now
+  token:input.actionToken,secret:input.actionSigningSecret,now:input.now,
+  allowHistoricalCallback:input.provider==='green'
  },input.subtle??crypto.subtle);
  if(!signed)return rejected('action_signature_invalid');
  if(signed.provider!==input.provider||signed.senderAccountId!==input.senderAccountId)
