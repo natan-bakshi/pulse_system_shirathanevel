@@ -758,7 +758,10 @@ export default async function(req) {
           file_name: fileName,
           created_at: new Date().toISOString(),
           created_by_user_name: user.full_name || user.email || 'לא ידוע',
-          event_status: currentEvent.status || 'quote'
+          event_status: currentEvent.status || 'quote',
+          document_language: modularQuoteId
+            ? (manualQuote.content?.document_language==='en'?'en':'he')
+            : (manualQuote.document_language==='en'?'en':'he')
         };
         await base44.asServiceRole.entities.Event.update(event.id, {
           quote_history: [...existingHistory, newEntry]
