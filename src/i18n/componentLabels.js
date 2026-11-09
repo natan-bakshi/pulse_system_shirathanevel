@@ -1592,5 +1592,7 @@ export const componentLabels=Object.freeze({
   "ההגדרות נשמרו בהצלחה": "Settings Saved Successfully",
   "שגיאה בשמירת ההגדרות": "Could Not Save Settings",
   "האם אתה בטוח שברצונך למחוק תבנית זו?": "Are You Sure You Want to Delete This Template?",
-  "שגיאה במחיקת התבנית": "Could Not Delete Template"
+  "שגיאה במחיקת התבנית": "Could Not Delete Template",
+  "לא כולל מע\"מ": "VAT Not Included",
+  "סיים": "Finish"
 });
