@@ -92,8 +92,9 @@ export default function SupplierEventView(){
        <Clock3 className="w-4 h-4 text-red-700 shrink-0"/>
        <span>{t('שעת ההתייצבות שלי:')} <strong dir="auto">{s.arrivalTime}</strong></span>
       </p>}
-      {s.standingTime&&s.standingTime!==s.arrivalTime&&<p>
-       <strong>{t('שעת התייצבות לשירות:')}</strong> {s.standingTime}
+      {(s.standingTime||s.pickupPoints?.[0]?.time)&&
+       (s.standingTime||s.pickupPoints?.[0]?.time)!==s.arrivalTime&&<p>
+       <strong>{t('שעת התייצבות לשירות:')}</strong> {s.standingTime||s.pickupPoints[0].time}
       </p>}
       {s.meetingLocation&&<p className="flex items-start gap-2">
        <Navigation className="w-4 h-4 mt-0.5 text-red-700 shrink-0"/>
