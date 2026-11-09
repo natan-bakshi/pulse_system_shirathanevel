@@ -70,6 +70,15 @@ test('full-snapshot MAC binds frozen button labels/order and rejects tampered or
     {...job,interactive_button_bindings_json:changed},click(buttonId),secret,webcrypto.subtle,now+1000),null);
  }
 });
+test('new supplier approval/rejection buttons last 30 days, not just 48 hours',async()=>{
+ const raw=await create();const snapshot=JSON.parse(raw);
+ const token=snapshot.buttons[0].actionToken;
+ const validated=await verifySignedWhatsAppAction({token,secret,now:now+20*86400000},webcrypto.subtle);
+ assert.equal(validated?.action,'assignment_approve');
+ assert.equal(Date.parse(validated.expiresAt)-now,30*86400000);
+ assert.equal(await resolveVerifiedGreenActionForButton(accepted(raw),click(snapshot.buttons[0].buttonId),secret,webcrypto.subtle,now+20*86400000),token);
+ assert.equal(await resolveVerifiedGreenActionForButton(accepted(raw),click(snapshot.buttons[0].buttonId),secret,webcrypto.subtle,now+31*86400000),null);
+});
 test('frozen binding returns identical bytes on worker restart; no regenerated action IDs',async()=>{
  const first=await create();
  const saved={...baseJob(),interactive_button_bindings_json:first};
