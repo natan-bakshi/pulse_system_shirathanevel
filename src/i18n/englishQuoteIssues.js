@@ -1,4 +1,11 @@
-// Error adapter used by preview, PDF and share. No backend call is made here.
+// Error adapters for preview, PDF and share. No backend call is made here.
+export function englishQuoteVisibleSamplesFromError(error) {
+  const payload=error?.response?.data||error?.data||error;
+  const samples=payload?.samples;
+  if(!Array.isArray(samples))return [];
+  return [...new Set(samples.filter(x=>typeof x==='string'&&
+    /[\u0590-\u05ff]/.test(x)).map(x=>x.slice(0,180)))].slice(0,12);
+}
 export function englishQuoteIssuesFromError(error) {
   const candidates=[error?.response?.data,error?.data,error?.response,error];
   for(let payload of candidates){
@@ -12,7 +19,7 @@ export function englishQuoteIssuesFromError(error) {
       Array.isArray(payload.error?.fields)?payload.error.fields:null;
     if(code==='ENGLISH_TRANSLATION_INCOMPLETE'||
        (status===422&&fields)||
-       (status===422&&/English quote has|untranslated or outdated/i.test(message))){
+       (status===422&&/English quote has|untranslated or outdated|contains visible text that was not translated/i.test(message))){
       return [...new Set((fields||[]).filter(x=>typeof x==='string'&&x.length<200))];
     }
   }
