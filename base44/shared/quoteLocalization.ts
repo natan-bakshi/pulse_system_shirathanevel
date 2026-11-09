@@ -18,9 +18,24 @@ export function translationIndex(rows:any[]=[]){
 }
 export async function loadQuoteTranslations(client:any,locale:unknown){
   if(localeForQuote(locale)!=='en')return new Map<string,any>();
-  const rows=await client.asServiceRole.entities.ContentTranslation.filter({
-    locale:'en',status:'approved'
-  },'-updated_date',500);
+  const rows:any[]=[];
+  const seen=new Set<string>();
+  // Avoid silently losing the oldest approved translations after record 500.
+  // Offset pagination only runs when a complete page is returned; repeated
+  // pages (from an older SDK without offset support) terminate safely.
+  for(let offset=0;offset<15000;offset+=500){
+    const page=await client.asServiceRole.entities.ContentTranslation.filter({
+      locale:'en',status:'approved'
+    },'-updated_date',500,offset);
+    if(!Array.isArray(page))break;
+    let added=0;
+    for(let i=0;i<page.length;i++){
+      const item=page[i];
+      const key=String(item?.id||item?.source_entity+':'+item?.source_id);
+      if(!seen.has(key)){seen.add(key);rows.push(item);added++;}
+    }
+    if(page.length<500||added===0)break;
+  }
   return translationIndex(rows);
 }
 export function translationPreservesProtectedContent(source:string,value:string):boolean{
