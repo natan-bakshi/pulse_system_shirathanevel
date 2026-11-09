@@ -456,18 +456,40 @@ export function localizeEventQuoteData(input:{
      }catch{missing.add('event.'+contactKey);}
    }
  }
- // A catalog may contain hundreds of services that are not included in this
- // event. Missing translations for those unrelated records must not block a
- // client-facing English quote.
- const relevantServiceIds=new Set(eventServices.filter(es=>
-    options.includeExternalServices!==false||!es.is_external).map(es=>es.service_id));
- const translatedServices=options.includeServices===false?services:services.map(s=>
-  !relevantServiceIds.has(s.id)?s:({
-   ...s,
-   service_name:field('Service',s.id,'service_name',s.service_name,'catalog.'+s.id+'.service_name'),
-   service_description:options.includeDescriptions===false?s.service_description:
-     field('Service',s.id,'service_description',s.service_description,'catalog.'+s.id+'.service_description')
-  }));
+ // Catalog text is a fallback, not a second client-visible copy. Event
+ // snapshots may deliberately contain fully English, customized names and
+ // descriptions while the current catalog still contains Hebrew. Requiring
+ // unrelated catalog translations would wrongly block those quotes.
+ const requiredCatalog=new Map<string,Set<string>>();
+ if(options.includeServices!==false)for(const es of eventServices){
+   if(es.is_external&&options.includeExternalServices===false)continue;
+   if(!es.service_id)continue;
+   const needed=requiredCatalog.get(es.service_id)||new Set<string>();
+   const visibleName=es.is_package_main_item?
+     (es.package_name||es.service_name):es.service_name;
+   if(!visibleName)needed.add('service_name');
+   const visibleDescription=es.is_package_main_item?
+     (es.package_description||es.service_description):es.service_description;
+   // A missing field inherits catalog data via object spread, and external
+   // services also display details.service_description as a fallback. An
+   // explicitly empty description in a standalone service is not printed.
+   const canFallbackDescription=es.is_external||
+     (es.service_description===undefined&&!!es.is_package_main_item)||
+     (es.service_description===undefined&&!es.is_package_main_item);
+   if(options.includeDescriptions!==false&&!visibleDescription&&canFallbackDescription)
+     needed.add('service_description');
+   requiredCatalog.set(es.service_id,needed);
+ }
+ const translatedServices=options.includeServices===false?services:services.map(s=>{
+   const needed=requiredCatalog.get(s.id);
+   return !needed||!needed.size?s:({
+     ...s,
+     service_name:needed.has('service_name')?
+       field('Service',s.id,'service_name',s.service_name,'catalog.'+s.id+'.service_name'):s.service_name,
+     service_description:needed.has('service_description')?
+       field('Service',s.id,'service_description',s.service_description,'catalog.'+s.id+'.service_description'):s.service_description
+   });
+ });
  const translatedEventServices=eventServices.map(es=>{
    if(options.includeServices===false||es.is_external&&options.includeExternalServices===false)return es;
    const serviceId=es.service_id;
