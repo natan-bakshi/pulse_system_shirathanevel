@@ -190,3 +190,31 @@ test('English translation omits internal notes and hidden custom prices',()=>{
  assert.equal(r.eventServices[0].notes,'הערות פנימיות לספק');
  assert.equal(r.eventServices[0].price_display_text,'מחיר מותאם');
 });
+
+test('family organizer contact heading is a fixed label not a mandatory translation record',()=>{
+ const family={id:'family-1',type_name:'משפחה',contacts_config:JSON.stringify({
+  label:'פרטי ההורים',item_label:'איש קשר'
+ })};
+ const missing=new Set();
+ const localized=l.translateOrganizerQuoteFields(family,new Map(),missing);
+ assert.equal(localized.english_contacts_label,"Parents' Details");
+ assert.equal(missing.size,0);
+});
+test('English quote raises only client-visible fields and includes exact source identifier',()=>{
+ const event={id:'event-1',family_name:'Family',event_name:'Family',
+  child_name:'David',event_date:'2027-01-15',location:'Jerusalem'};
+ const eventServices=[
+  {id:'es-hidden',service_id:'s',service_name:'Concert',
+   service_description:'תיאור מוסתר',notes:'תזכורת פנימית',
+   client_notes:'הערה גלויה',price_display_mode:'default',price_display_text:'מחיר נסתר'}
+ ];
+ const hidden=l.localizeEventQuoteData({event,services:[{id:'s',service_name:'Concert'}],
+  eventServices,templates:[],index:new Map(),
+  options:{includeDescriptions:false,includeClientNotes:false}});
+ assert.equal(hidden.missing.size,0);
+ const visible=l.localizeEventQuoteData({event,services:[{id:'s',service_name:'Concert'}],
+  eventServices,templates:[],index:new Map(),
+  options:{includeDescriptions:false,includeClientNotes:true}});
+ assert.equal(visible.missing.has('service.es-hidden.client_notes'),true);
+ assert.equal(visible.missing.has('service.es-hidden.price_display_text'),false);
+});
