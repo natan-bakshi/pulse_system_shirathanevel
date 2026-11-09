@@ -23,7 +23,9 @@ export function matchesResidualEnglishSample(value,samples=[]){
 export function hebrewTextNodesInTranslation(value){
  if(typeof value!=='string'||!he.test(value))return [];
  const nodes=/</.test(value)?[...value.matchAll(/>([^<>]*)</g)].map(x=>x[1]):[value];
- return [...new Set(nodes.map(s=>s.trim()).filter(s=>s&&he.test(decode(s))))].slice(0,10);
+ return [...new Set(nodes.map(s=>s.trim()).filter(s=>s&&
+  he.test(decode(s).replace(/\[[^\[\]]{1,150}\]/g,' ')
+    .replace(/\{\{[^{}]+\}\}/g,' '))))].slice(0,10);
 }
 
 export function substituteExactHebrewTextNode(current,original,english){
