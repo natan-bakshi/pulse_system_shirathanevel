@@ -51,7 +51,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
   }, [type, typeName, titleTemplate, fields, blocks, contactsConfig, onSave]);
 
   return (
-    <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
+    <Card dir={dir} className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onCancel}>
@@ -132,7 +132,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
                     }}
                     title={`לחץ להוספת [${v.key}]`}
                   >
-                    [{v.key}] - {v.label}
+                    [{v.key}] - {t(v.label)}
                   </Badge>
                 ))}
               </div>
