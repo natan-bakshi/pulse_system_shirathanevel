@@ -199,7 +199,7 @@ test('unsigned, altered, expired, wrong-account and partial snapshots refuse sil
   signingSecret:'different-secret-key-unique-345678901234567'
  })),e=>e.code==='invalid_existing_interactive_snapshot');
  await assert.rejects(prepareFutureGreenAssignmentOutbox(same.client,input({
-  issuedAt:now+3*86400000
+  issuedAt:now+31*86400000
  })),e=>e.code==='invalid_existing_interactive_snapshot');
 });
 test('malformed policy and incomplete origin fail without provider calls',async()=>{
