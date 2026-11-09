@@ -6,7 +6,7 @@ export default function useQuoteActions({quote,title,content,onSaved}) {
   const [busy,setBusy]=useState('');const [id,setId]=useState(quote?.id||'');const [html,setHtml]=useState('');const [link,setLink]=useState('');const [pdf,setPdf]=useState('');const [pdfFile,setPdfFile]=useState(quote?.last_pdf_uri&&
     (quote.last_pdf_language||'he')===(quote.content?.document_language==='en'?'en':'he')
     ?{uri:quote.last_pdf_uri,name:quote.last_pdf_name}:null);const [error,setError]=useState('');
-  async function save(){const values={title:title.trim()||'הצעה מודולרית',content};if(id){const previous=await base44.entities.ModularQuote.get(id);if(JSON.stringify(previous.content)!==JSON.stringify(content)){values.last_pdf_uri='';values.last_pdf_name='';values.last_pdf_language='';}}const saved=id?await base44.entities.ModularQuote.update(id,values):await base44.entities.ModularQuote.create(values);setId(saved.id);onSaved(saved);return saved.id;}
+  async function save(){const values={title:title.trim()||'הצעה מודולרית',content};if(id){const previous=await base44.entities.ModularQuote.get(id);if(JSON.stringify(previous.content)!==JSON.stringify(content)){values.last_pdf_uri='';values.last_pdf_name='';}}const saved=id?await base44.entities.ModularQuote.update(id,values):await base44.entities.ModularQuote.create(values);setId(saved.id);onSaved(saved);return saved.id;}
   async function run(action){setBusy(action);setError('');try{
     if(action==='preview'){const r=await quoteRequest({action:'preview',content});setHtml(r.html);}
     else {const savedId=await save();if(action==='save')toast.success('ההצעה נשמרה');
