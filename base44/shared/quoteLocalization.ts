@@ -257,7 +257,10 @@ export function localizeEventQuoteData(input:{
   // requiring both spellings prevented many otherwise complete documents.
   if(key==='event_name'&&event.family_name&&options.requireEventName!==true)continue;
   if(options.includeServices===false&&key.endsWith('_services_title'))continue;
-  if(key==='external_services_title'&&options.includeExternalServices===false)continue;
+  if(key==='standalone_services_title'&&!eventServices.some(es=>
+    !es.is_external&&!es.is_package_main_item&&!es.parent_package_event_service_id&&!es.package_id))continue;
+  if(key==='external_services_title'&&(options.includeExternalServices===false||
+    !eventServices.some(es=>es.is_external)))continue;
   e[key]=field('Event',event.id,key,event[key],'event.'+key);
  }
  e.__english_concept=approvedField(index,'Event',event.id,'concept',event.concept)||
@@ -331,8 +334,20 @@ export function localizeEventQuoteData(input:{
    if(options.includeServices===false||es.is_external&&options.includeExternalServices===false)return es;
    const serviceId=es.service_id;
    const result={...es};
-   for(const key of ['service_name','service_description','package_name','package_description',
-      'client_notes','price_display_text']){
+   // Translate only data actually displayed by the quote renderer. Old
+   // EventService rows keep package_description snapshots even on ordinary
+   // services and child items, which the renderer does not show.
+   const legacyPackage=!!es.package_id&&!es.parent_package_event_service_id;
+   const visibleTextFields=es.is_package_main_item?[
+     es.package_name?'package_name':'service_name',
+     es.package_description?'package_description':'service_description',
+     'client_notes','price_display_text'
+   ]:[
+     'service_name','service_description',
+     ...(legacyPackage?['package_name','package_description']:[]),
+     'client_notes','price_display_text'
+   ];
+   for(const key of visibleTextFields){
      if((key==='service_description'||key==='package_description')&&options.includeDescriptions===false)continue;
      if(key==='client_notes'&&options.includeClientNotes===false)continue;
      if(key==='price_display_text'&&es.price_display_mode!=='custom_text')continue;
