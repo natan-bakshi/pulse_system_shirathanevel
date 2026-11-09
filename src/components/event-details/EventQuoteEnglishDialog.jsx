@@ -157,15 +157,16 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
      const found=[],seen=new Set();
      for(let offset=0;offset<15000;offset+=500){
        const page=await base44.entities.ContentTranslation.list('-updated_date',500,offset);
-       if(!Array.isArray(page))break;
+       if(!Array.isArray(page))throw Error('Could not load all existing English translations.');
        let added=0;
        for(const row of page){
          const id=String(row.id||row.source_entity+':'+row.source_id);
          if(!seen.has(id)){found.push(row);seen.add(id);added++;}
        }
-       if(page.length<500||added===0)break;
+       if(page.length<500)return found;
+       if(added===0)throw Error('The translation list could not advance to the next page.');
      }
-     return found;
+     throw Error('The translation list exceeded the safe page limit.');
    })(),
    readOrganizer?base44.entities.QuoteOrganizerType.list():Promise.resolve([]),
    readFooter?base44.entities.AppSettings.filter({setting_key:'quote_footer_text'}):Promise.resolve([])
