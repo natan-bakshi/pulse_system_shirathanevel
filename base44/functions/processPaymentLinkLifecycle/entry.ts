@@ -4,6 +4,7 @@ import { readAll } from "../../shared/eventReadiness.ts";
 import { afterCardRelevantChange } from "../../shared/storedCards.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.48";
 import { renderClientMessage, sendClientMessage } from "../../shared/clientBillingMessages.ts";
+import {customerBusinessName} from '../../shared/customerMessageTone.ts';
 
 // מריצה יומית על דרישות תשלום בקישור שטרם שולמו:
 // 1. שולחת תזכורת ללקוח כמה ימים לפני תפוגת הקישור.
@@ -30,7 +31,7 @@ export default async function(req) {
     if (config.billing_enabled !== "true") return Response.json({ skipped: "billing disabled" });
 
     const pending = await base44.asServiceRole.entities.Payment.filter({ payment_status: "pending", is_payment_link: true });
-    const businessName = config.business_name || config.company_name || "המערכת";
+    const businessName = config.business_name || config.company_name || "שירת הנבל";
     const reminderDays = Number(config.payment_link_reminder_days) || 0;
     const now = Date.now();
     const result = { checked: pending.length, reminded: 0, expired: 0 };
@@ -57,7 +58,7 @@ export default async function(req) {
 
       const body = renderClientMessage(config, "reminder", language, {
         name: payment.payer_name || "",
-        business_name: businessName,
+        business_name: customerBusinessName(config,language),
         amount: amountText,
         expiry_date: new Date(payment.link_expires_at).toLocaleDateString(language === "en" ? "en-GB" : "he-IL"),
         link: payment.payment_link_url
@@ -66,7 +67,7 @@ export default async function(req) {
         await sendClientMessage(base44, {
           phone: payment.payer_phone,
           email: payment.payer_email,
-          subject: language === "en" ? `Payment reminder - ${businessName}` : `תזכורת לתשלום - ${businessName}`,
+          subject: language === 'en' ? `A little payment reminder — ${customerBusinessName(config,'en')}` : `תזכורת קטנה לתשלום — ${businessName}`,
           body,
           businessName,
           // Retry of this scheduled task never creates a second WhatsApp for
