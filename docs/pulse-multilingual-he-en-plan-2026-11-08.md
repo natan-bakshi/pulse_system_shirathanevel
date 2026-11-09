@@ -95,3 +95,14 @@ Payment creation/callbacks, invoice amounts/VAT behavior, WhatsApp queues/button
 - The Cloudflare translation Worker and Access are not deployed/connected. Never claim it works or send private client text to an unauthenticated public proxy. Activation requires owner authorization and service connection; fail closed in the meantime.
 - Restore point before these changes: checkpoint 6af100d71efb27f76cf3905b, commit f78919ade992acd36477671ff5c83da221ab911a.
 
+
+### 2026-11-09 — Live EventService quote remediation after screenshot
+- Audited actual admin-only records: 2,880 EventService rows, 96 catalog services, 7 templates. The old catalog-only audit was misleading: repeated EventService snapshots were not inheriting existing translations.
+- Implemented reviewed English lookup across equivalent service/package name and description columns; removed RichText/Quill formatting differences without changing visible source text, numbers, URLs or placeholders. Created source-matched reusable QuotePhrase translations for existing generic business wording and pricing labels.
+- Translated 124 event-scoped EventService client_notes values with numeric tokens preserved. Kept originals unchanged; did not fabricate nonsense/test strings or unknown personal spellings.
+- Only displayed fields now require English: internal service notes, hidden price labels, hidden child/standalone package descriptions, unused event names and irrelevant headings no longer block production of a valid quote.
+- 422 incomplete-translation responses provide exact field IDs. Preview, PDF and sharing errors open the English-content editor focused on those specific event, catalog, template, or organizer fields.
+- Added legacy contact translation support, missing family organizer fixed heading, and translation record pagination beyond 500.
+- Most recent visible-field audit: service_name 1126/1128, package_name 336/341, service_description 1963/2098, package_description 26/45, client_notes 124/127, custom price labels 41/41. Remaining bespoke service descriptions and personal names require human approval; do not call coverage complete.
+- Tests: 1,247 of 1,247 passed, Vite build and git diff check passed. No live customer quote/PDF was issued as a test and no customer message/payment action occurred.
+- Future translation Cloudflare Worker is prepared but NOT connected/deployed. External automated translation will remain unavailable until owner-controlled Cloudflare Access, free quota and VITE_TRANSLATION_WORKER_URL are configured and verified. UI explicitly states the dependency.
