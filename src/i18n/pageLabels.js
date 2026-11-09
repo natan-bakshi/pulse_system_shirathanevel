@@ -443,5 +443,6 @@ export const pageLabels=Object.freeze({
   "קונספט": "Concept",
   "פרטי אירוע": "Event Details",
   "שעת הגעה": "Arrival Time",
-  "שם פרטי": "First Name"
+  "שם פרטי": "First Name",
+  "סגור": "Close"
 });
