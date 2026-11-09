@@ -81,6 +81,22 @@ export function translationPreservesProtectedContent(source:string,value:string)
     return attrs.sort().join('|');
   };
   if(attributes(source)!==attributes(value))return false;
+  // The English edition is the SAME document in a different language.
+  // Preserve paragraph breaks, headings, bold/italics/underlines,
+  // lists, table cells, horizontal rules, anchors and inline spacing.
+  // Losing an empty <p><br></p> can change pagination even if all words
+  // were translated correctly. Inspect only markup; do not touch the words.
+  const structuralTags=/<(?!\/)(p|span|div|strong|b|em|i|u|s|del|mark|br|blockquote|ul|ol|li|img|h[1-6]|table|tbody|thead|tr|td|th|a|hr|pre|code|sup|sub|figure|figcaption)(?=[\s/>])/gi;
+  const markupSequence=(s:string)=>(s.match(structuralTags)||[])
+    .map(tag=>tag.toLowerCase()).join('|');
+  if(markupSequence(source)!==markupSequence(value))return false;
+  const quillPresentation=(s:string)=>(s.match(/\bql-(?:align-(?:left|right|center|justify)|direction-(?:rtl|ltr))\b/g)||[])
+    .sort().join('|');
+  if(quillPresentation(source)!==quillPresentation(value))return false;
+  const inlineStyles=(s:string)=>[...s.matchAll(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi)]
+    .map(match=>match[2].split(';').map(declaration=>declaration.replace(/\s+/g,'').toLowerCase())
+      .filter(Boolean).sort().join(';')).sort().join('|');
+  if(inlineStyles(source)!==inlineStyles(value))return false;
   return true;
 }
 export function approvedField(index:Map<string,any>,entity:string,id:string,field:string,source:unknown){
