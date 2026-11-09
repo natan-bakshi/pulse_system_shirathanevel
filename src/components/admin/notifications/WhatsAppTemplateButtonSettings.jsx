@@ -120,14 +120,13 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
  return <details className="border rounded-lg p-4 text-sm" dir="rtl"
   open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}>
   <summary className="cursor-pointer font-semibold text-base">
-   התאמת כפתורים לתבנית התראה מסוימת
+   {uiTranslate("התאמת כפתורים לתבנית התראה מסוימת")}
   </summary>
   <div className="pt-3 space-y-4">
-   <p className="text-gray-600">אפשר להשאיר כל תבנית על ברירת המחדל, או לתת לה כפתורים משלה.
-    הבחירה לא תשנה התראות אחרות. אפשר לבחור יעד מובנה או להדביק קישור חיצוני מאובטח.</p>
-   {busy&&!draft&&<p role="status">טוען תבניות...</p>}
+   <p className="text-gray-600">{uiTranslate("אפשר להשאיר כל תבנית על ברירת המחדל, או לתת לה כפתורים משלה. הבחירה לא תשנה התראות אחרות. אפשר לבחור יעד מובנה או להדביק קישור חיצוני מאובטח.")}</p>
+   {busy&&!draft&&<p role="status">{uiTranslate("טוען תבניות...")}</p>}
    {draft&&supportedTemplates.length===0&&<p className="text-gray-600">
-    אין כרגע תבניות WhatsApp לספקים שזכאיות לכפתורי קישור נפרדים.</p>}
+    {uiTranslate("אין כרגע תבניות WhatsApp לספקים שזכאיות לכפתורי קישור נפרדים.")}</p>}
    {draft&&supportedTemplates.map(t=>{
     const v=draft[t.id],mode=modeOf(v);
     return <div key={t.id} id={'wa-template-'+t.id}
@@ -140,7 +139,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
       </div>
      </div>
      <label className="block space-y-1">
-      <span className="text-xs font-medium">כפתורים בהודעת WhatsApp של התבנית</span>
+      <span className="text-xs font-medium">{uiTranslate("כפתורים בהודעת WhatsApp של התבנית")}</span>
       <select className="border rounded-md p-2 w-full sm:max-w-md bg-white"
        value={mode} disabled={busy}
        aria-label={'כפתורים לתבנית '+t.name}
@@ -152,8 +151,8 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
       template={t} value={v} busy={busy}
       onChange={value=>editCustom(t.id,value)}/>}
      {mode!=='inherit'&&mode!=='custom'&&<div className="rounded border bg-gray-50 p-3 space-y-2">
-      <p className="text-xs text-gray-600">תצוגה מקדימה — בלי לשלוח הודעה</p>
-      {mode==='none'?<p className="text-xs">הודעה רגילה ללא כפתורים.</p>:
+      <p className="text-xs text-gray-600">{uiTranslate("תצוגה מקדימה — בלי לשלוח הודעה")}</p>
+      {mode==='none'?<p className="text-xs">{uiTranslate("הודעה רגילה ללא כפתורים.")}</p>:
       <div className="flex flex-wrap gap-2">
        {v?.portal&&<span className="rounded border bg-white px-3 py-2 text-xs">
         {v.portalLabel||'כניסה למערכת'}
@@ -162,25 +161,25 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
         {v.officeLabel||'פנייה למשרד'}
        </span>}
       </div>}
-      {v?.portal&&<p className="text-xs text-gray-600">כניסה למערכת: לוח האירועים של הספק.</p>}
+      {v?.portal&&<p className="text-xs text-gray-600">{uiTranslate("כניסה למערכת: לוח האירועים של הספק.")}</p>}
       {v?.office&&<p className="text-xs text-gray-600">
-       פנייה למשרד: שיחת WhatsApp עם המשרד והודעת פתיחה הכוללת אסמכתא.</p>}
+       {uiTranslate("פנייה למשרד: שיחת WhatsApp עם המשרד והודעת פתיחה הכוללת אסמכתא.")}</p>}
       <label className="flex items-center gap-2 text-xs">
        <input type="checkbox" disabled={busy} checked={editingLabels[t.id]===true}
         onChange={e=>setEditingLabels(s=>({...s,[t.id]:e.target.checked}))}/>
-       התאמת שמות הכפתורים
+       {uiTranslate("התאמת שמות הכפתורים")}
       </label>
       {editingLabels[t.id]&&<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
        <label className="space-y-1">
-        <span>שם כפתור הכניסה</span>
+        <span>{uiTranslate("שם כפתור הכניסה")}</span>
         <Input maxLength={25} disabled={busy||!v?.portal}
-         value={v?.portalLabel||''} placeholder="כניסה למערכת"
+         value={v?.portalLabel||''} placeholder={uiTranslate("כניסה למערכת")}
          onChange={e=>editLabel(t.id,'portalLabel',e.target.value)}/>
        </label>
        <label className="space-y-1">
-        <span>שם כפתור המשרד</span>
+        <span>{uiTranslate("שם כפתור המשרד")}</span>
         <Input maxLength={25} disabled={busy||!v?.office}
-         value={v?.officeLabel||''} placeholder="פנייה למשרד"
+         value={v?.officeLabel||''} placeholder={uiTranslate("פנייה למשרד")}
          onChange={e=>editLabel(t.id,'officeLabel',e.target.value)}/>
        </label>
       </div>}
@@ -188,20 +187,18 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
     </div>;
    })}
    <p className="text-xs text-gray-500">
-    מיועד לתזכורות ולהודעות מתוזמנות לספקים שנשלחות דרך Green. כפתורי אישור ודחיית שיבוץ
-    ממשיכים לעבוד במסלול השיבוצים הקיים. תבניות של לקוחות ומנהלים אינן מושפעות.
-    כפתורים אלה דורשים Green וצ'אט אישי; ההצגה תלויה בתמיכת WhatsApp במכשיר הנמען.
+    {uiTranslate("מיועד לתזכורות ולהודעות מתוזמנות לספקים שנשלחות דרך Green. כפתורי אישור ודחיית שיבוץ ממשיכים לעבוד במסלול השיבוצים הקיים. תבניות של לקוחות ומנהלים אינן מושפעות. כפתורים אלה דורשים Green וצ'אט אישי; ההצגה תלויה בתמיכת WhatsApp במכשיר הנמען.")}
    </p>
    <div className="flex flex-wrap gap-2">
     <Button size="sm" variant="outline" disabled={busy} onClick={load}>
      <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן")}
     </Button>
     <Button size="sm" disabled={busy||!dirty} onClick={save}>
-     <Save className="h-4 w-4 ml-1"/>שמור כפתורים לתבניות
+     <Save className="h-4 w-4 ml-1"/>{uiTranslate("שמור כפתורים לתבניות")}
     </Button>
     {dirty&&<Button size="sm" variant="ghost" disabled={busy}
      onClick={()=>setDraft(JSON.parse(JSON.stringify(stored.templates)))}>
-     בטל שינויים
+     {uiTranslate("בטל שינויים")}
     </Button>}
    </div>
    {message&&<p role="status" className="text-green-800">{message}</p>}

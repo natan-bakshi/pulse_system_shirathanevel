@@ -17,7 +17,7 @@ export default function GeneralPaymentsTable({ payments, documentsById }) {
         <thead>
           <tr className="text-right text-gray-500">
             <th className="p-2">{uiTranslate("תאריך")}</th>
-            <th className="p-2">סכום</th>
+            <th className="p-2">{uiTranslate("סכום")}</th>
             <th className="p-2">משלם</th>
             <th className="p-2">{uiTranslate("סטטוס")}</th>
             <th className="p-2">מסמך</th>

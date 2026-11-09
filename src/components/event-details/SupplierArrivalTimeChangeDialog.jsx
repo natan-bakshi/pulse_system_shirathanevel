@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Clock, UserCheck, UserX, MinusCircle } from 'lucide-react';
 import { handleSupplierArrivalTimeChange } from '@/functions/handleSupplierArrivalTimeChange';
 import { toast } from 'sonner';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
  * Dialog shown to admin when supplier_arrival_time on a specific EventService was changed
@@ -23,6 +24,7 @@ export default function SupplierArrivalTimeChangeDialog({
   oldArrivalTime,
   onResolved,
 }) {
+  const {t: uiTranslate}=useLanguage();
   const [loadingAction, setLoadingAction] = useState(null); // 'notify' | 'cancel' | 'nothing' | null
 
   const runMode = async (mode) => {
@@ -58,25 +60,25 @@ export default function SupplierArrivalTimeChangeDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-amber-700">
             <Clock className="h-5 w-5" />
-            שעת ההתייצבות השתנתה
+            {uiTranslate("שעת ההתייצבות השתנתה")}
           </DialogTitle>
           <DialogDescription className="text-right pt-2 space-y-2">
             <div>
-              שעת ההתייצבות של הספקים בשירות <strong>{serviceName || ''}</strong> שונתה.
+              {uiTranslate("שעת ההתייצבות של הספקים בשירות")} <strong>{serviceName || ''}</strong> {uiTranslate("שונתה.")}
             </div>
             {(oldArrivalTime || newArrivalTime) && (
               <div className="text-sm">
                 {oldArrivalTime && (
                   <>
-                    <span className="text-gray-500">קודם:</span> {oldArrivalTime}
+                    <span className="text-gray-500">{uiTranslate("קודם:")}</span> {oldArrivalTime}
                     <span className="mx-2">←</span>
                   </>
                 )}
-                <span className="text-gray-500">חדש:</span> {newArrivalTime || '(ריק)'}
+                <span className="text-gray-500">{uiTranslate("חדש:")}</span> {newArrivalTime || '(ריק)'}
               </div>
             )}
             <div className="pt-2">
-              יש ספקים משובצים לשירות זה. מה ברצונך לעשות?
+              {uiTranslate("יש ספקים משובצים לשירות זה. מה ברצונך לעשות?")}
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -93,8 +95,8 @@ export default function SupplierArrivalTimeChangeDialog({
               <UserCheck className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">שלח עדכון לספקים</div>
-              <div className="text-xs opacity-90 font-normal">תישלח התראת עדכון לספקים והסטטוס שלהם יחזור ל"ממתין"</div>
+              <div className="font-semibold">{uiTranslate("שלח עדכון לספקים")}</div>
+              <div className="text-xs opacity-90 font-normal">{uiTranslate("תישלח התראת עדכון לספקים והסטטוס שלהם יחזור ל\"ממתין\"")}</div>
             </div>
           </Button>
 
@@ -110,8 +112,8 @@ export default function SupplierArrivalTimeChangeDialog({
               <UserX className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">בטל את השיבוצים בשירות זה</div>
-              <div className="text-xs opacity-90 font-normal">הספקים יוסרו מהשירות ויקבלו התראת ביטול</div>
+              <div className="font-semibold">{uiTranslate("בטל את השיבוצים בשירות זה")}</div>
+              <div className="text-xs opacity-90 font-normal">{uiTranslate("הספקים יוסרו מהשירות ויקבלו התראת ביטול")}</div>
             </div>
           </Button>
 
@@ -127,15 +129,15 @@ export default function SupplierArrivalTimeChangeDialog({
               <MinusCircle className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">לא לעשות דבר</div>
-              <div className="text-xs text-gray-600 font-normal">השעה תתעדכן במערכת בלבד. הספקים לא יקבלו התראה.</div>
+              <div className="font-semibold">{uiTranslate("לא לעשות דבר")}</div>
+              <div className="text-xs text-gray-600 font-normal">{uiTranslate("השעה תתעדכן במערכת בלבד. הספקים לא יקבלו התראה.")}</div>
             </div>
           </Button>
         </div>
 
         <DialogFooter>
           <p className="text-xs text-gray-500 text-right w-full">
-            יש לבחור אחת מהאפשרויות לפני סגירת חלון זה
+            {uiTranslate("יש לבחור אחת מהאפשרויות לפני סגירת חלון זה")}
           </p>
         </DialogFooter>
       </DialogContent>

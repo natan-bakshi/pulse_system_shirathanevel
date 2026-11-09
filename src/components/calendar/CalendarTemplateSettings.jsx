@@ -180,13 +180,13 @@ export default function CalendarTemplateSettings() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
-          הגדרת מבנה אירוע ביומן Google
+          {uiTranslate("הגדרת מבנה אירוע ביומן Google")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* User type selector */}
         <div className="flex items-center gap-3">
-          <Label>סוג משתמש:</Label>
+          <Label>{uiTranslate("סוג משתמש:")}</Label>
           <Select value={selectedUserType} onValueChange={setSelectedUserType}>
             <SelectTrigger className="w-40">
               <SelectValue />
@@ -206,9 +206,9 @@ export default function CalendarTemplateSettings() {
             <div>
               <p className="font-medium mb-1">{uiTranslate("איך זה עובד?")}</p>
               <ul className="list-disc mr-4 space-y-1 text-xs">
-                <li>הכנס טקסט חופשי ומשתנים בפורמט <code dir="ltr" className="bg-blue-100 px-1 rounded">{'{{variable}}'}</code></li>
-                <li>טקסט מותנה: עטוף ב-<code dir="ltr" className="bg-blue-100 px-1 rounded">{'[[ text {{variable}} ]]'}</code> - יוצג רק אם המשתנה קיים באירוע</li>
-                <li>תאריך, שעה ומיקום <strong>לא צריכים</strong> להופיע בתיאור - הם נקבעים אוטומטית בשדות האירוע ביומן</li>
+                <li>{uiTranslate("הכנס טקסט חופשי ומשתנים בפורמט")} <code dir="ltr" className="bg-blue-100 px-1 rounded">{'{{variable}}'}</code></li>
+                <li>{uiTranslate("טקסט מותנה: עטוף ב-")}<code dir="ltr" className="bg-blue-100 px-1 rounded">{'[[ text {{variable}} ]]'}</code> {uiTranslate("- יוצג רק אם המשתנה קיים באירוע")}</li>
+                <li>{uiTranslate("תאריך, שעה ומיקום")} <strong>{uiTranslate("לא צריכים")}</strong> {uiTranslate("להופיע בתיאור - הם נקבעים אוטומטית בשדות האירוע ביומן")}</li>
               </ul>
             </div>
           </div>
@@ -216,7 +216,7 @@ export default function CalendarTemplateSettings() {
 
         {/* Variables reference */}
         <div className="border rounded-lg p-3">
-          <Label className="text-xs font-semibold mb-2 block">משתנים זמינים עבור {USER_TYPE_LABELS[selectedUserType]}:</Label>
+          <Label className="text-xs font-semibold mb-2 block">{uiTranslate("משתנים זמינים עבור")} {USER_TYPE_LABELS[selectedUserType]}:</Label>
           <div className="flex flex-wrap gap-1">
             {allVariables.map(v => (
               <Badge key={v.key} variant="outline" className="text-xs cursor-help" title={v.desc}>
@@ -228,33 +228,33 @@ export default function CalendarTemplateSettings() {
 
         {/* Summary template */}
         <div>
-          <Label className="font-semibold">כותרת האירוע ביומן (Summary)</Label>
+          <Label className="font-semibold">{uiTranslate("כותרת האירוע ביומן (Summary)")}</Label>
           <Textarea
             value={templates[`${selectedUserType}_summary`] || ''}
             onChange={e => setTemplates(prev => ({ ...prev, [`${selectedUserType}_summary`]: e.target.value }))}
             className="mt-1 dir-rtl text-right font-mono text-sm"
             rows={2}
-            placeholder="הזן תבנית לכותרת..."
+            placeholder={uiTranslate("הזן תבנית לכותרת...")}
           />
         </div>
 
         {/* Description template */}
         <div>
-          <Label className="font-semibold">תיאור האירוע ביומן (Description)</Label>
+          <Label className="font-semibold">{uiTranslate("תיאור האירוע ביומן (Description)")}</Label>
           <Textarea
             value={templates[`${selectedUserType}_description`] || ''}
             onChange={e => setTemplates(prev => ({ ...prev, [`${selectedUserType}_description`]: e.target.value }))}
             className="mt-1 dir-rtl text-right font-mono text-sm"
             rows={8}
-            placeholder="הזן תבנית לתיאור..."
+            placeholder={uiTranslate("הזן תבנית לתיאור...")}
           />
         </div>
 
         {/* Supplier categories for admin view */}
         {selectedUserType === 'admin' && (
           <div className="border-t pt-4">
-            <Label className="font-semibold mb-2 block">קטגוריות שירות להצגת ספקים ברשימה (עבור מנהלים)</Label>
-            <p className="text-xs text-gray-500 mb-3">בחר את קטגוריות השירות שהספקים המאושרים שלהן יוצגו בתיאור האירוע ביומן המנהל</p>
+            <Label className="font-semibold mb-2 block">{uiTranslate("קטגוריות שירות להצגת ספקים ברשימה (עבור מנהלים)")}</Label>
+            <p className="text-xs text-gray-500 mb-3">{uiTranslate("בחר את קטגוריות השירות שהספקים המאושרים שלהן יוצגו בתיאור האירוע ביומן המנהל")}</p>
             <div className="flex flex-wrap gap-2">
               {services.filter(s => s.is_active).map(service => (
                 <Badge
@@ -268,7 +268,7 @@ export default function CalendarTemplateSettings() {
               ))}
             </div>
             {supplierCategories.length > 0 && (
-              <p className="text-xs text-green-600 mt-2">נבחרו: {supplierCategories.join(', ')}</p>
+              <p className="text-xs text-green-600 mt-2">{uiTranslate("נבחרו:")} {supplierCategories.join(', ')}</p>
             )}
           </div>
         )}
@@ -277,10 +277,10 @@ export default function CalendarTemplateSettings() {
         <div className="flex gap-3 pt-4 border-t">
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-            שמור תבניות
+            {uiTranslate("שמור תבניות")}
           </Button>
           <Button variant="outline" onClick={resetToDefault}>
-            איפוס לברירת מחדל ({USER_TYPE_LABELS[selectedUserType]})
+            {uiTranslate("איפוס לברירת מחדל (")}{USER_TYPE_LABELS[selectedUserType]})
           </Button>
         </div>
       </CardContent>

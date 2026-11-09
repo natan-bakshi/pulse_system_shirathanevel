@@ -116,25 +116,22 @@ const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab(
    officeLabel:modeOf(value)==='custom'?'':value?.officeLabel||''});
  };
  if(!templateId)return <p className="p-4 rounded-md border text-sm">
-  שמור תחילה את התבנית החדשה. לאחר יצירתה אפשר יהיה להגדיר כאן את הכפתורים שלה.
+  {uiTranslate("שמור תחילה את התבנית החדשה. לאחר יצירתה אפשר יהיה להגדיר כאן את הכפתורים שלה.")}
  </p>;
  if(!eligible)return <div className="p-4 rounded-md border text-sm space-y-2">
-  <strong>הודעה זו אינה משתמשת בכפתורים מותאמים במסלול הנוכחי.</strong>
+  <strong>{uiTranslate("הודעה זו אינה משתמשת בכפתורים מותאמים במסלול הנוכחי.")}</strong>
   <p className="text-gray-600">
-   התאמה אישית זמינה בשלב זה לתבניות WhatsApp לספקים. אישור ודחיית שיבוץ
-   מנוהלים במנגנון נפרד ומאובטח תחת הגדרות WhatsApp.
-   ההתראות ללקוחות ולמנהלים אינן מושפעות.
+   {uiTranslate("התאמה אישית זמינה בשלב זה לתבניות WhatsApp לספקים. אישור ודחיית שיבוץ מנוהלים במנגנון נפרד ומאובטח תחת הגדרות WhatsApp. ההתראות ללקוחות ולמנהלים אינן מושפעות.")}
   </p>
  </div>;
  return <div className="space-y-4 text-sm" dir="rtl">
   <p className="text-gray-600">
-   הכפתורים שייכים לתבנית הזו בלבד. בחר כפתורים, סדר וכיתוב.
-   הם אינם משנים שיבוצים או פעולות עסקיות.
+   {uiTranslate("הכפתורים שייכים לתבנית הזו בלבד. בחר כפתורים, סדר וכיתוב. הם אינם משנים שיבוצים או פעולות עסקיות.")}
   </p>
-  {!stored&&!error&&<p role="status">טוען הגדרות כפתורים…</p>}
+  {!stored&&!error&&<p role="status">{uiTranslate("טוען הגדרות כפתורים…")}</p>}
   {stored&&<>
    <label className="block space-y-1">
-    <span className="text-sm font-medium">אילו כפתורים יופיעו?</span>
+    <span className="text-sm font-medium">{uiTranslate("אילו כפתורים יופיעו?")}</span>
     <select aria-label="בחירת כפתורים לתבנית"
      className="w-full rounded-md border bg-white p-2"
      disabled={busy} value={modeOf(value)}
@@ -154,20 +151,20 @@ const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab(
      {value?.office&&<span className="rounded border bg-white px-3 py-2 text-xs">
       {value.officeLabel||'פנייה למשרד'}
      </span>}
-     {!value?.portal&&!value?.office&&<span>ללא כפתורים</span>}
+     {!value?.portal&&!value?.office&&<span>{uiTranslate("ללא כפתורים")}</span>}
     </div>
     {(value?.portal||value?.office)&&<label className="flex gap-2 items-center text-xs">
      <input type="checkbox" checked={editingLabels}
       disabled={busy} onChange={e=>setEditingLabels(e.target.checked)}/>
-     שינוי כיתוב הכפתורים
+     {uiTranslate("שינוי כיתוב הכפתורים")}
     </label>}
     {editingLabels&&<div className="grid sm:grid-cols-2 gap-2">
-     <label className="space-y-1">כיתוב הכניסה
+     <label className="space-y-1">{uiTranslate("כיתוב הכניסה")}
       <Input maxLength={25} disabled={busy||!value?.portal}
        value={value?.portalLabel||''}
        onChange={e=>setValue(x=>({...x,portalLabel:e.target.value}))}/>
      </label>
-     <label className="space-y-1">כיתוב הפנייה למשרד
+     <label className="space-y-1">{uiTranslate("כיתוב הפנייה למשרד")}
       <Input maxLength={25} disabled={busy||!value?.office}
        value={value?.officeLabel||''}
        onChange={e=>setValue(x=>({...x,officeLabel:e.target.value}))}/>
@@ -175,22 +172,20 @@ const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab(
     </div>}
    </div>}
    {modeOf(value)==='inherit'&&<p className="text-xs text-gray-600">
-    התבנית תשתמש בכפתורי ברירת המחדל שנקבעו לסוג ההתראה.
+    {uiTranslate("התבנית תשתמש בכפתורי ברירת המחדל שנקבעו לסוג ההתראה.")}
    </p>}
    <p className="text-xs text-gray-500">
-    שמירת הכפתורים מתבצעת דרך שרת ההגדרות המאובטח, בנפרד מנתוני
-    התבנית הרגילים. גם הכפתור ״שמור״ של חלון התבנית שומר אותם
-    אם שינית כאן משהו. הודעות שכבר ממתינות בתור אינן משתנות.
+    {uiTranslate("שמירת הכפתורים מתבצעת דרך שרת ההגדרות המאובטח, בנפרד מנתוני התבנית הרגילים. גם הכפתור ״שמור״ של חלון התבנית שומר אותם אם שינית כאן משהו. הודעות שכבר ממתינות בתור אינן משתנות.")}
    </p>
    <div className="flex flex-wrap gap-2">
     <Button type="button" size="sm" disabled={busy||!dirty} onClick={save}>
-     <Save className="h-4 w-4 ml-1"/>שמור כפתורים
+     <Save className="h-4 w-4 ml-1"/>{uiTranslate("שמור כפתורים")}
     </Button>
     <Button type="button" size="sm" variant="outline" disabled={busy} onClick={load}>
      <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן")}
     </Button>
     {dirty&&<Button type="button" size="sm" variant="ghost"
-     disabled={busy} onClick={()=>setValue(initial)}>בטל שינויי כפתורים</Button>}
+     disabled={busy} onClick={()=>setValue(initial)}>{uiTranslate("בטל שינויי כפתורים")}</Button>}
    </div>
   </>}
   {message&&<p role="status" className="text-green-800">{message}</p>}

@@ -150,8 +150,8 @@ export default function BackupManager() {
             {/* כותרת וכפתורי פעולה */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">ניהול גיבויים</h2>
-                    <p className="text-sm text-gray-500">גיבויים אוטומטיים רצים כל יום ב-02:00. ניתן גם ליצור גיבוי ידני.</p>
+                    <h2 className="text-xl font-bold text-gray-900">{uiTranslate("ניהול גיבויים")}</h2>
+                    <p className="text-sm text-gray-500">{uiTranslate("גיבויים אוטומטיים רצים כל יום ב-02:00. ניתן גם ליצור גיבוי ידני.")}</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                     <Button 
@@ -173,7 +173,7 @@ export default function BackupManager() {
                         ) : (
                             <FileSpreadsheet className="h-4 w-4 ml-2" />
                         )}
-                        יצירת גיליון Sheets
+                        {uiTranslate("יצירת גיליון Sheets")}
                     </Button>
                     <Button 
                         onClick={handleCreateBackup}
@@ -184,7 +184,7 @@ export default function BackupManager() {
                         ) : (
                             <HardDrive className="h-4 w-4 ml-2" />
                         )}
-                        גיבוי מלא עכשיו
+                        {uiTranslate("גיבוי מלא עכשיו")}
                     </Button>
                 </div>
             </div>
@@ -212,7 +212,7 @@ export default function BackupManager() {
                                     rel="noopener noreferrer"
                                     className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-1"
                                 >
-                                    פתח גיליון <ExternalLink className="h-3 w-3" />
+                                    {uiTranslate("פתח גיליון")} <ExternalLink className="h-3 w-3" />
                                 </a>
                             )}
                         </div>
@@ -233,10 +233,10 @@ export default function BackupManager() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <HardDrive className="h-5 w-5" />
-                        גיבויים מלאים ({backups.length})
+                        {uiTranslate("גיבויים מלאים (")}{backups.length})
                     </CardTitle>
                     <CardDescription>
-                        גיבויי JSON מלאים הכוללים את כל הנתונים. ניתן לשחזר מהם את המערכת.
+                        {uiTranslate("גיבויי JSON מלאים הכוללים את כל הנתונים. ניתן לשחזר מהם את המערכת.")}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -247,8 +247,8 @@ export default function BackupManager() {
                     ) : backups.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
                             <HardDrive className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                            <p>אין גיבויים עדיין</p>
-                            <p className="text-sm">לחץ על "גיבוי מלא עכשיו" ליצירת גיבוי ראשון</p>
+                            <p>{uiTranslate("אין גיבויים עדיין")}</p>
+                            <p className="text-sm">{uiTranslate("לחץ על \"גיבוי מלא עכשיו\" ליצירת גיבוי ראשון")}</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -274,7 +274,7 @@ export default function BackupManager() {
                                                 </span>
                                                 <span className="flex items-center gap-1">
                                                     <Files className="h-3 w-3" />
-                                                    {backup.files_count} קבצים
+                                                    {backup.files_count} {uiTranslate("קבצים")}
                                                 </span>
                                                 <Badge variant="outline" className="text-xs">
                                                     {backup.total_size_formatted}
@@ -290,7 +290,7 @@ export default function BackupManager() {
                                         className="text-orange-600 border-orange-200 hover:bg-orange-50"
                                     >
                                         <RotateCcw className="h-4 w-4 ml-1" />
-                                        שחזר
+                                        {uiTranslate("שחזר")}
                                     </Button>
                                 </div>
                             ))}
@@ -304,10 +304,10 @@ export default function BackupManager() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <FileSpreadsheet className="h-5 w-5" />
-                        גיליונות Google Sheets ({sheets.length})
+                        {uiTranslate("גיליונות Google Sheets (")}{sheets.length})
                     </CardTitle>
                     <CardDescription>
-                        טבלאות לוח אירועים עם פירוט שיבוצי ספקים לכל קטגוריה.
+                        {uiTranslate("טבלאות לוח אירועים עם פירוט שיבוצי ספקים לכל קטגוריה.")}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -318,8 +318,8 @@ export default function BackupManager() {
                     ) : sheets.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
                             <FileSpreadsheet className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                            <p>אין גיליונות עדיין</p>
-                            <p className="text-sm">לחץ על "יצירת גיליון Sheets" ליצירת גיליון ראשון</p>
+                            <p>{uiTranslate("אין גיליונות עדיין")}</p>
+                            <p className="text-sm">{uiTranslate("לחץ על \"יצירת גיליון Sheets\" ליצירת גיליון ראשון")}</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -349,7 +349,7 @@ export default function BackupManager() {
                                     >
                                         <Button variant="outline" size="sm">
                                             <ExternalLink className="h-4 w-4 ml-1" />
-                                            פתח
+                                            {uiTranslate("פתח")}
                                         </Button>
                                     </a>
                                 </div>
@@ -365,30 +365,30 @@ export default function BackupManager() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-red-600">
                             <AlertTriangle className="h-5 w-5" />
-                            אישור שחזור נתונים
+                            {uiTranslate("אישור שחזור נתונים")}
                         </DialogTitle>
                         <DialogDescription className="text-right">
                             <div className="space-y-3 mt-4">
                                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                                     <p className="font-medium text-red-800">
-                                        אזהרה! פעולה זו בלתי הפיכה!
+                                        {uiTranslate("אזהרה! פעולה זו בלתי הפיכה!")}
                                     </p>
                                     <ul className="text-sm text-red-700 mt-2 space-y-1 list-disc list-inside">
-                                        <li>כל הנתונים הקיימים יימחקו לצמיתות</li>
-                                        <li>הנתונים יוחלפו בנתונים מהגיבוי</li>
-                                        <li>מזהי הרשומות (IDs) ישתנו</li>
-                                        <li>קישורים ישנים עלולים לא לעבוד</li>
+                                        <li>{uiTranslate("כל הנתונים הקיימים יימחקו לצמיתות")}</li>
+                                        <li>{uiTranslate("הנתונים יוחלפו בנתונים מהגיבוי")}</li>
+                                        <li>{uiTranslate("מזהי הרשומות (IDs) ישתנו")}</li>
+                                        <li>{uiTranslate("קישורים ישנים עלולים לא לעבוד")}</li>
                                     </ul>
                                 </div>
                                 
                                 {selectedBackup && (
                                     <div className="bg-gray-50 rounded-lg p-3">
-                                        <p className="text-sm text-gray-600">שחזור מגיבוי:</p>
+                                        <p className="text-sm text-gray-600">{uiTranslate("שחזור מגיבוי:")}</p>
                                         <p className="font-medium text-gray-900">
-                                            {selectedBackup.date_formatted} בשעה {selectedBackup.time_formatted}
+                                            {selectedBackup.date_formatted} {uiTranslate("בשעה")} {selectedBackup.time_formatted}
                                         </p>
                                         <p className="text-sm text-gray-500">
-                                            {selectedBackup.files_count} קבצים, {selectedBackup.total_size_formatted}
+                                            {selectedBackup.files_count} {uiTranslate("קבצים,")} {selectedBackup.total_size_formatted}
                                         </p>
                                     </div>
                                 )}
@@ -413,7 +413,7 @@ export default function BackupManager() {
                             ) : (
                                 <RotateCcw className="h-4 w-4 ml-2" />
                             )}
-                            אני מבין, שחזר עכשיו
+                            {uiTranslate("אני מבין, שחזר עכשיו")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

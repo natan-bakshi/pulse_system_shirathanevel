@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const FIREBASE_PROXY_URL = 'https://pulse-notifications-6886e.web.app';
 
 export default function PushPermissionButton({ user }) {
+  const {t: uiTranslate}=useLanguage();
   const [permissionStatus, setPermissionStatus] = useState('unknown');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -204,15 +206,15 @@ export default function PushPermissionButton({ user }) {
 
   const getStatusBadge = () => {
     if (permissionStatus === 'unsupported') {
-      return <Badge variant="destructive" className="gap-1"><BellOff className="h-3 w-3" />לא נתמך</Badge>;
+      return <Badge variant="destructive" className="gap-1"><BellOff className="h-3 w-3" />{uiTranslate("לא נתמך")}</Badge>;
     }
     if (isSubscribed) {
-      return <Badge className="gap-1 bg-green-600"><Check className="h-3 w-3" />פעיל</Badge>;
+      return <Badge className="gap-1 bg-green-600"><Check className="h-3 w-3" />{uiTranslate("פעיל")}</Badge>;
     }
     if (user?.push_enabled === false) {
-      return <Badge variant="destructive" className="gap-1"><BellOff className="h-3 w-3" />חסום</Badge>;
+      return <Badge variant="destructive" className="gap-1"><BellOff className="h-3 w-3" />{uiTranslate("חסום")}</Badge>;
     }
-    return <Badge variant="outline" className="gap-1"><Bell className="h-3 w-3" />לא פעיל</Badge>;
+    return <Badge variant="outline" className="gap-1"><Bell className="h-3 w-3" />{uiTranslate("לא פעיל")}</Badge>;
   };
 
   const getDeviceIcon = () => {
@@ -234,7 +236,7 @@ export default function PushPermissionButton({ user }) {
         <CardTitle className="flex items-center justify-between text-base">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            התראות Push
+            {uiTranslate("התראות Push")}
           </div>
           {getStatusBadge()}
         </CardTitle>
@@ -248,7 +250,7 @@ export default function PushPermissionButton({ user }) {
           <Alert className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800 text-sm">
-              הדפדפן שלך לא תומך בהתראות Push. נסה לפתוח את האתר בדפדפן אחר (Chrome, Safari, Firefox).
+              {uiTranslate("הדפדפן שלך לא תומך בהתראות Push. נסה לפתוח את האתר בדפדפן אחר (Chrome, Safari, Firefox).")}
             </AlertDescription>
           </Alert>
         )}
@@ -258,29 +260,29 @@ export default function PushPermissionButton({ user }) {
           <Alert className="bg-red-50 border-red-200">
             <BellOff className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800 text-sm">
-              <p className="font-medium mb-2">הגישה להתראות נחסמה.</p>
-              <p>כדי להפעיל התראות:</p>
+              <p className="font-medium mb-2">{uiTranslate("הגישה להתראות נחסמה.")}</p>
+              <p>{uiTranslate("כדי להפעיל התראות:")}</p>
               {deviceType === 'ios' ? (
                 <ol className="list-decimal mr-4 mt-1 space-y-1">
-                  <li>לחץ על כפתור השיתוף (↑) בדפדפן</li>
-                  <li>בחר "הוסף למסך הבית"</li>
-                  <li>פתח את האפליקציה מהאייקון החדש</li>
-                  <li>הגדרות → התראות → אפשר</li>
+                  <li>{uiTranslate("לחץ על כפתור השיתוף (↑) בדפדפן")}</li>
+                  <li>{uiTranslate("בחר \"הוסף למסך הבית\"")}</li>
+                  <li>{uiTranslate("פתח את האפליקציה מהאייקון החדש")}</li>
+                  <li>{uiTranslate("הגדרות → התראות → אפשר")}</li>
                 </ol>
               ) : deviceType === 'android' ? (
                 <ol className="list-decimal mr-4 mt-1 space-y-1">
-                  <li>גש ל: pulse-notifications-6886e.web.app</li>
-                  <li>לחץ על הנעילה/מידע בשורת הכתובת</li>
-                  <li>בחר "הגדרות אתר"</li>
-                  <li>הפעל את "התראות"</li>
-                  <li>חזור לאפליקציה ולחץ שוב על "הפעל התראות"</li>
+                  <li>{uiTranslate("גש ל: pulse-notifications-6886e.web.app")}</li>
+                  <li>{uiTranslate("לחץ על הנעילה/מידע בשורת הכתובת")}</li>
+                  <li>{uiTranslate("בחר \"הגדרות אתר\"")}</li>
+                  <li>{uiTranslate("הפעל את \"התראות\"")}</li>
+                  <li>{uiTranslate("חזור לאפליקציה ולחץ שוב על \"הפעל התראות\"")}</li>
                 </ol>
               ) : (
                 <ol className="list-decimal mr-4 mt-1 space-y-1">
-                  <li>גש ל: pulse-notifications-6886e.web.app</li>
-                  <li>לחץ על הנעילה ליד שורת הכתובת</li>
-                  <li>מצא את "התראות" ובחר "אפשר"</li>
-                  <li>חזור לאפליקציה ולחץ שוב על "הפעל התראות"</li>
+                  <li>{uiTranslate("גש ל: pulse-notifications-6886e.web.app")}</li>
+                  <li>{uiTranslate("לחץ על הנעילה ליד שורת הכתובת")}</li>
+                  <li>{uiTranslate("מצא את \"התראות\" ובחר \"אפשר\"")}</li>
+                  <li>{uiTranslate("חזור לאפליקציה ולחץ שוב על \"הפעל התראות\"")}</li>
                 </ol>
               )}
             </AlertDescription>
@@ -291,12 +293,12 @@ export default function PushPermissionButton({ user }) {
           <Alert className="bg-blue-50 border-blue-200">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800 text-sm">
-              <p className="font-medium">שימו לב - משתמשי אייפון:</p>
-              <p>כדי לקבל התראות Push באייפון, יש להוסיף את האתר למסך הבית:</p>
+              <p className="font-medium">{uiTranslate("שימו לב - משתמשי אייפון:")}</p>
+              <p>{uiTranslate("כדי לקבל התראות Push באייפון, יש להוסיף את האתר למסך הבית:")}</p>
               <ol className="list-decimal mr-4 mt-1">
-                <li>לחץ על כפתור השיתוף (↑)</li>
-                <li>בחר "הוסף למסך הבית"</li>
-                <li>פתח את האפליקציה מהאייקון החדש</li>
+                <li>{uiTranslate("לחץ על כפתור השיתוף (↑)")}</li>
+                <li>{uiTranslate("בחר \"הוסף למסך הבית\"")}</li>
+                <li>{uiTranslate("פתח את האפליקציה מהאייקון החדש")}</li>
               </ol>
             </AlertDescription>
           </Alert>
@@ -315,7 +317,7 @@ export default function PushPermissionButton({ user }) {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded-lg">
               <Check className="h-5 w-5" />
-              <span className="text-sm font-medium">התראות Push פעילות! תקבל עדכונים חשובים.</span>
+              <span className="text-sm font-medium">{uiTranslate("התראות Push פעילות! תקבל עדכונים חשובים.")}</span>
             </div>
             <Button 
               variant="outline"
@@ -333,7 +335,7 @@ export default function PushPermissionButton({ user }) {
               ) : (
                 <RefreshCw className="h-4 w-4 ml-2" />
               )}
-              בדוק מחדש סטטוס
+              {uiTranslate("בדוק מחדש סטטוס")}
             </Button>
           </div>
         ) : (
@@ -348,18 +350,18 @@ export default function PushPermissionButton({ user }) {
               ) : (
                 <Bell className="h-4 w-4 ml-2" />
               )}
-              הפעל התראות Push
+              {uiTranslate("הפעל התראות Push")}
             </Button>
           )
         )}
 
         <p className="text-xs text-gray-500 text-center">
-          התראות Push מאפשרות לקבל עדכונים גם כשהאתר סגור
+          {uiTranslate("התראות Push מאפשרות לקבל עדכונים גם כשהאתר סגור")}
         </p>
         
         {debugInfo && (
           <details className="text-xs text-gray-400">
-            <summary className="cursor-pointer">מידע טכני</summary>
+            <summary className="cursor-pointer">{uiTranslate("מידע טכני")}</summary>
             <pre className="mt-1 p-2 bg-gray-100 rounded text-left direction-ltr overflow-x-auto">
               {JSON.stringify(debugInfo, null, 2)}
             </pre>

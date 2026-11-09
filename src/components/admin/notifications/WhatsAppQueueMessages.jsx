@@ -133,30 +133,30 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
 
   return <div className="space-y-3" dir="rtl">
     <div className="flex flex-wrap items-center gap-2">
-      <div className="font-medium text-sm">ניהול הודעות בתור</div>
-      <select aria-label="סינון מצב הודעה" className="border rounded-md px-2 py-1.5 text-sm" value={status}
+      <div className="font-medium text-sm">{uiTranslate("ניהול הודעות בתור")}</div>
+      <select aria-label={uiTranslate("סינון מצב הודעה")} className="border rounded-md px-2 py-1.5 text-sm" value={status}
         onChange={e=>setStatus(e.target.value)}>
-        <option value="all">כל המצבים</option>
+        <option value="all">{uiTranslate("כל המצבים")}</option>
         {Object.entries(statusNames).map(([key,label])=><option key={key} value={key}>{label}</option>)}
       </select>
-      <Input className="w-44" placeholder="סנן לפי מקור הודעה" value={source} onChange={e=>setSource(e.target.value)} />
+      <Input className="w-44" placeholder={uiTranslate("סנן לפי מקור הודעה")} value={source} onChange={e=>setSource(e.target.value)} />
       <label className="flex gap-2 items-center text-sm"><Checkbox checked={showArchived}
-        onCheckedChange={v=>setShowArchived(v===true)}/>הצג ארכיון</label>
+        onCheckedChange={v=>setShowArchived(v===true)}/>{uiTranslate("הצג ארכיון")}</label>
       <Button variant="outline" size="sm" disabled={busy||loading} onClick={()=>fetchPage(0)}>
         <RefreshCw className="h-4 w-4 ml-1"/>{loading?'טוען...':'רענן'}
       </Button>
     </div>
     <div className="flex flex-wrap gap-2">
       <Button size="sm" variant="outline" disabled={!rows.some(r=>r.canCancel)||busy}
-        onClick={()=>setSelected(new Set(rows.filter(r=>r.canCancel).map(r=>r.id)))}>בחר הודעות שניתן לבטל</Button>
+        onClick={()=>setSelected(new Set(rows.filter(r=>r.canCancel).map(r=>r.id)))}>{uiTranslate("בחר הודעות שניתן לבטל")}</Button>
       <Button size="sm" variant="outline" disabled={!rows.some(r=>r.canArchive)||busy}
-        onClick={()=>setSelected(new Set(rows.filter(r=>r.canArchive).map(r=>r.id)))}>בחר הודעות שטופלו</Button>
+        onClick={()=>setSelected(new Set(rows.filter(r=>r.canArchive).map(r=>r.id)))}>{uiTranslate("בחר הודעות שטופלו")}</Button>
       <Button size="sm" variant="outline" onClick={()=>setSelected(new Set())} disabled={!selected.size||busy}>{uiTranslate("נקה בחירה")}</Button>
       <Button size="sm" variant="outline" onClick={()=>bulk('bulkCancel')} disabled={!allowedSelected('bulkCancel').length||busy}>
-        <Ban className="h-4 w-4 ml-1"/>בטל מסומנות ({allowedSelected('bulkCancel').length})
+        <Ban className="h-4 w-4 ml-1"/>{uiTranslate("בטל מסומנות (")}{allowedSelected('bulkCancel').length})
       </Button>
       <Button size="sm" variant="outline" onClick={()=>bulk('bulkArchive')} disabled={!allowedSelected('bulkArchive').length||busy}>
-        <Archive className="h-4 w-4 ml-1"/>ארכב מסומנות ({allowedSelected('bulkArchive').length})
+        <Archive className="h-4 w-4 ml-1"/>{uiTranslate("ארכב מסומנות (")}{allowedSelected('bulkArchive').length})
       </Button>
     </div>
     {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
@@ -164,8 +164,8 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
     <div className="overflow-x-auto border rounded-lg">
       <table className="w-full text-sm text-right min-w-[740px]">
         <thead className="bg-gray-50"><tr>
-          <th className="p-2">בחר</th><th className="p-2">מקור</th><th className="p-2">מועד יצירה</th>
-          <th className="p-2">נמען</th><th className="p-2">ספק שליחה</th><th className="p-2">מצב</th><th className="p-2">ניסיונות</th>
+          <th className="p-2">{uiTranslate("בחר")}</th><th className="p-2">{uiTranslate("מקור")}</th><th className="p-2">{uiTranslate("מועד יצירה")}</th>
+          <th className="p-2">{uiTranslate("נמען")}</th><th className="p-2">{uiTranslate("ספק שליחה")}</th><th className="p-2">{uiTranslate("מצב")}</th><th className="p-2">{uiTranslate("ניסיונות")}</th>
           <th className="p-2">{uiTranslate("פעולות")}</th>
         </tr></thead>
         <tbody>
@@ -182,24 +182,24 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
             <td className="p-2">
               {statusNames[row.status]||row.status}
               {row.errorCode&&<p className="text-xs text-amber-700">HTTP {row.errorCode}</p>}
-              {row.interactiveReviewRequired&&<p className="text-xs text-amber-800">כפתורי שיבוץ — נדרש בירור; אין ניסיון חוזר</p>}
+              {row.interactiveReviewRequired&&<p className="text-xs text-amber-800">{uiTranslate("כפתורי שיבוץ — נדרש בירור; אין ניסיון חוזר")}</p>}
             </td>
             <td className="p-2">{row.attemptCount||0}</td>
             <td className="p-2"><div className="flex gap-1 flex-wrap">
               <Button variant="ghost" size="sm" onClick={()=>openAction(row,'inspect')} disabled={busy}><Eye className="h-4 w-4 ml-1"/>{uiTranslate("פרטים")}</Button>
               {row.canCancel&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'cancel')} disabled={busy}>בטל</Button>}
               {row.canRetry&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'retry')} disabled={busy}><RotateCcw className="h-3 w-3 ml-1"/>{uiTranslate("נסה שוב")}</Button>}
-              {row.canResolve&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'resolve')} disabled={busy}>טופל ידנית</Button>}
-              {row.canArchive&&!row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'archive')} disabled={busy}>ארכיון</Button>}
-              {row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'unarchive')} disabled={busy}>שחזר</Button>}
+              {row.canResolve&&<Button variant="outline" size="sm" onClick={()=>openAction(row,'resolve')} disabled={busy}>{uiTranslate("טופל ידנית")}</Button>}
+              {row.canArchive&&!row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'archive')} disabled={busy}>{uiTranslate("ארכיון")}</Button>}
+              {row.archived&&<Button variant="ghost" size="sm" onClick={()=>openAction(row,'unarchive')} disabled={busy}>{uiTranslate("שחזר")}</Button>}
             </div></td>
           </tr>)}
-          {!rows.length&&<tr><td className="p-5 text-center text-gray-500" colSpan={8}>אין הודעות התואמות לסינון. ייתכן שהתור עדיין כבוי או שטרם נוצרו הודעות.</td></tr>}
+          {!rows.length&&<tr><td className="p-5 text-center text-gray-500" colSpan={8}>{uiTranslate("אין הודעות התואמות לסינון. ייתכן שהתור עדיין כבוי או שטרם נוצרו הודעות.")}</td></tr>}
         </tbody>
       </table>
     </div>
     <div className="flex items-center justify-between">
-      <span className="text-xs text-gray-500">מוצגות {rows.length} הודעות; נתוני שגיאה זמינים בכל הודעה.</span>
+      <span className="text-xs text-gray-500">{uiTranslate("מוצגות")} {rows.length} {uiTranslate("הודעות; נתוני שגיאה זמינים בכל הודעה.")}</span>
       <div className="flex gap-2">
         <Button size="sm" variant="outline" disabled={loading||busy||!offset} onClick={()=>fetchPage(Math.max(0,offset-60))}>{uiTranslate("הקודם")}</Button>
         <Button size="sm" variant="outline" disabled={loading||busy||nextOffset===null} onClick={()=>fetchPage(nextOffset)}>{uiTranslate("הבא")}</Button>
@@ -209,35 +209,35 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
       <DialogContent dir="rtl" className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{dialog?.action==='inspect'?'פרטי הודעת WhatsApp':(actions[dialog?.action]?.title||'ניהול הודעה')}</DialogTitle></DialogHeader>
         {dialog&&<div className="space-y-3 text-sm">
-          <p><strong>מקור:</strong> {dialog.row.source} · <strong>מצב:</strong> {statusNames[dialog.row.status]||dialog.row.status} · <strong>{uiTranslate("ספק:")}</strong> {dialog.row.requestedProvider==='wasender'?'WasenderAPI':dialog.row.requestedProvider==='green'?'Green API':'לפי ברירת המחדל'}</p>
+          <p><strong>{uiTranslate("מקור:")}</strong> {dialog.row.source} · <strong>{uiTranslate("מצב:")}</strong> {statusNames[dialog.row.status]||dialog.row.status} · <strong>{uiTranslate("ספק:")}</strong> {dialog.row.requestedProvider==='wasender'?'WasenderAPI':dialog.row.requestedProvider==='green'?'Green API':'לפי ברירת המחדל'}</p>
           {full&&<>
-            <p><strong>נמען:</strong> <span dir="ltr">{full.chatId}</span></p>
-            {full.fileName&&<p><strong>שם מסמך:</strong> {full.fileName}</p>}
+            <p><strong>{uiTranslate("נמען:")}</strong> <span dir="ltr">{full.chatId}</span></p>
+            {full.fileName&&<p><strong>{uiTranslate("שם מסמך:")}</strong> {full.fileName}</p>}
             <div className="max-h-36 overflow-auto bg-gray-50 rounded p-2 whitespace-pre-wrap">{full.text||'אין גוף הודעה'}</div>
             {full.providerMessageId&&<p dir="ltr"><strong>Provider ID: </strong>{full.providerMessageId}</p>}
           </>}
-          {dialog.row.error&&<p className="rounded bg-amber-50 p-2">שגיאה אחרונה: {dialog.row.error}</p>}
+          {dialog.row.error&&<p className="rounded bg-amber-50 p-2">{uiTranslate("שגיאה אחרונה:")} {dialog.row.error}</p>}
           {dialog.action!=='inspect'&&<>
             <p className="text-gray-600">{actions[dialog.action]?.description}</p>
             {dialog.action==='retry'&&dialog.row.status==='unknown'&&
               <label className="flex gap-2 rounded border p-3 text-amber-800">
                 <Checkbox checked={verifiedNotSent} onCheckedChange={v=>setVerifiedNotSent(v===true)}/>
-                <span>בדקתי ידנית במערכת ספק WhatsApp ואימתתי שלא התקבלה הודעה זו. אני מאשר ניסיון חדש.</span>
+                <span>{uiTranslate("בדקתי ידנית במערכת ספק WhatsApp ואימתתי שלא התקבלה הודעה זו. אני מאשר ניסיון חדש.")}</span>
               </label>}
             {dialog.action==='resolve'&&
-              <label className="block space-y-1"><Label>אופן הטיפול</Label>
+              <label className="block space-y-1"><Label>{uiTranslate("אופן הטיפול")}</Label>
                 <select className="border p-2 rounded w-full" value={resolution} onChange={e=>setResolution(e.target.value)}>
-                  <option value="handled_outside">טופלה מחוץ למערכת</option>
-                  <option value="no_longer_needed">כבר אינה רלוונטית</option>
+                  <option value="handled_outside">{uiTranslate("טופלה מחוץ למערכת")}</option>
+                  <option value="no_longer_needed">{uiTranslate("כבר אינה רלוונטית")}</option>
                 </select>
               </label>}
             {dialogNeedsNote&&<label className="block space-y-1">
-              <Label>תיעוד סיבת הפעולה {dialog.row.status==='unknown'?'— חובה לפרט כיצד אומת שלא נשלחה':''}</Label>
+              <Label>{uiTranslate("תיעוד סיבת הפעולה")} {dialog.row.status==='unknown'?'— חובה לפרט כיצד אומת שלא נשלחה':''}</Label>
               <Textarea value={note} onChange={e=>setNote(e.target.value)} rows={3} maxRows={6}
-                placeholder="תיעוד לבדיקה ולביקורת..." />
+                placeholder={uiTranslate("תיעוד לבדיקה ולביקורת...")} />
             </label>}
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={close} disabled={busy}>חזור</Button>
+              <Button variant="outline" onClick={close} disabled={busy}>{uiTranslate("חזור")}</Button>
               <Button onClick={applyAction} disabled={!canApply}>
                 <Check className="h-4 w-4 ml-2"/>{busy?'שומר...':'אשר פעולה'}
               </Button>

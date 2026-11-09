@@ -89,18 +89,18 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-amber-700">
             <AlertTriangle className="h-5 w-5" />
-            פרטי האירוע השתנו
+            {uiTranslate("פרטי האירוע השתנו")}
           </DialogTitle>
           <DialogDescription className="text-right pt-2 space-y-2">
             <div>
-              {uiTranslate("פרטי האירוע")} <strong>{event?.event_name}</strong> עודכנו.
+              {uiTranslate("פרטי האירוע")} <strong>{event?.event_name}</strong> {uiTranslate("עודכנו.")}
             </div>
             {(Array.isArray(changeContext?.fields) ? changeContext.fields.some(field => ['event_date', 'event_time'].includes(field)) : event?.previous_event_date) && (
               <div className="text-sm">
-                <span className="text-gray-500">תאריך קודם:</span> {event.previous_event_date}
+                <span className="text-gray-500">{uiTranslate("תאריך קודם:")}</span> {event.previous_event_date}
                 {event?.previous_event_time && ` ${event.previous_event_time}`}
                 <span className="mx-2">←</span>
-                <span className="text-gray-500">חדש:</span> {event?.event_date}
+                <span className="text-gray-500">{uiTranslate("חדש:")}</span> {event?.event_date}
                 {event?.event_time && ` ${event.event_time}`}
               </div>
             )}
@@ -115,7 +115,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
               </div>
             )}
             <div className="pt-2">
-              יש ספקים משובצים לאירוע. מה ברצונך לעשות?
+              {uiTranslate("יש ספקים משובצים לאירוע. מה ברצונך לעשות?")}
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -132,8 +132,8 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
               <UserCheck className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">שלח עדכון ואפס אישורי שיבוץ</div>
-              <div className="text-xs opacity-90 font-normal">עדכון עם כפתורי אישור/דחייה, ואישור הספקים הרלוונטיים חוזר לממתין.</div>
+              <div className="font-semibold">{uiTranslate("שלח עדכון ואפס אישורי שיבוץ")}</div>
+              <div className="text-xs opacity-90 font-normal">{uiTranslate("עדכון עם כפתורי אישור/דחייה, ואישור הספקים הרלוונטיים חוזר לממתין.")}</div>
             </div>
           </Button>
 
@@ -145,8 +145,8 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
           >
             {loadingAction === 'notice' ? <Loader2 className="h-5 w-5 ml-3 animate-spin" /> : <Bell className="h-5 w-5 ml-3" />}
             <div className="text-right">
-              <div className="font-semibold">שלח עדכון בלי לאפס אישורים</div>
-              <div className="text-xs font-normal">הודעה עם ״קיבלתי״ בלבד; סטטוסי הספקים לא ישתנו.</div>
+              <div className="font-semibold">{uiTranslate("שלח עדכון בלי לאפס אישורים")}</div>
+              <div className="text-xs font-normal">{uiTranslate("הודעה עם ״קיבלתי״ בלבד; סטטוסי הספקים לא ישתנו.")}</div>
             </div>
           </Button>
 
@@ -162,8 +162,8 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
               <UserX className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">בטל את כל השיבוצים</div>
-              <div className="text-xs opacity-90 font-normal">השיבוצים יימחקו והספקים יקבלו התראת ביטול</div>
+              <div className="font-semibold">{uiTranslate("בטל את כל השיבוצים")}</div>
+              <div className="text-xs opacity-90 font-normal">{uiTranslate("השיבוצים יימחקו והספקים יקבלו התראת ביטול")}</div>
             </div>
           </Button>
 
@@ -179,15 +179,15 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
               <MinusCircle className="h-5 w-5 ml-3" />
             )}
             <div className="text-right">
-              <div className="font-semibold">לא לעשות דבר</div>
-              <div className="text-xs text-gray-600 font-normal">בלי הודעה ובלי שינוי בסטטוסי הספקים.</div>
+              <div className="font-semibold">{uiTranslate("לא לעשות דבר")}</div>
+              <div className="text-xs text-gray-600 font-normal">{uiTranslate("בלי הודעה ובלי שינוי בסטטוסי הספקים.")}</div>
             </div>
           </Button>
         </div>
 
         <DialogFooter>
           <p className="text-xs text-gray-500 text-right w-full">
-            יש לבחור אחת מהאפשרויות לפני המשך עבודה באירוע
+            {uiTranslate("יש לבחור אחת מהאפשרויות לפני המשך עבודה באירוע")}
           </p>
         </DialogFooter>
       </DialogContent>

@@ -58,7 +58,7 @@ export default function CalendarSyncPrompt({ user }) {
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-l from-red-800 to-red-700 px-4 py-3 flex items-center gap-2">
               <Calendar className="h-5 w-5 text-white" />
-              <span className="text-white font-bold text-sm">סנכרון יומן Google</span>
+              <span className="text-white font-bold text-sm">{uiTranslate("סנכרון יומן Google")}</span>
             </div>
             <div className="p-4 space-y-3" dir="rtl">
               <p className="text-sm text-gray-700 leading-relaxed">

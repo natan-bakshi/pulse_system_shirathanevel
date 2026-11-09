@@ -85,12 +85,12 @@ export default function WhatsAppSupplierNoticeButtons({active=false}){
  }
  return <section className="rounded-lg border p-4 space-y-4 text-sm" dir="rtl">
   <div className="space-y-1">
-   <h3 className="font-semibold text-base">תזכורות והודעות לספקים</h3>
+   <h3 className="font-semibold text-base">{uiTranslate("תזכורות והודעות לספקים")}</h3>
    <p className="text-gray-600">
-    בחר מה יופיע בהודעת WhatsApp מכל סוג. לא צריך לכתוב קישור — המערכת מכינה אותו לבד.
+    {uiTranslate("בחר מה יופיע בהודעת WhatsApp מכל סוג. לא צריך לכתוב קישור — המערכת מכינה אותו לבד.")}
    </p>
   </div>
-  {busy&&!draft&&<p role="status" className="text-gray-500">טוען הגדרות כפתורים...</p>}
+  {busy&&!draft&&<p role="status" className="text-gray-500">{uiTranslate("טוען הגדרות כפתורים...")}</p>}
   {draft&&<div className="space-y-3">
    {SOURCES.map(source=>{
     const selected=draft[source.id];
@@ -101,7 +101,7 @@ export default function WhatsAppSupplierNoticeButtons({active=false}){
       <p className="text-xs text-gray-500">{source.description}</p>
      </div>
      <label className="space-y-1 block">
-      <span className="font-medium">אילו כפתורים יופיעו בהודעה?</span>
+      <span className="font-medium">{uiTranslate("אילו כפתורים יופיעו בהודעה?")}</span>
       <select className="block w-full sm:max-w-md rounded-md border bg-white px-3 py-2 text-sm"
        aria-label={'כפתורים עבור '+source.title}
        value={mode} disabled={busy}
@@ -112,9 +112,9 @@ export default function WhatsAppSupplierNoticeButtons({active=false}){
       </select>
      </label>
      <div className="rounded-md bg-gray-50 border p-3 space-y-2">
-      <p className="text-xs font-medium text-gray-600">תצוגה מקדימה — ללא שליחת הודעה</p>
+      <p className="text-xs font-medium text-gray-600">{uiTranslate("תצוגה מקדימה — ללא שליחת הודעה")}</p>
       {mode==='none'?<p className="text-xs text-gray-500">
-       ההודעה תישלח בטקסט רגיל, בלי כפתורים נוספים.
+       {uiTranslate("ההודעה תישלח בטקסט רגיל, בלי כפתורים נוספים.")}
       </p>:<div className="space-y-2">
        <div className="flex flex-wrap gap-2">
         {selected.portal&&<span className="rounded-md bg-white border px-3 py-2 text-xs font-medium">
@@ -131,18 +131,18 @@ export default function WhatsAppSupplierNoticeButtons({active=false}){
       </div>}
      </div>
      <details className="text-xs border-t pt-2">
-      <summary className="cursor-pointer text-gray-600">שינוי הכיתוב שעל הכפתורים (לא חובה)</summary>
+      <summary className="cursor-pointer text-gray-600">{uiTranslate("שינוי הכיתוב שעל הכפתורים (לא חובה)")}</summary>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3">
        <label className="space-y-1">
-        <span className="font-medium">שם כפתור הכניסה למערכת</span>
+        <span className="font-medium">{uiTranslate("שם כפתור הכניסה למערכת")}</span>
         <Input maxLength={25} disabled={busy||!selected.portal}
-         value={selected.portalLabel||''} placeholder="כניסה למערכת"
+         value={selected.portalLabel||''} placeholder={uiTranslate("כניסה למערכת")}
          onChange={e=>edit(source.id,'portalLabel',e.target.value)}/>
        </label>
        <label className="space-y-1">
-        <span className="font-medium">שם כפתור הפנייה למשרד</span>
+        <span className="font-medium">{uiTranslate("שם כפתור הפנייה למשרד")}</span>
         <Input maxLength={25} disabled={busy||!selected.office}
-         value={selected.officeLabel||''} placeholder="פנייה למשרד"
+         value={selected.officeLabel||''} placeholder={uiTranslate("פנייה למשרד")}
          onChange={e=>edit(source.id,'officeLabel',e.target.value)}/>
        </label>
       </div>
@@ -151,19 +151,18 @@ export default function WhatsAppSupplierNoticeButtons({active=false}){
    })}
   </div>}
   <p className="text-xs text-gray-500">
-   ההגדרות של ההודעות המתוזמנות משותפות כרגע לסוג השליחה, ולא נפרדות לכל תבנית.
-   רק הודעות פרטיות לספק דרך Green שתומכות בכפתורים מקבלות אותם. שאר ההודעות נשארות כפי שהיו.
+   {uiTranslate("ההגדרות של ההודעות המתוזמנות משותפות כרגע לסוג השליחה, ולא נפרדות לכל תבנית. רק הודעות פרטיות לספק דרך Green שתומכות בכפתורים מקבלות אותם. שאר ההודעות נשארות כפי שהיו.")}
   </p>
   <div className="flex flex-wrap gap-2">
    <Button size="sm" variant="outline" disabled={busy} onClick={load}>
     <RefreshCw className="h-4 w-4 ml-1"/>{uiTranslate("רענן")}
    </Button>
    <Button size="sm" disabled={busy||!dirty} onClick={save}>
-    <Save className="h-4 w-4 ml-1"/>שמור בחירת כפתורים
+    <Save className="h-4 w-4 ml-1"/>{uiTranslate("שמור בחירת כפתורים")}
    </Button>
    {dirty&&<Button size="sm" variant="ghost" disabled={busy}
     onClick={()=>{setDraft(JSON.parse(JSON.stringify(saved.sources)));setError('');}}>
-    בטל שינויים
+    {uiTranslate("בטל שינויים")}
    </Button>}
   </div>
   {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}

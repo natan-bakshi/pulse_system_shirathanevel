@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ChevronsUpDown } from 'lucide-react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const STATUS_OPTIONS = [
   { value: "quote", label: "הצעת מחיר" },
@@ -25,6 +26,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function EventFilters({ events, setFilteredEvents }) {
+  const {t: uiTranslate}=useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilters, setStatusFilters] = useState(['quote', 'confirmed', 'in_progress', 'completed', 'cancelled']);
   const [sortBy, setSortBy] = useState('-event_date');
@@ -89,12 +91,12 @@ export default function EventFilters({ events, setFilteredEvents }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full justify-between">
-                <span>סינון לפי סטטוס ({statusFilters.length} נבחרו)</span>
+                <span>{uiTranslate("סינון לפי סטטוס (")}{statusFilters.length} {uiTranslate("נבחרו)")}</span>
                 <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>הצג אירועים עם סטטוס</DropdownMenuLabel>
+              <DropdownMenuLabel>{uiTranslate("הצג אירועים עם סטטוס")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {STATUS_OPTIONS.map(option => (
                 <DropdownMenuCheckboxItem

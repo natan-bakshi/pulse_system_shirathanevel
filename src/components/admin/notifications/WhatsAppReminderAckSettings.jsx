@@ -60,9 +60,9 @@ export default function WhatsAppReminderAckSettings(){
     הכפתור אינו מאשר או דוחה שיבוץ.
    </p>
    <div className="rounded-md bg-gray-50 p-3 flex flex-wrap gap-2 items-center">
-    <span className="rounded border px-3 py-2 bg-white text-xs">קיבלתי</span>
-    <span className="rounded border px-3 py-2 bg-white text-xs">כניסה למערכת</span>
-    <span className="rounded border px-3 py-2 bg-white text-xs">פנייה למשרד</span>
+    <span className="rounded border px-3 py-2 bg-white text-xs">{uiTranslate("קיבלתי")}</span>
+    <span className="rounded border px-3 py-2 bg-white text-xs">{uiTranslate("כניסה למערכת")}</span>
+    <span className="rounded border px-3 py-2 bg-white text-xs">{uiTranslate("פנייה למשרד")}</span>
     <p className="w-full text-xs text-gray-600">
      תצוגה לדוגמה בלבד. הכפתורים בפועל כפופים להגדרות כל תבנית והודעה.
     </p>

@@ -42,7 +42,7 @@ export function PaymentDialog({ open, onOpenChange, paymentForm, setPaymentForm,
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>הוספת תשלום</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div><Label>סכום</Label><Input type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" /></div>
+          <div><Label>{uiTranslate("סכום")}</Label><Input type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" /></div>
           <div>
             <Label>מטבע</Label>
             <Select value={paymentForm.currency || eventPrimaryCurrency || 'ILS'} onValueChange={(value) => setPaymentForm({ ...paymentForm, currency: value })}>

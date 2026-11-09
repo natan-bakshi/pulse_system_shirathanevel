@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Info, Loader2, Save, CheckCircle2, XCircle, Mail } from "lucide-react";
 import { handleUserCalendarDisconnection } from "@/functions/handleUserCalendarDisconnection";
 import { createAndShareUserCalendar } from "@/functions/createAndShareUserCalendar";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function UserCalendarSync({ user }) {
+  const {t: uiTranslate}=useLanguage();
   const [syncApproved, setSyncApproved] = useState(user?.calendar_sync_approved || false);
   const [isSaving, setIsSaving] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
@@ -84,16 +86,16 @@ export default function UserCalendarSync({ user }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Calendar className="h-5 w-5" />
-          סנכרון יומן Google
+          {uiTranslate("סנכרון יומן Google")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Sync toggle */}
         <div className="flex items-center justify-between border p-3 rounded-md">
           <div>
-            <Label htmlFor="calendar_sync" className="cursor-pointer font-medium">אישור סנכרון אירועים ליומן</Label>
+            <Label htmlFor="calendar_sync" className="cursor-pointer font-medium">{uiTranslate("אישור סנכרון אירועים ליומן")}</Label>
             <p className="text-xs text-gray-500 mt-1">
-              כשמופעל, אירועים רלוונטיים יסונכרנו אוטומטית ליומן Google שלך
+              {uiTranslate("כשמופעל, אירועים רלוונטיים יסונכרנו אוטומטית ליומן Google שלך")}
             </p>
           </div>
           <Switch
@@ -107,8 +109,8 @@ export default function UserCalendarSync({ user }) {
           <div className="bg-green-50 rounded-lg p-3 text-sm text-green-800 flex items-start gap-2">
             <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium">יומן Google מחובר</p>
-              <p className="text-xs mt-1">יומן ייעודי נוצר ושותף אליך אוטומטית. אירועים יסונכרנו אליו.</p>
+              <p className="font-medium">{uiTranslate("יומן Google מחובר")}</p>
+              <p className="text-xs mt-1">{uiTranslate("יומן ייעודי נוצר ושותף אליך אוטומטית. אירועים יסונכרנו אליו.")}</p>
             </div>
           </div>
         )}
@@ -118,9 +120,9 @@ export default function UserCalendarSync({ user }) {
             <div className="flex items-start gap-2">
               <Mail className="h-5 w-5 mt-0.5 shrink-0 text-amber-600" />
               <div>
-                <p className="font-bold">יומן Google נוצר בהצלחה!</p>
-                <p className="mt-1">נשלח אליך מייל עם בקשה לאישור שיתוף היומן. <strong>עליך לאשר את השיתוף בגוף המייל</strong> כדי שהיומן יופיע אצלך ב-Google Calendar.</p>
-                <p className="mt-2 text-xs text-amber-700">לא מוצא את המייל? חפש גם בתיקיית <strong>דואר זבל / ספאם</strong>.</p>
+                <p className="font-bold">{uiTranslate("יומן Google נוצר בהצלחה!")}</p>
+                <p className="mt-1">{uiTranslate("נשלח אליך מייל עם בקשה לאישור שיתוף היומן.")} <strong>{uiTranslate("עליך לאשר את השיתוף בגוף המייל")}</strong> {uiTranslate("כדי שהיומן יופיע אצלך ב-Google Calendar.")}</p>
+                <p className="mt-2 text-xs text-amber-700">{uiTranslate("לא מוצא את המייל? חפש גם בתיקיית")} <strong>{uiTranslate("דואר זבל / ספאם")}</strong>.</p>
               </div>
             </div>
           </div>
@@ -131,8 +133,8 @@ export default function UserCalendarSync({ user }) {
             <div className="flex items-start gap-2">
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium mb-1">מה יקרה כשתשמור?</p>
-                <p>ייווצר יומן Google ייעודי בשמך והוא ישותף אליך אוטומטית. תקבל הזמנה לצפות ביומן ישירות ב-Google Calendar שלך.</p>
+                <p className="font-medium mb-1">{uiTranslate("מה יקרה כשתשמור?")}</p>
+                <p>{uiTranslate("ייווצר יומן Google ייעודי בשמך והוא ישותף אליך אוטומטית. תקבל הזמנה לצפות ביומן ישירות ב-Google Calendar שלך.")}</p>
               </div>
             </div>
           </div>
@@ -140,13 +142,13 @@ export default function UserCalendarSync({ user }) {
 
         {!syncApproved && isConnected && (
           <p className="text-xs text-amber-600">
-            כשתכבה את הסנכרון, האירועים שסונכרנו ליומן יימחקו והיומן הייעודי יימחק.
+            {uiTranslate("כשתכבה את הסנכרון, האירועים שסונכרנו ליומן יימחקו והיומן הייעודי יימחק.")}
           </p>
         )}
 
         {!syncApproved && !isConnected && (
           <p className="text-xs text-gray-500">
-            הפעל סנכרון כדי ליצור יומן Google ייעודי שיציג את האירועים שלך.
+            {uiTranslate("הפעל סנכרון כדי ליצור יומן Google ייעודי שיציג את האירועים שלך.")}
           </p>
         )}
 

@@ -60,22 +60,22 @@ export default function OpenBalancesTable({ events = [], eventServices = [], pay
           <CollapsibleTrigger asChild>
             <button type="button" className="flex items-center gap-2 text-right">
               <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
-              <CardTitle>יתרות פתוחות לפי אירוע</CardTitle>
+              <CardTitle>{uiTranslate("יתרות פתוחות לפי אירוע")}</CardTitle>
             </button>
           </CollapsibleTrigger>
-          {rows.length > 0 && <span className="text-sm font-semibold text-red-800">סה״כ ₪{Math.round(totalBalance).toLocaleString()}</span>}
+          {rows.length > 0 && <span className="text-sm font-semibold text-red-800">{uiTranslate("סה״כ ₪")}{Math.round(totalBalance).toLocaleString()}</span>}
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="space-y-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full justify-between sm:w-72">
-                  <span>סינון לפי סטטוס ({statusFilters.length} נבחרו)</span>
+                  <span>{uiTranslate("סינון לפי סטטוס (")}{statusFilters.length} {uiTranslate("נבחרו)")}</span>
                   <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
-                <DropdownMenuLabel>הצג אירועים עם סטטוס</DropdownMenuLabel>
+                <DropdownMenuLabel>{uiTranslate("הצג אירועים עם סטטוס")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {STATUS_OPTIONS.map((option) => (
                   <DropdownMenuCheckboxItem
@@ -90,9 +90,9 @@ export default function OpenBalancesTable({ events = [], eventServices = [], pay
             </DropdownMenu>
 
             {loading ? (
-              <p className="py-6 text-center text-gray-500">טוען יתרות...</p>
+              <p className="py-6 text-center text-gray-500">{uiTranslate("טוען יתרות...")}</p>
             ) : rows.length === 0 ? (
-              <p className="py-6 text-center text-gray-500">אין יתרות פתוחות לפי הסינון שנבחר.</p>
+              <p className="py-6 text-center text-gray-500">{uiTranslate("אין יתרות פתוחות לפי הסינון שנבחר.")}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -100,7 +100,7 @@ export default function OpenBalancesTable({ events = [], eventServices = [], pay
                     <tr className="border-b text-center text-xs text-gray-500">
                       <th className="p-2 text-center">{uiTranslate("אירוע")}</th>
                       <th className="p-2 text-center">{uiTranslate("תאריך")}</th>
-                      <th className="p-2 text-center">סה״כ</th>
+                      <th className="p-2 text-center">{uiTranslate("סה״כ")}</th>
                       <th className="p-2 text-center">{uiTranslate("שולם")}</th>
                       <th className="p-2 text-center">{uiTranslate("יתרה")}</th>
                       <th className="p-2 text-center"></th>
@@ -116,7 +116,7 @@ export default function OpenBalancesTable({ events = [], eventServices = [], pay
                         <td className="p-2 font-semibold text-red-800">{symbol}{balance.toLocaleString()}</td>
                         <td className="p-2">
                           <Button asChild size="sm" variant="outline">
-                            <Link to={`/EventDetails?id=${event.id}&clearing=link`}><Link2 className="h-4 w-4" />שלח דרישת תשלום</Link>
+                            <Link to={`/EventDetails?id=${event.id}&clearing=link`}><Link2 className="h-4 w-4" />{uiTranslate("שלח דרישת תשלום")}</Link>
                           </Button>
                         </td>
                       </tr>

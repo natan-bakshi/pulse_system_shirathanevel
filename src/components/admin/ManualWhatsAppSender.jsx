@@ -155,10 +155,10 @@ export default function ManualWhatsAppSender() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-green-800">
           <MessageCircle className="h-5 w-5" />
-          שליחת WhatsApp ידנית
+          {uiTranslate("שליחת WhatsApp ידנית")}
         </CardTitle>
         <CardDescription>
-          שלח הודעת WhatsApp ו-Notification פנימי למשתמש ספציפי לבדיקה
+          {uiTranslate("שלח הודעת WhatsApp ו-Notification פנימי למשתמש ספציפי לבדיקה")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -196,7 +196,7 @@ export default function ManualWhatsAppSender() {
                             </span>
                           ) : (
                             <Badge variant="outline" className="text-xs bg-red-50 text-red-500 border-red-200">
-                              אין טלפון
+                              {uiTranslate("אין טלפון")}
                             </Badge>
                           )}
                         </div>
@@ -220,12 +220,12 @@ export default function ManualWhatsAppSender() {
               <div className="font-medium">{selectedUser.full_name || 'ללא שם'}</div>
               <div className="mt-1 text-xs">
                 {selectedUser.phone ? (
-                  <span className="text-green-700">✓ מספר טלפון: {selectedUser.phone}</span>
+                  <span className="text-green-700">{uiTranslate("✓ מספר טלפון:")} {selectedUser.phone}</span>
                 ) : (
-                  <span className="text-red-700">✗ חסר מספר טלפון - לא ניתן לשלוח WhatsApp</span>
+                  <span className="text-red-700">{uiTranslate("✗ חסר מספר טלפון - לא ניתן לשלוח WhatsApp")}</span>
                 )}
                 {selectedUser.whatsapp_enabled === false && (
-                  <div className="text-red-700 mt-1">✗ המשתמש חסם התראות WhatsApp</div>
+                  <div className="text-red-700 mt-1">{uiTranslate("✗ המשתמש חסם התראות WhatsApp")}</div>
                 )}
               </div>
             </AlertDescription>
@@ -234,7 +234,7 @@ export default function ManualWhatsAppSender() {
 
         {/* Title */}
         <div>
-          <Label>כותרת (מודגש)</Label>
+          <Label>{uiTranslate("כותרת (מודגש)")}</Label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -266,7 +266,7 @@ export default function ManualWhatsAppSender() {
           ) : (
             <Send className="h-4 w-4 ml-2" />
           )}
-          שלח WhatsApp
+          {uiTranslate("שלח WhatsApp")}
         </Button>
 
         {/* Result Display */}
@@ -284,11 +284,11 @@ export default function ManualWhatsAppSender() {
                   <div className="text-xs text-green-700 mt-1">
                     {sendResult.whatsapp?.sent ? (
                       <div className="text-green-700 font-bold">
-                        ✓ WhatsApp נשלח בהצלחה!
+                        {uiTranslate("✓ WhatsApp נשלח בהצלחה!")}
                       </div>
                     ) : (
                       <div className="text-red-700">
-                        WhatsApp לא נשלח: {sendResult.whatsapp?.reason || sendResult.whatsapp?.error || 'שגיאה לא ידועה'}
+                        {uiTranslate("WhatsApp לא נשלח:")} {sendResult.whatsapp?.reason || sendResult.whatsapp?.error || 'שגיאה לא ידועה'}
                       </div>
                     )}
                   </div>

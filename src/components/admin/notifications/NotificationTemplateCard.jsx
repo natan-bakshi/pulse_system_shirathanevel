@@ -79,7 +79,7 @@ export default function NotificationTemplateCard({
         {template.timing_value && (
           <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {template.timing_value} {TIMING_UNITS[template.timing_unit]} לפני
+            {template.timing_value} {TIMING_UNITS[template.timing_unit]} {uiTranslate("לפני")}
           </p>
         )}
       </div>

@@ -82,11 +82,9 @@ export default function WhatsAppInteractiveDraftSettings(){
       setExpanded(next);
       if(next && version===null && !busy)void load(provider);
     }}>
-    <summary className="cursor-pointer font-semibold">כפתורי תגובה להודעות שיבוץ — טיוטת הגדרות (לא פעיל)</summary>
+    <summary className="cursor-pointer font-semibold">{uiTranslate("כפתורי תגובה להודעות שיבוץ — טיוטת הגדרות (לא פעיל)")}</summary>
     <p className="mt-3 text-sm text-amber-800">
-      הגדרות ההודעות נשמרות בנפרד לכל ספק WhatsApp במערכת שירת הנבל.
-      הכפתורים והציטוטים עדיין לא פעילים בהודעות אמת. הפעלה תתאפשר רק לאחר אימות אבטחת Webhook
-      והשלמת מניעת תגובות כפולות ושיבוצים לא מעודכנים.
+      {uiTranslate("הגדרות ההודעות נשמרות בנפרד לכל ספק WhatsApp במערכת שירת הנבל. הכפתורים והציטוטים עדיין לא פעילים בהודעות אמת. הפעלה תתאפשר רק לאחר אימות אבטחת Webhook והשלמת מניעת תגובות כפולות ושיבוצים לא מעודכנים.")}
     </p>
     <div className="space-y-4 mt-3">
       <label className="block text-sm font-medium" htmlFor="interactive-wa-provider">{uiTranslate("ספק הודעות")}</label>
@@ -96,7 +94,7 @@ export default function WhatsAppInteractiveDraftSettings(){
         <option value="wasender">WasenderAPI</option>
       </select>
       {version!==null&&draft&&<div className="space-y-3 rounded-lg border p-3">
-        <p className="text-xs text-gray-500">טיוטה בגרסה {version} · שייכת לשירת הנבל בלבד · מצב הפעלה: כבוי</p>
+        <p className="text-xs text-gray-500">{uiTranslate("טיוטה בגרסה")} {version} {uiTranslate("· שייכת לשירת הנבל בלבד · מצב הפעלה: כבוי")}</p>
         {ACTIONS.map(a=>{
           const selected=draft.policy.buttons.find(b=>b.action===a.action);
           return <div key={a.action} className="flex flex-wrap items-center gap-2">
@@ -111,29 +109,29 @@ export default function WhatsAppInteractiveDraftSettings(){
           </div>;
         })}
         <label className="block space-y-1 text-sm">
-          <span>מספר WhatsApp של המשרד (בפורמט בינלאומי, ספרות בלבד)</span>
+          <span>{uiTranslate("מספר WhatsApp של המשרד (בפורמט בינלאומי, ספרות בלבד)")}</span>
           <Input value={draft.officeNumber} maxLength={15} disabled={busy} inputMode="numeric"
             placeholder="972501234567" className="max-w-[260px]" dir="ltr"
             onChange={e=>setDraft(s=>({...s,officeNumber:e.target.value}))}/>
-          <span className="block text-xs text-gray-500">משמש בתכנון לכפתור ״פנייה למשרד״; עדיין לא נשלח ללקוחות.</span>
+          <span className="block text-xs text-gray-500">{uiTranslate("משמש בתכנון לכפתור ״פנייה למשרד״; עדיין לא נשלח ללקוחות.")}</span>
         </label>
         <label className="flex gap-2 items-center text-sm">
           <Switch checked={draft.policy.quoteAssignment} disabled={busy}
             onCheckedChange={quoteAssignment=>setDraft(s=>({...s,policy:{...s.policy,quoteAssignment}}))}/>
-          לכלול ציטוט להודעת השיבוץ המקורית בתזכורות ובביטולים (כשייתמך)
+          {uiTranslate("לכלול ציטוט להודעת השיבוץ המקורית בתזכורות ובביטולים (כשייתמך)")}
         </label>
       </div>}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" disabled={busy} onClick={()=>load()}>
-          <RefreshCw className="h-4 w-4 ml-2"/>רענן טיוטה
+          <RefreshCw className="h-4 w-4 ml-2"/>{uiTranslate("רענן טיוטה")}
         </Button>
         <Button size="sm" disabled={busy||!draft||version===null} onClick={save}>
-          <Save className="h-4 w-4 ml-2"/>שמור טיוטה בלבד
+          <Save className="h-4 w-4 ml-2"/>{uiTranslate("שמור טיוטה בלבד")}
         </Button>
       </div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
-      <p className="text-xs text-gray-500">ללא משלוח הודעות, ללא שינוי סטטוס ספק וללא שינוי מרווחי התור. טיוטה זו אינה אישור להפעלת הכפתורים.</p>
+      <p className="text-xs text-gray-500">{uiTranslate("ללא משלוח הודעות, ללא שינוי סטטוס ספק וללא שינוי מרווחי התור. טיוטה זו אינה אישור להפעלת הכפתורים.")}</p>
     </div>
   </details>;
 }

@@ -147,7 +147,7 @@ export default function NotificationTemplateForm({
             {template.id ? 'עריכת תבנית התראה' : 'יצירת תבנית התראה חדשה'}
           </DialogTitle>
           <DialogDescription>
-            הגדר את פרטי התבנית, התזמון, התנאים וקהלי היעד
+            {uiTranslate("הגדר את פרטי התבנית, התזמון, התנאים וקהלי היעד")}
           </DialogDescription>
         </DialogHeader>
 
@@ -156,31 +156,31 @@ export default function NotificationTemplateForm({
             <TabsTrigger value="basic" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <FileText className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{uiTranslate("פרטים כלליים")}</span>
-              <span className="sm:hidden">כללי</span>
+              <span className="sm:hidden">{uiTranslate("כללי")}</span>
             </TabsTrigger>
             <TabsTrigger value="content" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <MessageSquare className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">תוכן ההתראה</span>
+              <span className="hidden sm:inline">{uiTranslate("תוכן ההתראה")}</span>
               <span className="sm:hidden">{uiTranslate("תוכן")}</span>
             </TabsTrigger>
             <TabsTrigger value="trigger" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <Clock className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">מתי לשלוח?</span>
-              <span className="sm:hidden">מתי</span>
+              <span className="hidden sm:inline">{uiTranslate("מתי לשלוח?")}</span>
+              <span className="sm:hidden">{uiTranslate("מתי")}</span>
             </TabsTrigger>
             <TabsTrigger value="conditions" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <Filter className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">תנאים וקהלים</span>
-              <span className="sm:hidden">תנאים</span>
+              <span className="hidden sm:inline">{uiTranslate("תנאים וקהלים")}</span>
+              <span className="sm:hidden">{uiTranslate("תנאים")}</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <Link2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">קישורים</span>
-              <span className="sm:hidden">לינקים</span>
+              <span className="hidden sm:inline">{uiTranslate("קישורים")}</span>
+              <span className="sm:hidden">{uiTranslate("לינקים")}</span>
             </TabsTrigger>
             <TabsTrigger value="buttons" className="text-xs sm:text-sm flex items-center gap-1 py-2">
               <MousePointerClick className="h-3.5 w-3.5" />
-              <span>כפתורים</span>
+              <span>{uiTranslate("כפתורים")}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -226,7 +226,7 @@ export default function NotificationTemplateForm({
               ) : (
                 <Send className="h-4 w-4 ml-2" />
               )}
-              שלח בדיקה
+              {uiTranslate("שלח בדיקה")}
             </Button>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">

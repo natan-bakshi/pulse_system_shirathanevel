@@ -107,10 +107,10 @@ export default function ManualPushSender() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Send className="h-5 w-5" />
-          שליחת התראה ידנית
+          {uiTranslate("שליחת התראה ידנית")}
         </CardTitle>
         <CardDescription>
-          שלח התראת Push וNotification פנימית למשתמש ספציפי לבדיקת המערכת
+          {uiTranslate("שלח התראת Push וNotification פנימית למשתמש ספציפי לבדיקת המערכת")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -138,7 +138,7 @@ export default function ManualPushSender() {
                         )}
                         {!user.push_enabled && (
                           <Badge variant="outline" className="text-xs bg-gray-50 text-gray-500">
-                            ללא Push
+                            {uiTranslate("ללא Push")}
                           </Badge>
                         )}
                       </div>
@@ -162,11 +162,11 @@ export default function ManualPushSender() {
               <div className="text-xs text-gray-600">{selectedUser.email}</div>
               <div className="mt-1 text-xs">
                 {selectedUser.push_enabled && selectedUser.onesignal_subscription_id ? (
-                  <span className="text-green-700">✓ Push מופעל - subscription ID: {selectedUser.onesignal_subscription_id.substring(0, 15)}...</span>
+                  <span className="text-green-700">{uiTranslate("✓ Push מופעל - subscription ID:")} {selectedUser.onesignal_subscription_id.substring(0, 15)}...</span>
                 ) : selectedUser.push_enabled ? (
-                  <span className="text-yellow-700">⚠ push_enabled=true אבל אין subscription ID</span>
+                  <span className="text-yellow-700">{uiTranslate("⚠ push_enabled=true אבל אין subscription ID")}</span>
                 ) : (
-                  <span className="text-gray-600">Push לא מופעל - יישלח רק Notification פנימי</span>
+                  <span className="text-gray-600">{uiTranslate("Push לא מופעל - יישלח רק Notification פנימי")}</span>
                 )}
               </div>
             </AlertDescription>
@@ -175,7 +175,7 @@ export default function ManualPushSender() {
 
         {/* Title */}
         <div>
-          <Label>כותרת ההתראה</Label>
+          <Label>{uiTranslate("כותרת ההתראה")}</Label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -207,7 +207,7 @@ export default function ManualPushSender() {
           ) : (
             <Send className="h-4 w-4 ml-2" />
           )}
-          שלח התראה
+          {uiTranslate("שלח התראה")}
         </Button>
 
         {/* Result Display */}
@@ -226,11 +226,11 @@ export default function ManualPushSender() {
                     <div>Notification ID: {sendResult.notification_id}</div>
                     {sendResult.push?.sent ? (
                       <div className="text-green-700">
-                        ✓ Push נשלח - נמענים: {sendResult.push.recipients}
+                        {uiTranslate("✓ Push נשלח - נמענים:")} {sendResult.push.recipients}
                       </div>
                     ) : (
                       <div className="text-yellow-700">
-                        Push לא נשלח: {sendResult.push?.reason || sendResult.push?.error || 'לא ידוע'}
+                        {uiTranslate("Push לא נשלח:")} {sendResult.push?.reason || sendResult.push?.error || 'לא ידוע'}
                       </div>
                     )}
                   </div>
@@ -246,7 +246,7 @@ export default function ManualPushSender() {
 
         {/* Help text */}
         <p className="text-xs text-gray-500 text-center">
-          שליחה ידנית עוקפת את שעות השקט ומאפשרת בדיקת מערכת ההתראות בכל עת
+          {uiTranslate("שליחה ידנית עוקפת את שעות השקט ומאפשרת בדיקת מערכת ההתראות בכל עת")}
         </p>
       </CardContent>
     </Card>
