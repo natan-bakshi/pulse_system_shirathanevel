@@ -206,6 +206,24 @@ test('modular quote keeps centered introduction and layout hierarchy with mirror
   assert.equal(ed.querySelectorAll('strong').length,hd.querySelectorAll('strong').length);
 });
 
+test('reviewed English rich text cannot lose original headings, bold, spacing or authored alignments',()=>{
+  const source='<p class="ql-align-center"><strong>ברוכים הבאים</strong></p><p><br></p>'+
+    '<p style="text-align:right"><u>פסקה מודגשת</u></p>';
+  const good='<p class="ql-align-center"><strong>Welcome</strong></p><p><br></p>'+
+    '<p style="text-align:right"><u>Underlined Paragraph</u></p>';
+  assert.equal(translationPreservesProtectedContent(source,good),true);
+  assert.equal(translationPreservesProtectedContent(source,good.replace('<strong>','').replace('</strong>','')),false);
+  assert.equal(translationPreservesProtectedContent(source,good.replace('<p><br></p>','')),false);
+  assert.equal(translationPreservesProtectedContent(source,good.replace('ql-align-center','ql-align-left')),false);
+  assert.equal(translationPreservesProtectedContent(source,good.replace('text-align:right','text-align:center')),false);
+  const legacySource='<p class="ql-align-right ql-direction-rtl">מקור</p>';
+  const olderTranslated='<p>English</p>';
+  const adapted=preserveSourceQuoteParagraphPresentation(legacySource,olderTranslated);
+  assert.equal(adapted,'<p class="ql-align-right ql-direction-rtl">English</p>');
+  assert.equal(translationPreservesProtectedContent(legacySource,adapted),true);
+  assert.equal(applyDocumentDirection('<html dir="rtl"><head></head><body>'+adapted+'</body></html>','en').includes('.ql-align-right,.text-right{text-align:left}'),true);
+});
+
 test('direction flip preserves source formatting metadata, margins, page breaks and background',()=>{
   const css=quoteDocumentStyle({
     quote_margin_left_mm:'15',quote_margin_right_mm:'26',
