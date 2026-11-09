@@ -127,7 +127,7 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
                   </Button>
                 </div>
                 <Badge className={`${block.block_type === 'field' ? 'bg-emerald-100 text-emerald-700' : (BLOCK_COLORS[block.block_type] || 'bg-gray-100')} text-xs shrink-0`}>
-                  {block.block_type === 'field' ? `שדה: ${block.field_label || ''}` : (BLOCK_LABELS[block.block_type] || block.block_type)}
+                  {block.block_type === 'field' ? `${t('שדה:')} ${block.field_label || ''}` : t(BLOCK_LABELS[block.block_type] || block.block_type)}
                 </Badge>
                 <div className="flex-1 min-w-0">
                   {showSubtitle && (
@@ -179,7 +179,7 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
 
       {/* Add Block Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent dir="rtl" className="sm:max-w-[450px]" onPointerDownOutside={(e) => e.stopPropagation()}>
+        <DialogContent dir={dir} className="sm:max-w-[450px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t("הוסף בלוק")}</DialogTitle>
           </DialogHeader>
@@ -194,7 +194,7 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
                     : 'border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <Badge className={`${bt.color} text-xs`}>{bt.label}</Badge>
+                <Badge className={`${bt.color} text-xs`}>{t(bt.label)}</Badge>
               </button>
             ))}
             {fields.length > 0 && (
