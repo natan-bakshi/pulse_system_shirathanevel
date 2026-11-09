@@ -775,7 +775,7 @@ export default async function(req) {
     return Response.json({ pdf_url: downloadUrl, fileName, file_uri: savedFileUri });
   } catch (error) {
     if(error?.code==='ENGLISH_TRANSLATION_INCOMPLETE')
-      return Response.json({error:error.message,fields:error.fields},{status:422});
+      return Response.json({error:error.message,fields:error.fields,samples:error.samples||[]},{status:422});
     console.error('Error in generateManualQuotePdf:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
