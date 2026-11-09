@@ -75,7 +75,10 @@ export function indexedText(index:Map<string,any>,field:string,source:unknown){
     }
     // Reusable administrator-reviewed phrases can be used in any quote field
     // if the Hebrew source is identical; never copy a translation to changed text.
-    if(key.startsWith('QuotePhrase:')){
+    if(key.startsWith('QuotePhrase:')&&[
+      'service_name','package_name','service_description','package_description',
+      'client_notes','price_display_text'
+    ].includes(field)){
       const phrase=row?.fields?.text;
       if(typeof phrase?.source==='string'&&canonical(phrase.source)===sourceText&&
         typeof phrase.value==='string'&&phrase.value.trim()&&
