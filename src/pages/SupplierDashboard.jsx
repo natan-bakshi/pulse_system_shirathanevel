@@ -25,7 +25,7 @@ const MONTHS = [
 ];
 
 export default function SupplierDashboard() {
-  const {t}=useLanguage();
+  const {t,locale}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [timeFilter, setTimeFilter] = useState("future");
@@ -80,14 +80,14 @@ export default function SupplierDashboard() {
       queryClient.invalidateQueries({queryKey:['supplierAssignmentsFeed']});
     } catch (error) {
       console.error('Failed to update supplier status:', error);
-      alert('שגיאה בעדכון הסטטוס. אנא נסה שוב.');
+      alert(t('שגיאה בעדכון הסטטוס. אנא נסה שוב.'));
     }
-  }, [supplier, queryClient]);
+  }, [supplier, queryClient,t]);
 
   const getStatusText = useCallback((status) => {
     const statusTexts = { pending: "ממתין לאישור", confirmed: "אישרתי", rejected: "לא יכול" };
-    return statusTexts[status] || "לא ידוע";
-  }, []);
+    return t(statusTexts[status] || "לא ידוע");
+  }, [t]);
 
   const getStatusColor = useCallback((status) => {
     const colors = { pending: "bg-yellow-100 text-yellow-800 border-yellow-200", confirmed: "bg-green-100 text-green-800 border-green-200", rejected: "bg-red-100 text-red-800 border-red-200" };
@@ -113,7 +113,7 @@ export default function SupplierDashboard() {
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">{t("שלום")} {user?.full_name || "ספק"}</h1>
+          <h1 className="text-3xl font-bold text-white mb-4">{t("שלום")} {user?.full_name || t("ספק")}</h1>
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl max-w-md mx-auto">
             <CardContent className="p-6 text-center">
               <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
@@ -129,7 +129,7 @@ export default function SupplierDashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">{t("שלום")} {user?.full_name || supplier?.supplier_name || "ספק"}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">{t("שלום")} {user?.full_name || supplier?.supplier_name || t("ספק")}</h1>
         {filteredEvents.length > 0 && (
           <p className="text-white/80">
             {t("יש לך")} {filteredEvents.filter(e => e.assignmentStatus === 'pending').length} {t("שיבוצים ממתינים לאישור")}
@@ -164,7 +164,7 @@ export default function SupplierDashboard() {
               <SelectTrigger><SelectValue placeholder={t("כל החודשים")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("כל החודשים")}</SelectItem>
-                {MONTHS.map(month => <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>)}
+                {MONTHS.map(month => <SelectItem key={month.value} value={String(month.value)}>{new Intl.DateTimeFormat(locale==='en'?'en-US':'he-IL',{month:'long'}).format(new Date(2026,month.value,1))}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -190,7 +190,7 @@ export default function SupplierDashboard() {
                     <CardTitle className="text-base sm:text-xl text-gray-900 break-words">
                       {getEventTitle(event)}
                     </CardTitle>
-                    <p className="text-gray-600 mt-1">{event.child_name && `שם החתן/כלה: ${event.child_name}`}</p>
+                    <p className="text-gray-600 mt-1">{event.child_name && `${t("שם החתן/כלה")}: ${event.child_name}`}</p>
                     <p className="text-lg font-semibold text-red-800 mt-2">{t("שירות:")} {event.serviceName}</p>
                     {event.supplierNote && (
                       <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
