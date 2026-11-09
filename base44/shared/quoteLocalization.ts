@@ -250,8 +250,12 @@ export function localizeEventQuoteData(input:{
  // select a QuoteTemplate. Translating it here would lose the intro template.
  for(const key of ['event_name','family_name','child_name','location','city',
   'services_section_title','standalone_services_title','external_services_title']){
-  if(options.includeEventHeader===false&&['location','city'].includes(key))continue;
+  if(options.includeEventHeader===false&&['event_name','family_name','child_name','location','city'].includes(key))continue;
+  // getEventDisplayName uses the family name in preference to event_name;
+  // requiring both spellings prevented many otherwise complete documents.
+  if(key==='event_name'&&event.family_name&&options.requireEventName!==true)continue;
   if(options.includeServices===false&&key.endsWith('_services_title'))continue;
+  if(key==='external_services_title'&&options.includeExternalServices===false)continue;
   e[key]=field('Event',event.id,key,event[key],'event.'+key);
  }
  e.__english_concept=approvedField(index,'Event',event.id,'concept',event.concept)||
@@ -296,8 +300,9 @@ export function localizeEventQuoteData(input:{
  const translatedServices=options.includeServices===false?services:services.map(s=>
   !relevantServiceIds.has(s.id)?s:({
    ...s,
-   service_name:field('Service',s.id,'service_name',s.service_name,'catalog.service_name'),
-   service_description:field('Service',s.id,'service_description',s.service_description,'catalog.service_description')
+   service_name:field('Service',s.id,'service_name',s.service_name,'catalog.'+s.id+'.service_name'),
+   service_description:options.includeDescriptions===false?s.service_description:
+     field('Service',s.id,'service_description',s.service_description,'catalog.'+s.id+'.service_description')
   }));
  const translatedEventServices=eventServices.map(es=>{
    if(options.includeServices===false||es.is_external&&options.includeExternalServices===false)return es;
@@ -305,12 +310,17 @@ export function localizeEventQuoteData(input:{
    const result={...es};
    for(const key of ['service_name','service_description','package_name','package_description',
       'client_notes','price_display_text']){
+     if((key==='service_description'||key==='package_description')&&options.includeDescriptions===false)continue;
+     if(key==='client_notes'&&options.includeClientNotes===false)continue;
+     if(key==='price_display_text'&&es.price_display_mode!=='custom_text')continue;
      if(es[key]!==null&&es[key]!==undefined)
-       result[key]=field('EventService',es.id,key,es[key],'service.'+key,serviceId);
+       result[key]=field('EventService',es.id,key,es[key],'service.'+es.id+'.'+key,serviceId);
    }
    // Public transport details are embedded in the quote, including names
    // and pickup points. Keep their sequence, times and phone numbers intact.
-   if(typeof es.pickup_point==='string' && es.pickup_point.trim()){
+   const category=es.category||services.find(s=>s.id===serviceId)?.category;
+   const showTransport=options.includeTransportDetails!==false&&category==='נסיעות';
+   if(showTransport&&typeof es.pickup_point==='string' && es.pickup_point.trim()){
      try{
        const units=JSON.parse(es.pickup_point);
        if(Array.isArray(units))result.pickup_point=JSON.stringify(units.map((unit:any,u:number)=>({
@@ -327,22 +337,21 @@ export function localizeEventQuoteData(input:{
        result.pickup_point=field('EventService',es.id,'pickup_point',es.pickup_point,'service.pickup_point');
      }
    }
-   if(es.on_site_contact_details && typeof es.on_site_contact_details==='object'){
+   if(showTransport&&es.on_site_contact_details && typeof es.on_site_contact_details==='object'){
      result.on_site_contact_details={...es.on_site_contact_details,
        name:field('EventService',es.id,'on_site_contact_name',es.on_site_contact_details.name,
          'service.on_site_contact_name')};
    }
-   // Notes can be client-facing in the established price/notes renderer. 
-   // Never blindly translate or expose internal admin_notes.
-   if(es.notes)
-     result.notes=field('EventService',es.id,'notes',es.notes,'service.notes',serviceId);
+   // EventService.notes and admin_notes are internal; the quote renderer only
+   // prints client_notes. Requiring translations of internal supplier notes
+   // previously blocked English client documents for no reason.
    return result;
  });
  const requiredIds=Array.isArray(options.requiredTemplateIds)?new Set(options.requiredTemplateIds):null;
  const translatedTemplates=templates.map(t=>({
   ...t,
   content:requiredIds&&!requiredIds.has(t.id)?t.content:
-    field('QuoteTemplate',t.id,'content',t.content,'template.'+t.template_type)
+    field('QuoteTemplate',t.id,'content',t.content,'template.'+t.id+'.content')
  }));
  return {event:e,services:translatedServices,eventServices:translatedEventServices,
    templates:translatedTemplates,missing};
