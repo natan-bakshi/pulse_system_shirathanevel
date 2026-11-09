@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { closingText } from "./closingI18n";
 import {securityExplanation,depositExplanation} from "./closingGuidance";
 import CurrentPaymentSchedule from '@/components/billing/CurrentPaymentSchedule';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ClosingStatus({agreement:a,busy,onToken,onDeposit,onBank,onPdf,onQuote,onRefresh,language="he"}) {
+  const {t: uiTranslate}=useLanguage();
   const t=closingText[language]||closingText.he;
   const completed=!!a.completed_at;
   const tokenDone=a.token_state==="verified";
@@ -13,14 +15,14 @@ export default function ClosingStatus({agreement:a,busy,onToken,onDeposit,onBank
   const [showBank,setShowBank]=useState(a.deposit_method==="bank");
   const bankDetails=a.snapshot?.bank_details;
   const requirementsMet=(!a.require_token||tokenDone)&&(!a.require_deposit||depositDone);
-  if(completed)return <section dir={language==="en"?"ltr":"rtl"} className="mx-auto max-w-xl text-center space-y-5 py-10 sm:py-16" aria-label="אישור סגירת האירוע">
+  if(completed)return <section dir={language==="en"?"ltr":"rtl"} className="mx-auto max-w-xl text-center space-y-5 py-10 sm:py-16" aria-label={uiTranslate("אישור סגירת האירוע")}>
     <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-800"><Check aria-hidden="true" className="h-8 w-8"/></span>
     <div className="space-y-2"><h1 className="text-2xl sm:text-3xl font-bold text-red-950">{t.doneTitle}</h1><p className="text-stone-700 leading-7">{t.doneDescription}</p></div>
     <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5 text-start space-y-2"><p className="font-semibold text-stone-900">{t.doneWhat}</p><p>{t.doneSigned}</p>{a.require_token&&<p>{t.doneCard}</p>}{a.require_deposit&&<p>{t.doneDeposit}</p>}</div>
     {a.payment_schedule&&<CurrentPaymentSchedule rows={a.payment_schedule.milestones} currency={a.snapshot.currency} language={language}/>}
     <div className="flex flex-wrap justify-center gap-3"><Button variant="outline" disabled={busy} onClick={onPdf} className="min-h-11"><FileText aria-hidden="true" className="h-4 w-4"/> {t.pdf}</Button>{a.snapshot?.quote_file?.file_uri&&<Button variant="outline" disabled={busy} onClick={onQuote} className="min-h-11"><FileText aria-hidden="true" className="h-4 w-4"/> {t.openQuote}</Button>}</div>
   </section>;
-  return <section dir={language==="en"?"ltr":"rtl"} className="space-y-5 border-t pt-6" aria-label="דרישות סגירת האירוע">
+  return <section dir={language==="en"?"ltr":"rtl"} className="space-y-5 border-t pt-6" aria-label={uiTranslate("דרישות סגירת האירוע")}>
     <div><h2 className="text-xl font-semibold text-red-950">{t.complete}</h2><p className="mt-1 text-stone-600">{t.completeDescription}</p></div>
     {a.require_token&&<p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7">{securityExplanation[language]||securityExplanation.he}</p>}
     {a.require_deposit&&!depositDone&&<p className="text-sm leading-7">{depositExplanation(a,language)}</p>}

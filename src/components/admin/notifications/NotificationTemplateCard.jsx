@@ -92,14 +92,14 @@ export default function NotificationTemplateCard({
           <Button
             variant="ghost"
             size="icon"
-            title="הפעל ידנית עכשיו"
+            title={uiTranslate("הפעל ידנית עכשיו")}
             onClick={() => onManualTrigger(template)}
           >
             <Zap className="h-4 w-4 text-amber-500" />
           </Button>
         )}
         {supportsButtonEditor && onEditButtons && <Button variant="ghost" size="icon"
-          title="הגדרת כפתורי WhatsApp להתראה הזאת"
+          title={uiTranslate("הגדרת כפתורי WhatsApp להתראה הזאת")}
           aria-label={'הגדרת כפתורי WhatsApp עבור '+template.name}
           onClick={() => onEditButtons(template)}>
           <MessageSquare className="h-4 w-4 text-green-700" />

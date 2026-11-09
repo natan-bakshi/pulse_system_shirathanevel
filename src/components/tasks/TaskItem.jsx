@@ -123,7 +123,7 @@ export default function TaskItem({
                 variant="ghost"
                 onClick={() => onEdit && onEdit(task)}
                 className="h-7 w-7 p-0"
-                aria-label="ערוך משימה"
+                aria-label={uiTranslate("ערוך משימה")}
               >
                 <Edit2 className="h-3.5 w-3.5" />
               </Button>
@@ -133,7 +133,7 @@ export default function TaskItem({
                 variant="ghost"
                 onClick={() => onDelete && onDelete(task)}
                 className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                aria-label="מחק משימה"
+                aria-label={uiTranslate("מחק משימה")}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

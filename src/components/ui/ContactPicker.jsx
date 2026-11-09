@@ -119,7 +119,7 @@ export default function ContactPicker({
         size="sm"
         onClick={handlePickContact}
         disabled={disabled || busy}
-        aria-label="בחר איש קשר מהטלפון באמצעות סימון ואישור"
+        aria-label={uiTranslate("בחר איש קשר מהטלפון באמצעות סימון ואישור")}
         title={nativeSupported ? 'בחר איש קשר אחד, סמן ✓ ליד שמו ולחץ אישור' : 'בדפדפן זה יש לייבא קובץ איש קשר'}
         className={className}
       >
@@ -132,8 +132,8 @@ export default function ContactPicker({
           size="sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || busy}
-          aria-label="ייבא כרטיס איש קשר מקובץ VCF"
-          title="ייבוא כרטיס איש קשר (VCF) — שיתוף איש קשר מהטלפון ושמירה לקבצים"
+          aria-label={uiTranslate("ייבא כרטיס איש קשר מקובץ VCF")}
+          title={uiTranslate("ייבוא כרטיס איש קשר (VCF) — שיתוף איש קשר מהטלפון ושמירה לקבצים")}
           className="shrink-0 px-2"
         >
           <FileUser className="h-4 w-4" />
@@ -146,7 +146,7 @@ export default function ContactPicker({
         accept=".vcf,text/vcard,text/x-vcard"
         className="sr-only"
         tabIndex={-1}
-        aria-label="בחר קובץ איש קשר VCF"
+        aria-label={uiTranslate("בחר קובץ איש קשר VCF")}
         onChange={handleVCardFile}
         disabled={disabled || busy}
       />

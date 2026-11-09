@@ -64,7 +64,7 @@ export default function QuickEventCreateDialog({ open, onOpenChange, onCreated }
         <div className="space-y-3 py-2">
           <div>
             <Label>{uiTranslate("שם האירוע *")}</Label>
-            <Input value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="לדוגמה: בר מצווה של מיכאל" disabled={isSaving} />
+            <Input value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder={uiTranslate("לדוגמה: בר מצווה של מיכאל")} disabled={isSaving} />
           </div>
           <div>
             <Label>{uiTranslate("תאריך האירוע *")}</Label>
@@ -72,7 +72,7 @@ export default function QuickEventCreateDialog({ open, onOpenChange, onCreated }
           </div>
           <div>
             <Label>{uiTranslate("שם משפחה (אופציונלי)")}</Label>
-            <Input value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="ניתן להשאיר ריק" disabled={isSaving} />
+            <Input value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder={uiTranslate("ניתן להשאיר ריק")} disabled={isSaving} />
             <p className="text-xs text-gray-500 mt-1">
               {uiTranslate("ניתן להשלים פרטים נוספים (שירותים, חבילות, וכו') בעריכת האירוע לאחר היצירה.")}
             </p>

@@ -40,7 +40,7 @@ export default function GeneralPaymentsTable({ payments, documentsById }) {
                 <td className="p-2">{document?.document_number || payment.invoice4u_document_number || "-"}</td>
                 <td className="p-2">
                   {pdf && (
-                    <Button asChild variant="ghost" size="icon" title="צפייה והורדה">
+                    <Button asChild variant="ghost" size="icon" title={uiTranslate("צפייה והורדה")}>
                       <a href={pdf} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a>
                     </Button>
                   )}

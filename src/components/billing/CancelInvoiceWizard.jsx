@@ -23,11 +23,11 @@ export default function CancelInvoiceWizard({ document, step, onClose, onCredit,
       </div>
       {!isRefundStep && !isDone && <div className="space-y-3">
         <p className="text-sm text-gray-600">{uiTranslate("שלב 1 מתוך 2: תופק חשבונית זיכוי מלאה עבור מסמך")} {number}{uiTranslate(". לא ניתן לבטל פעולה זו.")}</p>
-        <div><Label htmlFor="credit-reason">{uiTranslate("סיבת הזיכוי")}</Label><Textarea id="credit-reason" value={creditReason} onChange={(event) => setCreditReason(event.target.value)} placeholder="לדוגמה: ביטול עסקה" /></div>
+        <div><Label htmlFor="credit-reason">{uiTranslate("סיבת הזיכוי")}</Label><Textarea id="credit-reason" value={creditReason} onChange={(event) => setCreditReason(event.target.value)} placeholder={uiTranslate("לדוגמה: ביטול עסקה")} /></div>
       </div>}
       {isRefundStep && <div className="space-y-3">
         <p className="text-sm text-gray-600">{uiTranslate("שלב 2 מתוך 2: חשבונית הזיכוי הופקה. אם הכסף הוחזר ללקוח, יש להפיק קבלה שלילית לתיעוד ההחזר.")}</p>
-        <div><Label htmlFor="refund-reason">{uiTranslate("סיבת ההחזר")}</Label><Textarea id="refund-reason" value={refundReason} onChange={(event) => setRefundReason(event.target.value)} placeholder="לדוגמה: החזר כספי ללקוח" /></div>
+        <div><Label htmlFor="refund-reason">{uiTranslate("סיבת ההחזר")}</Label><Textarea id="refund-reason" value={refundReason} onChange={(event) => setRefundReason(event.target.value)} placeholder={uiTranslate("לדוגמה: החזר כספי ללקוח")} /></div>
       </div>}
       {isDone && <p className="flex items-center gap-2 text-sm text-green-700"><Check className="h-4 w-4" />{uiTranslate("תהליך הביטול הושלם: הופקו חשבונית זיכוי וקבלה שלילית.")}</p>}
       <DialogFooter>

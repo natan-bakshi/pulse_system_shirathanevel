@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 const CURRENCIES = [
   { code: 'ILS', symbol: '₪' },
@@ -6,6 +7,7 @@ const CURRENCIES = [
 ];
 
 export default function CurrencyPicker({ value, onChange, className = '' }) {
+  const {t: uiTranslate}=useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   
@@ -26,7 +28,7 @@ export default function CurrencyPicker({ value, onChange, className = '' }) {
         type="button"
         onClick={() => setOpen(!open)}
         className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors px-0.5 cursor-pointer select-none"
-        title="לחץ לשינוי מטבע"
+        title={uiTranslate("לחץ לשינוי מטבע")}
       >
         {current.symbol}
       </button>

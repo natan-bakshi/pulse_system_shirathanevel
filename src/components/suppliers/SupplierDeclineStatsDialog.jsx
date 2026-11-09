@@ -84,7 +84,7 @@ export default function SupplierDeclineStatsDialog({ isOpen, onClose, eventServi
           <div className="relative">
             <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="חיפוש ספק..."
+              placeholder={uiTranslate("חיפוש ספק...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pr-9 h-9"

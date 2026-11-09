@@ -961,7 +961,7 @@ for (const serviceItem of servicesForSave) {
                             type="number"
                             value={formData.total_override || ''}
                             onChange={(e) => handleInputChange("total_override", e.target.value)}
-                            placeholder="השאר ריק לחישוב אוטומטי"
+                            placeholder={uiTranslate("השאר ריק לחישוב אוטומטי")}
                             className="bg-blue-50/50 border-blue-200"
                           />
                         </div>
@@ -1016,7 +1016,7 @@ for (const serviceItem of servicesForSave) {
                             <Input 
                               value={formData.discount_reason || ''}
                               onChange={(e) => handleInputChange("discount_reason", e.target.value)}
-                              placeholder="למשל: בן משפחה"
+                              placeholder={uiTranslate("למשל: בן משפחה")}
                             />
                           </div>
                         </div>

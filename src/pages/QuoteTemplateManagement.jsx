@@ -203,6 +203,7 @@ function TemplateEditor({ template, onSave, onCancel, concepts, isSaving }) {
 }
 
 function QuoteSettings({ isSaving, setIsSaving }) {
+  const {t: uiTranslate}=useLanguage();
     const {t}=useLanguage();
     const [isUploading, setIsUploading] = useState(false);
     const queryClient = useQueryClient();
@@ -498,7 +499,7 @@ function QuoteSettings({ isSaving, setIsSaving }) {
                                 <Input 
                                     value={localSettings.quote_footer_text} 
                                     onChange={(e) => handleSettingChange('quote_footer_text', e.target.value)} 
-                                    placeholder="טקסט חופשי..."
+                                    placeholder={uiTranslate("טקסט חופשי...")}
                                 />
                             </div>
                         )}

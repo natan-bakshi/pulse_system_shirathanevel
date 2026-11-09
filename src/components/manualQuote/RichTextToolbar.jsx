@@ -129,13 +129,13 @@ export default function RichTextToolbar({ editor }) {
   return (
     <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 border-b" dir="rtl">
       {/* Undo / Redo / Clear formatting */}
-      <ToolbarButton tooltip="בטל (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
+      <ToolbarButton tooltip={uiTranslate("בטל (Ctrl+Z)")} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
         <Undo className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="חזור (Ctrl+Y)" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
+      <ToolbarButton tooltip={uiTranslate("חזור (Ctrl+Y)")} onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
         <Redo className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="נקה עיצוב" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
+      <ToolbarButton tooltip={uiTranslate("נקה עיצוב")} onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
         <Eraser className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
@@ -169,7 +169,7 @@ export default function RichTextToolbar({ editor }) {
       {/* Font family */}
       <Select value={fontFamily || '__default__'} onValueChange={handleFontFamily}>
         <SelectTrigger className="h-8 w-28 text-xs">
-          <SelectValue placeholder="גופן" />
+          <SelectValue placeholder={uiTranslate("גופן")} />
         </SelectTrigger>
         <SelectContent>
           {FONT_FAMILIES.map(f => (
@@ -183,7 +183,7 @@ export default function RichTextToolbar({ editor }) {
       {/* Font size */}
       <Select value={fontSize || '__default_size__'} onValueChange={handleFontSize}>
         <SelectTrigger className="h-8 w-20 text-xs">
-          <SelectValue placeholder="גודל" />
+          <SelectValue placeholder={uiTranslate("גודל")} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__default_size__">{uiTranslate("ברירת מחדל")}</SelectItem>
@@ -195,25 +195,25 @@ export default function RichTextToolbar({ editor }) {
       <Divider />
 
       {/* Bold / Italic / Underline / Strike */}
-      <ToolbarButton tooltip="מודגש (Ctrl+B)" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
+      <ToolbarButton tooltip={uiTranslate("מודגש (Ctrl+B)")} active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
         <Bold className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="נטוי (Ctrl+I)" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
+      <ToolbarButton tooltip={uiTranslate("נטוי (Ctrl+I)")} active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
         <Italic className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="קו תחתון (Ctrl+U)" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+      <ToolbarButton tooltip={uiTranslate("קו תחתון (Ctrl+U)")} active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
         <UnderlineIcon className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="קו חוצה" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
+      <ToolbarButton tooltip={uiTranslate("קו חוצה")} active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
         <Strikethrough className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
 
       {/* Sub / Super */}
-      <ToolbarButton tooltip="כתב עילי" active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()}>
+      <ToolbarButton tooltip={uiTranslate("כתב עילי")} active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()}>
         <SupIcon className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="כתב תחתי" active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()}>
+      <ToolbarButton tooltip={uiTranslate("כתב תחתי")} active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()}>
         <SubIcon className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
@@ -221,81 +221,81 @@ export default function RichTextToolbar({ editor }) {
       {/* Color & Highlight */}
       <ColorPalettePopover
         icon={<Palette className="h-4 w-4" />}
-        tooltip="צבע טקסט"
+        tooltip={uiTranslate("צבע טקסט")}
         onPickColor={(color) => editor.chain().focus().setColor(color).run()}
         onClear={() => editor.chain().focus().unsetColor().run()}
       />
       <ColorPalettePopover
         icon={<Highlighter className="h-4 w-4" />}
-        tooltip="צבע הדגשה"
+        tooltip={uiTranslate("צבע הדגשה")}
         active={editor.isActive('highlight')}
         onPickColor={(color) => editor.chain().focus().toggleHighlight({ color }).run()}
         onClear={() => editor.chain().focus().unsetHighlight().run()}
       />
-      <ToolbarButton tooltip="הסר צבע" onClick={() => editor.chain().focus().unsetColor().unsetHighlight().run()}>
+      <ToolbarButton tooltip={uiTranslate("הסר צבע")} onClick={() => editor.chain().focus().unsetColor().unsetHighlight().run()}>
         <Type className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
 
       {/* Alignment */}
-      <ToolbarButton tooltip="ישור לימין" active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()}>
+      <ToolbarButton tooltip={uiTranslate("ישור לימין")} active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()}>
         <AlignRight className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="ישור למרכז" active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()}>
+      <ToolbarButton tooltip={uiTranslate("ישור למרכז")} active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()}>
         <AlignCenter className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="ישור לשמאל" active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()}>
+      <ToolbarButton tooltip={uiTranslate("ישור לשמאל")} active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()}>
         <AlignLeft className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="ישור לשני הצדדים" active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()}>
+      <ToolbarButton tooltip={uiTranslate("ישור לשני הצדדים")} active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()}>
         <AlignJustify className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
 
       {/* Direction (visual hint via alignment) */}
-      <ToolbarButton tooltip="כיוון ימין-לשמאל (RTL)" onClick={() => setDirection('rtl')}>
+      <ToolbarButton tooltip={uiTranslate("כיוון ימין-לשמאל (RTL)")} onClick={() => setDirection('rtl')}>
         <span className="text-xs font-bold">RTL</span>
       </ToolbarButton>
-      <ToolbarButton tooltip="כיוון שמאל-לימין (LTR)" onClick={() => setDirection('ltr')}>
+      <ToolbarButton tooltip={uiTranslate("כיוון שמאל-לימין (LTR)")} onClick={() => setDirection('ltr')}>
         <span className="text-xs font-bold">LTR</span>
       </ToolbarButton>
       <Divider />
 
       {/* Lists */}
-      <ToolbarButton tooltip="רשימת תבליטים" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+      <ToolbarButton tooltip={uiTranslate("רשימת תבליטים")} active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
         <List className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="רשימה ממוספרת" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+      <ToolbarButton tooltip={uiTranslate("רשימה ממוספרת")} active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
         <ListOrdered className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="רשימת משימות" active={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()}>
+      <ToolbarButton tooltip={uiTranslate("רשימת משימות")} active={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()}>
         <ListChecks className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
 
       {/* Blockquote / Code / HR */}
-      <ToolbarButton tooltip="ציטוט" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+      <ToolbarButton tooltip={uiTranslate("ציטוט")} active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
         <Quote className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="קוד מוטבע" active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}>
+      <ToolbarButton tooltip={uiTranslate("קוד מוטבע")} active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}>
         <Code className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="בלוק קוד" active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+      <ToolbarButton tooltip={uiTranslate("בלוק קוד")} active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
         <Code2 className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="קו מפריד" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+      <ToolbarButton tooltip={uiTranslate("קו מפריד")} onClick={() => editor.chain().focus().setHorizontalRule().run()}>
         <Minus className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
 
       {/* Link / Image / Table */}
-      <ToolbarButton tooltip="הוסף קישור" active={editor.isActive('link')} onClick={setLink}>
+      <ToolbarButton tooltip={uiTranslate("הוסף קישור")} active={editor.isActive('link')} onClick={setLink}>
         <LinkIcon className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="הוסף תמונה" onClick={insertImage}>
+      <ToolbarButton tooltip={uiTranslate("הוסף תמונה")} onClick={insertImage}>
         <ImageIcon className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton tooltip="הוסף טבלה" onClick={insertTable}>
+      <ToolbarButton tooltip={uiTranslate("הוסף טבלה")} onClick={insertTable}>
         <TableIcon className="h-4 w-4" />
       </ToolbarButton>
     </div>

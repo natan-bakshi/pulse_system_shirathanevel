@@ -87,7 +87,7 @@ export default function EventLinkSelector({ linkedEventId, onChange }) {
           <div className="mt-3 border rounded-lg bg-gray-50 p-3">
             <Input
               autoFocus
-              placeholder="חפש לפי שם אירוע / משפחה / ילד / תאריך..."
+              placeholder={uiTranslate("חפש לפי שם אירוע / משפחה / ילד / תאריך...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="mb-2"

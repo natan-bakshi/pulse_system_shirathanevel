@@ -132,7 +132,7 @@ const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab(
   {stored&&<>
    <label className="block space-y-1">
     <span className="text-sm font-medium">{uiTranslate("אילו כפתורים יופיעו?")}</span>
-    <select aria-label="בחירת כפתורים לתבנית"
+    <select aria-label={uiTranslate("בחירת כפתורים לתבנית")}
      className="w-full rounded-md border bg-white p-2"
      disabled={busy} value={modeOf(value)}
      onChange={e=>updateMode(e.target.value)}>

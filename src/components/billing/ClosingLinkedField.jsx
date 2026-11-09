@@ -18,7 +18,7 @@ export default function ClosingLinkedField({label,value,onChange,dir="rtl",rows=
   return <div className="space-y-2">
     <label className="block">{label}<textarea ref={area} dir={dir} rows={rows} className="block w-full border rounded p-2 bg-white mt-1" value={value} onChange={e=>onChange(e.target.value)}/></label>
     <div className="flex flex-wrap items-end gap-2 text-sm">
-      <label className="flex-1 min-w-32">{uiTranslate("טקסט הקישור")}<input aria-label={`${label} — טקסט הקישור`} className="block w-full border rounded p-2 bg-white mt-1" value={text} onChange={e=>setText(e.target.value)} placeholder="למשל: תקנון האירוע"/></label>
+      <label className="flex-1 min-w-32">{uiTranslate("טקסט הקישור")}<input aria-label={`${label} — טקסט הקישור`} className="block w-full border rounded p-2 bg-white mt-1" value={text} onChange={e=>setText(e.target.value)} placeholder={uiTranslate("למשל: תקנון האירוע")}/></label>
       <label className="flex-1 min-w-40">{uiTranslate("כתובת הקישור")}<input aria-label={`${label} — כתובת הקישור`} dir="ltr" type="url" className="block w-full border rounded p-2 bg-white mt-1" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://..."/></label>
       <button type="button" disabled={!text.trim()||!valid} onClick={insert} className="rounded border px-3 py-2 text-red-900 hover:bg-red-50 disabled:opacity-50">{uiTranslate("הוסף קישור לטקסט")}</button>
     </div>

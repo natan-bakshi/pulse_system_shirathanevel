@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Check, Copy, Mail, MessageCircle, Phone } from 'lucide-react';
 import ContactActionButton from '@/components/contact/ContactActionButton';
 import { getTelLink, getWhatsAppLink } from '@/lib/contactSettings';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ContactCard({ contact }) {
+  const {t: uiTranslate}=useLanguage();
   const [copiedTarget, setCopiedTarget] = useState(null);
 
   const copyText = async (text, target) => {
@@ -27,9 +29,9 @@ export default function ContactCard({ contact }) {
           <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
             <span className="text-sm text-gray-800 break-all" dir="ltr">{contact.phone}</span>
             <div className="flex items-center gap-1 shrink-0">
-              {contact.allow_phone_copy && <ContactActionButton icon={copiedTarget === 'phone' ? Check : Copy} label="העתק מספר" onClick={() => copyText(contact.phone, 'phone')} className={copiedTarget === 'phone' ? 'text-green-600' : ''} />}
-              {contact.allow_phone_whatsapp && <ContactActionButton icon={MessageCircle} label="פתח WhatsApp" href={getWhatsAppLink(contact.phone)} className="text-green-600" />}
-              {contact.allow_phone_call && <ContactActionButton icon={Phone} label="התקשר" href={getTelLink(contact.phone)} className="text-blue-700" />}
+              {contact.allow_phone_copy && <ContactActionButton icon={copiedTarget === 'phone' ? Check : Copy} label={uiTranslate("העתק מספר")} onClick={() => copyText(contact.phone, 'phone')} className={copiedTarget === 'phone' ? 'text-green-600' : ''} />}
+              {contact.allow_phone_whatsapp && <ContactActionButton icon={MessageCircle} label={uiTranslate("פתח WhatsApp")} href={getWhatsAppLink(contact.phone)} className="text-green-600" />}
+              {contact.allow_phone_call && <ContactActionButton icon={Phone} label={uiTranslate("התקשר")} href={getTelLink(contact.phone)} className="text-blue-700" />}
             </div>
           </div>
         )}
@@ -38,8 +40,8 @@ export default function ContactCard({ contact }) {
           <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
             <span className="text-sm text-gray-800 break-all" dir="ltr">{contact.email}</span>
             <div className="flex items-center gap-1 shrink-0">
-              {contact.allow_email_copy && <ContactActionButton icon={copiedTarget === 'email' ? Check : Copy} label="העתק מייל" onClick={() => copyText(contact.email, 'email')} className={copiedTarget === 'email' ? 'text-green-600' : ''} />}
-              {contact.allow_email_send && <ContactActionButton icon={Mail} label="שלח מייל" href={`mailto:${contact.email}`} className="text-red-800" />}
+              {contact.allow_email_copy && <ContactActionButton icon={copiedTarget === 'email' ? Check : Copy} label={uiTranslate("העתק מייל")} onClick={() => copyText(contact.email, 'email')} className={copiedTarget === 'email' ? 'text-green-600' : ''} />}
+              {contact.allow_email_send && <ContactActionButton icon={Mail} label={uiTranslate("שלח מייל")} href={`mailto:${contact.email}`} className="text-red-800" />}
             </div>
           </div>
         )}

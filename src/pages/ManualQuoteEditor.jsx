@@ -428,7 +428,7 @@ export default function ManualQuoteEditor() {
           <Card className="bg-white/95">
             <CardContent className="text-center py-12 text-gray-500">
               <p className="mb-3">{t('אין עדיין קטעים בהצעה.')}</p>
-              <BlockAdder onAdd={addBlock} label="הוסף קטע ראשון" size="default" variant="default" />
+              <BlockAdder onAdd={addBlock} label={uiTranslate("הוסף קטע ראשון")} size="default" variant="default" />
             </CardContent>
           </Card>
         )}
@@ -449,7 +449,7 @@ export default function ManualQuoteEditor() {
               documentLanguage={documentLanguage}
             />
             <div className="flex justify-center">
-              <BlockAdder onAdd={(b) => insertBlockAt(b, idx + 1)} label="הוסף קטע כאן" />
+              <BlockAdder onAdd={(b) => insertBlockAt(b, idx + 1)} label={uiTranslate("הוסף קטע כאן")} />
             </div>
           </React.Fragment>
         ))}

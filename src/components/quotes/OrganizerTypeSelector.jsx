@@ -86,7 +86,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
         disabled={disabled}
       >
         <SelectTrigger className="flex-1 min-w-[140px]">
-          <SelectValue placeholder="בחר סוג הזמנה..." />
+          <SelectValue placeholder={uiTranslate("בחר סוג הזמנה...")} />
         </SelectTrigger>
         <SelectContent>
           {activeTypes.map(type => (
@@ -115,7 +115,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
               <Input
                 value={newTypeName}
                 onChange={(e) => setNewTypeName(e.target.value)}
-                placeholder="לדוגמה: חברה, מוסד, וכו'"
+                placeholder={uiTranslate("לדוגמה: חברה, מוסד, וכו'")}
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               />

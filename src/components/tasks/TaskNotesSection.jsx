@@ -97,7 +97,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
           <Textarea
             value={newNoteText}
             onChange={(e) => setNewNoteText(e.target.value)}
-            placeholder="הקלד הערה..."
+            placeholder={uiTranslate("הקלד הערה...")}
             rows={2}
             className="text-sm"
             autoFocus

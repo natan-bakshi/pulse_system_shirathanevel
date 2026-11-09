@@ -78,7 +78,7 @@ export default function AdminMultiSelect({ admins = [], selectedIds = [], onChan
             <div className="relative">
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="חיפוש מנהל..."
+                placeholder={uiTranslate("חיפוש מנהל...")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pr-8 h-9"

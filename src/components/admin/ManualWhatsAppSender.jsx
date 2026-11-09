@@ -167,7 +167,7 @@ export default function ManualWhatsAppSender() {
           <Label>{uiTranslate("בחר נמען")}</Label>
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger className="mt-1">
-              <SelectValue placeholder="בחר משתמש..." />
+              <SelectValue placeholder={uiTranslate("בחר משתמש...")} />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(groupedUsers).map(([type, typeUsers]) => (
@@ -238,7 +238,7 @@ export default function ManualWhatsAppSender() {
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="כותרת ההודעה"
+            placeholder={uiTranslate("כותרת ההודעה")}
             className="mt-1"
           />
         </div>
@@ -249,7 +249,7 @@ export default function ManualWhatsAppSender() {
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="תוכן ההודעה..."
+            placeholder={uiTranslate("תוכן ההודעה...")}
             rows={4}
             className="mt-1"
           />

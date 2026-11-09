@@ -79,7 +79,7 @@ export default function EventFilters({ events, setFilteredEvents }) {
         <div className="relative">
           <Search className="absolute right-3 top-2.5 sm:top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="חיפוש אירועים..."
+            placeholder={uiTranslate("חיפוש אירועים...")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pr-10"
@@ -119,7 +119,7 @@ export default function EventFilters({ events, setFilteredEvents }) {
           <div>
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
-                <SelectValue placeholder="בחר אופן מיון" />
+                <SelectValue placeholder={uiTranslate("בחר אופן מיון")} />
               </SelectTrigger>
               <SelectContent>
                 {SORT_OPTIONS.map(option => (

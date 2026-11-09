@@ -77,7 +77,7 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
             <Label>{uiTranslate("בחר אירוע")}</Label>
             <Select value={selectedEventId} onValueChange={setSelectedEventId}>
               <SelectTrigger>
-                <SelectValue placeholder="חפש אירוע..." />
+                <SelectValue placeholder={uiTranslate("חפש אירוע...")} />
               </SelectTrigger>
               <SelectContent>
                 {upcomingEvents.map(event => (

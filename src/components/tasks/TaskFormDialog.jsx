@@ -128,7 +128,7 @@ export default function TaskFormDialog({
               id="task-title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="למשל: לאשר תפריט עם הקייטרינג"
+              placeholder={uiTranslate("למשל: לאשר תפריט עם הקייטרינג")}
             />
           </div>
 
@@ -139,7 +139,7 @@ export default function TaskFormDialog({
               id="task-desc"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="פרטים נוספים על המשימה..."
+              placeholder={uiTranslate("פרטים נוספים על המשימה...")}
               rows={3}
             />
           </div>

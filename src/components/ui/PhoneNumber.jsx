@@ -18,16 +18,16 @@ export default function PhoneNumber({ phone, className = "" }) {
         <div className={`flex items-center gap-1 ${className}`}>
             <span>{phone}</span>
             <Button variant="ghost" size="icon" asChild className="h-6 w-6">
-                <a href={`tel:${phone}`} title="התקשר">
+                <a href={`tel:${phone}`} title={uiTranslate("התקשר")}>
                     <Phone className="h-3 w-3" />
                 </a>
             </Button>
             <Button variant="ghost" size="icon" asChild className="h-6 w-6">
-                <a href={whatsappLink} target="_blank" rel="noopener noreferrer" title="שלח וואטסאפ">
+                <a href={whatsappLink} target="_blank" rel="noopener noreferrer" title={uiTranslate("שלח וואטסאפ")}>
                     <MessageCircle className="h-3 w-3 text-green-500" />
                 </a>
             </Button>
-            <Button variant="ghost" size="icon" onClick={copyToClipboard} className="h-6 w-6" title="העתק מספר">
+            <Button variant="ghost" size="icon" onClick={copyToClipboard} className="h-6 w-6" title={uiTranslate("העתק מספר")}>
                 <Copy className="h-3 w-3" />
             </Button>
         </div>

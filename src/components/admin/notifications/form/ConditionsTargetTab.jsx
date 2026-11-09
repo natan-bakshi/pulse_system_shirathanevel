@@ -36,8 +36,8 @@ export default function ConditionsTargetTab({ template, onChange }) {
       {/* קהלי יעד */}
       <div>
         <FieldLabel 
-          label="למי לשלוח?" 
-          tooltip="בחר את קהלי היעד שיקבלו את ההתראה הזו"
+          label={uiTranslate("למי לשלוח?")} 
+          tooltip={uiTranslate("בחר את קהלי היעד שיקבלו את ההתראה הזו")}
         />
         <div className="flex flex-wrap gap-2 mt-2">
           {Object.entries(AUDIENCES).map(([value, info]) => (
@@ -172,7 +172,7 @@ export default function ConditionsTargetTab({ template, onChange }) {
                     }}
                   >
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="בחר ערך" />
+                      <SelectValue placeholder={uiTranslate("בחר ערך")} />
                     </SelectTrigger>
                     <SelectContent>
                       {CONDITION_FIELDS[condition.field].options.map(opt => (

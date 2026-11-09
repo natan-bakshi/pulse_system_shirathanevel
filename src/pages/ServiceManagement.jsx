@@ -26,6 +26,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function ServiceManagement() {
+  const {t: uiTranslate}=useLanguage();
   const {t}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -651,7 +652,7 @@ export default function ServiceManagement() {
               />
             </div>
             <CategorySelector
-              label="קטגוריה"
+              label={uiTranslate("קטגוריה")}
               options={serviceCategoryOptions}
               selectedCategories={formData.category ? [formData.category] : []}
               onChange={(categories) => setFormData({ ...formData, category: categories[0] || "" })}

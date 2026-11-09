@@ -209,7 +209,7 @@ export default function NotificationTemplateForm({
         <DialogFooter className="flex-col sm:flex-row gap-2 border-t pt-4">
           <div className="flex flex-col sm:flex-row gap-2 items-center border p-2 rounded-md bg-gray-50">
             <Input 
-              placeholder="מספר לבדיקת WhatsApp" 
+              placeholder={uiTranslate("מספר לבדיקת WhatsApp")} 
               value={testPhoneNumber}
               onChange={(e) => setTestPhoneNumber(e.target.value)}
               className="h-9 w-full sm:w-44 text-sm"

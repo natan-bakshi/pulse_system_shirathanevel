@@ -230,7 +230,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
         <h3 className="text-lg font-semibold">{uiTranslate("בחירת שירותים")}</h3>
         <Select onValueChange={handleAddService}>
           <SelectTrigger className="w-64">
-            <SelectValue placeholder="הוסף שירות חדש" />
+            <SelectValue placeholder={uiTranslate("הוסף שירות חדש")} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__new_service__" className="font-semibold text-blue-600">
@@ -326,7 +326,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                                 handleServiceChange(service.service_id, 'service_description', content);
                               }}
                               modules={quillModules}
-                              placeholder="תיאור השירות שיוצג בהצעת המחיר..."
+                              placeholder={uiTranslate("תיאור השירות שיוצג בהצעת המחיר...")}
                               className="text-sm"
                             />
                           </div>
@@ -374,7 +374,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
                          <Input
                             value={service.client_notes || ''}
                             onChange={(e) => handleServiceChange(service.service_id, 'client_notes', e.target.value)}
-                            placeholder="הערה שתוצג בהצעת המחיר עבור שירות זה"
+                            placeholder={uiTranslate("הערה שתוצג בהצעת המחיר עבור שירות זה")}
                           />
                       </div>
                     </>

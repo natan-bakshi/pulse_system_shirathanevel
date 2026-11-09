@@ -45,8 +45,8 @@ export default function AdminRecipientsSelector({ template, onChange }) {
     <div className="border rounded-lg p-3 bg-blue-50/50 mt-3">
       <div className="flex items-center justify-between mb-2">
         <FieldLabel
-          label="אילו מנהלים יקבלו?"
-          tooltip="אם לא נבחרו מנהלים - כל המנהלים יקבלו את ההתראה. אם נבחרו ספציפיים - רק הם יקבלו."
+          label={uiTranslate("אילו מנהלים יקבלו?")}
+          tooltip={uiTranslate("אם לא נבחרו מנהלים - כל המנהלים יקבלו את ההתראה. אם נבחרו ספציפיים - רק הם יקבלו.")}
         />
         {selectedIds.length > 0 && (
           <button

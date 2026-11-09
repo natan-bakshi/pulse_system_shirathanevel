@@ -82,7 +82,7 @@ export default function ContactSettingsEditor({ value, onChange }) {
                 <span className="font-semibold text-gray-900 truncate">{contact.name || `איש קשר ${index + 1}`}</span>
                 <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
               </button>
-              <Button type="button" variant="ghost" size="icon" onClick={() => deleteContact(contact.id)} aria-label="מחק איש קשר" title="מחק איש קשר">
+              <Button type="button" variant="ghost" size="icon" onClick={() => deleteContact(contact.id)} aria-label={uiTranslate("מחק איש קשר")} title={uiTranslate("מחק איש קשר")}>
                 <Trash2 className="h-4 w-4 text-red-600" />
               </Button>
             </div>

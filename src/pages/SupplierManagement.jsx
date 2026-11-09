@@ -114,6 +114,7 @@ const SupplierEventsList = ({ supplierId }) => {
 };
 
 export default function SupplierManagement() {
+  const {t: uiTranslate}=useLanguage();
   const {t}=useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -514,7 +515,7 @@ export default function SupplierManagement() {
 
             <div className="mt-4"><Label htmlFor="s_services">{t("שירותים (מופרדים בפסיק)")}</Label><Textarea id="s_services" value={formData.services_provided} onChange={e => setFormData({...formData, services_provided: e.target.value})} /></div>
             <CategorySelector
-              label="קטגוריות שיבוץ"
+              label={uiTranslate("קטגוריות שיבוץ")}
               options={supplierCategoryOptions}
               selectedCategories={formData.categories.split(',').map(category => category.trim()).filter(Boolean)}
               onChange={(categories) => setFormData({ ...formData, categories: categories.join(', ') })}
@@ -532,7 +533,7 @@ export default function SupplierManagement() {
                   id="s_gcal_id" 
                   value={formData.google_calendar_id || ''} 
                   onChange={e => setFormData({...formData, google_calendar_id: e.target.value})} 
-                  placeholder="example@gmail.com או Calendar ID"
+                  placeholder={uiTranslate("example@gmail.com או Calendar ID")}
                   className="dir-ltr text-left"
                 />
                 <p className="text-xs text-gray-500 mt-1">{t("מזהה יומן Google לסנכרון אירועים")}</p>

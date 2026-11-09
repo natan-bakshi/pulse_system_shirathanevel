@@ -164,7 +164,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
             <CustomContentToggle
               block={block}
               updateOptions={updateOptions}
-              label="ערוך טקסט פתיח רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
+              label={uiTranslate("ערוך טקסט פתיח רק עבור הצעה זו (לא משנה את התבנית הגלובלית)")}
               placeholder={uiTranslate("טקסט פתיח מותאם להצעה זו...")}
               defaultContent={getCurrentTemplateContent()}
             />
@@ -244,7 +244,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
             <CustomContentToggle
               block={block}
               updateOptions={updateOptions}
-              label="ערוך תנאי תשלום רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
+              label={uiTranslate("ערוך תנאי תשלום רק עבור הצעה זו (לא משנה את התבנית הגלובלית)")}
               placeholder={uiTranslate("תנאי תשלום מותאמים להצעה זו...")}
               defaultContent={getCurrentTemplateContent()}
             />
@@ -267,7 +267,7 @@ export default function BlockEditor({ block, index, total, onChange, onRemove, o
             <CustomContentToggle
               block={block}
               updateOptions={updateOptions}
-              label="ערוך תנאי התקשרות רק עבור הצעה זו (לא משנה את התבנית הגלובלית)"
+              label={uiTranslate("ערוך תנאי התקשרות רק עבור הצעה זו (לא משנה את התבנית הגלובלית)")}
               placeholder={uiTranslate("תנאי התקשרות מותאמים להצעה זו...")}
               defaultContent={getCurrentTemplateContent()}
             />

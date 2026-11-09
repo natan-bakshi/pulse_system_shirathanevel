@@ -44,7 +44,7 @@ export default function ReportFilters({ filters, onChange, events = [] }) {
           </SelectContent>
         </Select>
       </div>
-      <div><Label className="text-xs text-gray-500">{uiTranslate("חיפוש")}</Label><Input value={filters.search} onChange={(event) => set("search", event.target.value)} placeholder="מספר מסמך או לקוח" /></div>
+      <div><Label className="text-xs text-gray-500">{uiTranslate("חיפוש")}</Label><Input value={filters.search} onChange={(event) => set("search", event.target.value)} placeholder={uiTranslate("מספר מסמך או לקוח")} /></div>
     </div>
   );
 }

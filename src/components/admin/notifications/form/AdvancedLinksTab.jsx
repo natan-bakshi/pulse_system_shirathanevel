@@ -70,15 +70,15 @@ export default function AdvancedLinksTab({ template, onChange }) {
     <div className="space-y-4">
       <div>
         <FieldLabel 
-          label="סוג קישור חכם" 
-          tooltip="יוצר אוטומטית קישור ישיר לדף הרלוונטי (למשל: לאירוע הספציפי שהפעיל את ההתראה). מומלץ לחסוך הגדרת פרמטרים ידנית."
+          label={uiTranslate("סוג קישור חכם")} 
+          tooltip={uiTranslate("יוצר אוטומטית קישור ישיר לדף הרלוונטי (למשל: לאירוע הספציפי שהפעיל את ההתראה). מומלץ לחסוך הגדרת פרמטרים ידנית.")}
         />
         <Select 
           value={template.dynamic_url_type || 'none'} 
           onValueChange={chooseSmartLink}
         >
           <SelectTrigger className="mt-1">
-            <SelectValue placeholder="בחר סוג קישור" />
+            <SelectValue placeholder={uiTranslate("בחר סוג קישור")} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">{uiTranslate("ללא / ידני")}</SelectItem>
@@ -97,8 +97,8 @@ export default function AdvancedLinksTab({ template, onChange }) {
       {(!template.dynamic_url_type || template.dynamic_url_type === 'none') && (
         <div>
           <FieldLabel 
-            label="דף יעד ידני" 
-            tooltip="בחר דף מתוך הדפים הזמינים לקהל היעד הנבחר"
+            label={uiTranslate("דף יעד ידני")} 
+            tooltip={uiTranslate("בחר דף מתוך הדפים הזמינים לקהל היעד הנבחר")}
           />
           <div className="text-xs text-gray-500 mb-1">
             {uiTranslate("הדפים מוצגים בהתאם לקהלי היעד שנבחרו (")}{template.target_audiences?.map(a => AUDIENCES[a]?.label).join(', ')})
@@ -111,7 +111,7 @@ export default function AdvancedLinksTab({ template, onChange }) {
               template.deep_link_params_map})}
           >
             <SelectTrigger className="mt-1">
-              <SelectValue placeholder="בחר דף" />
+              <SelectValue placeholder={uiTranslate("בחר דף")} />
             </SelectTrigger>
             <SelectContent>
               {getRelevantPages().map((page, i) => (
@@ -129,8 +129,8 @@ export default function AdvancedLinksTab({ template, onChange }) {
       
       <div>
         <FieldLabel 
-          label="פרמטרים" 
-          tooltip='פרמטרים להעברה לדף היעד בפורמט JSON. למשל: {"id": "{{event_id}}"}'
+          label={uiTranslate("פרמטרים")} 
+          tooltip={uiTranslate("פרמטרים להעברה לדף היעד בפורמט JSON. למשל: {\"id\": \"{{event_id}}\"}")}
         />
         <Input
           value={template.deep_link_params_map || ''}

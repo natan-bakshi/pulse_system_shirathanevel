@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function CategorySelector({ label = "קטגוריה", options = [], selectedCategories = [], onChange, multiple = false }) {
+  const {t: uiTranslate}=useLanguage();
   const [newCategory, setNewCategory] = useState("");
   const selected = useMemo(() => selectedCategories.map(c => String(c || "").trim()).filter(Boolean), [selectedCategories]);
   const normalizedOptions = useMemo(() => Array.from(new Set(options.map(c => String(c || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "he")), [options]);
@@ -29,7 +31,7 @@ export default function CategorySelector({ label = "קטגוריה", options = [
       {availableOptions.length > 0 && (
         <Select key={selected.join("|")} onValueChange={addCategory}>
           <SelectTrigger>
-            <SelectValue placeholder="בחר קטגוריה קיימת" />
+            <SelectValue placeholder={uiTranslate("בחר קטגוריה קיימת")} />
           </SelectTrigger>
           <SelectContent>
             {availableOptions.map(category => (
@@ -39,7 +41,7 @@ export default function CategorySelector({ label = "קטגוריה", options = [
         </Select>
       )}
       <div className="flex gap-2">
-        <Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="או הקלד קטגוריה חדשה" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(newCategory); } }} />
+        <Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder={uiTranslate("או הקלד קטגוריה חדשה")} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(newCategory); } }} />
         <Button type="button" variant="outline" onClick={() => addCategory(newCategory)} disabled={!newCategory.trim()}>
           <Plus className="h-4 w-4" />
         </Button>

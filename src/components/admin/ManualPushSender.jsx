@@ -119,7 +119,7 @@ export default function ManualPushSender() {
           <Label>{uiTranslate("בחר נמען")}</Label>
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger className="mt-1">
-              <SelectValue placeholder="בחר משתמש..." />
+              <SelectValue placeholder={uiTranslate("בחר משתמש...")} />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(groupedUsers).map(([type, typeUsers]) => (
@@ -179,7 +179,7 @@ export default function ManualPushSender() {
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="לדוגמה: בדיקת מערכת"
+            placeholder={uiTranslate("לדוגמה: בדיקת מערכת")}
             className="mt-1"
           />
         </div>
@@ -190,7 +190,7 @@ export default function ManualPushSender() {
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="לדוגמה: זוהי הודעת בדיקה לוודא שמערכת ההתראות עובדת"
+            placeholder={uiTranslate("לדוגמה: זוהי הודעת בדיקה לוודא שמערכת ההתראות עובדת")}
             rows={3}
             className="mt-1"
           />

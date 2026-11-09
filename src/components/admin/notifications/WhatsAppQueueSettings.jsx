@@ -195,7 +195,7 @@ export default function WhatsAppQueueSettings(){
     </Button>
     {dirty&&<p className="text-xs text-amber-800">{uiTranslate("יש שינויים שלא נשמרו.")}</p>}
    </section>
-   <section className="border-t pt-4 space-y-3" aria-label="כפתורי WhatsApp">
+   <section className="border-t pt-4 space-y-3" aria-label={uiTranslate("כפתורי WhatsApp")}>
     <div className="flex justify-between items-center"><Header>{uiTranslate("כפתורי WhatsApp לספקים")}</Header><strong className="text-sm">{buttonStatus}</strong></div>
     <p className="text-sm text-gray-600">
      {uiTranslate("שיבוצים: אישור, דחייה ופנייה למשרד; קישור ללוח הספק בגוף ההודעה. בהודעות אחרות לספק ניתן לבחור כפתורי כניסה למערכת ופנייה למשרד לכל סוג הודעה בנפרד.")}

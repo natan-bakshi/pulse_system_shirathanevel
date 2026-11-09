@@ -20,9 +20,10 @@ function ChartCard({ title, children, empty }) {
 
 // ארבעת הגרפים של הדוח הכספי.
 export default function ReportCharts({ monthly, byType, byStatus, topEvents }) {
+  const {t: uiTranslate}=useLanguage();
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <ChartCard title="הכנסות ומע״מ לפי חודש" empty={monthly.length === 0}>
+      <ChartCard title={uiTranslate("הכנסות ומע״מ לפי חודש")} empty={monthly.length === 0}>
         <AreaChart data={monthly} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -34,7 +35,7 @@ export default function ReportCharts({ monthly, byType, byStatus, topEvents }) {
         </AreaChart>
       </ChartCard>
 
-      <ChartCard title="חלוקה לפי סוג מסמך" empty={byType.length === 0}>
+      <ChartCard title={uiTranslate("חלוקה לפי סוג מסמך")} empty={byType.length === 0}>
         <PieChart>
           <Pie data={byType} dataKey="value" nameKey="name" outerRadius={95} label={(entry) => entry.name}>
             {byType.map((entry, index) => <Cell key={entry.name} fill={palette[index % palette.length]} />)}
@@ -43,7 +44,7 @@ export default function ReportCharts({ monthly, byType, byStatus, topEvents }) {
         </PieChart>
       </ChartCard>
 
-      <ChartCard title="מסמכים לפי סטטוס" empty={byStatus.length === 0}>
+      <ChartCard title={uiTranslate("מסמכים לפי סטטוס")} empty={byStatus.length === 0}>
         <BarChart data={byStatus} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
@@ -53,7 +54,7 @@ export default function ReportCharts({ monthly, byType, byStatus, topEvents }) {
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="הכנסות לפי אירוע (10 מובילים)" empty={topEvents.length === 0}>
+      <ChartCard title={uiTranslate("הכנסות לפי אירוע (10 מובילים)")} empty={topEvents.length === 0}>
         <BarChart data={topEvents} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis type="number" tick={{ fontSize: 11 }} />

@@ -21,7 +21,7 @@ export default function ClosingLanguageFields({ settings, onChange }) {
   return <div className="space-y-4 border-t pt-4">
     <div className="flex items-center gap-3">
       <span className={!english ? "font-semibold" : "text-gray-500"}>{uiTranslate("עברית")}</span>
-      <Switch aria-label="החלפת שפת עריכת נוסח הסגירה" checked={english} onCheckedChange={checked => setLanguage(checked ? "en" : "he")} />
+      <Switch aria-label={uiTranslate("החלפת שפת עריכת נוסח הסגירה")} checked={english} onCheckedChange={checked => setLanguage(checked ? "en" : "he")} />
       <span className={english ? "font-semibold" : "text-gray-500"}>English</span>
     </div>
     <p className="text-sm text-gray-600">{uiTranslate("המתג משנה רק את שפת העריכה כאן; שפת הטופס וההודעות כברירת מחדל נקבעת בבחירות שלמעלה. כל נוסח נשמר בנפרד בלחיצה על „שמור הגדרות חיוב”.")}</p>

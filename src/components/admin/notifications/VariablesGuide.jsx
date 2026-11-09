@@ -28,7 +28,7 @@ export default function VariablesGuide({ onInsert }) {
           variant="ghost"
           size="sm"
           className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
-          title="הצג רשימת משתנים זמינים"
+          title={uiTranslate("הצג רשימת משתנים זמינים")}
         >
           <Variable className="h-3.5 w-3.5 ml-1" />
           {uiTranslate("משתנים זמינים")}

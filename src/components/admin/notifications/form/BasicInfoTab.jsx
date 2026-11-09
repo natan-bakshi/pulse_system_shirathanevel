@@ -17,8 +17,8 @@ export default function BasicInfoTab({ template, onChange }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <FieldLabel 
-            label="קוד זיהוי" 
-            tooltip="קוד ייחודי לזיהוי התבנית במערכת. רק אותיות גדולות באנגלית וקו תחתון. למשל: SUPPLIER_NEW_ASSIGNMENT"
+            label={uiTranslate("קוד זיהוי")} 
+            tooltip={uiTranslate("קוד ייחודי לזיהוי התבנית במערכת. רק אותיות גדולות באנגלית וקו תחתון. למשל: SUPPLIER_NEW_ASSIGNMENT")}
             required
           />
           <Input
@@ -30,8 +30,8 @@ export default function BasicInfoTab({ template, onChange }) {
         </div>
         <div>
           <FieldLabel 
-            label="שם התבנית" 
-            tooltip="שם ידידותי שיעזור לך לזהות את התבנית ברשימה"
+            label={uiTranslate("שם התבנית")} 
+            tooltip={uiTranslate("שם ידידותי שיעזור לך לזהות את התבנית ברשימה")}
             required
           />
           <Input
@@ -45,21 +45,21 @@ export default function BasicInfoTab({ template, onChange }) {
 
       <div>
         <FieldLabel 
-          label="תיאור" 
-          tooltip="תיאור פנימי לשימושך - לא יוצג למשתמשים"
+          label={uiTranslate("תיאור")} 
+          tooltip={uiTranslate("תיאור פנימי לשימושך - לא יוצג למשתמשים")}
         />
         <Input
           value={template.description || ''}
           onChange={(e) => update('description', e.target.value)}
-          placeholder="תיאור התבנית לשימוש פנימי"
+          placeholder={uiTranslate("תיאור התבנית לשימוש פנימי")}
           className="mt-1"
         />
       </div>
 
       <div>
         <FieldLabel 
-          label="קטגוריה" 
-          tooltip="קטגוריה לסיווג התבנית - משמשת לארגון וסינון"
+          label={uiTranslate("קטגוריה")} 
+          tooltip={uiTranslate("קטגוריה לסיווג התבנית - משמשת לארגון וסינון")}
         />
         <Select 
           value={template.category || 'system'} 
@@ -78,8 +78,8 @@ export default function BasicInfoTab({ template, onChange }) {
 
       <div className="border-t pt-4">
         <FieldLabel 
-          label="ערוצי שליחה מותרים" 
-          tooltip="באילו ערוצים מותר לשלוח התראה זו"
+          label={uiTranslate("ערוצי שליחה מותרים")} 
+          tooltip={uiTranslate("באילו ערוצים מותר לשלוח התראה זו")}
         />
         <div className="flex gap-6 mt-2">
           <div className="flex items-center space-x-2 space-x-reverse">

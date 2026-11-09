@@ -114,7 +114,7 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices, a
           <div className="flex-grow overflow-y-auto space-y-4 pr-2">
             <div className="flex gap-2">
               <Input
-                placeholder="שם קונספט חדש"
+                placeholder={uiTranslate("שם קונספט חדש")}
                 value={newConceptName}
                 onChange={(e) => setNewConceptName(e.target.value)}
               />

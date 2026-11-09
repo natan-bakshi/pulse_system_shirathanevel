@@ -154,7 +154,7 @@ export default function PaymentManager({ payments = [], onPaymentsChange, isRead
                     <Textarea
                       value={payment.notes || ''}
                       onChange={(e) => updatePayment(payment.id, 'notes', e.target.value)}
-                      placeholder="הערות על התשלום..."
+                      placeholder={uiTranslate("הערות על התשלום...")}
                     />
                   </div>
                 </div>

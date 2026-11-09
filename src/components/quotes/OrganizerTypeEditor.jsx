@@ -14,6 +14,7 @@ import RichTextEditor from "../manualQuote/RichTextEditor";
 
 import {useLanguage} from '@/i18n/LanguageProvider';
 export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }) {
+  const {t: uiTranslate}=useLanguage();
   const {t,dir}=useLanguage();
   const [typeName, setTypeName] = useState(type.type_name || "");
   const [titleTemplate, setTitleTemplate] = useState(type.quote_main_title_template || "");
@@ -110,7 +111,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
               <RichTextEditor
                 value={titleTemplate}
                 onChange={setTitleTemplate}
-                placeholder='לדוגמה: הצעת מחיר עבור ((חברת [company_name] לידי)) [contact_person]'
+                placeholder={uiTranslate("לדוגמה: הצעת מחיר עבור ((חברת [company_name] לידי)) [contact_person]")}
                 minHeight={100}
               />
             </div>

@@ -84,7 +84,7 @@ export default function WhatsAppProviderStatus() {
   }
 
   return (
-    <section className="space-y-4" dir="rtl" aria-label="ספק WhatsApp">
+    <section className="space-y-4" dir="rtl" aria-label={uiTranslate("ספק WhatsApp")}>
       <p className="text-sm text-gray-600">{uiTranslate("הבחירה כאן משפיעה על שליחת הודעות שיבוץ, התראות, קישורים וחשבוניות — כולל תהליכים אוטומטיים. לא מתבצע מעבר אוטומטי בעקבות כשל, כדי למנוע הודעות כפולות.")}</p>
       <div className="space-y-2 max-w-sm">
         <Label htmlFor="whatsapp-default-provider">{uiTranslate("ספק WhatsApp ברירת המחדל")}</Label>

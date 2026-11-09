@@ -10,7 +10,7 @@ export default function BusinessDetailsFields({ settings, onChange }) {
     <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
       <div>
         <Label htmlFor="business_tax_id">{uiTranslate("ח.פ. / מספר עוסק")}</Label>
-        <Input id="business_tax_id" dir="ltr" value={settings.business_tax_id || ""} onChange={(e) => onChange("business_tax_id", e.target.value)} placeholder="לדוגמה: 123456789" />
+        <Input id="business_tax_id" dir="ltr" value={settings.business_tax_id || ""} onChange={(e) => onChange("business_tax_id", e.target.value)} placeholder={uiTranslate("לדוגמה: 123456789")} />
       </div>
       <div>
         <Label htmlFor="business_phone">{uiTranslate("טלפון העסק")}</Label>

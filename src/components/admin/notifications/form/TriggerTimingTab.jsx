@@ -39,8 +39,8 @@ export default function TriggerTimingTab({ template, onChange }) {
 
       <div>
         <FieldLabel 
-          label="סוג טריגר" 
-          tooltip="מה יגרום לשליחת ההתראה"
+          label={uiTranslate("סוג טריגר")} 
+          tooltip={uiTranslate("מה יגרום לשליחת ההתראה")}
         />
         <Select 
           value={template.trigger_type || 'scheduled_check'} 
@@ -80,8 +80,8 @@ export default function TriggerTimingTab({ template, onChange }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel 
-                label="ערך זמן" 
-                tooltip="מספר היחידות לפני/אחרי נקודת הייחוס"
+                label={uiTranslate("ערך זמן")} 
+                tooltip={uiTranslate("מספר היחידות לפני/אחרי נקודת הייחוס")}
               />
               <Input
                 type="number"
@@ -92,7 +92,7 @@ export default function TriggerTimingTab({ template, onChange }) {
               />
             </div>
             <div>
-              <FieldLabel label="יחידת זמן" />
+              <FieldLabel label={uiTranslate("יחידת זמן")} />
               <Select 
                 value={template.timing_unit || 'days'} 
                 onValueChange={(v) => update('timing_unit', v)}
@@ -112,15 +112,15 @@ export default function TriggerTimingTab({ template, onChange }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel 
-                label="מתי?" 
-                tooltip="לפני, אחרי או בזמן האירוע/היעד"
+                label={uiTranslate("מתי?")} 
+                tooltip={uiTranslate("לפני, אחרי או בזמן האירוע/היעד")}
               />
               <Select 
                 value={template.timing_direction || 'before'} 
                 onValueChange={(v) => update('timing_direction', v)}
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="בחר זמן" />
+                  <SelectValue placeholder={uiTranslate("בחר זמן")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="before">{uiTranslate("לפני")}</SelectItem>
@@ -131,15 +131,15 @@ export default function TriggerTimingTab({ template, onChange }) {
             </div>
             <div>
               <FieldLabel 
-                label="ביחס ל..." 
-                tooltip="נקודת הייחוס לחישוב הזמן"
+                label={uiTranslate("ביחס ל...")} 
+                tooltip={uiTranslate("נקודת הייחוס לחישוב הזמן")}
               />
               <Select 
                 value={template.timing_reference || 'event_date'} 
                 onValueChange={(v) => update('timing_reference', v)}
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="בחר ייחוס" />
+                  <SelectValue placeholder={uiTranslate("בחר ייחוס")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="event_date">{uiTranslate("תאריך האירוע")}</SelectItem>
@@ -156,8 +156,8 @@ export default function TriggerTimingTab({ template, onChange }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <FieldLabel 
-                  label="כל" 
-                  tooltip="כל כמה זמן לשלוח תזכורת חוזרת (השאר ריק לביטול)"
+                  label={uiTranslate("כל")} 
+                  tooltip={uiTranslate("כל כמה זמן לשלוח תזכורת חוזרת (השאר ריק לביטול)")}
                 />
                 <Input
                   type="number"
@@ -168,7 +168,7 @@ export default function TriggerTimingTab({ template, onChange }) {
                 />
               </div>
               <div>
-                <FieldLabel label="יחידת זמן" />
+                <FieldLabel label={uiTranslate("יחידת זמן")} />
                 <Select 
                   value={template.reminder_interval_unit || 'hours'} 
                   onValueChange={(v) => update('reminder_interval_unit', v)}
@@ -197,15 +197,15 @@ export default function TriggerTimingTab({ template, onChange }) {
           </p>
           <div>
             <FieldLabel
-              label="שם הישות (entity_name)"
-              tooltip="שם הישות במערכת. למשל: Event לאירועים, EventService לשיבוצי ספקים"
+              label={uiTranslate("שם הישות (entity_name)")}
+              tooltip={uiTranslate("שם הישות במערכת. למשל: Event לאירועים, EventService לשיבוצי ספקים")}
             />
             <Select
               value={template.entity_name || ''}
               onValueChange={(v) => update('entity_name', v)}
             >
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="בחר ישות" />
+                <SelectValue placeholder={uiTranslate("בחר ישות")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Event">{uiTranslate("Event - אירועים")}</SelectItem>

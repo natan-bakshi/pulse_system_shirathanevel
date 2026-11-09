@@ -35,7 +35,7 @@ export default function WhatsAppWebhookCreditsEstimator(){
     </label>
     <label className="space-y-1 text-xs flex-1 min-w-[150px] max-w-[200px]">
      <span>{uiTranslate("אירועים לא מזוהים ביום (מעבירים לטיפול)")}</span>
-     <Input aria-label="אירועים לא מזוהים ביום" type="number" min="0" max="1000000"
+     <Input aria-label={uiTranslate("אירועים לא מזוהים ביום")} type="number" min="0" max="1000000"
       value={unknown} onChange={e=>setUnknown(e.target.value)}/>
     </label>
    </div>
