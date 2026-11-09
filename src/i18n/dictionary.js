@@ -1,5 +1,6 @@
 // Internal labels only. Dynamic customer text is NEVER translated here.
 import {pageLabels} from './pageLabels.js';
+import {componentLabels} from './componentLabels.js';
 export const interfaceLabels = Object.freeze({
   'דשבורד': 'Dashboard',
   'לוח אירועים': 'Events Board',
@@ -483,7 +484,8 @@ export const interfaceLabels = Object.freeze({
   'המסמך מוכן — לחץ לשיתוף': 'Document Ready — Select to Share',
   'שירותים וחבילות': 'Services & Packages',
   'שירותים לחבילה': 'Services to Package',
-  ...pageLabels
+  ...pageLabels,
+  ...componentLabels
 });
 export const translateLabel = (value, locale = 'he') =>
   locale === 'en' ? (interfaceLabels[String(value)] ?? String(value)) : String(value);
