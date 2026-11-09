@@ -45,14 +45,32 @@ export function approvedField(index:Map<string,any>,entity:string,id:string,fiel
 }
 export function indexedText(index:Map<string,any>,field:string,source:unknown){
   if(typeof source!=='string'||!source.trim())return null;
-  // Fallback for old, copied quote-item snapshots which contain a catalog text
-  // but not its original catalog item ID. Reject colliding translations.
+  // EventService snapshots frequently copy service descriptions into the
+  // package_description column (and vice versa). Field-only matching missed
+  // 1,192 *existing* copied descriptions. Match exact source text across
+  // equivalent business fields, not a similar phrase or arbitrary note.
+  const semanticGroup:{[key:string]:string[]}={
+    service_name:['service_name','package_name'],
+    package_name:['service_name','package_name'],
+    service_description:['service_description','package_description'],
+    package_description:['service_description','package_description']
+  };
+  const candidateFields=semanticGroup[field]||[field];
   const matches=new Set<string>();
   for(const [key,row] of index){
-    if(!/^(Service|Package|QuoteTemplate):/.test(key))continue;
-    const pair=row?.fields?.[field];
-    if(pair?.source===source&&typeof pair.value==='string'&&pair.value.trim()&&
-      translationPreservesProtectedContent(source,pair.value))matches.add(pair.value);
+    if(!/^(Service|Package|QuoteTemplate|QuotePhrase):/.test(key))continue;
+    for(const k of candidateFields){
+      const pair=row?.fields?.[k];
+      if(pair?.source===source&&typeof pair.value==='string'&&pair.value.trim()&&
+        translationPreservesProtectedContent(source,pair.value))matches.add(pair.value);
+    }
+    // Reusable administrator-reviewed phrases can be used in any quote field
+    // if the Hebrew source is identical; never copy a translation to changed text.
+    if(key.startsWith('QuotePhrase:')){
+      const phrase=row?.fields?.text;
+      if(phrase?.source===source&&typeof phrase.value==='string'&&phrase.value.trim()&&
+        translationPreservesProtectedContent(source,phrase.value))matches.add(phrase.value);
+    }
   }
   return matches.size===1?[...matches][0]:null;
 }
