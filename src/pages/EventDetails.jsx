@@ -23,7 +23,7 @@ import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import EventCloseButton from '@/components/billing/EventCloseButton';
 import EventQuoteEnglishDialog from '@/components/event-details/EventQuoteEnglishDialog';
 import {useLanguage} from '@/i18n/LanguageProvider';
-import {englishQuoteIssuesFromError} from '@/i18n/englishQuoteIssues';
+import {englishQuoteIssuesFromError,englishQuoteVisibleSamplesFromError} from '@/i18n/englishQuoteIssues';
 // דיאלוג הסליקה נטען רק כשנפתח בפועל - כדי לא להעמיס את טעינת דף האירוע.
 const ClearingPaymentDialog = React.lazy(() => import('../components/billing/ClearingPaymentDialog'));
 // דיאלוג הפקת מסמך לתשלום ידני - נטען רק כשנפתח בפועל.
@@ -84,11 +84,13 @@ function EventDetailsBody() {
   const [quoteLanguage,setQuoteLanguage]=useState('he');
   const [showEnglishQuoteDialog,setShowEnglishQuoteDialog]=useState(false);
   const [englishQuoteMissingFields,setEnglishQuoteMissingFields]=useState(null);
+  const [englishQuoteVisibleSamples,setEnglishQuoteVisibleSamples]=useState([]);
   const reviewIncompleteEnglish=useCallback((error)=>{
     if(quoteLanguage!=='en')return false;
     const fields=englishQuoteIssuesFromError(error);
     if(fields===null)return false;
     setEnglishQuoteMissingFields(fields);
+    setEnglishQuoteVisibleSamples(englishQuoteVisibleSamplesFromError(error));
     setShowEnglishQuoteDialog(true);
     return true;
   },[quoteLanguage]);
@@ -2086,7 +2088,8 @@ function EventDetailsBody() {
         event={event} eventServices={eventServices} allServices={allServices}
         quoteTemplates={quoteTemplates}
         missingFields={englishQuoteMissingFields}
-        onSaved={()=>setEnglishQuoteMissingFields(null)}/>}
+        visibleTextSamples={englishQuoteVisibleSamples}
+        onSaved={()=>{setEnglishQuoteMissingFields(null);setEnglishQuoteVisibleSamples([]);}}/>}
       {isAdmin && (
         <div className="flex flex-wrap gap-3 justify-end">
           <EventCloseButton event={event}/>
@@ -2147,7 +2150,7 @@ function EventDetailsBody() {
                   </div>
                 ) : null;
               })()}
-              {quoteLanguage==='en'&&<DropdownMenuItem onSelect={()=>{setEnglishQuoteMissingFields(null);setShowEnglishQuoteDialog(true);}}
+              {quoteLanguage==='en'&&<DropdownMenuItem onSelect={()=>{setEnglishQuoteMissingFields(null);setEnglishQuoteVisibleSamples([]);setShowEnglishQuoteDialog(true);}}
                 className="cursor-pointer text-sm">{t('עריכת פרטי אירוע באנגלית')}</DropdownMenuItem>}
               <DropdownMenuItem onClick={handleGenerateQuote} disabled={isGeneratingQuote}>
                 <FileText className="h-4 w-4 ml-2" />
