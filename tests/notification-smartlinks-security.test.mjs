@@ -51,10 +51,15 @@ test('event link authenticates supplier email + current event assignment before 
  assert.equal(allowed.id,EVENT);
  assert.equal(allowed.eventName,event.event_name);
  assert.equal(allowed.location,event.location);
- assert.deepEqual(allowed.services,[{
-  serviceName:'צילום',arrivalTime:'10:30',status:'pending'
+ assert.deepEqual(allowed.parents,[{
+  name:'Mother',phone:'0501234567',dialNumber:'+972501234567',
+  whatsappNumber:'972501234567'
  }]);
- for(const secret of ['parents','notes','all_inclusive_price','total_price',
+ assert.deepEqual(allowed.services,[{
+  serviceName:'צילום',serviceDescription:'',arrivalTime:'10:30',
+  standingTime:'',meetingLocation:'',pickupPoints:[],supplierNote:'',status:'pending'
+ }]);
+ for(const secret of ['all_inclusive_price','total_price','billing_customer_id',
   'supplier_notes','package_price','other-supplier','quote_history'])
   assert.equal(JSON.stringify(allowed).includes(secret),false,secret);
  assert.equal(f.calls.eventGet,1);
