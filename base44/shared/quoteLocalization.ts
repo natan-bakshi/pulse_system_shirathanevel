@@ -11,8 +11,10 @@ export function isHebrew(value:unknown):boolean{
 export function translationIndex(rows:any[]=[]){
   const index=new Map<string,any>();
   for(const row of rows){
-    if(row?.locale==='en'&&row.status==='approved'&&row.source_entity&&row.source_id)
-      index.set(row.source_entity+':'+row.source_id,row);
+    if(row?.locale==='en'&&row.status==='approved'&&row.source_entity&&row.source_id){
+      const key=row.source_entity+':'+row.source_id;
+      if(!index.has(key))index.set(key,row);
+    }
   }
   return index;
 }
