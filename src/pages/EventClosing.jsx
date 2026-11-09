@@ -8,6 +8,7 @@ import { base44 } from "@/api/base44Client";
 import AdminClosingVerification from "@/components/billing/AdminClosingVerification";
 import ClosingStatus from "@/components/billing/ClosingStatus";
 import { closingText,localizedSnapshot } from "@/components/billing/closingI18n";
+import {localizeClosingError} from '@/components/billing/closingErrors';
 import { Button } from "@/components/ui/button";
 import {useLanguage} from '@/i18n/LanguageProvider';
 const field="w-full rounded-md border p-3 bg-white";
@@ -23,7 +24,7 @@ function SignaturePad({onChange,clearLabel="נקה חתימה"}) {
  <Button type="button" variant="ghost" onClick={()=>{lines.current=[];repaint();onChange([]);}}>{clearLabel}</Button></div>;
 }
 export default function EventClosing(){
-  const {t: uiTranslate}=useLanguage();
+  const {t: uiTranslate,locale:uiLocale}=useLanguage();
  const id=new URLSearchParams(location.search).get("id")||"";
  const auth=useRef(null);
  if(!auth.current){
@@ -33,12 +34,12 @@ export default function EventClosing(){
   if(token){sessionStorage.setItem(key,JSON.stringify(auth.current));history.replaceState(null,"",location.pathname+location.search);}
  }
  const [agreement,setAgreement]=useState(null),[opened,setOpened]=useState(null),[sent,setSent]=useState(false),[code,setCode]=useState("");
- const [language,setLanguage]=useState("he");
+ const [language,setLanguage]=useState(()=>new URLSearchParams(window.location.search).get('lang')==='en'||uiLocale==='en'?'en':'he');
  const [introSeen,setIntroSeen]=useState(false);
  const intentionalDeparture=useRef(false);
  const outstanding=outstandingClosingSteps(agreement,language);
  const incomplete=agreement?!agreement.completed_at&&outstanding.length>0:!!opened;
- const exitText=(language==="en"?"The process is not complete. Remaining: ":"התהליך עדיין לא הושלם. נותרו: ")+(agreement?outstanding.join(" · "):(language==="en"?"Phone verification and the event form":"אימות הטלפון והשלמת טופס האירוע"))+(language==="en"?" . Leave anyway?":" . לצאת בכל זאת?");
+ const exitText=(language==='en'?"You can come back to this form while your link is valid. Items still to complete: ":'אפשר לחזור לטופס כל עוד הקישור בתוקף. להשלמה נותרו: ')+(agreement?outstanding.join(' · '):(language==='en'?'Phone verification and the event form':'אימות הטלפון והשלמת הטופס'))+(language==='en'?'. Would you like to leave this page?':' . לצאת מהעמוד כעת?');
  useEffect(()=>{
   if(!incomplete)return;
   const unload=e=>{if(intentionalDeparture.current)return;e.preventDefault();e.returnValue="";};
@@ -56,13 +57,17 @@ export default function EventClosing(){
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[info,setInfo]=useState("");
  const [name,setName]=useState(""),[role,setRole]=useState(""),[strokes,setStrokes]=useState([]),[accepted,setAccepted]=useState({});
  const call=useCallback((action,body={})=>agreementAction(action,{agreementId:id,...auth.current,...body}),[id]);
- const run=async fn=>{setBusy(true);setError("");setInfo("");try{return await fn();}catch(e){setError(agreementError(e));return false;}finally{setBusy(false);}};
+ const run=async fn=>{setBusy(true);setError('');setInfo('');try{return await fn();}catch(e){setError(localizeClosingError(agreementError(e),language));return false;}finally{setBusy(false);}};
  const refresh=useCallback(async()=>{
   if(auth.current.verified){try{const a=await call("view");setAgreement(a);if(!userSelectedLanguage.current)setLanguage(a.signature?.language||a.snapshot?.form_language||"he");return;}catch(e){if(e.response?.status!==403)throw e;auth.current.verified=false;}}
-  setOpened(await call("open"));
+  const opening=await call('open');
+  setOpened(opening);
+  if(!userSelectedLanguage.current)
+   setLanguage(opening.form_language==='en'?'en':'he');
  },[call]);
  useEffect(()=>{let active=true;base44.auth.me().then(u=>{if(active)setIsAdmin(u?.role==="admin");}).catch(()=>{});return()=>{active=false;};},[]);
- useEffect(()=>{const previous=document.title;document.title="אישור אירוע וחתימה — שירת הנבל";const meta=document.createElement("meta");meta.name="referrer";meta.content="no-referrer";document.head.appendChild(meta);run(refresh);return()=>{document.title=previous;meta.remove();};},[refresh]);
+ useEffect(()=>{const previous=document.title;const meta=document.createElement('meta');meta.name='referrer';meta.content='no-referrer';document.head.appendChild(meta);run(refresh);return()=>{document.title=previous;meta.remove();};},[refresh]);
+ useEffect(()=>{document.title=language==='en'?'Event details and signature — Shirat HaNevel':'פרטי האירוע וחתימה — שירת הנבל';},[language]);
  useEffect(()=>{const focus=()=>{if(auth.current.verified&&!busy)refresh().catch(()=>{});};window.addEventListener("focus",focus);return()=>window.removeEventListener("focus",focus);},[refresh,busy]);
  const redirect=async action=>{const result=await call(action);if(result.redirectUrl&&/^https:\/\//.test(result.redirectUrl)){intentionalDeparture.current=true;location.assign(result.redirectUrl);}else await refresh();};
  const pdf=async(kind)=>{const tab=window.open("","_blank");if(tab)tab.opener=null;try{const r=await call("document",{kind});if(r.url){if(tab)tab.location.replace(r.url);else location.assign(r.url);}}catch(e){tab?.close();throw e;}};
@@ -72,7 +77,8 @@ export default function EventClosing(){
  if(agreement?.completed_at)return <main dir={language==="en"?"ltr":"rtl"} className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white px-3 py-6 sm:px-6 sm:py-10 text-stone-800"><article className="mx-auto max-w-2xl rounded-3xl border border-stone-200 bg-white p-5 sm:p-10 shadow-lg"><ClosingStatus {...statusActions}/>{error&&<p role="alert" className="rounded bg-red-50 text-red-800 p-4 mt-5">{error}</p>}</article></main>;
  return <main dir={language==="en"?"ltr":"rtl"} className="min-h-screen bg-gradient-to-b from-stone-100 via-amber-50/30 to-white py-5 sm:py-10 px-3 sm:px-6 text-stone-800"><article className="mx-auto max-w-4xl rounded-3xl border border-stone-200 bg-white p-4 sm:p-10 space-y-7 shadow-lg">
   <header className="text-center border-b border-amber-100 pb-6"><p className="text-red-900 font-semibold tracking-wide">{t.brand}</p><h1 className="text-2xl sm:text-3xl font-bold text-red-950 mt-3">{t.title}</h1><p className="text-stone-500 mt-3 text-sm">{t.subtitle}</p></header>
-  <nav aria-label={uiTranslate("שלבי סגירת האירוע")} className="grid grid-cols-3 gap-2 text-xs sm:text-sm">{t.steps.map((label,i)=><div key={label} className={"text-center rounded-lg py-3 "+((!agreement?0:agreement.signed_at?2:1)===i?"bg-red-900 text-white":"bg-stone-100 text-stone-600")}>{i+1}. {label}</div>)}</nav>
+  {opened&&!agreement&&<div className="flex justify-end"><label className="text-sm font-medium">{language==='en'?'Form language':'שפת הטופס'}<select aria-label={language==='en'?'Form language':'שפת הטופס'} className="ms-2 rounded border p-2" value={language} onChange={event=>{userSelectedLanguage.current=true;setLanguage(event.target.value);}}><option value="he">עברית</option>{opened.available_languages?.includes('en')&&<option value="en">English</option>}</select></label></div>}
+  <nav aria-label={language==='en'?'Steps to complete the event form':'שלבי סגירת האירוע'} className="grid grid-cols-3 gap-2 text-xs sm:text-sm">{t.steps.map((label,i)=><div key={label} className={"text-center rounded-lg py-3 "+((!agreement?0:agreement.signed_at?2:1)===i?"bg-red-900 text-white":"bg-stone-100 text-stone-600")}>{i+1}. {label}</div>)}</nav>
   {!agreement&&<section className="space-y-4"><p>{t.verifyIntro} {opened?.phone||""}.</p>
    <Button disabled={busy||!opened} onClick={()=>run(async()=>{await call("otp");setSent(true);setInfo(language==="en"?"A code was sent via WhatsApp and expires in 10 minutes.":"קוד נשלח לוואטסאפ שלך, ותוקפו 10 דקות.");})}>{sent?t.resendCode:t.sendCode}</Button>
    {sent&&<form className="space-y-3" onSubmit={e=>{e.preventDefault();run(async()=>{const a=await call("verify",{code});auth.current.verified=true;sessionStorage.setItem("agreement:"+id,JSON.stringify(auth.current));setAgreement(a);setLanguage(a.signature?.language||a.snapshot?.form_language||"he");setName(a.snapshot.recipient_name||"");});}}>
