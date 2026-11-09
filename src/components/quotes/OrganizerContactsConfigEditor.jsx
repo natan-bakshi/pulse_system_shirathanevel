@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, Edit, Info } from "lucide-react";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
 const EXTRA_FIELD_TYPES = [
   { value: 'text', label: 'טקסט' },
   { value: 'phone', label: 'טלפון' },
@@ -14,6 +15,7 @@ const EXTRA_FIELD_TYPES = [
 ];
 
 export default function OrganizerContactsConfigEditor({ config, onChange }) {
+  const {t,dir}=useLanguage();
   const [showFieldDialog, setShowFieldDialog] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [fieldForm, setFieldForm] = useState({ id: '', name: '', type: 'text', options: '' });
@@ -76,24 +78,24 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
     <div className="space-y-4">
       <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 flex items-start gap-2">
         <Info className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>ניתן להוסיף את שדה אנשי הקשר בלשונית שדות האירוע. כאן ניתן להגדיר את שם הקטע, שם כל איש קשר, ושדות נוספים מעבר לשם, טלפון ואימייל.</span>
+        <span>{t("ניתן להוסיף את שדה אנשי הקשר בלשונית שדות האירוע. כאן ניתן להגדיר את שם הקטע, שם כל איש קשר, ושדות נוספים מעבר לשם, טלפון ואימייל.")}</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>שם הקטע (כותרת)</Label>
+          <Label>{t("שם הקטע (כותרת)")}</Label>
           <Input
             value={label}
             onChange={(e) => updateConfig({ label: e.target.value })}
-            placeholder="אנשי קשר"
+            placeholder={t("אנשי קשר")}
           />
         </div>
         <div>
-          <Label>שם איש קשר בודד</Label>
+          <Label>{t("שם איש קשר בודד")}</Label>
           <Input
             value={itemLabel}
             onChange={(e) => updateConfig({ item_label: e.target.value })}
-            placeholder="איש קשר"
+            placeholder={t("איש קשר")}
           />
         </div>
       </div>
@@ -101,17 +103,17 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
       <div className="border-t pt-4">
         <div className="flex justify-between items-center mb-3">
           <div>
-            <h4 className="font-semibold text-sm">שדות נוספים לאיש קשר ({extraFields.length})</h4>
-            <p className="text-xs text-gray-500">מעבר לשם, טלפון ואימייל (שתמיד קיימים)</p>
+            <h4 className="font-semibold text-sm">{t("שדות נוספים לאיש קשר (")}{extraFields.length})</h4>
+            <p className="text-xs text-gray-500">{t("מעבר לשם, טלפון ואימייל (שתמיד קיימים)")}</p>
           </div>
           <Button size="sm" variant="outline" onClick={openNewField}>
-            <Plus className="h-4 w-4 ml-1" />הוסף שדה
+            <Plus className="h-4 w-4 ml-1" />{t("הוסף שדה")}
           </Button>
         </div>
 
         {extraFields.length === 0 && (
           <div className="text-center py-4 border-2 border-dashed rounded-lg text-gray-400 text-sm">
-            רק שם, טלפון ואימייל (ללא שדות נוספים)
+            {t("רק שם, טלפון ואימייל (ללא שדות נוספים)")}
           </div>
         )}
 
@@ -142,16 +144,16 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label>שם השדה *</Label>
+              <Label>{t("שם השדה *")}</Label>
               <Input
                 value={fieldForm.name}
                 onChange={(e) => setFieldForm(p => ({ ...p, name: e.target.value }))}
-                placeholder="למשל: תפקיד"
+                placeholder={t("למשל: תפקיד")}
                 autoFocus
               />
             </div>
             <div>
-              <Label>סוג</Label>
+              <Label>{t("סוג")}</Label>
               <Select value={fieldForm.type} onValueChange={(v) => setFieldForm(p => ({ ...p, type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -163,17 +165,17 @@ export default function OrganizerContactsConfigEditor({ config, onChange }) {
             </div>
             {fieldForm.type === 'select' && (
               <div>
-                <Label>אפשרויות (מופרדות בפסיק)</Label>
+                <Label>{t("אפשרויות (מופרדות בפסיק)")}</Label>
                 <Input
                   value={fieldForm.options}
                   onChange={(e) => setFieldForm(p => ({ ...p, options: e.target.value }))}
-                  placeholder="אפשרות 1, אפשרות 2"
+                  placeholder={t("אפשרות 1, אפשרות 2")}
                 />
               </div>
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowFieldDialog(false)}>ביטול</Button>
+            <Button variant="outline" onClick={() => setShowFieldDialog(false)}>{t("ביטול")}</Button>
             <Button onClick={saveField} disabled={!fieldForm.name.trim()}>
               {editingIndex !== null ? 'עדכן' : 'הוסף'}
             </Button>

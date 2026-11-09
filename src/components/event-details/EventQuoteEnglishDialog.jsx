@@ -141,7 +141,7 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],
  return fields;
 }
 export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],quoteTemplates=[],missingFields=null,visibleTextSamples=[],onSaved}){
- const {locale}=useLanguage();
+ const {locale,t}=useLanguage();
  const [rows,setRows]=useState([]),[draft,setDraft]=useState({});
  const [organizers,setOrganizers]=useState([]),[footerSettings,setFooterSettings]=useState([]);
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
@@ -283,18 +283,18 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
  return <Dialog open={open} onOpenChange={onOpenChange}>
   <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto" dir={locale==='en'?'ltr':'rtl'}>
    <DialogHeader><DialogTitle>{locale==='en'?'Complete English Quote Content':'השלמת תוכן להצעת מחיר באנגלית'}</DialogTitle></DialogHeader>
-   <p className="text-sm text-muted-foreground" dir="rtl">השדות שכבר תורגמו בקטלוג משמשים אוטומטית. כאן אפשר לאשר נוסח אנגלי רק עבור שדות שדורשים השלמה, בלי לשנות את העברית או את המחירים.</p>
+   <p className="text-sm text-muted-foreground" dir="rtl">{t("השדות שכבר תורגמו בקטלוג משמשים אוטומטית. כאן אפשר לאשר נוסח אנגלי רק עבור שדות שדורשים השלמה, בלי לשנות את העברית או את המחירים.")}</p>
    {!externalEnglishEnabled()&&<p dir="rtl" className="text-xs text-amber-800 border rounded-md p-2">
-     המתרגם האוטומטי לשינויים חדשים עדיין אינו מחובר לשירות חיצוני פעיל. אפשר לערוך ולשמור כאן תרגומים באנגלית ידנית; לא יתבצע תרגום אוטומטי ללא חיבור מאובטח.
+     {t("המתרגם האוטומטי לשינויים חדשים עדיין אינו מחובר לשירות חיצוני פעיל. אפשר לערוך ולשמור כאן תרגומים באנגלית ידנית; לא יתבצע תרגום אוטומטי ללא חיבור מאובטח.")}
    </p>}
    {Array.isArray(missingFields)&&<div dir="rtl" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 space-y-2">
-     <p className="font-semibold">נדרשת השלמה של {missingFields.length} שדות לפני הנפקה באנגלית</p>
-     <label className="inline-flex items-center gap-2"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/>הצג גם שדות שכבר תורגמו</label>
-     <p className="text-xs">הנוסח באנגלית נשמר לשימוש חוזר. לאחר השמירה אפשר להפיק מחדש את ההצעה.</p>
+     <p className="font-semibold">{t("נדרשת השלמה של")} {missingFields.length} {t("שדות לפני הנפקה באנגלית")}</p>
+     <label className="inline-flex items-center gap-2"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/>{t("הצג גם שדות שכבר תורגמו")}</label>
+     <p className="text-xs">{t("הנוסח באנגלית נשמר לשימוש חוזר. לאחר השמירה אפשר להפיק מחדש את ההצעה.")}</p>
    </div>}
    {visibleTextSamples.length>0&&<div dir="rtl" role="alert" className="border border-amber-300 rounded-md p-3 text-sm space-y-2">
-     <p className="font-semibold">נמצא טקסט עברי במסמך האנגלי לאחר הרכבת ההצעה</p>
-     <p className="text-xs text-muted-foreground">יש למצוא את הנוסח בפרטי האירוע, בשירותים או בתבנית הרלוונטית ולהזין לו תרגום באנגלית. עד אז המערכת לא תפיק מסמך מעורב בעברית ובאנגלית.</p>
+     <p className="font-semibold">{t("נמצא טקסט עברי במסמך האנגלי לאחר הרכבת ההצעה")}</p>
+     <p className="text-xs text-muted-foreground">{t("יש למצוא את הנוסח בפרטי האירוע, בשירותים או בתבנית הרלוונטית ולהזין לו תרגום באנגלית. עד אז המערכת לא תפיק מסמך מעורב בעברית ובאנגלית.")}</p>
      <ul className="list-disc pr-5 space-y-1 text-xs break-words">
        {visibleTextSamples.map((snippet,i)=><li key={i}>{snippet}</li>)}
      </ul>
@@ -308,12 +308,12 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
        <summary className="cursor-pointer font-medium text-sm" dir="rtl">
         {key==='organizer'?'כותרות של סוג ההזמנה':key==='templates'?'תבניות הצעת מחיר':
          key==='catalog'?'שירותים מהקטלוג':key==='settings'?'הגדרות הצעת מחיר':
-         eventServices.find(s=>s.id===key)?.service_name||'שירות'} — {list.length} שדות לתרגום
+         eventServices.find(s=>s.id===key)?.service_name||'שירות'} — {list.length} {t("שדות לתרגום")}
        </summary><div className="space-y-3 mt-4">{list.map(editor)}</div>
       </details>)}
-    {!displayedFields.length&&<p className="text-sm" dir="rtl">לא נמצאו שדות נוספים לעריכה בתצוגה הזאת.</p>}
+    {!displayedFields.length&&<p className="text-sm" dir="rtl">{t("לא נמצאו שדות נוספים לעריכה בתצוגה הזאת.")}</p>}
     {unmatched.length>0&&<div dir="rtl" className="border rounded-lg p-3 text-sm">
-      <p className="font-semibold mb-2">שדות נוספים שדורשים בדיקה בהגדרות התבניות או בפרטי האירוע:</p>
+      <p className="font-semibold mb-2">{t("שדות נוספים שדורשים בדיקה בהגדרות התבניות או בפרטי האירוע:")}</p>
       <div className="text-xs text-muted-foreground space-y-1">{unmatched.map(x=><div key={x}>{x}</div>)}</div>
     </div>}
    </>}

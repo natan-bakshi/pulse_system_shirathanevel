@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Edit, Trash2, Loader2, Star, GripVertical } from "lucide-react";
 import OrganizerTypeEditor from "./OrganizerTypeEditor";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
 export default function OrganizerTypesTab() {
+  const {t,dir}=useLanguage();
   const [editingType, setEditingType] = useState(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
@@ -121,20 +123,19 @@ export default function OrganizerTypesTab() {
     <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>סוגי הזמנות</CardTitle>
+          <CardTitle>{t("סוגי הזמנות")}</CardTitle>
           <Button onClick={() => setShowNewDialog(true)} size="sm">
             <Plus className="h-4 w-4 ml-2" />
-            הוסף סוג הזמנה
+            {t("הוסף סוג הזמנה")}
           </Button>
         </div>
         <p className="text-sm text-gray-500 mt-1">
-          הגדרת סוגי הזמנות שונים עם שדות, כותרות ובלוקים מותאמים אישית להצעות מחיר.
-          סוג ללא הגדרות ישתמש בברירת המחדל הקיימת.
+          {t("הגדרת סוגי הזמנות שונים עם שדות, כותרות ובלוקים מותאמים אישית להצעות מחיר. סוג ללא הגדרות ישתמש בברירת המחדל הקיימת.")}
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {sortedTypes.length === 0 && (
-          <p className="text-center text-gray-500 py-4">אין סוגי הזמנות מוגדרים</p>
+          <p className="text-center text-gray-500 py-4">{t("אין סוגי הזמנות מוגדרים")}</p>
         )}
 
         {sortedTypes.map(type => {
@@ -152,7 +153,7 @@ export default function OrganizerTypesTab() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900">{type.type_name}</span>
                     {type.is_default && (
-                      <Badge className="bg-amber-100 text-amber-800 text-xs">ברירת מחדל</Badge>
+                      <Badge className="bg-amber-100 text-amber-800 text-xs">{t("ברירת מחדל")}</Badge>
                     )}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
@@ -170,7 +171,7 @@ export default function OrganizerTypesTab() {
                     size="sm"
                     onClick={() => handleSetDefault(type.id)}
                     disabled={isSaving}
-                    title="הגדר כברירת מחדל"
+                    title={t("הגדר כברירת מחדל")}
                     className="text-amber-600 hover:text-amber-700"
                   >
                     <Star className="h-4 w-4" />
@@ -203,25 +204,25 @@ export default function OrganizerTypesTab() {
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
         <DialogContent dir="rtl" className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>סוג הזמנה חדש</DialogTitle>
+            <DialogTitle>{t("סוג הזמנה חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>שם סוג ההזמנה</Label>
+              <Label>{t("שם סוג ההזמנה")}</Label>
               <Input
                 value={newTypeName}
                 onChange={(e) => setNewTypeName(e.target.value)}
-                placeholder="לדוגמה: מוסד, חברה, וכו'"
+                placeholder={t("לדוגמה: מוסד, חברה, וכו'")}
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateType()}
               />
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowNewDialog(false)}>ביטול</Button>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>{t("ביטול")}</Button>
             <Button onClick={handleCreateType} disabled={!newTypeName.trim() || isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
-              צור סוג הזמנה
+              {t("צור סוג הזמנה")}
             </Button>
           </div>
         </DialogContent>

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
 const BLOCK_TYPES = [
   { value: 'quote_date', label: 'תאריך הנפקת הצעה', color: 'bg-gray-100 text-gray-700' },
   { value: 'event_header', label: 'כותרת ראשית (פרטי אירוע)', color: 'bg-blue-100 text-blue-700' },
@@ -35,6 +36,7 @@ const BLOCK_COLORS = BLOCK_TYPES.reduce((acc, bt) => { acc[bt.value] = bt.color;
 const NO_SUBTITLE_BLOCKS = ['spacer', 'divider', 'quote_date', 'footer'];
 
 export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], availableVars = [] }) {
+  const {t,dir}=useLanguage();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedBlockType, setSelectedBlockType] = useState('');
 
@@ -95,18 +97,18 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h4 className="font-semibold text-sm">בלוקים בהצעת מחיר ({blocks.length})</h4>
-          <p className="text-xs text-gray-500">הגדר סדר ומבנה הצעת המחיר. ריק = מבנה ברירת מחדל הקיים</p>
+          <h4 className="font-semibold text-sm">{t("בלוקים בהצעת מחיר (")}{blocks.length})</h4>
+          <p className="text-xs text-gray-500">{t("הגדר סדר ומבנה הצעת המחיר. ריק = מבנה ברירת מחדל הקיים")}</p>
         </div>
         <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
           <Plus className="h-4 w-4 ml-1" />
-          הוסף בלוק
+          {t("הוסף בלוק")}
         </Button>
       </div>
 
       {blocks.length === 0 && (
         <div className="text-center py-6 border-2 border-dashed rounded-lg text-gray-400 text-sm">
-          לא הוגדרו בלוקים - ישמש מבנה הצעה ברירת מחדל
+          {t("לא הוגדרו בלוקים - ישמש מבנה הצעה ברירת מחדל")}
         </div>
       )}
 
@@ -132,7 +134,7 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
                     <Input
                       value={block.subtitle_title || ''}
                       onChange={(e) => updateBlockSubtitle(index, e.target.value)}
-                      placeholder="כותרת משנה (אופציונלי)"
+                      placeholder={t("כותרת משנה (אופציונלי)")}
                       className="h-8 text-sm"
                     />
                   )}
@@ -152,7 +154,7 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
                   />
                   {availableVars.length > 0 && (
                     <div className="bg-blue-50 rounded p-2">
-                      <p className="text-[10px] text-blue-600 mb-1 font-medium">לחץ על משתנה להוספה · [שם] = ערך · ((טקסט [שם])) = מותנה</p>
+                      <p className="text-[10px] text-blue-600 mb-1 font-medium">{t("לחץ על משתנה להוספה · [שם] = ערך · ((טקסט [שם])) = מותנה")}</p>
                       <div className="flex flex-wrap gap-1">
                         {availableVars.map(v => (
                           <Badge
@@ -179,7 +181,7 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent dir="rtl" className="sm:max-w-[450px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>הוסף בלוק</DialogTitle>
+            <DialogTitle>{t("הוסף בלוק")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
             {BLOCK_TYPES.map(bt => (
@@ -197,7 +199,7 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
             ))}
             {fields.length > 0 && (
               <>
-                <div className="text-xs font-semibold text-gray-500 pt-3 border-t mt-1">שדות מוגדרים (מטאב שדות)</div>
+                <div className="text-xs font-semibold text-gray-500 pt-3 border-t mt-1">{t("שדות מוגדרים (מטאב שדות)")}</div>
                 {fields.map(f => (
                   <button
                     key={`field:${f.id}`}
@@ -208,15 +210,15 @@ export default function OrganizerBlocksEditor({ blocks, onChange, fields = [], a
                         : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
-                    <Badge className="bg-emerald-100 text-emerald-700 text-xs">שדה: {f.name}</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-700 text-xs">{t("שדה:")} {f.name}</Badge>
                   </button>
                 ))}
               </>
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>ביטול</Button>
-            <Button onClick={addBlock} disabled={!selectedBlockType}>הוסף</Button>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>{t("ביטול")}</Button>
+            <Button onClick={addBlock} disabled={!selectedBlockType}>{t("הוסף")}</Button>
           </div>
         </DialogContent>
       </Dialog>

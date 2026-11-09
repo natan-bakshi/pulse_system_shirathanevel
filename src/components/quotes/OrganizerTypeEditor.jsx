@@ -15,7 +15,9 @@ import OrganizerBlocksEditor from "./OrganizerBlocksEditor";
 import OrganizerContactsConfigEditor from "./OrganizerContactsConfigEditor";
 import RichTextEditor from "../manualQuote/RichTextEditor";
 
+import {useLanguage} from '@/i18n/LanguageProvider';
 export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }) {
+  const {t,dir}=useLanguage();
   const [typeName, setTypeName] = useState(type.type_name || "");
   const [titleTemplate, setTitleTemplate] = useState(type.quote_main_title_template || "");
   const [fields, setFields] = useState(() => {
@@ -56,7 +58,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
             <ArrowRight className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <CardTitle>עריכת סוג: {type.type_name}</CardTitle>
+            <CardTitle>{t("עריכת סוג:")} {type.type_name}</CardTitle>
           </div>
         </div>
       </CardHeader>
@@ -64,20 +66,20 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
       <CardContent className="space-y-4">
         {/* Type Name */}
         <div>
-          <Label>שם סוג ההזמנה</Label>
+          <Label>{t("שם סוג ההזמנה")}</Label>
           <Input
             value={typeName}
             onChange={(e) => setTypeName(e.target.value)}
-            placeholder="שם הסוג"
+            placeholder={t("שם הסוג")}
           />
         </div>
 
         <Tabs defaultValue="contacts" className="space-y-4">
           <TabsList className="bg-gray-100 flex-wrap h-auto">
-            <TabsTrigger value="contacts">אנשי קשר</TabsTrigger>
-            <TabsTrigger value="fields">שדות</TabsTrigger>
-            <TabsTrigger value="title">כותרת ראשית</TabsTrigger>
-            <TabsTrigger value="blocks">בלוקים</TabsTrigger>
+            <TabsTrigger value="contacts">{t("אנשי קשר")}</TabsTrigger>
+            <TabsTrigger value="fields">{t("שדות")}</TabsTrigger>
+            <TabsTrigger value="title">{t("כותרת ראשית")}</TabsTrigger>
+            <TabsTrigger value="blocks">{t("בלוקים")}</TabsTrigger>
           </TabsList>
 
           {/* Tab 0: Contacts Config */}
@@ -96,18 +98,18 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
               <div className="flex items-start gap-2">
                 <Info className="h-4 w-4 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium mb-1">איך זה עובד?</p>
+                  <p className="font-medium mb-1">{t("איך זה עובד?")}</p>
                   <ul className="list-disc mr-4 space-y-1 text-xs">
-                    <li>משתנה בסוגריים מרובעים: <code className="bg-blue-100 px-1 rounded">[שם_שדה]</code> - יוחלף בערך השדה</li>
-                    <li>טקסט מותנה: <code className="bg-blue-100 px-1 rounded">((טקסט עם [משתנה]))</code> - יוצג רק אם למשתנה יש ערך</li>
-                    <li>השאר ריק כדי להשתמש בכותרת ברירת מחדל הקיימת</li>
+                    <li>{t("משתנה בסוגריים מרובעים:")} <code className="bg-blue-100 px-1 rounded">[שם_שדה]</code> {t("- יוחלף בערך השדה")}</li>
+                    <li>{t("טקסט מותנה:")} <code className="bg-blue-100 px-1 rounded">((טקסט עם [משתנה]))</code> {t("- יוצג רק אם למשתנה יש ערך")}</li>
+                    <li>{t("השאר ריק כדי להשתמש בכותרת ברירת מחדל הקיימת")}</li>
                   </ul>
                 </div>
               </div>
             </div>
 
             <div>
-              <Label>תבנית כותרת ראשית</Label>
+              <Label>{t("תבנית כותרת ראשית")}</Label>
               <RichTextEditor
                 value={titleTemplate}
                 onChange={setTitleTemplate}
@@ -118,7 +120,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
 
             {/* Variables Reference */}
             <div className="border rounded-lg p-3">
-              <Label className="text-xs font-semibold mb-2 block">משתנים זמינים:</Label>
+              <Label className="text-xs font-semibold mb-2 block">{t("משתנים זמינים:")}</Label>
               <div className="flex flex-wrap gap-1">
                 {availableVars.map(v => (
                   <Badge
@@ -139,7 +141,7 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
             {/* Preview */}
             {titleTemplate && (
               <div className="border rounded-lg p-3 bg-gray-50">
-                <Label className="text-xs font-semibold mb-1 block">תצוגה מקדימה (עם ערכי דוגמה):</Label>
+                <Label className="text-xs font-semibold mb-1 block">{t("תצוגה מקדימה (עם ערכי דוגמה):")}</Label>
                 <p className="text-sm text-gray-700">{previewTitle(titleTemplate)}</p>
               </div>
             )}
@@ -153,10 +155,10 @@ export default function OrganizerTypeEditor({ type, onSave, onCancel, isSaving }
       </CardContent>
 
       <CardFooter className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel} disabled={isSaving}>ביטול</Button>
+        <Button variant="outline" onClick={onCancel} disabled={isSaving}>{t("ביטול")}</Button>
         <Button onClick={handleSave} disabled={isSaving || !typeName.trim()}>
           {isSaving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Save className="h-4 w-4 ml-2" />}
-          שמור
+          {t("שמור")}
         </Button>
       </CardFooter>
     </Card>
