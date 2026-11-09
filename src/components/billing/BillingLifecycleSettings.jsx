@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {useLanguage} from '@/i18n/LanguageProvider';
+import {customerMessageDefaults} from '../../../base44/shared/customerMessageTone.ts';
 
 // הגדרות מחזור החיים של דרישות תשלום בקישור ואישורי תשלום ללקוח.
 export default function BillingLifecycleSettings({ settings, onChange }) {
@@ -31,11 +32,11 @@ export default function BillingLifecycleSettings({ settings, onChange }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-xs text-gray-500">{uiTranslate("תבנית תזכורת (עברית)")}</Label>
-            <Textarea rows={4} value={settings.payment_link_reminder_template || ""} onChange={(event) => onChange("payment_link_reminder_template", event.target.value)} placeholder={"משתנים: {{name}}, {{business_name}}, {{amount}}, {{expiry_date}}, {{link}}"} />
+            <Textarea rows={4} value={settings.payment_link_reminder_template || ""} onChange={(event) => onChange("payment_link_reminder_template", event.target.value)} placeholder={customerMessageDefaults.reminder.he} />
           </div>
           <div>
             <Label className="text-xs text-gray-500">Reminder template (English)</Label>
-            <Textarea dir="ltr" rows={4} value={settings.payment_link_reminder_template_en || ""} onChange={(event) => onChange("payment_link_reminder_template_en", event.target.value)} placeholder={"Variables: {{name}}, {{business_name}}, {{amount}}, {{expiry_date}}, {{link}}"} />
+            <Textarea dir="ltr" rows={4} value={settings.payment_link_reminder_template_en || ""} onChange={(event) => onChange("payment_link_reminder_template_en", event.target.value)} placeholder={customerMessageDefaults.reminder.en} />
           </div>
         </div>
       )}
@@ -52,11 +53,11 @@ export default function BillingLifecycleSettings({ settings, onChange }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-xs text-gray-500">{uiTranslate("תבנית אישור תשלום (עברית)")}</Label>
-            <Textarea rows={4} value={settings.payment_receipt_message_template || ""} onChange={(event) => onChange("payment_receipt_message_template", event.target.value)} placeholder={"משתנים: {{name}}, {{business_name}}, {{amount}}, {{document_url}}"} />
+            <Textarea rows={4} value={settings.payment_receipt_message_template || ""} onChange={(event) => onChange("payment_receipt_message_template", event.target.value)} placeholder={customerMessageDefaults.receipt.he} />
           </div>
           <div>
             <Label className="text-xs text-gray-500">Payment confirmation (English)</Label>
-            <Textarea dir="ltr" rows={4} value={settings.payment_receipt_message_template_en || ""} onChange={(event) => onChange("payment_receipt_message_template_en", event.target.value)} placeholder={"Variables: {{name}}, {{business_name}}, {{amount}}, {{document_url}}"} />
+            <Textarea dir="ltr" rows={4} value={settings.payment_receipt_message_template_en || ""} onChange={(event) => onChange("payment_receipt_message_template_en", event.target.value)} placeholder={customerMessageDefaults.receipt.en} />
           </div>
         </div>
       )}
