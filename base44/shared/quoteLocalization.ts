@@ -259,7 +259,7 @@ export function visibleHebrewQuoteSnippets(html:string):string[]{
         const code=parseInt(hex||dec,hex?16:10);
         return code>0&&code<=0x10ffff?String.fromCodePoint(code):'';
       }).replace(/\s+/g,' ').trim();
-    if(isHebrew(text))found.add(text.slice(0,180));
+    if(isHebrew(text))found.add(text.slice(0,640));
     if(found.size>=12)break;
   }
   return [...found];
