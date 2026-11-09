@@ -202,7 +202,7 @@ export default function OrganizerTypesTab() {
 
       {/* Dialog for creating new type */}
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent dir="rtl" className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
+        <DialogContent dir={dir} className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t("סוג הזמנה חדש")}</DialogTitle>
           </DialogHeader>
