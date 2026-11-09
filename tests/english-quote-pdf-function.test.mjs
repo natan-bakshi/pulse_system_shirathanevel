@@ -69,8 +69,8 @@ test('English PDF refuses Hebrew remaining inside approved template before calli
   const response=await handler(request());
   const body=await response.json();
   assert.equal(response.status,422);
-  assert.deepEqual(body.fields,['document.visible_text']);
-  assert.ok(body.samples.some(s=>s.includes('פתיח')));
+  assert.deepEqual(body.fields,['template.intro1.content']);
+  assert.equal(body.samples?.length||0,0,'Blocked at the editable template instead of an orphaned HTML excerpt');
   assert.equal(pdfCalls,0);
  }finally{globalThis.fetch=original;}
 });
