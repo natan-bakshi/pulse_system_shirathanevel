@@ -102,3 +102,14 @@ test('manual quote declines a translated custom payment with modified numbers',a
   title:'Manual',document_language:'en',blocks:JSON.stringify([custom])
  },client()),e=>e.code==='ENGLISH_TRANSLATION_INCOMPLETE');
 });
+
+test('manual quote refuses a review value that still contains visible Hebrew',async()=>{
+ const source='כותרת מיוחדת';
+ const block={id:'heading1',type:'heading',content:source,
+  english:{content:{source,value:'Special Heading בעברית'}}};
+ await assert.rejects(render({title:'Manual',document_language:'en',
+  blocks:JSON.stringify([block])},client()),e=>
+   e.code==='ENGLISH_TRANSLATION_INCOMPLETE'&&
+   e.fields.includes('document.visible_text')&&
+   e.samples.some(s=>s.includes('בעברית')));
+});

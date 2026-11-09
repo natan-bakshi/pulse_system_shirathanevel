@@ -295,3 +295,16 @@ test('real catalog text required for a missing event service name still blocks a
   eventServices:[snapshot],templates:[],index:new Map()});
  assert.equal(out.missing.has('catalog.catalogHebrew.service_name'),true);
 });
+
+test('modular quote refuses manually approved content that still includes Hebrew',async()=>{
+ const hebrewName='שירות מיוחד';
+ const content={document_language:'en',event_type:'Event',show_intro:false,
+  show_payment_terms:false,show_agreement:false,
+  items:[{id:'m1',kind:'service',name:hebrewName,
+   english:{name:{source:hebrewName,value:'Special Service בעברית'}},
+   description:'English Description',price:100,quantity:1,visible:true}]};
+ await assert.rejects(composeModularQuoteHtml({content},client()),e=>
+   e.code==='ENGLISH_TRANSLATION_INCOMPLETE'&&
+   e.fields.includes('document.visible_text')&&
+   e.samples.some(s=>s.includes('בעברית')));
+});
