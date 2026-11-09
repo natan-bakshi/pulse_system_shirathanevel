@@ -100,7 +100,11 @@ export async function createFutureInteractiveButtonSnapshot(input:{
  if(!reply.length||reply.length>MAX_BINDINGS)invalid('unsupported_actions');
  const issuedAt=input.issuedAt??Date.now();
  const nonce=input.nonceFactory??(()=>crypto.randomUUID().replace(/-/g,''));
- const ttl=new Date(issuedAt+Math.min(7*86400000,2*86400000)).toISOString();
+ // Supplier decisions often arrive days after assignment. The former 48h
+ // token silently expired while the actual assignment was still pending.
+ // Keep a hard 30-day HMAC lifetime; origin, supplier, assignment revision
+ // and once-only receipt CAS remain mandatory on every incoming click.
+ const ttl=new Date(issuedAt+30*86400000).toISOString();
  const buttons=[];
  for(const button of reply){
   const actionToken=await createSignedWhatsAppAction({
