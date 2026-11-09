@@ -515,6 +515,11 @@ export const interfaceLabels = Object.freeze({
   'לוח הזמנים של האירוע': 'Event Schedule',
   'לוח הזמנים טרם הוזן לאירוע.': 'The event schedule has not been added yet.',
   'הפרטים מוצגים עבור השיבוץ שלך בלבד. תשלומים, מחירים, מידע ניהולי ושיבוצים של ספקים אחרים אינם מוצגים.': 'Only the details of your assignments are shown. Payments, pricing, internal information, and other suppliers’ assignments remain private.',
+  "אנגלית — נדרשת השלמת פרטים לפני שליחת טופס": "English — complete the missing details before sending the form",
+  "יש להגדיר ולבדוק את תנאי ההתקשרות באנגלית בהגדרות החיוב.": "Please enter and review the English agreement terms in Billing Settings.",
+  "יש להשלים תרגומים מאושרים לשמות השירותים או לפרטי הבנק. אפשר לעשות זאת בכרטיס האירוע ובמסך התרגומים, ולאחר מכן לפתוח טיוטה חדשה.": "Complete the reviewed English service names or bank details in the event card and translation editor, then prepare a new draft.",
+  "לא נמצאה בהיסטוריה הצעת מחיר שמסומנת כמסמך אנגלי. טופס אנגלי יכול להציג תמצית שירותים מתורגמת, אך כדי לצרף PDF באנגלית יש להפיק הצעה אנגלית חדשה לפני שליחת הטופס. אין לצרף PDF עברי כאילו היה באנגלית.": "No verified English quotation PDF was found in history. The English form can show the translated service summary. To attach an English PDF, generate an English quotation before sending the form. A Hebrew PDF will not be attached as though it were English.",
+  "הודעת קישור לתשלום (עברית)": "Payment link message (Hebrew)",
   ...pageLabels,
   ...componentLabels
 });
