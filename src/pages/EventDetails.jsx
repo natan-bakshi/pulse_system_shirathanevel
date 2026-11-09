@@ -1842,22 +1842,37 @@ function EventDetailsBody() {
   }, [selectedExistingPackage, allPackages, eventServices, allServices, eventId, loadEventData]);
 
   const handleGenerateQuote = useCallback(async () => {
+    // iOS Safari and Android popup blockers require this to happen during the
+    // actual click, BEFORE the backend request starts. Fill the reserved tab
+    // only after the PDF/HTML composer validates the selected language.
+    const previewWindow=window.open('', '_blank');
+    if(!previewWindow){
+      alert('חוסם החלונות הקופצים מנע את פתיחת ההצעה. יש לאפשר חלונות קופצים לאתר.');
+      return;
+    }
+    try{
+      previewWindow.opener=null;
+      const english=quoteLanguage==='en';
+      previewWindow.document.write('<!doctype html><html lang="'+(english?'en':'he')+'" dir="'+(english?'ltr':'rtl')+'"><head><meta charset="utf-8"><title>'+(english?'Preparing quote':'מכין הצעת מחיר')+'</title></head><body style="font:16px sans-serif;padding:30px">'+(english?'Preparing quote…':'מכין את ההצעה…')+'</body></html>');
+      previewWindow.document.close();
+    }catch{/* The empty tab can still receive the final document. */}
     setIsGeneratingQuote(true);
     try {
       const response = await base44.functions.invoke('generateQuote', { eventId, includeIntro: quoteIncludeIntro, includePaymentTerms: quoteIncludePaymentTerms, includeSchedule: quoteIncludeSchedule, includeExternalServices: quoteIncludeExternalServices,language:quoteLanguage });
-      const html = response.data.html;
-      
-      const newWindow = window.open();
-      if (newWindow) {
-        newWindow.document.write(html);
-        newWindow.document.close();
-      } else {
-        alert("חוסם החלונות הקופצים מנע את פתיחת ההצעה");
+      const html=response?.data?.html;
+      if(typeof html!=='string'||!html.trim())throw new Error('Quote HTML is missing');
+      if(previewWindow.closed){
+        alert('חלון ההצעה נסגר. יש ללחוץ על הצג שוב כדי לפתוח אותו.');
+        return;
       }
+      previewWindow.document.open();
+      previewWindow.document.write(html);
+      previewWindow.document.close();
     } catch (error) {
-      console.error("Failed to generate quote:", error);
+      try{if(!previewWindow.closed)previewWindow.close();}catch{}
+      console.error('Failed to generate quote:',error);
       if(!reviewIncompleteEnglish(error))
-        alert(error.response?.data?.error || "שגיאה ביצירת הצעת המחיר");
+        alert(error.response?.data?.error || 'שגיאה ביצירת הצעת המחיר');
     } finally {
       setIsGeneratingQuote(false);
     }
