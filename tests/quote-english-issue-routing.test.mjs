@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {englishQuoteIssuesFromError} from '../src/i18n/englishQuoteIssues.js';
+import {englishQuoteIssuesFromError,englishQuoteVisibleSamplesFromError} from '../src/i18n/englishQuoteIssues.js';
 
 test('422 quote translation error reveals exact IDs for event and services',()=>{
  const e={response:{status:422,data:{
