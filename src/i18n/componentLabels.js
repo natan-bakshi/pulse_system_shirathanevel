@@ -1595,5 +1595,7 @@ export const componentLabels=Object.freeze({
   "שגיאה במחיקת התבנית": "Could Not Delete Template",
   "לא כולל מע\"מ": "VAT Not Included",
   "סיים": "Finish",
-  "שגיאה בהכנת הקובץ, נסה שוב": "Could Not Prepare the File. Please Try Again."
+  "שגיאה בהכנת הקובץ, נסה שוב": "Could Not Prepare the File. Please Try Again.",
+  "מערכת ניהול אירועים מתקדמת": "Advanced Event Management System",
+  "+972501234567 או +15165551234": "+972501234567 or +15165551234"
 });
