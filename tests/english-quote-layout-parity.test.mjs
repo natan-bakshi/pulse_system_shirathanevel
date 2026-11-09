@@ -63,7 +63,10 @@ test('Hebrew quotation presentation is byte-identical; English mirrors right/lef
     '<p style="text-align: center"><em>ממורכז</em></p>'+
     '<p style="text-align:justify"><u>דו צדדי</u></p>'+
     '<p style="text-align:left" align="left">שמאל</p>'+
-    '<p data-text-align="right" style="direction:rtl">ימין</p>'+
+    '<p data-text-align="right" style="direction:rtl">ימין</p>'+ 
+    '<p class="ql-align-center"><strong>כותרת קוויל</strong></p>'+ 
+    '<p class="ql-align-right ql-direction-rtl">קוויל ימני</p>'+ 
+    '<p class="ql-align-left">קוויל שמאלי</p>'+ 
     '<a href="https://example.com/?q=left>right" style="margin-right:7px">Link</a>'+
     '<!-- text-align:right must remain an unchanged comment -->'+
     '</body></html>';
@@ -83,6 +86,10 @@ test('Hebrew quotation presentation is byte-identical; English mirrors right/lef
   assert.equal(d.querySelector('p[align]').getAttribute('align'),'right');
   assert.equal(d.querySelector('p[data-text-align]').getAttribute('data-text-align'),'right');
   assert.equal(d.querySelector('p[data-text-align]').getAttribute('style'),'direction:ltr');
+  assert.equal(style(d,'.ql-align-center').textAlign,'center');
+  assert.equal(style(d,'.ql-align-right').textAlign,'left');
+  assert.equal(style(d,'.ql-align-right').direction,'ltr');
+  assert.equal(style(d,'.ql-align-left').textAlign,'right');
   assert.equal(d.querySelector('a').getAttribute('href'),'https://example.com/?q=left>right');
   assert.match(html,/margin-left:7px/);
   assert.match(html,/padding-left:15px;margin-right:3px;border-left:2px solid #DAA520/);
