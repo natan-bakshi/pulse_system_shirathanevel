@@ -147,12 +147,12 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],
  }
  // Last-resort repair for genuine renderer-only text. Scoped to this event,
  // exact visible text nodes, and never changing the original event or catalog.
- // The error adapter truncates snippets at 180 characters; longer fragments
- // cannot be safely matched and therefore must NOT be offered as overrides.
+ // Error snippets are capped at 640 characters; longer fragments cannot
+ // be safely matched, and are never silently truncated into an override.
  if(missingFields.includes('document.visible_text')){
   for(const raw of visibleTextSamples){
    const sample=String(raw||'').replace(/\s+/g,' ').trim();
-   if(!isHebrew(sample)||!sample||sample.length>=180)continue;
+   if(!isHebrew(sample)||!sample||sample.length>=640)continue;
    const covered=fields.some(f=>{
     const entry=rows.find(r=>r.source_entity===f.entity&&r.source_id===f.id&&r.locale==='en');
     return matchesResidualEnglishSample(entry?.fields?.[f.key]?.value,[sample])||
