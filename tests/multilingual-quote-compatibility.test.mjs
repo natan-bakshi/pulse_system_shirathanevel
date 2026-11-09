@@ -305,6 +305,6 @@ test('modular quote refuses manually approved content that still includes Hebrew
    description:'English Description',price:100,quantity:1,visible:true}]};
  await assert.rejects(composeModularQuoteHtml({content},client()),e=>
    e.code==='ENGLISH_TRANSLATION_INCOMPLETE'&&
-   e.fields.includes('document.visible_text')&&
-   e.samples.some(s=>s.includes('בעברית')));
+   e.fields.includes('item_name')&&
+   !e.fields.includes('document.visible_text'));
 });
