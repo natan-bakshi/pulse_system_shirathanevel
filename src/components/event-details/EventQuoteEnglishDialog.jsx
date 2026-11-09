@@ -24,6 +24,13 @@ function liveValue(f,event,services){
   }
   return service[f.key]||'';
  }
+ if(f.key.startsWith('organizer_contact_')&&f.key.endsWith('_name')){
+  try{
+   const id=f.key.slice('organizer_contact_'.length,-'_name'.length);
+   const contacts=JSON.parse(event.organizer_contacts||event.organizercontacts||'[]');
+   return contacts.find((c,i)=>String(c.id||i)===id)?.name||'';
+  }catch{return '';}
+ }
  if(f.key.startsWith('custom_')){
   try{return JSON.parse(event.custom_organizer_fields||'{}')?.[f.key.slice(7)]||'';}
   catch{return '';}
@@ -36,7 +43,7 @@ function liveValue(f,event,services){
  }
  return event[f.key]||'';
 }
-function collect(event,services,catalog,rows,missingFields=[]){
+function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[]){
  if(!event)return [];
  const fields=[];
  const add=(entity,id,key,source,label,group)=>{
@@ -55,10 +62,22 @@ function collect(event,services,catalog,rows,missingFields=[]){
 
  (event.parents||[]).forEach((p,i)=>
   add('Event',event.id,'contact_'+String(p.id||i)+'_name',p.name,"Contact's English spelling",'event'));
+ if(event.contacts_schema_version!==2){
+  try{const legacy=JSON.parse(event.organizer_contacts||event.organizercontacts||'[]');
+   (Array.isArray(legacy)?legacy:[]).forEach((c,i)=>
+     add('Event',event.id,'organizer_contact_'+String(c.id||i)+'_name',
+       c.name,'Additional Contact Name','event'));
+  }catch{}
+ }
  (event.schedule||[]).forEach((s,i)=>{
   add('Event',event.id,'schedule_'+i+'_activity',s.activity,'Schedule activity '+(i+1),'event');
   add('Event',event.id,'schedule_'+i+'_notes',s.notes,'Schedule notes '+(i+1),'event');
  });
+ for(const template of quoteTemplates){
+  if(!missingFields.includes('template.'+template.id+'.content'))continue;
+  add('QuoteTemplate',template.id,'content',template.content,
+    'Quote Template — '+(template.identifier||template.template_type),'templates');
+ }
  for(const catalogService of catalog){
   if(!missingFields.some(key=>key.startsWith('catalog.'+catalogService.id+'.')))continue;
   add('Service',catalogService.id,'service_name',catalogService.service_name,
@@ -95,7 +114,7 @@ function collect(event,services,catalog,rows,missingFields=[]){
  }
  return fields;
 }
-export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],missingFields=null,onSaved}){
+export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],quoteTemplates=[],missingFields=null,onSaved}){
  const [rows,setRows]=useState([]),[draft,setDraft]=useState({});
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [showAll,setShowAll]=useState(false);
@@ -109,13 +128,14 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[open,event?.id]);
- const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[]),
-  [event,eventServices,allServices,rows,missingFields]);
+ const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[],quoteTemplates),
+  [event,eventServices,allServices,rows,missingFields,quoteTemplates]);
  const map=useMemo(()=>new Map(rows.map(row=>[row.source_entity+':'+row.source_id,row])),[rows]);
  const changed=fields.filter(f=>Object.prototype.hasOwnProperty.call(draft,f.hash));
  const needed=new Set(missingFields||[]);
  const issueKey=f=>f.entity==='Event'?'event.'+f.key:
-   f.entity==='Service'?'catalog.'+f.id+'.'+f.key:'service.'+f.id+'.'+f.key;
+   f.entity==='Service'?'catalog.'+f.id+'.'+f.key:
+   f.entity==='QuoteTemplate'?'template.'+f.id+'.'+f.key:'service.'+f.id+'.'+f.key;
  const matchesMissing=f=>needed.has(issueKey(f))||
    needed.has('service.'+f.key)||needed.has('catalog.'+f.key);
  const displayedFields=Array.isArray(missingFields)&&!showAll?
@@ -133,8 +153,12 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
    const latestCatalog=changed.some(f=>f.entity==='Service')?
      await Promise.all(changed.filter(f=>f.entity==='Service').map(f=>
        base44.entities.Service.get(f.id))):[];
+   const latestTemplates=changed.some(f=>f.entity==='QuoteTemplate')?
+     await Promise.all(changed.filter(f=>f.entity==='QuoteTemplate').map(f=>
+       base44.entities.QuoteTemplate.get(f.id))):[];
    for(const f of changed){
     const liveSource=f.entity==='Service'?latestCatalog.find(x=>x.id===f.id)?.[f.key]:
+      f.entity==='QuoteTemplate'?latestTemplates.find(x=>x.id===f.id)?.[f.key]:
       liveValue(f,latestEvent,latestServices);
     if(String(liveSource??'')!==f.source)
      throw Error('The original Hebrew text changed. Reopen this editor to review it.');
