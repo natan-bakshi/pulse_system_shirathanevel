@@ -32,6 +32,23 @@ export function getCustomEventNameFromFields(customFields: unknown): string {
   return String(preferred?.[1] || '').trim();
 }
 
+/**
+ * English event heading shared by regular/manual quotations and PDF filenames.
+ * A child's given name and the family name form one natural personal name:
+ * "Bar Mitzvah for David Cohen", never "David — Cohen".
+ */
+export function getEnglishQuoteEventTitle(event: any): string {
+  const eventType = ({
+    bar_mitzvah: 'Bar Mitzvah',
+    bat_mitzvah: 'Bat Mitzvah',
+    wedding: 'Wedding',
+    other: 'Event'
+  } as Record<string,string>)[event?.event_type] || 'Event';
+  const child = String(event?.child_name || '').trim();
+  const displayName = getEventDisplayName(event);
+  return [eventType, child ? 'for ' + child : '', displayName].filter(Boolean).join(' ').trim();
+}
+
 export function getEventDisplayName(event: any): string {
   const familyName = String(event?.family_name || '').trim();
   const eventName = String(event?.event_name || '').trim();
