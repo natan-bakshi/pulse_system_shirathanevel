@@ -2084,6 +2084,7 @@ function EventDetailsBody() {
     <div className="p-2 sm:p-4 lg:p-8 w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6">
       {isAdmin&&<EventQuoteEnglishDialog open={showEnglishQuoteDialog} onOpenChange={setShowEnglishQuoteDialog}
         event={event} eventServices={eventServices} allServices={allServices}
+        quoteTemplates={quoteTemplates}
         missingFields={englishQuoteMissingFields}
         onSaved={()=>setEnglishQuoteMissingFields(null)}/>}
       {isAdmin && (
