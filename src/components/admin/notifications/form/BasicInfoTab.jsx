@@ -16,8 +16,8 @@ export default function BasicInfoTab({ template, onChange }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <FieldLabel 
-            label={uiTranslate("קוד זיהוי")} 
+          <FieldLabel
+            label={uiTranslate("קוד זיהוי")}
             tooltip={uiTranslate("קוד ייחודי לזיהוי התבנית במערכת. רק אותיות גדולות באנגלית וקו תחתון. למשל: SUPPLIER_NEW_ASSIGNMENT")}
             required
           />
@@ -29,8 +29,8 @@ export default function BasicInfoTab({ template, onChange }) {
           />
         </div>
         <div>
-          <FieldLabel 
-            label={uiTranslate("שם התבנית")} 
+          <FieldLabel
+            label={uiTranslate("שם התבנית")}
             tooltip={uiTranslate("שם ידידותי שיעזור לך לזהות את התבנית ברשימה")}
             required
           />
@@ -44,8 +44,8 @@ export default function BasicInfoTab({ template, onChange }) {
       </div>
 
       <div>
-        <FieldLabel 
-          label={uiTranslate("תיאור")} 
+        <FieldLabel
+          label={uiTranslate("תיאור")}
           tooltip={uiTranslate("תיאור פנימי לשימושך - לא יוצג למשתמשים")}
         />
         <Input
@@ -57,12 +57,12 @@ export default function BasicInfoTab({ template, onChange }) {
       </div>
 
       <div>
-        <FieldLabel 
-          label={uiTranslate("קטגוריה")} 
+        <FieldLabel
+          label={uiTranslate("קטגוריה")}
           tooltip={uiTranslate("קטגוריה לסיווג התבנית - משמשת לארגון וסינון")}
         />
-        <Select 
-          value={template.category || 'system'} 
+        <Select
+          value={template.category || 'system'}
           onValueChange={(v) => update('category', v)}
         >
           <SelectTrigger className="mt-1">
@@ -77,8 +77,8 @@ export default function BasicInfoTab({ template, onChange }) {
       </div>
 
       <div className="border-t pt-4">
-        <FieldLabel 
-          label={uiTranslate("ערוצי שליחה מותרים")} 
+        <FieldLabel
+          label={uiTranslate("ערוצי שליחה מותרים")}
           tooltip={uiTranslate("באילו ערוצים מותר לשלוח התראה זו")}
         />
         <div className="flex gap-6 mt-2">

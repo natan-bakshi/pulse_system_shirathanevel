@@ -17,11 +17,11 @@ import WhatsAppTemplateButtonsTab from './WhatsAppTemplateButtonsTab';
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 // טופס עריכה/יצירה של תבנית התראה - מאורגן בטאבים
-export default function NotificationTemplateForm({ 
-  open, 
-  onOpenChange, 
-  template, 
-  onChange, 
+export default function NotificationTemplateForm({
+  open,
+  onOpenChange,
+  template,
+  onChange,
   onSave,
   isSaving,
   initialTab='basic'
@@ -76,12 +76,12 @@ export default function NotificationTemplateForm({
   // שליחת התראת בדיקה לעצמי
   const handleSendTestNotification = async () => {
     if (!currentUser || !template) return;
-    
+
     setSendingTest(true);
     try {
       let testTitle = template.title_template || 'התראת בדיקה';
       let testMessage = template.body_template || 'זוהי התראת בדיקה';
-      
+
       const testVariables = {
         event_name: 'אירוע לדוגמה',
         family_name: 'חתונת חברה',
@@ -96,13 +96,13 @@ export default function NotificationTemplateForm({
         current_suppliers: '1',
         event_id: 'test-123'
       };
-      
+
       Object.entries(testVariables).forEach(([key, value]) => {
         const regex = new RegExp(`{{${key}}}`, 'g');
         testTitle = testTitle.replace(regex, value);
         testMessage = testMessage.replace(regex, value);
       });
-      
+
       const response = await createNotification({
         target_user_id: currentUser.id,
         target_user_email: currentUser.email,
@@ -115,21 +115,21 @@ export default function NotificationTemplateForm({
         target_phone: testPhoneNumber,
         check_quiet_hours: false
       });
-      
+
       if (response.data?.success) {
-        toast.success("נשלח בהצלחה!", { 
-          description: response.data?.push?.sent 
-            ? "התראה נשלחה - בדוק את ההתראות שלך ואת ה-Push" 
+        toast.success("נשלח בהצלחה!", {
+          description: response.data?.push?.sent
+            ? "התראה נשלחה - בדוק את ההתראות שלך ואת ה-Push"
             : "התראה פנימית נוצרה (Push לא נשלח)"
         });
       } else {
-        toast.error("שגיאה בשליחה", { 
+        toast.error("שגיאה בשליחה", {
           description: response.data?.error || "לא ניתן לשלוח התראת בדיקה"
         });
       }
     } catch (error) {
       console.error('Test notification error:', error);
-      toast.error("שגיאה", { 
+      toast.error("שגיאה", {
         description: error.message || "לא ניתן לשלוח התראת בדיקה"
       });
     } finally {
@@ -208,16 +208,16 @@ export default function NotificationTemplateForm({
 
         <DialogFooter className="flex-col sm:flex-row gap-2 border-t pt-4">
           <div className="flex flex-col sm:flex-row gap-2 items-center border p-2 rounded-md bg-gray-50">
-            <Input 
-              placeholder={uiTranslate("מספר לבדיקת WhatsApp")} 
+            <Input
+              placeholder={uiTranslate("מספר לבדיקת WhatsApp")}
               value={testPhoneNumber}
               onChange={(e) => setTestPhoneNumber(e.target.value)}
               className="h-9 w-full sm:w-44 text-sm"
               dir="ltr"
             />
-            <Button 
-              variant="secondary" 
-              onClick={handleSendTestNotification} 
+            <Button
+              variant="secondary"
+              onClick={handleSendTestNotification}
               disabled={sendingTest || !template?.title_template}
               className="w-full sm:w-auto h-9"
             >

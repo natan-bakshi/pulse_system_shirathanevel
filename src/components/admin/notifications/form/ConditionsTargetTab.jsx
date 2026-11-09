@@ -35,8 +35,8 @@ export default function ConditionsTargetTab({ template, onChange }) {
     <div className="space-y-4">
       {/* קהלי יעד */}
       <div>
-        <FieldLabel 
-          label={uiTranslate("למי לשלוח?")} 
+        <FieldLabel
+          label={uiTranslate("למי לשלוח?")}
           tooltip={uiTranslate("בחר את קהלי היעד שיקבלו את ההתראה הזו")}
         />
         <div className="flex flex-wrap gap-2 mt-2">
@@ -82,8 +82,8 @@ export default function ConditionsTargetTab({ template, onChange }) {
                 type="button"
                 onClick={() => update('condition_logic', 'and')}
                 className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                  (template.condition_logic || 'and') === 'and' 
-                    ? 'bg-white shadow text-blue-600 font-medium' 
+                  (template.condition_logic || 'and') === 'and'
+                    ? 'bg-white shadow text-blue-600 font-medium'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -93,8 +93,8 @@ export default function ConditionsTargetTab({ template, onChange }) {
                 type="button"
                 onClick={() => update('condition_logic', 'or')}
                 className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                  template.condition_logic === 'or' 
-                    ? 'bg-white shadow text-blue-600 font-medium' 
+                  template.condition_logic === 'or'
+                    ? 'bg-white shadow text-blue-600 font-medium'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -113,12 +113,12 @@ export default function ConditionsTargetTab({ template, onChange }) {
             {uiTranslate("הוסף תנאי")}
           </Button>
         </div>
-        
+
         <div className="space-y-2">
           {conditions.length === 0 && (
             <p className="text-xs text-gray-400 italic">{uiTranslate("לא הוגדרו תנאים נוספים")}</p>
           )}
-          
+
           {conditions.map((condition, idx) => (
             <div key={idx} className="flex gap-2 items-start bg-white p-2 rounded border">
               <div className="grid grid-cols-3 gap-2 flex-1">

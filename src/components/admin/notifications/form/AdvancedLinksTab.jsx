@@ -26,7 +26,7 @@ export default function AdvancedLinksTab({ template, onChange }) {
   // Get relevant pages based on selected audiences
   const getRelevantPages = () => {
     if (!template?.target_audiences) return [];
-    
+
     const audiences = template.target_audiences;
     const pages = new Set();
     const result = [];
@@ -69,12 +69,12 @@ export default function AdvancedLinksTab({ template, onChange }) {
   return (
     <div className="space-y-4">
       <div>
-        <FieldLabel 
-          label={uiTranslate("סוג קישור חכם")} 
+        <FieldLabel
+          label={uiTranslate("סוג קישור חכם")}
           tooltip={uiTranslate("יוצר אוטומטית קישור ישיר לדף הרלוונטי (למשל: לאירוע הספציפי שהפעיל את ההתראה). מומלץ לחסוך הגדרת פרמטרים ידנית.")}
         />
-        <Select 
-          value={template.dynamic_url_type || 'none'} 
+        <Select
+          value={template.dynamic_url_type || 'none'}
           onValueChange={chooseSmartLink}
         >
           <SelectTrigger className="mt-1">
@@ -93,18 +93,18 @@ export default function AdvancedLinksTab({ template, onChange }) {
           {uiTranslate("הקישור נפתח רק לפי הרשאות הנמען. כדי למפות דף אירוע או תשלום נכון, בחר קהל יעד אחד בתנאים וקהלים. אם התבנית מיועדת למספר סוגי נמענים, אין לבחור יעד עסקי משותף שעלול להפנות לדף לא נכון. כפתורי WhatsApp מותאמים מוגדרים בלשונית כפתורים.")}
         </p>
       </div>
-      
+
       {(!template.dynamic_url_type || template.dynamic_url_type === 'none') && (
         <div>
-          <FieldLabel 
-            label={uiTranslate("דף יעד ידני")} 
+          <FieldLabel
+            label={uiTranslate("דף יעד ידני")}
             tooltip={uiTranslate("בחר דף מתוך הדפים הזמינים לקהל היעד הנבחר")}
           />
           <div className="text-xs text-gray-500 mb-1">
             {uiTranslate("הדפים מוצגים בהתאם לקהלי היעד שנבחרו (")}{template.target_audiences?.map(a => AUDIENCES[a]?.label).join(', ')})
           </div>
-          <Select 
-            value={template.deep_link_base || ''} 
+          <Select
+            value={template.deep_link_base || ''}
             onValueChange={(v) => onChange({...template,deep_link_base:v,
             deep_link_params_map:/^(EventDetails|SupplierEventView)(\?|$)/.test(v)&&
               !template.deep_link_params_map?JSON.stringify({id:'{{event_id}}'}):
@@ -126,10 +126,10 @@ export default function AdvancedLinksTab({ template, onChange }) {
           </Select>
         </div>
       )}
-      
+
       <div>
-        <FieldLabel 
-          label={uiTranslate("פרמטרים")} 
+        <FieldLabel
+          label={uiTranslate("פרמטרים")}
           tooltip={uiTranslate("פרמטרים להעברה לדף היעד בפורמט JSON. למשל: {\"id\": \"{{event_id}}\"}")}
         />
         <Input

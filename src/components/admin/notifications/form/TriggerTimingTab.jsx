@@ -38,12 +38,12 @@ export default function TriggerTimingTab({ template, onChange }) {
       )}
 
       <div>
-        <FieldLabel 
-          label={uiTranslate("סוג טריגר")} 
+        <FieldLabel
+          label={uiTranslate("סוג טריגר")}
           tooltip={uiTranslate("מה יגרום לשליחת ההתראה")}
         />
-        <Select 
-          value={template.trigger_type || 'scheduled_check'} 
+        <Select
+          value={template.trigger_type || 'scheduled_check'}
           onValueChange={(v) => update('trigger_type', v)}
         >
           <SelectTrigger className="mt-1">
@@ -76,11 +76,11 @@ export default function TriggerTimingTab({ template, onChange }) {
       {isScheduled && (
         <div className="border rounded-lg p-3 bg-gray-50 space-y-3">
           <h3 className="font-medium text-sm text-gray-700">{uiTranslate("הגדרות תזמון")}</h3>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel 
-                label={uiTranslate("ערך זמן")} 
+              <FieldLabel
+                label={uiTranslate("ערך זמן")}
                 tooltip={uiTranslate("מספר היחידות לפני/אחרי נקודת הייחוס")}
               />
               <Input
@@ -93,8 +93,8 @@ export default function TriggerTimingTab({ template, onChange }) {
             </div>
             <div>
               <FieldLabel label={uiTranslate("יחידת זמן")} />
-              <Select 
-                value={template.timing_unit || 'days'} 
+              <Select
+                value={template.timing_unit || 'days'}
                 onValueChange={(v) => update('timing_unit', v)}
               >
                 <SelectTrigger className="mt-1">
@@ -111,12 +111,12 @@ export default function TriggerTimingTab({ template, onChange }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel 
-                label={uiTranslate("מתי?")} 
+              <FieldLabel
+                label={uiTranslate("מתי?")}
                 tooltip={uiTranslate("לפני, אחרי או בזמן האירוע/היעד")}
               />
-              <Select 
-                value={template.timing_direction || 'before'} 
+              <Select
+                value={template.timing_direction || 'before'}
                 onValueChange={(v) => update('timing_direction', v)}
               >
                 <SelectTrigger className="mt-1">
@@ -130,12 +130,12 @@ export default function TriggerTimingTab({ template, onChange }) {
               </Select>
             </div>
             <div>
-              <FieldLabel 
-                label={uiTranslate("ביחס ל...")} 
+              <FieldLabel
+                label={uiTranslate("ביחס ל...")}
                 tooltip={uiTranslate("נקודת הייחוס לחישוב הזמן")}
               />
-              <Select 
-                value={template.timing_reference || 'event_date'} 
+              <Select
+                value={template.timing_reference || 'event_date'}
                 onValueChange={(v) => update('timing_reference', v)}
               >
                 <SelectTrigger className="mt-1">
@@ -155,8 +155,8 @@ export default function TriggerTimingTab({ template, onChange }) {
             <h4 className="font-medium text-sm text-gray-700 mb-2">{uiTranslate("תזכורת חוזרת")}</h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <FieldLabel 
-                  label={uiTranslate("כל")} 
+                <FieldLabel
+                  label={uiTranslate("כל")}
                   tooltip={uiTranslate("כל כמה זמן לשלוח תזכורת חוזרת (השאר ריק לביטול)")}
                 />
                 <Input
@@ -169,8 +169,8 @@ export default function TriggerTimingTab({ template, onChange }) {
               </div>
               <div>
                 <FieldLabel label={uiTranslate("יחידת זמן")} />
-                <Select 
-                  value={template.reminder_interval_unit || 'hours'} 
+                <Select
+                  value={template.reminder_interval_unit || 'hours'}
                   onValueChange={(v) => update('reminder_interval_unit', v)}
                 >
                   <SelectTrigger className="mt-1">

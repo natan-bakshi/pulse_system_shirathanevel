@@ -35,8 +35,8 @@ export default function ContentTab({ template, onChange }) {
     <div className="space-y-4">
       <div>
         <div className="flex items-center justify-between">
-          <FieldLabel 
-            label={uiTranslate("כותרת ההתראה")} 
+          <FieldLabel
+            label={uiTranslate("כותרת ההתראה")}
             tooltip={uiTranslate("הכותרת שתופיע בהתראה. ניתן להשתמש במשתנים כמו {{event_name}}")}
             required
           />
@@ -53,8 +53,8 @@ export default function ContentTab({ template, onChange }) {
 
       <div>
         <div className="flex items-center justify-between">
-          <FieldLabel 
-            label={uiTranslate("תוכן ההודעה (Push / In-App)")} 
+          <FieldLabel
+            label={uiTranslate("תוכן ההודעה (Push / In-App)")}
             tooltip={uiTranslate("גוף ההודעה המלא להתראת מערכת. ניתן להשתמש במשתנים כמו {{supplier_name}}")}
             required
           />
@@ -73,8 +73,8 @@ export default function ContentTab({ template, onChange }) {
       <div className="border-t pt-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <FieldLabel 
-              label={uiTranslate("הודעת וואטסאפ")} 
+            <FieldLabel
+              label={uiTranslate("הודעת וואטסאפ")}
               tooltip={uiTranslate("תוכן ההודעה שתשלח בוואטסאפ (אם הערוץ פעיל)")}
             />
             <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
