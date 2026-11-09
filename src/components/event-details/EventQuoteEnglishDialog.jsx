@@ -140,7 +140,7 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],
  }
  return fields;
 }
-export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],quoteTemplates=[],missingFields=null,onSaved}){
+export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventServices=[],allServices=[],quoteTemplates=[],missingFields=null,visibleTextSamples=[],onSaved}){
  const {locale}=useLanguage();
  const [rows,setRows]=useState([]),[draft,setDraft]=useState({});
  const [organizers,setOrganizers]=useState([]),[footerSettings,setFooterSettings]=useState([]);
@@ -197,6 +197,7 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
  const grouped=displayedFields.reduce((o,f)=>((o[f.group]??=[]).push(f),o),{});
  const matchedIssueKeys=new Set(fields.filter(matchesMissing).map(issueKey));
  const unmatched=Array.isArray(missingFields)?missingFields.filter(k=>
+   !(k==='document.visible_text'&&visibleTextSamples.length>0)&&
    !matchedIssueKeys.has(k)&&!fields.some(f=>k==='service.'+f.key||k==='catalog.'+f.key)):[];
  const save=async()=>{
   if(!changed.length){
@@ -290,6 +291,13 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
      <p className="font-semibold">נדרשת השלמה של {missingFields.length} שדות לפני הנפקה באנגלית</p>
      <label className="inline-flex items-center gap-2"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/>הצג גם שדות שכבר תורגמו</label>
      <p className="text-xs">הנוסח באנגלית נשמר לשימוש חוזר. לאחר השמירה אפשר להפיק מחדש את ההצעה.</p>
+   </div>}
+   {visibleTextSamples.length>0&&<div dir="rtl" role="alert" className="border border-amber-300 rounded-md p-3 text-sm space-y-2">
+     <p className="font-semibold">נמצא טקסט עברי במסמך האנגלי לאחר הרכבת ההצעה</p>
+     <p className="text-xs text-muted-foreground">יש למצוא את הנוסח בפרטי האירוע, בשירותים או בתבנית הרלוונטית ולהזין לו תרגום באנגלית. עד אז המערכת לא תפיק מסמך מעורב בעברית ובאנגלית.</p>
+     <ul className="list-disc pr-5 space-y-1 text-xs break-words">
+       {visibleTextSamples.map((snippet,i)=><li key={i}>{snippet}</li>)}
+     </ul>
    </div>}
    {loading?<p role="status">Loading English content…</p>:<>
     {grouped.event&&<div className="space-y-4 border rounded-lg p-3">
