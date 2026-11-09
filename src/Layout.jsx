@@ -457,7 +457,7 @@ export default function Layout({ children }) {
 
 
           <h1 className="text-2xl font-bold text-gray-900 mb-4">{t("ברוכים הבאים ל")}{companyName}</h1>
-          <p className="text-gray-600 mb-6">מערכת ניהול אירועים מתקדמת</p>
+          <p className="text-gray-600 mb-6">{t("מערכת ניהול אירועים מתקדמת")}</p>
           {children}
         </div>
       </div>);
