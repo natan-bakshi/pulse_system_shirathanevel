@@ -33,3 +33,9 @@ Owner explicitly requested this BEFORE resuming WhatsApp/customer messaging and 
 - Updated the endpoint to handle \`client.auth.me()\` rejected sessions as anonymous and return HTTP 401 before reading an event. Kept the service-role assignment authorization, no client-controlled scope and no raw entity exposure.
 - Added an isolated runtime test that executes the actual Base44 handler with a simulated rejected login and proves HTTP 401 and zero event reads. Re-ran **all 1,296/1,296** Node tests and Vite build; targeted ESLint clean, git diff --check clean.
 - Production anonymous POST retest **still required after this final release**; first release had 500 and cannot be called fully verified until the corrected endpoint is deployed and retested. No authenticated supplier account was used to avoid exposing real customer names/phones.
+
+## Production release and noncustomer smoke, verified
+- Published final checkpoint \`6af2222a0bb081b9d9055384\` / commit \`4cd6cf3f5d833cd1be2b53b6893aea5d6aef440e\` on 2026-11-09 at 19:42:48.943419 UTC to https://pulse-system.base44.app.
+- Verified the exact released commit includes backend parent/schedule/service/location scoped projection, phone and WhatsApp links, and \`auth.me().catch(()=>null)\` guard. Published URL lookup matched production domain, Base44 app status ready.
+- Live noncustomer (anonymous) endpoint check after final deploy: GET supplierEventView -> HTTP 405 JSON; POST with a synthetic nonexistent event id and no authentication -> HTTP **401** JSON. No real event, phone, supplier status or WhatsApp message was accessed or mutated. This confirms route/auth denial; it is **not** a substitute for authenticated iPhone supplier visual acceptance.
+- Maintained redacted rejected supplier status cards and restricted scope. No live customer contact or service data is printed in user-facing before/after illustrations.
