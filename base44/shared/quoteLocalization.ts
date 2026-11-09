@@ -50,6 +50,16 @@ export function translationPreservesProtectedContent(source:string,value:string)
   if(extract(sourceVisible,numeric)!==extract(targetVisible,numeric))return false;
   if(extract(source,/https?:\/\/[^\s\"'<>]+/g)!==extract(value,/https?:\/\/[^\s\"'<>]+/g))return false;
   if(extract(source,/\{\{?[^{}]+\}\}?/g)!==extract(value,/\{\{?[^{}]+\}\}?/g))return false;
+  // Organizer titles contain [field_ID] tokens. They are runtime lookup keys,
+  // NOT words to translate. Changing them silently removes event details.
+  if(extract(source,/\[[^\[\]<>]{1,150}\]/g)!==extract(value,/\[[^\[\]<>]{1,150}\]/g))return false;
+  const attributes=(html:string)=>{
+    const attrs:string[]=[];
+    const re=/\b(?:href|src)\s*=\s*(?:\"([^\"]*)\"|'([^']*)')/gi;
+    for(const match of html.matchAll(re))attrs.push(match[0].replace(/\s+/g,'').toLowerCase());
+    return attrs.sort().join('|');
+  };
+  if(attributes(source)!==attributes(value))return false;
   return true;
 }
 export function approvedField(index:Map<string,any>,entity:string,id:string,field:string,source:unknown){
