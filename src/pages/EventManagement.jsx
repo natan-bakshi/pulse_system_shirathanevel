@@ -153,7 +153,7 @@ export default function EventManagement() {
                 await loadEvents();
             }
         }
-    }, [loadEvents]);
+    }, [loadEvents,t]);
 
     const handleSelectEvent = useCallback((eventId) => {
         navigate(createPageUrl(`EventDetails?id=${eventId}`));
