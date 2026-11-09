@@ -286,6 +286,13 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
     }
     if(options.language==='en'&&organizerType){
       organizerType=translateOrganizerQuoteFields(organizerType,localeIndex,localeMissing);
+      // The concept remains a Hebrew template selector internally. If the
+      // English organizer title actually prints it, require a real English
+      // display value rather than leaking the Hebrew identifier to the PDF.
+      if(/\[concept\]/.test(organizerType.quote_main_title_template||'')&&
+         isHebrew(event.concept)&&!event.__english_concept){
+        localeMissing.add('event.concept');
+      }
       ensureCompleteEnglish(localeMissing);
     }
     let organizerBlocks = null;
@@ -768,7 +775,7 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
     // Build external services HTML
     let externalServicesTitle = event.external_services_title || appSettings.default_external_services_title || 'שירותים נוספים';
-    if(options.language==='en'&&externalEventServices.length){
+    if(options.language==='en'&&options.includeExternalServices!==false&&externalEventServices.length){
       const candidate=fixedEnglishLabel(externalServicesTitle);
       const row=appSettingsList.find(s=>s.setting_key==='default_external_services_title');
       const approved=approvedField(localeIndex,'AppSettings',row?.id,'setting_value',externalServicesTitle);
@@ -786,7 +793,10 @@ export async function generateQuoteHtml(eventId, base44Instance, options = {}) {
 
         populatedExternalServices.forEach(service => {
             const serviceDescription = service.service_description || service.details?.service_description || '';
-            const serviceNotes = service.client_notes || service.notes || '';
+            // Internal supplier notes must never be surfaced in English client
+            // proposals. Keep the established Hebrew path unchanged.
+            const serviceNotes = options.language==='en' ? (service.client_notes||'')
+                : (service.client_notes || service.notes || '');
             const serviceTotal = (service.custom_price || 0) * (service.quantity || 1);
 
             const priceHtml = quoteServicePriceHtml(service, serviceTotal, quoteBodyFontSize);
