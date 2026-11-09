@@ -1,9 +1,11 @@
 import React from 'react';
 import { CalendarDays, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function BarMitzvahResult({ result, title, isIsrael, onTraditionChange, canOpenCalendar, onOpenCalendar }) {
-  const gregorianDate = result.barMitzvahGregorianDate.toLocaleDateString('he-IL');
+  const {t,locale}=useLanguage();
+  const gregorianDate = result.barMitzvahGregorianDate.toLocaleDateString(locale==='en'?'en-GB':'he-IL');
 
   return (
     <section className="space-y-3 border-t border-gray-100 pt-5 lg:border-r lg:border-t-0 lg:pr-7 lg:pt-0">
@@ -13,7 +15,7 @@ export default function BarMitzvahResult({ result, title, isIsrael, onTraditionC
       </div>
       <div className="rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-5 text-center shadow-sm sm:p-6">
         <Crown className="mx-auto h-5 w-5 text-amber-600" />
-        <p className="mt-2 text-xs font-semibold text-amber-800">תאריך ה{title}</p>
+        <p className="mt-2 text-xs font-semibold text-amber-800">{locale==='en'?`${title} Date`:`תאריך ה${title}`}</p>
         <p className="mt-2 text-xl font-bold text-red-900 sm:text-2xl">{result.barMitzvahHebrewDate}</p>
         <div className="mx-auto my-3 h-px max-w-xs bg-amber-200" />
         <p className="text-xs font-medium text-gray-500">התאריך הלועזי</p>
@@ -28,7 +30,7 @@ export default function BarMitzvahResult({ result, title, isIsrael, onTraditionC
         <div className="flex rounded-lg bg-gray-100 p-0.5">
           {[{ label: 'ארץ ישראל', value: true }, { label: 'חו״ל', value: false }].map((option) => (
             <button key={option.label} type="button" aria-pressed={isIsrael === option.value} onClick={() => onTraditionChange(option.value)} className={`rounded-md px-2 py-1 font-medium transition-colors ${isIsrael === option.value ? 'bg-white text-red-800 shadow-sm' : 'text-gray-500'}`}>
-              {option.label}
+              {t(option.label)}
             </button>
           ))}
         </div>
