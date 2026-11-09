@@ -53,12 +53,12 @@ test('quotation configuration editors localize fixed text but preserve example v
  for(const file of files){
   const ast=parser.parse(read(file),{sourceType:'module',plugins:['jsx','typescript']});
   const missed=[];
-  walk(ast,{JSXText(p){const s=p.node.value.replace(/\\s+/g,' ').trim();
-   if(/[\\u0590-\\u05ff]/.test(s)&&!s.startsWith('[')&&!s.startsWith('(('))missed.push(s);
+  walk(ast,{JSXText(p){const s=p.node.value.replace(/\s+/g,' ').trim();
+   if(/[\u0590-\u05ff]/.test(s)&&!s.startsWith('[')&&!s.startsWith('(('))missed.push(s);
   }});
   assert.deepEqual(missed,[],file+' must have translated labels');
  }
- assert.match(read('src/components/quotes/OrganizerTypeEditor.jsx'),/\\[שם_שדה\\]/);
+ assert.match(read('src/components/quotes/OrganizerTypeEditor.jsx'),/\[שם_שדה\]/);
 });
 
 test('curated fixed labels are English and do not contain customer data',async()=>{
