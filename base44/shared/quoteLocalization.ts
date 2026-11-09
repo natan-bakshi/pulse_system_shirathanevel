@@ -1,3 +1,5 @@
+import {mirrorQuoteHtmlPresentation} from './quoteLayoutMirror.ts';
+
 // Shared, read-only translation selection. Stored Hebrew is never overwritten.
 // Only *approved* records whose source matches byte-for-byte are used.
 // No calls to an external AI provider occur here.
@@ -239,10 +241,15 @@ export function localizeVisibleHtmlLabels(html:string):string{
 }
 export function applyDocumentDirection(html:string,locale:unknown):string{
   if(localeForQuote(locale)!=='en')return html;
-  const ltrCss='<style data-quote-locale="en">html,body{direction:ltr;text-align:left} .page-content{direction:ltr} .section,.event-details-box,.package-content,.intro-content,.payment-terms,.event-notes{text-align:left;direction:ltr} .package-content{padding-left:15px!important;padding-right:0!important} .summary-table{direction:ltr} .summary-table td.label{text-align:left} .summary-table td.value{text-align:right} .package-footer,.package-service-item{direction:ltr} .package-service-bullet{margin-right:10px;margin-left:0} .schedule-table td{text-align:left}</style>';
-  return localizeVisibleHtmlLabels(html.replace(/<html([^>]*)>/i,(_x,attrs)=>
+  // Mirror the existing Hebrew presentation rather than applying a blanket
+  // left alignment: a centered introduction/title must stay centered, while
+  // right/left alignments and asymmetric spacing swap sides.  Colors, weight,
+  // typography, background, section order and explicit rich-text markup stay.
+  const mirrored=mirrorQuoteHtmlPresentation(html);
+  const baseDirection='<style data-quote-locale="en">html,body{direction:ltr}.page-content{direction:ltr}</style>';
+  return localizeVisibleHtmlLabels(mirrored.replace(/<html([^>]*)>/i,(_x,attrs)=>
     '<html'+attrs.replace(/\s+dir="[^"]*"/,'').replace(/\s+lang="[^"]*"/,'')+' lang="en" dir="ltr">')
-    .replace('</head>',ltrCss+'</head>'));
+    .replace(/<\/head\s*>/i,baseDirection+'</head>'));
 }
 // Final outgoing-document guard. An approved source can still leak Hebrew if
 // a renderer later inserts an unlocalized fallback, label or contact. Inspect
