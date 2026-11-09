@@ -23,6 +23,7 @@ import EventDetailsTabs from '../components/event-details/EventDetailsTabs';
 import EventCloseButton from '@/components/billing/EventCloseButton';
 import EventQuoteEnglishDialog from '@/components/event-details/EventQuoteEnglishDialog';
 import {useLanguage} from '@/i18n/LanguageProvider';
+import {englishQuoteIssuesFromError} from '@/i18n/englishQuoteIssues';
 // דיאלוג הסליקה נטען רק כשנפתח בפועל - כדי לא להעמיס את טעינת דף האירוע.
 const ClearingPaymentDialog = React.lazy(() => import('../components/billing/ClearingPaymentDialog'));
 // דיאלוג הפקת מסמך לתשלום ידני - נטען רק כשנפתח בפועל.
@@ -82,6 +83,15 @@ function EventDetailsBody() {
   // Per-document choice, independent of the administrator's interface language.
   const [quoteLanguage,setQuoteLanguage]=useState('he');
   const [showEnglishQuoteDialog,setShowEnglishQuoteDialog]=useState(false);
+  const [englishQuoteMissingFields,setEnglishQuoteMissingFields]=useState(null);
+  const reviewIncompleteEnglish=useCallback((error)=>{
+    if(quoteLanguage!=='en')return false;
+    const fields=englishQuoteIssuesFromError(error);
+    if(fields===null)return false;
+    setEnglishQuoteMissingFields(fields);
+    setShowEnglishQuoteDialog(true);
+    return true;
+  },[quoteLanguage]);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -1844,11 +1854,12 @@ function EventDetailsBody() {
       }
     } catch (error) {
       console.error("Failed to generate quote:", error);
-      alert(error.response?.data?.error || "שגיאה ביצירת הצעת המחיר");
+      if(!reviewIncompleteEnglish(error))
+        alert(error.response?.data?.error || "שגיאה ביצירת הצעת המחיר");
     } finally {
       setIsGeneratingQuote(false);
     }
-  }, [eventId, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices,quoteLanguage]);
+  }, [eventId, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices,quoteLanguage,reviewIncompleteEnglish]);
 
   const handleGeneratePdf = useCallback(async () => {
     setIsGeneratingPdf(true);
@@ -1883,11 +1894,12 @@ function EventDetailsBody() {
       
     } catch (error) {
       console.error("Failed to generate PDF:", error);
-      alert("שגיאה ביצירת קובץ ה-PDF: " + (error.response?.data?.error || error.message));
+      if(!reviewIncompleteEnglish(error))
+        alert("שגיאה ביצירת קובץ ה-PDF: " + (error.response?.data?.error || error.message));
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices,loadEventData,quoteLanguage]);
+  }, [eventId, event, quoteIncludeIntro, quoteIncludePaymentTerms, quoteIncludeSchedule, quoteIncludeExternalServices,loadEventData,quoteLanguage,reviewIncompleteEnglish]);
 
   // Two-step share flow: prepare PDF first, then share on a separate click.
   // This satisfies browser "user activation" requirements on iOS & Android.
@@ -1899,7 +1911,8 @@ function EventDetailsBody() {
     quoteIncludeSchedule,
     quoteIncludeExternalServices,
     quoteLanguage,
-    loadEventData
+    loadEventData,
+    onEnglishTranslationIssue:reviewIncompleteEnglish
   });
 
   const { showExportDialog, setShowExportDialog, exportOptions, setExportOptions, handleExportEvent, handleConfirmExport } = useEventExport({
@@ -2070,7 +2083,9 @@ function EventDetailsBody() {
   return (
     <div className="p-2 sm:p-4 lg:p-8 w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6">
       {isAdmin&&<EventQuoteEnglishDialog open={showEnglishQuoteDialog} onOpenChange={setShowEnglishQuoteDialog}
-        event={event} eventServices={eventServices} allServices={allServices}/>}
+        event={event} eventServices={eventServices} allServices={allServices}
+        missingFields={englishQuoteMissingFields}
+        onSaved={()=>setEnglishQuoteMissingFields(null)}/>}
       {isAdmin && (
         <div className="flex flex-wrap gap-3 justify-end">
           <EventCloseButton event={event}/>
@@ -2131,7 +2146,7 @@ function EventDetailsBody() {
                   </div>
                 ) : null;
               })()}
-              {quoteLanguage==='en'&&<DropdownMenuItem onSelect={()=>setShowEnglishQuoteDialog(true)}
+              {quoteLanguage==='en'&&<DropdownMenuItem onSelect={()=>{setEnglishQuoteMissingFields(null);setShowEnglishQuoteDialog(true);}}
                 className="cursor-pointer text-sm">{t('עריכת פרטי אירוע באנגלית')}</DropdownMenuItem>}
               <DropdownMenuItem onClick={handleGenerateQuote} disabled={isGeneratingQuote}>
                 <FileText className="h-4 w-4 ml-2" />
