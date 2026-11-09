@@ -113,6 +113,8 @@ test('read-only Green callback audit shows exact webhook endpoint and bearer mat
  assert.match(panel,/run\('greenWebhookSettingsAudit'\)/);
  assert.match(panel,/qaWebhookTargetMatches===true/);
  assert.match(panel,/qaWebhookBearerMatches===true/);
+ assert.match(panel,/serverInboundCredentialsReady/);
+ assert.match(read('base44/functions/WhatsAppQueueAdmin/entry.ts'),/serverInboundCredentialsReady:greenProductionPassiveInboundReady\(env\)/);
  assert.match(panel,/incomingNotificationsEnabled/);
  assert.match(panel,/uiTranslate\('קליטת הלחיצות אינה מאומתת/);
  assert.doesNotMatch(panel,/onClick=\{\(\)=>run\('greenButtonQaProvisionWebhook'/);
