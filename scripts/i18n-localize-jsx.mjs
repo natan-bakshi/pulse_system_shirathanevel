@@ -7,7 +7,8 @@ const parser=require('@babel/parser');
 const traverse=require('@babel/traverse').default;
 const apply=process.argv.includes('--apply');
 const paths=process.argv.slice(2).filter(x=>!x.startsWith('--'));
-const allowedAttr=new Set(['placeholder','title','aria-label','alt']);
+// Only presentation props: preserve name/value/id and stored business identifiers.
+const allowedAttr=new Set(['placeholder','title','aria-label','alt','tooltip','label']);
 const files=[];
 function scan(dir){for(const f of fs.readdirSync(dir,{withFileTypes:true})){
  const full=path.join(dir,f.name);
