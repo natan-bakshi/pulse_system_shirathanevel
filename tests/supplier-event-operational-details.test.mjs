@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
+import esbuild from 'esbuild';
 import {
  allowedSupplierEventView,readSupplierEventView
 } from '../base44/shared/supplierEventAccess.ts';
@@ -147,6 +149,26 @@ test('optional catalog description fallback queries only the current assigned se
  assert.equal(got.services[0].serviceName,'Photographer');
  assert.equal(got.services[0].serviceDescription,'Take pictures');
  assert.ok(!JSON.stringify(got).includes('100000'));
+});
+test('unauthenticated supplier event endpoint returns 401 with no data reads or leaked contacts',async()=>{
+ const src=fs.readFileSync('base44/functions/supplierEventView/entry.ts','utf8');
+ let handler,read=0;
+ const js=esbuild.transformSync(src,{loader:'ts',format:'cjs',target:'es2022'}).code;
+ vm.runInNewContext(js,{
+  exports:{},module:{exports:{}},Response,console,
+  Deno:{serve:f=>handler=f},
+  require:name=>{
+   if(name.includes('@base44/sdk'))return {createClientFromRequest:()=>({
+    auth:{me:async()=>{throw Error('not logged in')}}
+   })};
+   if(name.includes('supplierEventAccess'))return {readSupplierEventView:()=>{read++;}};
+   throw Error('Unknown import');
+  }
+ });
+ const response=await handler({method:'POST',json:async()=>({eventId:EVENT})});
+ assert.equal(response.status,401);
+ assert.equal(read,0);
+ assert.deepEqual(await response.json(),{error:'Unauthorized'});
 });
 test('supplier event client renders safe call and WhatsApp links and full details without raw entity reads',()=>{
  const source=fs.readFileSync('src/pages/SupplierEventView.jsx','utf8');
