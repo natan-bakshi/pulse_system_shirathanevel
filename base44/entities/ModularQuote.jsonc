@@ -17,6 +17,14 @@
     },
     "last_pdf_name": {
       "type": "string"
+    },
+    "last_pdf_language": {
+      "type": "string",
+      "enum": [
+        "he",
+        "en"
+      ],
+      "description": "Language of the latest stored PDF; independent of the operator interface"
     }
   },
   "required": [
