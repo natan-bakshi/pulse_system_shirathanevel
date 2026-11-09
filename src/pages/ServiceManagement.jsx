@@ -566,7 +566,7 @@ export default function ServiceManagement() {
                     <div className="flex justify-between items-center mb-4">
                       <p className="font-bold text-lg text-purple-700">₪{pkg.package_price.toLocaleString()}</p>
                       <Badge variant={pkg.package_includes_vat ? "default" : "outline"}>
-                        {pkg.package_includes_vat ? 'כולל מע"מ' : 'לא כולל מע"מ'}
+                        {t(pkg.package_includes_vat ? 'כולל מע"מ' : 'לא כולל מע"מ')}
                       </Badge>
                     </div>
                     
@@ -608,7 +608,7 @@ export default function ServiceManagement() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingService ? "עריכת שירות" : "שירות חדש"}</DialogTitle>
+            <DialogTitle>{t(editingService ? "עריכת שירות" : "שירות חדש")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -717,7 +717,7 @@ export default function ServiceManagement() {
       <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingPackage ? "עריכת חבילה" : "חבילה חדשה"}</DialogTitle>
+            <DialogTitle>{t(editingPackage ? "עריכת חבילה" : "חבילה חדשה")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Input 
