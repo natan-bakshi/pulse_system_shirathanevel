@@ -29,7 +29,7 @@ export default function ClosingLanguageFields({ settings, onChange }) {
     <p className="text-sm text-gray-600">{english ? "English terms must be reviewed and saved before the English form can be used." : "אם תנאי ההתקשרות בעברית ריקים, תוצג תבנית ההסכם הקיימת."}</p>
     {fields.map(([base, heLabel, enLabel, linked]) => {
       const key = base + (english ? "_en" : "");
-      const label = english ? enLabel : heLabel;
+      const label = english ? enLabel : uiTranslate(heLabel);
       const value = settings[key] || "";
       return linked
         ? <ClosingLinkedField key={key} label={label} dir={english ? "ltr" : "rtl"} value={value} onChange={v => onChange(key, v)} />
