@@ -7,7 +7,8 @@ import {allowedInboundActionIds} from './whatsappInteractiveActionRegistry.ts';
 
 const encoder=new TextEncoder();
 const MAX_TOKEN_LENGTH=2300;
-const MAX_LIFETIME_MS=7*86400000;
+const MAX_LIFETIME_MS=30*86400000;
+const HISTORICAL_TTL_MS=2*86400000;
 const MAX_ISSUED_SKEW_MS=120000;
 const BASE64URL=/^[A-Za-z0-9_-]+$/;
 const NONCE=/^[A-Za-z0-9_-]{16,100}$/;
@@ -29,7 +30,7 @@ function fromBase64Url(value:string){
  catch{fail('encoding');}
  return Uint8Array.from(binary,b=>b.charCodeAt(0));
 }
-function validatePayload(raw:any,now:number):Payload{
+function validatePayload(raw:any,now:number,allowHistoricalCallback=false):Payload{
  if(!raw||typeof raw!=='object'||raw.audience!==AUDIENCE||raw.version!==1||
   typeof raw.nonce!=='string'||!NONCE.test(raw.nonce))fail('payload');
  const issued=Date.parse(raw.issuedAt);
@@ -37,7 +38,16 @@ function validatePayload(raw:any,now:number):Payload{
  if(!Number.isFinite(issued)||!Number.isFinite(expires)||
   issued>now+MAX_ISSUED_SKEW_MS||now-issued>MAX_LIFETIME_MS||
   expires<=issued||expires-issued>MAX_LIFETIME_MS)fail('lifetime');
- const binding=validateInteractiveActionBinding(raw,now);
+ // Already-accepted historical buttons were signed with EXACTLY 48 hours.
+ // A real Green callback may arrive after that accidental deadline. Accept
+ // only the cryptographically valid historical 48h signature for at most
+ // 30 days since issuance; still require provider bearer, same original
+ // Outbox/message/supplier/revision, pending status and durable one-time CAS.
+ // Never apply this exception to new 30-day tokens or unsigned UI actions.
+ const historical=allowHistoricalCallback===true&&expires<=now&&
+  Math.abs(expires-issued-HISTORICAL_TTL_MS)<2000;
+ if(expires<=now&&!historical)fail('expired');
+ const binding=validateInteractiveActionBinding(raw,historical?expires-1:now);
  if(!allowedInboundActionIds('assignment').includes(binding.action))
   fail('unsupported action for inbound mutation');
  return {...binding,audience:AUDIENCE,version:1,nonce:raw.nonce,
@@ -60,7 +70,9 @@ export async function createSignedWhatsAppAction(input:{
  return token;
 }
 export async function verifySignedWhatsAppAction(input:{
- token:string;secret:string;now?:number
+ token:string;secret:string;now?:number;
+ // Only authenticated original-message Green callback processing, never UI.
+ allowHistoricalCallback?:boolean
 },subtle:SubtleCrypto=crypto.subtle):Promise<Payload|null>{
  const token=input?.token,now=input?.now??Date.now();
  if(typeof token!=='string'||token.length<50||token.length>MAX_TOKEN_LENGTH)return null;
@@ -76,6 +88,6 @@ export async function verifySignedWhatsAppAction(input:{
   const bytes=fromBase64Url(chunks[1]);
   const decoded=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
   const candidate=JSON.parse(decoded);
-  return validatePayload(candidate,now);
+  return validatePayload(candidate,now,input.allowHistoricalCallback===true);
  }catch{return null;}
 }
