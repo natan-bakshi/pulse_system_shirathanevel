@@ -294,6 +294,27 @@ export function localizeEventQuoteData(input:{
        'event.contact_'+id+'_name')};
    });
  }
+ // Old events may still render extra organizer_contacts alongside parents.
+ // Those contact names must also be translated before an English quote is issued.
+ if(options.includeContacts!==false&&event.contacts_schema_version!==2){
+   const contactKey=event.organizer_contacts?'organizer_contacts':
+     event.organizercontacts?'organizercontacts':null;
+   if(contactKey){
+     try{
+       const contacts=typeof event[contactKey]==='string'?
+         JSON.parse(event[contactKey]):event[contactKey];
+       if(Array.isArray(contacts)){
+         const localized=contacts.map((contact:any,i:number)=>({
+           ...contact,name:field('Event',event.id,
+             'organizer_contact_'+String(contact.id||i)+'_name',contact.name,
+             'event.organizer_contact_'+String(contact.id||i)+'_name')
+         }));
+         e[contactKey]=typeof event[contactKey]==='string'?
+           JSON.stringify(localized):localized;
+       }
+     }catch{missing.add('event.'+contactKey);}
+   }
+ }
  // A catalog may contain hundreds of services that are not included in this
  // event. Missing translations for those unrelated records must not block a
  // client-facing English quote.
