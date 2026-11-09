@@ -232,3 +232,9 @@ Payment creation/callbacks, invoice amounts/VAT behavior, WhatsApp queues/button
 - Added exact endpoint/Bearer match read-only UI to the existing owner-only Green GetSettings action; generic admin browser test could not access that owner-only page and never contacted Green.
 - Full engineering evidence, paths, rollback and remaining owner verification are in \`docs/pulse-urgent-green-assignment-buttons-2026-11-09.md\`. No provider settings, supplier records or customer messages altered.
 - Owner-only Green read-only diagnostics expanded to show \`serverInboundCredentialsReady\` along with exact endpoint/Bearer match and incomingWebhook. No live provider GetSettings was executed via nonowner test identity. Final complete prepublication test gate: **1,289/1,289** passed; translation work remains PAUSED until genuine callback is verified.
+
+### 2026-11-09 — Additional owner-priority interruption: restore supplier event-card visibility
+- Owner requested read-only **operational event information** for suppliers, explicitly including event schedule, own assigned service description, arrival & meeting location, current status, family/parents/child names and clickable parents' Call/WhatsApp numbers for all supplier types. Before this the authenticated supplier card hid these fields unnecessarily.
+- Implemented and tested the scoped server projection + mobile-friendly HE/EN-capable supplier card without broadening browser raw-entity reads, changing supplier assignment status or exposing financial/internal/foreign supplier fields.
+- Before/after source evidence, security decisions, tests and outstanding RLS concern are at docs/pulse-supplier-event-card-access-2026-11-09.md. **1,295/1,295** Node tests and Vite build passed.
+- Green webhook real callback acceptance and the bilingual closing/tone plan remain on hold pending explicit owner confirmation / live provider proof; do not confuse code delivery with provider acceptance.
