@@ -3,7 +3,7 @@ import { getEventDisplayName } from '../../shared/eventName.ts';
 import { composeModularQuoteHtml } from '../../shared/modularQuote.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from '../../shared/quoteServicePresentation.ts';
 import {loadQuoteTranslations,localizeEventQuoteData,ensureCompleteEnglish,applyDocumentDirection,
- isHebrew,fixedEnglishLabel,indexedText,approvedField,translationPreservesProtectedContent} from '../../shared/quoteLocalization.ts';
+ ensureNoVisibleHebrewInEnglishQuote,isHebrew,fixedEnglishLabel,indexedText,approvedField,translationPreservesProtectedContent} from '../../shared/quoteLocalization.ts';
 
 // =====================================================================
 // Helpers
@@ -668,7 +668,9 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
 </body>
 </html>`;
 
-  return { html:applyDocumentDirection(html,manualQuote.document_language), fileBaseName, event };
+  const localizedHtml=applyDocumentDirection(html,manualQuote.document_language);
+  if(english)ensureNoVisibleHebrewInEnglishQuote(localizedHtml);
+  return { html:localizedHtml, fileBaseName, event };
 }
 
 // =====================================================================
