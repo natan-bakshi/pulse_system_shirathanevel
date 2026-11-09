@@ -456,7 +456,7 @@ export default function Layout({ children }) {
             className="h-8 w-auto max-w-[150px] object-contain opacity-90 shrink-0" />
 
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">ברוכים הבאים ל{companyName}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">{t("ברוכים הבאים ל")}{companyName}</h1>
           <p className="text-gray-600 mb-6">מערכת ניהול אירועים מתקדמת</p>
           {children}
         </div>
