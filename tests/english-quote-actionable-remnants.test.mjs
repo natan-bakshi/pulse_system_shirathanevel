@@ -136,7 +136,7 @@ test('Quote edit UI exposes already translated templates, opens needed section a
  const src=fs.readFileSync('src/components/event-details/EventQuoteEnglishDialog.jsx','utf8');
  assert.match(src,/for\(const template of quoteTemplates\)/);
  assert.match(src,/matchesResidualEnglishSample\(existing\?\.value,visibleTextSamples\)/);
- assert.match(src,/defaultOpen=\{Array\.isArray\(missingFields\)&&!showAll\}/);
+ assert.match(src,/open=\{Array\.isArray\(missingFields\)&&!showAll\}/);
  assert.match(src,/substituteExactHebrewTextNode\(val,fragment,fragmentInputs\[id\]\)/);
  assert.match(src,/QuoteTemplate\.get\(f\.id\)/);
  assert.match(src,/quoteVisibleFragmentField\(sample\)/);
