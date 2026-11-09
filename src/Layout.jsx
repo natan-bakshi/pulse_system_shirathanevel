@@ -309,8 +309,9 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (!user?.id || hydratedLanguageUserId.current===user.id) return;
     hydratedLanguageUserId.current=user.id;
-    if (user.preferred_language==='he'||user.preferred_language==='en')
-      setLocale(user.preferred_language);
+    // A different user on the same device must not inherit the previous
+    // account's language when no saved preference exists.
+    setLocale(user.preferred_language==='en'?'en':'he');
   }, [user?.id,user?.preferred_language,setLocale]);
 
   useEffect(() => {
@@ -1065,7 +1066,7 @@ export default function Layout({ children }) {
               padding: 0
             }}
             className="rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0"
-            aria-label="פתח תפריט"
+            aria-label={t("פתח תפריט")}
           >
             <Menu className="h-6 w-6 pointer-events-none" />
           </button>
@@ -1109,7 +1110,7 @@ export default function Layout({ children }) {
                 padding: 0
               }}
               className="rounded-lg text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0"
-              aria-label="חזור למסך הקודם"
+              aria-label={t("חזור למסך הקודם")}
             >
               <ArrowRight className="h-6 w-6 pointer-events-none" />
             </button>
