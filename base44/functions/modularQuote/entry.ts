@@ -39,7 +39,7 @@ export default async function(req) {
     return Response.json({error:'פעולה לא מוכרת'},{status:400,headers});
   } catch(error) {
     if(error?.code==='ENGLISH_TRANSLATION_INCOMPLETE')
-      return Response.json({error:error.message,fields:error.fields},{status:422,headers:{'Cache-Control':'no-store'}});
+      return Response.json({error:error.message,fields:error.fields,samples:error.samples||[]},{status:422,headers:{'Cache-Control':'no-store'}});
     return Response.json({error:error.message},{status:500,headers:{'Cache-Control':'no-store'}});
   }
 }
