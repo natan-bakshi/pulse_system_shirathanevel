@@ -80,7 +80,7 @@ test('English proposal rejects a missing personal English spelling without touch
   event_date:'2027-01-15',event_type:'bar_mitzvah'};
  entities.Event={get:async()=>event};
  await assert.rejects(generateQuoteHtml('event-1',{asServiceRole:{entities}},{language:'en'}),
-  err=>err.code==='ENGLISH_TRANSLATION_INCOMPLETE' && err.fields.includes('event.event_name'));
+  err=>err.code==='ENGLISH_TRANSLATION_INCOMPLETE' && err.fields.includes('event.family_name') && err.fields.includes('event.child_name'));
  const he=await generateQuoteHtml('event-1',{asServiceRole:{entities}});
  assert.ok(he.html.includes('לוי'));
  assert.equal(event.family_name,'לוי');
