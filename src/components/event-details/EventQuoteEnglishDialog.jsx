@@ -9,6 +9,7 @@ import EnglishDraftButton from '@/i18n/EnglishDraftButton';
 import {externalEnglishEnabled} from '@/i18n/futureTranslationClient';
 import {useLanguage} from '@/i18n/LanguageProvider';
 import {isHebrew,translationPreservesProtectedContent} from '../../../base44/shared/quoteLocalization.ts';
+import {matchesResidualEnglishSample,hebrewTextNodesInTranslation,substituteExactHebrewTextNode} from '@/i18n/quoteEnglishReviewHelpers';
 
 const eventFields={event_name:'Event title',family_name:'Family name',child_name:"Child's name",location:'Event location',city:'City',concept:'Concept',services_section_title:'Services heading',standalone_services_title:'Standalone services heading',external_services_title:'External services heading',notes:'Client-facing notes',discount_reason:'Discount Reason'};
 const serviceFields={service_name:'Service name',service_description:'Description',package_name:'Package name',package_description:'Package description',client_notes:'Client-facing notes',price_display_text:'Custom price label'};
@@ -99,13 +100,19 @@ function collect(event,services,catalog,rows,missingFields=[],quoteTemplates=[],
   if(setting.setting_key==='quote_footer_text')
    add('AppSettings',setting.id,'setting_value',setting.setting_value,'Quote Footer','settings');
  }
+ // Keep already approved template translations in the review model too.
+ // A final-document error can originate inside an approved English value,
+ // not only in an untranslated Hebrew source. The visible list is filtered
+ // below to the exact affected fields, so this does not clutter the dialog.
  for(const template of quoteTemplates){
-  if(!missingFields.includes('template.'+template.id+'.content'))continue;
   add('QuoteTemplate',template.id,'content',template.content,
+    template.template_type==='payment_terms'?'Payment Terms — Quote Template':
+    template.template_type==='agreement_disclaimer'?'Agreement Terms — Quote Template':
     'Quote Template — '+(template.identifier||template.template_type),'templates');
  }
  for(const catalogService of catalog){
-  if(!missingFields.some(key=>key.startsWith('catalog.'+catalogService.id+'.')))continue;
+  if(!missingFields.some(key=>key.startsWith('catalog.'+catalogService.id+'.'))&&
+     !services.some(s=>s.service_id===catalogService.id))continue;
   add('Service',catalogService.id,'service_name',catalogService.service_name,
     'Catalog Service Name','catalog');
   add('Service',catalogService.id,'service_description',catalogService.service_description,
@@ -146,12 +153,13 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
  const [organizers,setOrganizers]=useState([]),[footerSettings,setFooterSettings]=useState([]);
  const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [showAll,setShowAll]=useState(false);
- useEffect(()=>{if(open)setShowAll(false);},[open,missingFields]);
+ const [fragmentInputs,setFragmentInputs]=useState({});
+ useEffect(()=>{if(open){setShowAll(false);setFragmentInputs({});}},[open,missingFields]);
  useEffect(()=>{
   if(!open)return;
   let active=true;setLoading(true);setError('');setDraft({});
-  const readOrganizer=Array.isArray(missingFields)&&missingFields.some(k=>k.startsWith('organizer.'));
-  const readFooter=Array.isArray(missingFields)&&missingFields.includes('footer');
+  const readOrganizer=(Array.isArray(missingFields)&&missingFields.some(k=>k.startsWith('organizer.')))||visibleTextSamples.length>0;
+  const readFooter=(Array.isArray(missingFields)&&missingFields.includes('footer'))||visibleTextSamples.length>0;
   Promise.all([
    (async()=>{
      const found=[],seen=new Set();
@@ -179,7 +187,7 @@ export default function EventQuoteEnglishDialog({open,onOpenChange,event,eventSe
    .catch(()=>{if(active)setError('Could not load English translations or quote settings.');})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
- },[open,event?.id]);
+ },[open,event?.id,visibleTextSamples.length]);
  const fields=useMemo(()=>collect(event,eventServices,allServices,rows,missingFields||[],quoteTemplates,organizers,footerSettings),
   [event,eventServices,allServices,rows,missingFields,quoteTemplates,organizers,footerSettings]);
  const map=useMemo(()=>new Map(rows.map(row=>[row.source_entity+':'+row.source_id,row])),[rows]);
