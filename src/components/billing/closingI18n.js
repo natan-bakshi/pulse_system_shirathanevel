@@ -20,5 +20,5 @@ export const closingText = {
 };
 export function localizedSnapshot(snapshot, lang) {
   const version = snapshot?.translations?.[lang];
-  return version ? {...snapshot,...version,quote_summary:{...snapshot.quote_summary,pricing_note:version.pricing_note??snapshot.quote_summary?.pricing_note}} : snapshot;
+  return version ? {...snapshot,...version,quote_summary:{...snapshot.quote_summary,...version.quote_summary,pricing_note:version.pricing_note??version.quote_summary?.pricing_note??snapshot.quote_summary?.pricing_note}} : snapshot;
 }
