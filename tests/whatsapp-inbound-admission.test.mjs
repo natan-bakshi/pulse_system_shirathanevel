@@ -171,6 +171,23 @@ test('signed original Green callback still admits supplier B after unrelated sup
  assert.equal(stale.admissible,false);
  assert.equal(stale.reason,'stale_legacy_assignment');
 });
+test('historical 48-hour Green button click after five days still requires the exact original supplier and pending revision',async()=>{
+ const delayed=await request({now:now+5*86400000},{expiresAt:new Date(now+2*86400000).toISOString()});
+ const valid=fixture();
+ const admitted=await preflightWhatsAppAssignmentResponse(delayed,valid.client);
+ assert.equal(admitted.admissible,true,admitted.reason);
+ assert.equal(admitted.requiresDurableClaim,true);
+ assert.equal(valid.reads(),3);
+ const invalid=fixture();invalid.service.supplier_statuses='{"supplier-123":"rejected"}';
+ const blocked=await preflightWhatsAppAssignmentResponse(delayed,invalid.client);
+ assert.equal(blocked.admissible,false);
+ const untrusted=fixture();const forged=await preflightWhatsAppAssignmentResponse({...delayed,headers:{Authorization:'Bearer bad'}},untrusted.client);
+ assert.equal(forged.admissible,false);
+ assert.equal(untrusted.reads(),0);
+ const tooOld=fixture();const expired=await preflightWhatsAppAssignmentResponse({...delayed,now:now+31*86400000},tooOld.client);
+ assert.equal(expired.admissible,false);
+ assert.equal(tooOld.reads(),0);
+});
 test('provider read failure never authorizes mutation or sends anything',async()=>{
  const f=fixture();
  f.client.entities.EventService.get=async()=>{throw Error('database outage')};
