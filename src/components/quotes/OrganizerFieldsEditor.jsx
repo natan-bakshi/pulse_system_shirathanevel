@@ -119,11 +119,11 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
           <div key={field.id || index} className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50/50 hover:bg-gray-50">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate">{field.name}</span>
+                <span className="font-medium text-sm truncate">{t(field.name)}</span>
                 {field.required && <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
               </div>
               <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5 flex-wrap">
-                <span>{systemKey(field) ? 'שדה מערכת' : 'שדה מותאם'} · {FIELD_TYPE_LABELS[field.type] || field.type}</span>
+                <span>{t(systemKey(field) ? 'שדה מערכת' : 'שדה מותאם')} · {t(FIELD_TYPE_LABELS[field.type] || field.type)}</span>
                 {systemKey(field) && <Badge variant="outline" className="text-[10px]" dir="ltr">{systemKey(field)}</Badge>}
                 {field.type === 'select' && field.options ? <span>({Array.isArray(field.options) ? field.options.length : 0} {t("אפשרויות)")}</span> : null}
                 <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${field.category === 'organizer_details' ? 'border-purple-300 text-purple-600' : 'border-blue-300 text-blue-600'}`}>
@@ -142,7 +142,7 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
       </div>
 
       <Dialog open={showSystemDialog} onOpenChange={setShowSystemDialog}>
-        <DialogContent dir="rtl" className="sm:max-w-[650px] max-h-[85vh] flex flex-col" onPointerDownOutside={e => e.stopPropagation()}>
+        <DialogContent dir={dir} className="sm:max-w-[650px] max-h-[85vh] flex flex-col" onPointerDownOutside={e => e.stopPropagation()}>
           <DialogHeader><DialogTitle>{t("הוספת שדות מערכת")}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-500">{t("בחר כמה שדות להוסיף. אפשר לשנות את הכותרת שלהם לאחר ההוספה.")}</p>
           <Input aria-label={t("חיפוש שדות מערכת")} placeholder={t("חפש שדה...")} value={search} onChange={e => setSearch(e.target.value)} />
@@ -155,8 +155,8 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
             {visibleFields.map(field => {
               const added = existingKeys.has(field.key);
               return <label key={field.key} className={`flex gap-3 items-start rounded-lg border p-3 ${added ? 'bg-gray-50 text-gray-400' : 'cursor-pointer hover:bg-blue-50'}`}>
-                <Checkbox aria-label={field.name} checked={added || selectedKeys.includes(field.key)} disabled={added} onCheckedChange={checked => setSelectedKeys(prev => checked ? [...prev, field.key] : prev.filter(k => k !== field.key))} />
-                <span><span className="block text-sm font-medium">{field.name}</span><span className="block text-xs text-gray-500">{added ? 'כבר נוסף' : ['contacts','schedule','financial','services'].includes(field.category) ? 'במקטע הקיים בכרטיסיית האירוע' : field.category === 'organizer_details' ? 'פרטי המזמין' : 'פרטי האירוע'}</span></span>
+                <Checkbox aria-label={t(field.name)} checked={added || selectedKeys.includes(field.key)} disabled={added} onCheckedChange={checked => setSelectedKeys(prev => checked ? [...prev, field.key] : prev.filter(k => k !== field.key))} />
+                <span><span className="block text-sm font-medium">{t(field.name)}</span><span className="block text-xs text-gray-500">{t(added ? 'כבר נוסף' : ['contacts','schedule','financial','services'].includes(field.category) ? 'במקטע הקיים בכרטיסיית האירוע' : field.category === 'organizer_details' ? 'פרטי המזמין' : 'פרטי האירוע')}</span></span>
               </label>;
             })}
             {!visibleFields.length && <p className="text-sm text-gray-500 p-4">{t("לא נמצאו שדות")}</p>}
@@ -169,7 +169,7 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
       </Dialog>
       {/* Field Dialog */}
       <Dialog open={showFieldDialog} onOpenChange={setShowFieldDialog}>
-        <DialogContent dir="rtl" className="sm:max-w-[450px]" onPointerDownOutside={(e) => e.stopPropagation()}>
+        <DialogContent dir={dir} className="sm:max-w-[450px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{editingFieldIndex !== null ? 'עריכת שדה' : 'שדה חדש'}</DialogTitle>
           </DialogHeader>
@@ -189,7 +189,7 @@ export default function OrganizerFieldsEditor({ fields, onChange }) {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {[...FIELD_TYPES,...(editingSystemKey ? EXTRA_SYSTEM_TYPES : [])].map(ft => (
-                    <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+                    <SelectItem key={ft.value} value={ft.value}>{t(ft.label)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
