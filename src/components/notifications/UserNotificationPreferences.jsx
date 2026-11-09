@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import PushPermissionButton from "./PushPermissionButton";
 import QuietHoursSettings from "./QuietHoursSettings";
+import {useLanguage} from "@/i18n/LanguageProvider";
 
 const CATEGORY_LABELS = {
   assignment: 'שיבוצים',
@@ -27,6 +28,7 @@ const AUDIENCE_LABELS = {
 };
 
 export default function UserNotificationPreferences({ user, onClose }) {
+  const {t}=useLanguage();
   const queryClient = useQueryClient();
   const [preferences, setPreferences] = useState({});
   const [quietStart, setQuietStart] = useState('22:00');
@@ -83,11 +85,11 @@ export default function UserNotificationPreferences({ user, onClose }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       setHasChanges(false);
-      toast.success("הגדרות נשמרו", { description: "העדפות ההתראות שלך עודכנו בהצלחה" });
+      toast.success(t("הגדרות נשמרו"), { description: t("העדפות ההתראות שלך עודכנו בהצלחה") });
       if (onClose) onClose();
     },
     onError: (error) => {
-      toast.error("שגיאה", { description: "לא ניתן לשמור את ההגדרות: " + error.message });
+      toast.error(t("שגיאה"), { description: t("לא ניתן לשמור את ההגדרות: ") + error.message });
     }
   });
 
@@ -162,7 +164,7 @@ export default function UserNotificationPreferences({ user, onClose }) {
           {Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
             <div key={category} className="space-y-3">
               <h4 className="text-sm font-medium text-gray-700">
-                {CATEGORY_LABELS[category] || category}
+                {t(CATEGORY_LABELS[category] || category)}
               </h4>
               <div className="space-y-2 pr-4">
                 {categoryTemplates.map(template => (
@@ -171,10 +173,10 @@ export default function UserNotificationPreferences({ user, onClose }) {
                     className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
                   >
                     <div className="flex-1 min-w-0 pl-4">
-                      <p className="text-sm font-medium">{template.name}</p>
+                      <p className="text-sm font-medium">{t(template.name)}</p>
                       {template.description && (
                         <p className="text-xs text-gray-500 truncate">
-                          {template.description}
+                          {t(template.description)}
                         </p>
                       )}
                     </div>
