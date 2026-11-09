@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
         return Response.json({html:result.html,language:'en'});
       }catch(e){
         if(e?.code==='ENGLISH_TRANSLATION_INCOMPLETE')
-          return Response.json({error:e.message,fields:e.fields},{status:422});
+          return Response.json({error:e.message,fields:e.fields,samples:e.samples||[]},{status:422});
         throw e;
       }
     }
