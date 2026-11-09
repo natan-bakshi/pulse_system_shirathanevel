@@ -2376,6 +2376,7 @@ function EventDetailsBody() {
 // the administrative event page or initiate its broad Event/EventService reads.
 // Serve only the scoped supplier projection, verified again by the server.
 export default function EventDetails(){
+ const {t}=useLanguage();
  const location=useLocation();
  const eventId=new URLSearchParams(location.search).get('id')||'';
  const validEventId=/^[A-Za-z0-9_-]{3,100}$/.test(eventId);
