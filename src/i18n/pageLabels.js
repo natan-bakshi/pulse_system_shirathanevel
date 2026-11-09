@@ -444,5 +444,12 @@ export const pageLabels=Object.freeze({
   "פרטי אירוע": "Event Details",
   "שעת הגעה": "Arrival Time",
   "שם פרטי": "First Name",
-  "סגור": "Close"
+  "סגור": "Close",
+  "כותרות של סוג ההזמנה": "Organizer Type Headings",
+  "תבניות הצעת מחיר": "Quotation Templates",
+  "שירותים מהקטלוג": "Catalog Services",
+  "הגדרות הצעת מחיר": "Quotation Settings",
+  "שמור תרגומים": "Save Translations",
+  "שומר…": "Saving…",
+  "השלמת תוכן להצעת מחיר באנגלית": "Complete English Quote Content"
 });
