@@ -232,12 +232,12 @@ export default function ServiceManagement() {
       queryClient.invalidateQueries({ queryKey: ['services'] });
     } catch (error) {
       console.error("Failed to save service:", error);
-      setEnglishError('נדרש לבדוק את שמירת הגרסה האנגלית: '+(error.message||''));
+      setEnglishError(t('נדרש לבדוק את שמירת הגרסה האנגלית: ')+(error.message||''));
     } finally {
       setIsSaving(false);
     }
   }, [isSaving, formData, editingService, queryClient, services,
-      englishTouched,englishValues,englishRecord,englishLoading,englishError]);
+      englishTouched,englishValues,englishRecord,englishLoading,englishError,t]);
 
   const handleDelete = useCallback(async (serviceId) => {
     if (window.confirm(t("האם אתה בטוח שברצונך למחוק שירות זה?"))) {
@@ -250,7 +250,7 @@ export default function ServiceManagement() {
         console.error("Failed to delete service:", error);
       }
     }
-  }, [queryClient]);
+  }, [queryClient,t]);
 
   const toggleDefault = useCallback(async (service) => {
     try {
@@ -328,12 +328,12 @@ export default function ServiceManagement() {
       queryClient.invalidateQueries({ queryKey: ['packages'] });
     } catch (error) {
       console.error("Failed to save package:", error);
-      setEnglishError('נדרש לבדוק את שמירת הגרסה האנגלית: '+(error.message||''));
+      setEnglishError(t('נדרש לבדוק את שמירת הגרסה האנגלית: ')+(error.message||''));
     } finally {
       setIsSaving(false);
     }
   }, [isSaving, packageFormData, editingPackage, queryClient,
-      englishTouched,englishValues,englishRecord,englishLoading,englishError]);
+      englishTouched,englishValues,englishRecord,englishLoading,englishError,t]);
 
   const handleDeletePackage = useCallback(async (packageId) => {
     if (window.confirm(t("האם אתה בטוח שברצונך למחוק חבילה זו?"))) {
@@ -345,7 +345,7 @@ export default function ServiceManagement() {
         console.error("Failed to delete package:", error);
       }
     }
-  }, [queryClient]);
+  }, [queryClient,t]);
 
   const handleAddServiceToPackage = useCallback((serviceId) => {
     if (!packageFormData.service_ids.includes(serviceId)) {
