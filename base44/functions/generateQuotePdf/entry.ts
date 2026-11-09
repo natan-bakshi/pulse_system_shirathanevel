@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
             preloadedEvent: requestedEvent, language:body.language==='en'?'en':'he' });
         }catch(error){
           if(error?.code==='ENGLISH_TRANSLATION_INCOMPLETE')
-            return Response.json({error:error.message,fields:error.fields},{status:422});
+            return Response.json({error:error.message,fields:error.fields,samples:error.samples||[]},{status:422});
           throw error;
         }
         const {html,fileAndTitleName,margins}=resultHtml;
