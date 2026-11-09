@@ -1,7 +1,7 @@
 import React,{useState} from "react";
 import { Check, Circle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { closingText } from "./closingI18n";
+import { closingText,localizedSnapshot } from "./closingI18n";
 import {securityExplanation,depositExplanation} from "./closingGuidance";
 import CurrentPaymentSchedule from '@/components/billing/CurrentPaymentSchedule';
 import {useLanguage} from '@/i18n/LanguageProvider';
@@ -13,7 +13,7 @@ export default function ClosingStatus({agreement:a,busy,onToken,onDeposit,onBank
   const tokenDone=a.token_state==="verified";
   const depositDone=a.deposit_state==="paid";
   const [showBank,setShowBank]=useState(a.deposit_method==="bank");
-  const bankDetails=a.snapshot?.bank_details;
+  const bankDetails=localizedSnapshot(a.snapshot,language)?.bank_details;
   const requirementsMet=(!a.require_token||tokenDone)&&(!a.require_deposit||depositDone);
   if(completed)return <section dir={language==="en"?"ltr":"rtl"} className="mx-auto max-w-xl text-center space-y-5 py-10 sm:py-16" aria-label={uiTranslate("אישור סגירת האירוע")}>
     <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-800"><Check aria-hidden="true" className="h-8 w-8"/></span>
