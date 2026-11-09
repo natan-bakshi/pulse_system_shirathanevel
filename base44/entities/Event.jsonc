@@ -241,6 +241,14 @@
             "type": "string",
             "description": "\u05e9\u05dd \u05d4\u05e7\u05d5\u05d1\u05e5"
           },
+          "document_language": {
+            "type": "string",
+            "enum": [
+              "he",
+              "en"
+            ],
+            "description": "Language of the issued PDF; historical entries may have none"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
