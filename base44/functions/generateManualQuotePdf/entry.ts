@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { getEventDisplayName } from '../../shared/eventName.ts';
+import { getEventDisplayName, getEnglishQuoteEventTitle } from '../../shared/eventName.ts';
 import { composeModularQuoteHtml } from '../../shared/modularQuote.ts';
 import { quoteServicePriceHtml, quoteServiceNotesHtml, quotePriceVisible } from '../../shared/quoteServicePresentation.ts';
 import {loadQuoteTranslations,localizeEventQuoteData,ensureCompleteEnglish,applyDocumentDirection,
@@ -63,7 +63,7 @@ function renderEventDetailsBlock(block, event, settings) {
   const opts = block.options || {};
   const eventIdentityName = getEventDisplayName(event);
   const familyLine = settings.documentLanguage==='en'
-    ? `${({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event')}${event.child_name?' for '+event.child_name:''} — ${eventIdentityName}`.trim()
+    ? getEnglishQuoteEventTitle(event)
     : event.child_name
     ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
     : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
@@ -588,7 +588,7 @@ async function composeManualQuoteHtml(manualQuote, base44Instance) {
   if (event) {
     const eventIdentityName = getEventDisplayName(event);
     const eventTitle = english
-      ? `${({bar_mitzvah:'Bar Mitzvah',bat_mitzvah:'Bat Mitzvah',wedding:'Wedding',other:'Event'}[event.event_type]||'Event')}${event.child_name?' for '+event.child_name:''} — ${eventIdentityName}`.trim()
+      ? getEnglishQuoteEventTitle(event)
       : event.child_name
       ? `${getEventType(event.event_type)} של ${event.child_name} ${eventIdentityName}`.trim()
       : `${getEventType(event.event_type)} ${eventIdentityName}`.trim();
