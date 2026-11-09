@@ -11,7 +11,7 @@ import {summarizeInboundWhatsAppReceipts} from '../../shared/whatsappInboundAudi
 import {inspectInboundReceiptReadOnly} from '../../shared/whatsappInboundInvestigation.ts';
 import {inspectGreenInteractiveReadinessReadOnly} from '../../shared/whatsappInteractiveReadiness.ts';
 import {inspectAssignmentV2ReleaseReadiness} from '../../shared/assignmentV2ReleaseReadiness.ts';
-import {greenButtonQaSafeSummary,greenButtonQaPassiveInboundReady} from '../../shared/greenButtonQaLaunch.ts';
+import {greenButtonQaSafeSummary,greenButtonQaPassiveInboundReady,greenProductionPassiveInboundReady} from '../../shared/greenButtonQaLaunch.ts';
 import {greenButtonQaScopedV2Enabled} from '../../shared/greenButtonQaScopedV2.ts';
 import {inspectGreenButtonQaAssignmentReadOnly} from '../../shared/greenButtonQaAssignmentPreflight.ts';
 import {enrollOneGreenButtonQaAssignment} from '../../shared/greenButtonQaEnrollment.ts';
@@ -642,6 +642,7 @@ Deno.serve(async(req)=>{
           env('GREEN_BUTTONS_QA_SETTINGS_WRITE_ENABLED')==='enabled'&&
           env('GREEN_BUTTONS_QA_SEND_ENABLED')!=='enabled';
         return RESPONSE({success:true,settings,
+          serverInboundCredentialsReady:greenProductionPassiveInboundReady(env),
           webhookProvisioningOwnerActionAvailable,noMessagesSent:true});
       }catch(error){
         // Fixed, sanitized reason only; no upstream URL, token, payload or
