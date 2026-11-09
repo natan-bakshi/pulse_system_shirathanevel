@@ -2,17 +2,7 @@
 // ותזכורת לפני תפוגת דרישת תשלום שנשלחה בקישור. תומך בעברית ובאנגלית.
 import { sendWhatsAppText } from "./whatsappSend.ts";
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from "./whatsappReceipt.ts";
-
-const defaults = {
-  receipt: {
-    he: "שלום {{name}},\nהתשלום בסך {{amount}} התקבל בהצלחה. תודה!\n\nהמסמך שלך:\n{{document_url}}",
-    en: "Hello {{name}},\nYour payment of {{amount}} was received successfully. Thank you!\n\nYour document:\n{{document_url}}"
-  },
-  reminder: {
-    he: "שלום {{name}},\nדרישת התשלום בסך {{amount}} מ{{business_name}} עדיין ממתינה לתשלום ותפוג ב-{{expiry_date}}.\n\nלתשלום מאובטח:\n{{link}}",
-    en: "Hello {{name}},\nYour payment request of {{amount}} from {{business_name}} is still pending and expires on {{expiry_date}}.\n\nPay securely:\n{{link}}"
-  }
-};
+import {customerMessageTemplate,formatCustomerMessage} from './customerMessageTone.ts';
 
 const settingKeys = {
   receipt: { he: "payment_receipt_message_template", en: "payment_receipt_message_template_en" },
@@ -22,8 +12,7 @@ const settingKeys = {
 export function renderClientMessage(config, kind: "receipt" | "reminder", language: string, values: Record<string, string>) {
   const lang = language === "en" ? "en" : "he";
   const configured = String(config[settingKeys[kind][lang]] || "").trim();
-  const template = configured || defaults[kind][lang];
-  return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value ?? "")), template);
+  return formatCustomerMessage(customerMessageTemplate(kind,lang,configured),values);
 }
 
 // שולח בוואטסאפ, ואם אין טלפון או שהשליחה נכשלה - נסיגה לאימייל.
