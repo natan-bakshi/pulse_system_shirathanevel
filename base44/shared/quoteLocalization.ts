@@ -29,16 +29,17 @@ export async function loadQuoteTranslations(client:any,locale:unknown){
     const page=await client.asServiceRole.entities.ContentTranslation.filter({
       locale:'en',status:'approved'
     },'-updated_date',500,offset);
-    if(!Array.isArray(page))break;
+    if(!Array.isArray(page))throw new Error('Approved English translations could not be loaded safely.');
     let added=0;
     for(let i=0;i<page.length;i++){
       const item=page[i];
       const key=String(item?.id||item?.source_entity+':'+item?.source_id);
       if(!seen.has(key)){seen.add(key);rows.push(item);added++;}
     }
-    if(page.length<500||added===0)break;
+    if(page.length<500)return translationIndex(rows);
+    if(added===0)throw new Error('Translation pagination did not advance. The English quote was not issued.');
   }
-  return translationIndex(rows);
+  throw new Error('Approved translations exceed the verified pagination limit.');
 }
 export function translationPreservesProtectedContent(source:string,value:string):boolean{
   if(/<\s*(script|iframe|object|embed|style)\b|\bon\w+\s*=|javascript\s*:/i.test(value))return false;
