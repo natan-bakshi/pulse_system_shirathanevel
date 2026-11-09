@@ -126,7 +126,11 @@ const labels=new Map<string,string>([
 export function fixedEnglishLabel(value:unknown):string{
   const source=String(value??'');
   const clean=source.trim();
-  return labels.get(clean)??source;
+  if(labels.has(clean))return labels.get(clean)!;
+  // Existing event headings frequently add a colon to the same fixed label.
+  const colon=clean.match(/^(.+?)\s*([:：])$/);
+  if(colon&&labels.has(colon[1]))return labels.get(colon[1])+colon[2];
+  return source;
 }
 export function localizeVisibleHtmlLabels(html:string):string{
   // Text nodes only, never tags/attributes/URLs. Rich customer content should
