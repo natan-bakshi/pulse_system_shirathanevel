@@ -473,9 +473,7 @@ export function localizeEventQuoteData(input:{
    // A missing field inherits catalog data via object spread, and external
    // services also display details.service_description as a fallback. An
    // explicitly empty description in a standalone service is not printed.
-   const canFallbackDescription=es.is_external||
-     (es.service_description===undefined&&!!es.is_package_main_item)||
-     (es.service_description===undefined&&!es.is_package_main_item);
+   const canFallbackDescription=es.is_external||es.service_description===undefined;
    if(options.includeDescriptions!==false&&!visibleDescription&&canFallbackDescription)
      needed.add('service_description');
    requiredCatalog.set(es.service_id,needed);
