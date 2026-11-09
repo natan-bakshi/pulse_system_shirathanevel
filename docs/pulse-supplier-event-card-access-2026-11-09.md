@@ -27,3 +27,9 @@ Owner explicitly requested this BEFORE resuming WhatsApp/customer messaging and 
 ## Pending matters, not part of this release
 - Separate urgent Green webhook provider GetSettings + real signed click round-trip acceptance remains open; no provider settings were changed here. Details: docs/pulse-urgent-green-assignment-buttons-2026-11-09.md.
 - Full bilingual closing process and soft payment reminder messaging remain paused by owner; precise resumption plan: docs/pulse-multilingual-he-en-plan-2026-11-08.md.
+
+## Final production post-deploy hardening
+- After the first publish, a no-auth read-only POST to the supplierEventView endpoint returned HTTP 500 rather than a truthful 401. Its body contained no event details, but it was an incorrect authorization error.
+- Updated the endpoint to handle \`client.auth.me()\` rejected sessions as anonymous and return HTTP 401 before reading an event. Kept the service-role assignment authorization, no client-controlled scope and no raw entity exposure.
+- Added an isolated runtime test that executes the actual Base44 handler with a simulated rejected login and proves HTTP 401 and zero event reads. Re-ran **all 1,296/1,296** Node tests and Vite build; targeted ESLint clean, git diff --check clean.
+- Production anonymous POST retest **still required after this final release**; first release had 500 and cannot be called fully verified until the corrected endpoint is deployed and retested. No authenticated supplier account was used to avoid exposing real customer names/phones.
