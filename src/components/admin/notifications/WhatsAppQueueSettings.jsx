@@ -73,7 +73,8 @@ export default function WhatsAppQueueSettings(){
    }else if(action==='kick'){
     await read();setNotice('עובד התור הופעל. הודעות ממתינות עשויות להישלח.');
    }else if(action==='greenInstanceStateAudit')setGreenConnection(data.connection);
-   else if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings(data.settings);
+   else if(action==='greenWebhookSettingsAudit')setGreenWebhookSettings({...data.settings,
+    serverInboundCredentialsReady:data.serverInboundCredentialsReady===true});
    else if(action==='officeReferenceLookup')setOfficeLookup(data.lookup);
    else if(action==='metrics')setMetrics(data.metrics);
    else if(action==='sourceAudit')setSourceAudit(data.audit);
@@ -277,7 +278,8 @@ export default function WhatsAppQueueSettings(){
        <p>{uiTranslate("אימות Webhook:")} {greenWebhookSettings.webhookTokenConfigured?uiTranslate("מוגדר"):uiTranslate("חסר")}</p>
        <p>{uiTranslate('יעד Webhook של כפתורי השיבוץ:')} <strong>{greenWebhookSettings.qaWebhookTargetMatches===true?uiTranslate('תואם'):greenWebhookSettings.qaWebhookTargetMatches===false?uiTranslate('לא תואם'):uiTranslate('לא נבדק')}</strong></p>
        <p>{uiTranslate('מפתח אימות Webhook:')} <strong>{greenWebhookSettings.qaWebhookBearerMatches===true?uiTranslate('תואם'):greenWebhookSettings.qaWebhookBearerMatches===false?uiTranslate('לא תואם'):uiTranslate('לא נבדק')}</strong></p>
-       {greenWebhookSettings.qaWebhookTargetMatches!==true||greenWebhookSettings.qaWebhookBearerMatches!==true||!greenWebhookSettings.incomingNotificationsEnabled?<p className="text-amber-800 font-medium">{uiTranslate('קליטת הלחיצות אינה מאומתת. יש לבדוק את הגדרות Green לפני שינוי כלשהו. הפעולה כאן היא לקריאה בלבד.')}</p>:<p className="text-green-800">{uiTranslate('כתובת הקליטה, מפתח האימות והרשאת הודעות נכנסות תואמים להגדרות השרת. נדרשת עדיין לחיצת ספק אמיתית להוכחת העיבוד.')}</p>}
+       <p>{uiTranslate('תנאי קליטת כפתורים בשרת:')} <strong>{greenWebhookSettings.serverInboundCredentialsReady?uiTranslate('מוכנים'):uiTranslate('לא מוכנים')}</strong></p>
+       {greenWebhookSettings.qaWebhookTargetMatches!==true||greenWebhookSettings.qaWebhookBearerMatches!==true||!greenWebhookSettings.incomingNotificationsEnabled||!greenWebhookSettings.serverInboundCredentialsReady?<p className="text-amber-800 font-medium">{uiTranslate('קליטת הלחיצות אינה מאומתת. יש לבדוק את הגדרות Green לפני שינוי כלשהו. הפעולה כאן היא לקריאה בלבד.')}</p>:<p className="text-green-800">{uiTranslate('כתובת הקליטה, מפתח האימות והרשאת הודעות נכנסות תואמים להגדרות השרת. נדרשת עדיין לחיצת ספק אמיתית להוכחת העיבוד.')}</p>}
       </div>}
       <p className="text-xs text-gray-600">{uiTranslate("הפעולות הן לקריאה בלבד, ללא שליחת הודעות או שינוי הגדרות.")}</p>
      </div>
