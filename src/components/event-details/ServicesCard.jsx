@@ -991,7 +991,7 @@ const handleCopyTransport = (service, serviceDetails) => {
                   </div>
                 )}
                 <div className="text-xs text-gray-500 whitespace-nowrap">
-                  {service.includes_vat ? uiTranslate("כולל מע\"מ") : 'לא כולל מע"מ'}
+                  {service.includes_vat ? uiTranslate("כולל מע\"מ") : uiTranslate('לא כולל מע"מ')}
                 </div>
               </div>
             )}
