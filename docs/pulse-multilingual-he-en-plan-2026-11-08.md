@@ -195,3 +195,10 @@ Payment creation/callbacks, invoice amounts/VAT behavior, WhatsApp queues/button
 - Added seven layout-parity regression tests, covering regular/manual/modular document generation, mixed inline alignment, centered sections, bold/underline/italic, Quill text and summary tables. Updated old legacy-HTML reuse fixture to assert the correct event-specific paragraph alignment.
 - Final pre-deployment gate: Vite build passed, 1,282/1,282 tests passed, quote-layout ESLint passed, git diff --check clean. Details and caveats in `docs/pulse-quote-layout-parity-2026-11-09.md`.
 - The prior urgent EventDetails blank-screen incident was resolved separately by binding `t` in its authentication gate. This quote-only change must retain that fix and smoke-test the event card read-only after deployment.
+
+### 2026-11-09 — Remove unwanted dash between child and family in English quotation names
+- User requested removal of the unnecessary ` — ` between the child's name and family name, including every automatically generated quote title and PDF filename.
+- Audited quote paths and found exactly three offending English title formatters: automatic quote in `base44/shared/quoteHtml.ts`, manual quote event-details block in `base44/functions/generateManualQuotePdf/entry.ts` and manual quote filename in that same file.
+- Created a single `getEnglishQuoteEventTitle(event)` helper in `base44/shared/eventName.ts` to prevent divergent future formatting across those paths. Example: `Bar Mitzvah for David Cohen` instead of `Bar Mitzvah for David — Cohen`. When the child name is absent, no separator is added. Other intentionally used dashes (e.g. between separate concept sections) are unchanged.
+- `tests/english-quote-name-no-dash.test.mjs` verifies English title and output/filename in both regular and manual quote, handles absent child, and asserts Hebrew behavior remains unchanged. No event or customer record, fee or saved PDF was edited.
+- Post-edit Vite production build passed; **1,285/1,285** Node tests passed; targeted ESLint passed; `git diff --check` clean.
