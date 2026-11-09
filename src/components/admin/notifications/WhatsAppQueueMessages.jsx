@@ -72,7 +72,7 @@ export default function WhatsAppQueueMessages({refreshSignal=0}){
         if(!alive)return;
         if(!r.data?.success)throw new Error(r.data?.error||'שגיאה');
         setRows(r.data.rows||[]);setNextOffset(r.data.nextOffset??null);setOffset(0);setSelected(new Set());
-      }).catch(()=>{if(alive)setError('לא ניתן לטעון את הודעות WhatsApp.');});
+      }).catch(()=>{if(alive)setError(uiTranslate("לא ניתן לטעון את הודעות WhatsApp."));});
     return()=>{alive=false};
   },[status,source,showArchived,refreshSignal]);
 

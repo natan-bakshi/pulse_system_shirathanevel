@@ -298,7 +298,7 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['eventServices'] });
     } catch (error) {
       console.error("Failed to update assignment status:", error);
-      alert("שגיאה בעדכון סטטוס השיבוץ");
+      alert(uiTranslate("שגיאה בעדכון סטטוס השיבוץ"));
     }
   }, [eventServices, queryClient]);
 

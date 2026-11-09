@@ -75,11 +75,11 @@ export default function ManualPushSender() {
       setSendResult(result);
       if (result.success) {
         if (result.push?.sent) {
-          toast.success("נשלח בהצלחה!", { 
+          toast.success(uiTranslate("נשלח בהצלחה!"), { 
             description: `התראה ו-Push נשלחו ל-${result.targetUser.full_name || result.targetUser.email}` 
           });
         } else {
-          toast.warning("התראה פנימית נוצרה", { 
+          toast.warning(uiTranslate("התראה פנימית נוצרה"), { 
             description: `Push לא נשלח: ${result.push?.reason || result.push?.error || 'לא ידוע'}` 
           });
         }
@@ -87,7 +87,7 @@ export default function ManualPushSender() {
     },
     onError: (error) => {
       setSendResult({ success: false, error: error.message });
-      toast.error("שגיאה", { description: error.message });
+      toast.error(uiTranslate("שגיאה"), { description: error.message });
     }
   });
 

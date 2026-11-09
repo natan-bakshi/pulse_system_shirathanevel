@@ -16,7 +16,7 @@ export default function VariablesGuide({ onInsert }) {
       onInsert(text);
     } else {
       navigator.clipboard.writeText(text);
-      toast.success("הועתק", { description: `${text} הועתק ללוח` });
+      toast.success(uiTranslate("הועתק"), { description: `${text} הועתק ללוח` });
     }
   };
 

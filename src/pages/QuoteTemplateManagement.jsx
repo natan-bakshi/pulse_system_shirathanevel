@@ -274,7 +274,7 @@ function QuoteSettings({ isSaving, setIsSaving }) {
             }
         } catch (error) {
             console.error("Failed to upload image:", error);
-            alert("שגיאה בהעלאת התמונה");
+            alert(uiTranslate("שגיאה בהעלאת התמונה"));
         } finally {
             setIsUploading(false);
         }
@@ -314,10 +314,10 @@ function QuoteSettings({ isSaving, setIsSaving }) {
             // Invalidate cache to refresh settings across the app
             queryClient.invalidateQueries({ queryKey: ['appSettings'] });
             
-            alert("ההגדרות נשמרו בהצלחה");
+            alert(uiTranslate("ההגדרות נשמרו בהצלחה"));
         } catch (error) {
             console.error("Failed to save quote settings:", error);
-            alert("שגיאה בשמירת ההגדרות");
+            alert(uiTranslate("שגיאה בשמירת ההגדרות"));
         } finally {
             setIsSaving(false);
         }
@@ -517,6 +517,7 @@ function QuoteSettings({ isSaving, setIsSaving }) {
 }
 
 export default function QuoteTemplateManagement() {
+  const {t: uiTranslate}=useLanguage();
     const {t,dir}=useLanguage();
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -615,7 +616,7 @@ export default function QuoteTemplateManagement() {
     }, [queryClient]);
 
     const handleDelete = useCallback(async (templateId) => {
-        if (confirm("האם אתה בטוח שברצונך למחוק תבנית זו?")) {
+        if (confirm(uiTranslate("האם אתה בטוח שברצונך למחוק תבנית זו?"))) {
             try {
                 await base44.entities.QuoteTemplate.delete(templateId);
                 
@@ -623,7 +624,7 @@ export default function QuoteTemplateManagement() {
                 queryClient.invalidateQueries({ queryKey: ['quoteTemplates'] });
             } catch (error) {
                 console.error("Failed to delete template:", error);
-                alert("שגיאה במחיקת התבנית");
+                alert(uiTranslate("שגיאה במחיקת התבנית"));
             }
         }
     }, [queryClient]);

@@ -46,7 +46,7 @@ export default function ConceptDefaultsManager({ isOpen, onClose, allServices, a
 
   const handleAddConcept = () => {
     if (newConceptName.trim() === "" || concepts.some(c => c.concept === newConceptName.trim())) {
-      alert("שם קונספט לא תקין או כבר קיים");
+      alert(uiTranslate("שם קונספט לא תקין או כבר קיים"));
       return;
     }
     setConcepts([...concepts, { concept: newConceptName.trim(), service_ids: [], package_ids: [] }]);

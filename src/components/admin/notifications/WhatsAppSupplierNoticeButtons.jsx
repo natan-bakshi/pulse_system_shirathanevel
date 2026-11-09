@@ -65,7 +65,7 @@ export default function WhatsAppSupplierNoticeButtons({active=false}){
  const dirty=!!saved&&!!draft&&JSON.stringify(draft)!==JSON.stringify(saved.sources);
  async function save(){
   if(!saved||!draft||busy)return;
-  if(active&&!window.confirm('לשמור את בחירת הכפתורים? השינוי ישפיע רק על הודעות WhatsApp חדשות מסוגים אלו.'))
+  if(active&&!window.confirm(uiTranslate("לשמור את בחירת הכפתורים? השינוי ישפיע רק על הודעות WhatsApp חדשות מסוגים אלו.")))
    return;
   setBusy(true);setError('');setNotice('');
   try{

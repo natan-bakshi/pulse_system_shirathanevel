@@ -52,14 +52,14 @@ export default function NotificationTemplateForm({
   };
   const changeOpen=(next)=>{
     if(!next&&buttonsRef.current?.hasPendingChanges()&&
-      !window.confirm('יש שינויי כפתורים שלא נשמרו. לסגור בלי לשמור אותם?'))return;
+      !window.confirm(uiTranslate("יש שינויי כפתורים שלא נשמרו. לסגור בלי לשמור אותם?")))return;
     onOpenChange(next);
   };
   const saveForm=async()=>{
     // Keep the existing required-field validation BEFORE the separate
     // per-template buttons CAS, avoiding partially saved invalid templates.
     if(!template?.type||!template?.name||!template?.title_template){
-      toast.error('נא למלא תחילה קוד זיהוי, שם וכותרת לתבנית');
+      toast.error(uiTranslate("נא למלא תחילה קוד זיהוי, שם וכותרת לתבנית"));
       setActiveTab('basic');
       return;
     }
@@ -117,19 +117,19 @@ export default function NotificationTemplateForm({
       });
 
       if (response.data?.success) {
-        toast.success("נשלח בהצלחה!", {
+        toast.success(uiTranslate("נשלח בהצלחה!"), {
           description: response.data?.push?.sent
             ? "התראה נשלחה - בדוק את ההתראות שלך ואת ה-Push"
             : "התראה פנימית נוצרה (Push לא נשלח)"
         });
       } else {
-        toast.error("שגיאה בשליחה", {
+        toast.error(uiTranslate("שגיאה בשליחה"), {
           description: response.data?.error || "לא ניתן לשלוח התראת בדיקה"
         });
       }
     } catch (error) {
       console.error('Test notification error:', error);
-      toast.error("שגיאה", {
+      toast.error(uiTranslate("שגיאה"), {
         description: error.message || "לא ניתן לשלוח התראת בדיקה"
       });
     } finally {

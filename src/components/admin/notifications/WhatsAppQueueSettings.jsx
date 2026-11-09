@@ -53,8 +53,8 @@ export default function WhatsAppQueueSettings(){
   if(!expanded)return;
   let alive=true;
   base44.functions.invoke('WhatsAppQueueAdmin',{action:'status'})
-   .then(r=>{if(alive&&r.data?.success)apply(r.data);else if(alive)setError('לא ניתן לטעון מצב WhatsApp');})
-   .catch(()=>{if(alive)setError('לא ניתן לטעון מצב WhatsApp');});
+   .then(r=>{if(alive&&r.data?.success)apply(r.data);else if(alive)setError(uiTranslate("לא ניתן לטעון מצב WhatsApp"));})
+   .catch(()=>{if(alive)setError(uiTranslate("לא ניתן לטעון מצב WhatsApp"));});
   return()=>{alive=false;};
  },[expanded]);
  async function run(action,params={}){
@@ -326,7 +326,7 @@ export default function WhatsAppQueueSettings(){
         <div className="pt-2 space-y-2">
          <p className="text-xs text-gray-600">{uiTranslate("ניקוי שדות מוצפנים ברשומות שפג תוקפן בלבד. אינו משנה שיבוצים.")}</p>
          <Button size="sm" variant="outline" disabled={busy}
-          onClick={()=>window.confirm('לנקות עד 20 רשומות מוצפנות שפג תוקפן? הפעולה בלתי הפיכה ברשומה הפעילה.')&&run('unknownRecoveryExpiryCleanup')}>{uiTranslate("נקה רשומות שפג תוקפן")}</Button>
+          onClick={()=>window.confirm(uiTranslate("לנקות עד 20 רשומות מוצפנות שפג תוקפן? הפעולה בלתי הפיכה ברשומה הפעילה."))&&run('unknownRecoveryExpiryCleanup')}>{uiTranslate("נקה רשומות שפג תוקפן")}</Button>
          {unknownRecoveryCleanup&&<p>{uiTranslate("נוקו:")} {unknownRecoveryCleanup.scrubbed||0}</p>}
         </div>
        </details>
@@ -337,7 +337,7 @@ export default function WhatsAppQueueSettings(){
      <summary className="cursor-pointer font-medium">{uiTranslate("הפעלה ידנית של עובד התור")}</summary>
      <p className="text-xs text-gray-600 pt-2">{uiTranslate("לשימוש כשיש הודעות שממתינות. הפעולה יכולה לשלוח הודעות אמיתיות.")}</p>
      <Button size="sm" variant="outline" disabled={busy||!view?.config?.enabled||view?.config?.paused}
-      onClick={()=>window.confirm('להפעיל עובד תור עכשיו? הודעות אמיתיות עשויות להישלח.')&&run('kick')}>
+      onClick={()=>window.confirm(uiTranslate("להפעיל עובד תור עכשיו? הודעות אמיתיות עשויות להישלח."))&&run('kick')}>
       <Play className="h-4 w-4 ml-1"/>{uiTranslate("הפעל עובד תור")}
      </Button>
     </details>

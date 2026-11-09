@@ -101,7 +101,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
  const dirty=!!stored&&!!draft&&JSON.stringify(draft)!==JSON.stringify(stored.templates);
  async function save(){
   if(!dirty||busy)return;
-  if(!window.confirm('לשמור כפתורים לתבניות התראה? ההגדרות יחולו על הודעות חדשות בלבד.'))return;
+  if(!window.confirm(uiTranslate("לשמור כפתורים לתבניות התראה? ההגדרות יחולו על הודעות חדשות בלבד.")))return;
   setBusy(true);setError('');setMessage('');
   try{
    const res=await base44.functions.invoke('WhatsAppQueueAdmin',{
@@ -112,7 +112,7 @@ export default function WhatsAppTemplateButtonSettings({templates=[],focusTempla
    if(!data?.success||!data.setting)throw Error(data?.error||'השמירה נכשלה');
    setStored(data.setting);
    setDraft(JSON.parse(JSON.stringify(data.setting.templates)));
-   setMessage('נשמר. ההגדרה תחול על הודעות חדשות מהתבנית הזאת בלבד.');
+   setMessage(uiTranslate("נשמר. ההגדרה תחול על הודעות חדשות מהתבנית הזאת בלבד."));
   }catch(e){
    setError(friendlySettingsError(e));
   }finally{setBusy(false);}

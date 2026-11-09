@@ -33,11 +33,11 @@ export default function SupplierArrivalTimeChangeDialog({
     try {
       await handleSupplierArrivalTimeChange({ event_service_id: eventServiceId, mode });
       if (mode === 'notify') {
-        toast.success('עדכון השירות הושלם. הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה.');
+        toast.success(uiTranslate("עדכון השירות הושלם. הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה."));
       } else if (mode === 'cancel') {
-        toast.success('השיבוצים בוטלו. הודעות הביטול שנדרשו נשמרו בתור — מסירה טרם אומתה.');
+        toast.success(uiTranslate("השיבוצים בוטלו. הודעות הביטול שנדרשו נשמרו בתור — מסירה טרם אומתה."));
       } else {
-        toast.success('שעת ההתייצבות עודכנה במערכת בלבד');
+        toast.success(uiTranslate("שעת ההתייצבות עודכנה במערכת בלבד"));
       }
       onResolved?.(mode);
     } catch (error) {

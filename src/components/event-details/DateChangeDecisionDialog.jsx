@@ -26,7 +26,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
     setLoadingAction('reassign');
     try {
       await confirmReassignAfterDateChange({ event_id: event.id, mode: 'notify_reset' });
-      toast.success('השיבוצים עודכנו; הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה.');
+      toast.success(uiTranslate("השיבוצים עודכנו; הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה."));
       onResolved?.();
     } catch (error) {
       console.error('Reassign failed:', error);
@@ -41,7 +41,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
     setLoadingAction('notice');
     try {
       await confirmReassignAfterDateChange({event_id:event.id,mode:'notify_no_reset'});
-      toast.success('הודעת עדכון עם ״קיבלתי״ נשמרה בתור. סטטוס הספקים לא אופס.');
+      toast.success(uiTranslate("הודעת עדכון עם ״קיבלתי״ נשמרה בתור. סטטוס הספקים לא אופס."));
       onResolved?.();
     } catch (error) {
       console.error('Notice-only send failed:', error);
@@ -56,7 +56,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
     setLoadingAction('cancel');
     try {
       await cancelAssignmentsAfterDateChange({ event_id: event.id });
-      toast.success('השיבוצים בוטלו; הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה.');
+      toast.success(uiTranslate("השיבוצים בוטלו; הודעות WhatsApp שנדרשו נשמרו בתור — מסירה טרם אומתה."));
       onResolved?.();
     } catch (error) {
       console.error('Cancel failed:', error);
@@ -71,7 +71,7 @@ export default function DateChangeDecisionDialog({ open, event, onResolved }) {
     setLoadingAction('nothing');
     try {
       await clearDateChangePendingAction({ event_id: event.id });
-      toast.success('השינוי נשמר במערכת בלבד. הספקים לא יקבלו התראה.');
+      toast.success(uiTranslate("השינוי נשמר במערכת בלבד. הספקים לא יקבלו התראה."));
       onResolved?.();
     } catch (error) {
       console.error('Clear failed:', error);

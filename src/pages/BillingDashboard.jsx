@@ -25,6 +25,7 @@ const Loading = () => <div className="flex justify-center py-10"><Loader2 classN
 const cache = { staleTime: 3 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 
 export default function BillingDashboard() {
+  const {t: uiTranslate}=useLanguage();
   const {t}=useLanguage();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get("tab") === "cards" ? "cards" : "documents");
@@ -104,9 +105,9 @@ export default function BillingDashboard() {
     setIsSharing(true);
     try {
       const {data}=await base44.functions.invoke('shareFinancialDocument', { documentId: documentToShare.id, ...payload });
-      if(data?.manual_review_required)alert('מסמך השיתוף נוצר, אך מצב WhatsApp אינו ודאי. בדוק את התור לפני שליחה חוזרת.');
-      else if(data?.queued)alert('הודעת המסמך נשמרה בתור WhatsApp וממתינה לאישור הספק.');
-      else if(data?.failures?.length)alert('חלק מערוצי השיתוף לא הצליחו. יש לבדוק את ההודעות.');
+      if(data?.manual_review_required)alert(uiTranslate("מסמך השיתוף נוצר, אך מצב WhatsApp אינו ודאי. בדוק את התור לפני שליחה חוזרת."));
+      else if(data?.queued)alert(uiTranslate("הודעת המסמך נשמרה בתור WhatsApp וממתינה לאישור הספק."));
+      else if(data?.failures?.length)alert(uiTranslate("חלק מערוצי השיתוף לא הצליחו. יש לבדוק את ההודעות."));
       setDocumentToShare(null);
     } catch (error) {
       alert("לא ניתן לשתף את המסמך: " + (error.response?.data?.error || error.message));

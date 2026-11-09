@@ -16,17 +16,17 @@ export default function SyncPhonesButton() {
             
             if (response.data?.success) {
                 const { processed_suppliers = 0, processed_events = 0, updates_count = 0, conflicts_count = 0 } = response.data;
-                toast.success("סנכרון הושלם בהצלחה", {
+                toast.success(uiTranslate("סנכרון הושלם בהצלחה"), {
                     description: `נבדקו ${processed_suppliers} ספקים ו-${processed_events} אירועים, בוצעו ${updates_count} עדכונים${conflicts_count > 0 ? `, ${conflicts_count} שדות עמומים דולגו` : ''}.`
                 });
             } else {
-                toast.error("שגיאה בסנכרון", {
+                toast.error(uiTranslate("שגיאה בסנכרון"), {
                     description: response.data?.error || "אירעה שגיאה לא ידועה"
                 });
             }
         } catch (error) {
             console.error("Sync error:", error);
-            toast.error("שגיאה בהפעלת הסנכרון", {
+            toast.error(uiTranslate("שגיאה בהפעלת הסנכרון"), {
                 description: error.message
             });
         } finally {

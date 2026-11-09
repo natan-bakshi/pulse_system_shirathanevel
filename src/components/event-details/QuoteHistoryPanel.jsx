@@ -190,7 +190,7 @@ export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose,
       window.open(url, "_blank");
     } catch (e) {
       console.error("Failed to get signed URL:", e);
-      alert("שגיאה בפתיחת הקובץ");
+      alert(uiTranslate("שגיאה בפתיחת הקובץ"));
     } finally {
       setLoadingItem(null);
       setLoadingAction(null);
@@ -214,7 +214,7 @@ export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose,
       window.URL.revokeObjectURL(blobUrl);
     } catch (e) {
       console.error("Failed to download:", e);
-      alert("שגיאה בהורדת הקובץ");
+      alert(uiTranslate("שגיאה בהורדת הקובץ"));
     } finally {
       setLoadingItem(null);
       setLoadingAction(null);
@@ -246,7 +246,7 @@ export default function QuoteHistoryPanel({ eventId, quoteHistory = [], onClose,
     } catch (e) {
       if (e.name !== "AbortError") {
         console.error("Share failed:", e);
-        alert("שגיאה בשיתוף הקובץ");
+        alert(uiTranslate("שגיאה בשיתוף הקובץ"));
       }
     } finally {
       setLoadingItem(null);

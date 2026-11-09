@@ -48,7 +48,7 @@ export default function OrganizerTypesTab() {
       setEditingType(created);
     } catch (error) {
       console.error("Failed to create organizer type:", error);
-      alert("שגיאה ביצירת סוג הזמנה");
+      alert(uiTranslate("שגיאה ביצירת סוג הזמנה"));
     } finally {
       setIsSaving(false);
     }
@@ -74,7 +74,7 @@ export default function OrganizerTypesTab() {
   const handleDelete = useCallback(async (typeId) => {
     const type = organizerTypes.find(t => t.id === typeId);
     if (type?.is_default) {
-      alert("לא ניתן למחוק את סוג ההזמנה שמוגדר כברירת מחדל");
+      alert(uiTranslate("לא ניתן למחוק את סוג ההזמנה שמוגדר כברירת מחדל"));
       return;
     }
     if (!confirm(`האם למחוק את סוג ההזמנה "${type?.type_name}"?`)) return;
@@ -94,7 +94,7 @@ export default function OrganizerTypesTab() {
       setEditingType(null);
     } catch (error) {
       console.error("Failed to save type:", error);
-      alert("שגיאה בשמירת סוג ההזמנה");
+      alert(uiTranslate("שגיאה בשמירת סוג ההזמנה"));
     } finally {
       setIsSaving(false);
     }

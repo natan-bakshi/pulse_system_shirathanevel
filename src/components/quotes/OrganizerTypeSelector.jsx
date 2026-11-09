@@ -62,7 +62,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
       setShowNewDialog(false);
     } catch (error) {
       console.error("Failed to create organizer type:", error);
-      alert("שגיאה ביצירת סוג הזמנה");
+      alert(uiTranslate("שגיאה ביצירת סוג הזמנה"));
     } finally {
       setIsCreating(false);
     }

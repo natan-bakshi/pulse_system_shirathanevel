@@ -142,10 +142,10 @@ export default function CalendarTemplateSettings() {
 
       await Promise.all(promises);
       queryClient.invalidateQueries({ queryKey: ['appSettings'] });
-      alert("תבניות היומן נשמרו בהצלחה!");
+      alert(uiTranslate("תבניות היומן נשמרו בהצלחה!"));
     } catch (error) {
       console.error("Failed to save templates:", error);
-      alert("שגיאה בשמירת התבניות.");
+      alert(uiTranslate("שגיאה בשמירת התבניות."));
     } finally {
       setIsSaving(false);
     }
@@ -160,7 +160,7 @@ export default function CalendarTemplateSettings() {
   }, []);
 
   const resetToDefault = useCallback(() => {
-    if (!window.confirm('לאפס את התבניות לברירת מחדל?')) return;
+    if (!window.confirm(uiTranslate("לאפס את התבניות לברירת מחדל?"))) return;
     const type = selectedUserType;
     setTemplates(prev => ({
       ...prev,

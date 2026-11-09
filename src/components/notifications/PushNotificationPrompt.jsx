@@ -81,7 +81,7 @@ export default function PushNotificationPrompt({ user }) {
       : window.open(popupUrl, 'onesignal_popup', 'width=500,height=600,scrollbars=yes,resizable=yes');
 
     if (!popup) {
-      alert('החלון נחסם. אנא אפשר חלונות קופצים עבור אתר זה ונסה שוב.');
+      alert(uiTranslate("החלון נחסם. אנא אפשר חלונות קופצים עבור אתר זה ונסה שוב."));
       setIsLoading(false);
       return;
     }

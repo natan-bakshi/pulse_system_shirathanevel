@@ -56,7 +56,7 @@ export default function ManualTriggerDialog({ open, onOpenChange, template }) {
       }
     } catch (error) {
       console.error("Manual trigger failed", error);
-      toast.error("שגיאה בתקשורת עם השרת");
+      toast.error(uiTranslate("שגיאה בתקשורת עם השרת"));
     } finally {
       setIsSubmitting(false);
     }

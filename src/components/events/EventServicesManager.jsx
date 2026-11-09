@@ -228,10 +228,10 @@ export default function EventServicesManager({
       
       onServicesChange([...selectedServices, newServiceEntry]);
       setShowNewServiceDialog(false);
-      alert("השירות נוצר בהצלחה");
+      alert(uiTranslate("השירות נוצר בהצלחה"));
     } catch (error) {
       console.error("Failed to create service:", error);
-      alert("שגיאה ביצירת השירות");
+      alert(uiTranslate("שגיאה ביצירת השירות"));
     } finally {
       setIsSavingNewService(false);
     }
@@ -265,10 +265,10 @@ export default function EventServicesManager({
         }));
       }
       
-      alert("הספק נוצר בהצלחה");
+      alert(uiTranslate("הספק נוצר בהצלחה"));
     } catch (error) {
       console.error("Failed to create supplier:", error);
-      alert("שגיאה ביצירת הספק");
+      alert(uiTranslate("שגיאה ביצירת הספק"));
     } finally {
       setIsSavingNewSupplier(false);
     }
@@ -405,12 +405,12 @@ export default function EventServicesManager({
 
   const handleCreatePackage = () => {
     if (!packageForm.package_name) {
-      alert("יש למלא שם חבילה");
+      alert(uiTranslate("יש למלא שם חבילה"));
       return;
     }
 
     if (packageForm.selectedServices.length === 0) {
-      alert("יש לבחור לפחות שירות אחד");
+      alert(uiTranslate("יש לבחור לפחות שירות אחד"));
       return;
     }
 
@@ -445,13 +445,13 @@ export default function EventServicesManager({
 
   const handleAddExistingPackage = () => {
     if (!selectedExistingPackage) {
-      alert("יש לבחור חבילה");
+      alert(uiTranslate("יש לבחור חבילה"));
       return;
     }
 
     const packageData = allPackages.find(p => p.id === selectedExistingPackage);
     if (!packageData) {
-      alert("החבילה לא נמצאה");
+      alert(uiTranslate("החבילה לא נמצאה"));
       return;
     }
 
@@ -598,7 +598,7 @@ export default function EventServicesManager({
 
   const handleSavePackageEdit = () => {
     if (!editPackageForm.package_name) {
-      alert("יש למלא שם חבילה");
+      alert(uiTranslate("יש למלא שם חבילה"));
       return;
     }
 
@@ -646,7 +646,7 @@ export default function EventServicesManager({
   };
 
   const handleDeletePackage = (packageTempId) => {
-    if (!window.confirm("האם למחוק חבילה זו ואת כל השירותים שבה?")) return;
+    if (!window.confirm(uiTranslate("האם למחוק חבילה זו ואת כל השירותים שבה?"))) return;
     
     const updatedServices = selectedServices.filter(s => 
       s.id !== packageTempId && 
@@ -687,7 +687,7 @@ export default function EventServicesManager({
 
   const handleAddServicesToPackage = () => {
     if (selectedServicesForAction.length === 0) {
-      alert("יש לבחור לפחות שירות אחד");
+      alert(uiTranslate("יש לבחור לפחות שירות אחד"));
       return;
     }
 
@@ -698,7 +698,7 @@ export default function EventServicesManager({
     // 1. Determine/Create Parent Package
     if (targetPackageId === 'new') {
       if (!newPackageData.name) {
-        alert("יש למלא שם חבילה חדשה");
+        alert(uiTranslate("יש למלא שם חבילה חדשה"));
         return;
       }
       

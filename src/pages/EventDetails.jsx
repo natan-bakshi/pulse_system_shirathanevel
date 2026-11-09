@@ -268,7 +268,7 @@ function EventDetailsBody() {
     queryKey: ['event', eventId],
     queryFn: () => base44.entities.Event.get(eventId),
     enabled: !!eventId && isAdmin,
-    onError: () => setError("האירוע לא נמצא")
+    onError: () => setError(uiTranslate("האירוע לא נמצא"))
   });
   const {data: adminEventServices = [], isLoading: adminServicesLoading} = useQuery({
     queryKey: ['eventServices', eventId],
@@ -425,7 +425,7 @@ function EventDetailsBody() {
         queryClient.setQueryData(['eventServices', eventId], context.previousServices);
       }
       console.error("Failed to reorder services:", err);
-      alert("שגיאה בשינוי סדר השירותים. הסדר הוחזר למצב הקודם.");
+      alert(uiTranslate("שגיאה בשינוי סדר השירותים. הסדר הוחזר למצב הקודם."));
     },
     onSuccess: () => {
       // Invalidate to ensure we're in sync with server
@@ -580,7 +580,7 @@ function EventDetailsBody() {
           isNewStructure = false;
         }
         if (!packageMainItem) {
-          alert("חבילת היעד לא נמצאה");
+          alert(uiTranslate("חבילת היעד לא נמצאה"));
           return;
         }
 
@@ -624,7 +624,7 @@ function EventDetailsBody() {
       }
     } catch (error) {
       console.error("Failed to create service:", error);
-      alert("שגיאה ביצירת השירות");
+      alert(uiTranslate("שגיאה ביצירת השירות"));
     } finally {
       setIsSavingNewService(false);
     }
@@ -659,7 +659,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to update status:", error);
-      alert("שגיאה בעדכון סטטוס האירוע");
+      alert(uiTranslate("שגיאה בעדכון סטטוס האירוע"));
     }
   }, [eventId, loadEventData]);
 
@@ -690,7 +690,7 @@ function EventDetailsBody() {
       navigate(createPageUrl('EventManagement'));
     } catch (error) {
       console.error("Failed to delete event:", error);
-      alert("שגיאה במחיקת האירוע. נסה שוב או פנה לתמיכה.");
+      alert(uiTranslate("שגיאה במחיקת האירוע. נסה שוב או פנה לתמיכה."));
     }
   }, [event, eventServices, payments, eventId, navigate]);
 
@@ -730,11 +730,11 @@ function EventDetailsBody() {
           await queryClient.refetchQueries({ queryKey: ['event', eventId] });
         }
         if (!queryClient.getQueryData(['event', eventId])?.date_change_pending_action)
-          alert('פרטי האירוע נשמרו, אך חלון ההחלטה לספקים עדיין לא הופיע. יש לרענן את האירוע ולבחור פעולה לפני שליחת עדכונים.');
+          alert(uiTranslate("פרטי האירוע נשמרו, אך חלון ההחלטה לספקים עדיין לא הופיע. יש לרענן את האירוע ולבחור פעולה לפני שליחת עדכונים."));
       }
     } catch (error) {
       console.error("Failed to save event details:", error);
-      alert("שגיאה בשמירת פרטי האירוע");
+      alert(uiTranslate("שגיאה בשמירת פרטי האירוע"));
     } finally {
       setIsSavingEventDetails(false);
     }
@@ -755,7 +755,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to save family details:", error);
-      alert("שגיאה בשמירת פרטי המשפחה");
+      alert(uiTranslate("שגיאה בשמירת פרטי המשפחה"));
     } finally {
       setIsSavingFamilyDetails(false);
     }
@@ -769,7 +769,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to save schedule:", error);
-      alert("שגיאה בשמירת לוח הזמנים");
+      alert(uiTranslate("שגיאה בשמירת לוח הזמנים"));
     } finally {
       setIsSavingSchedule(false);
     }
@@ -793,7 +793,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to save financial data:", error);
-      alert("שגיאה בשמירת הנתונים הפיננסיים");
+      alert(uiTranslate("שגיאה בשמירת הנתונים הפיננסיים"));
     } finally {
       setIsSavingFinancial(false);
     }
@@ -819,7 +819,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to save services:", error);
-      alert("שגיאה בשמירת השירותים");
+      alert(uiTranslate("שגיאה בשמירת השירותים"));
     } finally {
       setIsSavingServices(false);
     }
@@ -852,12 +852,12 @@ function EventDetailsBody() {
       const amount = parseFloat(paymentForm.amount);
       
       if (!amount || isNaN(amount) || amount <= 0) {
-        alert("יש להזין סכום תקין");
+        alert(uiTranslate("יש להזין סכום תקין"));
         return;
       }
       
       if (!paymentForm.payment_date) {
-        alert("יש לבחור תאריך תשלום");
+        alert(uiTranslate("יש לבחור תאריך תשלום"));
         return;
       }
       
@@ -902,7 +902,7 @@ function EventDetailsBody() {
   }, [eventId, paymentForm, loadEventData, event]);
 
   const handleStartClearing = useCallback(async ({ amount, chargeType, mode, via, language, ...payer }) => {
-    if (!amount || amount <= 0) { alert("אין יתרה פתוחה לתשלום באירוע זה"); return; }
+    if (!amount || amount <= 0) { alert(uiTranslate("אין יתרה פתוחה לתשלום באירוע זה")); return; }
     const isLink = mode === 'link';
     setIsStartingClearing(true);
     try {
@@ -937,21 +937,21 @@ function EventDetailsBody() {
 
   const handleDeletePayment = useCallback(async (paymentId) => {
     const payment = payments.find(p => p.id === paymentId);
-    if (payment?.stored_card_operation_id) { alert("תשלום מסליקה נשמר להיסטוריה. החזר כספי מטופל באמצעות מסמכי החיוב."); return; }
-    if (window.confirm("האם למחוק תשלום זה?")) {
+    if (payment?.stored_card_operation_id) { alert(uiTranslate("תשלום מסליקה נשמר להיסטוריה. החזר כספי מטופל באמצעות מסמכי החיוב.")); return; }
+    if (window.confirm(uiTranslate("האם למחוק תשלום זה?"))) {
       try {
         await base44.entities.Payment.delete(paymentId);
         await refreshStoredCardPolicy(event);
         await loadEventData();
       } catch (error) {
           console.error("Failed to delete payment:", error);
-          alert("שגיאה במחיקת התשלום");
+          alert(uiTranslate("שגיאה במחיקת התשלום"));
       }
     }
   }, [loadEventData, event, payments]);
 
   const handleDeleteReceipt = useCallback(async (paymentId) => {
-    if (!window.confirm("האם למחוק את האסמכתא?")) return;
+    if (!window.confirm(uiTranslate("האם למחוק את האסמכתא?"))) return;
     
     try {
       await base44.entities.Payment.update(paymentId, { receipt_image_url: '' });
@@ -961,7 +961,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to delete receipt:", error);
-      alert("שגיאה במחיקת האסמכתא");
+      alert(uiTranslate("שגיאה במחיקת האסמכתא"));
     }
   }, [loadEventData]);
 
@@ -997,12 +997,12 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to update supplier status:", error);
-      alert("שגיאה בעדכון סטטוס הספק");
+      alert(uiTranslate("שגיאה בעדכון סטטוס הספק"));
     }
   }, [eventServices, loadEventData, eventId]);
 
   const handleRemoveSupplier = useCallback(async (eventServiceId, supplierId) => {
-    if (!window.confirm("האם להסיר ספק זה מהשירות?")) return;
+    if (!window.confirm(uiTranslate("האם להסיר ספק זה מהשירות?"))) return;
     
     try {
       const eventService = eventServices.find(es => es.id === eventServiceId);
@@ -1035,7 +1035,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to remove supplier:", error);
-      alert("שגיאה בהסרת הספק");
+      alert(uiTranslate("שגיאה בהסרת הספק"));
     }
   }, [eventServices, loadEventData]);
 
@@ -1295,7 +1295,7 @@ function EventDetailsBody() {
       if(assignmentPushWarning)alert(assignmentPushWarning);
     } catch (error) {
       console.error("Failed to assign suppliers:", error);
-      alert("שגיאה בשיבוץ הספקים");
+      alert(uiTranslate("שגיאה בשיבוץ הספקים"));
     } finally {
       assignmentSaveRef.current = false;
       setAssignmentSaving(false);
@@ -1311,7 +1311,7 @@ function EventDetailsBody() {
 
   const handleAddServiceToExistingPackage = useCallback(async () => {
     if (selectedServiceToAdd.length === 0) {
-      alert("יש לבחור לפחות שירות אחד");
+      alert(uiTranslate("יש לבחור לפחות שירות אחד"));
       return;
     }
 
@@ -1346,7 +1346,7 @@ function EventDetailsBody() {
       }
 
       if (!packageMainItem) {
-        alert("חבילת היעד לא נמצאה.");
+        alert(uiTranslate("חבילת היעד לא נמצאה."));
         setIsAddingServiceToPackage(false);
         return;
       }
@@ -1402,7 +1402,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to add service to package:", error);
-      alert("שגיאה בהוספת השירות לחבילה");
+      alert(uiTranslate("שגיאה בהוספת השירות לחבילה"));
     } finally {
       setIsAddingServiceToPackage(false);
     }
@@ -1410,12 +1410,12 @@ function EventDetailsBody() {
 
   const handleCreatePackage = useCallback(async () => {
     if (!packageForm.package_name) {
-      alert("יש למלא שם חבילה");
+      alert(uiTranslate("יש למלא שם חבילה"));
       return;
     }
 
     if (packageForm.selectedServices.length === 0) {
-      alert("יש לבחור לפחות שירות אחד");
+      alert(uiTranslate("יש לבחור לפחות שירות אחד"));
       return;
     }
 
@@ -1488,14 +1488,14 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to create package:", error);
-      alert("שגיאה ביצירת החבילה");
+      alert(uiTranslate("שגיאה ביצירת החבילה"));
     } finally {
       setIsCreatingPackage(false);
     }
   }, [packageForm, eventServices, allServices, eventId, loadEventData]);
 
   const handleDeletePackage = useCallback(async (packageId) => {
-    if (!window.confirm("האם למחוק חבילה זו ואת כל השירותים שבה?")) return;
+    if (!window.confirm(uiTranslate("האם למחוק חבילה זו ואת כל השירותים שבה?"))) return;
     
     try {
       // Correctly identify services to delete for both legacy and new structure
@@ -1513,7 +1513,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to delete package:", error);
-      alert("שגיאה במחיקת החבילה");
+      alert(uiTranslate("שגיאה במחיקת החבילה"));
     }
   }, [eventId, eventServices, loadEventData]);
 
@@ -1537,7 +1537,7 @@ function EventDetailsBody() {
 
   const handleSavePackageEdit = useCallback(async () => {
     if (!editPackageForm.package_name) {
-      alert("יש למלא שם חבילה");
+      alert(uiTranslate("יש למלא שם חבילה"));
       return;
     }
 
@@ -1617,7 +1617,7 @@ function EventDetailsBody() {
   }, [editPackageForm, eventServices, editingPackage, loadEventData, editableServices]);
 
   const handleRemoveFromPackage = useCallback(async (serviceId) => {
-    if (!window.confirm("האם להוציא שירות זה מהחבילה?")) return;
+    if (!window.confirm(uiTranslate("האם להוציא שירות זה מהחבילה?"))) return;
     try {
       const eventService = eventServices.find(es => es.id === serviceId);
       if (!eventService) return;
@@ -1643,12 +1643,12 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to remove from package:", error);
-      alert("שגיאה בהוצאת השירות מהחבילה");
+      alert(uiTranslate("שגיאה בהוצאת השירות מהחבילה"));
     }
   }, [eventId, eventServices, allServices, groupedServices, groupedExternalServices, loadEventData]);
 
   const handleDeleteService = useCallback(async (serviceId) => {
-    if (!window.confirm("האם למחוק שירות זה?")) return;
+    if (!window.confirm(uiTranslate("האם למחוק שירות זה?"))) return;
     
     try {
       await base44.entities.EventService.delete(serviceId);
@@ -1656,7 +1656,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to delete service:", error);
-      alert("שגיאה במחיקת השירות");
+      alert(uiTranslate("שגיאה במחיקת השירות"));
     }
   }, [eventId, loadEventData]);
 
@@ -1675,7 +1675,7 @@ function EventDetailsBody() {
       queryClient.invalidateQueries({ queryKey: ['eventServices', eventId] });
     } catch (error) {
       console.error("Failed to toggle service external status:", error);
-      alert("שגיאה בעדכון סטטוס השירות");
+      alert(uiTranslate("שגיאה בעדכון סטטוס השירות"));
     }
   }, [eventId, event, eventServices, queryClient]);
 
@@ -1720,13 +1720,13 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to delete services:", error);
-      alert("שגיאה במחיקת השירותים");
+      alert(uiTranslate("שגיאה במחיקת השירותים"));
     }
   }, [eventId, selectedServicesForAction, loadEventData]);
 
   const handleAddStandaloneServices = useCallback(async () => {
     if (selectedServicesToAdd.length === 0) {
-      alert("יש לבחור לפחות שירות אחד");
+      alert(uiTranslate("יש לבחור לפחות שירות אחד"));
       return;
     }
 
@@ -1777,7 +1777,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to add services:", error);
-      alert("שגיאה בהוספת השירותים");
+      alert(uiTranslate("שגיאה בהוספת השירותים"));
     } finally {
       setIsAddingServices(false);
     }
@@ -1785,7 +1785,7 @@ function EventDetailsBody() {
 
   const handleAddExistingPackage = useCallback(async () => {
     if (!selectedExistingPackage) {
-      alert("יש לבחור חבילה קיימת להוספה");
+      alert(uiTranslate("יש לבחור חבילה קיימת להוספה"));
       return;
     }
 
@@ -1793,7 +1793,7 @@ function EventDetailsBody() {
     try {
       const packageData = allPackages.find(p => p.id === selectedExistingPackage);
       if (!packageData) {
-        alert("החבילה שנבחרה לא נמצאה ברשימת החבילות.");
+        alert(uiTranslate("החבילה שנבחרה לא נמצאה ברשימת החבילות."));
         return;
       }
 
@@ -1848,7 +1848,7 @@ function EventDetailsBody() {
     // only after the PDF/HTML composer validates the selected language.
     const previewWindow=window.open('', '_blank');
     if(!previewWindow){
-      alert('חוסם החלונות הקופצים מנע את פתיחת ההצעה. יש לאפשר חלונות קופצים לאתר.');
+      alert(uiTranslate("חוסם החלונות הקופצים מנע את פתיחת ההצעה. יש לאפשר חלונות קופצים לאתר."));
       return;
     }
     try{
@@ -1863,7 +1863,7 @@ function EventDetailsBody() {
       const html=response?.data?.html;
       if(typeof html!=='string'||!html.trim())throw new Error('Quote HTML is missing');
       if(previewWindow.closed){
-        alert('חלון ההצעה נסגר. יש ללחוץ על הצג שוב כדי לפתוח אותו.');
+        alert(uiTranslate("חלון ההצעה נסגר. יש ללחוץ על הצג שוב כדי לפתוח אותו."));
         return;
       }
       previewWindow.document.open();
@@ -1939,7 +1939,7 @@ function EventDetailsBody() {
 
   const handleAddServicesToPackage = useCallback(async (saveGlobal = false) => {
     if (selectedServicesForPackage.length === 0) {
-      alert("יש לבחור לפחות שירות אחד");
+      alert(uiTranslate("יש לבחור לפחות שירות אחד"));
       return;
     }
 
@@ -1957,7 +1957,7 @@ function EventDetailsBody() {
       // 1. Determine/Create Parent Package
       if (targetPackageId === 'new') {
         if (!newPackageData.name) {
-          alert("יש למלא שם חבילה חדשה");
+          alert(uiTranslate("יש למלא שם חבילה חדשה"));
           setIsAddingServicesToPackage(false);
           return;
         }
@@ -2051,7 +2051,7 @@ function EventDetailsBody() {
       await loadEventData();
     } catch (error) {
       console.error("Failed to add services to package:", error);
-      alert("שגיאה בהוספת השירותים לחבילה");
+      alert(uiTranslate("שגיאה בהוספת השירותים לחבילה"));
     } finally {
       setIsAddingServicesToPackage(false);
     }

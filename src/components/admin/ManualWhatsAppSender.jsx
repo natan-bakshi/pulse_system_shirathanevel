@@ -123,11 +123,11 @@ export default function ManualWhatsAppSender() {
       setSendResult(result);
       if (result.success) {
         if (result.whatsapp?.sent) {
-          toast.success("נשלח בהצלחה!", { 
+          toast.success(uiTranslate("נשלח בהצלחה!"), { 
             description: `הודעת WhatsApp נשלחה ל-${result.targetUser.full_name || result.targetUser.phone}` 
           });
         } else {
-          toast.warning("התראה פנימית נוצרה", { 
+          toast.warning(uiTranslate("התראה פנימית נוצרה"), { 
             description: `WhatsApp לא נשלח: ${result.whatsapp?.reason || result.whatsapp?.error || 'לא ידוע'}` 
           });
         }
@@ -135,7 +135,7 @@ export default function ManualWhatsAppSender() {
     },
     onError: (error) => {
       setSendResult({ success: false, error: error.message });
-      toast.error("שגיאה", { description: error.message });
+      toast.error(uiTranslate("שגיאה"), { description: error.message });
     }
   });
 

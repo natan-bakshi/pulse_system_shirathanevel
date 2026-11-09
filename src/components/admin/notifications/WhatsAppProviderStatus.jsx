@@ -36,7 +36,7 @@ export default function WhatsAppProviderStatus() {
         setStatus(data);
         setChoice(data.provider);
       })
-      .catch(() => { if (active) setError('לא ניתן לקרוא את בחירת הספק. ודא שהפונקציה פורסמה ושיש לך הרשאת מנהל מערכת.'); })
+      .catch(() => { if (active) setError(uiTranslate("לא ניתן לקרוא את בחירת הספק. ודא שהפונקציה פורסמה ושיש לך הרשאת מנהל מערכת.")); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
@@ -49,7 +49,7 @@ export default function WhatsAppProviderStatus() {
       setStatus(response.data);
       setNotice('בדיקת התקשורת הסתיימה. היא אינה שולחת הודעות WhatsApp.');
     } catch (_) {
-      setError('בדיקת ספק ה־WhatsApp נכשלה. בדוק שהמפתח קיים ושיש תקשורת לספק.');
+      setError(uiTranslate("בדיקת ספק ה־WhatsApp נכשלה. בדוק שהמפתח קיים ושיש תקשורת לספק."));
     } finally { setChecking(false); }
   }
 

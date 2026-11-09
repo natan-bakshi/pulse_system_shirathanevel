@@ -66,7 +66,7 @@ export default function TaskNotesSection({ notes = [], currentUser, onChange }) 
   };
 
   const handleDelete = (noteId) => {
-    if (!window.confirm('למחוק הערה זו?')) return;
+    if (!window.confirm(uiTranslate("למחוק הערה זו?"))) return;
     onChange((notes || []).filter(n => n.id !== noteId));
   };
 

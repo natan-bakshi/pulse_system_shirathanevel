@@ -78,7 +78,7 @@ export default function TaskFormDialog({
 
   const handleSubmit = () => {
     if (!form.title.trim()) {
-      alert('יש להזין כותרת למשימה');
+      alert(uiTranslate("יש להזין כותרת למשימה"));
       return;
     }
 

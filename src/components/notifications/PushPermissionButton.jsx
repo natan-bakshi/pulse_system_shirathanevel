@@ -103,7 +103,7 @@ export default function PushPermissionButton({ user }) {
     try {
       // First, check if notifications are supported
       if (!('Notification' in window)) {
-        setError('הדפדפן שלך לא תומך בהתראות Push');
+        setError(uiTranslate("הדפדפן שלך לא תומך בהתראות Push"));
         setIsLoading(false);
         return;
       }
@@ -114,7 +114,7 @@ export default function PushPermissionButton({ user }) {
         const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
         
         if (!isStandalone) {
-          setError('באייפון, יש להוסיף את האתר למסך הבית כדי לקבל התראות. לחץ על כפתור השיתוף (↑) ובחר "הוסף למסך הבית".');
+          setError(uiTranslate("באייפון, יש להוסיף את האתר למסך הבית כדי לקבל התראות. לחץ על כפתור השיתוף (↑) ובחר \"הוסף למסך הבית\"."));
           setIsLoading(false);
           return;
         }
@@ -132,7 +132,7 @@ export default function PushPermissionButton({ user }) {
         : window.open(popupUrl, 'onesignal_popup', 'width=500,height=600,scrollbars=yes,resizable=yes');
 
       if (!popup) {
-        setError('החלון נחסם. אנא אפשר חלונות קופצים עבור אתר זה ונסה שוב.');
+        setError(uiTranslate("החלון נחסם. אנא אפשר חלונות קופצים עבור אתר זה ונסה שוב."));
         setIsLoading(false);
         return;
       }
@@ -181,7 +181,7 @@ export default function PushPermissionButton({ user }) {
             base44.auth.updateMe({
               push_enabled: false
             }).catch(() => {});
-            setError('הגישה להתראות נדחתה. ניתן לנסות שוב.');
+            setError(uiTranslate("הגישה להתראות נדחתה. ניתן לנסות שוב."));
           }
         }
       };

@@ -32,7 +32,7 @@ export default function QuickEventCreateDialog({ open, onOpenChange, onCreated }
 
   const handleCreate = async () => {
     if (!eventName.trim() || !eventDate) {
-      alert('שם אירוע ותאריך הם שדות חובה');
+      alert(uiTranslate("שם אירוע ותאריך הם שדות חובה"));
       return;
     }
     setIsSaving(true);

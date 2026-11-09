@@ -63,10 +63,10 @@ export default function NotificationManagementTab() {
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] });
       setIsDialogOpen(false);
       setEditingTemplate(null);
-      toast.success("נשמר בהצלחה", { description: "תבנית ההתראה עודכנה" });
+      toast.success(uiTranslate("נשמר בהצלחה"), { description: "תבנית ההתראה עודכנה" });
     },
     onError: (error) => {
-      toast.error("שגיאה", { description: error.message });
+      toast.error(uiTranslate("שגיאה"), { description: error.message });
     }
   });
 
@@ -75,7 +75,7 @@ export default function NotificationManagementTab() {
     mutationFn: (id) => base44.entities.NotificationTemplate.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] });
-      toast.success("נמחק", { description: "תבנית ההתראה נמחקה" });
+      toast.success(uiTranslate("נמחק"), { description: "תבנית ההתראה נמחקה" });
     }
   });
 
@@ -124,7 +124,7 @@ export default function NotificationManagementTab() {
 
   const handleSave = () => {
     if (!editingTemplate.type || !editingTemplate.name || !editingTemplate.title_template) {
-      toast.error("שגיאה", { description: "נא למלא את כל שדות החובה: קוד זיהוי, שם וכותרת" });
+      toast.error(uiTranslate("שגיאה"), { description: "נא למלא את כל שדות החובה: קוד זיהוי, שם וכותרת" });
       return;
     }
     saveMutation.mutate(editingTemplate);

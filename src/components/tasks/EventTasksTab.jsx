@@ -96,7 +96,7 @@ export default function EventTasksTab({ eventId, currentUser }) {
       setEditingTask(null);
     } catch (err) {
       console.error('Failed to save task', err);
-      alert('שגיאה בשמירת המשימה');
+      alert(uiTranslate("שגיאה בשמירת המשימה"));
     }
   };
 

@@ -431,7 +431,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
   const handleTogglePricePerGuest = (checked) => {
     const guestCount = parseInt(formData.guest_count) || 0;
     if (checked && guestCount <= 0) {
-      toast.info("יש להזין מספר משתתפים לפני הפעלת מחיר למשתתף");
+      toast.info(uiTranslate("יש להזין מספר משתתפים לפני הפעלת מחיר למשתתף"));
       return;
     }
     if (checked) {
@@ -513,7 +513,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
 
     if (isSaving) return;
 
-    if (configLoading || configError) { alert('הגדרות סוג האירוע טרם נטענו. נסה שוב.'); return; }
+    if (configLoading || configError) { alert(uiTranslate("הגדרות סוג האירוע טרם נטענו. נסה שוב.")); return; }
     const validationError = validateEventFields(organizerEventFields, formData, customFieldValues);
     if (validationError) { alert(validationError); return; }
 
@@ -736,7 +736,7 @@ for (const serviceItem of servicesForSave) {
 
     } catch (error) {
       console.error("Failed to save event:", error);
-      alert("שגיאה בשמירת האירוע. אנא נסה שוב.");
+      alert(uiTranslate("שגיאה בשמירת האירוע. אנא נסה שוב."));
     } finally {
       setIsSaving(false);
     }

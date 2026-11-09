@@ -13,6 +13,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
  * רשימת הצעות מחיר ידניות (טיוטות + שמורות) — מוצגת בתוך לשונית "הצעות מחיר ידניות".
  */
 export default function ManualQuotesList() {
+  const {t: uiTranslate}=useLanguage();
   const {t,locale}=useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -39,14 +40,14 @@ export default function ManualQuotesList() {
   const handleEdit = (id) => navigate(`/ManualQuoteEditor?id=${id}`);
 
   const handleDelete = async (id) => {
-    if (!confirm('למחוק את ההצעה לצמיתות?')) return;
+    if (!confirm(uiTranslate("למחוק את ההצעה לצמיתות?"))) return;
     try {
       await base44.entities.ManualQuote.delete(id);
       queryClient.invalidateQueries({ queryKey: ['manualQuotes'] });
-      toast.success('ההצעה נמחקה');
+      toast.success(uiTranslate("ההצעה נמחקה"));
     } catch (e) {
       console.error(e);
-      toast.error('שגיאה במחיקה');
+      toast.error(uiTranslate("שגיאה במחיקה"));
     }
   };
 

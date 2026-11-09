@@ -97,7 +97,7 @@ export default function SupplierAssignmentDialog({
       onClose();
     } catch (error) {
       console.error('Failed to save service:', error);
-      alert('שגיאה בשמירת השירות');
+      alert(uiTranslate("שגיאה בשמירת השירות"));
     } finally {
       savingAssignmentRef.current = false;
       setIsSaving(false);
@@ -181,10 +181,10 @@ export default function SupplierAssignmentDialog({
         }));
       }
 
-      alert("הספק נוצר בהצלחה");
+      alert(uiTranslate("הספק נוצר בהצלחה"));
     } catch (error) {
       console.error("Failed to create supplier:", error);
-      alert("שגיאה ביצירת הספק");
+      alert(uiTranslate("שגיאה ביצירת הספק"));
     } finally {
       setIsSavingNewSupplier(false);
     }

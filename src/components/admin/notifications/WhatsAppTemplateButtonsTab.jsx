@@ -101,7 +101,7 @@ const WhatsAppTemplateButtonsTab=forwardRef(function WhatsAppTemplateButtonsTab(
    if(!result?.success||!result.setting)throw Error(result?.error||'השמירה נכשלה.');
    setStored(result.setting);
    setValue(result.setting.templates?.[templateId]||null);
-   setMessage('כפתורי התבנית נשמרו. השינוי יחול על הודעות חדשות בלבד.');
+   setMessage(uiTranslate("כפתורי התבנית נשמרו. השינוי יחול על הודעות חדשות בלבד."));
    return true;
   }catch(e){setError(messageOf(e));return false;
   }finally{setBusy(false);}

@@ -52,14 +52,14 @@ export default function WhatsAppLiveButtonSettings({active=false}){
   if(!draft||!saved||busy)return;
   const phone=draft.officeNumber;
   if(!/^[1-9][0-9]{7,14}$/.test(phone)){
-   setError('מספר המשרד חייב להיות מספר בינלאומי (ספרות בלבד, בלי +).');return;
+   setError(uiTranslate("מספר המשרד חייב להיות מספר בינלאומי (ספרות בלבד, בלי +)."));return;
   }
   if(!REQUIRED.every(action=>{
    const label=draft.policy.buttons.find(b=>b.action===action.action)?.label;
    return typeof label==='string'&&label===label.trim()&&label.length>0&&
     label.length<=20&&!/[\u0000-\u001f\u007f]/.test(label);
-  })){setError('יש להזין כיתוב קצר ותקין לכל אחד משלושת הכפתורים.');return;}
-  if(active&&!window.confirm('לשמור הגדרות כפתורים? השינוי ישפיע על הודעות WhatsApp חדשות בלבד, ולא על הודעות שכבר נשלחו.'))return;
+  })){setError(uiTranslate("יש להזין כיתוב קצר ותקין לכל אחד משלושת הכפתורים."));return;}
+  if(active&&!window.confirm(uiTranslate("לשמור הגדרות כפתורים? השינוי ישפיע על הודעות WhatsApp חדשות בלבד, ולא על הודעות שכבר נשלחו.")))return;
   setBusy(true);setError('');setNotice('');
   try{
    const response=await base44.functions.invoke('WhatsAppQueueAdmin',{

@@ -111,7 +111,7 @@ export default function NotificationTemplateCard({
           variant="ghost" 
           size="icon" 
           onClick={() => {
-            if (confirm('האם למחוק את תבנית ההתראה?')) {
+            if (confirm(uiTranslate("האם למחוק את תבנית ההתראה?"))) {
               onDelete(template.id);
             }
           }}

@@ -76,7 +76,7 @@ export default function ManualQuoteEditor() {
         }
       } catch (e) {
         console.error('Failed to load manual quote:', e);
-        toast.error('שגיאה בטעינת ההצעה');
+        toast.error(uiTranslate("שגיאה בטעינת ההצעה"));
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -117,10 +117,10 @@ export default function ManualQuoteEditor() {
 
   const handleLoadFromEvent = useCallback(() => {
     if (!linkedEventId) {
-      toast.error('יש לשייך קודם אירוע למעלה כדי לטעון את הצעת המחיר שלו');
+      toast.error(uiTranslate("יש לשייך קודם אירוע למעלה כדי לטעון את הצעת המחיר שלו"));
       return;
     }
-    if (blocks.length > 0 && !confirm('פעולה זו תחליף את כל הקטעים הקיימים במבנה של הצעת מחיר רגילה. להמשיך?')) {
+    if (blocks.length > 0 && !confirm(uiTranslate("פעולה זו תחליף את כל הקטעים הקיימים במבנה של הצעת מחיר רגילה. להמשיך?"))) {
       return;
     }
     
@@ -129,7 +129,7 @@ export default function ManualQuoteEditor() {
     const includeSchedule = params.get('includeSchedule') !== 'false';
     
     setBlocks(buildBlocksFromEvent({ includeIntro, includePaymentTerms, includeSchedule }));
-    toast.success('נטענה הצעת מחיר רגילה כנקודת התחלה — ניתן לערוך, להסיר או להוסיף קטעי טקסט בין המקטעים');
+    toast.success(uiTranslate("נטענה הצעת מחיר רגילה כנקודת התחלה — ניתן לערוך, להסיר או להוסיף קטעי טקסט בין המקטעים"));
   }, [linkedEventId, blocks.length, params]);
 
   const handleSave = useCallback(async (silent = false) => {
@@ -153,7 +153,7 @@ export default function ManualQuoteEditor() {
         window.history.replaceState(null, '', newUrl);
       }
       queryClient.invalidateQueries({ queryKey: ['manualQuotes'] });
-      if (!silent) toast.success('ההצעה נשמרה');
+      if (!silent) toast.success(uiTranslate("ההצעה נשמרה"));
       return saved?.id || quoteId;
     } catch (e) {
       console.error('Failed to save manual quote:', e);
@@ -190,7 +190,7 @@ export default function ManualQuoteEditor() {
     try {
       const data = await buildFreshPdf();
       if (data?.pdf_url) {
-        toast.success('PDF הופק בהצלחה');
+        toast.success(uiTranslate("PDF הופק בהצלחה"));
         window.open(data.pdf_url, '_blank');
       }
     } catch (e) {
@@ -218,7 +218,7 @@ export default function ManualQuoteEditor() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        toast.success('הקובץ ירד');
+        toast.success(uiTranslate("הקובץ ירד"));
       } catch (downloadError) {
         console.warn('Direct download failed, falling back to opening in new tab', downloadError);
         window.open(data.pdf_url, '_blank');
@@ -254,7 +254,7 @@ export default function ManualQuoteEditor() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        toast.success('הקובץ ירד (השיתוף הנייטיב לא זמין בדפדפן זה)');
+        toast.success(uiTranslate("הקובץ ירד (השיתוף הנייטיב לא זמין בדפדפן זה)"));
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -269,7 +269,7 @@ export default function ManualQuoteEditor() {
   // צפייה ב-PDF הקיים — פותח את ה-PDF השמור האחרון בלי להפיק מחדש.
   const handleViewExistingPdf = useCallback(async () => {
     if (!lastPdfUri || !quoteId) {
-      toast.error('עדיין לא הופק PDF להצעה זו');
+      toast.error(uiTranslate("עדיין לא הופק PDF להצעה זו"));
       return;
     }
     setIsViewing(true);
@@ -281,7 +281,7 @@ export default function ManualQuoteEditor() {
       });
       const signedUrl = res?.data?.signed_url;
       if (!signedUrl) {
-        toast.error('שגיאה בקבלת קישור צפייה');
+        toast.error(uiTranslate("שגיאה בקבלת קישור צפייה"));
         return;
       }
       window.open(signedUrl, '_blank');
@@ -298,15 +298,15 @@ export default function ManualQuoteEditor() {
       navigate('/QuoteTemplateManagement');
       return;
     }
-    if (!confirm('האם למחוק את ההצעה לצמיתות?')) return;
+    if (!confirm(uiTranslate("האם למחוק את ההצעה לצמיתות?"))) return;
     try {
       await base44.entities.ManualQuote.delete(quoteId);
       queryClient.invalidateQueries({ queryKey: ['manualQuotes'] });
-      toast.success('ההצעה נמחקה');
+      toast.success(uiTranslate("ההצעה נמחקה"));
       navigate('/QuoteTemplateManagement');
     } catch (e) {
       console.error('Delete failed:', e);
-      toast.error('שגיאה במחיקה');
+      toast.error(uiTranslate("שגיאה במחיקה"));
     }
   }, [quoteId, queryClient, navigate]);
 

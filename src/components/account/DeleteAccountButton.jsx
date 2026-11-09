@@ -18,7 +18,7 @@ export default function DeleteAccountButton() {
       await base44.auth.logout();
     } catch (error) {
       console.error("Failed to delete account:", error);
-      alert("שגיאה במחיקת החשבון. נסה שוב.");
+      alert(uiTranslate("שגיאה במחיקת החשבון. נסה שוב."));
       setIsDeleting(false);
     }
   };

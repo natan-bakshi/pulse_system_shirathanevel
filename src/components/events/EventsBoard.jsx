@@ -209,7 +209,7 @@ export default function EventsBoard() {
             setIsSettingsOpen(false);
         } catch (error) {
             console.error("Failed to save settings:", error);
-            alert("שגיאה בשמירת ההגדרות.");
+            alert(uiTranslate("שגיאה בשמירת ההגדרות."));
         } finally {
             setIsSavingSettings(false);
         }
@@ -245,10 +245,10 @@ export default function EventsBoard() {
                 }));
             }
 
-            alert("הספק נוצר בהצלחה");
+            alert(uiTranslate("הספק נוצר בהצלחה"));
         } catch (error) {
             console.error("Failed to create supplier:", error);
-            alert("שגיאה ביצירת הספק");
+            alert(uiTranslate("שגיאה ביצירת הספק"));
         } finally {
             setIsSavingNewSupplier(false);
         }
@@ -425,7 +425,7 @@ export default function EventsBoard() {
             setEditingAssignment(null);
         } catch (error) {
             console.error('Failed to save assignment:', error);
-            alert('שגיאה בשמירת השיבוץ');
+            alert(uiTranslate("שגיאה בשמירת השיבוץ"));
         } finally {
             assignmentStatusSaveRef.current = false;
             setIsSaving(false);
@@ -496,7 +496,7 @@ export default function EventsBoard() {
         try {
             const currentEventService = eventServices.find(es => es.id === editingService.eventServiceId);
             if (!currentEventService) {
-                alert('השירות לא נמצא - ייתכן שהוא נמחק. הרשימה תתרענן.');
+                alert(uiTranslate("השירות לא נמצא - ייתכן שהוא נמחק. הרשימה תתרענן."));
                 queryClient.invalidateQueries({ queryKey: ['eventServices'] });
                 setEditingService(null);
                 return;
@@ -520,7 +520,7 @@ export default function EventsBoard() {
             setEditingService(null);
         } catch (error) {
             console.error('Failed to save service:', error);
-            alert('שגיאה בשמירת השירות');
+            alert(uiTranslate("שגיאה בשמירת השירות"));
         } finally {
             savingServiceRef.current = false;
             setIsSaving(false);

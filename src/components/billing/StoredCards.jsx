@@ -56,7 +56,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
   const [reference, setReference] = useState("");
   const [providerPaymentId, setProviderPaymentId] = useState("");
   const [consentImage,setConsentImage]=useState("");
-  const evidenceInput=<label className="block">{uiTranslate("צילום תכתובת או אישור (במקום מספר או בנוסף לו)")}<input className={inputClass} type="file" accept="image/png,image/jpeg" onChange={async e=>{const f=e.target.files?.[0];setConsentImage("");if(!f)return;if(f.size>2*1024*1024||!["image/png","image/jpeg"].includes(f.type)){setMessage("יש לבחור PNG או JPEG עד 2MB");e.target.value="";return;}const r=new FileReader();r.onload=()=>setConsentImage(String(r.result));r.readAsDataURL(f);}}/><span className="text-xs text-gray-600">{uiTranslate("צילום ההסכמה נשמר באופן פרטי. אין לצרף צילום כרטיס אשראי או פרטי אשראי.")}</span></label>;
+  const evidenceInput=<label className="block">{uiTranslate("צילום תכתובת או אישור (במקום מספר או בנוסף לו)")}<input className={inputClass} type="file" accept="image/png,image/jpeg" onChange={async e=>{const f=e.target.files?.[0];setConsentImage("");if(!f)return;if(f.size>2*1024*1024||!["image/png","image/jpeg"].includes(f.type)){setMessage(uiTranslate("יש לבחור PNG או JPEG עד 2MB"));e.target.value="";return;}const r=new FileReader();r.onload=()=>setConsentImage(String(r.result));r.readAsDataURL(f);}}/><span className="text-xs text-gray-600">{uiTranslate("צילום ההסכמה נשמר באופן פרטי. אין לצרף צילום כרטיס אשראי או פרטי אשראי.")}</span></label>;
   const key = ["storedCard", event.id];
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: key, queryFn: () => storedCardAction("status", { eventId: event.id }), staleTime: 30000
@@ -96,17 +96,17 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
     setMode(null); await changed();
   };
   const remove = async eligibleOnly => {
-    if (!window.confirm("הכרטיס יוסר מהלקוח ומכל האירועים המקושרים אליו. היסטוריית התשלומים תישמר. להסיר?")) return;
+    if (!window.confirm(uiTranslate("הכרטיס יוסר מהלקוח ומכל האירועים המקושרים אליו. היסטוריית התשלומים תישמר. להסיר?"))) return;
     await run(async () => {
       await storedCardAction("remove", { customerId: customer.id, cardId: card.id, eligibleOnly });
-      setMessage("הכרטיס הוסר מהמערכת"); await changed();
+      setMessage(uiTranslate("הכרטיס הוסר מהמערכת")); await changed();
     });
   };
   const unlinkCustomer = async () => {
-    if (!window.confirm("לנתק את הלקוח המשלם מהאירוע הזה בלבד? הלקוח והכרטיס יישארו זמינים לאירועים אחרים.")) return;
+    if (!window.confirm(uiTranslate("לנתק את הלקוח המשלם מהאירוע הזה בלבד? הלקוח והכרטיס יישארו זמינים לאירועים אחרים."))) return;
     await run(async () => {
       await storedCardAction("unbind", { eventId: event.id, customerId: customer.id });
-      setMessage("הלקוח נותק מהאירוע"); await changed();
+      setMessage(uiTranslate("הלקוח נותק מהאירוע")); await changed();
     });
   };
   const deleteCustomer = async () => {
@@ -150,20 +150,20 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
           <p>{uiTranslate("ממתין לאימות שמירת הכרטיס מול הספק. הקישור בתוקף עד")} {israelDateTime(data.pending.expiresAt)} {uiTranslate("(שעון ישראל).")}</p>
           {data.pending.url && <div className="flex gap-2">
             <a href={data.pending.url} target="_blank" rel="noopener noreferrer" className="underline">{uiTranslate("פתח דף שמירת כרטיס")}</a>
-            <Button variant="outline" disabled={busy} onClick={() => run(async () => { await navigator.clipboard.writeText(data.pending.url); setMessage("הקישור הועתק"); })}>{uiTranslate("העתק קישור ללקוח")}</Button>
+            <Button variant="outline" disabled={busy} onClick={() => run(async () => { await navigator.clipboard.writeText(data.pending.url); setMessage(uiTranslate("הקישור הועתק")); })}>{uiTranslate("העתק קישור ללקוח")}</Button>
           </div>}
           {data.pending.url && <Button variant="outline" disabled={busy || !!data.pending.messageState} onClick={()=>run(async()=>{
             const result=await storedCardAction("send_setup_link",{customerId:customer.id,eventId:event.id});
             setMessage(result.manual_review_required?"תוצאת הודעת WhatsApp אינה ודאית; יש לבדוק את התור לפני ניסיון נוסף.":result.queued?"הקישור נשמר בתור WhatsApp וממתין לאישור הספק.":result.sent?"הקישור התקבל אצל ספק WhatsApp; מסירה ללקוח טרם אומתה.":result.warning||"לא אושרה קליטה לתור WhatsApp.");
           })}>{data.pending.messageState==="accepted"?uiTranslate("התקבל אצל ספק WhatsApp"):data.pending.messageState==="queued"?"ממתין בתור WhatsApp":data.pending.messageState?"נדרשת בדיקת שליחה":"שלח קישור בוואטסאפ"}</Button>}
           {data.pending.canRecover && <Button variant="outline" disabled={busy} onClick={() => run(async () => {
-            await storedCardAction("recover_setup", { customerId: customer.id }); setMessage("שמירת הכרטיס אומתה והושלמה"); await changed();
+            await storedCardAction("recover_setup", { customerId: customer.id }); setMessage(uiTranslate("שמירת הכרטיס אומתה והושלמה")); await changed();
           })}>{uiTranslate("בדוק ואמת כרטיס מול הספק")}</Button>}
           <Button variant="outline" disabled={busy || !data.pending.canCancel} onClick={() => run(async () => { await storedCardAction("cancel_setup", { customerId: customer.id }); await changed(); })}>{uiTranslate("בטל בקשת שמירה")}</Button>
         </div>}
         {customer?.busy && !data?.pending && <div className="rounded bg-amber-50 p-3 space-y-2">
           <p>{uiTranslate("פעולה בטיפול. אם הנעילה נקטעה, ניתן לבדוק אם מותר לשחררה.")}</p>
-          <Button variant="outline" disabled={busy} onClick={() => run(async () => { await storedCardAction("force_release", { customerId: customer.id }); setMessage("הנעילה שוחררה"); await changed(); })}>{uiTranslate("בדוק ושחרר נעילה תקועה")}</Button>
+          <Button variant="outline" disabled={busy} onClick={() => run(async () => { await storedCardAction("force_release", { customerId: customer.id }); setMessage(uiTranslate("הנעילה שוחררה")); await changed(); })}>{uiTranslate("בדוק ושחרר נעילה תקועה")}</Button>
         </div>}
         {data?.pending?.kind === "charge" && <div className="rounded bg-amber-50 p-3">
           <p>{uiTranslate("חיוב בטיפול או בבירור. אין לבצע חיוב נוסף לפני קבלת תוצאה.")}</p>
@@ -176,7 +176,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
             <p className="text-sm">{uiTranslate("אם הספק אישר את החיוב אך מספר העסקה לא התקבל במערכת, הזן את מזהה העסקה המדויק מ-Invoice4U. המערכת תאמת אותו מול הספק ולא תבצע חיוב נוסף.")}</p>
             <Input aria-label={uiTranslate("מזהה עסקה אצל ספק הסליקה")} value={providerPaymentId} onChange={e => setProviderPaymentId(e.target.value)} placeholder={uiTranslate("מזהה עסקה אצל הספק")} />
             <Button variant="outline" disabled={busy || !providerPaymentId.trim()} onClick={() => {
-              if (!window.confirm("לאשר שיוך של העסקה הזו לתשלום הממתין? הפעולה אינה מחייבת שוב, אך לאחר האימות התשלום ייחשב כשולם.")) return;
+              if (!window.confirm(uiTranslate("לאשר שיוך של העסקה הזו לתשלום הממתין? הפעולה אינה מחייבת שוב, אך לאחר האימות התשלום ייחשב כשולם."))) return;
               run(async () => {
                 const result = await storedCardAction("attach_provider_result", { customerId: customer.id, operationId: data.pending.id, providerPaymentId: providerPaymentId.trim(), confirmed: true });
                 setMessage(result.state === "completed" ? "העסקה אומתה ונרשמה כתשלום שהושלם" : "הפעולה עדיין בבירור");
@@ -218,7 +218,7 @@ function CardPanel({ event, onChanged, fallbackEmail }) {
               });
               setMode(null);
               setForm({ name: "", phone: "", email: "", identifier: "" }); setConsent(false); setReference("");
-              setMessage("הלקוח נוצר זמנית והקישור המאובטח מוכן. לאחר אימות הכרטיס הלקוח יישמר סופית.");
+              setMessage(uiTranslate("הלקוח נוצר זמנית והקישור המאובטח מוכן. לאחר אימות הכרטיס הלקוח יישמר סופית."));
               await changed();
               if (result.redirectUrl) await navigator.clipboard.writeText(result.redirectUrl).catch(() => {});
             })}>{uiTranslate("הוסף לקוח וצור קישור לכרטיס")}</Button>

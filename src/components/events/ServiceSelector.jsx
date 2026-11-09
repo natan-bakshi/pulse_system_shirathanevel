@@ -107,7 +107,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
             }
         } catch (error) {
             console.error("Failed to update service description:", error);
-            alert("שגיאה בעדכון תיאור השירות. השינויים לא נשמרו.");
+            alert(uiTranslate("שגיאה בעדכון תיאור השירות. השינויים לא נשמרו."));
             setSavingDescription(null);
             return;
         } finally {
@@ -188,7 +188,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
       
     } catch (error) {
       console.error("Failed to create service:", error);
-      alert("שגיאה ביצירת השירות");
+      alert(uiTranslate("שגיאה ביצירת השירות"));
     } finally {
       setIsSavingService(false);
     }
@@ -218,7 +218,7 @@ export default function ServiceSelector({ selectedServices, onServicesChange, co
       
     } catch (error) {
       console.error("Failed to create supplier:", error);
-      alert("שגיאה ביצירת הספק");
+      alert(uiTranslate("שגיאה ביצירת הספק"));
     } finally {
       setIsSavingSupplier(false);
     }

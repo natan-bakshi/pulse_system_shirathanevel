@@ -16,6 +16,7 @@ const labels = { invoice: "חשבונית מס", receipt: "קבלה", invoice_re
 const statuses = { open: "פתוח", fully_credited: "זוכה במלואו", partially_credited: "זוכה חלקית", cancelled: "בוטל" };
 
 export default function EventDocumentsCard({ eventId, isAdmin, event }) {
+  const {t: uiTranslate}=useLanguage();
   const {t,locale}=useLanguage();
   const contacts = React.useMemo(() => getEventContactList(event), [event]);
   const queryClient = useQueryClient();
@@ -52,7 +53,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
   };
 
   const handleDetach = async (doc) => {
-    if (!window.confirm("לנתק את המסמך מהאירוע? המסמך יישמר בלשונית התשלומים ללא שיוך.")) return;
+    if (!window.confirm(uiTranslate("לנתק את המסמך מהאירוע? המסמך יישמר בלשונית התשלומים ללא שיוך."))) return;
     await runAction(() => base44.entities.FinancialDocument.update(doc.id, { is_detached_from_event: true }), "המסמך נותק מהאירוע");
   };
 
@@ -61,7 +62,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
     try {
       await base44.functions.invoke("invoice4uCancelInvoice", { documentId: documentToCredit.id, reason });
       refresh();
-      toast.success("מסמך הזיכוי הופק");
+      toast.success(uiTranslate("מסמך הזיכוי הופק"));
       setCancelStep("refund");
     } catch (error) { toast.error(error.response?.data?.error || error.message); }
     setActionLoading(false);
@@ -72,7 +73,7 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
     try {
       await base44.functions.invoke("invoice4uCancelInvoice", { documentId: documentToCredit.id, reason, step: "refund_receipt" });
       refresh();
-      toast.success("הקבלה השלילית הופקה");
+      toast.success(uiTranslate("הקבלה השלילית הופקה"));
       setCancelStep("done");
     } catch (error) { toast.error(error.response?.data?.error || error.message); }
     setActionLoading(false);
@@ -84,9 +85,9 @@ export default function EventDocumentsCard({ eventId, isAdmin, event }) {
     setActionLoading(true);
     try{
       const {data}=await base44.functions.invoke("shareFinancialDocument",{documentId:documentToShare.id,...payload});
-      if(data?.manual_review_required)toast.warning('מצב שליחת המסמך בוואטסאפ אינו ודאי. בדוק את התור לפני ניסיון נוסף.');
-      else if(data?.queued)toast.message('הודעת המסמך נשמרה בתור WhatsApp וממתינה לאישור הספק.');
-      else if(data?.failures?.length)toast.warning('חלק מערוצי שיתוף המסמך נכשלו.');
+      if(data?.manual_review_required)toast.warning(uiTranslate("מצב שליחת המסמך בוואטסאפ אינו ודאי. בדוק את התור לפני ניסיון נוסף."));
+      else if(data?.queued)toast.message(uiTranslate("הודעת המסמך נשמרה בתור WhatsApp וממתינה לאישור הספק."));
+      else if(data?.failures?.length)toast.warning(uiTranslate("חלק מערוצי שיתוף המסמך נכשלו."));
       else toast.success(payload.channel==='whatsapp'?'המסמך התקבל אצל ספק WhatsApp; מסירה טרם אומתה.':'המסמך נשלח באימייל.');
       refresh();
     }catch(error){toast.error(error.response?.data?.error||error.message);}

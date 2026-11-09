@@ -5,6 +5,7 @@ import { signAgreement } from '@/functions/signAgreement';
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function TermsPopup({ user }) {
+  const {t: uiTranslate}=useLanguage();
   const {t,locale}=useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('terms');
@@ -135,11 +136,11 @@ export default function TermsPopup({ user }) {
         localStorage.setItem(localStorageKey, 'true');
         setIsOpen(false);
       } else {
-        alert('שגיאה בשמירת החתימה. אנא נסה שוב.');
+        alert(uiTranslate("שגיאה בשמירת החתימה. אנא נסה שוב."));
       }
     } catch (error) {
       console.error('Error signing agreement:', error);
-      alert('שגיאה בשמירת החתימה. אנא נסה שוב.');
+      alert(uiTranslate("שגיאה בשמירת החתימה. אנא נסה שוב."));
     } finally {
       setIsSigning(false);
     }

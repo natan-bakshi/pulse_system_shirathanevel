@@ -34,7 +34,7 @@ export default function UserCalendarSync({ user }) {
           return;
         }
         if (result.data?.warning) {
-          alert("היומן נוצר אך השיתוף נכשל. ייתכן שתצטרך לשתף ידנית.");
+          alert(uiTranslate("היומן נוצר אך השיתוף נכשל. ייתכן שתצטרך לשתף ידנית."));
         }
       } else if (!syncApproved && oldSyncApproved) {
         // User is disabling sync - trigger cleanup
@@ -71,11 +71,11 @@ export default function UserCalendarSync({ user }) {
       if (syncApproved) {
         setJustConnected(true);
       } else {
-        alert("סנכרון היומן כובה בהצלחה.");
+        alert(uiTranslate("סנכרון היומן כובה בהצלחה."));
       }
     } catch (error) {
       console.error("Failed to save calendar settings:", error);
-      alert("שגיאה בשמירת ההגדרות.");
+      alert(uiTranslate("שגיאה בשמירת ההגדרות."));
     } finally {
       setIsSaving(false);
     }

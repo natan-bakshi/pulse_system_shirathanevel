@@ -195,7 +195,7 @@ export default function ServicesCard({
       setShowNewServiceDialog(false);
     } catch (error) {
       console.error("Failed to create service:", error);
-      alert("שגיאה ביצירת השירות");
+      alert(uiTranslate("שגיאה ביצירת השירות"));
     } finally {
       setIsSavingNewService(false);
     }
@@ -249,7 +249,7 @@ export default function ServicesCard({
       await refreshEventStatus(event.id);
     } catch (error) {
       console.error("Failed to create supplier:", error);
-      alert("שגיאה ביצירת הספק");
+      alert(uiTranslate("שגיאה ביצירת הספק"));
     } finally {
       setIsSavingNewSupplier(false);
     }
@@ -302,7 +302,7 @@ export default function ServicesCard({
       await loadEventData();
     } catch (error) {
       console.error("Failed to assign suppliers:", error);
-      alert("שגיאה בשיבוץ הספקים");
+      alert(uiTranslate("שגיאה בשיבוץ הספקים"));
     } finally {
       localAssignmentSavingRef.current = false;
       setLocalAssignmentSaving(false);
@@ -310,15 +310,15 @@ export default function ServicesCard({
   };
 
   const handleSaveGlobalServiceDescription = async (serviceId, description) => {
-    if (!window.confirm("האם אתה בטוח שברצונך לעדכן את התיאור הגלובלי של השירות? שינוי זה ישפיע על כל האירועים העתידיים.")) return;
+    if (!window.confirm(uiTranslate("האם אתה בטוח שברצונך לעדכן את התיאור הגלובלי של השירות? שינוי זה ישפיע על כל האירועים העתידיים."))) return;
     
     try {
       await Service.update(serviceId, { service_description: description });
-      alert("תיאור השירות עודכן בהצלחה באופן גלובלי");
+      alert(uiTranslate("תיאור השירות עודכן בהצלחה באופן גלובלי"));
       queryClient.invalidateQueries({ queryKey: ['services'] });
     } catch (error) {
       console.error("Failed to update global service description:", error);
-      alert("שגיאה בעדכון תיאור השירות");
+      alert(uiTranslate("שגיאה בעדכון תיאור השירות"));
     }
   };
 
