@@ -173,6 +173,7 @@ function context({actor={role:'admin',email:'natib8000@gmail.com'},state={},jobs
      };
      if(name.endsWith('greenButtonQaLaunch.ts'))return {greenButtonQaSafeSummary,
        greenButtonQaPassiveInboundReady:()=>false,
+       greenProductionPassiveInboundReady:()=>true,
        trustedGreenAssignmentProductionConfig:(control,env,mode)=>
         mode==='outbound'&&control.enabled===true&&control.paused!==true&&
         control.interactive_assignment_production_enabled===true&&
@@ -418,6 +419,7 @@ test('owner-only Green GetSettings audit is opt-in one provider GET and zero DB/
  assert.equal(result.status,200);
  assert.equal(result.body.success,true);
  assert.equal(result.body.settings.webhookConfigured,true);
+ assert.equal(result.body.serverInboundCredentialsReady,true);
  assert.equal(result.body.settings.existingWebhookMustBePreserved,true);
  assert.equal(result.body.settings.safeToReplaceWebhookUrl,false);
  assert.equal(result.body.settings.noDatabaseQueries,true);
