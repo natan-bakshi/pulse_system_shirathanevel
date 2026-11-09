@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { sendOneSignalPush } from "@/functions/sendOneSignalPush";
 import { createNotification } from "@/functions/createNotification";
-import { 
+import {
   Send, Loader2, User, Users, Bell, AlertCircle, CheckCircle, Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,12 +75,12 @@ export default function ManualPushSender() {
       setSendResult(result);
       if (result.success) {
         if (result.push?.sent) {
-          toast.success(uiTranslate("נשלח בהצלחה!"), { 
-            description: `התראה ו-Push נשלחו ל-${result.targetUser.full_name || result.targetUser.email}` 
+          toast.success(uiTranslate("נשלח בהצלחה!"), {
+            description: `התראה ו-Push נשלחו ל-${result.targetUser.full_name || result.targetUser.email}`
           });
         } else {
-          toast.warning(uiTranslate("התראה פנימית נוצרה"), { 
-            description: `Push לא נשלח: ${result.push?.reason || result.push?.error || 'לא ידוע'}` 
+          toast.warning(uiTranslate("התראה פנימית נוצרה"), {
+            description: `Push לא נשלח: ${result.push?.reason || result.push?.error || 'לא ידוע'}`
           });
         }
       }
@@ -152,8 +152,8 @@ export default function ManualPushSender() {
 
         {/* Selected user info */}
         {selectedUser && (
-          <Alert className={selectedUser.push_enabled && selectedUser.onesignal_subscription_id 
-            ? "bg-green-50 border-green-200" 
+          <Alert className={selectedUser.push_enabled && selectedUser.onesignal_subscription_id
+            ? "bg-green-50 border-green-200"
             : "bg-yellow-50 border-yellow-200"
           }>
             <Info className={`h-4 w-4 ${selectedUser.push_enabled && selectedUser.onesignal_subscription_id ? 'text-green-600' : 'text-yellow-600'}`} />
@@ -197,7 +197,7 @@ export default function ManualPushSender() {
         </div>
 
         {/* Send Button */}
-        <Button 
+        <Button
           onClick={() => sendMutation.mutate()}
           disabled={sendMutation.isPending || !selectedUserId || !title || !message}
           className="w-full"

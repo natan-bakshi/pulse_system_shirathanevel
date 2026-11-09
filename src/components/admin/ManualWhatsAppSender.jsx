@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { createNotification } from "@/functions/createNotification";
-import { 
+import {
   Send, Loader2, MessageCircle, AlertCircle, CheckCircle, Info, Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,20 +35,20 @@ export default function ManualWhatsAppSender() {
         base44.entities.Supplier.list(),
         base44.entities.Event.list() // Fetching all events to find parents
       ]);
-      
+
       // Map external phones to users by email
       const enrichedUsers = allUsers.map(user => {
         let phone = user.phone;
         let source = 'user';
         const userEmail = user.email ? user.email.toLowerCase().trim() : null;
-        
+
         if (!phone && userEmail) {
           // 1. Try Supplier
-          const supplier = allSuppliers.find(s => 
-            Array.isArray(s.contact_emails) && 
+          const supplier = allSuppliers.find(s =>
+            Array.isArray(s.contact_emails) &&
             s.contact_emails.some(email => email && email.toLowerCase().trim() === userEmail)
           );
-          
+
           if (supplier && supplier.phone) {
             phone = supplier.phone;
             source = 'supplier';
@@ -97,7 +97,7 @@ export default function ManualWhatsAppSender() {
         throw new Error('משתמש לא נמצא');
       }
 
-      // Note: we don't block here if phone is missing in frontend, 
+      // Note: we don't block here if phone is missing in frontend,
       // because the backend now has smarter resolution logic (checking Supplier entity).
       // We assume the backend will try its best.
 
@@ -123,12 +123,12 @@ export default function ManualWhatsAppSender() {
       setSendResult(result);
       if (result.success) {
         if (result.whatsapp?.sent) {
-          toast.success(uiTranslate("נשלח בהצלחה!"), { 
-            description: `הודעת WhatsApp נשלחה ל-${result.targetUser.full_name || result.targetUser.phone}` 
+          toast.success(uiTranslate("נשלח בהצלחה!"), {
+            description: `הודעת WhatsApp נשלחה ל-${result.targetUser.full_name || result.targetUser.phone}`
           });
         } else {
-          toast.warning(uiTranslate("התראה פנימית נוצרה"), { 
-            description: `WhatsApp לא נשלח: ${result.whatsapp?.reason || result.whatsapp?.error || 'לא ידוע'}` 
+          toast.warning(uiTranslate("התראה פנימית נוצרה"), {
+            description: `WhatsApp לא נשלח: ${result.whatsapp?.reason || result.whatsapp?.error || 'לא ידוע'}`
           });
         }
       }
@@ -212,7 +212,7 @@ export default function ManualWhatsAppSender() {
         {/* Selected user info */}
         {selectedUser && (
           <Alert className={selectedUser.phone && selectedUser.whatsapp_enabled !== false
-            ? "bg-green-50 border-green-200" 
+            ? "bg-green-50 border-green-200"
             : "bg-red-50 border-red-200"
           }>
             <Smartphone className={`h-4 w-4 ${selectedUser.phone ? 'text-green-600' : 'text-red-600'}`} />
@@ -256,7 +256,7 @@ export default function ManualWhatsAppSender() {
         </div>
 
         {/* Send Button */}
-        <Button 
+        <Button
           onClick={() => sendMutation.mutate()}
           disabled={sendMutation.isPending || !selectedUserId || !title || !message}
           className="w-full bg-green-600 hover:bg-green-700 text-white"
