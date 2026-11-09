@@ -295,6 +295,7 @@ const places=new Map([
  ['שער האשפות ירושלים','Dung Gate, Jerusalem'],['שער האשפות','Dung Gate'],
  ['בית הכנסת אהל ישראל בפתח תקווה','Ohel Yisrael Synagogue, Petah Tikva'],
  ['כפר יונה','Kfar Yona'],['משכנות','Mishkenot'],
+ ['גן הוורדים / מליאו','Rose Garden / Malio'],
  ['בית המוכתר זכרון יעקב','Beit HaMukhtar, Zichron Yaakov'],
  ['בית הכנסת החורבה ירושלים','Hurva Synagogue, Jerusalem'],
  ['גן הפעמון ירושלים','Liberty Bell Park, Jerusalem'],
