@@ -6,6 +6,7 @@ import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
 import {readAll} from '../../shared/eventReadiness.ts';
 import {loadEventReminderInventory} from '../../shared/eventReminderInventory.ts';
+import {ownerHeldReminderIncident} from '../../shared/eventReminderIncidentHold.ts';
 import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
@@ -75,6 +76,7 @@ Deno.serve(async (req) => {
         let queuedCount = 0;
         
         for (const event of allEvents) {
+            if (ownerHeldReminderIncident(event.event_date,now))continue;
             if (event.status === 'cancelled') continue;
             
             const eventDate = new Date(event.event_date);
