@@ -16,7 +16,12 @@ const bad=(status:'INVALID'|'NEEDS_COUNTRY_CODE',reason:string):WhatsAppPhoneRes
   status,reason,canonicalE164:'',digits:'',chatId:''
 });
 export function parseWhatsAppPhone(phone:any):WhatsAppPhoneResult {
-  const raw=String(phone??'').trim();
+  // Contacts copied from RTL WhatsApp/address books can contain invisible
+  // Unicode direction controls (for example a trailing U+2069). They carry
+  // *no* phone digits: strip only these presentation markers, not arbitrary
+  // Unicode, extensions, second numbers or letters.
+  const raw=String(phone??'')
+    .replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,'').trim();
   if(!raw)return bad('INVALID','EMPTY');
   // Do not silently strip an extension, a second phone, a group, or a URL
   // into a different recipient. Display formatting may contain separators.
