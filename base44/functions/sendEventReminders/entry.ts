@@ -4,6 +4,8 @@ import { sendWhatsAppText } from '../../shared/whatsappSend.ts';
 import {whatsappEnqueueReceiptState} from '../../shared/whatsappReceipt.ts';
 import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
+import {readAll} from '../../shared/eventReadiness.ts';
+import {loadEventReminderInventory} from '../../shared/eventReminderInventory.ts';
 import { attachOutboxInAppReceipt } from '../../shared/whatsappOutbox.ts';
 
 /**
@@ -34,25 +36,22 @@ Deno.serve(async (req) => {
             return Response.json({ success: true, message: 'No active templates', processed: 0 });
         }
         
-        // Get all events
-        const allEvents = await base44.asServiceRole.entities.Event.list();
         const now = new Date();
-        
-        // Get all event services
-        const allEventServices = await base44.asServiceRole.entities.EventService.list();
-        
-        // Get all suppliers (Limit 1000 to be safe)
-        const suppliers = await base44.asServiceRole.entities.Supplier.list(); // TODO: Add pagination loop if > 50
+        // Load complete supplier/event/service coverage for only due-date
+        // windows; no first-page default list() and no year-long full scans.
+        const inventory=await loadEventReminderInventory(base44.asServiceRole,now,
+          [supplierTemplate,adminTemplate]);
+        const allEvents=inventory.events;
+        const allEventServices=inventory.services;
+        const suppliers=inventory.suppliers;
         const suppliersMap = new Map(suppliers.map(s => [s.id, s]));
         
         // Get all users
-        const allUsers = await base44.asServiceRole.entities.User.list();
+        const allUsers = await readAll(base44.asServiceRole.entities.User);
         const adminUsers = allUsers.filter(u => u.role === 'admin');
         
         // Get existing notifications to avoid duplicates
-        const existingNotifications = await base44.asServiceRole.entities.InAppNotification.filter({
-            is_resolved: false
-        });
+        const existingNotifications = inventory.notifications;
         // Index once, preserving the event/service and reminder semantics.
         const servicesByEvent=indexEventServicesByEvent(allEventServices);
         const existingEventReminders=indexEventReminderReceipts(existingNotifications);
@@ -87,7 +86,7 @@ Deno.serve(async (req) => {
                 const timingUnit = supplierTemplate.timing_unit || 'days';
                 
                 // Calculate Event Time in UTC (Assuming input is Israel Time)
-                const eventDateTime = getIsraelEventDate(event.event_date, event.event_time);
+                const eventDateTime = getIsraelEventDate(event.event_date, '00:00');
                 
                 const reminderCutoff = new Date(eventDateTime);
                 switch (timingUnit) {
@@ -230,7 +229,7 @@ Deno.serve(async (req) => {
                 const timingValue = adminTemplate.timing_value || 1;
                 const timingUnit = adminTemplate.timing_unit || 'days';
                 
-                const adminEventDateTime = getIsraelEventDate(event.event_date, event.event_time);
+                const adminEventDateTime = getIsraelEventDate(event.event_date, '00:00');
                 const reminderCutoff = new Date(adminEventDateTime);
                 switch (timingUnit) {
                     case 'minutes': reminderCutoff.setMinutes(reminderCutoff.getMinutes() - timingValue); break;
