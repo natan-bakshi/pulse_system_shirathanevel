@@ -1255,6 +1255,8 @@ async function processScheduledTemplate(base44, template, allEvents, servicesByE
     });
     
     for (const event of matchingEvents) {
+        if(template.type==='SUPPLIER_EVENT_REMINDER'&&
+           ownerHeldReminderIncident(event.event_date,new Date()))continue;
         // Check conditions
         const conditionsMet = checkScheduledConditions(template, event);
         if (!conditionsMet) continue;
