@@ -6,6 +6,8 @@ import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../../shar
 import {eventReminderWhatsAppKey,taskDigestWhatsAppKey,automatedWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 import {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark,readScheduledTaskOwners} from '../../shared/taskNotificationAck.ts';
 import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
+import {readAll} from '../../shared/eventReadiness.ts';
+import {loadEventReminderInventory} from '../../shared/eventReminderInventory.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -210,7 +212,7 @@ Deno.serve(async (req) => {
         ] = await Promise.all([
             base44.asServiceRole.entities.Event.list(),
             base44.asServiceRole.entities.EventService.list(),
-            base44.asServiceRole.entities.Supplier.list(),
+            readAll(base44.asServiceRole.entities.Supplier),
             base44.asServiceRole.entities.User.list(),
             base44.asServiceRole.entities.NotificationTemplate.filter({ is_active: true }),
             base44.asServiceRole.entities.InAppNotification.filter({ is_resolved: false }),
@@ -270,8 +272,16 @@ Deno.serve(async (req) => {
         
         const supplierReminderTemplate = allTemplates.find(t => t.type === 'SUPPLIER_EVENT_REMINDER');
         const adminReminderTemplate = allTemplates.find(t => t.type === 'ADMIN_EVENT_REMINDER');
+        // Bounded due-date inventory, never an SDK first-page snapshot.
+        const reminderInventory=await loadEventReminderInventory(base44.asServiceRole,now,
+          [supplierReminderTemplate,adminReminderTemplate],allSuppliers);
+        const reminderServicesByEvent=indexEventServicesByEvent(reminderInventory.services);
+        const reminderReceipts=indexEventReminderReceipts(reminderInventory.notifications);
+        const reminderSuppliersMap=new Map(reminderInventory.suppliers.map(s=>[s.id,s]));
+        console.log('[DailyNotifications] Event-reminder coverage:',reminderInventory.events.length,
+          'events,',reminderInventory.services.length,'services in due-date window');
         
-        for (const event of allEvents) {
+        for (const event of reminderInventory.events) {
             if (event.status === 'cancelled') continue;
             const eventDate = new Date(event.event_date);
             if (eventDate < now) continue;
@@ -288,8 +298,8 @@ Deno.serve(async (req) => {
                 applyTimingOffset(reminderCutoff, timingUnit, -timingValue);
                 
                 if (now >= reminderCutoff) {
-                    const eventServices = servicesByEvent.get(event.id)||[];
-                    
+                    const eventServices = reminderServicesByEvent.get(event.id)||[];
+                    const seenSupplierIds=new Set();
                     for (const es of eventServices) {
                         if (!es.supplier_ids || !es.supplier_statuses) continue;
                         
@@ -303,12 +313,13 @@ Deno.serve(async (req) => {
                             const status = supplierStatuses[supplierId];
                             if (status !== 'approved' && status !== 'confirmed') continue;
                             
-                            const supplier = suppliersMap.get(supplierId);
+                            if(seenSupplierIds.has(supplierId))continue;
+                            seenSupplierIds.add(supplierId);
+                            const supplier = reminderSuppliersMap.get(supplierId);
                             if (!supplier) continue;
-                            
-                            // Check duplicate
-                            const hasExisting=existingEventReminders.supplier.has(String(event.id)+':'+String(supplierId));
-                            if (hasExisting) continue;
+                            // In-app is not a WhatsApp receipt. Retry only the SAME
+                            // deterministic Outbox key; duplicates stay suppressed.
+                            const hasExisting=reminderReceipts.supplier.has(String(event.id)+':'+String(supplierId));
                             
                             const contextData = buildEventContext(event, supplier, null, es);
                             const title = replacePlaceholders(supplierReminderTemplate.title_template, contextData);
@@ -333,7 +344,7 @@ Deno.serve(async (req) => {
                             const targetEmail = supplierUser?.email || supplier.contact_emails?.[0] || '';
                             
                             // Only create DB record for real users
-                            if (supplierUser) {
+                            if (supplierUser && !hasExisting) {
                                 try {
                                     const notifRecord = await base44.asServiceRole.entities.InAppNotification.create({
                                         user_id: supplierUser.id,
@@ -384,8 +395,8 @@ Deno.serve(async (req) => {
                     // סינון מנהלים ספציפיים לפי הגדרת התבנית
                     const targetedAdmins = filterTargetedAdmins(adminReminderTemplate, adminUsers);
                     for (const admin of targetedAdmins) {
-                        const hasExisting=existingEventReminders.admin.has(String(event.id)+':'+String(admin.id));
-                        if (hasExisting) continue;
+                        const hasExisting=reminderReceipts.admin.has(String(event.id)+':'+String(admin.id));
+                        // Preserve the Outbox enqueue even when an in-app mirror exists.
                         
                         const contextData = buildEventContext(event, null, admin);
                         const title = replacePlaceholders(adminReminderTemplate.title_template, contextData);
