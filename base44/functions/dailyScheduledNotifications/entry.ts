@@ -411,8 +411,8 @@ Deno.serve(async (req) => {
                               idempotencyKey:eventReminderWhatsAppKey(event,adminReminderTemplate,'admin',admin.id)});
                         }
                         
-                        // InApp + Push
-                        try {
+                        // In-app mirror is created once, independent of WhatsApp idempotency.
+                        if(!hasExisting)try {
                             const notifRecord = await base44.asServiceRole.entities.InAppNotification.create({
                                 user_id: admin.id,
                                 user_email: admin.email,
