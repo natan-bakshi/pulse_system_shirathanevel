@@ -1,4 +1,5 @@
-import { loadEventReadiness } from '../../shared/eventReadiness.ts';
+import { loadEventReadiness,readAll } from '../../shared/eventReadiness.ts';
+import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
 import { isMissingAssignmentAlertDue, renderMissingAssignmentAlert } from '../../shared/missingAssignmentAlert.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
         
         // Get only pending notifications that are due now.
         // This prevents loading the full unsent queue into memory on every scheduled run.
-        const dueNotifications = await base44.asServiceRole.entities.PendingPushNotification.filter({
+        const dueNotifications = await readAll(base44.asServiceRole.entities.PendingPushNotification,{
             is_sent: false,
             scheduled_for: { "$lte": now }
         });
@@ -443,8 +444,8 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
     if (!['confirmed', 'in_progress'].includes(event.status)) return result;
 
     const [eventServices, allSuppliers, templates] = await Promise.all([
-        base44.asServiceRole.entities.EventService.filter({ event_id: eventId }),
-        base44.asServiceRole.entities.Supplier.list(),
+        readAll(base44.asServiceRole.entities.EventService,{ event_id: eventId }),
+        readAll(base44.asServiceRole.entities.Supplier),
         base44.asServiceRole.entities.NotificationTemplate.filter({ is_active: true })
     ]);
     const allUsers = preloadedUsers || await base44.asServiceRole.entities.User.list();
@@ -471,7 +472,7 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
             for (const supplierId of ids) {
                 const status = sts[supplierId];
                 if (status !== 'approved' && status !== 'confirmed') continue;
-                const dedupeKey = `${supplierId}_${es.id}`;
+                const dedupeKey = String(supplierId);
                 if (seenSuppliers.has(dedupeKey)) continue;
                 seenSuppliers.add(dedupeKey);
 
@@ -486,7 +487,9 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
 
                 if (allowedChannels.includes('whatsapp') && supplier.whatsapp_enabled !== false) {
                   const whatsappTarget = getSupplierWhatsAppTarget(supplier);
-                  if (whatsappTarget.chatId) whatsappQueue.push({ chatId: whatsappTarget.chatId, phone: supplier.phone, message: waMessage });
+                  if (whatsappTarget.chatId) whatsappQueue.push({chatId:whatsappTarget.chatId,
+                    phone:supplier.phone,message:waMessage,supplierId,
+                    idempotencyKey:eventReminderWhatsAppKey(event,supplierTemplate,'supplier',supplierId)});
                 }
                 if (allowedChannels.includes('push')) {
                     const supplierUser = (supplier.contact_emails || [])
@@ -515,7 +518,8 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
             const link = buildDL(adminTemplate.deep_link_base, adminTemplate.deep_link_params_map, ctx);
 
             if (allowedChannels.includes('whatsapp') && admin.phone) {
-                whatsappQueue.push({ phone: admin.phone, message: waMessage });
+                whatsappQueue.push({phone:admin.phone,message:waMessage,
+                  idempotencyKey:eventReminderWhatsAppKey(event,adminTemplate,'admin',admin.id)});
             }
             if (allowedChannels.includes('push') && admin.push_enabled && admin.onesignal_subscription_id) {
                 pushQueue.push({ subscriptionId: admin.onesignal_subscription_id, title, message, link, userId: admin.id });
@@ -528,7 +532,12 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
         try {
             const chatId = wa.chatId || toChatId(wa.phone);
             if (!chatId) continue;
-            const receipt=await sendWhatsAppToChat(chatId, wa.message, base44, {sourceType:'scheduled_fanout',sourceId:pending.id||'',idempotencyKey:'fanout:'+pending.id+':'+chatId});
+            // The daily and fan-out producers share the same business key.
+            // Keep the legacy transport kind intact; no new buttons or sends
+            // are enabled by this idempotency change.
+            const receipt=await sendWhatsAppToChat(chatId, wa.message, base44,
+              {sourceType:'scheduled_fanout',sourceId:pending.id||'',supplierId:wa.supplierId||'',
+               idempotencyKey:wa.idempotencyKey});
             if(isWhatsAppEnqueueConfirmed(receipt)){
                 result.sent++;
             }else{
