@@ -8,6 +8,7 @@ import {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark,readSche
 import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared/notificationLookup.ts';
 import {readAll} from '../../shared/eventReadiness.ts';
 import {loadEventReminderInventory} from '../../shared/eventReminderInventory.ts';
+import {ownerHeldReminderIncident} from '../../shared/eventReminderIncidentHold.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -282,6 +283,7 @@ Deno.serve(async (req) => {
           'events,',reminderInventory.services.length,'services in due-date window');
         
         for (const event of reminderInventory.events) {
+            if (ownerHeldReminderIncident(event.event_date,now))continue;
             if (event.status === 'cancelled') continue;
             const eventDate = new Date(event.event_date);
             if (eventDate < now) continue;
