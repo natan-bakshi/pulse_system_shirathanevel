@@ -75,6 +75,9 @@ function harness({channel=['whatsapp'],users=[
      if(path.endsWith('whatsappBusinessKeys.ts'))return {eventReminderWhatsAppKey,automatedWhatsAppKey,taskDigestWhatsAppKey};
      if(path.endsWith('taskNotificationAck.ts'))return {expectTaskRecipient,acknowledgeTaskRecipient,taskIdsReadyToMark,readScheduledTaskOwners};
      if(path.endsWith('notificationLookup.ts'))return {indexEventServicesByEvent,indexEventReminderReceipts};
+     if(path.endsWith('eventReadiness.ts'))return {readAll:async(entity)=>entity.list?entity.list():entity.filter({})};
+     if(path.endsWith('eventReminderInventory.ts'))return {loadEventReminderInventory:async()=>({events:[],services:[],suppliers:[],notifications:[]})};
+     if(path.endsWith('eventReminderIncidentHold.ts'))return {ownerHeldReminderIncident:()=>false};
      throw Error('Unexpected imported module: '+path);
    }
  };
