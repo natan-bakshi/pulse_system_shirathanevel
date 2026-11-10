@@ -1,5 +1,6 @@
 import { loadEventReadiness,readAll } from '../../shared/eventReadiness.ts';
 import {eventReminderWhatsAppKey} from '../../shared/whatsappBusinessKeys.ts';
+import {ownerHeldReminderIncident} from '../../shared/eventReminderIncidentHold.ts';
 import { isMissingAssignmentAlertDue, renderMissingAssignmentAlert } from '../../shared/missingAssignmentAlert.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
@@ -438,6 +439,7 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
 
     const event = await base44.asServiceRole.entities.Event.get(eventId);
     if (!event || event.status === 'cancelled') return result;
+    if(ownerHeldReminderIncident(event.event_date,new Date()))return result;
     // לא שולחים אם האירוע כבר עבר
     if (new Date(event.event_date) < new Date()) return result;
     // שולחים רק לאירוע פעיל (confirmed / in_progress)
