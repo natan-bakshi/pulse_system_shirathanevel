@@ -175,6 +175,8 @@ Deno.serve(async (req) => {
                                             link: link || '',
                                             scheduled_for: quietHoursEndTime.toISOString(),
                                             template_type: 'SUPPLIER_EVENT_REMINDER',
+                                            related_event_id:event.id,
+                                            related_supplier_id:supplierId,
                                             is_sent: false,
                                             data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: supplier.phone,
                                               idempotency_key:reminderKey,source_type:'event_reminder',related_supplier_id:supplierId })
@@ -281,9 +283,10 @@ Deno.serve(async (req) => {
                                         link: link || '',
                                         scheduled_for: quietHoursEndTime.toISOString(),
                                         template_type: 'ADMIN_EVENT_REMINDER',
+                                        related_event_id:event.id,
                                         is_sent: false,
                                         data: JSON.stringify({ send_whatsapp: true, whatsapp_message: whatsappMessage, phone: admin.phone,
-                                          idempotency_key:reminderKey,source_type:'event_reminder',related_supplier_id:supplierId })
+                                          idempotency_key:reminderKey,source_type:'event_reminder' })
                                     });
                                     queuedCount++;
                                     console.log(`[EventReminders] WhatsApp QUEUED for admin ${admin.full_name} until ${quietHoursEndTime.toISOString()}`);
