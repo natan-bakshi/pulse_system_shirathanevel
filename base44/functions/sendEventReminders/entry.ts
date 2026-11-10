@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
                 if (now >= reminderCutoff) {
                     // Get approved suppliers for this event
                     const eventServices = servicesByEvent.get(event.id)||[];
-                    
+                    const seenSupplierIds=new Set();
                     for (const es of eventServices) {
                         if (!es.supplier_ids || !es.supplier_statuses) continue;
                         
@@ -119,6 +119,8 @@ Deno.serve(async (req) => {
                             const status = supplierStatuses[supplierId];
                             if (status !== 'approved' && status !== 'confirmed') continue;
                             
+                            if(seenSupplierIds.has(supplierId))continue;
+                            seenSupplierIds.add(supplierId);
                             const supplier = suppliersMap.get(supplierId);
                             if (!supplier) continue;
                             
@@ -129,10 +131,9 @@ Deno.serve(async (req) => {
                             // Check for existing reminder in DB logs
                             const hasExisting=existingEventReminders.supplier.has(String(event.id)+':'+String(supplierId));
 
-                            if (hasExisting) {
-                                skippedCount++;
-                                continue;
-                            }
+                            // An in-app reminder is not a WhatsApp receipt.
+                            // The deterministic Outbox key prevents duplicates.
+                            if(hasExisting)skippedCount++;
 
                             // Prepare Content
                             const contextData = {
@@ -195,8 +196,8 @@ Deno.serve(async (req) => {
                                 }
                             }
 
-                            // THEN CREATE LOG (InAppNotification)
-                            try {
+                            // THEN CREATE LOG (InAppNotification), once per recipient.
+                            if(!hasExisting)try {
                                 const reminderLog = await base44.asServiceRole.entities.InAppNotification.create({
                                     user_id: targetUserId,
                                     user_email: targetUserEmail,
@@ -243,10 +244,7 @@ Deno.serve(async (req) => {
                         // Check for existing reminder
                         const hasExisting=existingEventReminders.admin.has(String(event.id)+':'+String(admin.id));
                         
-                        if (hasExisting) {
-                            skippedCount++;
-                            continue;
-                        }
+                        if(hasExisting)skippedCount++;
                         
                         const contextData = {
                             event_name: event.event_name,
@@ -302,7 +300,7 @@ Deno.serve(async (req) => {
                             }
                         }
 
-                        try {
+                        if(!hasExisting)try {
                             // Create in-app notification directly using service role
                             const reminderLog = await base44.asServiceRole.entities.InAppNotification.create({
                                 user_id: admin.id,
