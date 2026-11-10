@@ -56,6 +56,7 @@ test('event-reminder fan-out does not mark scheduled source as sent after partia
      if(path.endsWith('eventReadiness.ts'))return {loadEventReadiness:async()=>({}),
        readAll:async(entity,query)=>entity.filter?entity.filter(query):entity.list()};
      if(path.endsWith('whatsappBusinessKeys.ts'))return {eventReminderWhatsAppKey};
+     if(path.endsWith('eventReminderIncidentHold.ts'))return {ownerHeldReminderIncident:()=>false};
      if(path.endsWith('missingAssignmentAlert.ts'))return {isMissingAssignmentAlertDue:()=>false,renderMissingAssignmentAlert:()=>({})};
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      throw Error('Unexpected module '+path);
