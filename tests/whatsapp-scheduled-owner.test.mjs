@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import esbuild from 'esbuild';
 import {whatsappEnqueueReceiptState,isWhatsAppEnqueueConfirmed} from '../base44/shared/whatsappReceipt.ts';
+import {eventReminderWhatsAppKey} from '../base44/shared/whatsappBusinessKeys.ts';
 
 test('event-reminder fan-out does not mark scheduled source as sent after partial WhatsApp enqueue failure',async()=>{
  const text=fs.readFileSync('base44/functions/processScheduledPushNotifications/entry.ts','utf8');
@@ -52,7 +53,9 @@ test('event-reminder fan-out does not mark scheduled source as sent after partia
        isShabbat:()=>false,getShabbatEndTime:()=>new Date(),
        resolveNotificationDelay:()=>({shouldDelay:false})
      };
-     if(path.endsWith('eventReadiness.ts'))return {loadEventReadiness:async()=>({})};
+     if(path.endsWith('eventReadiness.ts'))return {loadEventReadiness:async()=>({}),
+       readAll:async(entity,query)=>entity.filter?entity.filter(query):entity.list()};
+     if(path.endsWith('whatsappBusinessKeys.ts'))return {eventReminderWhatsAppKey};
      if(path.endsWith('missingAssignmentAlert.ts'))return {isMissingAssignmentAlertDue:()=>false,renderMissingAssignmentAlert:()=>({})};
      if(path.endsWith('eventContacts.ts'))return {formatEventContacts:()=>''};
      throw Error('Unexpected module '+path);
