@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import {loadEventReminderInventory,reminderInventoryDateRange,
  israelDay,reminderLookaheadDays} from '../base44/shared/eventReminderInventory.ts';
 import {eventReminderWhatsAppKey} from '../base44/shared/whatsappBusinessKeys.ts';
+import {ownerHeldReminderIncident} from '../base44/shared/eventReminderIncidentHold.ts';
 
 const TEMPLATE={type:'SUPPLIER_EVENT_REMINDER',timing_value:1,timing_unit:'days'};
 const DAY=new Date('2026-11-10T07:00:00.000Z');
@@ -25,6 +26,19 @@ function mockEntity(records,{stats,key}={}){
    return structuredClone(matching.slice(skip,skip+limit));
  }};
 }
+test('owner no-send instruction is honored by every reminder path for Nov 11 only',()=>{
+ const tuesday=new Date('2026-11-10T17:30:00Z');
+ const eventDay=new Date('2026-11-11T08:00:00Z');
+ assert.equal(ownerHeldReminderIncident('2026-11-11',tuesday),true);
+ assert.equal(ownerHeldReminderIncident('2026-11-11',eventDay),true);
+ assert.equal(ownerHeldReminderIncident('2026-11-12',tuesday),false);
+ assert.equal(ownerHeldReminderIncident('2026-11-11',new Date('2026-11-12T06:00:00Z')),false);
+ for(const path of ['dailyScheduledNotifications','sendEventReminders','processScheduledPushNotifications']){
+  const code=fs.readFileSync('base44/functions/'+path+'/entry.ts','utf8');
+  assert.match(code,/ownerHeldReminderIncident\(/,path);
+ }
+});
+
 test('Israel event-day window respects local date around winter and summer midnight',()=>{
  assert.equal(israelDay(new Date('2026-11-09T22:05:00Z')),'2026-11-10');
  assert.equal(israelDay(new Date('2026-07-09T21:05:00Z')),'2026-07-10');
