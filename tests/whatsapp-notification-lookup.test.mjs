@@ -42,8 +42,16 @@ test('both schedulers use local indexes instead of full scans inside event loops
    const content=fs.readFileSync('base44/functions/'+filename+'/entry.ts','utf8');
    assert.match(content,/indexEventServicesByEvent\(allEventServices\)/);
    assert.match(content,/indexEventReminderReceipts\(existingNotifications\)/);
-   assert.match(content,/const eventServices = servicesByEvent\.get\(event\.id\)\|\|\[\];/);
-   assert.match(content,/existingEventReminders\.supplier\.has/);
-   assert.match(content,/existingEventReminders\.admin\.has/);
+   if(filename==='dailyScheduledNotifications'){
+     assert.match(content,/loadEventReminderInventory\(base44\.asServiceRole,now/);
+     assert.match(content,/const eventServices = reminderServicesByEvent\.get\(event\.id\)\|\|\[\];/);
+     assert.match(content,/reminderReceipts\.supplier\.has/);
+     assert.match(content,/reminderReceipts\.admin\.has/);
+   }else{
+     assert.match(content,/loadEventReminderInventory\(base44\.asServiceRole,now/);
+     assert.match(content,/const eventServices = servicesByEvent\.get\(event\.id\)\|\|\[\];/);
+     assert.match(content,/existingEventReminders\.supplier\.has/);
+     assert.match(content,/existingEventReminders\.admin\.has/);
+   }
  }
 });
