@@ -36,6 +36,19 @@ test('one canonical E.164 route for Israel, foreign countries and visual formats
     assert.equal(getWhatsAppLink(input),'https://wa.me/'+digits,input);
   }
 });
+test('invisible direction markers copied from Hebrew contacts never block an otherwise exact phone number',()=>{
+  const samples=['050-901-1771\u2069','\u200e050-901-1771\u200f','\u2066050-901-1771\u2069'];
+  for(const input of samples){
+    assert.equal(parseWhatsAppPhone(input).status,'VALID');
+    assert.equal(toChatId(input),'972509011771@c.us');
+    assert.equal(getWhatsAppLink(input),'https://wa.me/972509011771');
+  }
+  // Only directional presentation controls may be ignored, never actual
+  // extensions, other numbers, letters or zero-width joiners.
+  for(const input of ['0509011771\u200d','0509011771 ext 2','0509011771,0509011772'])
+    assert.equal(parseWhatsAppPhone(input).status,'INVALID');
+});
+
 test('ambiguously national, malformed and extended inputs cannot silently target wrong contact',()=>{
   for(const [input,status] of [
     ['02079460000','NEEDS_COUNTRY_CODE'],
