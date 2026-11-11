@@ -492,6 +492,15 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
                   if (whatsappTarget.chatId) whatsappQueue.push({chatId:whatsappTarget.chatId,
                     phone:supplier.phone,message:waMessage,supplierId,
                     idempotencyKey:eventReminderWhatsAppKey(event,supplierTemplate,'supplier',supplierId)});
+                  else {
+                    // Never silently mark a configured recipient as reminded
+                    // just because their contact contained an invalid phone.
+                    // Retain the fan-out for an owner to fix the contact;
+                    // already accepted recipients are protected by Outbox keys.
+                    result.enqueueFailures++;
+                    console.warn('[ScheduledPush] Supplier reminder destination invalid; event:',event.id,
+                      'supplier:',supplierId);
+                  }
                 }
                 if (allowedChannels.includes('push')) {
                     const supplierUser = (supplier.contact_emails || [])
@@ -533,7 +542,11 @@ async function processEventReminderFanout(base44, pending, oneSignalAppId, oneSi
     for (const wa of whatsappQueue) {
         try {
             const chatId = wa.chatId || toChatId(wa.phone);
-            if (!chatId) continue;
+            if (!chatId) {
+                result.enqueueFailures++;
+                console.warn('[ScheduledPush] Event reminder target is missing a valid WhatsApp chat');
+                continue;
+            }
             // The daily and fan-out producers share the same business key.
             // Keep the legacy transport kind intact; no new buttons or sends
             // are enabled by this idempotency change.
