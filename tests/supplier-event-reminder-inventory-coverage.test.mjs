@@ -98,6 +98,9 @@ test('all automatic event-reminder producers use one recipient/event key, never 
  assert.match(legacy,/if\(!hasExisting\)try/);
  assert.match(fanout,/const dedupeKey = String\(supplierId\)/);
  assert.match(fanout,/idempotencyKey:wa\.idempotencyKey/);
+ assert.match(fanout,/Supplier reminder destination invalid/);
+ assert.match(fanout,/result\.enqueueFailures\+\+/);
+ assert.doesNotMatch(fanout,/if \(!chatId\) continue/);
  assert.doesNotMatch(fanout,/idempotencyKey:'fanout:'\+pending\.id/);
  const event={id:'event-next',event_date:'2026-11-11',event_time:'10:00'};
  const first=eventReminderWhatsAppKey(event,TEMPLATE,'supplier','supplier-096');
