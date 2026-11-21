@@ -13,7 +13,7 @@ const hebrew={
  body_template:'שלום, רק תזכורת קטנה לגבי {{event_name}} בתאריך {{event_date}}. לפי הרישום אצלנו נותרה יתרה בסך {{balance}} ש"ח.',
  whatsapp_body_template:'שלום, תזכורת קטנה ל{{event_name}} בתאריך {{event_date}}. יתרה {{balance}} ש"ח.'
 };
-const withEnglish={...hebrew,...reviewedClientPaymentReminderEnglish};
+const withEnglish={...hebrew,...reviewedClientPaymentReminderEnglish,english_copy_reviewed:true};
 
 test('client message language is per-event, independent from UI and PDF document language',()=>{
  assert.equal(clientNoticeLocale({}), 'he');
@@ -59,6 +59,8 @@ test('English messages fail closed when missing, mixed-Hebrew or placeholders ch
  const enEvent={client_notice_language:'en'};
  assert.deepEqual(selectClientPaymentReminderCopy(hebrew,enEvent),
   {ready:false,language:'en',reason:'english_copy_missing'});
+ assert.deepEqual(selectClientPaymentReminderCopy({...withEnglish,english_copy_reviewed:false},enEvent),
+  {ready:false,language:'en',reason:'english_copy_not_approved'});
  assert.equal(selectClientPaymentReminderCopy(
   {...withEnglish,body_template_en:''},enEvent).reason,'english_copy_missing');
  assert.equal(selectClientPaymentReminderCopy(
@@ -100,6 +102,9 @@ test('both existing inactive legacy notification producers select copy independe
  const template=JSON.parse(fs.readFileSync('base44/entities/NotificationTemplate.jsonc','utf8'));
  for(const field of ['title_template_en','body_template_en','whatsapp_body_template_en'])
   assert.equal(template.properties[field].type,'string');
+ assert.equal(template.properties.english_copy_reviewed.default,false);
+ assert.match(form,/english_copy_reviewed:false/);
+ assert.match(form,/onCheckedChange=\{checked=>update\('english_copy_reviewed'/);
  assert.equal(template.properties.is_active.default,true,
   'an existing template controls activation; no new implicit activation');
 });
