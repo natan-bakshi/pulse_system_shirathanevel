@@ -20,7 +20,10 @@ export class EventFormErrorBoundary extends React.Component {
     return {failure:suffix};
   }
   componentDidCatch(error,info){
-    // Browser diagnostics only: no Event/contact form data is logged.
+    // Component *names* only, never raw event/contact or error response data.
+    const names=[...String(info?.componentStack||'').matchAll(/\bat ([A-Za-z_$][\w$]*)/g)]
+      .map(m=>m[1]).filter(v=>v!=='div'&&v!=='span').slice(0,7);
+    this.setState({trace:names.join(' > ')});
     console.error('[EventForm] Render failure:',error,info?.componentStack);
   }
   render(){
@@ -30,6 +33,7 @@ export class EventFormErrorBoundary extends React.Component {
         <h2 className="text-lg font-bold">{this.props.message||'לא ניתן לפתוח את טופס האירוע'}</h2>
         <p className="text-sm">{this.props.description||'אירעה תקלה בטעינת העורך. אפשר לסגור ולנסות שוב, בלי לשנות נתונים.'}</p>
         <p className="text-xs text-gray-500">Error: {this.state.failure}</p>
+        {this.state.trace&&<p className="text-xs text-gray-500 break-words" aria-label="Event form render diagnostic">Component: {this.state.trace}</p>}
         <Button onClick={this.props.onClose}>{this.props.closeLabel||'סגור'}</Button>
       </section>
     </div>;
