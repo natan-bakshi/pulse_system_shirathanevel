@@ -127,7 +127,7 @@ export default function ContentTab({ template, onChange }) {
           {(()=>{const checked=selectClientPaymentReminderCopy(template,{client_notice_language:'en'});
            return <p className={'text-xs '+(checked.ready?'text-green-700':'text-amber-700')} role="status">
             {checked.ready?uiTranslate('הנוסחים באנגלית מוכנים לבדיקה.'):
-             uiTranslate('הנוסחים באנגלית חסרים או שהמשתנים אינם תואמים. הודעה באנגלית לא תישלח עד להשלמה.')}
+             uiTranslate('הנוסחים באנגלית חסרים, אינם תואמים או טרם אושרו. הודעה באנגלית לא תישלח עד להשלמה ואישור.')}
            </p>})()}
         </div>
       </details>}
