@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import FieldLabel from "../FieldLabel";
 import VariablesGuide from "../VariablesGuide";
 import {useLanguage} from '@/i18n/LanguageProvider';
+import {reviewedClientPaymentReminderEnglish,selectClientPaymentReminderCopy} from '../../../../base44/shared/clientReminderLocale.ts';
 
 // טאב 2: תוכן ההתראה - כותרת, גוף Push, גוף WhatsApp + מדריך משתנים
 export default function ContentTab({ template, onChange }) {
@@ -92,6 +93,37 @@ export default function ContentTab({ template, onChange }) {
           className="border-green-200 focus-visible:ring-green-500"
         />
       </div>
+      {template.type==='CLIENT_PAYMENT_REMINDER'&&<details className="border rounded-lg p-3 space-y-3">
+        <summary className="cursor-pointer font-semibold text-sm">{uiTranslate('נוסחי הודעות באנגלית ללקוחות')}</summary>
+        <p className="text-xs text-gray-600 mt-3">{uiTranslate('שפת הודעות ללקוח מוגדרת לכל אירוע בנפרד. תבנית זו תישאר כבויה עד להפעלתה בנפרד. יש לשמור על כל המשתנים המקוריים.')}</p>
+        <div className="space-y-3 mt-3">
+          <label className="block text-sm font-medium" htmlFor="client-reminder-title-en">
+            {uiTranslate('כותרת באנגלית')}
+          </label>
+          <Input id="client-reminder-title-en" dir="ltr" value={template.title_template_en||''}
+            placeholder={reviewedClientPaymentReminderEnglish.title_template_en}
+            onChange={e=>update('title_template_en',e.target.value)}/>
+          <label className="block text-sm font-medium" htmlFor="client-reminder-body-en">
+            {uiTranslate('גוף ההודעה באנגלית')}
+          </label>
+          <Textarea id="client-reminder-body-en" dir="ltr" rows={5}
+            value={template.body_template_en||''}
+            placeholder={reviewedClientPaymentReminderEnglish.body_template_en}
+            onChange={e=>update('body_template_en',e.target.value)}/>
+          <label className="block text-sm font-medium" htmlFor="client-reminder-whatsapp-en">
+            {uiTranslate('הודעת WhatsApp באנגלית')}
+          </label>
+          <Textarea id="client-reminder-whatsapp-en" dir="ltr" rows={5}
+            value={template.whatsapp_body_template_en||''}
+            placeholder={reviewedClientPaymentReminderEnglish.whatsapp_body_template_en}
+            onChange={e=>update('whatsapp_body_template_en',e.target.value)}/>
+          {(()=>{const checked=selectClientPaymentReminderCopy(template,{client_notice_language:'en'});
+           return <p className={'text-xs '+(checked.ready?'text-green-700':'text-amber-700')} role="status">
+            {checked.ready?uiTranslate('הנוסחים באנגלית מוכנים לבדיקה.'):
+             uiTranslate('הנוסחים באנגלית חסרים או שהמשתנים אינם תואמים. הודעה באנגלית לא תישלח עד להשלמה.')}
+           </p>})()}
+        </div>
+      </details>}
     </div>
   );
 }
