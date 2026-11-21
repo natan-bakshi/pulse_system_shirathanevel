@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import FieldLabel from "../FieldLabel";
 import VariablesGuide from "../VariablesGuide";
 import {useLanguage} from '@/i18n/LanguageProvider';
-import {reviewedClientPaymentReminderEnglish,selectClientPaymentReminderCopy} from '../../../../base44/shared/clientReminderLocale.ts';
+import {reviewedClientPaymentReminderEnglish,selectClientPaymentReminderCopy} from '../../../../../base44/shared/clientReminderLocale.ts';
 
 // טאב 2: תוכן ההתראה - כותרת, גוף Push, גוף WhatsApp + מדריך משתנים
 export default function ContentTab({ template, onChange }) {
