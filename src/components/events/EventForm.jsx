@@ -909,7 +909,7 @@ for (const serviceItem of servicesForSave) {
                 )}
               </Droppable>
             </DragDropContext>}
-          </div>
+          </div>}
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
