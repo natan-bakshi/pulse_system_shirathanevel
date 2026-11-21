@@ -10,6 +10,7 @@ import { calculateEventFinancials } from '@/components/utils/eventFinancials';
 import EventCard from '../components/events/EventCard';
 import EventFilters from '../components/events/EventFilters';
 import EventForm from '../components/events/EventForm';
+import EventFormErrorBoundary from '../components/events/EventFormErrorBoundary';
 
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 
@@ -197,12 +198,15 @@ export default function EventManagement() {
             </Card>
 
             {isFormOpen && (
-                <EventForm 
-                    isOpen={isFormOpen} 
-                    onClose={() => setIsFormOpen(false)} 
-                    onSave={handleSave} 
+                <EventFormErrorBoundary key={editingEvent?.id||'new'}
+                  onClose={() => setIsFormOpen(false)}>
+                  <EventForm
+                    isOpen={isFormOpen}
+                    onClose={() => setIsFormOpen(false)}
+                    onSave={handleSave}
                     event={editingEvent}
-                />
+                  />
+                </EventFormErrorBoundary>
             )}
         </div>
     );
