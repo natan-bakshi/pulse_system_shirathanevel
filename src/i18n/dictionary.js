@@ -620,6 +620,7 @@ export const interfaceLabels = Object.freeze({
   'הודעת WhatsApp באנגלית': 'English WhatsApp Message',
   'הנוסחים באנגלית מוכנים לבדיקה.': 'English texts are ready for review.',
   'הנוסחים באנגלית חסרים או שהמשתנים אינם תואמים. הודעה באנגלית לא תישלח עד להשלמה.': 'English copy is missing or placeholders do not match. No English reminder will be sent until it is completed.',
+  'בדקתי ואישרתי את הנוסחים באנגלית': 'I have reviewed and approved the English messages',
   ...pageLabels,
   ...componentLabels
 });
