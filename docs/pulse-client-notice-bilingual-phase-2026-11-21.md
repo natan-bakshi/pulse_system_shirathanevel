@@ -1,0 +1,26 @@
+# Pulse multilingual — L50 customer-message language and dormant template completion
+Date: 2026-11-21. App `687d1de6659eff83e9c034f7`, repository `natan-bakshi/pulse_system_shirathanevel`.
+
+## Source plan and scope
+Continue `docs/pulse-multilingual-he-en-plan-2026-11-08.md` from phases L50, L60 and L80. Phase L70 external Cloudflare machine-translation deployment still requires owner-authorized Free, Zero Trust Access, KV and protected HTTPS configuration and must remain disabled. Do not replace existing Hebrew text, issue customer documents or change WhatsApp/payment rules.
+
+## L50 — New per-event customer notice language, not operator UI or quote language
+- Added optional `Event.client_notice_language` with `he/en` enumeration. An absent field on existing events means Hebrew. This preference is per **event**, not a global per-customer account setting, and is explicitly distinct from the logged-in operator `User.preferred_language`, quote `document_language`, and immutable agreement `form_language`.
+- Added one small selection near the family contacts in the existing EventForm, with bilingual explanatory caption. Existing save workflow persists the value without changing supplier assignment/finance logic. EventForm and its schedule-import dialog now inherit `dir` from the operator's selected UI language.
+- Added three independent optional English title/body/WhatsApp fields to NotificationTemplate, with compact collapsed fields visible only for `CLIENT_PAYMENT_REMINDER` in the notification-template content editor. Hebrew original stays untouched; no new template or automation is enabled.
+- Added pure shared selector `base44/shared/clientReminderLocale.ts`. Hebrew/unset events use **exactly** the old Hebrew text. English explicitly selected by admin requires complete human-reviewed English texts for all active channels, without visible Hebrew and with precisely the same placeholders as original Hebrew. If absent/unreviewed or placeholders mismatch, the function returns a fixed diagnostic and the dormant reminder producer **skips** rather than sending Hebrew or incomplete content in error. The selector never reads operator UI language.
+- Two existing **inactive** legacy source paths (`dailyScheduledNotifications` Phase 6 and `checkClientPayments`) call the selector, preserving existing scheduling, limits, financial calculation, consent rules, queue idempotency and delivery controls. They remain gated by `is_active:true` before entry. No phone/push/email sent and no user/event/template record mutated in development.
+- `reviewedClientPaymentReminderEnglish` supplies assistant-authored gentle English wording with event, date and balance placeholder parity; it is an editor placeholder, **not** a hidden fallback or automatic activation.
+- Current gap: Global BillingCustomer recipient language across the same customer's multiple events is **not** implemented. The preference is per event; changing one event does not silently alter another. Even with English templates complete, English event-specific proper nouns may require manual English spellings, so admin should review before enabling any dormant reminder. Activating `CLIENT_PAYMENT_REMINDER` or changing any default automatic notification cadence is out of scope.
+
+## L60/L80 — Code coverage & safety gates
+- Existing broad localization regression scans fixed JSX, presentational props and UI alerts. New `tests/multilingual-locale-catalog-completeness.test.mjs` enumerates 250+ JSX/TSX files and asserts every literal Hebrew passed to the UI translation helper resolves to non-Hebrew English. No source text, business IDs or legal wording automatically translated.
+- New `tests/client-notification-language-separation.test.mjs` proves backwards-compatible Hebrew defaults, independent event language, readiness check, identical placeholder sets, English-only failure handling and both producer call sites.
+- Tests remain synthetic; production browser, authenticated English quote PDF and full iPhone visual checks remain separate. Never claim page-perfect PDF parity from these static checks.
+- Vite build passed, **1,318/1,318** full Node tests passed; focused ESLint and git diff-check clean on 2026-11-21 before code release. Test harness for task digest extended only to mock the newly imported selector, and old task logic unchanged.
+
+## Remaining release tasks
+1. Create checkpoint, deploy guarded code, verify exact production revision and that the `CLIENT_PAYMENT_REMINDER` template remains inactive.
+2. Review and (only while still inactive) safely populate its new English fields with manually drafted English translations; preserve Hebrew original, placeholders, active status and scheduling fields. Never send a test message.
+3. Read-only browser smoke: account language selector still only in UserSettings; EventForm new per-event selector visible; notification content English section collapsed; reopening EventDetails no white screen. Do not save a real event or send/charge.
+4. Keep main L70 Cloudflare rollout disabled until owner grants provider access; request no paid Base44 AI fallback. The authenticated disposable-event English PDF/closing render comparison is still pending.
