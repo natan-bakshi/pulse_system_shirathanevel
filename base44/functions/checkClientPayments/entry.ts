@@ -1,6 +1,7 @@
 import { getClientContacts } from '../../shared/eventFields.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { formatEventContacts } from '../../shared/eventContacts.ts';
+import {selectClientPaymentReminderCopy} from '../../shared/clientReminderLocale.ts';
 
 /**
  * Checks for completed events with outstanding payments and notifies clients
@@ -174,8 +175,17 @@ Deno.serve(async (req) => {
                     event_id: event.id
                 };
                 
-                const title = replacePlaceholders(template.title_template, contextData);
-                const message = replacePlaceholders(template.body_template, contextData);
+                const reminderCopy=selectClientPaymentReminderCopy(template,event);
+                if(!reminderCopy.ready){
+                    // Dormant legacy path fails closed for missing or
+                    // unapproved English content. No reminder is created.
+                    console.warn('[ClientPayments] English reminder not ready',
+                      {eventId:event.id,reason:reminderCopy.reason});
+                    skippedCount++;
+                    continue;
+                }
+                const title = replacePlaceholders(reminderCopy.title, contextData);
+                const message = replacePlaceholders(reminderCopy.body, contextData);
                 const link = buildDeepLink(template.deep_link_base, template.deep_link_params_map, contextData);
                 
                 try {
