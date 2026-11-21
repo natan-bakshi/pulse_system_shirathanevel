@@ -863,7 +863,7 @@ for (const serviceItem of servicesForSave) {
               </Dialog>
             </div>
 
-            <DragDropContext onDragEnd={handleDragEnd}>
+            {formData.schedule.length>0&&<DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="schedule">
                 {(provided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
@@ -908,8 +908,8 @@ for (const serviceItem of servicesForSave) {
                   </div>
                 )}
               </Droppable>
-            </DragDropContext>
-          </div>}
+            </DragDropContext>}
+          </div>
 
           <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
             <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
