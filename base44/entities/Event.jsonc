@@ -47,6 +47,14 @@
       "type": "string",
       "description": "\u05e7\u05d5\u05e0\u05e1\u05e4\u05d8 \u05d4\u05d0\u05d9\u05e8\u05d5\u05e2"
     },
+    "client_notice_language": {
+      "type": "string",
+      "enum": [
+        "he",
+        "en"
+      ],
+      "description": "Preferred language of customer-facing notifications for THIS event only; distinct from operator UI, quote and signed agreement language. Missing value means Hebrew."
+    },
     "family_name": {
       "type": "string",
       "description": "\u05e9\u05dd \u05d4\u05de\u05e9\u05e4\u05d7\u05d4"
