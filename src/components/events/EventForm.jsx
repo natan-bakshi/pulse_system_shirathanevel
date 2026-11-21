@@ -36,7 +36,7 @@ import { useOrganizerConfig } from "@/hooks/useOrganizerConfig";
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
-  const {t: uiTranslate}=useLanguage();
+  const {t: uiTranslate,dir}=useLanguage();
   const [allServices, setAllServices] = useState([]);
   const [allSuppliers, setAllSuppliers] = useState([]);
   const [allPackages, setAllPackages] = useState([]);
@@ -756,7 +756,7 @@ for (const serviceItem of servicesForSave) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent dir={dir}
         className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 bg-white/95 backdrop-blur-sm shadow-xl"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
@@ -843,7 +843,7 @@ for (const serviceItem of servicesForSave) {
                 <Button type="button" variant="secondary" size="sm" className="flex-1" onClick={() => setIsImportOpen(true)}>
                   <ClipboardPaste className="h-4 w-4 ml-1" />{uiTranslate("טעינה חכמה")}
                 </Button>
-                <DialogContent dir="rtl" className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.stopPropagation()}>
+                <DialogContent dir={dir} className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.stopPropagation()}>
                   <DialogHeader>
                     <DialogTitle>{uiTranslate("ייבוא לו\"ז מהיר")}</DialogTitle>
                   </DialogHeader>
