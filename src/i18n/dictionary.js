@@ -622,6 +622,8 @@ export const interfaceLabels = Object.freeze({
   'הנוסחים באנגלית חסרים או שהמשתנים אינם תואמים. הודעה באנגלית לא תישלח עד להשלמה.': 'English copy is missing or placeholders do not match. No English reminder will be sent until it is completed.',
   'בדקתי ואישרתי את הנוסחים באנגלית': 'I have reviewed and approved the English messages',
   'הנוסחים באנגלית חסרים, אינם תואמים או טרם אושרו. הודעה באנגלית לא תישלח עד להשלמה ואישור.': 'English text is missing, inconsistent or not yet approved. No English reminder will be sent until completed and approved.',
+  'לא ניתן לפתוח את טופס האירוע': 'Could Not Open Event Form',
+  'אירעה תקלה בטעינת העורך. אפשר לסגור ולנסות שוב, בלי לשנות נתונים.': 'The editor could not be loaded. You can close it and try again without changing any data.',
   ...pageLabels,
   ...componentLabels
 });
