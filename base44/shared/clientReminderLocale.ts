@@ -29,7 +29,7 @@ function samePlaceholders(a:unknown,b:unknown):boolean{
 export function selectClientPaymentReminderCopy(
  template:any,event:any
 ):{ready:true;language:'he'|'en';title:string;body:string;whatsapp:string}|
-   {ready:false;language:'en';reason:'english_copy_missing'|'english_copy_unreviewed'|'placeholder_mismatch'}{
+   {ready:false;language:'en';reason:'english_copy_missing'|'english_copy_unreviewed'|'placeholder_mismatch'|'english_copy_not_approved'}{
  const language=clientNoticeLocale(event);
  if(language==='he'){
   return {ready:true,language,title:String(template?.title_template||''),
@@ -49,6 +49,11 @@ export function selectClientPaymentReminderCopy(
     (whatsappEnabled&&!samePlaceholders(
       template?.whatsapp_body_template||template?.body_template,whatsapp)))
   return {ready:false,language,reason:'placeholder_mismatch'};
+ // Assistant-drafted text is NOT an administrator's approval.
+ // A future enabled template may not send English until a human has
+ // reviewed the saved copy and explicitly accepted this exact version.
+ if(template?.english_copy_reviewed!==true)
+  return {ready:false,language,reason:'english_copy_not_approved'};
  return {ready:true,language,title,body,
   whatsapp:whatsappEnabled?whatsapp:(whatsapp||body)};
 }
