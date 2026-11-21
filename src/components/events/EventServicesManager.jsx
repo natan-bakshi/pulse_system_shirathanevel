@@ -1606,7 +1606,9 @@ export default function EventServicesManager({
         </TooltipProvider>
       </div>
 
-      {/* Services Display */}
+      {/* Services Display: avoid mounting a document-head drag engine when
+          there are no draggable services (new/empty events). */}
+      {(groupedServices.packages.length>0||groupedServices.standalone.length>0)&&
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="space-y-4">
           {/* Packages */}
@@ -1691,9 +1693,9 @@ export default function EventServicesManager({
             </Droppable>
           )}
         </div>
-      </DragDropContext>
+      </DragDropContext>}
 
-      {/* External Services Section */}
+      {/* External Services Section */
       {groupedExternalServices.standalone.length > 0 && (
         <div className="mt-8 border-t-2 border-orange-200 pt-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
