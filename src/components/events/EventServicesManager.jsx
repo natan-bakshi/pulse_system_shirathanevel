@@ -1695,7 +1695,7 @@ export default function EventServicesManager({
         </div>
       </DragDropContext>}
 
-      {/* External Services Section */
+      {/* External Services Section */}
       {groupedExternalServices.standalone.length > 0 && (
         <div className="mt-8 border-t-2 border-orange-200 pt-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
