@@ -9,6 +9,7 @@ import {indexEventServicesByEvent,indexEventReminderReceipts} from '../../shared
 import {readAll} from '../../shared/eventReadiness.ts';
 import {loadEventReminderInventory} from '../../shared/eventReminderInventory.ts';
 import {ownerHeldReminderIncident} from '../../shared/eventReminderIncidentHold.ts';
+import {selectClientPaymentReminderCopy} from '../../shared/clientReminderLocale.ts';
 
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -817,9 +818,17 @@ Deno.serve(async (req) => {
                         client_name: clientUser.full_name || ''
                     };
                     
-                    const title = replacePlaceholders(paymentTemplate.title_template, contextData);
-                    const message = replacePlaceholders(paymentTemplate.body_template, contextData);
-                    const waMessage = replacePlaceholders(paymentTemplate.whatsapp_body_template || paymentTemplate.body_template, contextData);
+                    const reminderCopy=selectClientPaymentReminderCopy(paymentTemplate,event);
+                    if(!reminderCopy.ready){
+                        // Never silently send Hebrew to a customer explicitly
+                        // configured for English, or send a partial translation.
+                        console.warn('[DailyNotifications] Client payment reminder skipped: English copy requires review',
+                          {eventId:event.id,reason:reminderCopy.reason});
+                        continue;
+                    }
+                    const title = replacePlaceholders(reminderCopy.title, contextData);
+                    const message = replacePlaceholders(reminderCopy.body, contextData);
+                    const waMessage = replacePlaceholders(reminderCopy.whatsapp, contextData);
                     const link = buildDeepLink(paymentTemplate.deep_link_base, paymentTemplate.deep_link_params_map, contextData);
                     
                     // WhatsApp - check parents for phone
