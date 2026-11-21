@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import FieldLabel from "../FieldLabel";
@@ -15,6 +16,7 @@ export default function ContentTab({ template, onChange }) {
   const whatsappRef = useRef(null);
 
   const update = (field, value) => onChange({ ...template, [field]: value });
+  const updateEnglish = (field, value) => onChange({ ...template, [field]: value,english_copy_reviewed:false });
 
   // הכנסת משתנה במיקום הסמן בשדה הפעיל
   const insertAtCursor = (ref, field, varText) => {
@@ -102,21 +104,26 @@ export default function ContentTab({ template, onChange }) {
           </label>
           <Input id="client-reminder-title-en" dir="ltr" value={template.title_template_en||''}
             placeholder={reviewedClientPaymentReminderEnglish.title_template_en}
-            onChange={e=>update('title_template_en',e.target.value)}/>
+            onChange={e=>updateEnglish('title_template_en',e.target.value)}/>
           <label className="block text-sm font-medium" htmlFor="client-reminder-body-en">
             {uiTranslate('גוף ההודעה באנגלית')}
           </label>
           <Textarea id="client-reminder-body-en" dir="ltr" rows={5}
             value={template.body_template_en||''}
             placeholder={reviewedClientPaymentReminderEnglish.body_template_en}
-            onChange={e=>update('body_template_en',e.target.value)}/>
+            onChange={e=>updateEnglish('body_template_en',e.target.value)}/>
           <label className="block text-sm font-medium" htmlFor="client-reminder-whatsapp-en">
             {uiTranslate('הודעת WhatsApp באנגלית')}
           </label>
           <Textarea id="client-reminder-whatsapp-en" dir="ltr" rows={5}
             value={template.whatsapp_body_template_en||''}
             placeholder={reviewedClientPaymentReminderEnglish.whatsapp_body_template_en}
-            onChange={e=>update('whatsapp_body_template_en',e.target.value)}/>
+            onChange={e=>updateEnglish('whatsapp_body_template_en',e.target.value)}/>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={template.english_copy_reviewed===true}
+              onCheckedChange={checked=>update('english_copy_reviewed',checked===true)}/>
+            {uiTranslate('בדקתי ואישרתי את הנוסחים באנגלית')}
+          </label>
           {(()=>{const checked=selectClientPaymentReminderCopy(template,{client_notice_language:'en'});
            return <p className={'text-xs '+(checked.ready?'text-green-700':'text-amber-700')} role="status">
             {checked.ready?uiTranslate('הנוסחים באנגלית מוכנים לבדיקה.'):
