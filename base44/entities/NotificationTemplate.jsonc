@@ -18,6 +18,18 @@
       "type": "string",
       "description": "\u05ea\u05d1\u05e0\u05d9\u05ea \u05dc\u05db\u05d5\u05ea\u05e8\u05ea \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4 (\u05ea\u05db\u05dc\u05d5\u05dc \u05de\u05e9\u05ea\u05e0\u05d9\u05dd \u05db\u05de\u05d5 {{event_name}})"
     },
+    "title_template_en": {
+      "type": "string",
+      "description": "Manually reviewed English notification title; optional until approved. Not automatically translated."
+    },
+    "body_template_en": {
+      "type": "string",
+      "description": "Manually reviewed English notification body; required for English clients if this template is active."
+    },
+    "whatsapp_body_template_en": {
+      "type": "string",
+      "description": "Manually reviewed English WhatsApp notification body. Does not enable WhatsApp sending."
+    },
     "body_template": {
       "type": "string",
       "description": "\u05ea\u05d1\u05e0\u05d9\u05ea \u05dc\u05d2\u05d5\u05e3 \u05d4\u05d4\u05d5\u05d3\u05e2\u05d4 (\u05ea\u05db\u05dc\u05d5\u05dc \u05de\u05e9\u05ea\u05e0\u05d9\u05dd)"
