@@ -130,6 +130,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
     concept: "",
     family_name: "",
     child_name: "",
+    client_notice_language: "he",
     city: "",
     guest_count: "",
     status: "quote",
@@ -341,6 +342,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, initialDate 
       concept: event?.concept || "",
       family_name: event?.family_name || "",
       child_name: event?.child_name || "",
+      client_notice_language: event?.client_notice_language === "en" ? "en" : "he",
       city: event?.city || "",
       guest_count: event?.guest_count !== undefined && event.guest_count !== null ? String(event.guest_count) : "",
       status: event?.status || "quote",
@@ -793,6 +795,24 @@ for (const serviceItem of servicesForSave) {
                   )}
                 </div>
           </div>}
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border bg-gray-50/80 p-3">
+            <Label htmlFor="client-notice-language" className="text-sm font-medium shrink-0">
+              {uiTranslate('שפת הודעות ללקוח')}
+            </Label>
+            <Select value={formData.client_notice_language} onValueChange={v=>setFormData(prev=>({...prev,client_notice_language:v==='en'?'en':'he'}))}>
+              <SelectTrigger id="client-notice-language" className="w-full sm:w-44 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="he">{uiTranslate('עברית')}</SelectItem>
+                <SelectItem value="en">English</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              {uiTranslate('להודעות ללקוח באירוע זה בלבד. שפת המערכת, הצעת המחיר וההסכם נבחרות בנפרד.')}
+            </p>
+          </div>
 
           {getField(organizerEventFields, 'parents') && <OrganizerContactsSection
             contacts={formData.parents}
