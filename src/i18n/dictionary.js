@@ -613,6 +613,13 @@ export const interfaceLabels = Object.freeze({
   "עמלת סליקה": "Processing fee",
   'שפת הודעות ללקוח': 'Customer Message Language',
   'להודעות ללקוח באירוע זה בלבד. שפת המערכת, הצעת המחיר וההסכם נבחרות בנפרד.': 'For customer messages about this event only. Interface, quotation and agreement languages are selected separately.',
+  'נוסחי הודעות באנגלית ללקוחות': 'English Customer Message Text',
+  'שפת הודעות ללקוח מוגדרת לכל אירוע בנפרד. תבנית זו תישאר כבויה עד להפעלתה בנפרד. יש לשמור על כל המשתנים המקוריים.': 'Customer message language is set per event. This template stays disabled until activated separately. Keep all original placeholders unchanged.',
+  'כותרת באנגלית': 'English Title',
+  'גוף ההודעה באנגלית': 'English Message Body',
+  'הודעת WhatsApp באנגלית': 'English WhatsApp Message',
+  'הנוסחים באנגלית מוכנים לבדיקה.': 'English texts are ready for review.',
+  'הנוסחים באנגלית חסרים או שהמשתנים אינם תואמים. הודעה באנגלית לא תישלח עד להשלמה.': 'English copy is missing or placeholders do not match. No English reminder will be sent until it is completed.',
   ...pageLabels,
   ...componentLabels
 });
