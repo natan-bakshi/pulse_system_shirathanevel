@@ -10,7 +10,14 @@ export class EventFormErrorBoundary extends React.Component {
     this.state={failure:null};
   }
   static getDerivedStateFromError(error){
-    return {failure:String(error?.name||'Error')};
+    // Bounded, allowlisted *technical* diagnostic, never arbitrary messages
+    // that could contain customer content or a backend response.
+    const message=String(error?.message||'');
+    const nullRead=message.match(/^Cannot read properties of (?:null|undefined) \(reading '([A-Za-z_$][A-Za-z0-9_$]*)'\)$/);
+    const missing=message.match(/^([A-Za-z_$][A-Za-z0-9_$]*) is not defined$/);
+    const suffix=nullRead?'missing-property:'+nullRead[1]:
+      missing?'missing-symbol:'+missing[1]:String(error?.name||'render');
+    return {failure:suffix};
   }
   componentDidCatch(error,info){
     // Browser diagnostics only: no Event/contact form data is logged.
