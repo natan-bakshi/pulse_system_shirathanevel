@@ -78,6 +78,7 @@ function harness({channel=['whatsapp'],users=[
      if(path.endsWith('eventReadiness.ts'))return {readAll:async(entity)=>entity.list?entity.list():entity.filter({})};
      if(path.endsWith('eventReminderInventory.ts'))return {loadEventReminderInventory:async()=>({events:[],services:[],suppliers:[],notifications:[]})};
      if(path.endsWith('eventReminderIncidentHold.ts'))return {ownerHeldReminderIncident:()=>false};
+     if(path.endsWith('clientReminderLocale.ts'))return {selectClientPaymentReminderCopy:()=>({ready:true,language:'he',title:'',body:'',whatsapp:''})};
      throw Error('Unexpected imported module: '+path);
    }
  };
