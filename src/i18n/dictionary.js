@@ -611,6 +611,8 @@ export const interfaceLabels = Object.freeze({
   "כותרת עותק חתום": "Signed copy message",
   "כתובת מייל החברה אינה תקינה": "The company email address is invalid",
   "עמלת סליקה": "Processing fee",
+  'שפת הודעות ללקוח': 'Customer Message Language',
+  'להודעות ללקוח באירוע זה בלבד. שפת המערכת, הצעת המחיר וההסכם נבחרות בנפרד.': 'For customer messages about this event only. Interface, quotation and agreement languages are selected separately.',
   ...pageLabels,
   ...componentLabels
 });
