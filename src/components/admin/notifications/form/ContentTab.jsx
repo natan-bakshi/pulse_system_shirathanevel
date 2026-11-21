@@ -15,7 +15,10 @@ export default function ContentTab({ template, onChange }) {
   const bodyRef = useRef(null);
   const whatsappRef = useRef(null);
 
-  const update = (field, value) => onChange({ ...template, [field]: value });
+  const update = (field, value) => onChange({ ...template, [field]: value,
+    ...(template.type==='CLIENT_PAYMENT_REMINDER'&&
+      ['title_template','body_template','whatsapp_body_template'].includes(field)?
+      {english_copy_reviewed:false}:{}) });
   const updateEnglish = (field, value) => onChange({ ...template, [field]: value,english_copy_reviewed:false });
 
   // הכנסת משתנה במיקום הסמן בשדה הפעיל
