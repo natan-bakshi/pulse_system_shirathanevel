@@ -18,6 +18,11 @@
       "type": "string",
       "description": "\u05ea\u05d1\u05e0\u05d9\u05ea \u05dc\u05db\u05d5\u05ea\u05e8\u05ea \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4 (\u05ea\u05db\u05dc\u05d5\u05dc \u05de\u05e9\u05ea\u05e0\u05d9\u05dd \u05db\u05de\u05d5 {{event_name}})"
     },
+    "english_copy_reviewed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicit administrator approval of currently saved English customer reminder copy; editing English text resets approval."
+    },
     "title_template_en": {
       "type": "string",
       "description": "Manually reviewed English notification title; optional until approved. Not automatically translated."
