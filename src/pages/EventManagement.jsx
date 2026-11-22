@@ -11,6 +11,7 @@ import EventCard from '../components/events/EventCard';
 import EventFilters from '../components/events/EventFilters';
 import EventForm from '../components/events/EventForm';
 import EventFormErrorBoundary from '../components/events/EventFormErrorBoundary';
+import {eventDialogDiagnosticEnabled,eventDialogMark,eventDialogError} from '@/lib/pulseEventDialogDiagnostic';
 
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 
@@ -21,6 +22,13 @@ export default function EventManagement() {
     const [filteredEvents, setFilteredEvents] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
+    useEffect(()=>{
+      if(!eventDialogDiagnosticEnabled())return;
+      eventDialogMark('Events route mounted');
+      const listener=(e)=>eventDialogError(e.error);
+      window.addEventListener('error',listener);
+      return()=>window.removeEventListener('error',listener);
+    },[]);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -166,7 +174,9 @@ export default function EventManagement() {
                 <CardHeader className="p-3 sm:p-6">
                     <div className="flex justify-between items-center gap-2">
                         <CardTitle className="text-xl sm:text-2xl">{t("ניהול אירועים")}</CardTitle>
-                        <Button onClick={() => { setEditingEvent(null); setIsFormOpen(true); }} size="sm" className="sm:h-9 sm:px-4">
+                        <Button onClick={() => { eventDialogMark('Clicked Create Event'); setEditingEvent(null); setIsFormOpen(true);
+                          if(eventDialogDiagnosticEnabled())window.setTimeout(()=>eventDialogMark('After 900ms dialogs='+document.querySelectorAll('[role=dialog]').length+' content='+document.querySelectorAll('[data-state=open]').length),900);
+                        }} size="sm" className="sm:h-9 sm:px-4">
                             <PlusCircle className="ml-1 sm:ml-2 h-4 w-4" />
                             <span className="hidden sm:inline">{t("צור אירוע חדש")}</span>
                             <span className="sm:hidden">{t("חדש")}</span>
