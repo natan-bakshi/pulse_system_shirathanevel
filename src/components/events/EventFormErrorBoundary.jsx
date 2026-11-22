@@ -1,7 +1,6 @@
 import React from 'react';
 import {Button} from '@/components/ui/button';
 import {useLanguage} from '@/i18n/LanguageProvider';
-import {eventDialogMark,eventDialogError} from '@/lib/pulseEventDialogDiagnostic';
 
 // Isolates a failed event editor from the entire Events page. Does not mutate,
 // retry a network request, or create an event; the operator can dismiss safely.
@@ -21,8 +20,6 @@ export class EventFormErrorBoundary extends React.Component {
     return {failure:suffix};
   }
   componentDidCatch(error,info){
-    eventDialogMark('Render error boundary invoked');
-    eventDialogError(error);
     // Component *names* only, never raw event/contact or error response data.
     const names=[...String(info?.componentStack||'').matchAll(/\bat ([A-Za-z_$][\w$]*)/g)]
       .map(m=>m[1]).filter(v=>v!=='div'&&v!=='span').slice(0,7);
