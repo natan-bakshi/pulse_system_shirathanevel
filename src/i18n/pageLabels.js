@@ -437,6 +437,7 @@ export const pageLabels=Object.freeze({
   "שם הילד/ה": "Child's Name",
   "מטבע האירוע": "Event Currency",
   "אנשי קשר לאירוע": "Event Contacts",
+  "מוסד / ארגון": "Institution / Organization",
   "₪ שקל": "₪ New Israeli Shekel",
   "$ דולר": "$ US Dollar",
   "אחר": "Other",
