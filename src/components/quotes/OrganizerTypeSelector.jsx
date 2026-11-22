@@ -65,7 +65,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
     } finally {
       setIsCreating(false);
     }
-  }, [newTypeName, organizerTypes, queryClient, onChange]);
+  }, [newTypeName, organizerTypes, queryClient, onChange, uiTranslate]);
 
   if (isLoading) return null;
   if (activeTypes.length === 0) return null;
