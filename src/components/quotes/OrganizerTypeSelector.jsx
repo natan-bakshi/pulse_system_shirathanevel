@@ -16,7 +16,7 @@ import {useLanguage} from '@/i18n/LanguageProvider';
  * Loads default type when value is empty.
  */
 export default function OrganizerTypeSelector({ value, onChange, disabled, className = "" }) {
-  const {t: uiTranslate}=useLanguage();
+  const {t: uiTranslate,dir}=useLanguage();
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -92,7 +92,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
           {activeTypes.map(type => (
             <SelectItem key={type.id} value={type.type_name}>
               <span className="flex items-center gap-2">
-                {type.type_name}
+                {['משפחה','מוסד / ארגון'].includes(type.type_name)?uiTranslate(type.type_name):type.type_name}
                 {type.is_default && <span className="text-xs text-amber-600">{uiTranslate("(ברירת מחדל)")}</span>}
               </span>
             </SelectItem>
@@ -105,7 +105,7 @@ export default function OrganizerTypeSelector({ value, onChange, disabled, class
 
       {/* Create New Dialog */}
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent dir="rtl" className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
+        <DialogContent dir={dir} className="sm:max-w-[400px]" onPointerDownOutside={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{uiTranslate("סוג הזמנה חדש")}</DialogTitle>
           </DialogHeader>
