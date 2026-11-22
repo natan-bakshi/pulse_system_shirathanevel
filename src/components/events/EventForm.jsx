@@ -34,9 +34,11 @@ import { toast } from "sonner";
 import { getField, getEventContacts, prepareContacts, validateEventFields, normalizeEventValues } from "@/lib/eventFields";
 import { useOrganizerConfig } from "@/hooks/useOrganizerConfig";
 import {useLanguage} from '@/i18n/LanguageProvider';
+import {eventDialogMark} from '@/lib/pulseEventDialogDiagnostic';
 
 export default function EventForm({ isOpen, onClose, onSave, event, initialDate }) {
   const {t: uiTranslate,dir}=useLanguage();
+  useEffect(()=>{eventDialogMark('EventForm React committed');},[]);
   const [allServices, setAllServices] = useState([]);
   const [allSuppliers, setAllSuppliers] = useState([]);
   const [allPackages, setAllPackages] = useState([]);
@@ -756,7 +758,7 @@ for (const serviceItem of servicesForSave) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent dir={dir}
+      <DialogContent dir={dir} ref={node=>{if(node)eventDialogMark('Radix content DOM mounted');}}
         className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 bg-white/95 backdrop-blur-sm shadow-xl"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
