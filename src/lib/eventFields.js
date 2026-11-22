@@ -39,6 +39,13 @@ export function systemKey(field) {
   const key=field?.source==='system'?field.system_key:null;
   return SYSTEM_FIELDS_BY_KEY[key]?key:null;
 }
+// Localize only fixed system dropdown labels. Stored option values and
+// administrator-defined custom field choices are never translated.
+export function displayEventOptionLabel(field, option, translate = value => value) {
+  const label = typeof option === 'string' ? option : (option?.label ?? '');
+  const key = systemKey(field);
+  return key === 'event_type' || key === 'primary_currency' ? translate(label) : label;
+}
 export function getEventFields(type) {
   if (type?.event_fields==null || type.event_fields==='') return DEFAULT_EVENT_FIELDS.map(f=>({...f}));
   const fields=parseArray(type.event_fields).map(f=>systemKey(f)?makeSystemField(systemKey(f),f):{...f});
