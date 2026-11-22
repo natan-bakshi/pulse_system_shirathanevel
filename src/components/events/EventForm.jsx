@@ -825,7 +825,7 @@ for (const serviceItem of servicesForSave) {
             <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
               <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                {getField(organizerEventFields, "schedule")?.name || "לוח זמנים"}
+                {uiTranslate(getField(organizerEventFields, "schedule")?.name || "לוח זמנים")}
               </h3>
               {formData.schedule?.length > 0 && (
                 <Button type="button" variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 w-8 p-0">
