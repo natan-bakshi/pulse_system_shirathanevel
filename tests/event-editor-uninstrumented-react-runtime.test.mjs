@@ -61,6 +61,8 @@ test('real event editor mounts with one Radix dialog and an independent customer
   w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
   w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
   w.PointerEvent=w.MouseEvent;
+  // JSDOM lacks deprecated execCommand; real browsers implement it.
+  w.document.execCommand=()=>false;
   w.Element.prototype.scrollIntoView=()=>{};
   w.matchMedia=()=>({matches:false,addListener(){},removeListener(){},
     addEventListener(){},removeEventListener(){}});
