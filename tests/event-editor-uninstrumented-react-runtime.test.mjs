@@ -37,7 +37,7 @@ const entitiesMock=[
 const statusMock="export async function refreshEventStatus(){throw Error('Status update during render')}";
 const stubs={api:apiMock,entities:entitiesMock,status:statusMock};
 
-test('real event editor mounts with one Radix dialog and an independent customer message selector',async()=>{
+test('real Hebrew and English event editors mount in a native uninstrumented Radix dialog',async()=>{
   const compiled=await esbuild.build({
     stdin:{contents:entry,sourcefile:path.resolve('event-editor-qa.jsx'),
       resolveDir:process.cwd(),loader:'jsx'},
@@ -55,9 +55,11 @@ test('real event editor mounts with one Radix dialog and an independent customer
         ({contents:stubs[args.path],loader:'js'}));
     }}]
   });
+  for(const locale of ['he','en']){
   const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',
     {url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true});
   const w=dom.window;
+  w.localStorage.setItem('pulse_interface_locale_v1',locale);
   w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
   w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
   w.PointerEvent=w.MouseEvent;
@@ -74,11 +76,14 @@ test('real event editor mounts with one Radix dialog and an independent customer
     await new Promise(resolve=>setTimeout(resolve,900));
     assert.deepEqual(errors,[],'React render should have no runtime exceptions');
     assert.equal(w.document.querySelectorAll('[role="dialog"]').length,1);
-    assert.match(w.document.body.textContent,/שפת הודעות ללקוח/);
-    assert.match(w.document.body.textContent,/יצירת אירוע חדש/);
+    assert.ok(w.document.body.textContent.includes(locale==='he'?'שפת הודעות ללקוח':'Customer Message Language'),
+      locale+' customer message language selection must be visible');
+    assert.ok(w.document.body.textContent.includes(locale==='he'?'יצירת אירוע חדש':'Create New Event'),
+      locale+' create-event heading must be visible');
     assert.equal(w.document.querySelectorAll('.bb-customSelect').length,0,
       'No automation-injected select DOM should exist in a normal runtime');
   }finally{
     dom.window.close();
+  }
   }
 });
