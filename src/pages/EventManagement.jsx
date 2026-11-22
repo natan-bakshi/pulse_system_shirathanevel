@@ -11,7 +11,7 @@ import EventCard from '../components/events/EventCard';
 import EventFilters from '../components/events/EventFilters';
 import EventForm from '../components/events/EventForm';
 import EventFormErrorBoundary from '../components/events/EventFormErrorBoundary';
-import {eventDialogDiagnosticEnabled,eventDialogMark,eventDialogError} from '@/lib/pulseEventDialogDiagnostic';
+import {eventDialogDiagnosticEnabled,eventDialogMark,eventDialogError,startEventDialogDomProbe} from '@/lib/pulseEventDialogDiagnostic';
 
 import { updateExpiredEvents } from '@/functions/updateExpiredEvents';
 
@@ -25,9 +25,10 @@ export default function EventManagement() {
     useEffect(()=>{
       if(!eventDialogDiagnosticEnabled())return;
       eventDialogMark('Events route mounted');
+      const stopProbe=startEventDialogDomProbe();
       const listener=(e)=>eventDialogError(e.error);
       window.addEventListener('error',listener);
-      return()=>window.removeEventListener('error',listener);
+      return()=>{window.removeEventListener('error',listener);stopProbe();};
     },[]);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
