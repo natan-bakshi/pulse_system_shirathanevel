@@ -286,4 +286,3 @@ Payment creation/callbacks, invoice amounts/VAT behavior, WhatsApp queues/button
 - Implemented presentation-only localization of built-in event type/currency dropdown options, standard organizer/contact labels, event schedule caption and organizer dialog direction, preserving all persisted identifiers, custom business data and workflows.
 - Added pure locale/data-isolation tests and expanded real uninstrumented React/Radix editor regression to Hebrew AND English. Gate: Vite build, **1,325/1,325 Node tests**, targeted ESLint and diff check clean. Pre-edit checkpoint `6b024e1d3f030d6b60bcf770`. Detailed audit: `docs/pulse-client-notice-bilingual-phase-2026-11-21.md`.
 - Still open: manual actual-browser iPhone/Chrome QA and authorized noncustomer English quotation/closing PDF, legal/bank spellings; external Cloudflare L70 setup remains off pending owner authorization. No customer, payment or WhatsApp writes.
-
