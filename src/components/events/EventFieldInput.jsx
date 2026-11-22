@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { EVENT_TYPE_OPTIONS, systemKey } from '@/lib/eventFields';
+import { EVENT_TYPE_OPTIONS, systemKey, displayEventOptionLabel } from '@/lib/eventFields';
 import {useLanguage} from '@/i18n/LanguageProvider';
 export default function EventFieldInput({field,value,onChange,disabled,concepts=[]}) {
   const {t: uiTranslate}=useLanguage();
@@ -14,7 +14,7 @@ export default function EventFieldInput({field,value,onChange,disabled,concepts=
   if(field.type==='textarea') return <Textarea {...props} onChange={e=>onChange(e.target.value)} placeholder={hint} />;
   if(field.type==='select') {
     const options=systemKey(field)==='event_type'?EVENT_TYPE_OPTIONS:(field.options || []);
-    return <Select value={String(value??'')} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label}><SelectValue placeholder={hint} /></SelectTrigger><SelectContent>{options.map(o=>{const v=typeof o==='string'?o:o.value;return <SelectItem key={v} value={v}>{typeof o==='string'?o:o.label}</SelectItem>;})}</SelectContent></Select>;
+    return <Select value={String(value??'')} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label}><SelectValue placeholder={hint} /></SelectTrigger><SelectContent>{options.map(o=>{const v=typeof o==='string'?o:o.value;return <SelectItem key={v} value={v}>{displayEventOptionLabel(field,o,uiTranslate)}</SelectItem>;})}</SelectContent></Select>;
   }
   if(field.type==='concept') return manualConcept || (value && !concepts.includes(value)) ? <div className="space-y-2"><Input {...props} onChange={e=>onChange(e.target.value)} placeholder={uiTranslate("שם קונספט חדש...")} /><Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={()=>{setManualConcept(false);onChange('');}}>{uiTranslate("חזור לבחירה מהרשימה")}</Button></div> : <Select value={value || ''} disabled={disabled} onValueChange={v=>{if(v==='__manual__')setManualConcept(true);else onChange(v);}}><SelectTrigger aria-label={label}><SelectValue placeholder={uiTranslate("בחר קונספט...")} /></SelectTrigger><SelectContent>{concepts.map(c=><SelectItem key={c} value={c}>{c}</SelectItem>)}<SelectItem value="__manual__">{uiTranslate("+ הכנס קונספט חדש")}</SelectItem></SelectContent></Select>;
 
