@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 import {useLanguage} from '@/i18n/LanguageProvider';
 
 /**
