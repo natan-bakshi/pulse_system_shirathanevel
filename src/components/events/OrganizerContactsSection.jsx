@@ -16,6 +16,11 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
   const label = config?.label || "אנשי קשר";
   const itemLabel = config?.item_label || "איש קשר";
   const extraFields = config?.extra_fields || [];
+  // Only the built-in captions are UI labels; user-created contact roles and
+  // custom field names remain the exact business text entered by the admin.
+  const standardLabels = new Set(['אנשי קשר','אנשי קשר לאירוע','איש קשר']);
+  const shownLabel = standardLabels.has(label) ? uiTranslate(label) : label;
+  const shownItemLabel = standardLabels.has(itemLabel) ? uiTranslate(itemLabel) : itemLabel;
 
   const handleChange = (index, field, value) => {
     const updated = [...contacts];
@@ -48,16 +53,16 @@ export default function OrganizerContactsSection({ contacts, onChange, config, d
   return (
     <div className="p-3 sm:p-6 border rounded-lg bg-gray-50/80">
       <div className="flex justify-between items-center mb-3 sm:mb-4 border-b pb-2">
-        <h3 className="text-base sm:text-lg font-semibold">{label}</h3>
+        <h3 className="text-base sm:text-lg font-semibold">{shownLabel}</h3>
         <Button type="button" variant="outline" size="sm" onClick={addContact} disabled={disabled}>
-          <Plus className="h-4 w-4 ml-1" />{uiTranslate("הוסף")} {itemLabel}
+          <Plus className="h-4 w-4 ml-1" />{uiTranslate("הוסף")} {shownItemLabel}
         </Button>
       </div>
       <div className="space-y-3">
         {contacts.map((contact, index) => (
           <div key={contact.id || index} className="border p-4 rounded-lg bg-gray-50/70">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{itemLabel} {index + 1}</span>
+              <span className="text-sm font-medium text-gray-600">{shownItemLabel} {index + 1}</span>
               <div className="flex items-center gap-1">
                 <ContactPicker
                   disabled={disabled}
