@@ -47,3 +47,10 @@ Continue `docs/pulse-multilingual-he-en-plan-2026-11-08.md` from phases L50, L60
 - Removed the entire temporary pulseEventDialogDiagnostic module and all hooks from EventManagement, EventForm and EventFormErrorBoundary. Source grep shows no QA parameter, custom SELECT wrapper or DOM monkeypatch in app. No test controls remain in the UI.
 - Final pre-clean-release gate: production Vite build PASSED, 1,321/1,321 full Node tests PASSED, targeted ESLint PASSED, git diff --check clean.
 - Expected production follow-up: save clean checkpoint and publish; verify revision exactly and dormant CLIENT_PAYMENT_REMINDER still inactive with English texts present and english_copy_reviewed missing/false. Do not trigger reminders or change real events.
+
+## 2026-11-22 — Final clean production release confirmation
+- Clean release checkpoint 6b024c6ea92aa3bcb71bfd51, revision e20473b62b40df48e004c1bfdffdf18ace93cd8e deployed 2026-11-22T01:59:41.321952Z to https://pulse-system.base44.app, verified Base44 status ready and matching exact revision.
+- Source check confirmed all temporary event-dialog diagnostic code, query flags, DOM interceptors and Browserbase wrappers are absent. Vite build + 1,321/1,321 Node tests + focused lint passed before this release.
+- Read-only production data: CLIENT_PAYMENT_REMINDER is_active=false; all three English draft fields populated, english_copy_reviewed not true; WhatsApp-only, reminder interval 7 days and max 4 remain unchanged. No new reminder or card operation triggered.
+- Removed five short-lived assistant-created browser QA flow definitions whose Browserbase SELECT mutation made them invalid and misleading. Kept permanent reproducible code regression and forensic report. No owner-created test definitions were touched.
+- Remaining L80 acceptance: Chrome/Safari/iPhone uninstrumented visual opening of Create Event and approved English quote/closing PDF; L70 Cloudflare authorization/configuration still required. Do not claim those external steps complete.
